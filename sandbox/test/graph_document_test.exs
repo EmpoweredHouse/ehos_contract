@@ -2,7 +2,7 @@ defmodule EhOsContract.GraphDocumentTest do
   @moduledoc """
   Plan E13a: the `graph.v1` document of every contract and every domain of the client
   trees — TaxVision, Rehmed, AppUnite's equipment — holds to the schema the engine
-  ships, and each edge ends where it says. The engine's own suite checks its
+  ships, and every id in it resolves. The engine's own suite checks its
   fixtures; these are the documents a renderer will actually be given.
   """
 
@@ -37,19 +37,24 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  test "every edge has an id of its own and ends at a node, only precedes at a group" do
-    for {module, document} <- documents(), graph <- graphs(document) do
-      nodes = MapSet.new(graph["nodes"], & &1["id"])
-      groups = MapSet.new(graph["groups"], & &1["id"])
-      edges = Enum.map(graph["edges"], & &1["id"])
+  test "ids are unique in a document, and every relation and owner resolves in it" do
+    owners = ~w(unit stage process process_manager of context subdomain contract)
 
-      assert edges == Enum.uniq(edges),
-             "#{inspect(module)}: #{inspect(edges -- Enum.uniq(edges))}"
+    for {module, document} <- documents() do
+      nodes = for {_kind, ns} <- document["nodes"], n <- ns, do: n
+      relations = for {_type, rs} <- document["relations"], r <- rs, do: r
+      ids = Enum.map(nodes, & &1["id"]) ++ Enum.map(relations, & &1["id"])
 
-      for %{"from" => from, "to" => to, "relation" => relation} <- graph["edges"],
-          id <- [from, to] do
-        ends = if relation == "precedes", do: groups, else: nodes
-        assert MapSet.member?(ends, id), "#{inspect(module)}: #{relation} #{from} -> #{to}"
+      assert ids == Enum.uniq(ids), "#{inspect(module)}: #{inspect(ids -- Enum.uniq(ids))}"
+
+      here = MapSet.new(nodes, & &1["id"])
+
+      for r <- relations, id <- [r["from"], r["to"]] do
+        assert MapSet.member?(here, id), "#{inspect(module)}: #{r["id"]} ends at #{id}"
+      end
+
+      for n <- nodes, key <- owners, id = n[key], id != nil do
+        assert MapSet.member?(here, id), "#{inspect(module)}: #{n["id"]}'s #{key} is #{id}"
       end
     end
   end
@@ -62,11 +67,4 @@ defmodule EhOsContract.GraphDocumentTest do
                Document.domain(domain, contracts)
     end
   end
-
-  defp graphs(%{"kind" => "contract", "graphs" => g}),
-    do:
-      [g["contract"]] ++
-        List.wrap(g["process"]) ++ Map.values(g["units"]) ++ Map.values(g["lifecycles"])
-
-  defp graphs(%{"kind" => "domain", "graphs" => g}), do: [g["context_map"], g["system"]]
 end

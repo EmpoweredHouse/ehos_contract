@@ -2,42 +2,437 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:eh-os-contract:schema:graph.v1",
   "title": "eh_os_contract graph.v1",
-  "description": "The graphs of a contract or a domain as data: what is declared, with nothing of how it is drawn and nothing from the log. Ids are opaque: a reader joins on them and never takes them apart. An edge goes from its source to its target and its relation reads in that direction.",
+  "description": "A contract or a domain as a graph of facts: what is declared, with nothing of how it is drawn, which pictures it is shown in, or what the log holds. Nodes are grouped by kind and relations by type, every kind and type present; a relation goes from its source to its target and its type reads in that direction. Ids are opaque and unique in a document: a reader joins on them and never takes them apart. Every id resolves to a node of the same document, except those described as a reference into another document.",
   "oneOf": [
-    { "$ref": "#/$defs/contract_document" },
-    { "$ref": "#/$defs/domain_document" }
+    {
+      "$ref": "#/$defs/contract_document"
+    },
+    {
+      "$ref": "#/$defs/domain_document"
+    }
   ],
   "$defs": {
     "contract_document": {
       "type": "object",
-      "required": ["schema", "kind", "contract", "domain", "version", "graphs", "digest"],
+      "description": "A contract's document.",
+      "required": [
+        "schema",
+        "kind",
+        "contract",
+        "contract_id",
+        "domain",
+        "context",
+        "version",
+        "digest",
+        "nodes",
+        "relations"
+      ],
       "additionalProperties": false,
       "properties": {
-        "schema": { "const": "eh_os_contract.graph.v1" },
-        "kind": { "const": "contract" },
-        "contract": { "type": "string", "description": "The contract's module." },
-        "domain": { "type": "string", "description": "The module of the domain it names." },
-        "version": { "type": "string", "description": "The contract version: a hash of its declarations." },
-        "digest": { "$ref": "#/$defs/digest" },
-        "graphs": {
+        "schema": {
+          "const": "eh_os_contract.graph.v1"
+        },
+        "kind": {
+          "const": "contract"
+        },
+        "contract": {
+          "type": "string",
+          "description": "The contract's module."
+        },
+        "contract_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The contract's id:, where it declares one."
+        },
+        "domain": {
+          "type": "string",
+          "description": "The module of the domain it names."
+        },
+        "context": {
+          "type": "string",
+          "description": "The id of its context's node."
+        },
+        "version": {
+          "type": "string",
+          "description": "The contract version: a hash of its declarations."
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "nodes": {
           "type": "object",
-          "required": ["contract", "process", "units", "lifecycles"],
+          "description": "The contract's declarations, and the domain's it names, by kind.",
+          "required": [
+            "process",
+            "stage",
+            "promise",
+            "unit",
+            "status",
+            "invariant",
+            "constraint",
+            "command",
+            "event",
+            "policy",
+            "process_manager",
+            "timer",
+            "effect",
+            "read_model",
+            "query",
+            "domain_service",
+            "publication",
+            "actor",
+            "external",
+            "value",
+            "entity",
+            "subject",
+            "context"
+          ],
           "additionalProperties": false,
           "properties": {
-            "contract": { "$ref": "#/$defs/graph", "description": "The full graph: steps, who acts, who reads, the outside world." },
             "process": {
-              "description": "The process's declared shape: stages, events, promises; null without a process.",
-              "oneOf": [{ "$ref": "#/$defs/graph" }, { "type": "null" }]
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_process"
+              }
             },
-            "units": {
-              "description": "Each unit's graph, keyed by the id of the unit's group on the full graph.",
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/graph" }
+            "stage": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_stage"
+              }
             },
-            "lifecycles": {
-              "description": "Each aggregate's lifecycle, keyed by the id of the unit's group on the full graph.",
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/graph" }
+            "promise": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_promise"
+              }
+            },
+            "unit": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_unit"
+              }
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_status"
+              }
+            },
+            "invariant": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_invariant"
+              }
+            },
+            "constraint": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_constraint"
+              }
+            },
+            "command": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_command"
+              }
+            },
+            "event": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_event"
+              }
+            },
+            "policy": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_policy"
+              }
+            },
+            "process_manager": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_process_manager"
+              }
+            },
+            "timer": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_timer"
+              }
+            },
+            "effect": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_effect"
+              }
+            },
+            "read_model": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_read_model"
+              }
+            },
+            "query": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_query"
+              }
+            },
+            "domain_service": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_service"
+              }
+            },
+            "publication": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_publication"
+              }
+            },
+            "actor": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_actor"
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_external"
+              }
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_value"
+              }
+            },
+            "entity": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_entity"
+              }
+            },
+            "subject": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_subject"
+              }
+            },
+            "context": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_context"
+              }
+            }
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "The links between them, by type.",
+          "required": [
+            "emits",
+            "handled_by",
+            "starts",
+            "ends",
+            "issues",
+            "sets",
+            "cancels",
+            "fires",
+            "may_issue",
+            "may_record",
+            "may_ask",
+            "accountable_for",
+            "builds",
+            "consulted_by",
+            "projected_into",
+            "reads",
+            "refused_on",
+            "enters",
+            "transition",
+            "allowed_in",
+            "opens",
+            "fulfils",
+            "or_else",
+            "depends_on",
+            "calls",
+            "backed_by",
+            "published_as",
+            "received_as"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "emits": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_emits"
+              }
+            },
+            "handled_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_handled_by"
+              }
+            },
+            "starts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_starts"
+              }
+            },
+            "ends": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_ends"
+              }
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_issues"
+              }
+            },
+            "sets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_sets"
+              }
+            },
+            "cancels": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_cancels"
+              }
+            },
+            "fires": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_fires"
+              }
+            },
+            "may_issue": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_may_issue"
+              }
+            },
+            "may_record": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_may_record"
+              }
+            },
+            "may_ask": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_may_ask"
+              }
+            },
+            "accountable_for": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_accountable_for"
+              }
+            },
+            "builds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_builds"
+              }
+            },
+            "consulted_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_consulted_by"
+              }
+            },
+            "projected_into": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_projected_into"
+              }
+            },
+            "reads": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_reads"
+              }
+            },
+            "refused_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_refused_on"
+              }
+            },
+            "enters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_enters"
+              }
+            },
+            "transition": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_transition"
+              }
+            },
+            "allowed_in": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_allowed_in"
+              }
+            },
+            "opens": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_opens"
+              }
+            },
+            "fulfils": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_fulfils"
+              }
+            },
+            "or_else": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_or_else"
+              }
+            },
+            "depends_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_depends_on"
+              }
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_calls"
+              }
+            },
+            "backed_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_backed_by"
+              }
+            },
+            "published_as": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_published_as"
+              }
+            },
+            "received_as": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_received_as"
+              }
             }
           }
         }
@@ -45,20 +440,225 @@
     },
     "domain_document": {
       "type": "object",
-      "required": ["schema", "kind", "domain", "graphs", "digest"],
+      "description": "A domain's document.",
+      "required": [
+        "schema",
+        "kind",
+        "domain",
+        "name",
+        "language",
+        "time_zone",
+        "version",
+        "digest",
+        "nodes",
+        "relations"
+      ],
       "additionalProperties": false,
       "properties": {
-        "schema": { "const": "eh_os_contract.graph.v1" },
-        "kind": { "const": "domain" },
-        "domain": { "type": "string", "description": "The domain's module." },
-        "digest": { "$ref": "#/$defs/digest" },
-        "graphs": {
+        "schema": {
+          "const": "eh_os_contract.graph.v1"
+        },
+        "kind": {
+          "const": "domain"
+        },
+        "domain": {
+          "type": "string",
+          "description": "The domain's module."
+        },
+        "name": {
+          "type": "string",
+          "description": "The domain's name: the prefix of every role and capability."
+        },
+        "language": {
+          "type": "string"
+        },
+        "time_zone": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "description": "The domain version: a hash of its declarations."
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "nodes": {
           "type": "object",
-          "required": ["context_map", "system"],
+          "description": "The domain's declarations, its contracts and the events that cross them, by kind.",
+          "required": [
+            "subdomain",
+            "context",
+            "contract",
+            "event",
+            "publication",
+            "actor",
+            "external",
+            "value",
+            "entity",
+            "subject"
+          ],
           "additionalProperties": false,
           "properties": {
-            "context_map": { "$ref": "#/$defs/graph", "description": "Subdomains, their contexts, the external systems and the relations between them." },
-            "system": { "$ref": "#/$defs/graph", "description": "The domain's contracts, grouped by context, and what flows between them." }
+            "subdomain": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_subdomain"
+              }
+            },
+            "context": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_context"
+              }
+            },
+            "contract": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_contract"
+              }
+            },
+            "event": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_event"
+              }
+            },
+            "publication": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_publication"
+              }
+            },
+            "actor": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_actor"
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_external"
+              }
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_value"
+              }
+            },
+            "entity": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_entity"
+              }
+            },
+            "subject": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_subject"
+              }
+            }
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "The links between them, by type.",
+          "required": [
+            "partnership",
+            "shared_kernel",
+            "separate_ways",
+            "customer_supplier",
+            "conformist",
+            "anticorruption_layer",
+            "open_host_service",
+            "published_language",
+            "consumed_by",
+            "publishes",
+            "subscribed_by",
+            "backed_by",
+            "accountable_for"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "partnership": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_partnership"
+              }
+            },
+            "shared_kernel": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_shared_kernel"
+              }
+            },
+            "separate_ways": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_separate_ways"
+              }
+            },
+            "customer_supplier": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_customer_supplier"
+              }
+            },
+            "conformist": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_conformist"
+              }
+            },
+            "anticorruption_layer": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_anticorruption_layer"
+              }
+            },
+            "open_host_service": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_open_host_service"
+              }
+            },
+            "published_language": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_published_language"
+              }
+            },
+            "consumed_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_consumed_by"
+              }
+            },
+            "publishes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_publishes"
+              }
+            },
+            "subscribed_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_subscribed_by"
+              }
+            },
+            "backed_by": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_backed_by"
+              }
+            },
+            "accountable_for": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_accountable_for"
+              }
+            }
           }
         }
       }
@@ -68,133 +668,2032 @@
       "pattern": "^[0-9a-f]+$",
       "description": "A hash of the document without this key."
     },
-    "graph": {
+    "node_actor": {
       "type": "object",
-      "required": ["nodes", "edges", "groups"],
+      "description": "Who acts: a person's role or a system.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
       "additionalProperties": false,
       "properties": {
-        "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
-        "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
-        "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } }
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "context": {
+          "type": "string",
+          "description": "The id of the context it belongs to, where the domain says."
+        }
       }
     },
-    "node": {
+    "node_command": {
       "type": "object",
-      "required": ["id", "kind", "name", "label"],
+      "description": "A command to a unit.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "unit"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "kind": {
-          "enum": [
-            "command", "event", "policy", "process_manager", "effect", "timer",
-            "actor", "state", "read_model", "query", "invariant", "constraint",
-            "external", "context", "contract", "publication", "status", "start"
-          ]
+        "id": {
+          "type": "string"
         },
-        "name": { "type": ["string", "null"], "description": "The declaration's name; null only on a lifecycle's start." },
-        "label": { "type": ["string", "null"], "description": "The client's words, or the name where there are none; null only on a lifecycle's start." },
-        "command": { "type": "string", "description": "A constraint's command." },
-        "unit_kind": { "$ref": "#/$defs/unit_kind" },
-        "fields": { "type": "array", "items": { "$ref": "#/$defs/state_field" } },
-        "final": { "type": "boolean", "description": "Whether a lifecycle's status is an end." },
-        "process": { "type": ["string", "null"], "description": "A contract's process label, on the system." },
-        "stage": { "type": ["string", "null"], "description": "The stage an event sits in, on a declared shape; null where it sits in none, and then it is in no stage's group." },
-        "terminal": { "type": "boolean", "description": "Whether an event ends a run, on a declared shape." }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "kind": { "const": "start" } } },
-          "then": { "properties": { "name": { "type": "null" }, "label": { "type": "null" } } },
-          "else": { "properties": { "name": { "type": "string" }, "label": { "type": "string" } } }
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
         },
-        { "if": { "properties": { "kind": { "not": { "const": "event" } } } }, "then": { "not": { "anyOf": [{ "required": ["stage"] }, { "required": ["terminal"] }] } } },
-        { "if": { "properties": { "kind": { "const": "state" } } }, "then": { "required": ["unit_kind", "fields"] } },
-        { "if": { "properties": { "kind": { "const": "constraint" } } }, "then": { "required": ["command"] } },
-        { "if": { "properties": { "kind": { "const": "status" } } }, "then": { "required": ["final"] } }
-      ]
-    },
-    "state_field": {
-      "type": "object",
-      "required": ["name", "type", "identity", "optional"],
-      "additionalProperties": false,
-      "properties": {
-        "name": { "type": "string" },
-        "type": { "$ref": "#/$defs/field_type" },
-        "identity": { "type": "boolean" },
-        "optional": { "type": "boolean" }
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit's id."
+        }
       }
     },
-    "field_type": {
-      "description": "A DSL type: a built-in or a domain value by name, or a compound as a list whose first item says which (list, enum, id).",
-      "oneOf": [
-        { "type": "string" },
-        { "type": "array", "minItems": 1, "prefixItems": [{ "type": "string" }] }
-      ]
-    },
-    "unit_kind": { "enum": ["aggregate", "dcb"] },
-    "edge": {
+    "node_constraint": {
       "type": "object",
-      "required": ["id", "from", "to", "relation"],
+      "description": "A rule of a command, policy, process manager, query or effect.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "of"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "The relation, the two ends and what tells the edge apart from another of that relation between them; what the log's numbers join on." },
-        "from": { "type": "string", "description": "A node's id, or a group's for precedes." },
-        "to": { "type": "string", "description": "A node's id, or a group's for precedes." },
-        "relation": {
-          "enum": [
-            "emits", "handled_by", "issues", "fires", "sets_timer", "records", "asks",
-            "projected_into", "reads", "calls", "depends_on", "backed_by", "gives",
-            "refused_on", "builds", "consulted_by", "transition", "consumed_by",
-            "publishes", "subscribed_by", "precedes", "eventually", "or_else",
-            "partnership", "shared_kernel", "separate_ways", "customer_supplier",
-            "conformist", "anticorruption_layer", "open_host_service", "published_language"
-          ]
+        "id": {
+          "type": "string"
         },
-        "delivery": { "enum": ["inline", "async"], "description": "In the dispatch's transaction or after it." },
-        "scenarios": { "type": "integer", "minimum": 1, "description": "How many scenarios pin this path; absent where none." },
-        "field": { "type": "string" },
-        "match": { "type": "array", "items": { "type": "string" } },
-        "event": { "type": "string" },
-        "label": { "type": "string" },
-        "events": { "type": "array", "items": { "type": "string" } },
-        "as": { "type": "string" },
-        "promise": { "type": "string" },
-        "within": {
-          "type": "object",
-          "required": ["amount", "unit"],
-          "additionalProperties": false,
-          "properties": {
-            "amount": { "type": "integer", "minimum": 1 },
-            "unit": { "enum": ["second", "minute", "hour", "day"] }
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "of": {
+          "type": "string",
+          "description": "The id of the declaration it belongs to."
+        }
+      }
+    },
+    "node_context": {
+      "type": "object",
+      "description": "A context the contract's declarations name; the full context is in the domain's document.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_contract": {
+      "type": "object",
+      "description": "A contract of the domain.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "context"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The contract's module: a contract has no label of its own."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "context": {
+          "type": "string",
+          "description": "The id of its context."
+        }
+      }
+    },
+    "node_domain_context": {
+      "type": "object",
+      "description": "A bounded context of the domain, in its subdomain.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "subdomain"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "The subdomain's id."
+        }
+      }
+    },
+    "node_domain_event": {
+      "type": "object",
+      "description": "An event that crosses a contract's edge: consumed by a sibling or published to another application. Its id is the one it has in its contract's document.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "contract"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "contract": {
+          "type": "string",
+          "description": "The id of the contract that declares it."
+        }
+      }
+    },
+    "node_domain_service": {
+      "type": "object",
+      "description": "Domain logic of no unit, called by decisions; which command uses it the contract does not declare.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_effect": {
+      "type": "object",
+      "description": "A reaction that calls an external system.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_entity": {
+      "type": "object",
+      "description": "A domain entity.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "context": {
+          "type": "string",
+          "description": "The id of the context it belongs to, where the domain says."
+        }
+      }
+    },
+    "node_event": {
+      "type": "object",
+      "description": "An event the contract names: its own, one it consumes from a sibling under the name it has here, or one it receives from another application.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit's id; absent for an event consumed, included or received."
+        },
+        "stage": {
+          "type": "string",
+          "description": "The stage's id; absent where the event sits in no stage."
+        },
+        "included": {
+          "const": true,
+          "description": "The process includes it; absent otherwise."
+        },
+        "declared_as": {
+          "type": "string",
+          "description": "The sibling's event id, under its name there, in the sibling's document: a reference into another document. Absent for the contract's own and for a received event."
+        }
+      }
+    },
+    "node_external": {
+      "type": "object",
+      "description": "A system outside the application.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_invariant": {
+      "type": "object",
+      "description": "A rule of a unit or of a process manager.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "of"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "of": {
+          "type": "string",
+          "description": "The id of the unit or process manager it belongs to."
+        }
+      }
+    },
+    "node_policy": {
+      "type": "object",
+      "description": "A reaction that issues commands.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_process": {
+      "type": "object",
+      "description": "The contract's process: what one run is.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_process_manager": {
+      "type": "object",
+      "description": "A reaction that steers a run with state and timers.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_promise": {
+      "type": "object",
+      "description": "What the process owner agreed happens, from one event, eventually another.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "process"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "process": {
+          "type": "string",
+          "description": "The process's id."
+        }
+      }
+    },
+    "node_publication": {
+      "type": "object",
+      "description": "A name on the wire, between applications.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_query": {
+      "type": "object",
+      "description": "A question over a read model.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_read_model": {
+      "type": "object",
+      "description": "Rows projected from events.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_stage": {
+      "type": "object",
+      "description": "A stage of the process; the list is in the process's order.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "process"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "process": {
+          "type": "string",
+          "description": "The process's id."
+        }
+      }
+    },
+    "node_status": {
+      "type": "object",
+      "description": "A status of an aggregate's lifecycle.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The aggregate's id."
+        }
+      }
+    },
+    "node_subdomain": {
+      "type": "object",
+      "description": "A subdomain.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_subject": {
+      "type": "object",
+      "description": "A kind of person whose personal data the log holds.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_timer": {
+      "type": "object",
+      "description": "A timer of a process manager.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "process_manager"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "process_manager": {
+          "type": "string",
+          "description": "The process manager's id."
+        }
+      }
+    },
+    "node_unit": {
+      "type": "object",
+      "description": "An aggregate or a dynamic consistency boundary.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        }
+      }
+    },
+    "node_value": {
+      "type": "object",
+      "description": "A domain value.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "The client's words, or the name where there are none."
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "context": {
+          "type": "string",
+          "description": "The id of the context it belongs to, where the domain says."
+        }
+      }
+    },
+    "relation_accountable_for": {
+      "type": "object",
+      "description": "access — an actor answers for a process.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_allowed_in": {
+      "type": "object",
+      "description": "lifecycle — a command may be issued in a status.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_anticorruption_layer": {
+      "type": "object",
+      "description": "context map — anticorruption layer: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
           }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_backed_by": {
+      "type": "object",
+      "description": "outside — a system actor stands for an external system.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_builds": {
+      "type": "object",
+      "description": "data — an aggregate's own event builds its state.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_calls": {
+      "type": "object",
+      "description": "outside — an effect calls an external system.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string",
+          "description": "The operation of the system, where the domain names one."
+        }
+      }
+    },
+    "relation_cancels": {
+      "type": "object",
+      "description": "flow — a process manager cancels a timer.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "on",
+        "phase"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "on": {
+          "type": "string",
+          "description": "A process manager's: the event, or its own timer, that it acts on."
+        },
+        "phase": {
+          "enum": [
+            "start",
+            "run"
+          ],
+          "description": "A process manager's: whether that event starts the run or arrives in it; run for a timer."
+        }
+      }
+    },
+    "relation_conformist": {
+      "type": "object",
+      "description": "context map — conformist: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_consulted_by": {
+      "type": "object",
+      "description": "data — a boundary decides over an event it consults.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "match": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "where": {
+          "type": "string",
+          "description": "The client's prose, where the match is not fields."
         }
       },
-      "allOf": [
-        { "if": { "properties": { "relation": { "enum": ["eventually", "or_else"] } } }, "then": { "required": ["promise"] } },
-        { "if": { "properties": { "relation": { "const": "gives" } } }, "then": { "required": ["field"] } },
-        { "if": { "properties": { "relation": { "const": "consumed_by" } } }, "then": { "required": ["events"] } },
-        { "if": { "properties": { "relation": { "const": "publishes" } } }, "then": { "required": ["event"] } },
-        { "if": { "properties": { "relation": { "const": "subscribed_by" } } }, "then": { "required": ["as"] } },
-        { "if": { "properties": { "relation": { "const": "transition" } } }, "then": { "required": ["event", "label"] } }
+      "oneOf": [
+        {
+          "required": [
+            "match"
+          ]
+        },
+        {
+          "required": [
+            "where"
+          ]
+        }
       ]
     },
-    "group": {
+    "relation_consumed_by": {
       "type": "object",
-      "required": ["id", "kind", "name", "label", "nodes"],
+      "description": "between — a contract's events are consumed by a sibling.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "events"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "kind": { "enum": ["unit", "subdomain", "context", "stage"] },
-        "name": { "type": "string" },
-        "label": { "type": "string" },
-        "nodes": { "type": "array", "items": { "type": "string" }, "description": "The ids of its nodes; a stage may have none." },
-        "unit_kind": { "$ref": "#/$defs/unit_kind" },
-        "type": { "enum": ["core", "supporting", "generic"], "description": "A subdomain's type." }
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "event",
+              "as"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "description": "The event's id in the declaring contract."
+              },
+              "as": {
+                "type": "string",
+                "description": "The name it has in the consumer."
+              }
+            }
+          }
+        }
+      }
+    },
+    "relation_customer_supplier": {
+      "type": "object",
+      "description": "context map — customer supplier: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_depends_on": {
+      "type": "object",
+      "description": "outside — an event rests on an external system.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_emits": {
+      "type": "object",
+      "description": "flow — a command emits an event.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_ends": {
+      "type": "object",
+      "description": "flow — an event ends a process manager's run.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_enters": {
+      "type": "object",
+      "description": "lifecycle — an event puts a new aggregate in an initial status.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_fires": {
+      "type": "object",
+      "description": "flow — a timer, when it rings, issues a command.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_fulfils": {
+      "type": "object",
+      "description": "process — an event fulfils a promise.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_handled_by": {
+      "type": "object",
+      "description": "flow — an event is handled by a policy, an effect, or a process manager during its run.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "via_inbox": {
+          "const": true,
+          "description": "A received event: handled after the transaction, through the inbox, whatever the policy's delivery."
+        }
+      }
+    },
+    "relation_issues": {
+      "type": "object",
+      "description": "flow — a policy or a process manager issues a command.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "on": {
+          "type": "string",
+          "description": "A process manager's: the event, or its own timer, that it acts on."
+        },
+        "phase": {
+          "enum": [
+            "start",
+            "run"
+          ],
+          "description": "A process manager's: whether that event starts the run or arrives in it; run for a timer."
+        }
       },
-      "allOf": [
-        { "if": { "properties": { "kind": { "const": "unit" } } }, "then": { "required": ["unit_kind"] } },
-        { "if": { "properties": { "kind": { "const": "subdomain" } } }, "then": { "required": ["type"] } }
-      ]
+      "dependentRequired": {
+        "on": [
+          "phase"
+        ],
+        "phase": [
+          "on"
+        ]
+      }
+    },
+    "relation_may_ask": {
+      "type": "object",
+      "description": "access — an actor may ask a query.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_may_issue": {
+      "type": "object",
+      "description": "access — an actor may issue a command.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_may_record": {
+      "type": "object",
+      "description": "access — an actor may record an event.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_open_host_service": {
+      "type": "object",
+      "description": "context map — open host service: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_opens": {
+      "type": "object",
+      "description": "process — an event opens a promise.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_or_else": {
+      "type": "object",
+      "description": "process — an event settles a promise otherwise.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_partnership": {
+      "type": "object",
+      "description": "context map — partnership: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_projected_into": {
+      "type": "object",
+      "description": "data — an event is projected into a read model.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_published_as": {
+      "type": "object",
+      "description": "between — an event leaves for other applications under a published name.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "name",
+        "fields",
+        "idempotent_on"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The publish declaration's name."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "idempotent_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "relation_published_language": {
+      "type": "object",
+      "description": "context map — published language: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_publishes": {
+      "type": "object",
+      "description": "between — a contract publishes one of its events under a name on the wire.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "event"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string",
+          "description": "The event's id."
+        }
+      }
+    },
+    "relation_reads": {
+      "type": "object",
+      "description": "data — a query reads a read model.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_received_as": {
+      "type": "object",
+      "description": "between — a published name is received as an event of this contract.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_refused_on": {
+      "type": "object",
+      "description": "rules — a command may be refused on an invariant or a constraint.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "outside_from": {
+          "const": true,
+          "description": "The rule a command outside its statuses is refused on (or_rejects)."
+        }
+      }
+    },
+    "relation_separate_ways": {
+      "type": "object",
+      "description": "context map — separate ways: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_sets": {
+      "type": "object",
+      "description": "flow — a process manager sets a timer.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "on",
+        "phase"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "on": {
+          "type": "string",
+          "description": "A process manager's: the event, or its own timer, that it acts on."
+        },
+        "phase": {
+          "enum": [
+            "start",
+            "run"
+          ],
+          "description": "A process manager's: whether that event starts the run or arrives in it; run for a timer."
+        }
+      }
+    },
+    "relation_shared_kernel": {
+      "type": "object",
+      "description": "context map — shared kernel: from the upstream to the downstream, or in the order `between` names a symmetric pattern's ends.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_starts": {
+      "type": "object",
+      "description": "flow — an event starts a process manager's run.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_subscribed_by": {
+      "type": "object",
+      "description": "between — a contract receives a published name.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "as"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "as": {
+          "type": "string",
+          "description": "The name it has in the contract."
+        }
+      }
+    },
+    "relation_transition": {
+      "type": "object",
+      "description": "lifecycle — an event moves an aggregate from one status to another.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "event"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string",
+          "description": "The event's id."
+        },
+        "source": {
+          "type": "string"
+        }
+      }
     }
   }
 }

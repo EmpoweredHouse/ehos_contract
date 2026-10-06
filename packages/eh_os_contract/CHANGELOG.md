@@ -83,6 +83,21 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   them, promises as `eventually` and `or_else` edges; `Graph.declared_to_mermaid/2` draws it byte for byte as
   before. Every edge now has an `id` too — its relation, its ends and what tells it apart from another between
   them — which the log's numbers will join on. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
+- **E13a: a contract and a domain as `graph.v1` documents — graphs of facts.**
+  `EhOsContract.Graph.Document.contract/1` gives a contract's document and `Document.domain/2` a domain's: every
+  declaration a relation can end at as a node, grouped by kind (`command`, `event`, `policy`, `timer`, `status`,
+  `stage`, `promise`, …, and the domain's actors, externals, values, entities, subjects and contexts it names),
+  every link between them as a relation, grouped by type (`emits`, `handled_by`, `starts`, `ends`, `issues`,
+  `sets`, `cancels`, `fires`, `may_issue`, `refused_on`, `transition`, `opens`, `fulfils`, `published_as`, … and
+  the eight context-mapping patterns), each with a stable, opaque id; ownership is a field naming the owner's id.
+  They hold no pictures — which facts are shown together is the renderer's — and nothing from the log. A process
+  manager's relations carry the event or timer they act on and whether it starts the run; a consumed event says
+  which sibling event it is (`declared_as`), a received one is handled `via_inbox`. Both are JSON-ready, say
+  `"schema": "eh_os_contract.graph.v1"` and carry a `"digest"` of the rest (`Document.digest/1`). Their JSON Schema
+  ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), the one thing under `priv/` the package now
+  carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
+  the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
+  `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
   moves.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
