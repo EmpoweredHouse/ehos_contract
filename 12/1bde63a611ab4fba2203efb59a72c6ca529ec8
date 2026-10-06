@@ -1,0 +1,18 @@
+**Review of P1d's AppUnite part** (`3babe75`, settled in the commit after it). One review covered correctness, and security and performance, since the change is two sandbox contracts and their comments.
+
+No problems:
+- **Every rewritten claim has a source** in `docs/appunite-equipment-2026-10-03-distillation.md`:
+  - the process owner chose one run per assignment (shape B);
+  - a computer ends in one of four ways, per the "Zakończenia" table;
+  - a demand runs from its opening to the computer's issue (4 October addendum).
+- **The lifecycles are unchanged.** The computer's four final statuses are those four ends.
+- **Assignments is unchanged.** Its includes from Computers still resolve. It declares its own ends on its includes, so its runs end as before.
+- **Both demand policies keep their consumed events.**
+- **Nothing read the removed processes or stages.**
+- **Security:** no `by:`, `recorded_by:` or personal field changed.
+
+Fixed: two comments that each led a stage group ran into the comment below them. They are separated now, and the sale's "only forwards" names the lifecycle's transitions.
+
+Not this stage's: the distillation says "five ends" in one place and lists four.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. The sandbox's check findings are the same before and after: 0 errors, 36 warnings, 10 notices. Every event the processes ended on is still read, by the inventory read model or a lifecycle. Tests: sandbox 196, engine 1399, web 57, auth 287 + 1 property.
