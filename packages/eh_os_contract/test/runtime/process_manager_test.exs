@@ -35,7 +35,7 @@ defmodule EhOsContract.ProcessManagerTest do
     do: Repo.get_by(ProcessManagerRecord, name: @chase, correlation: account)
 
   defp of(type), do: Repo.all(from(e in Event, where: e.type == ^type, order_by: e.position))
-  defp flags, do: of("ledger.account_flagged")
+  defp flags, do: of("dispatch_rig.ledger.account_flagged")
   defp firings, do: of("eh_os_contract.timer_elapsed")
 
   defp timer_jobs,
@@ -46,7 +46,7 @@ defmodule EhOsContract.ProcessManagerTest do
       open()
       drain_at(0)
 
-      [opened] = of("ledger.account_opened")
+      [opened] = of("dispatch_rig.ledger.account_opened")
 
       assert %ProcessManagerRecord{completed_at: nil, timers: %{"first_deposit_due" => timer}} =
                run()
@@ -177,7 +177,7 @@ defmodule EhOsContract.ProcessManagerTest do
       Repo.delete_all(from(r in ProcessManagerRecord, where: r.correlation == "a-9"))
 
       Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == @chase),
-        set: [position: List.last(of("ledger.account_opened")).position]
+        set: [position: List.last(of("dispatch_rig.ledger.account_opened")).position]
       )
 
       at(2, fn -> dispatch(%Deposit{account_id: "a-9", amount: 10}) end)

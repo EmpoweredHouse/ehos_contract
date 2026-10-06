@@ -29,21 +29,24 @@ defmodule EhOsContract.EventRunsTest do
   test "an event another contract includes belongs to its home run and to that contract's" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
 
-    assert runs("ledger.account_opened") == [{"branch", "branch|b-7"}, {"ledger", "ledger|a-1"}]
+    assert runs("dispatch_rig.ledger.account_opened") == [
+             {"branch", "branch|b-7"},
+             {"ledger", "ledger|a-1"}
+           ]
   end
 
   test "control: an event nobody includes belongs to its home run alone" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
     dispatch(%Deposit{account_id: "a-1", amount: 10})
 
-    assert runs("ledger.deposited") == [{"ledger", "ledger|a-1"}]
+    assert runs("dispatch_rig.ledger.deposited") == [{"ledger", "ledger|a-1"}]
   end
 
   test "two accounts of one branch are two home runs and one branch run" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
     dispatch(%OpenAccount{account_id: "a-2", branch_id: "b-7"})
 
-    branch = for {"branch", id} <- runs("ledger.account_opened"), do: id
+    branch = for {"branch", id} <- runs("dispatch_rig.ledger.account_opened"), do: id
     assert branch == ["branch|b-7", "branch|b-7"]
   end
 
@@ -66,7 +69,7 @@ defmodule EhOsContract.EventRunsTest do
       end
 
       # The values in the order `correlate` declares them, after the process's name.
-      assert runs("batching.batch_opened") == [
+      assert runs("process_shapes.bare.batch_opened") == [
                {"batching", "batching|t-1|b-1"},
                {"batching", "batching|t-1|b-2"},
                {"batching", "batching|t-2|b-1"}

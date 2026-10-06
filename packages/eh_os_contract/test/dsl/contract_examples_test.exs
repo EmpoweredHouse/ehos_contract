@@ -41,7 +41,10 @@ defmodule EhOsContract.ContractExamplesTest do
      "plan EL2: a context names a subdomain the domain declares (D7)"},
     {"timer :chase, wait: {24, :hour}",
      ~s|timer :chase, "Termin dokumentacji", wait: {24, :hour}|,
-     "plan N3: a timer's label is required, and names what the timer is for"}
+     "plan N3: a timer's label is required, and names what the timer is for"},
+    {"use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement\n",
+     ~s|use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.visit_settlement"\n|,
+     "plan DD, ID3 (#173): a contract names its id, which labels its events"}
   ]
 
   unless File.exists?(@adr),

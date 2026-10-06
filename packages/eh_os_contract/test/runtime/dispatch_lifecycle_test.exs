@@ -46,7 +46,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
     assert {:error, %Rejection{invariant: :only_a_booked_visit}} = issue(AdmitPatient)
     assert {:error, %Rejection{invariant: :only_a_booked_visit}} = issue(CancelVisit)
 
-    assert log() == ["visit.booked", "visit.patient_arrived"]
+    assert log() == ["lifecycle_rig.visits.booked", "lifecycle_rig.visits.patient_arrived"]
 
     # Recorded as the decision's own refusal would be, with what the stream held.
     assert [
@@ -57,7 +57,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
                from(c in CommandRecord, where: c.outcome == "rejected", order_by: c.recorded_at)
              )
 
-    assert given == ["visit.booked", "visit.patient_arrived"]
+    assert given == ["lifecycle_rig.visits.booked", "lifecycle_rig.visits.patient_arrived"]
   end
 
   test "a command in its from: reaches the decision, whose state holds the status as it stood" do
@@ -87,7 +87,11 @@ defmodule EhOsContract.DispatchLifecycleTest do
                  ~r/command :add_note decided :note_added in status :closed, which is final/,
                  fn -> issue(AddNote) end
 
-    assert log() == ["visit.booked", "visit.patient_arrived", "visit.closed"]
+    assert log() == [
+             "lifecycle_rig.visits.booked",
+             "lifecycle_rig.visits.patient_arrived",
+             "lifecycle_rig.visits.closed"
+           ]
   end
 
   test "a command before the visit exists may only start it" do
@@ -113,7 +117,11 @@ defmodule EhOsContract.DispatchLifecycleTest do
                actor: Actor.system(:front_desk)
              )
 
-    assert log() == ["visit.booked", "visit.cancelled", "visit.patient_arrived"]
+    assert log() == [
+             "lifecycle_rig.visits.booked",
+             "lifecycle_rig.visits.cancelled",
+             "lifecycle_rig.visits.patient_arrived"
+           ]
 
     # Still cancelled: closing is refused as for any visit not in progress.
     assert {:error, %Rejection{invariant: :only_an_open_visit}} = issue(CloseVisit)

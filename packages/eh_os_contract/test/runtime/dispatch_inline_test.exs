@@ -51,7 +51,7 @@ defmodule EhOsContract.DispatchInlineTest do
       # both deposits, and balances project it last, as the log orders it.
       {:ok, _} = dispatch(%SplitDeposit{account_id: "a-1", first: 1000, second: 5})
 
-      [flag] = Repo.all(from(e in Event, where: e.type == "ledger.account_flagged"))
+      [flag] = Repo.all(from(e in Event, where: e.type == "dispatch_rig.ledger.account_flagged"))
 
       assert Repo.one(
                from(b in "dispatch_rig_balances",
@@ -66,7 +66,7 @@ defmodule EhOsContract.DispatchInlineTest do
         dispatch(%Deposit{account_id: "a-1", amount: 13})
       end
 
-      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]
       assert balance("a-1") == 0
       assert movements() == []
       assert %{outcome: "failed", failed_in: "read_model:movements"} = List.last(rows())
@@ -81,7 +81,7 @@ defmodule EhOsContract.DispatchInlineTest do
         dispatch(%Deposit{account_id: "a-1", amount: 13})
       end
 
-      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]
     end
 
     test "control: the amount next to it is appended and projected" do
@@ -97,7 +97,7 @@ defmodule EhOsContract.DispatchInlineTest do
       [deposited] = receipt.events
 
       assert [_opened, _deposited, flagged] = log()
-      assert flagged.type == "ledger.account_flagged"
+      assert flagged.type == "dispatch_rig.ledger.account_flagged"
       assert flagged.actor == "policy:flag_large_deposit"
       assert flagged.correlation_id == deposited.__meta__.correlation_id
 
@@ -120,7 +120,7 @@ defmodule EhOsContract.DispatchInlineTest do
         dispatch(%Deposit{account_id: "a-1", amount: 1000})
       end
 
-      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]
 
       # One failed row, the deposit's: its own decider ran fine, and the failure came
       # from the policy it set off.
@@ -130,7 +130,7 @@ defmodule EhOsContract.DispatchInlineTest do
 
     test "control: a deposit below the threshold issues nothing" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 999})
-      refute Enum.any?(log(), &(&1.type == "ledger.account_flagged"))
+      refute Enum.any?(log(), &(&1.type == "dispatch_rig.ledger.account_flagged"))
     end
 
     test "a command only a policy issues is refused to the application's own actors" do
@@ -150,10 +150,10 @@ defmodule EhOsContract.DispatchInlineTest do
       # The message names the path that closed the loop, link by link from the root.
       # One that only said "cycle" would leave somebody reading every policy of the
       # contract to find the two that feed each other.
-      link = "DispatchRig.Ledger:echo_deposit:ledger.deposited"
+      link = "DispatchRig.Ledger:echo_deposit:dispatch_rig.ledger.deposited"
       assert error.message =~ "never end: #{inspect([link, link])}"
 
-      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]
     end
 
     test "two events of one decision that each set a policy off are not a cycle" do
@@ -165,11 +165,11 @@ defmodule EhOsContract.DispatchInlineTest do
       {:ok, _} = dispatch(%SplitDeposit{account_id: "a-1", first: 1000, second: 1000})
 
       assert Enum.map(log(), & &1.type) == [
-               "ledger.account_opened",
-               "ledger.deposited",
-               "ledger.deposited",
-               "ledger.account_flagged",
-               "ledger.account_flagged"
+               "dispatch_rig.ledger.account_opened",
+               "dispatch_rig.ledger.deposited",
+               "dispatch_rig.ledger.deposited",
+               "dispatch_rig.ledger.account_flagged",
+               "dispatch_rig.ledger.account_flagged"
              ]
 
       assert Enum.count(rows(), &(&1.type == "flag_account" and &1.outcome == "accepted")) == 2
@@ -186,7 +186,7 @@ defmodule EhOsContract.DispatchInlineTest do
 
       # Neither the deposit that set it off nor anything the stray command would have
       # written: the refusal rolls the whole dispatch back.
-      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]
       assert balance("a-1") == 0
 
       assert [%{type: "deposit", failed_in: "policy:flag_large_deposit", error: "ArgumentError"}] =

@@ -70,7 +70,7 @@ defmodule DispatchRig.Account do
         repo,
         [
           %{
-            type: "ledger.deposited",
+            type: "dispatch_rig.ledger.deposited",
             contract: inspect(DispatchRig.Ledger),
             contract_version: "race",
             correlation_id: Ecto.UUID.generate(),

@@ -55,9 +55,9 @@ defmodule Rehmed.SettlementDispatchTest do
              )
 
     assert types() == [
-             "visit_settlement.payment_recorded",
-             "visit_settlement.payment_recorded",
-             "visit_settlement.visit_closed_commercially"
+             "rehmed.settlement.payment_recorded",
+             "rehmed.settlement.payment_recorded",
+             "rehmed.settlement.visit_closed_commercially"
            ]
   end
 

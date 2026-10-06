@@ -53,11 +53,19 @@ defmodule EhOsContract.SubscriptionTest do
   defp position_of(amount), do: Enum.find(deposits(), &(&1.payload["amount"] == amount)).position
 
   defp deposits,
-    do: Repo.all(from(e in Event, where: e.type == "ledger.deposited", order_by: e.position))
+    do:
+      Repo.all(
+        from(e in Event, where: e.type == "dispatch_rig.ledger.deposited", order_by: e.position)
+      )
 
   defp flagged,
     do:
-      Repo.all(from(e in Event, where: e.type == "ledger.account_flagged", order_by: e.position))
+      Repo.all(
+        from(e in Event,
+          where: e.type == "dispatch_rig.ledger.account_flagged",
+          order_by: e.position
+        )
+      )
 
   setup do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
@@ -150,7 +158,7 @@ defmodule EhOsContract.SubscriptionTest do
 
       # The chain of policies travels with the event, so a reaction to it continues it.
       assert flag.metadata["chain"] == [
-               "DispatchRig.Ledger:flag_large_withdrawal:ledger.withdrawn"
+               "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
              ]
 
       assert flag.metadata["issued_by"] == "policy:flag_large_withdrawal"
@@ -166,7 +174,7 @@ defmodule EhOsContract.SubscriptionTest do
       deposit(900)
       deposit(900)
 
-      link = "DispatchRig.Ledger:flag_large_withdrawal:ledger.withdrawn"
+      link = "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
 
       {:ok, _} =
         EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
@@ -174,7 +182,7 @@ defmodule EhOsContract.SubscriptionTest do
           chain: [link]
         )
 
-      [withdrawn] = Repo.all(from(e in Event, where: e.type == "ledger.withdrawn"))
+      [withdrawn] = Repo.all(from(e in Event, where: e.type == "dispatch_rig.ledger.withdrawn"))
       assert withdrawn.metadata["chain"] == [link]
 
       assert %{failing: [@flag]} = Testing.drain(only: @flag)
@@ -198,7 +206,7 @@ defmodule EhOsContract.SubscriptionTest do
       deposit(900)
       deposit(900)
 
-      other = "DispatchRig.Ledger:return_small_change:ledger.withdrawn"
+      other = "DispatchRig.Ledger:return_small_change:dispatch_rig.ledger.withdrawn"
 
       {:ok, _} =
         EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
@@ -210,7 +218,7 @@ defmodule EhOsContract.SubscriptionTest do
       assert [flag] = flagged()
 
       assert flag.metadata["chain"] == [
-               "DispatchRig.Ledger:flag_large_withdrawal:ledger.withdrawn",
+               "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn",
                other
              ]
     end
@@ -407,7 +415,9 @@ defmodule EhOsContract.SubscriptionTest do
       assert [flag] = flagged()
 
       [_history, withdrawn] =
-        Repo.all(from(e in Event, where: e.type == "ledger.withdrawn", order_by: e.position))
+        Repo.all(
+          from(e in Event, where: e.type == "dispatch_rig.ledger.withdrawn", order_by: e.position)
+        )
 
       assert flag.metadata["idempotency_key"] =~ withdrawn.id
     end

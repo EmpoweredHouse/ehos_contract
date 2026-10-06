@@ -76,8 +76,8 @@ defmodule EhOsContract.CoverageTest do
       issued_by: "actor:u-1",
       correlation_id: Ecto.UUID.generate(),
       outcome: "accepted",
-      given_types: ["ledger.deposited"],
-      emitted_types: ["ledger.withdrawn"]
+      given_types: ["dispatch_rig.ledger.deposited"],
+      emitted_types: ["dispatch_rig.ledger.withdrawn"]
     })
 
     assert %{observed: 1, never_observed: [@refused]} =

@@ -33,7 +33,10 @@ defmodule EhOsContract.GeneratedIdentityTest do
       )
 
   defp log,
-    do: Repo.all(from(e in Event, where: like(e.type, "waitlist.%"), order_by: e.position))
+    do:
+      Repo.all(
+        from(e in Event, where: like(e.type, "boundary_rig.waitlist.%"), order_by: e.position)
+      )
 
   test "the creating command gets a UUIDv7, in its events and in the receipt" do
     assert {:ok, %Receipt{identity: %{entry_id: id}, events: [joined]}} = join()

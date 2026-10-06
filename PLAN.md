@@ -43,8 +43,9 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 in progress on
-`dd/171-contract-names` (issue #171): every contract names its `id:`.
+**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 merged on
+`dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 in progress on
+`dd/173-event-labels` (issue #173): the id is required and labels every event; existing logs are cleared.
 
 ### Stan repozytorium
 
@@ -550,8 +551,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 | [#163](https://github.com/EmpoweredHouse/eh-os-contract/issues/163) |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 | [#164](https://github.com/EmpoweredHouse/eh-os-contract/issues/164) |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
-| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ◐ `dd/171-contract-names` | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
-| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ | — |
+| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
+| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ◐ `dd/173-event-labels` | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
@@ -669,9 +670,12 @@ new tests get one), and the examples in `README.md`, `packages/eh_os_contract/RE
 The example in `docs/adr/contract-v2.md` stays as written (the design record is amended, not edited); ID3 amends it. Rule: `"<domain name>.<contract name>"`, the contract's name being its module's last
 segment in snake_case (`rehmed.clinical_documentation`). Report, `check` and graphs byte for byte unchanged. Depends
 on ID1; ID3 (required, event-type prefix) depends on it.
-**ID3 — `id:` wymagany; typ zdarzenia `"<id>.<zdarzenie>"`**: jedno miejsce — `Build.event/4` (build.ex 200-209).
-Literały typów w `test/runtime/*` i `sandbox/test/*`, przepięcie dwóch wersji (`sources_test.exs:17`,
-`contract_domain_services_test.exs:315`), `@amendments` dla `use` z ADR §4.5. Dopisek do D1 w ADR §16.
+**ID3 — `id:` required; event type `"<id>.<event>"`** (#173; tightened 6 October 2026). A contract without `id:`
+is refused (D11); `Build.event/4` prefixes the type with the id instead of the process's name. Event-type literals
+in the tests and the sandbox, the two pinned versions, an `@amendments` entry for the ADR §4.5 `use`, a dated note to
+D1 in ADR §16. **No compatibility with existing logs** (the user's decision, 6 October): an upgrading application
+clears its log; rejected, a one-off rewrite of stored types and old types read as aliases (#173). Process names
+stay unique (X7) for their runs. Verdicts move: every event type changes.
 **ID4 — wiersze i klucze po `id`** zamiast `inspect(module)`: Dispatcher (`entry/4` 1238, `write_row!/4` 1320,
 `idempotent/2` 1004, klucz 260), `TimerJob` 116, `Personal` 243 (`"eh_os_contract"`), `Deployment` (133, 170, 293),
 `Dependency` (113, 143), `Paths` (340, 361, 396, 517), `Conformance` (252, 382), `Coverage` 114; klucze konsumentów

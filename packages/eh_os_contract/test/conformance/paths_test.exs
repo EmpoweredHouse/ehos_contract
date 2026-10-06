@@ -144,7 +144,7 @@ defmodule EhOsContract.PathsTest do
       for {account, timer} <- [{"a-7", "x"}, {"a-8", "y"}] do
         event =
           record_event!(%{
-            type: "ledger.deposited",
+            type: "dispatch_rig.ledger.deposited",
             contract: "DispatchRig.Ledger",
             contract_version: "v",
             process: "ledger",

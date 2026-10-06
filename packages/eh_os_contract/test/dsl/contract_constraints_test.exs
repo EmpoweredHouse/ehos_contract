@@ -167,8 +167,10 @@ defmodule EhOsContract.ContractConstraintsTest do
       positive = ~s|      constraint :positive, "Kwota jest dodatnia"|
       whole = ~s|      constraint :whole, "Kwota jest w pełnych groszach"|
 
-      one = compile_contract("ConstraintsOrderOne", body.(positive, whole))
-      other = compile_contract("ConstraintsOrderOther", body.(whole, positive))
+      one = compile_contract("ConstraintsOrderOne", body.(positive, whole), id: "clinic.ordered")
+
+      other =
+        compile_contract("ConstraintsOrderOther", body.(whole, positive), id: "clinic.ordered")
 
       assert one.digests["command:record_payment"] == other.digests["command:record_payment"]
       assert one.version == other.version

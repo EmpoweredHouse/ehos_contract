@@ -2,8 +2,9 @@ defmodule EhOsContract.ContractIdTest do
   @moduledoc """
   Plan DD, ID1: **a contract's `id:`**, declared on its `use` and checked — its shape by
   **D11** (L2), its namespace by D11 against the domain's `name:` (L3), and its
-  uniqueness by **X7**. It stays out of the version: naming a contract changes nothing
-  it decides or records. Each refusal stands at the `use` line, with a control beside it.
+  uniqueness by **X7**. Since ID3 it is required and types every event the contract records,
+  so a contract without one is refused and renaming one moves the version. Each refusal
+  stands at the `use` line, with a control beside it.
   """
 
   use EhOsContract.DslCase, async: false
@@ -93,31 +94,37 @@ defmodule EhOsContract.ContractIdTest do
     end
   end
 
-  test "the id is in the model and out of the version; a contract without one has no key" do
-    compile(source("IdVersioned", "clinic.versioned", :versioned), "id_versioned_a.ex")
+  test "a contract without an id does not compile (plan DD, ID3)" do
+    error = compile_error(source("IdUnnamed", nil), "id_unnamed.ex")
+
+    assert Exception.message(error) =~
+             "D11: the contract names no id:, which labels every event it records; add one"
+
+    assert Exception.message(error) =~ "(id_unnamed.ex:2)"
+  end
+
+  test "the id is in the model and types every event, so the version follows it" do
+    compile(source("IdVersioned", "clinic.versioned", :versioned), "id_versioned.ex")
     named = EhOsContract.Model.fetch(Module.concat(@fixtures, "IdVersioned"))
 
-    compile(source("IdUnnamed", nil, :versioned), "id_unnamed.ex")
-    unnamed = EhOsContract.Model.fetch(Module.concat(@fixtures, "IdUnnamed"))
+    compile(source("IdRenamed", "clinic.renamed", :versioned), "id_renamed.ex")
+    renamed = EhOsContract.Model.fetch(Module.concat(@fixtures, "IdRenamed"))
 
     assert named.id == "clinic.versioned"
-    refute Map.has_key?(unnamed, :id)
-    assert named.version == unnamed.version
-    assert named.digests == unnamed.digests
+    assert [%{type: "clinic.versioned.versioned_opened"}] = named.events
+    assert [%{type: "clinic.renamed.versioned_opened"}] = renamed.events
+    refute named.version == renamed.version
 
-    # The export carries it, so the exported document's own digest moves with it.
-    named_export = EhOsContract.Model.to_data(Module.concat(@fixtures, "IdVersioned"))
-    unnamed_export = EhOsContract.Model.to_data(Module.concat(@fixtures, "IdUnnamed"))
+    # The export carries it, and the exported document's digest covers it: dropped, the
+    # same document hashes otherwise.
+    export = EhOsContract.Model.to_data(Module.concat(@fixtures, "IdVersioned"))
+    assert export["contract"]["id"] == "clinic.versioned"
 
-    assert named_export["contract"]["id"] == "clinic.versioned"
-    refute Map.has_key?(unnamed_export["contract"], "id")
-
-    # The id is part of what that digest covers: dropped, the same document hashes otherwise.
-    body = Map.delete(named_export, "digest")
+    body = Map.delete(export, "digest")
     without_id = Map.update!(body, "contract", &Map.delete(&1, "id"))
 
-    assert EhOsContract.Digest.document_hash(body) == named_export["digest"]
-    refute EhOsContract.Digest.document_hash(without_id) == named_export["digest"]
+    assert EhOsContract.Digest.document_hash(body) == export["digest"]
+    refute EhOsContract.Digest.document_hash(without_id) == export["digest"]
   end
 
   describe "D11 (L3): the id is under the domain's namespace" do
@@ -144,18 +151,16 @@ defmodule EhOsContract.ContractIdTest do
 
       assert assert_linked(violations, "X7:", "id_twin_b.ex", 2) =~
                "the id: \"clinic.twin\" of #{inspect(@fixtures)}.IdTwinB is also the id: of " <>
-                 "#{inspect(@fixtures)}.IdTwinA (id_twin_a.ex:2); a contract's id names it " <>
-                 "outside the code, so it is unique in the application"
+                 "#{inspect(@fixtures)}.IdTwinA (id_twin_a.ex:2); a contract's id prefixes its " <>
+                 "event types, so it is unique in the application"
 
       assert length(violations) == 1
     end
 
-    test "control: two ids, and contracts without one" do
+    test "control: two ids" do
       assert links([
                {"id_one.ex", source("IdOne", "clinic.one")},
-               {"id_two.ex", source("IdTwo", "clinic.two")},
-               {"id_none_a.ex", source("IdNoneA", nil)},
-               {"id_none_b.ex", source("IdNoneB", nil)}
+               {"id_two.ex", source("IdTwo", "clinic.two")}
              ]) == []
     end
   end

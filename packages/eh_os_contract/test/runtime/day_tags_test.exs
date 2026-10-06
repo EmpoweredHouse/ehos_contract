@@ -19,7 +19,10 @@ defmodule EhOsContract.DayTagsTest do
   defp record(event), do: {:ok, _} = EhOsContract.record(Ledger, event, actor: @auditor)
 
   defp tags,
-    do: Repo.one!(from(e in Event, where: e.type == "ledger.day_closed", select: e.tags))
+    do:
+      Repo.one!(
+        from(e in Event, where: e.type == "dispatch_rig.ledger.day_closed", select: e.tags)
+      )
 
   test "a required date and timestamp are tagged with their day; control: an optional date is not" do
     # 23:30 in UTC on the 5th is 01:30 on the 6th in Warsaw, the domain's zone.

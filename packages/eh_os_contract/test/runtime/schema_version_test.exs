@@ -81,7 +81,7 @@ defmodule EhOsContract.SchemaVersionTest do
     assert {:ok, _} = issue(BookVisit)
     assert {:ok, _} = issue(AddNote)
 
-    assert [{"visit.booked", 1}, {"visit.note_added", 2}] =
+    assert [{"lifecycle_rig.visits.booked", 1}, {"lifecycle_rig.visits.note_added", 2}] =
              Enum.map(log("visit:#{@visit}"), &{&1.type, &1.schema_version})
   end
 
@@ -95,7 +95,7 @@ defmodule EhOsContract.SchemaVersionTest do
     error = assert_raise NewerSchemaError, fn -> Consumer.decode!(%{note | schema_version: 3}) end
 
     assert Exception.message(error) ==
-             "LifecycleRig.Visits holds \"visit.note_added\" at position #{note.position} " <>
+             "LifecycleRig.Visits holds \"lifecycle_rig.visits.note_added\" at position #{note.position} " <>
                "written with schema version 3, newer than the 2 this code declares: the code " <>
                "reading it is older than the code that wrote it"
   end
@@ -107,7 +107,8 @@ defmodule EhOsContract.SchemaVersionTest do
 
     assert_raise NewerSchemaError, fn -> issue(AddNote) end
 
-    assert ["visit.booked", "visit.note_added"] = Enum.map(log("visit:#{@visit}"), & &1.type)
+    assert ["lifecycle_rig.visits.booked", "lifecycle_rig.visits.note_added"] =
+             Enum.map(log("visit:#{@visit}"), & &1.type)
 
     assert [%{outcome: "failed", error: "EhOsContract.NewerSchemaError"}] =
              Repo.all(from(c in CommandRecord, where: c.outcome == "failed"))

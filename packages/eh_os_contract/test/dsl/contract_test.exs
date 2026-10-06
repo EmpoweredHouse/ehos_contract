@@ -65,7 +65,7 @@ defmodule EhOsContract.ContractTest do
     use EhOsContract.Contract,
       domain: EhOsContract.ContractTest.Clinic,
       context: :settlement,
-      id: "clinic.reordered"
+      id: "clinic.golden"
 
     process :visit, "Wizyta" do
       correlate :visit_id
@@ -112,7 +112,7 @@ defmodule EhOsContract.ContractTest do
     use EhOsContract.Contract,
       domain: EhOsContract.ContractTest.Clinic,
       context: :settlement,
-      id: "clinic.changed"
+      id: "clinic.golden"
 
     aggregate :visit, "Wizyta", source: "AGG-03" do
       identity :visit_id
@@ -226,7 +226,7 @@ defmodule EhOsContract.ContractTest do
                  %{
                    name: :payment_recorded,
                    unit: :visit,
-                   type: "visit.payment_recorded",
+                   type: "clinic.golden.payment_recorded",
                    stage: :payment,
                    label: "Zapłacono",
                    terminal: false,
@@ -239,7 +239,7 @@ defmodule EhOsContract.ContractTest do
                  %{
                    name: :closed,
                    unit: :visit,
-                   type: "visit.closed",
+                   type: "clinic.golden.closed",
                    stage: :payment,
                    label: "Zamknięto",
                    terminal: true,
@@ -429,7 +429,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.#{contract_name(name)}"
+          use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.compared"
 
           dcb :payer_period, "Okres płatnika" do
             identity #{inspect(identity)}
@@ -460,7 +460,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(name)}"
+          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
