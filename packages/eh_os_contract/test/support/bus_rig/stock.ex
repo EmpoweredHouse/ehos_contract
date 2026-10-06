@@ -34,10 +34,6 @@ defmodule BusRig.Stock do
     handles: :order_placed,
     issues: :reserve_stock
 
-  process :reservation, "Reservation", accountable: :keeper do
-    correlate :order_id
-  end
-
   scenario "a placed order has its total reserved" do
     on :order_placed, %{order_id: "o-1", total: 120}
     issues :reserve_stock, %{order_id: "o-1", total: 120}

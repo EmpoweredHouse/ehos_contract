@@ -45,10 +45,6 @@ defmodule EhOsContract.CheckRelationsTest do
         command :act_#{Macro.underscore(name)}, "Działaj", by: :reception, emits: :acted_#{Macro.underscore(name)}
         event :acted_#{Macro.underscore(name)}, "Zadziałano"
       end
-
-      process :#{Macro.underscore(name)}, "#{name}" do
-        correlate :visit_id
-      end
     end
     """
   end
@@ -80,7 +76,7 @@ defmodule EhOsContract.CheckRelationsTest do
       EhOsContract.CheckRelationsTest.Planner
     ]
 
-    assert [{message, {"contracts.ex", 34}}] = findings(modules)
+    assert [{message, {"contracts.ex", 26}}] = findings(modules)
 
     assert message =~
              "EhOsContract.CheckRelationsTest.Planner in context :scheduling consumes " <>
@@ -101,7 +97,7 @@ defmodule EhOsContract.CheckRelationsTest do
       "separate.ex"
     )
 
-    assert [{message, {"separate.ex", 19}}] =
+    assert [{message, {"separate.ex", 15}}] =
              findings([
                EhOsContract.CheckRelationsTest.Ledger,
                EhOsContract.CheckRelationsTest.Shelf

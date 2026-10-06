@@ -42,10 +42,6 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
 
         query :all_bookings, "Wszystkie wizyty", reads: :bookings, by: :reception
 
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
-
         scenario "umówienie — przypomnienie" do
           on :booked
           target :remind_on_booking

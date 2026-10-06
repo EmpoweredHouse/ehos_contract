@@ -66,10 +66,6 @@ defmodule EhOsContract.ExternalOperationsTest do
         event :queued, "Zakolejkowano"
       end
 
-      process :report, "Zgłoszenie" do
-        correlate :report_id
-      end
-
     #{effects}
     end
     """
@@ -158,12 +154,12 @@ defmodule EhOsContract.ExternalOperationsTest do
                violations,
                "effect :send: calls {:p1, :submit_reprot}",
                "operations_wrong.ex",
-               14
+               10
              ) =~
                "and :submit_reprot is not an operation of external :p1 of " <>
                  "EhOsContract.ExternalOperationsTest.Clinic; did you mean :submit_report?"
 
-      assert assert_linked(violations, "effect :resend: calls :p1", "operations_wrong.ex", 17) =~
+      assert assert_linked(violations, "effect :resend: calls :p1", "operations_wrong.ex", 13) =~
                "external :p1 declares what it does, so the call names one of its operations: " <>
                  "{:p1, :submit_report}, {:p1, :withdraw_report}"
     end
@@ -222,10 +218,6 @@ defmodule EhOsContract.ExternalOperationsTest do
           identity :report_id
           command :queue, "Zakolejkuj", by: :specialist, emits: :queued
           event :queued, "Zakolejkowano"
-        end
-
-        process :report, "Zgłoszenie" do
-          correlate :report_id
         end
       end
       """,

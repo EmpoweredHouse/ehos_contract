@@ -7,12 +7,6 @@ defmodule EhOsContract.ContractUnitsTest do
 
   use EhOsContract.DslCase, async: false
 
-  @process """
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-  """
-
   describe "A1: a command emits events of its own unit" do
     test "nothing, or another unit's event, is refused" do
       message =
@@ -21,16 +15,14 @@ defmodule EhOsContract.ContractUnitsTest do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: []
             command :bill_visit, "Rozliczenie", by: :reception, emits: [:visit_closed, :invoice_issued]
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
 
           aggregate :invoice, "Faktura" do
             identity :visit_id
             command :issue_invoice, "Wystawienie", by: :reception, emits: :invoice_issued
-            event :invoice_issued, "Wystawiono", terminal: true
+            event :invoice_issued, "Wystawiono"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -49,11 +41,9 @@ defmodule EhOsContract.ContractUnitsTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-            event :visit_forgotten, "Zapomniano", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
+            event :visit_forgotten, "Zapomniano"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -67,11 +57,9 @@ defmodule EhOsContract.ContractUnitsTest do
                  aggregate :visit, "Wizyta" do
                    identity :visit_id
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta", terminal: true
+                   event :visit_closed, "Wizyta zamknięta"
                    event :visit_completed, "Pacjent wyszedł z gabinetu", recorded_by: :specialist
                  end
-
-               #{@process}
                """)
     end
   end
@@ -89,10 +77,8 @@ defmodule EhOsContract.ContractUnitsTest do
               emits: :visit_closed,
               rejects: [:paid, :booked]
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -110,10 +96,8 @@ defmodule EhOsContract.ContractUnitsTest do
           dcb :payer_period, "Okres płatnika" do
             identity :visit_id
             command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres", terminal: true
+            event :period_closed, "Zamknięto okres"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -129,11 +113,7 @@ defmodule EhOsContract.ContractUnitsTest do
             consults :visit_settled, match: [:period_id, :payer_id]
             consults :period_closed, match: :period_id
             command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate [:visit_id, :period_id]
+            event :period_closed, "Zamknięto okres"
           end
         """)
 
@@ -181,10 +161,8 @@ defmodule EhOsContract.ContractUnitsTest do
                    identity :visit_id
                    consults :visit_completed, where: "wykonana wizyta"
                    command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-                   event :period_closed, "Zamknięto okres", terminal: true
+                   event :period_closed, "Zamknięto okres"
                  end
-
-               #{@process}
                """)
     end
   end
@@ -205,7 +183,7 @@ defmodule EhOsContract.ContractUnitsTest do
             end
 
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
 
           process_manager :chase, "Pogoń", correlate: :visit_id do
@@ -218,8 +196,6 @@ defmodule EhOsContract.ContractUnitsTest do
             starts_on :visit_closed
             ends_on :visit_closed
           end
-
-        #{@process}
         """)
 
       assert message =~ "A5: aggregate :visit declares its state twice (state_twice.ex:11)"
@@ -234,17 +210,13 @@ defmodule EhOsContract.ContractUnitsTest do
           aggregate :booking, "Rezerwacja" do
             identity [:clinic_id, :booking_id], generated: :uuid
             command :cancel, "Odwołanie", by: :reception, emits: :cancelled
-            event :cancelled, "Odwołano", terminal: true
+            event :cancelled, "Odwołano"
           end
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :open_visit, "Otwarcie", by: :reception, emits: :opened, creates: true
             event :opened, "Otwarto"
-          end
-
-          process :booking, "Rezerwacja" do
-            correlate :clinic_id
           end
         """)
 
@@ -268,10 +240,6 @@ defmodule EhOsContract.ContractUnitsTest do
                  command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken, creates: true
                  event :seat_taken, "Zajęto"
                end
-
-               process :seat, "Miejsce" do
-                 correlate :seat_id
-               end
              """) =~
                "A6: command :take_seat creates: dcb :seat, whose identity is not generated; a " <>
                  "boundary's identity comes from its commands, so creates: belongs only to an " <>
@@ -285,10 +253,6 @@ defmodule EhOsContract.ContractUnitsTest do
             identity :booking_id, generate: :uuid
             command :book, "Rezerwacja", by: :reception, emits: :booked, creates: true
             event :booked, "Zarezerwowano"
-          end
-
-          process :booking, "Rezerwacja" do
-            correlate :booking_id
           end
         """)
 
@@ -316,11 +280,7 @@ defmodule EhOsContract.ContractUnitsTest do
               field :slot, :timestamp
             end
 
-            event :cancelled, "Odwołano", terminal: true
-          end
-
-          process :booking, "Rezerwacja" do
-            correlate :booking_id
+            event :cancelled, "Odwołano"
           end
         """)
 
@@ -343,10 +303,8 @@ defmodule EhOsContract.ContractUnitsTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -360,10 +318,8 @@ defmodule EhOsContract.ContractUnitsTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: [], emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -378,15 +334,13 @@ defmodule EhOsContract.ContractUnitsTest do
                    identity :visit_id
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
                    command :issue_invoice, "Wystawienie faktury", emits: :invoice_issued
-                   event :visit_closed, "Wizyta zamknięta", terminal: true
-                   event :invoice_issued, "Wystawiono fakturę", terminal: true
+                   event :visit_closed, "Wizyta zamknięta"
+                   event :invoice_issued, "Wystawiono fakturę"
                  end
 
                  policy :invoice_on_close, "Faktura po zamknięciu",
                    handles: :visit_closed,
                    issues: :issue_invoice
-
-               #{@process}
                """)
     end
   end
@@ -410,11 +364,7 @@ defmodule EhOsContract.ContractUnitsTest do
         identity [:payer_id, :period_id]
         consults :visit_marked, match: [:payer_id, :period_id]
         command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-        event :period_closed, "Zamknięto okres", terminal: true
-      end
-
-      process :payer, "Płatnik" do
-        correlate :payer_id
+        event :period_closed, "Zamknięto okres"
       end
     """
   end

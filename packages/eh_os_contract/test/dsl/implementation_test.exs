@@ -34,13 +34,9 @@ defmodule EhOsContract.ImplementationTest do
         field :amount, :integer
       end
 
-      event :closed, "Zamknięto", terminal: true
-      event :closed_without_payment, "Zamknięto bez płatności", terminal: true
+      event :closed, "Zamknięto"
+      event :closed_without_payment, "Zamknięto bez płatności"
       event :reminded, "Przypomniano"
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
 
     policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
@@ -378,12 +374,8 @@ defmodule EhOsContract.ImplementationTest do
             end
 
             command :issue, "Wystawienie", by: :reception, emits: :invoice_issued
-            event :invoice_issued, "Wystawiono", terminal: true
+            event :invoice_issued, "Wystawiono"
             event :invoice_noted, "Odnotowano", recorded_by: :reception
-          end
-
-          process :invoicing, "Fakturowanie" do
-            correlate :payer_id
           end
         """),
         "self_consulting.ex"

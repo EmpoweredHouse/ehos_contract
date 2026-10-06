@@ -50,12 +50,8 @@ defmodule EhOsContract.CheckTransitionsTest do
           event :lent, "Wypożyczono"
           event :returned, "Zwrócono"
           event :noted, "Odnotowano", recorded_by: :reception
-          event :closed, "Zamknięto", terminal: true
-          event :archived, "Zarchiwizowano", terminal: true
-        end
-
-        process :loan, "Wypożyczenie" do
-          correlate :loan_id
+          event :closed, "Zamknięto"
+          event :archived, "Zarchiwizowano"
         end
 
         scenario "otwarte — wypożyczone" do

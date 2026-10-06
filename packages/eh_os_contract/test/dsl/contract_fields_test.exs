@@ -17,11 +17,7 @@ defmodule EhOsContract.ContractFieldsTest do
     #{fields}
         end
 
-        event :visit_closed, "Wizyta zamknięta", terminal: true
-      end
-
-      process :visit, "Wizyta" do
-        correlate :visit_id
+        event :visit_closed, "Wizyta zamknięta"
       end
     """
   end
@@ -33,11 +29,7 @@ defmodule EhOsContract.ContractFieldsTest do
           aggregate :visit, "Wizyta" do
             identity [:"a|b", :__meta__, :visit_id, :visit_id]
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -103,13 +95,9 @@ defmodule EhOsContract.ContractFieldsTest do
                      field :note, :string
                    end
 
-                   event :visit_closed, "Wizyta zamknięta", terminal: true do
+                   event :visit_closed, "Wizyta zamknięta" do
                      field :note, :string
                    end
-                 end
-
-                 process :visit, "Wizyta" do
-                   correlate :visit_id
                  end
                """)
     end
@@ -180,11 +168,7 @@ defmodule EhOsContract.ContractFieldsTest do
                    end
 
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta", terminal: true
-                 end
-
-                 process :visit, "Wizyta" do
-                   correlate :visit_id
+                   event :visit_closed, "Wizyta zamknięta"
                  end
                """)
     end
@@ -290,15 +274,11 @@ defmodule EhOsContract.ContractFieldsTest do
             command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
             command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
 
-            event :invoice_recorded, "Zarejestrowano", terminal: true
+            event :invoice_recorded, "Zarejestrowano"
 
             event :invoice_noted, "Notatka" do
               field :ref, :string
             end
-          end
-
-          process :invoice, "Faktura" do
-            correlate :invoice_id
           end
 
           process_manager :chase, "Pogoń" do
@@ -322,17 +302,13 @@ defmodule EhOsContract.ContractFieldsTest do
                    command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
                    command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
 
-                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                   event :invoice_recorded, "Zarejestrowano" do
                      field :ref, :id
                    end
 
                    event :invoice_noted, "Notatka" do
                      field :ref, :string
                    end
-                 end
-
-                 process :invoice, "Faktura" do
-                   correlate :invoice_id
                  end
 
                  process_manager :chase, "Pogoń" do
@@ -349,7 +325,7 @@ defmodule EhOsContract.ContractFieldsTest do
                  aggregate :invoice, "Faktura" do
                    identity :invoice_id
                    command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
-                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                   event :invoice_recorded, "Zarejestrowano" do
                      field :batch_id, :id
                    end
                  end
@@ -358,14 +334,10 @@ defmodule EhOsContract.ContractFieldsTest do
                    identity :payment_id
                    command :record_payment, "Płatność", by: :reception, emits: :payment_recorded
 
-                   event :payment_recorded, "Zapłacono", terminal: true do
+                   event :payment_recorded, "Zapłacono" do
                      field :batch_id, :id
                      field :invoice_id, :string
                    end
-                 end
-
-                 process :invoice, "Faktura" do
-                   correlate :batch_id
                  end
 
                  process_manager :chase, "Pogoń" do
@@ -383,13 +355,9 @@ defmodule EhOsContract.ContractFieldsTest do
             identity :invoice_id
             command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
 
-            event :invoice_recorded, "Zarejestrowano", terminal: true do
+            event :invoice_recorded, "Zarejestrowano" do
               field :ref, :string
             end
-          end
-
-          process :invoice, "Faktura" do
-            correlate :invoice_id
           end
 
           process_manager :chase, "Pogoń" do
@@ -565,14 +533,10 @@ defmodule EhOsContract.ContractFieldsTest do
 
           command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-          event :visit_closed, "Wizyta zamknięta", terminal: true do
+          event :visit_closed, "Wizyta zamknięta" do
             field :patient_id, :id, subject: :patient
             field :name, :string, personal: :patient_id
           end
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
 
         process_manager :chase, "Pogoń za dokumentacją" do
@@ -619,7 +583,7 @@ defmodule EhOsContract.ContractFieldsTest do
       assert message =~
                "F7: process manager :chase, state, field :phone is personal, and a process " <>
                  "manager's state is stored outside the log, where erasure cannot reach it " <>
-                 "(personal_outside.ex:24)"
+                 "(personal_outside.ex:20)"
     end
 
     test "control: personal in an event and in a read model's row" do
@@ -654,13 +618,9 @@ defmodule EhOsContract.ContractFieldsTest do
               field :visit_id, :id
             end
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true do
+            event :visit_closed, "Wizyta zamknięta" do
               field :visit_id, :id
             end
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
         """)
 
@@ -696,17 +656,13 @@ defmodule EhOsContract.ContractFieldsTest do
             field :p1_reported, :boolean#{command}
           end
 
-          event :visit_closed, "Wizyta zamknięta", terminal: true do
+          event :visit_closed, "Wizyta zamknięta" do
             field :p1_reported, :boolean#{decided}
           end
 
           event :patient_arrived, "Pacjent przyszedł", recorded_by: :reception do
             field :arrived_at, :timestamp#{recorded}
           end
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
       """
     end

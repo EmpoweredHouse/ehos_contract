@@ -52,10 +52,6 @@ defmodule EhOsContract.CheckAvoidedTermsTest do
           command :advance, "Zaliczka na podatek wyliczona", by: :reception, emits: :advanced
           event :advanced, "Zrealizowana"
         end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
       end
       """,
       "clinic.ex"

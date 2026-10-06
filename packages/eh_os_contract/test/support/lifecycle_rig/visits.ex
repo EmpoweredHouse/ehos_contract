@@ -66,15 +66,11 @@ defmodule LifecycleRig.Visits do
     # Plan W1: a second version of its fields, so the log shows the version it was
     # written with.
     event :note_added, "Note added", schema_version: 2
-    event :cancelled, "Visit cancelled", terminal: true
+    event :cancelled, "Visit cancelled"
 
-    event :closed, "Visit closed", terminal: true do
+    event :closed, "Visit closed" do
       field :notes_before_arrival, :integer
     end
-  end
-
-  process :visit, "A visit, from booking to its close", accountable: :reception do
-    correlate :visit_id
   end
 
   scenario "a booked visit admits its patient" do

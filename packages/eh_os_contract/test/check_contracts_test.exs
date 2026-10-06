@@ -135,10 +135,6 @@ defmodule EhOsContract.CheckContractsTest do
 
         policy :greet_on_arrival, "Powitanie", handles: :arrived, issues: :greet
         policy :count_arrival, "Liczenie", handles: :arrived, issues: :greet
-
-        process :desk, "Recepcja" do
-          correlate :visit_id
-        end
       end
       """,
       "orphaned.ex"
@@ -184,10 +180,6 @@ defmodule EhOsContract.CheckContractsTest do
             field :count, :integer
           end
         end
-
-        process :desk, "Recepcja" do
-          correlate :visit_id
-        end
       end
       """,
       "notes.ex"
@@ -214,10 +206,6 @@ defmodule EhOsContract.CheckContractsTest do
         end
 
         policy :prepare_desk, "Przygotowanie", handles: :visit_booked, issues: :prepare
-
-        process :desk, "Recepcja" do
-          correlate :visit_id
-        end
       end
       """,
       "reception.ex"
@@ -253,10 +241,6 @@ defmodule EhOsContract.CheckContractsTest do
 
         read_model :booked, "Umówione", projects: :booked, delivery: :in_transaction do
           field :visit_id, :id
-        end
-
-        process :bill, "Rachunek" do
-          correlate :visit_id
         end
       end
       """,
@@ -304,10 +288,6 @@ defmodule EhOsContract.CheckContractsTest do
 
         policy :prepare_desk, "Przygotowanie", handles: :booked, issues: :prepare,
           delivery: :in_transaction
-
-        process :desk, "Recepcja" do
-          correlate :visit_id
-        end
       end
       """,
       "desk2.ex"

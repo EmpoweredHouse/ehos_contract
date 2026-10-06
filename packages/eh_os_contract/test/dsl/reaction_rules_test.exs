@@ -58,10 +58,6 @@ defmodule EhOsContract.ReactionRulesTest do
       constraint :own_clinic, "Recepcja widzi tylko wizyty swojej przychodni"
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-
     scenario "fizjoterapia — zgłoszenie", illustrates: :only_reportable do
       on :closed, %{reportable: true}
       target :report_on_close
@@ -150,10 +146,6 @@ defmodule EhOsContract.ReactionRulesTest do
             ends_on :reported
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
           scenario "zamknięcie — zgłoszenie" do
             on :closed
             target :report_on_close
@@ -190,10 +182,6 @@ defmodule EhOsContract.ReactionRulesTest do
             constraint :only_reportable, "Tylko usługi podlegające zgłoszeniu"
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
           scenario "zamknięcie — zgłoszenie", illustrates: :one_answer do
             on :closed
             issues :report
@@ -213,10 +201,6 @@ defmodule EhOsContract.ReactionRulesTest do
             invariant :paid, "Zapłacono"
             command :close, "Zamknij", by: :reception, emits: :closed, rejects: :paid
             event :closed, "Zamknięto"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
 
           scenario "zamknięcie bez zapłaty", illustrates: :paid do
@@ -249,10 +233,6 @@ defmodule EhOsContract.ReactionRulesTest do
             constraint :own_clinic, "Tylko swoja przychodnia"
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
           scenario "wizyty", illustrates: [:own_clinic, :own_clinic, :all_clinics] do
             query :visits_of, %{visit_id: "visit-anna"}
             answers []
@@ -282,10 +262,6 @@ defmodule EhOsContract.ReactionRulesTest do
           ends_on :closed
           invariant :one_timer, "Jedno przypomnienie"
           constraint :one_timer, "Jedno przypomnienie"
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
       """)
 

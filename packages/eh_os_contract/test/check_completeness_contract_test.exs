@@ -81,10 +81,6 @@ defmodule EhOsContract.CheckCompletenessContractTest do
           event :taken, "Zajęto"
           event :room_closed, "Zamknięto gabinet", recorded_by: :reception
         end
-
-        process :slot, "Termin" do
-          correlate :room_id
-        end
       end
       """,
       "visits.ex"
@@ -149,10 +145,6 @@ defmodule EhOsContract.CheckCompletenessContractTest do
 
         policy :handle_each, "Obsłuż każdy", handles: :started, issues: :handle_item
         policy :handle_one, "Obsłuż jeden", handles: :started, issues: :handle_item
-
-        process :batch, "Paczka" do
-          correlate :batch_id
-        end
 
         scenario "dwa elementy" do
           target :handle_each
@@ -230,10 +222,6 @@ defmodule EhOsContract.CheckCompletenessContractTest do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.archive"
 
         consumes EhOsContract.CheckCompletenessContractTest.Intake, :signed
-
-        process :archive, "Archiwum" do
-          correlate :visit_id
-        end
       end
       """,
       "intake.ex"

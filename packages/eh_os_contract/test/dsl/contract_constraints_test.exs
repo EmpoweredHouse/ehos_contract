@@ -41,10 +41,6 @@ defmodule EhOsContract.ContractConstraintsTest do
       constraint :own_clinic, "Recepcja widzi tylko wizyty swojej przychodni"
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-
     scenario "płatność 0 zł — odmowa" do
       command :record_payment, %{amount: 0}
       rejected :positive_amount
@@ -148,10 +144,6 @@ defmodule EhOsContract.ContractConstraintsTest do
             event :paid, "Zapłacono"
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
           scenario "0 zł" do
             command :record_payment, %{amount: 0}
             rejected :positive
@@ -194,10 +186,6 @@ defmodule EhOsContract.ContractConstraintsTest do
 
             event :paid, "Zapłacono"
           end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert [_once] =
@@ -226,10 +214,6 @@ defmodule EhOsContract.ContractConstraintsTest do
             end
 
             event :paid, "Zapłacono"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
 
           scenario "płatność przyjęta" do
@@ -264,10 +248,6 @@ defmodule EhOsContract.ContractConstraintsTest do
             param :visit_id, :id
             constraint :own_clinic, "Tylko własna przychodnia"
             constraint :own_clinic, "Tylko własna przychodnia, drugi raz"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
         """)
 

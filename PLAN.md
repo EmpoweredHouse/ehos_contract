@@ -50,7 +50,8 @@ warning for undeclared types in the log) merged in #176. ID4 merged in #181 (iss
 contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
 merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
-assume a process. P1c (issue #190) on `dd/190-at-most-one-process`. #180 (the domain's name must equal the EHOS application's, with
+assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e (issue #192) on
+`dd/192-tests-without-processes`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -562,9 +563,9 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☑ #189 | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
-| P1c | 2 | R1: najwyżej jeden proces | P1b | ◐ `dd/190-at-most-one-process` | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
-| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
-| P1e | 2 | testy bez szablonowych procesów | P1c | ☐ | — |
+| P1c | 2 | R1: najwyżej jeden proces | P1b | ☑ #191 | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
+| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ☐ | — |
+| P1e | 2 | testy bez szablonowych procesów | P1c | ◐ `dd/192-tests-without-processes` | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ | — |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ | — |
@@ -710,8 +711,11 @@ requirement 7 (v2 §3). Depends on P1b.
 `settlement`; TaxVision `document_intake`, `registry_watch`; AppUnite `computers`, `demands`. Zostają:
 `clinical_visit`, `accounting_month`, `assignments`, `payer_settlement` (do decyzji o `cadence`). Każde nowe
 `event-without-consumer` wyjaśnione w PR.
-**P1e — testy deklarują proces tylko tam, gdzie są o procesie** (szablonowe bloki `process`/`terminal:`/`stage`;
-bez `sources_test`).
+**P1e — test contracts declare a process only when the test is about one** (#192; tightened 6 October 2026).
+149 of the 210 `process` blocks in the packages' tests were templates the old R1 asked for; they go, with the
+`terminal:` and `stage` groups that came with them, in five commits: rigs, DSL tests, DSL tests whose expected lines
+move, check and conformance, auth (the web fixtures keep theirs). The 61 that tests assert on stay for P2g. Not
+`sources_test`. Depends on P1c.
 
 **P2a — jeden model procesu dla czytelników** (refaktor): `Model.process/1`, `Model.process_events/1`; przepiąć
 `Run.runs_of/1`, `Trace`, `Paths.runs_of/3`, `Conformance.process/2`, `Graph.declared/2`, `Check.process_findings/1`,
@@ -871,7 +875,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 | Przed | Pytanie | Domyślnie |
 |---|---|---|
 | T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 |
-| P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem |
+| P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem — **decided 6 October: removed** |
 | P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak |
 | P2b | `deadline` bez `ends_on` | błąd L2 w module procesu |
 | P1b | pole `"process"` w manifeście EHOS-a | id kontraktu + issue w `eh-os` |
@@ -893,6 +897,18 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### Before P1d — the user's decision (6 October 2026)
+
+**`cadence` is removed** (the default recommendation). It declared how often a run of a process is due (`cadence
+{1, :month}` in TaxVision's `accounting_month` and Rehmed's `payer_settlement`), and nothing read it but the report's
+"Due: every 1 month" line, the pages and the `unverified-declaration` notice. The mechanism it was declared for, a
+warning that a due run never started, was rejected on 6 August: it needs to know which runs should exist (which
+companies, which payers), and the log cannot see an entity that recorded nothing. Rejected: **keeping it as a
+declaration**, which would mean carrying it into the process module of P2b, with R6, tests and docs, for a line
+nobody acts on; **judging it** (a window without a run), rejected on 6 August for the reason above. It comes back
+with a reader that supplies what should exist, EHOS for instance. Removed in P1d, together with the sandbox's two
+declarations.
 
 ### N1 — co wyszło (5 października)
 

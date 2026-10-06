@@ -25,11 +25,6 @@ defmodule DispatchRig.Unfinished do
   query :notes_of, "Notes", reads: :notes, by: :auditor do
     param :note_id, :id
   end
-
-  process :notes, "Notes" do
-    correlate :note_id
-    accountable :clerk
-  end
 end
 
 defmodule DispatchRig.Note do

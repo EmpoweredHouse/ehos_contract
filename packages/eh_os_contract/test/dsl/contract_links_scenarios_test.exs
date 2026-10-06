@@ -38,7 +38,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
   end
 
   describe "values of domain types" do
-    # The command's data at line 23, the expected event's at line 24.
+    # The command's data at line 19, the expected event's at line 20.
     defp registration(name, command, expected) do
       {"#{Macro.underscore(name)}.ex",
        """
@@ -57,10 +57,6 @@ defmodule EhOsContract.ContractLinksScenariosTest do
            event :registered, "Zarejestrowano" do
              field :status, :status
            end
-         end
-
-         process :visit, "Wizyta" do
-           correlate :visit_id
          end
 
          scenario "rejestracja" do
@@ -93,20 +89,20 @@ defmodule EhOsContract.ContractLinksScenariosTest do
 
       file = "scn_values_wrong.ex"
 
-      assert assert_linked(violations, "field :status: :unknown", file, 23) =~
+      assert assert_linked(violations, "field :status: :unknown", file, 19) =~
                ~s|X9: scenario "rejestracja": command :register, field :status: :unknown is not | <>
                  "one of [:active, :expired]"
 
-      assert_linked(violations, "field :address: :address has no field :zip", file, 23)
-      assert_linked(violations, "field :address: :address needs :city", file, 23)
-      assert_linked(violations, ~s|field :amounts: "200" is not an :integer|, file, 23)
-      assert_linked(violations, "event :registered, field :status: :gone", file, 24)
+      assert_linked(violations, "field :address: :address has no field :zip", file, 19)
+      assert_linked(violations, "field :address: :address needs :city", file, 19)
+      assert_linked(violations, ~s|field :amounts: "200" is not an :integer|, file, 19)
+      assert_linked(violations, "event :registered, field :status: :gone", file, 20)
       assert length(violations) == 5
     end
   end
 
   describe "a query's parameters and the rows it answers" do
-    # The query's parameters at line 27, the rows at line 28.
+    # The query's parameters at line 23, the rows at line 24.
     defp statuses(name, params, rows) do
       {"#{Macro.underscore(name)}.ex",
        """
@@ -131,10 +127,6 @@ defmodule EhOsContract.ContractLinksScenariosTest do
            param :status, :status
          end
 
-         process :visit, "Wizyta" do
-           correlate :visit_id
-         end
-
          scenario "wizyty aktywne" do
            query :with_status, #{params}
            answers #{rows}
@@ -147,10 +139,10 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       violations = links([statuses("ScnQueryWrong", "%{status: :asleep}", "[%{status: :gone}]")])
       file = "scn_query_wrong.ex"
 
-      assert assert_linked(violations, "field :status: :asleep", file, 27) =~
+      assert assert_linked(violations, "field :status: :asleep", file, 23) =~
                ~s|X9: scenario "wizyty aktywne": query :with_status, field :status: :asleep|
 
-      assert assert_linked(violations, "field :status: :gone", file, 28) =~
+      assert assert_linked(violations, "field :status: :gone", file, 24) =~
                ~s|X9: scenario "wizyty aktywne": a row of read model :statuses, field :status|
 
       assert length(violations) == 2
@@ -180,15 +172,11 @@ defmodule EhOsContract.ContractLinksScenariosTest do
              field :note, :string, optional: true
            end
          end
-
-         process :booking, "Rezerwacja" do
-           correlate :booking_id
-         end
        end
        """}
     end
 
-    # The delivered event's data at line 20.
+    # The delivered event's data at line 16.
     defp billing(name, booking, data) do
       {"#{Macro.underscore(name)}.ex",
        """
@@ -201,10 +189,6 @@ defmodule EhOsContract.ContractLinksScenariosTest do
            identity :visit_id
            command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
            event :visit_billed, "Wizyta rozliczona"
-         end
-
-         process :billing, "Rozliczenie" do
-           correlate :visit_id
          end
 
          policy :bill_on_booking, "Rozlicz po rezerwacji",
@@ -242,13 +226,13 @@ defmodule EhOsContract.ContractLinksScenariosTest do
 
       file = "scn_sibling_wrong_billing.ex"
 
-      assert assert_linked(violations, "no field :rooom", file, 20) =~
+      assert assert_linked(violations, "no field :rooom", file, 16) =~
                ~s|X9: scenario "rezerwacja rozliczona": event :visit_booked of | <>
                  "#{inspect(@fixtures)}.ScnSiblingWrongBooking (scn_sibling_wrong_booking.ex:9): " <>
                  "no field :rooom"
 
-      assert_linked(violations, "needs :room", file, 20)
-      assert_linked(violations, "field :visit_id: 1 is not an :id, a string", file, 20)
+      assert_linked(violations, "needs :room", file, 16)
+      assert_linked(violations, "field :visit_id: 1 is not an :id, a string", file, 16)
       assert length(violations) == 3
     end
   end
@@ -275,11 +259,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
          aggregate :visit, "Wizyta" do
            identity :visit_id
            command :close, "Zamknięcie", by: :reception, emits: :closed
-           event :closed, "Zamknięto", terminal: true
-         end
-
-         process :visit, "Wizyta" do
-           correlate :visit_id
+           event :closed, "Zamknięto"
          end
        end
        """}

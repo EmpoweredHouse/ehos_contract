@@ -7,12 +7,6 @@ defmodule EhOsContract.ContractLifecycleTest do
 
   use EhOsContract.DslCase, async: false
 
-  @process """
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-  """
-
   # A visit is booked, the patient arrives, the visit closes; a booked visit can be
   # cancelled, and a visit can be moved back to booked before the patient arrives.
   @visit """
@@ -50,8 +44,8 @@ defmodule EhOsContract.ContractLifecycleTest do
       event :visit_booked, "Umówiono"
       event :patient_arrived, "Pacjent przyszedł"
       event :note_added, "Dodano notatkę"
-      event :visit_cancelled, "Odwołano", terminal: true
-      event :visit_closed, "Zamknięto", terminal: true
+      event :visit_cancelled, "Odwołano"
+      event :visit_closed, "Zamknięto"
     end
 
     scenario "a visit the patient came to is not admitted again" do
@@ -70,7 +64,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
   describe "control" do
     test "a lifecycle compiles into the unit's model, one transition per status it leaves" do
-      model = compile_contract("LifecycleRight", @visit <> @process)
+      model = compile_contract("LifecycleRight", @visit)
 
       assert [%{lifecycle: lifecycle}] = model.units
 
@@ -125,10 +119,8 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             event :visit_booked, "Umówiono"
             event :visit_moved, "Przełożono"
-            event :visit_cancelled, "Odwołano", terminal: true
+            event :visit_cancelled, "Odwołano"
           end
-
-        #{@process}
         """)
 
       [%{lifecycle: %{transitions: transitions}}] = model.units
@@ -152,10 +144,8 @@ defmodule EhOsContract.ContractLifecycleTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
-
-        #{@process}
         """)
 
       assert [unit] = model.units
@@ -168,10 +158,8 @@ defmodule EhOsContract.ContractLifecycleTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
-
-        #{@process}
         """)
 
       with_lifecycle =
@@ -185,10 +173,8 @@ defmodule EhOsContract.ContractLifecycleTest do
             end
 
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
-
-        #{@process}
         """)
 
       refute without.digests["unit:visit"] == with_lifecycle.digests["unit:visit"]
@@ -217,7 +203,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
             event :visit_booked, "Umówiono"
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
 
           aggregate :room, "Gabinet" do
@@ -233,8 +219,6 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :open_room, "Otwarcie", by: :reception, emits: :room_opened
             event :room_opened, "Otwarto"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -273,10 +257,6 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken
             event :seat_taken, "Zajęto"
           end
-
-          process :seat, "Miejsce" do
-            correlate :seat_id
-          end
         """)
 
       log =
@@ -312,10 +292,8 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
             event :visit_booked, "Umówiono"
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -379,11 +357,9 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled
             event :visit_booked, "Umówiono"
             event :note_added, "Dodano notatkę"
-            event :visit_cancelled, "Odwołano", terminal: true
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_cancelled, "Odwołano"
+            event :visit_closed, "Zamknięto"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -444,7 +420,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             event :visit_booked, "Umówiono"
             event :patient_arrived, "Pacjent przyszedł"
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
 
           aggregate :room, "Gabinet" do
@@ -456,8 +432,6 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             event :room_opened, "Otwarto"
           end
-
-        #{@process}
         """)
 
       assert message =~
@@ -517,10 +491,6 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             event :seat_taken, "Zajęto"
           end
-
-          process :seat, "Miejsce" do
-            correlate :seat_id
-          end
         """)
 
       assert message =~ "unknown options [:from]"
@@ -543,8 +513,6 @@ defmodule EhOsContract.ContractLifecycleTest do
                  event :visit_booked, "Umówiono"
                  event :drafted, "Szkic"
                end
-
-             #{@process}
              """) =~
                "T4: command :draft_visit creates: its aggregate, and emits none of its " <>
                  "lifecycle's initial events, so the aggregate it makes would have no status " <>
@@ -580,7 +548,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             event :visit_booked, "Umówiono"
             event :visit_paid, "Opłacono"
-            event :visit_closed, "Zamknięto", terminal: true
+            event :visit_closed, "Zamknięto"
           end
 
           scenario "a closed visit is not paid" do
@@ -596,8 +564,6 @@ defmodule EhOsContract.ContractLifecycleTest do
             command :pay_visit
             rejected :not_while_paid
           end
-
-        #{@process}
         """)
 
       assert %{from: [:booked, :paid]} = Enum.find(model.commands, &(&1.name == :pay_visit))

@@ -14,7 +14,6 @@ defmodule EhOsContract.Auth.TestingTest do
     subdomain(:core, "Core", type: :core)
     context(:stock, "Stock", subdomain: :core)
 
-    actor(:keeper, :human, "Keeper")
     actor(:scheduler, :system, "Scheduler")
   end
 
@@ -29,14 +28,10 @@ defmodule EhOsContract.Auth.TestingTest do
     aggregate :reservation, "Reservation" do
       identity(:order_id)
       command(:reserve, "Reserve", by: :scheduler, emits: :reserved)
-      event(:reserved, "Reserved", terminal: true)
+      event(:reserved, "Reserved")
     end
 
     policy(:reserve_for_order, "Reserve for an order", handles: :order_placed, issues: :reserve)
-
-    process :reservation, "Reservation", accountable: :keeper do
-      correlate(:order_id)
-    end
   end
 
   test "a contract that consumes another application's event needs no door for it" do

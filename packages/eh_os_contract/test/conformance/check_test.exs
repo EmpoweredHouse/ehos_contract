@@ -106,10 +106,6 @@ defmodule EhOsContract.CheckTest do
         identity :message_id
         event :message_received, "Message received", recorded_by: :batch_operator
       end
-
-      process :intake, "Intake", accountable: :batch_operator do
-        correlate :message_id
-      end
     end
     """)
 

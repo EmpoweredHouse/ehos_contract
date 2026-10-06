@@ -39,14 +39,10 @@ defmodule BoundaryRig.Waitlist do
       field :student_id, :id
     end
 
-    event :waitlist_left, "Left the waiting list", terminal: true
+    event :waitlist_left, "Left the waiting list"
 
     # The timetable's note that the student was told where they stand.
     event :waitlist_reminded, "Reminded of their place on the list", recorded_by: :timetable
-  end
-
-  process :waitlist, "Waiting list" do
-    correlate :entry_id
   end
 
   scenario "a student who left cannot leave again" do

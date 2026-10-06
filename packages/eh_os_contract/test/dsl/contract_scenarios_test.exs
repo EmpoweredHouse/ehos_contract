@@ -24,12 +24,8 @@ defmodule EhOsContract.ContractScenariosTest do
         field :paid_at, :timestamp, optional: true
       end
 
-      event :closed, "Zamknięto", terminal: true
+      event :closed, "Zamknięto"
       event :reminded, "Przypomniano"
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
 
     scenario "zapłacono za mało — zamknięcie odrzucone" do
@@ -62,15 +58,15 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S1: scenario "bez wyzwalacza" has no trigger; give it one command, on or query | <>
-                 "(trigger_wrong.ex:34)"
+                 "(trigger_wrong.ex:30)"
 
       assert message =~
                ~s|S1: scenario "dwa wyzwalacze" has 2 triggers; a scenario has exactly one | <>
-                 "(trigger_wrong.ex:38)"
+                 "(trigger_wrong.ex:34)"
 
       assert message =~
                ~s|S1: scenario "nieznana komenda": :cancel is not a command of this contract | <>
-                 "(trigger_wrong.ex:45)"
+                 "(trigger_wrong.ex:41)"
     end
 
     test "two scenarios with one description" do
@@ -85,7 +81,7 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S1: two scenarios are described "zapłacono za mało — zamknięcie odrzucone"; | <>
-                 "each case needs its own words (described_twice.ex:34)"
+                 "each case needs its own words (described_twice.ex:30)"
     end
 
     test "an event two reactions handle needs target, and target must answer it" do
@@ -109,11 +105,11 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S1: scenario "zamknięcie — przypomnienie": :closed is handled by policy | <>
-                 ":remind_on_close, policy :remind_again; name one with target (target_wrong.ex:38)"
+                 ":remind_on_close, policy :remind_again; name one with target (target_wrong.ex:34)"
 
       assert message =~
                ~s|S1: scenario "zamknięcie — obca polityka": target :visit does not answer :closed | <>
-                 "(target_wrong.ex:42)"
+                 "(target_wrong.ex:38)"
     end
 
     test "control: target picks the reaction, and the model keeps the one trigger and its target" do
@@ -164,15 +160,15 @@ defmodule EhOsContract.ContractScenariosTest do
 
       where = ~s|scenario "zapłacono" (aggregate :visit)|
 
-      assert message =~ "S3: #{where}: event :reminded has no field :note (data_wrong.ex:35)"
-      assert message =~ "S3: #{where}: event :payment_recorded needs :amount (data_wrong.ex:36)"
+      assert message =~ "S3: #{where}: event :reminded has no field :note (data_wrong.ex:31)"
+      assert message =~ "S3: #{where}: event :payment_recorded needs :amount (data_wrong.ex:32)"
 
       assert message =~
-               "S3: #{where}: command :record_payment has no field :currency (data_wrong.ex:37)"
+               "S3: #{where}: command :record_payment has no field :currency (data_wrong.ex:33)"
 
       assert message =~
                ~s|S2: scenario "polityka ze stanem" (policy :remind_on_close): a policy keeps no | <>
-                 "state, so it takes no given (data_wrong.ex:44)"
+                 "state, so it takes no given (data_wrong.ex:40)"
     end
 
     test "the data of what a process manager or a boundary is given" do
@@ -208,14 +204,14 @@ defmodule EhOsContract.ContractScenariosTest do
       manager = ~s|scenario "zamknięto — pogoń się kończy" (process manager :chase)|
 
       assert message =~
-               "S3: #{manager}: event :payment_recorded has no field :amont (given_data_wrong.ex:41)"
+               "S3: #{manager}: event :payment_recorded has no field :amont (given_data_wrong.ex:37)"
 
       assert message =~
-               "S3: #{manager}: event :payment_recorded needs :amount (given_data_wrong.ex:41)"
+               "S3: #{manager}: event :payment_recorded needs :amount (given_data_wrong.ex:37)"
 
       assert message =~
                ~s|S3: scenario "wstrzymano po płatności" (dcb :slot): event :payment_recorded, | <>
-                 ~s|field :amount: "sto" is not an :integer (given_data_wrong.ex:54)|
+                 ~s|field :amount: "sto" is not an :integer (given_data_wrong.ex:50)|
     end
 
     test "a given the unit does not keep is refused" do
@@ -231,7 +227,7 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S2: scenario "przypomniano" (aggregate :visit): given :visit_booked is neither | <>
-                 "an event of the unit nor one it consults (given_wrong.ex:35)"
+                 "an event of the unit nor one it consults (given_wrong.ex:31)"
     end
 
     test "a timestamp is an ISO 8601 string, never a struct" do
@@ -249,13 +245,13 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                "field :paid_at: DateTime is a struct; write an ISO 8601 string, " <>
-                 ~s|"2026-09-01T09:00:00Z", since the model is plain data (time_wrong.ex:35)|
+                 ~s|"2026-09-01T09:00:00Z", since the model is plain data (time_wrong.ex:31)|
 
       assert message =~
                ~s|field :paid_at: "wczoraj" is not an ISO 8601 timestamp with an offset| <>
-                 ~s|, "2026-09-01T09:00:00Z" (time_wrong.ex:36)|
+                 ~s|, "2026-09-01T09:00:00Z" (time_wrong.ex:32)|
 
-      assert message =~ ~s|field :amount: "sto" is not an :integer (time_wrong.ex:37)|
+      assert message =~ ~s|field :amount: "sto" is not an :integer (time_wrong.ex:33)|
     end
 
     test "an empty identifier is refused here, as dispatch refuses it" do
@@ -306,11 +302,11 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S4: scenario "przypomnienie odrzucone" (aggregate :visit): rejected | <>
-                 ":paid_in_full is not among what command :remind rejects, [] (outcome_wrong.ex:34)"
+                 ":paid_in_full is not among what command :remind rejects, [] (outcome_wrong.ex:30)"
 
       assert message =~
                ~s|S5: scenario "przypomnienie zamyka" (aggregate :visit): expects :closed, which | <>
-                 "command :remind does not emit (outcome_wrong.ex:41)"
+                 "command :remind does not emit (outcome_wrong.ex:37)"
     end
   end
 
@@ -338,15 +334,15 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S6: scenario "zamknięcie bez wyniku" (aggregate :visit): after a command, | <>
-                 "expect the events or say it is rejected (command_outcome.ex:34)"
+                 "expect the events or say it is rejected (command_outcome.ex:30)"
 
       assert message =~
                ~s|S6: scenario "zamknięcie na dwa sposoby" (aggregate :visit): a command either | <>
-                 "emits or is rejected; not both (command_outcome.ex:38)"
+                 "emits or is rejected; not both (command_outcome.ex:34)"
 
       assert message =~
                ~s|S6: scenario "zamknięcie wydaje komendę" (aggregate :visit): issues belongs to | <>
-                 "a reaction's scenario, not to a command to a unit (command_outcome.ex:47)"
+                 "a reaction's scenario, not to a command to a unit (command_outcome.ex:43)"
     end
 
     test "a policy that issues nothing, what it does not issue, and an effect" do
@@ -372,15 +368,15 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S6: scenario "zamknięcie — nic" (policy :remind_on_close): after an event, a | <>
-                 "policy issues something; say what (reaction_outcome.ex:37)"
+                 "policy issues something; say what (reaction_outcome.ex:33)"
 
       assert message =~
                ~s|S6: scenario "zamknięcie — zamknięcie" (policy :remind_on_close): issues :close, | <>
-                 "which it does not issue (reaction_outcome.ex:43)"
+                 "which it does not issue (reaction_outcome.ex:39)"
 
       assert message =~
                ~s|S6: scenario "przypomniano — powiadomienie": effect :notify cannot be a | <>
-                 "scenario's target: an effect's outcome is outside the log (reaction_outcome.ex:46)"
+                 "scenario's target: an effect's outcome is outside the log (reaction_outcome.ex:42)"
     end
 
     test "a process manager's timers and its end are the ones its declaration names" do
@@ -405,10 +401,10 @@ defmodule EhOsContract.ContractScenariosTest do
       where = ~s|scenario "zapłacono — pogoń" (process manager :chase)|
 
       assert message =~
-               "S6: #{where}: :payment_recorded does not set timer :never (manager_outcome.ex:44)"
+               "S6: #{where}: :payment_recorded does not set timer :never (manager_outcome.ex:40)"
 
       assert message =~
-               "S6: #{where}: :payment_recorded is not among what it ends on (manager_outcome.ex:42)"
+               "S6: #{where}: :payment_recorded is not among what it ends on (manager_outcome.ex:38)"
     end
 
     test "control: a process manager's scenario, from start to end" do
@@ -482,23 +478,23 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S6: scenario "płatności — bez odpowiedzi" (query :payments_of_visit): after a | <>
-                 "query, say what it answers (query_outcome.ex:47)"
+                 "query, say what it answers (query_outcome.ex:43)"
 
       assert message =~
                ~s|S6: scenario "płatności — dwie odpowiedzi" (query :payments_of_visit): a query | <>
-                 "answers once (query_outcome.ex:54)"
+                 "answers once (query_outcome.ex:50)"
 
       assert message =~
                ~s|S6: scenario "ostatnia płatność — lista" (query :last_payment): answers one | <>
-                 "row, a map, or nil, as the query returns one (query_outcome.ex:59)"
+                 "row, a map, or nil, as the query returns one (query_outcome.ex:55)"
 
       assert message =~
                ~s|S3: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): a row | <>
-                 "of read model :payments has no field :method (query_outcome.ex:65)"
+                 "of read model :payments has no field :method (query_outcome.ex:61)"
 
       assert message =~
                ~s|S2: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): given | <>
-                 ":closed is not an event read model :payments projects (query_outcome.ex:63)"
+                 ":closed is not an event read model :payments projects (query_outcome.ex:59)"
     end
 
     test "answers belongs to a query's scenario" do
@@ -514,7 +510,7 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S6: scenario "zamknięcie z odpowiedzią" (aggregate :visit): answers belongs to | <>
-                 "a query's scenario, not to a command to a unit (answers_elsewhere.ex:37)"
+                 "a query's scenario, not to a command to a unit (answers_elsewhere.ex:33)"
     end
 
     test "control: rows of the read model, one row or nil, and the model keeps them as a list" do
@@ -574,11 +570,11 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S7: scenario "menedżer płaci" (aggregate :visit): actor :manager is not among | <>
-                 "who may issue :record_payment, [:reception] (actor_wrong.ex:36)"
+                 "who may issue :record_payment, [:reception] (actor_wrong.ex:32)"
 
       assert message =~
                ~s|S7: scenario "recepcja przypomina" (policy :remind_on_close): only a command's | <>
-                 "scenario names an actor (actor_wrong.ex:42)"
+                 "scenario names an actor (actor_wrong.ex:38)"
     end
 
     test "control: an actor in by: compiles" do

@@ -47,10 +47,6 @@ defmodule EhOsContract.CheckDirectionsTest do
 
         effect :ask_bank, "Zapytaj bank", handles: :filed, calls: :bank, idempotency: [key: :report_id, owner: :self]
         effect :send_p1, "Wyślij do P1", handles: :filed, calls: :p1, idempotency: [key: :report_id, owner: :self]
-
-        process :report, "Raport" do
-          correlate :report_id
-        end
       end
       """,
       "clinic.ex"

@@ -64,10 +64,6 @@ defmodule EhOsContract.GraphContractTest do
         end
 
         effect :mail_copy, "Mail a copy", handles: :sent, calls: :mail, idempotency: [key: :draft_id, owner: :self]
-
-        process :draft, "Draft" do
-          correlate :draft_id
-        end
       end
       """,
       "graph_clinic.ex"
@@ -87,10 +83,6 @@ defmodule EhOsContract.GraphContractTest do
           event :payment_recorded, "Payment recorded" do
             field :amount, :integer
           end
-        end
-
-        process :visit, "Visit" do
-          correlate :visit_id
         end
 
         scenario "nothing paid is refused" do
@@ -253,10 +245,6 @@ defmodule EhOsContract.GraphContractTest do
 
             command :close, "Close", by: :reception, emits: :closed, rejects: :paid
             event :closed, "Closed"
-          end
-
-          process :visit, "Visit" do
-            correlate :visit_id
           end
 
           scenario "unpaid" do

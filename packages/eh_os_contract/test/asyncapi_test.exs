@@ -42,11 +42,6 @@ defmodule EhOsContract.AsyncAPITest do
       from: :completed,
       fields: [:transfer_id, :branch_id, :amount],
       idempotent_on: [:transfer_id]
-
-    process :transfer, "Transfer" do
-      correlate :transfer_id
-      accountable :clerk
-    end
   end
 
   defmodule CollidingNames do
@@ -73,10 +68,6 @@ defmodule EhOsContract.AsyncAPITest do
       from: :second,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
-
-    process :probe, "Probe" do
-      correlate :probe_id
-    end
   end
 
   # `CollidingNames` with its publications written the other way round, and with one
@@ -105,10 +96,6 @@ defmodule EhOsContract.AsyncAPITest do
       from: :first,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
-
-    process :probe, "Probe" do
-      correlate :probe_id
-    end
   end
 
   defmodule ChangedNames do
@@ -135,10 +122,6 @@ defmodule EhOsContract.AsyncAPITest do
       from: :second,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
-
-    process :probe, "Probe" do
-      correlate :probe_id
-    end
   end
 
   describe "a v2 publication" do

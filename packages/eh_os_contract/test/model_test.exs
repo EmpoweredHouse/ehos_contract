@@ -36,10 +36,6 @@ defmodule EhOsContract.ModelTest do
       end
     end
 
-    process :profile, "Profile" do
-      correlate :profile_id
-    end
-
     read_model :profiles, "Profiles", projects: :registered do
       field :member_id, :id, subject: :member
       field :name, :string, personal: :member_id
@@ -107,10 +103,6 @@ defmodule EhOsContract.ModelTest do
     policy :welcome_registered, "Welcome a registered member",
       handles: :member_registered,
       issues: :welcome
-
-    process :welcome, "Welcome" do
-      correlate :profile_id
-    end
 
     scenario "a sibling's registration carries direct and nested personal values" do
       target :welcome_registered

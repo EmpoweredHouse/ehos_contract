@@ -15,6 +15,15 @@ defmodule EhOsContract.ContractProcessTest do
     end
   """
 
+  # The unit with nothing a process would place: what a contract without one declares.
+  @bare_unit """
+    aggregate :visit, "Wizyta" do
+      identity :visit_id
+      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+      event :visit_closed, "Wizyta zamknięta"
+    end
+  """
+
   describe "R1: at most one process" do
     test "none compiles, and the model has no process" do
       model =
@@ -454,10 +463,7 @@ defmodule EhOsContract.ContractProcessTest do
           consumes Clinic.Contracts.Booking, :visit_booked, as: [visit_moved: :moved]
           consumes Clinic.Contracts.Reporting, :report_sent, as: :sent
 
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
+        #{@bare_unit}
         """)
 
       assert message =~
@@ -481,10 +487,7 @@ defmodule EhOsContract.ContractProcessTest do
             field :visit_id, :id
           end
 
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
+        #{@bare_unit}
         """)
 
       assert message =~

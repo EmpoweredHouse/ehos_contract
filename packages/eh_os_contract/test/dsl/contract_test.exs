@@ -333,7 +333,7 @@ defmodule EhOsContract.ContractTest do
           identity :visit_id
           command :close, "Zamknięcie", by: [:reception, :manager, :registry], emits: :closed
           command :remind, "Przypomnienie", emits: :reminded
-          event :closed, "Zamknięto", terminal: true
+          event :closed, "Zamknięto"
           event :reminded, "Przypomniano"
           event :arrived, "Przyszedł", recorded_by: :reception
           event :reported, "Zgłoszono", recorded_by: :registry
@@ -342,10 +342,6 @@ defmodule EhOsContract.ContractTest do
         policy :remind_on_close, "Przypomnienie po zamknięciu",
           handles: [:closed, :closed_elsewhere],
           issues: :remind
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
 
         read_model :open_visits, "Otwarte wizyty", projects: :closed do
           field :clinic_id, :id
@@ -435,11 +431,7 @@ defmodule EhOsContract.ContractTest do
             identity #{inspect(identity)}
             consults :period_closed, match: :payer_id
             command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres", terminal: true
-          end
-
-          process :billing, "Rozliczenie płatnika" do
-            correlate #{inspect(identity)}
+            event :period_closed, "Zamknięto okres"
           end
         end
         """)
@@ -465,11 +457,7 @@ defmodule EhOsContract.ContractTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed#{source}
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         end
         """)
