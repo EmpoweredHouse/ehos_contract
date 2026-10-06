@@ -15,6 +15,7 @@ differently once this is done. No module names, refusal codes or file paths in t
 
 What changes and where, for an engineer: modules, functions, files, refusal and rule codes, the order of the
 work. A code follows its meaning: "a reaction to another context's event that leaves delivery out (X10)".
+Name files, never line numbers: they go stale before the issue closes.
 
 ## In scope
 

@@ -31,7 +31,7 @@ stage was carried out stays in its issue.
 2. **An issue** from the "Programme stage" template, with the programme's label and, where there are waves,
    the wave's. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
-   or refusal code stands in parentheses after its meaning.
+   or refusal code stands in parentheses after its meaning, and it names files without line numbers.
 3. **A branch** named after the issue: `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English.
