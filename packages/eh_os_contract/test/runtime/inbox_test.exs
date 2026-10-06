@@ -174,8 +174,7 @@ defmodule EhOsContract.InboxTest do
              via: %{kind: :policy, name: :reserve_for_order},
              to: %{kind: :command, name: :reserve_stock},
              mode: :async,
-             runs: 0,
-             of_runs: 1
+             taken: 0
            } = received
 
     assert [%{from: %{name: :order_placed}}] =
@@ -191,7 +190,7 @@ defmodule EhOsContract.InboxTest do
     assert Inbox.take(inbox(), message("o-1", 120)) == :ack
     assert Inbox.take(inbox(), message("o-2", 80)) == :ack
 
-    assert [%{runs: 2, of_runs: 3}] =
+    assert [%{taken: 2}] =
              for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
 
     assert Conformance.report(BusRig.Stock)
@@ -203,14 +202,14 @@ defmodule EhOsContract.InboxTest do
     # Bounded as every step is: by when the inbox took the fact.
     before = DateTime.add(Repo.one!(from(i in InboxRecord, select: min(i.received_at))), -1)
 
-    assert [%{runs: 0}] =
+    assert [%{taken: 0}] =
              for(
                %{from: %{name: :order_placed}} = step <-
                  Paths.observe(BusRig.Stock, until: before),
                do: step
              )
 
-    assert [%{runs: 2}] =
+    assert [%{taken: 2}] =
              for(
                %{from: %{name: :order_placed}} = step <-
                  Paths.observe(BusRig.Stock, since: before),
@@ -224,7 +223,7 @@ defmodule EhOsContract.InboxTest do
     july = ~U[2026-07-01 12:00:00.000000Z]
     EhOsContract.Clock.at(july, fn -> :ack = Inbox.take(inbox(), message("o-1", 120)) end)
 
-    assert [%{runs: 1}] =
+    assert [%{taken: 1}] =
              for(
                %{from: %{name: :order_placed}} = step <-
                  Paths.observe(BusRig.Stock, since: july, until: DateTime.add(july, 1)),

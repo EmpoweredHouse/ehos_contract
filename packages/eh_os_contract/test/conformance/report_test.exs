@@ -92,7 +92,7 @@ defmodule EhOsContract.ReportTest do
                {:request_refused, :notify_on_refusal, :notify_refusal}
              ]
 
-      assert Enum.all?(p.untraversed, &(&1.runs == 0 and &1.of_runs == 50))
+      assert Enum.all?(p.untraversed, &(&1.taken == 0))
     end
 
     test "one run through the refusal branch: nothing untraversed" do
@@ -180,14 +180,14 @@ defmodule EhOsContract.ReportTest do
       refute failing in p.untraversed
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: a command failed in 1 run"
+               "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: 1 command failed"
     end
 
     @tag :capture_log
-    test "count runs, not failures" do
-      # Two failures of one account are one run in trouble, and a second account is
-      # a second: the count answers how much of the business a broken step touches,
-      # and a retry loop hammering one run would otherwise read as a wide outage.
+    test "count failures, not runs" do
+      # Plan DD, P1a (#183): a step is the contract's and counts occurrences, so two
+      # failures of one account are two. Until P1a they were one run in trouble; a
+      # contract without a process has no runs to count them in.
       EhOsContract.Testing.drain()
 
       for account <- ["a-1", "a-2"] do
@@ -217,12 +217,12 @@ defmodule EhOsContract.ReportTest do
       fail.("a-1")
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               step <> " — failing: a command failed in 1 run"
+               step <> " — failing: 2 commands failed"
 
       fail.("a-2")
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               step <> " — failing: a command failed in 2 runs"
+               step <> " — failing: 3 commands failed"
     end
   end
 

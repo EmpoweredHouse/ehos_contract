@@ -167,15 +167,12 @@ defmodule EhOsContract.Graph.System do
 
   # --- the log -------------------------------------------------------------------------
 
-  # A process's runs, which a consumer's observed steps already carry.
+  # A process's runs: a step counts occurrences (plan DD, P1a, #183), so the process
+  # is asked for its own.
   defp runs(%{process: nil}, _observed, _opts), do: nil
 
-  defp runs(model, observed, opts) do
-    case Map.get(observed, model.module) do
-      [step | _] -> step.of_runs
-      _none -> Paths.runs_of(model, Atom.to_string(model.process.name), opts)
-    end
-  end
+  defp runs(model, _observed, opts),
+    do: Paths.runs_of(model, Atom.to_string(model.process.name), opts)
 
   # How many events of each type the log holds, in the period. `count(position)`
   # rather than of the id, so the `(type, position)` index answers it alone.

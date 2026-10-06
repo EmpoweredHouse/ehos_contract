@@ -1,8 +1,9 @@
 defmodule EhOsContract.PathsTest do
   @moduledoc """
   The steps a v2 contract declares, and what the log says about each (v2 §13, plan
-  E7c): taken in how many runs, waiting on which of three sources, failing on which
-  of three.
+  E7c): taken how many times, waiting on which of three sources, failing on which
+  of three. A step counts its occurrences, not the runs they fall in, and a contract
+  without a process has its steps counted too (plan DD, P1a, #183).
   """
 
   use EhOsContract.DataCase, async: false
@@ -46,13 +47,11 @@ defmodule EhOsContract.PathsTest do
       assert emits.to == %{kind: :event, name: :request_received, label: "Request received"}
     end
 
-    test "an approved request takes six steps in its one run, and not the refusal's three" do
+    test "an approved request takes six steps, and not the refusal's three" do
       Seed.request("r-1", :request_approved)
       steps = Paths.observe(ProcessShapes.Promised)
 
-      assert Enum.all?(steps, &(&1.of_runs == 1))
-
-      untaken = for %{runs: 0} = s <- steps, do: names(s)
+      untaken = for %{taken: 0} = s <- steps, do: names(s)
 
       assert untaken == [
                {:decide_request, nil, :request_refused},
@@ -60,7 +59,7 @@ defmodule EhOsContract.PathsTest do
                {:request_refused, :notify_on_refusal, :notify_refusal}
              ]
 
-      assert %{runs: 1, mode: :inline} =
+      assert %{taken: 1, mode: :inline} =
                step(steps, :request_approved, :complete_approved, :complete_request)
     end
 
@@ -72,11 +71,11 @@ defmodule EhOsContract.PathsTest do
         |> Paths.observe()
         |> step(:request_refused, :notify_on_refusal, :notify_refusal)
 
-      assert %{runs: 0, mode: :async, in_flight: %{lag: 1, timers: 0, effects: 0}} = waiting
+      assert %{taken: 0, mode: :async, in_flight: %{lag: 1, timers: 0, effects: 0}} = waiting
 
       Seed.run_queue()
 
-      assert %{runs: 1, in_flight: %{lag: 0}} =
+      assert %{taken: 1, in_flight: %{lag: 0}} =
                ProcessShapes.Promised
                |> Paths.observe()
                |> step(:request_refused, :notify_on_refusal, :notify_refusal)
@@ -88,7 +87,7 @@ defmodule EhOsContract.PathsTest do
       end)
 
       steps = Paths.observe(ProcessShapes.Promised, since: ~U[2026-08-01 00:00:00Z])
-      assert Enum.all?(steps, &(&1.runs == 0 and &1.of_runs == 0))
+      assert Enum.all?(steps, &(&1.taken == 0))
     end
   end
 
@@ -120,10 +119,10 @@ defmodule EhOsContract.PathsTest do
     test "a scheduled timer is waiting, and an effect was taken nobody knows how often" do
       Testing.drain()
 
-      assert %{in_flight: %{timers: 1}, runs: 0} =
+      assert %{in_flight: %{timers: 1}, taken: 0} =
                step(steps(), :first_deposit_due, :first_deposit_chase, :flag_account)
 
-      assert %{runs: nil} = step(steps(), :account_flagged, :notify_branch, nil)
+      assert %{taken: nil} = step(steps(), :account_flagged, :notify_branch, nil)
     end
 
     test "a timer's firing not yet taken waits on its own step, not on the other timer's" do
@@ -140,7 +139,7 @@ defmodule EhOsContract.PathsTest do
       assert %{in_flight: %{lag: 0}} = step(steps(), :review, :first_deposit_chase, :flag_account)
     end
 
-    test "a causing event's own field named timer does not split a reaction's runs" do
+    test "a causing event's own field named timer does not split a reaction's count" do
       for {account, timer} <- [{"a-7", "x"}, {"a-8", "y"}] do
         event =
           record_event!(%{
@@ -165,7 +164,7 @@ defmodule EhOsContract.PathsTest do
         })
       end
 
-      assert %{runs: 2} = step(steps(), :deposited, :flag_large_deposit, :flag_account)
+      assert %{taken: 2} = step(steps(), :deposited, :flag_large_deposit, :flag_account)
     end
 
     test "an effect's job waits until it runs" do
@@ -223,12 +222,28 @@ defmodule EhOsContract.PathsTest do
                step(steps(), :deposited, :flag_large_deposit, :flag_account)
     end
 
+    # Plan DD, P1a (#183): one account is one run of the ledger; its two deposits are
+    # two occurrences of the step, and read so.
+    test "a step taken twice in one run reads 2" do
+      {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 3})
+      {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 4})
+
+      assert %{taken: 2} = step(steps(), :deposit, nil, :deposited)
+    end
+
+    test "a contract without a process has its steps counted all the same" do
+      {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 3})
+      without = %{EhOsContract.Model.fetch(Ledger) | process: nil}
+
+      assert %{taken: 1} = without |> Paths.observe() |> step(:deposit, nil, :deposited)
+    end
+
     test "an ordered policy's command, once drained, took its step" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 3})
       {:ok, _} = dispatch(%Withdraw{account_id: "a-1", amount: 3})
       Testing.drain()
 
-      assert %{runs: 1} = step(steps(), :withdrawn, :return_small_change, :deposit)
+      assert %{taken: 1} = step(steps(), :withdrawn, :return_small_change, :deposit)
     end
   end
 end

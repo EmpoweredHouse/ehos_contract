@@ -195,7 +195,8 @@ defmodule EhOsContract.Report.Sentence do
     parts =
       Enum.reject(
         [
-          failing.commands > 0 && "a command failed in #{runs(failing.commands)}",
+          failing.commands > 0 &&
+            count(failing.commands, "command failed", "commands failed"),
           failing.subscription && "the subscription stopped at an event it cannot apply",
           count(failing.effects, "effect job discarded", "effect jobs discarded")
         ],

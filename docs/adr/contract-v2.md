@@ -1472,6 +1472,14 @@ the person's.
 > so the deployed version has no `since`, and a promise's declaration boundary is always `nil`; and
 > scenario coverage — both E7c-2.
 
+> **6 October 2026, plan DD, P1a (#183) — a step counts occurrences, not runs.** "Taken is counted in runs"
+> above no longer holds. A step belongs to its contract, which may have no process, so it counts how often it
+> was taken: the events of its type its command appended, or the command rows its reaction issued, accepted or
+> rejected (an idempotent redelivery writes no row). Failed commands count likewise. Two deposits on one account
+> are two, where they were one run; the argument for runs — a single busy account would read as a
+> well-travelled path — loses to a contract without a process having no count at all. A process keeps its runs,
+> durations and promises, judged per run as before.
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |

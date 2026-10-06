@@ -44,27 +44,27 @@ defmodule EhOsContract.GraphTest do
     assert diagram =~ "timer_first_deposit_due -.->|async| command_flag_account"
   end
 
-  test "the overlay puts the runs on each step and the occurrences on each event" do
+  test "the overlay puts how often each step was taken on it, and each event's occurrences" do
     Seed.deploy()
     Seed.request("r-1", :request_approved)
     Seed.request("r-2", :request_refused)
 
     diagram = Graph.contract_to_mermaid(ProcessShapes.Promised, overlay: true)
 
-    assert diagram =~ ~s|event_request_received["Request received (2x, 2 runs)"]:::event|
-    assert diagram =~ "command_decide_request -->|1/2 runs| event_request_approved"
+    assert diagram =~ ~s|event_request_received["Request received (2x)"]:::event|
+    assert diagram =~ "command_decide_request -->|1 taken| event_request_approved"
 
     assert diagram =~
-             "policy_notify_on_refusal -.->|async · 0/2 runs · 1 waiting| command_notify_refusal"
+             "policy_notify_on_refusal -.->|async · 0 taken · 1 waiting| command_notify_refusal"
 
     # The event reaching its consumer is drawn once and carries no count of its own.
     assert diagram =~ "event_request_refused -.->|async| policy_notify_on_refusal"
   end
 
-  test "the overlay counts occurrences and runs apart: two events of one run are one run" do
-    # A process that repeats an event inside a run — two deposits on one account —
-    # has more occurrences than runs, and a step is measured in runs. Were the two
-    # one number, a single busy account would read as a well-travelled path.
+  test "the overlay counts occurrences: two deposits on one account are two" do
+    # Plan DD, P1a (#183): a step is the contract's and counts how often it was taken,
+    # whatever run it fell in. Until P1a a step was measured in runs, and two deposits
+    # on one account read "1/1 runs"; a contract without a process had no count.
     clerk =
       EhOsContract.Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
 
@@ -78,8 +78,8 @@ defmodule EhOsContract.GraphTest do
 
     diagram = Graph.contract_to_mermaid(DispatchRig.Ledger, overlay: true)
 
-    assert diagram =~ ~s|event_deposited["Deposited (2x, 1 run)"]:::event|
-    assert diagram =~ "command_deposit -->|1/1 runs| event_deposited"
+    assert diagram =~ ~s|event_deposited["Deposited (2x)"]:::event|
+    assert diagram =~ "command_deposit -->|2 taken| event_deposited"
   end
 
   describe "the declared shape of a v2 process" do
@@ -129,6 +129,6 @@ defmodule EhOsContract.GraphTest do
       path
     ])
 
-    assert File.read!(path) =~ "command_open_account -->|0/0 runs| event_account_opened"
+    assert File.read!(path) =~ "command_open_account -->|0 taken| event_account_opened"
   end
 end

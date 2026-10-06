@@ -7,9 +7,10 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  The report answers per **run**, because that is the only answer that means
-  anything once there are many clients. And it has to avoid lying in the three
-  situations where lying is easy:
+  A step counts its **occurrences**, since plan DD, P1a (#183): a step is the
+  contract's, and a contract may have no process to count runs of. A process's
+  promises and durations are judged per **run**. And the report has to avoid lying in
+  the three situations where lying is easy:
 
   **Zero runs is no basis for a verdict, not three untraversed paths.** A process
   that never started has every step untraversed — and listing them as findings
@@ -134,7 +135,7 @@ defmodule EhOsContract.Conformance do
         do:
           Enum.filter(
             steps,
-            &(&1.runs == 0 and not waiting?(&1) and not failing?(&1) and
+            &(&1.taken == 0 and not waiting?(&1) and not failing?(&1) and
                 not MapSet.member?(pending, &1.from))
           ),
         else: []
