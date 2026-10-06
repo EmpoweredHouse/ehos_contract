@@ -46,8 +46,10 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 **Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 merged on
 `dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 merged in #174
 (issue #173): the id is required and labels every event; existing logs are reset. Follow-up #175 (a start-up
-warning for undeclared types in the log) merged in #176. ID4 (rows and keys by the id) in progress: issue #178,
-branch `dd/178-rows-by-id`.
+warning for undeclared types in the log) merged in #176. ID4 merged in #181 (issue #178): rows and keys name a
+contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has) in
+progress on `dd/179-undeclared-contracts`; #180 (the domain's name must equal the EHOS application's, with
+EmpoweredHouse/eh-os#201) waits for a decision on where it goes. Next stage: P1a.
 
 ### Stan repozytorium
 
@@ -555,7 +557,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
-| ID4 | 2 | wiersze i klucze po `id` | ID3 | ◐ `dd/178-rows-by-id` | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
+| ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |

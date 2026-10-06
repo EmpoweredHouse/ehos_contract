@@ -74,6 +74,13 @@ defmodule EhOsContract.Personal do
   @spec erased_type() :: String.t()
   def erased_type, do: @erased
 
+  @doc """
+  The contract name the event `erase/3` appends is filed under: the library's own, as
+  its type begins with, since no contract declares it (plan DD, ID4, #178).
+  """
+  @spec erased_contract() :: String.t()
+  def erased_contract, do: "eh_os_contract"
+
   @typedoc """
   What `prepare/2` read and wrapped before the append lock: the subjects' newest
   keys, and a new key, already wrapped, for each subject that has none.
@@ -240,9 +247,7 @@ defmodule EhOsContract.Personal do
               [
                 %{
                   type: @erased,
-                  # Declared by no contract: the library's own name, as its type begins with
-                  # (plan DD, ID4, #178).
-                  contract: "eh_os_contract",
+                  contract: erased_contract(),
                   contract_version: EhOsContract.version(),
                   actor: Actor.label(actor),
                   correlation_id: Ecto.UUID.generate(),

@@ -27,6 +27,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A warning at start-up when the event log files events under a contract name no contract has as its id**
+  (#179). The engine names them and goes on. It catches a log written before rows named a contract by its id (plan
+  DD, ID4, #178) and not reset: its event types are still declared, so the warning of #175 says nothing, while the
+  conformance report and the commands' counts skip those events. The names are read one index step each. Ids are
+  matched whole; the library's own name (`eh_os_contract`, which an erasure is filed under) is known.
 - **A warning at start-up when the event log holds types no contract declares** (#175). The engine names them and
   goes on. It catches a log written before event types became `"<contract id>.<event>"` (plan DD, ID3) and not reset,
   which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the

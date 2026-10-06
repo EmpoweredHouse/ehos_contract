@@ -17,6 +17,18 @@ defmodule EhOsContract.UndeclaredTypes do
   The log's distinct types are read by walking the `(type, position)` index once per
   type, not by reading every row, so the check costs the number of types, not the
   length of the log.
+
+  **The contract names the events are filed under** get a warning of their own (#179).
+  From plan DD's ID4 (#178) every row names its contract by its `id:`, where it
+  named the module before; a log written between ID3 and ID4 and not reset holds
+  types every contract still declares, so the warning above stays silent, while the
+  report and the commands' counts skip those events. The names are read the same
+  way, one step down the `(contract, contract_version)` index each, and compared with
+  every contract the engine dispatches to — `exclude:` keeps a contract out of the
+  report, not out of the log. The commands' names are not read: they have no such
+  index, and a command that changed anything left an event. Nor are the other tables
+  that name a contract (subscriptions, process managers, deployments): the reset that
+  clears a log written before ID4 clears them with it.
   """
 
   require Logger
@@ -82,6 +94,60 @@ defmodule EhOsContract.UndeclaredTypes do
     types
   end
 
+  @doc """
+  The contract names `repo`'s events are filed under that are not among `ids`, in
+  Elixir's order. The library's own, which an erasure is filed under, is always known.
+  """
+  @spec unknown_contracts(module(), [String.t()]) :: [String.t()]
+  def unknown_contracts(repo, ids) do
+    known = MapSet.new([EhOsContract.Personal.erased_contract() | ids])
+
+    repo
+    |> contracts()
+    |> Enum.reject(&MapSet.member?(known, &1))
+    |> Enum.sort()
+  end
+
+  @doc """
+  Logs a warning naming the contract names `unknown_contracts/2` finds for the
+  application's contracts, and returns them. Called once, at start-up, and never
+  stops it, as `warn/2`.
+  """
+  @spec warn_contracts(module(), [map()]) :: [String.t()]
+  def warn_contracts(repo, models) do
+    repo |> unknown_contracts(Enum.map(models, & &1.id)) |> report_contracts()
+  rescue
+    error ->
+      Logger.warning(
+        "EhOsContract: could not check the event log for unknown contract names, and goes " <>
+          "on: " <> Exception.message(error)
+      )
+
+      []
+  end
+
+  @doc """
+  Logs the start-up warning for `names`, the contract names `unknown_contracts/2`
+  found, and returns them; logs nothing for none.
+  """
+  @spec report_contracts([String.t()]) :: [String.t()]
+  def report_contracts([]), do: []
+
+  def report_contracts(names) do
+    Logger.warning(
+      "EhOsContract: the event log files events under #{length(names)} contract name(s) " <>
+        "no contract of this application has as its id: #{named(names)}. The conformance " <>
+        "report and the commands' counts skip those events. A contract removed on purpose " <>
+        "leaves its history so, and a node on older code during a rolling deploy sees a " <>
+        "newer node's contract so. A name that looks like a module (\"MyApp.Contracts.Orders\") " <>
+        "is a log written before rows named a contract by its id (plan DD, ID4): the " <>
+        "CHANGELOG says to reset the engine's schema (EhOsContract.Migrations.down/up), " <>
+        "which deletes every event it holds, so only when none of them is worth keeping."
+    )
+
+    names
+  end
+
   defp named(types) when length(types) <= @named, do: Enum.join(types, ", ")
 
   defp named(types),
@@ -89,6 +155,27 @@ defmodule EhOsContract.UndeclaredTypes do
 
   defp engine_types,
     do: [EhOsContract.Personal.erased_type(), EhOsContract.ProcessManager.elapsed()]
+
+  # The same loose scan, down the `(contract, contract_version)` index.
+  defp contracts(repo) do
+    %{rows: rows} =
+      repo.query!(
+        """
+        WITH RECURSIVE c(contract) AS (
+          SELECT min(contract) FROM eh_os_contract_events
+          UNION ALL
+          SELECT (SELECT min(e.contract) FROM eh_os_contract_events e
+                  WHERE e.contract > c.contract)
+          FROM c WHERE c.contract IS NOT NULL
+        )
+        SELECT contract FROM c WHERE contract IS NOT NULL
+        """,
+        [],
+        log: false
+      )
+
+    for [contract] <- rows, do: contract
+  end
 
   # A loose index scan: the smallest type, then the smallest greater than the last,
   # each one step down the `(type, position)` index.

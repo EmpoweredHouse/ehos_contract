@@ -15,7 +15,7 @@ defmodule EhOsContract.UndeclaredTypesTest do
   @ledger Model.fetch(DispatchRig.Ledger)
   @declared hd(@ledger.events).type
 
-  defp stored!(type) do
+  defp stored!(type, contract \\ "dispatch_rig.ledger") do
     {:ok, {:ok, [_row]}} =
       Repo.transaction(fn ->
         EhOsContract.Store.append(
@@ -23,7 +23,7 @@ defmodule EhOsContract.UndeclaredTypesTest do
           [
             %{
               type: type,
-              contract: "dispatch_rig.ledger",
+              contract: contract,
               contract_version: "old",
               correlation_id: Ecto.UUID.generate(),
               actor: "system:old",
@@ -94,5 +94,50 @@ defmodule EhOsContract.UndeclaredTypesTest do
     refute EhOsContract.ProcessManager.elapsed() in undeclared
 
     assert capture_log(fn -> assert UndeclaredTypes.report([]) == [] end) == ""
+  end
+
+  describe "contract names (#179)" do
+    test "a name no contract has as its id is named, once, beside known ones" do
+      stored!(@declared)
+      stored!(EhOsContract.Personal.erased_type(), EhOsContract.Personal.erased_contract())
+      stored!(@declared, "DispatchRig.Ledger")
+      stored!(@declared, "DispatchRig.Ledger")
+
+      unknown = UndeclaredTypes.unknown_contracts(Repo, [@ledger.id])
+
+      assert "DispatchRig.Ledger" in unknown
+      refute @ledger.id in unknown
+      refute EhOsContract.Personal.erased_contract() in unknown
+
+      capture_log(fn ->
+        assert "DispatchRig.Ledger" in UndeclaredTypes.warn_contracts(Repo, [@ledger])
+      end)
+    end
+
+    test "an id is matched whole: a longer one sharing its start is unknown" do
+      stored!(@declared, "dispatch_rig.ledger.old")
+
+      unknown = UndeclaredTypes.unknown_contracts(Repo, [@ledger.id])
+      assert "dispatch_rig.ledger.old" in unknown
+    end
+
+    test "the warning says what the rows are, and what a reset costs" do
+      log = capture_log(fn -> UndeclaredTypes.report_contracts(["DispatchRig.Ledger"]) end)
+
+      assert log =~
+               "files events under 1 contract name(s) no contract of this application has " <>
+                 "as its id: DispatchRig.Ledger."
+
+      assert log =~ "written before rows named a contract by its id"
+      assert log =~ "when none of them is worth keeping"
+      assert capture_log(fn -> assert UndeclaredTypes.report_contracts([]) == [] end) == ""
+    end
+
+    test "a log it cannot read is reported, and the start goes on" do
+      log =
+        capture_log(fn -> assert UndeclaredTypes.warn_contracts(NoSuchRepo, [@ledger]) == [] end)
+
+      assert log =~ "could not check the event log for unknown contract names, and goes on"
+    end
   end
 end

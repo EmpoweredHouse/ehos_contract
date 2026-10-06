@@ -115,7 +115,9 @@ defmodule EhOsContract do
      projects personal data and defines no `forget/2`. After the deployment is
      recorded, `EhOsContract.UndeclaredTypes.warn/2` logs a warning, and goes on, when the log
      holds event types no contract declares — a log written before event types became
-     `"<contract id>.<event>"`, which the rest of the engine would skip silently.
+     `"<contract id>.<event>"`, which the rest of the engine would skip silently — and
+     `warn_contracts/2` when it files events under a name that is no contract's id, as a
+     log written before rows named a contract by its id does (#179).
   2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
      the log, marks the read models whose declaration changed `stale`, and rebuilds
      those that define `reset/0` (v2 §12).
