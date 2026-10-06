@@ -13,7 +13,7 @@ defmodule EhOsContract.ProcessManager do
   - **The reaction's callback**, when the reaction issues, is called with the event
     and the state before it, as `EhOsContract.ScenarioCase` calls it; what it issues
     is dispatched at once, as the process manager's actor, keyed
-    `"pm:<contract>:<name>:<event id>:<index>"`, so a second delivery appends
+    `"pm:<contract id>:<name>:<event id>:<index>"`, so a second delivery appends
     nothing. Then `evolve/2` folds the event into the state.
   - **Timers** are what the reaction declares: `sets:` schedules a
     `EhOsContract.TimerJob` — after `wait:` from the event's time, or `at:` a

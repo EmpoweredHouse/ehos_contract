@@ -3,7 +3,7 @@ defmodule EhOsContract.ProcessManagerRecord do
   A row of `eh_os_contract_process_managers`: one run of one process manager
   (`EhOsContract.ProcessManager`, v2 §10.3).
 
-  `name` is the process manager's key, `"<contract>:process_manager:<name>"`, and
+  `name` is the process manager's key, `"<contract id>:process_manager:<name>"`, and
   `correlation` the run's correlation values joined by `EhOsContract.Key`. `state`
   is its state struct in the external term format; `timers` maps each pending
   timer's name to `%{"token", "at", "correlation_id"}`, where the token is the id

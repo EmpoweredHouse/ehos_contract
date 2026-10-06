@@ -62,7 +62,7 @@ defmodule EhOsContract.Dispatcher do
      policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
      policy issues is dispatched at once, in the same transaction, as the policy's
      own actor, with the event as its cause and a key derived from it,
-     `"policy:<contract>:<name>:<event id>:<index>"` — the contract too, since the
+     `"policy:<contract id>:<name>:<event id>:<index>"` — the contract too, since the
      index of accepted keys spans the application. A rejection of it is the unit's
      answer and leaves the first command standing; anything else it raises, and an
      effect's `{:error, reason}`, rolls everything back. A policy reacting to the
@@ -1027,14 +1027,16 @@ defmodule EhOsContract.Dispatcher do
   # One job per effect delivered at least once, inserted in this transaction, so the
   # job exists exactly when the event does.
   defp enqueue!(job, pairs, repo) do
-    # Where dispatch found the effects besides the configured applications, which the
-    # key's contract id cannot name (plan DD, ID4, #178); once, not once per event.
-    application = Application.get_application(job.model.module)
-
-    jobs =
+    delivered =
       for {_event, row} <- pairs,
           effect <- Implementations.effects(job.model.module, row.type),
-          do: EffectJob.job(effect.key, row.id, application)
+          do: {effect.key, row.id}
+
+    # Where dispatch found the effects besides the configured applications, which the
+    # key's contract id cannot name (plan DD, ID4, #178): asked once, and only when
+    # there is a job to carry it.
+    application = delivered != [] && Application.get_application(job.model.module)
+    jobs = for {key, id} <- delivered, do: EffectJob.job(key, id, application || nil)
 
     if jobs != [] do
       case Oban.config() do

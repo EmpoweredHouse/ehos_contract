@@ -9,7 +9,7 @@ defmodule EhOsContract.Consumer do
   - **A read model** projects: its callback returns `:ok`.
   - **A policy** reacts: what its callback issues is dispatched at once, as the
     policy's own actor, with the event as its cause and a key derived from it,
-    `"policy:<contract>:<name>:<event id>:<index>"`. A second delivery of the event
+    `"policy:<contract id>:<name>:<event id>:<index>"`. A second delivery of the event
     therefore appends nothing. A rejection is the unit's answer and is not a
     failure; a policy reacting to the kind of event it already reacted to down one
     chain is a cycle, and raises.
@@ -35,7 +35,7 @@ defmodule EhOsContract.Consumer do
 
   @doc """
   Hands `event` to `consumer`. `chain` is the path of policies that led to the event,
-  each link `"<contract>:<policy>:<type>"`. Raises on anything but what the
+  each link `"<contract id>:<policy>:<type>"`. Raises on anything but what the
   consumer's kind returns; an effect's `{:error, reason}` is returned, since only its
   caller knows whether to roll back or to retry.
   """

@@ -50,6 +50,8 @@ defmodule EhOsContract.ContractIdRowsTest do
     till = Model.fetch(ValueRig.Till)
 
     assert Registry.unique_ids!([ledger, till]) == :ok
+    # One application listed twice, or reached twice, shows a contract twice: still one.
+    assert Registry.unique_ids!([ledger, till, ledger]) == :ok
 
     error =
       assert_raise ArgumentError, fn ->

@@ -280,7 +280,7 @@ defmodule EhOsContract.Migrations.V01 do
   end
 
   # One row per fact another application published that an inbox took (D12, v2 §16):
-  # `consumer` is the inbox, `"<contract>:inbox:<name>"`, and `key` the message's
+  # `consumer` is the inbox, `"<contract id>:inbox:<name>"`, and `key` the message's
   # key, so a second delivery, or the same fact under a new message id, finds the row
   # and is dropped. The row commits with what the inbox's policies dispatched, whose
   # commands name `id` as their cause, a UUID as every cause is; `message_id` is the

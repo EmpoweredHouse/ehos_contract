@@ -86,8 +86,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read,
   and every subscription registers again under its new key — an ordered read model and a process manager read the
   log again from its start into what they already hold, a policy and a relay from its head. An inbox's durable
-  consumer on the bus is named by its key, so a transport keeps the old one: drain it before upgrading, or what
-  was published to it and not yet taken stays there. An effect's job
+  consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
+  deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
+  to the inbox and drain it before upgrading, then delete the old consumer. An effect's job
   carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
   conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
   `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision

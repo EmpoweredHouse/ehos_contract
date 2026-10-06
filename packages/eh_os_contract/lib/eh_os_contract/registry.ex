@@ -120,7 +120,10 @@ defmodule EhOsContract.Registry do
   # time; this refuses it across the applications a node scans, which no compile sees.
   @spec unique_ids!([map()]) :: :ok
   def unique_ids!(models) do
-    for {id, [_, _ | _] = same} <- Enum.group_by(models, & &1.id, & &1.module) do
+    # A module reached twice — an application listed twice — is one contract.
+    unique = Enum.uniq_by(models, & &1.module)
+
+    for {id, [_, _ | _] = same} <- Enum.group_by(unique, & &1.id, & &1.module) do
       named =
         Enum.map_join(Enum.sort(same), " and ", fn module ->
           "#{inspect(module)} (#{inspect(Application.get_application(module))})"
@@ -129,8 +132,8 @@ defmodule EhOsContract.Registry do
       raise ArgumentError,
             "the id: #{inspect(id)} is declared by #{named}; every row and key the engine " <>
               "stores names a contract by its id, so the two would share one history. Give " <>
-              "one of them another id, or leave its application out of " <>
-              "config :eh_os_contract, applications:"
+              "one of them another id; leaving one out of the report with " <>
+              "config :eh_os_contract, exclude: does not separate their rows"
     end
 
     :ok

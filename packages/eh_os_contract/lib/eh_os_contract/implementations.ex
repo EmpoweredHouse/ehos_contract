@@ -141,7 +141,7 @@ defmodule EhOsContract.Implementations do
   name it takes from `EhOsContract.Bus`, `name` the event's name in the contract,
   `fields` what the contract reads of it, and `policies` the policies that handle it,
   each as it takes the event, in the order of their modules' names. `key`,
-  `"<contract>:inbox:<name>"`, names its rows in `eh_os_contract_inbox` and its
+  `"<contract id>:inbox:<name>"`, names its rows in `eh_os_contract_inbox` and its
   durable consumer on the transport.
   """
   @type inbox :: %{
