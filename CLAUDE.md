@@ -139,7 +139,8 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 directory). The Ecto sandbox covers tests, not Mix tasks, so one `MIX_ENV=test mix run -e '...'` leaves rows in
 the test database **for good** and breaks everything that counts records afterwards — the same trap
 `EhOsContract.Deployment.record!` sets at boot. Look at anything with `MIX_ENV=dev`; if you fall in,
-`MIX_ENV=test mix ecto.drop && mix ecto.create && mix ecto.migrate` recovers.
+`MIX_ENV=test mix ecto.drop && MIX_ENV=test mix ecto.create && MIX_ENV=test mix ecto.migrate` recovers — the
+environment on each command, since an assignment in front of one applies to that one only.
 
 **The Postgres databases are shared by every worktree**: their names are fixed (`eh_os_contract_host_test`,
 `…_dev`, `eh_os_contract_test`, …). Two traps follow, both from 4 October:
