@@ -44,7 +44,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
           [
             %{
               type: "dispatch_rig.ledger.deposited",
-              contract: "DispatchRig.Ledger",
+              contract: "dispatch_rig.ledger",
               contract_version: "commits",
               process: "ledger",
               actor: "system:commits",
@@ -150,7 +150,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
                 [
                   %{
                     type: "dispatch_rig.ledger.deposited",
-                    contract: "DispatchRig.Ledger",
+                    contract: "dispatch_rig.ledger",
                     contract_version: "commits",
                     correlation_id: Ecto.UUID.generate(),
                     actor: "system:commits",

@@ -183,7 +183,7 @@ defmodule EhOsContract.ReportRenderTest do
             {"bbbbbbbbbbbb", at}
           ] do
         Repo.insert!(%Deployment{
-          contract: inspect(Promised),
+          contract: EhOsContract.Model.fetch(Promised).id,
           contract_version: Promised.__eh_os_contract_model__().version,
           wiring_version: "wiring-#{digest}",
           events: [],

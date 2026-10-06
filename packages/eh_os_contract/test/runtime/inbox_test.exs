@@ -249,7 +249,7 @@ defmodule EhOsContract.InboxTest do
 
     Repo.insert!(%CommandRecord{
       id: Ecto.UUID.generate(),
-      contract: "BusRig.Stock",
+      contract: "bus_rig_warehouse.stock",
       type: "reserve_stock",
       outcome: "failed",
       failed_in: "policy:reserve_for_order",

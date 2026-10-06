@@ -92,7 +92,7 @@ defmodule EhOsContract.PromisePerItemTest do
 
     entry = %{
       type: "promise_per_item.per_item.#{name}",
-      contract: inspect(PerItem),
+      contract: EhOsContract.Model.fetch(PerItem).id,
       contract_version: EhOsContract.Model.fetch(PerItem).version,
       process: "inspection",
       instance_id: "inspection|#{case_id}",

@@ -249,7 +249,7 @@ defmodule EhOsContract.Conformance do
     from(e in EhOsContract.Event,
       left_join: c in EhOsContract.CommandRecord,
       on: c.id == e.command_id,
-      where: e.contract == ^inspect(model.module) and e.contract_version == ^model.version,
+      where: e.contract == ^model.id and e.contract_version == ^model.version,
       group_by: [c.type, e.type],
       select: {c.type, e.type, count(e.id)}
     )
@@ -379,7 +379,7 @@ defmodule EhOsContract.Conformance do
     since = opts[:since]
     until = opts[:until]
     types = Map.keys(names)
-    contract = inspect(model.module)
+    contract = model.id
 
     of_these =
       from(e in EhOsContract.Event,

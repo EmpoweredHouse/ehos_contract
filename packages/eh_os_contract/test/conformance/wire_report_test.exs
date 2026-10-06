@@ -52,7 +52,7 @@ defmodule EhOsContract.Conformance.WireReportTest do
     Seed.request("r-1", :request_refused)
 
     Repo.insert!(%Deployment{
-      contract: inspect(Promised),
+      contract: EhOsContract.Model.fetch(Promised).id,
       contract_version: Promised.__eh_os_contract_model__().version,
       wiring_version: "wiring-earlier",
       events: [],

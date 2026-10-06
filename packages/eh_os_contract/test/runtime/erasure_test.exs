@@ -100,7 +100,7 @@ defmodule EhOsContract.ErasureTest do
       assert erased.type == "eh_os_contract.subject_erased"
       assert erased.payload == %{"subject_type" => "member", "subject_id" => "member-anna"}
       assert erased.actor == "actor:u-officer"
-      assert erased.contract == "EhOsContract"
+      assert erased.contract == "eh_os_contract"
       assert erased.stream_id == nil
 
       # One moment: the erasure's record and its event say the same time.

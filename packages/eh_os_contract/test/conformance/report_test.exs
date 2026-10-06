@@ -263,7 +263,7 @@ defmodule EhOsContract.ReportTest do
 
     entry = %{
       type: "process_shapes.promised.#{name}",
-      contract: inspect(ProcessShapes.Promised),
+      contract: EhOsContract.Model.fetch(ProcessShapes.Promised).id,
       contract_version: "gone",
       process: "handling",
       instance_id: "handling|#{request_id}",

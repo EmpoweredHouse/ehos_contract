@@ -130,7 +130,7 @@ defmodule EhOsContract.Deployment do
 
     %{
       id: Ecto.UUID.generate(),
-      contract: inspect(contract),
+      contract: model.id,
       contract_version: model.version,
       wiring_version: EhOsContract.Digest.hash(edges ++ Enum.sort(bindings)),
       events: model.events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
@@ -167,7 +167,7 @@ defmodule EhOsContract.Deployment do
   @doc "Every recorded deployment of a contract, oldest first."
   @spec all(module()) :: [t()]
   def all(contract) do
-    name = inspect(contract)
+    name = Model.fetch(contract).id
 
     repo().all(
       from(d in __MODULE__,
@@ -290,7 +290,7 @@ defmodule EhOsContract.Deployment do
   @doc "Contract versions present in the log, with counts and time ranges."
   @spec versions_in_log(module(), keyword()) :: [map()]
   def versions_in_log(contract, opts \\ []) do
-    name = inspect(contract)
+    name = Model.fetch(contract).id
 
     # Built by composition rather than with `is_nil(^since) or ...`: Ecto refuses
     # to compare a field with a pinned nil, and rightly so — the comparison would

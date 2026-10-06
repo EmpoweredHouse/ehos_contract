@@ -58,7 +58,7 @@ defmodule EhOsContract.SchemaVersionTest do
         %{
           type: type(contract, event),
           schema_version: 9,
-          contract: inspect(contract),
+          contract: EhOsContract.Model.fetch(contract).id,
           contract_version: Model.fetch(contract).version,
           correlation_id: Ecto.UUID.generate(),
           actor: "newer-code",
@@ -95,7 +95,7 @@ defmodule EhOsContract.SchemaVersionTest do
     error = assert_raise NewerSchemaError, fn -> Consumer.decode!(%{note | schema_version: 3}) end
 
     assert Exception.message(error) ==
-             "LifecycleRig.Visits holds \"lifecycle_rig.visits.note_added\" at position #{note.position} " <>
+             "lifecycle_rig.visits holds \"lifecycle_rig.visits.note_added\" at position #{note.position} " <>
                "written with schema version 3, newer than the 2 this code declares: the code " <>
                "reading it is older than the code that wrote it"
   end

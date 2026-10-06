@@ -110,7 +110,7 @@ defmodule EhOsContract.Dependency do
     end
 
     repo().insert!(%__MODULE__{
-      contract: inspect(contract),
+      contract: EhOsContract.Model.fetch(contract).id,
       external: to_string(external),
       reason: reason,
       observed_at: now
@@ -140,7 +140,7 @@ defmodule EhOsContract.Dependency do
   """
   @spec observations_by_external(module(), keyword()) :: %{String.t() => [DateTime.t()]}
   def observations_by_external(contract, opts \\ []) do
-    name = inspect(contract)
+    name = EhOsContract.Model.fetch(contract).id
 
     from(o in __MODULE__, where: o.contract == ^name, select: {o.external, o.observed_at})
     |> bound(:>=, Keyword.get(opts, :since))

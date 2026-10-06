@@ -71,7 +71,7 @@ defmodule DispatchRig.Account do
         [
           %{
             type: "dispatch_rig.ledger.deposited",
-            contract: inspect(DispatchRig.Ledger),
+            contract: EhOsContract.Model.fetch(DispatchRig.Ledger).id,
             contract_version: "race",
             correlation_id: Ecto.UUID.generate(),
             actor: "system:race",

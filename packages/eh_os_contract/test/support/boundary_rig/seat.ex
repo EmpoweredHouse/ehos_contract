@@ -42,7 +42,7 @@ defmodule BoundaryRig.Seat do
         [
           %{
             type: "boundary_rig.enrolment.student_subscribed",
-            contract: inspect(BoundaryRig.Enrolment),
+            contract: EhOsContract.Model.fetch(BoundaryRig.Enrolment).id,
             contract_version: "race",
             tags: ["course_id:#{course}", "student_id:#{student}"],
             correlation_id: Ecto.UUID.generate(),

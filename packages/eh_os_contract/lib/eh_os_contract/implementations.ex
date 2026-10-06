@@ -182,17 +182,34 @@ defmodule EhOsContract.Implementations do
   configured applications and the application of the contract the key names, so an
   effect's job finds the effect its dispatch enqueued it for.
   """
-  @spec consumer(String.t()) :: consumer() | nil
-  def consumer(key) do
+  @spec consumer(String.t(), atom() | nil) :: consumer() | nil
+  def consumer(key, application \\ nil) do
     [contract | _] = String.split(key, ":")
-    Enum.find(index(existing(contract)).consumers, &(&1.key == key))
+
+    Enum.find(
+      index_of(List.wrap(application) ++ List.wrap(own(existing(contract)))).consumers,
+      &(&1.key == key)
+    )
   end
+
+  defp own(nil), do: nil
+  defp own(contract), do: Application.get_application(contract)
 
   defp existing(contract) do
     Module.safe_concat([contract])
   rescue
     ArgumentError -> nil
   end
+
+  @doc """
+  The contract whose `id` is `id`, or `nil`: what a row of the log or a consumer's key
+  names (plan DD, ID4, #178). Looked up among the configured applications and
+  `application`, when given — the one a dispatch also looked in, which an id cannot
+  name. The whole id, never a prefix of it, so `clinic.a` never finds `clinic.a.b`.
+  """
+  @spec contract(String.t(), atom() | nil) :: map() | nil
+  def contract(id, application \\ nil) when is_binary(id),
+    do: Map.get(index_of(List.wrap(application)).contracts, id)
 
   @doc false
   @spec index(module() | nil) :: %{
@@ -202,14 +219,13 @@ defmodule EhOsContract.Implementations do
           consumers: [consumer()],
           subscribed: [consumer()],
           inboxes: [inbox()],
-          included: %{String.t() => [%{name: atom(), correlate: [atom()]}]}
+          included: %{String.t() => [%{name: atom(), correlate: [atom()]}]},
+          contracts: %{String.t() => map()}
         }
-  def index(contract) do
-    apps =
-      Enum.uniq(
-        List.wrap(Application.get_env(:eh_os_contract, :applications)) ++
-          List.wrap(contract && Application.get_application(contract))
-      )
+  def index(contract), do: index_of(List.wrap(contract && Application.get_application(contract)))
+
+  defp index_of(also) do
+    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)) ++ also)
 
     key = {__MODULE__, apps}
 
@@ -266,7 +282,8 @@ defmodule EhOsContract.Implementations do
         contracts
         |> Enum.flat_map(&inboxes(&1, declarations))
         |> Enum.sort_by(& &1.key),
-      included: included(contracts)
+      included: included(contracts),
+      contracts: Map.new(contracts, &{&1.id, &1})
     }
   end
 

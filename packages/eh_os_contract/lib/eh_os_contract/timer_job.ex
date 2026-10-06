@@ -113,7 +113,7 @@ defmodule EhOsContract.TimerJob do
         [
           %{
             type: ProcessManager.elapsed(),
-            contract: inspect(contract),
+            contract: Model.fetch(contract).id,
             contract_version: Model.fetch(contract).version,
             actor: "timer:#{name}",
             correlation_id: timer["correlation_id"],

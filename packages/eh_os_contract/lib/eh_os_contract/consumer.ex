@@ -120,8 +120,9 @@ defmodule EhOsContract.Consumer do
 
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
-  type, with `__meta__` from the row. Raises when no contract of the host declares the
-  type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
+  type, with `__meta__` from the row, found by the id the row names among the configured
+  applications and `application` (`EhOsContract.Implementations.contract/2`). Raises
+  when no contract of the host declares the type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
   when the row was written with a newer version of the event's fields than this code
   declares (plan W1).
 
@@ -131,19 +132,19 @@ defmodule EhOsContract.Consumer do
   erasure itself, `eh_os_contract.subject_erased`, is declared by no contract, and
   reads as the `EhOsContract.Erased` it names.
   """
-  @spec decode!(Event.t()) :: struct()
-  def decode!(%Event{type: type, payload: payload} = row) do
+  @spec decode!(Event.t(), atom() | nil) :: struct()
+  def decode!(%Event{type: type, payload: payload} = row, application \\ nil) do
     if type == Personal.erased_type(),
       do: Personal.erased_event(payload),
-      else: decode_declared!(row)
+      else: decode_declared!(row, application)
   end
 
-  defp decode_declared!(row) do
+  defp decode_declared!(row, application) do
     model =
-      case Model.fetch(Module.safe_concat([row.contract])) do
-        %{kind: :contract, units: _} = model -> model
-        _other -> raise ArgumentError, "#{row.contract} is not a contract"
-      end
+      Implementations.contract(row.contract, application) ||
+        raise ArgumentError,
+              "#{inspect(row.contract)} is the id of no contract of the configured " <>
+                "applications, and the event at position #{row.position} names it"
 
     values = Codec.values(model.domain)
     [decoded] = decode_all!(model, values, [row])
@@ -220,14 +221,12 @@ defmodule EhOsContract.Consumer do
   @spec newer?(Event.t()) :: boolean()
   def newer?(%Event{type: type, schema_version: written} = row) when is_integer(written) do
     with false <- type == Personal.erased_type(),
-         %{kind: :contract} = model <- Model.fetch(Module.safe_concat([row.contract])),
+         %{kind: :contract} = model <- Implementations.contract(row.contract),
          %{schema_version: declared} <- Enum.find(model.events, &(&1.type == type)) do
       written > declared
     else
       _cannot_place -> false
     end
-  rescue
-    ArgumentError -> false
   end
 
   def newer?(_row), do: false

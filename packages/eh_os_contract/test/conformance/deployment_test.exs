@@ -12,7 +12,10 @@ defmodule EhOsContract.DeploymentTest do
   alias ProcessShapes.Seed
 
   defp row(contract),
-    do: Repo.one!(from(d in Deployment, where: d.contract == ^inspect(contract)))
+    do:
+      Repo.one!(
+        from(d in Deployment, where: d.contract == ^EhOsContract.Model.fetch(contract).id)
+      )
 
   test "the boot records a v2 contract, its steps as its paths, and its wiring" do
     Deployment.record!()
@@ -50,7 +53,7 @@ defmodule EhOsContract.DeploymentTest do
 
     wirings =
       Repo.all(
-        from(d in Deployment, where: d.contract == "ValueRig.Till", select: d.wiring_version)
+        from(d in Deployment, where: d.contract == "value_rig.till", select: d.wiring_version)
       )
 
     assert length(wirings) == 2
@@ -97,7 +100,7 @@ defmodule EhOsContract.DeploymentTest do
           {"bbbbbbbbbbbb", ~U[2026-08-05 09:00:00.000000Z]}
         ] do
       Repo.insert!(%Deployment{
-        contract: inspect(Promised),
+        contract: EhOsContract.Model.fetch(Promised).id,
         contract_version: Promised.__eh_os_contract_model__().version,
         wiring_version: "wiring-#{digest}",
         events: [],

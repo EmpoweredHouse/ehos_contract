@@ -111,7 +111,7 @@ defmodule EhOsContract.Coverage do
 
   defp decisions(model, opts) do
     from(c in CommandRecord,
-      where: c.contract == ^inspect(model.module) and c.outcome in ["accepted", "rejected"],
+      where: c.contract == ^model.id and c.outcome in ["accepted", "rejected"],
       select: %{
         command: c.type,
         outcome: c.outcome,

@@ -1027,7 +1027,7 @@ defmodule EhOsContract.Dispatcher do
     jobs =
       for {_event, row} <- pairs,
           effect <- Implementations.effects(job.model.module, row.type),
-          do: EffectJob.job(effect.key, row.id)
+          do: EffectJob.job(effect.key, row.id, Application.get_application(job.model.module))
 
     if jobs != [] do
       case Oban.config() do
@@ -1062,7 +1062,7 @@ defmodule EhOsContract.Dispatcher do
       accepted == nil ->
         :new
 
-      accepted.contract == inspect(job.model.module) and
+      accepted.contract == job.model.id and
           accepted.type == job.type ->
         events =
           repo.all(from(e in Event, where: e.command_id == ^accepted.id, order_by: e.position))
@@ -1261,7 +1261,7 @@ defmodule EhOsContract.Dispatcher do
       # older code refuses it instead of misreading it, and an upcaster (V1) knows
       # what it starts from. Until W1 every row said 1, the column's default.
       schema_version: declaration.schema_version,
-      contract: inspect(model.module),
+      contract: model.id,
       contract_version: model.version,
       tags: tags(declaration, event, values, time_zone(model)),
       process: model.process && Atom.to_string(model.process.name),
@@ -1358,7 +1358,7 @@ defmodule EhOsContract.Dispatcher do
         Map.merge(
           %{
             id: Map.get(job, :command_id) || Ecto.UUID.generate(),
-            contract: inspect(model.module),
+            contract: model.id,
             type: job.type,
             issued_by: Actor.label(ctx.actor),
             idempotency_key: if(outcome == "accepted", do: ctx.idempotency_key),
