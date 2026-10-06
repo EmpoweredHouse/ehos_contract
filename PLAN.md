@@ -506,7 +506,7 @@ Opis E13 niżej zostaje jako zapis; tam, gdzie się różnią, rację ma ten dop
    co mówi proces” z logu (moduledoc `Brief`: inne pytanie, inny czytelnik, inny moment). Najwyżej przeniesiemy.
 9. **Renderer rozstrzyga prototyp** (krok 1 E13b), wybór zatwierdza użytkownik.
 
-**Otwarte — strony modelu** (`mix eh_os_contract.pages`), do decyzji przed E13b. Użytkownik: mogą się przydać jako
+**Otwarte — strony modelu** (`mix eh_os_contract.pages`), do decyzji przed E13b. *Rozstrzygnięte 6 października: (b) — niżej, „E13a, batch 2”.* Użytkownik: mogą się przydać jako
 „LLM wiki”, więc zostają i mają działać. Do wyboru: (a) Mermaid w Markdownie — `Graph.Mermaid` przepisany na
 dokument i przeniesiony pod strony (np. `EhOsContract.Pages.Mermaid`), kilka godzin; koszt: paleta w dwóch
 miejscach i wyjątek od „Mermaid wypada” zapisany z datą (E13 odrzuciło to samo dla `Brief`: „Mermaid w silniku dla
@@ -607,7 +607,7 @@ Szacunek (zgrubny, sprzed prototypu): E13a ~4–6 dni, E13b ~6–9 dni.
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 1 z 5 (niżej) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 2 z 5 (niżej) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -654,6 +654,75 @@ osobny dokument (krok 4); (5) endpointy, `--json`, dane sandboxa, zapisy (kroki 
   dwa. Poprawka, nie regres.
 - **Przegląd przed commitem** (agent, diff batcha): podział i obietnica trzymają się; poprawione kierunki nazw
   relacji, opis reguły `id` dla zdarzeń konsumowanych i słabe asercje nowego testu.
+
+### E13a, batch 2 — what came out (6 October)
+
+- **The user's decision on the model pages (6 October): option (b).** The pages lose their diagrams and get the
+  contract's `graph.v1` document written beside them, linked from the page; Mermaid is not kept there. Built in
+  batch 5, with the other ways the document leaves the engine (HTTP, `--json`), when it already carries the panels'
+  content. *Rejected:* (a), Mermaid kept for the pages — the palette in two places and an exception to "Mermaid
+  goes"; doing it in this batch — a larger diff for a document that is not complete yet.
+- **The user's decision on granularity (6 October): one document per contract, one per domain.** The contract's
+  holds every picture the Graph screen shows of it — full graph, the process's declared shape, each unit, each
+  lifecycle — so a renderer switches between them and opens panels without another request; the domain's holds the
+  context map and the system (actors come in batch 3). Units and lifecycles are keyed by the id of the unit's group
+  on the full graph, so a reader goes from the group it was shown to the unit's pictures by the id it already has.
+  *Rejected:* a document per graph — more requests and an index of graphs for nothing; to be revisited if a reader
+  needs it.
+- **The contract between the engine and the renderer is the JSON format, not a function**: the dashboard gets the
+  document from a function in the same process, Console will get the same bytes over HTTP, and the renderer
+  (E13b) sees no difference. So the schema written here is that contract.
+- **The declared shape is data** (`EhOsContract.Graph.Declared`): each stage a group, in the process's order; that
+  order an edge `precedes` from one stage's group to the next — the only edge on any graph that ends at a group,
+  which the schema and the tests allow for that relation alone; an event with its `stage` and `terminal`; a
+  promise an edge `eventually` (with `within`) and `or_else`, both naming the promise; `depends_on` to the domain's
+  external. Included events have the id they have on the contract's full graph. Everything about the look — empty
+  lane placeholder, "no order claimed inside", the classes — moved to `Graph.Mermaid.declared/1`.
+- **The document** (`Document.contract/1`, `Document.domain/2`): `schema: "eh_os_contract.graph.v1"`, `kind`, what
+  it is of, the contract's `version`, `graphs`, and `digest` over the rest with `EhOsContract.Digest`, as the model
+  export and AsyncAPI do. Nothing from the log: the documents are built without `overlay:`, and the schema closes
+  every object, so a key of the overlay fails it. `undeclared` (a move the lifecycle does not allow, seen in the
+  log) is left out of the schema's relations — it exists only with the log, so batch 4 decides where it goes.
+  `Model.json_data/1` became public, so both exports share one projection to JSON.
+- **The schema** `packages/eh_os_contract/priv/schema/graph.v1.json` (JSON Schema 2020-12) ships with the package
+  (`files:` now carries `priv/schema`, and nothing else of `priv/`); node kinds, group kinds and relations are
+  enums, and a few kinds require what they alone have (a state its fields, a constraint its command, a promise edge
+  its promise). It describes what exists today; batch 3 extends it with the panels' content, still as v1, since
+  nothing reads it yet.
+- **Tests**: the package holds every fixture's document to the schema with JSV (`only: :test`, the version
+  `eh_os_contract_auth` uses), checks it is JSON as it stands, its digest, that two builds are equal, that every
+  edge ends where its relation allows, and that the schema refuses an overlay key, a look and an unknown relation;
+  the sandbox holds every TaxVision, Rehmed and AppUnite document to it. The sandbox declares JSV `runtime: false`,
+  not `only: :test`: Mix refuses to narrow a dependency `eh_os_contract_auth` declares for every environment.
+- **Checked:** the 216 sandbox diagrams and pages (every contract with and without the log, declared shapes,
+  units, lifecycles with and without the log, maps, systems, `Pages.render/2`) are byte for byte what they were
+  before the batch.
+- **Not yet:** byte-stable JSON encoding for `ETag` and "the same bytes after a restart" — Jason writes small maps
+  in key order, but the endpoint (batch 5) should encode with sorted keys rather than rely on it.
+- **Review before commit** (an agent, on the batch's diff; the user asked whether it holds to "defining the graph
+  apart from drawing it"). The separation holds: no wording, layout or look in the data or the schema. Taken:
+  - **every edge has an id** — its relation, its two ends and what tells it apart from another edge of that
+    relation between them (`event`, `promise`, `field`, `as`); the overlay (batch 4) puts the numbers of a step or a
+    transition on edges, so without an id the overlay and the renderer would each invent a composite key. Unique
+    on every graph of every fixture and client tree (tested);
+  - **a domain's document does not depend on the order of the contracts given** — `Graph.System.build` draws in
+    input order, so the dashboard and an HTTP caller listing them differently got two digests; `Document.domain/2`
+    sorts them (tested by reversing the list);
+  - tests that could not fail replaced: a relabelled node moves the digest, the reversed list gives the same
+    document; a golden digest rejected — it moves with every deliberate change to a graph and says nothing then;
+  - the schema tightened: `within.unit` an enum of `EhOsContract.Duration`'s units (a renderer words the window
+    without the engine), `name` and `label` null only on a lifecycle's start, `stage` and `terminal` only on an
+    event, an event in no stage said in `stage`'s description, a `$id` (`urn:eh-os-contract:schema:graph.v1`) for
+    the copy the renderer will carry.
+- **Open before batch 3 — where panel content lives.** The reviewer's point: the same event id is a node on up to
+  four graphs of one document (full graph, declared shape, unit, and as a consulted event elsewhere), and panel
+  content (fields, personal data, `by:`, scenarios) attached to each node would be copied that many times, leaving
+  the renderer to pick a copy. The alternative: a top-level `declarations` map keyed by id with the panel content,
+  graph nodes staying structural (`id`, `kind`, `name`, `label`, and what is placement on that graph, like
+  `stage`). To decide with the user when batch 3 starts.
+- **Left as it is, known:** an included event's external is scoped to this contract's domain, as on the full graph
+  (batch 1) — wrong only if a contract could include an event from another domain's contract; and the system's
+  contract node takes the module's last segment as its label (batch 1), a fallback rather than a look.
 
 ### Wobec programu DD
 

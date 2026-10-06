@@ -195,20 +195,26 @@ defmodule EhOsContract.Model do
     Map.put(body, "digest", EhOsContract.Digest.document_hash(body))
   end
 
-  defp json_data(nil), do: nil
-  defp json_data(value) when is_boolean(value) or is_binary(value) or is_number(value), do: value
+  @doc """
+  `value` as JSON-ready data, the one projection every export of the engine shares
+  (`to_data/1`, `EhOsContract.Graph.Document`): atom keys and values become strings,
+  a module loses its `Elixir.` prefix, a tuple becomes a list, and `nil` stays `nil`.
+  """
+  @spec json_data(term()) :: term()
+  def json_data(nil), do: nil
+  def json_data(value) when is_boolean(value) or is_binary(value) or is_number(value), do: value
 
-  defp json_data(value) when is_atom(value) do
+  def json_data(value) when is_atom(value) do
     case Atom.to_string(value) do
       "Elixir." <> module -> module
       name -> name
     end
   end
 
-  defp json_data(value) when is_tuple(value), do: value |> Tuple.to_list() |> json_data()
-  defp json_data(value) when is_list(value), do: Enum.map(value, &json_data/1)
+  def json_data(value) when is_tuple(value), do: value |> Tuple.to_list() |> json_data()
+  def json_data(value) when is_list(value), do: Enum.map(value, &json_data/1)
 
-  defp json_data(value) when is_map(value) do
+  def json_data(value) when is_map(value) do
     value
     |> :maps.to_list()
     |> Map.new(fn {key, item} -> {json_key(key), json_data(item)} end)

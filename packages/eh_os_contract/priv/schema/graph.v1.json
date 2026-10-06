@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eh-os-contract:schema:graph.v1",
+  "title": "eh_os_contract graph.v1",
+  "description": "The graphs of a contract or a domain as data: what is declared, with nothing of how it is drawn and nothing from the log. Ids are opaque: a reader joins on them and never takes them apart. An edge goes from its source to its target and its relation reads in that direction.",
+  "oneOf": [
+    { "$ref": "#/$defs/contract_document" },
+    { "$ref": "#/$defs/domain_document" }
+  ],
+  "$defs": {
+    "contract_document": {
+      "type": "object",
+      "required": ["schema", "kind", "contract", "domain", "version", "graphs", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": { "const": "eh_os_contract.graph.v1" },
+        "kind": { "const": "contract" },
+        "contract": { "type": "string", "description": "The contract's module." },
+        "domain": { "type": "string", "description": "The module of the domain it names." },
+        "version": { "type": "string", "description": "The contract version: a hash of its declarations." },
+        "digest": { "$ref": "#/$defs/digest" },
+        "graphs": {
+          "type": "object",
+          "required": ["contract", "process", "units", "lifecycles"],
+          "additionalProperties": false,
+          "properties": {
+            "contract": { "$ref": "#/$defs/graph", "description": "The full graph: steps, who acts, who reads, the outside world." },
+            "process": {
+              "description": "The process's declared shape: stages, events, promises; null without a process.",
+              "oneOf": [{ "$ref": "#/$defs/graph" }, { "type": "null" }]
+            },
+            "units": {
+              "description": "Each unit's graph, keyed by the id of the unit's group on the full graph.",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/graph" }
+            },
+            "lifecycles": {
+              "description": "Each aggregate's lifecycle, keyed by the id of the unit's group on the full graph.",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/graph" }
+            }
+          }
+        }
+      }
+    },
+    "domain_document": {
+      "type": "object",
+      "required": ["schema", "kind", "domain", "graphs", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": { "const": "eh_os_contract.graph.v1" },
+        "kind": { "const": "domain" },
+        "domain": { "type": "string", "description": "The domain's module." },
+        "digest": { "$ref": "#/$defs/digest" },
+        "graphs": {
+          "type": "object",
+          "required": ["context_map", "system"],
+          "additionalProperties": false,
+          "properties": {
+            "context_map": { "$ref": "#/$defs/graph", "description": "Subdomains, their contexts, the external systems and the relations between them." },
+            "system": { "$ref": "#/$defs/graph", "description": "The domain's contracts, grouped by context, and what flows between them." }
+          }
+        }
+      }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$",
+      "description": "A hash of the document without this key."
+    },
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "edges", "groups"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "name", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "kind": {
+          "enum": [
+            "command", "event", "policy", "process_manager", "effect", "timer",
+            "actor", "state", "read_model", "query", "invariant", "constraint",
+            "external", "context", "contract", "publication", "status", "start"
+          ]
+        },
+        "name": { "type": ["string", "null"], "description": "The declaration's name; null only on a lifecycle's start." },
+        "label": { "type": ["string", "null"], "description": "The client's words, or the name where there are none; null only on a lifecycle's start." },
+        "command": { "type": "string", "description": "A constraint's command." },
+        "unit_kind": { "$ref": "#/$defs/unit_kind" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/state_field" } },
+        "final": { "type": "boolean", "description": "Whether a lifecycle's status is an end." },
+        "process": { "type": ["string", "null"], "description": "A contract's process label, on the system." },
+        "stage": { "type": ["string", "null"], "description": "The stage an event sits in, on a declared shape; null where it sits in none, and then it is in no stage's group." },
+        "terminal": { "type": "boolean", "description": "Whether an event ends a run, on a declared shape." }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "start" } } },
+          "then": { "properties": { "name": { "type": "null" }, "label": { "type": "null" } } },
+          "else": { "properties": { "name": { "type": "string" }, "label": { "type": "string" } } }
+        },
+        { "if": { "properties": { "kind": { "not": { "const": "event" } } } }, "then": { "not": { "anyOf": [{ "required": ["stage"] }, { "required": ["terminal"] }] } } },
+        { "if": { "properties": { "kind": { "const": "state" } } }, "then": { "required": ["unit_kind", "fields"] } },
+        { "if": { "properties": { "kind": { "const": "constraint" } } }, "then": { "required": ["command"] } },
+        { "if": { "properties": { "kind": { "const": "status" } } }, "then": { "required": ["final"] } }
+      ]
+    },
+    "state_field": {
+      "type": "object",
+      "required": ["name", "type", "identity", "optional"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/$defs/field_type" },
+        "identity": { "type": "boolean" },
+        "optional": { "type": "boolean" }
+      }
+    },
+    "field_type": {
+      "description": "A DSL type: a built-in or a domain value by name, or a compound as a list whose first item says which (list, enum, id).",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "minItems": 1, "prefixItems": [{ "type": "string" }] }
+      ]
+    },
+    "unit_kind": { "enum": ["aggregate", "dcb"] },
+    "edge": {
+      "type": "object",
+      "required": ["id", "from", "to", "relation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "The relation, the two ends and what tells the edge apart from another of that relation between them; what the log's numbers join on." },
+        "from": { "type": "string", "description": "A node's id, or a group's for precedes." },
+        "to": { "type": "string", "description": "A node's id, or a group's for precedes." },
+        "relation": {
+          "enum": [
+            "emits", "handled_by", "issues", "fires", "sets_timer", "records", "asks",
+            "projected_into", "reads", "calls", "depends_on", "backed_by", "gives",
+            "refused_on", "builds", "consulted_by", "transition", "consumed_by",
+            "publishes", "subscribed_by", "precedes", "eventually", "or_else",
+            "partnership", "shared_kernel", "separate_ways", "customer_supplier",
+            "conformist", "anticorruption_layer", "open_host_service", "published_language"
+          ]
+        },
+        "delivery": { "enum": ["inline", "async"], "description": "In the dispatch's transaction or after it." },
+        "scenarios": { "type": "integer", "minimum": 1, "description": "How many scenarios pin this path; absent where none." },
+        "field": { "type": "string" },
+        "match": { "type": "array", "items": { "type": "string" } },
+        "event": { "type": "string" },
+        "label": { "type": "string" },
+        "events": { "type": "array", "items": { "type": "string" } },
+        "as": { "type": "string" },
+        "promise": { "type": "string" },
+        "within": {
+          "type": "object",
+          "required": ["amount", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "amount": { "type": "integer", "minimum": 1 },
+            "unit": { "enum": ["second", "minute", "hour", "day"] }
+          }
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "relation": { "enum": ["eventually", "or_else"] } } }, "then": { "required": ["promise"] } },
+        { "if": { "properties": { "relation": { "const": "gives" } } }, "then": { "required": ["field"] } },
+        { "if": { "properties": { "relation": { "const": "consumed_by" } } }, "then": { "required": ["events"] } },
+        { "if": { "properties": { "relation": { "const": "publishes" } } }, "then": { "required": ["event"] } },
+        { "if": { "properties": { "relation": { "const": "subscribed_by" } } }, "then": { "required": ["as"] } },
+        { "if": { "properties": { "relation": { "const": "transition" } } }, "then": { "required": ["event", "label"] } }
+      ]
+    },
+    "group": {
+      "type": "object",
+      "required": ["id", "kind", "name", "label", "nodes"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["unit", "subdomain", "context", "stage"] },
+        "name": { "type": "string" },
+        "label": { "type": "string" },
+        "nodes": { "type": "array", "items": { "type": "string" }, "description": "The ids of its nodes; a stage may have none." },
+        "unit_kind": { "$ref": "#/$defs/unit_kind" },
+        "type": { "enum": ["core", "supporting", "generic"], "description": "A subdomain's type." }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "unit" } } }, "then": { "required": ["unit_kind"] } },
+        { "if": { "properties": { "kind": { "const": "subdomain" } } }, "then": { "required": ["type"] } }
+      ]
+    }
+  }
+}

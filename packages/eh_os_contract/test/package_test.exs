@@ -36,11 +36,15 @@ defmodule EhOsContract.PackageTest do
     assert File.exists?("CHANGELOG.md")
   end
 
-  test "nothing under priv/ ships", %{config: config} do
-    # The only thing there is this package's own test migration — an artifact of
-    # testing `EhOsContract.Migrations` against itself, and nothing a consumer should get.
-    # Hex's default `files:` would include it.
-    refute Enum.any?(config[:package][:files], &String.starts_with?(&1, "priv"))
+  test "of priv/ only the graph schema ships", %{config: config} do
+    # The rest is this package's own test migration — an artifact of testing
+    # `EhOsContract.Migrations` against itself, and nothing a consumer should get. Hex's
+    # default `files:` would include it. The schema is what a renderer holds a graph
+    # document to (plan E13a).
+    assert Enum.filter(config[:package][:files], &String.starts_with?(&1, "priv")) ==
+             ["priv/schema"]
+
+    assert File.exists?("priv/schema/graph.v1.json")
     refute Enum.any?(config[:package][:files], &String.starts_with?(&1, "test"))
   end
 

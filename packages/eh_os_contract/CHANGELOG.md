@@ -73,6 +73,17 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the
   history of a contract removed on purpose. The log's distinct types are read one index step each, so a long log
   costs no more than a short one with as many types.
+- **E13a: the graphs as `graph.v1` documents.** `EhOsContract.Graph.Document.contract/1` gives a contract's
+  document — its full graph, its process's declared shape, each unit's graph and each lifecycle, keyed by the
+  unit's group id — and `Document.domain/2` a domain's: its context map and its contracts as one system. Both are
+  JSON-ready, say `"schema": "eh_os_contract.graph.v1"`, carry a `"digest"` of the rest (`Document.digest/1`), and
+  hold nothing from the log, so the same contract gives the same document. Their JSON Schema ships in
+  `priv/schema/graph.v1.json` (`Document.schema_path/0`), the one thing under `priv/` the package now carries.
+  The declared shape is data too (`EhOsContract.Graph.Declared.build/2`): stages as groups, `precedes` between
+  them, promises as `eventually` and `or_else` edges; `Graph.declared_to_mermaid/2` draws it byte for byte as
+  before. Every edge now has an `id` too — its relation, its ends and what tells it apart from another between
+  them — which the log's numbers will join on. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
+  moves.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the

@@ -80,6 +80,92 @@ defmodule EhOsContract.Graph.Mermaid do
   end
 
   @doc """
+  A process's declared shape (`EhOsContract.Graph.Declared`) as a Mermaid flowchart,
+  top to bottom, drawn as it was before it was data: its stages as lanes, each titled
+  by its label, the events in them by their names, an arrow between consecutive lanes,
+  a promise as a heavy arrow carrying its window and its `or_else` as a dotted one, an
+  external a dashed cylinder hung off the events resting on it, and the terminal events
+  and the externals in a class of their own. Without stages, every event is drawn
+  free; with them, only those in a stage.
+  """
+  @spec declared(Document.graph()) :: String.t()
+  def declared(graph) do
+    by_id = Map.new(graph.nodes, &{&1.id, &1})
+    groups = Map.new(graph.groups, &{&1.id, &1})
+    events = for %{kind: :event} = e <- graph.nodes, do: e
+    externals = for %{kind: :external} = e <- graph.nodes, do: e
+    name = fn id -> Map.fetch!(by_id, id).name end
+    edges = fn relations -> for e <- graph.edges, e.relation in relations, do: e end
+
+    Enum.join(
+      ["flowchart TB"] ++
+        lanes(graph.groups, events, by_id) ++
+        for(
+          e <- edges.([:precedes]),
+          do: "    stage_#{groups[e.from].name} --> stage_#{groups[e.to].name}"
+        ) ++
+        Enum.map(edges.([:eventually, :or_else]), &promise_line(&1, name)) ++
+        for(x <- externals, do: ~s|    #{x.name}[("#{escape(x.label)}")]|) ++
+        for(e <- edges.([:depends_on]), do: "    #{name.(e.from)} -.- #{name.(e.to)}") ++
+        assigned(for(e <- events, e.terminal, do: e.name), "terminal") ++
+        assigned(Enum.map(externals, & &1.name), "external") ++
+        [
+          "    classDef terminal fill:#c8e6c9,stroke:#2e7d32,color:#000",
+          "    classDef external fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3"
+        ],
+      "\n"
+    )
+  end
+
+  defp lanes([], events, _by_id),
+    do: for(e <- events, do: ~s(    #{e.name}["#{escape(e.label)}"]))
+
+  defp lanes(stages, _events, by_id) do
+    for stage <- stages do
+      in_stage = Enum.map(stage.nodes, &Map.fetch!(by_id, &1))
+
+      body =
+        case in_stage do
+          [] -> [~s(        stage_#{stage.name}_empty[" "])]
+          _ -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
+        end
+
+      [~s(    subgraph stage_#{stage.name}["#{escape(lane_title(stage.label, in_stage))}"])] ++
+        body ++ ["    end"]
+    end
+    |> List.flatten()
+  end
+
+  # **A lane holding more than one event says so on its title.**
+  #
+  # Inside a stage a contract claims nothing about order, so those events are
+  # drawn with no arrows between them — and to a reader who has not been told the
+  # rule, boxes with no arrows read as *unfinished*, not as *deliberately
+  # unordered*. The two collect completely different corrections, and the whole
+  # point of putting this in front of a process owner is the corrections.
+  #
+  # One event alone carries no marker: there is nothing there to order.
+  defp lane_title(title, [_, _ | _]), do: "#{title} · no order claimed inside"
+  defp lane_title(title, _one_or_none), do: title
+
+  # An arrow with a number on it is a claim somebody can disagree with.
+  defp promise_line(%{relation: :eventually} = e, name) do
+    window =
+      case Map.get(e, :within) do
+        nil -> "eventually"
+        w -> "within #{EhOsContract.Duration.humanize({w.amount, w.unit})}"
+      end
+
+    "    #{name.(e.from)} ==>|#{window}| #{name.(e.to)}"
+  end
+
+  defp promise_line(%{relation: :or_else} = e, name),
+    do: "    #{name.(e.from)} -.->|or else| #{name.(e.to)}"
+
+  defp assigned([], _class), do: []
+  defp assigned(names, class), do: ["    class #{Enum.join(names, ",")} #{class}"]
+
+  @doc """
   A label with what would end it or be read as markup replaced: a double quote, which
   ends a quoted Mermaid label; a line break, which ends the line the label is on — and
   in a Markdown page, a line of three backticks after it would end the diagram's

@@ -72,7 +72,13 @@ defmodule EhOsContractHost.MixProject do
       # dead-render HTML — not optional, and not visible in
       # phoenix_live_view's own dependency tree (packages/eh_os_contract_web hit the
       # same thing first).
-      {:lazy_html, ">= 0.1.0", only: :test}
+      {:lazy_html, ">= 0.1.0", only: :test},
+      # The graph documents of every client tree are held to the engine's schema
+      # (plan E13a). Direct, although `:eh_os_contract_auth` brings it: the same
+      # reasoning as `:telemetry` above. Not `only: :test`, which Mix refuses for a
+      # dependency `:eh_os_contract_auth` declares for every environment; `runtime:
+      # false` as there, so it is not started with the host.
+      {:jsv, "~> 0.25.0", runtime: false}
     ]
   end
 
