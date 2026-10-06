@@ -124,6 +124,24 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
+  test "a document's bytes depend on its content alone: every object's keys in order" do
+    document = Document.contract(DispatchRig.Ledger)
+    encoded = Document.encode(document)
+
+    assert Jason.decode!(encoded) == document
+
+    # A map of more than 32 keys, which Erlang keeps unordered, has them in order,
+    # however deep in lists and maps it sits.
+    large = Map.new(for i <- 1..40, do: {"k#{String.pad_leading("#{i}", 2, "0")}", i})
+    keys = for i <- 1..40, do: ~s("k#{String.pad_leading("#{i}", 2, "0")}":#{i})
+    in_order = "{" <> Enum.join(keys, ",") <> "}"
+    assert Document.encode(large) == in_order
+    assert Document.encode(%{"a" => [%{"b" => large}]}) == ~s({"a":[{"b":#{in_order}}]})
+
+    assert Document.encode(%{"b" => 1, "a" => %{"d" => 1, "c" => 2}}) ==
+             ~s({"a":{"c":2,"d":1},"b":1})
+  end
+
   test "the same declarations give the same documents, digests included" do
     assert documents() == documents()
   end

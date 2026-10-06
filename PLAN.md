@@ -629,7 +629,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 5 z 6 (niżej) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy na gałęzi; merge `main`, `pre-pr-review` i PR z użytkownikiem (niżej) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1218,6 +1218,50 @@ are refused — merging them per pair makes it not matter.
   every step's relation, for `pending: true`, for the period's other numbers and `until`; the sandbox test joins
   `observed` ids too; the domain overlay's `undeclared` held empty by the schema. *Rejected:* `propertyNames`
   patterns on the maps — ids are opaque, and the join test checks every key.
+
+### E13a, batch 6 — what came out (6 October)
+
+- **HTTP** (`eh_os_contract_web`, `EhOsContract.Web.Api.Graph`, in `eh_os_contract_api/2` behind the same resolver as
+  `/model`): `GET <mount>/graph` (contracts and domains with version and digest), `/graph/My.Contract` (the document,
+  its digest as the `ETag`, `304` on `If-None-Match`, weak tags, lists and `*` included), `/graph/My.Contract/overlay
+  ?since=…&until=…`, `/graph/domain/My.Domain` and its overlay; outside the registry `404`. A domain is addressed by
+  its module, as a contract is; the task takes the domain's name, as it always has.
+- **Byte-stable JSON:** `Graph.Document.encode/2` writes every object's keys in order at every depth (Jason keeps a
+  map of more than 32 keys in hash order). The endpoint, the task and the pages all write through it, so the
+  document served is the function's byte for byte (tested).
+- **Task:** `mix eh_os_contract.graph --json --contract M | --system NAME [--overlay [--since AT]]`; refused with
+  `--unit`, `--lifecycle`, `--process`, `--mermaid` (a document holds every picture). Mermaid flags stay to E13b.
+- **Model pages, decision (b):** `mix eh_os_contract.pages` writes each contract's document, without the log, as
+  `graph/<Contract>.json` and links it from the contract's page. Such a file cannot carry the pages' marker, so the
+  task takes one as its own only by content and place — a `graph.v1` contract document of this domain at the path
+  the task gives that contract (`Pages.graph?/3`) — so a copy a person saved elsewhere under `graph/` stays.
+- **Plan step 8 skipped** (decision 6): no sandbox contract or domain was edited; stage labels and responsibilities go
+  to E13b's check in the browser.
+- **Review before commit** (an agent). Taken: the pages task claimed any graph document of the domain under `graph/`
+  (now only at its own path, tested with a stale contract's document deleted, a person's copy and JSON kept, a
+  person's file at the path in the way); `If-None-Match` with weak tags, lists and `*`; stale docs of `render/2` and
+  the task; encoder tests that could not fail replaced by one with a map of more than 32 keys nested in a list;
+  `until` tests. *Left as known:* `--since` without `--overlay` is ignored, as it was for the Mermaid pictures; the
+  task reads a time without an offset as UTC while the API refuses it, as `eh_os_contract.report` and the
+  conformance route already differ; the index builds every document per request, as `/model` does.
+
+### E13a — what came out (6 October)
+
+E13a is built on `graph/e13a-document` in six batches (above). The engine gives each contract and each domain as a
+`graph.v1` document — a graph of facts, not of pictures: nodes by kind, relations by type with stable ids, the
+content of every panel of the Graph screen, scenarios with the relations they cover, every example and default
+redacted — and what the log says over it as a separate overlay document joined by id, which names the digest of the
+document it joins. Both have JSON Schemas in `priv/schema`. They leave the engine through functions
+(`Graph.Document`, `Graph.Overlay`), HTTP (`eh_os_contract_web`), `mix eh_os_contract.graph --json` and the model
+pages. The dashboard still draws the six Mermaid pictures from the old builders, which a coverage test holds to the
+facts; E13b replaces them with the renderer.
+
+Against *Odbiór E13a*: documents and overlays pass their schemas for every contract and domain of the sandbox and
+the fixtures; the same declarations give the same bytes (the digest moves only with the content, and the encoding
+sorts keys); the document from `/graph/:contract` is the function's byte for byte; the dashboard is unchanged; the
+gate is EXIT=0. Not done in E13a: plan step 8 (sandbox data, decision 6). **Open for the user:** numbers for the
+two step shapes the overlay leaves without them (batch 5); the domain-service edge (in "Otwarte pytania" since
+batch 3). Remaining with the user (decision 7): merging `main`, `pre-pr-review`, the pull request.
 
 ### Wobec programu DD
 

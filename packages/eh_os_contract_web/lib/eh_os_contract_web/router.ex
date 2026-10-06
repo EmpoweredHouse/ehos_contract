@@ -64,7 +64,7 @@ defmodule EhOsContract.Web.Router do
 
   @doc """
   Mounts the read-only conformance and generated-document API at `path`:
-  `conformance`, `model`, `asyncapi` and `openapi` live below that mount.
+  `conformance`, `model`, `asyncapi`, `openapi` and `graph` live below that mount.
 
   Separate from `eh_os_contract_dashboard/2` and mounted in its own scope on purpose, because
   the two need opposite pipelines. A dashboard route wants a session and CSRF
@@ -110,6 +110,34 @@ defmodule EhOsContract.Web.Router do
           EhOsContract.Web.Api.Model,
           resolver: resolver,
           base_path: path
+
+      # A domain's routes before a contract's: `graph/domain/X` is not a contract
+      # named "domain" with an overlay.
+      get path <> "/graph", EhOsContract.Web.Api.Graph, resolver: resolver, base_path: path
+
+      get path <> "/graph/domain/:domain",
+          EhOsContract.Web.Api.Graph,
+          resolver: resolver,
+          base_path: path,
+          of: :domain
+
+      get path <> "/graph/domain/:domain/overlay",
+          EhOsContract.Web.Api.Graph,
+          resolver: resolver,
+          base_path: path,
+          of: :domain,
+          overlay: true
+
+      get path <> "/graph/:contract",
+          EhOsContract.Web.Api.Graph,
+          resolver: resolver,
+          base_path: path
+
+      get path <> "/graph/:contract/overlay",
+          EhOsContract.Web.Api.Graph,
+          resolver: resolver,
+          base_path: path,
+          overlay: true
 
       get path <> "/openapi", EhOsContract.Web.Api.OpenAPI, resolver: resolver, base_path: path
 

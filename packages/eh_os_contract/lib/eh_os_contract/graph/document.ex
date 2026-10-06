@@ -179,6 +179,27 @@ defmodule EhOsContract.Graph.Document do
   def digest(document),
     do: document |> Map.delete("digest") |> EhOsContract.Digest.document_hash()
 
+  @doc """
+  `document` — a `graph.v1` document or an overlay — as JSON whose bytes depend on
+  its content alone: every object's keys in order, at every depth, rather than in
+  whatever order a map happens to keep them. The same declarations give the same
+  bytes, after a restart too, so the digest is a sound `ETag` and two outputs can be
+  compared with `diff`. `pretty: true` indents it.
+  """
+  @spec encode(map(), keyword()) :: String.t()
+  def encode(document, opts \\ []),
+    do: document |> ordered() |> Jason.encode!(pretty: Keyword.get(opts, :pretty, false))
+
+  defp ordered(%{} = map) do
+    map
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Enum.map(fn {key, value} -> {key, ordered(value)} end)
+    |> Jason.OrderedObject.new()
+  end
+
+  defp ordered(list) when is_list(list), do: Enum.map(list, &ordered/1)
+  defp ordered(value), do: value
+
   @doc "Where the JSON Schema of a `graph.v1` document is: in the package's `priv/schema`."
   @spec schema_path() :: Path.t()
   def schema_path, do: Application.app_dir(:eh_os_contract, "priv/schema/graph.v1.json")

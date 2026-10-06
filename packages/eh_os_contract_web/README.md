@@ -86,6 +86,39 @@ while it measures a diagram, so the browser's console logs blocked inline styles
 the graph screen; the diagrams are drawn in full regardless. The sandbox host serves
 this policy on the dashboard, so it is looked at there as it runs in EHOS.
 
+## The API
+
+`eh_os_contract_api/2` mounts read-only JSON routes in a scope of their own (its docs
+show the pipeline): what a client of the engine — EHOS Console, a CI job, a renderer —
+reads without the dashboard.
+
+```elixir
+scope "/" do
+  pipe_through :eh_os_contract_api
+  import EhOsContract.Web.Router
+
+  eh_os_contract_api "/api", resolver: MyApp.EhOsContractResolver
+end
+```
+
+| Route | What |
+| --- | --- |
+| `GET /api/conformance?contract=…&since=…&until=…` | the conformance report, `eh_os_contract.conformance.v2` |
+| `GET /api/model`, `/api/model/My.Contract` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
+| `GET /api/asyncapi`, `/api/asyncapi/My.Contract` | what a contract publishes, as AsyncAPI |
+| `GET /api/openapi`, `/api/openapi/My.Contract` | its commands and queries, as OpenAPI |
+| `GET /api/graph` | every contract and domain with its version and graph digest |
+| `GET /api/graph/My.Contract` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |
+| `GET /api/graph/My.Contract/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
+| `GET /api/graph/domain/My.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts and what crosses between them |
+
+A graph document is the same bytes for the same declarations — every object's keys in
+order — so its digest is its `ETag`, and a request sending it back in `If-None-Match`
+gets `304`. An overlay names the digest of the document it joins (`document_digest`)
+and is joined onto it by id. The schemas ship with `eh_os_contract`, in
+`priv/schema/graph.v1.json` and `priv/schema/graph_overlay.v1.json`. A contract or a
+domain the registry does not hold is `404`, never an empty graph.
+
 ## Who may see it
 
 `eh_os_contract_dashboard/2` and `eh_os_contract_api/2` both require a `:resolver` implementing

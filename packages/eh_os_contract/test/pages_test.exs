@@ -30,7 +30,16 @@ defmodule EhOsContract.PagesTest do
       end
 
       name = domain.__eh_os_contract_model__().name
-      for {path, text} <- pages, do: assert(String.starts_with?(text, Pages.marker(name)), path)
+
+      for {path, text} <- pages,
+          String.ends_with?(path, ".md"),
+          do: assert(String.starts_with?(text, Pages.marker(name)), path)
+
+      # Beside them, each contract's graph document, which nothing else writes.
+      for {path, text} <- pages, String.ends_with?(path, ".json") do
+        assert Pages.graph?(path, text, domain), path
+        refute Pages.graph?(path, text, Enum)
+      end
     end
   end
 
@@ -42,6 +51,7 @@ defmodule EhOsContract.PagesTest do
     test "one per element: the domain, each value and context, the contract and each declaration",
          %{pages: pages} do
       assert Enum.sort(Map.keys(pages)) == [
+               "graph/ValueRig.Till.json",
                "index.md",
                "till/index.md",
                "till/till/aggregates/till.md",
@@ -360,7 +370,7 @@ defmodule EhOsContract.PagesTest do
     test "writes the pages, and --check says the directory is current", %{tmp_dir: dir} do
       run(["--output", dir])
       assert_received {:mix_shell, :info, [written]}
-      assert written == "#{dir}: 15 pages written"
+      assert written == "#{dir}: 16 pages written"
 
       assert File.read!(Path.join(dir, "values/amount.md")) ==
                pages(ValueRig.Domain)["values/amount.md"]
@@ -409,10 +419,39 @@ defmodule EhOsContract.PagesTest do
 
       run(["--output", dir])
       assert_received {:mix_shell, :info, [written]}
-      assert written == "#{dir}: 15 pages written, 1 left over deleted"
+      assert written == "#{dir}: 16 pages written, 1 left over deleted"
 
       refute File.exists?(Path.join(dir, "values/tip.md"))
       assert File.read!(Path.join(dir, "README.md")) == "# Written by a person\n"
+    end
+
+    @tag :tmp_dir
+    test "a contract's graph document is the task's at its own path only", %{tmp_dir: dir} do
+      run(["--output", dir])
+      assert_received {:mix_shell, :info, [_written]}
+      ours = File.read!(Path.join(dir, "graph/ValueRig.Till.json"))
+      assert Jason.decode!(ours)["contract"] == "ValueRig.Till"
+
+      # The document of a contract the domain no longer has is deleted; a copy a person
+      # saved under another name, and a person's JSON, stay.
+      gone =
+        String.replace(ours, ~s("contract": "ValueRig.Till"), ~s("contract": "ValueRig.Gone"))
+
+      File.write!(Path.join(dir, "graph/ValueRig.Gone.json"), gone)
+      File.write!(Path.join(dir, "graph/ValueRig.Till-before.json"), ours)
+      File.write!(Path.join(dir, "graph/notes.json"), ~s({"mine": true}))
+
+      run(["--output", dir])
+      assert_received {:mix_shell, :info, [written]}
+      assert written == "#{dir}: 16 pages written, 1 left over deleted"
+      refute File.exists?(Path.join(dir, "graph/ValueRig.Gone.json"))
+      assert File.read!(Path.join(dir, "graph/ValueRig.Till-before.json")) == ours
+      assert File.exists?(Path.join(dir, "graph/notes.json"))
+
+      # A person's file at the path the task would write is in the way.
+      File.write!(Path.join(dir, "graph/ValueRig.Till.json"), ~s({"mine": true}))
+      error = assert_raise Mix.Error, fn -> run(["--output", dir]) end
+      assert error.message =~ "graph/ValueRig.Till.json"
     end
 
     test "asks where the pages go" do
@@ -462,7 +501,7 @@ defmodule EhOsContract.PagesTest do
       File.rm!(Path.join(out, "values/amount.md"))
       run(["--output", out])
       assert_received {:mix_shell, :info, [written]}
-      assert written == "#{out}: 15 pages written"
+      assert written == "#{out}: 16 pages written"
       assert File.exists?(Path.join(elsewhere, "tip.md"))
     end
 
@@ -486,7 +525,7 @@ defmodule EhOsContract.PagesTest do
 
       run(["--output", out])
       assert_received {:mix_shell, :info, [written]}
-      assert written == "#{out}: 15 pages written, 1 left over deleted"
+      assert written == "#{out}: 16 pages written, 1 left over deleted"
       refute File.exists?(Path.join(out, "values/tip.md"))
       assert File.exists?(Path.join(sibling, "values/tip.md"))
     end
@@ -500,7 +539,7 @@ defmodule EhOsContract.PagesTest do
 
       run(["--output", dir])
       assert_received {:mix_shell, :info, [written]}
-      assert written == "#{dir}: 15 pages written"
+      assert written == "#{dir}: 16 pages written"
       assert File.read!(Path.join(dir, "shredding/index.md")) == page
 
       run(["--output", dir, "--check"])

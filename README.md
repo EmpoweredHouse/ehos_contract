@@ -176,6 +176,11 @@ what flows between them, and each process's declared shape, over the log — the
 cd sandbox && mix phx.server
 ```
 
+The same answers, and each contract's and domain's graph as a `graph.v1` document with what the log says
+over it, are JSON for any other client — EHOS Console, CI — under the host's `/api` mount: the routes are in
+[the web package's README](packages/eh_os_contract_web/README.md#the-api), and `mix eh_os_contract.graph --json`
+writes the same documents to a file.
+
 Then open `http://localhost:4010/dashboard`. There is no login: who may see the dashboard is the
 host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and the sandbox
 host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.

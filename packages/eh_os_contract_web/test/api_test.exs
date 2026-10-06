@@ -207,6 +207,102 @@ defmodule EhOsContract.Web.ApiTest do
     end
   end
 
+  describe "the graph documents" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
+    end
+
+    alias EhOsContract.Graph.{Document, Overlay}
+
+    test "the index lists every contract and domain with its version and digest", %{conn: conn} do
+      conn = get(conn, "/api/graph")
+      assert conn.status == 200
+
+      assert %{"schema" => "eh_os_contract.graph-index.v1", "contracts" => cs, "domains" => ds} =
+               Jason.decode!(conn.resp_body)
+
+      assert Enum.map(cs, & &1["contract"]) ==
+               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
+      [first | _] = cs
+      contract = Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == first["contract"]))
+      assert first["digest"] == Document.contract(contract)["digest"]
+      assert [%{"domain" => _, "name" => _, "digest" => _} | _] = ds
+    end
+
+    test "a contract's document is the function's, byte for byte, with its digest as the ETag",
+         %{conn: conn} do
+      contract = List.first(EhOsContract.Registry.contracts())
+      document = Document.contract(contract)
+      served = get(conn, "/api/graph/#{inspect(contract)}")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(document)
+      assert get_resp_header(served, "etag") == [~s("#{document["digest"]}")]
+
+      cached =
+        conn
+        |> put_req_header("if-none-match", ~s("#{document["digest"]}"))
+        |> get("/api/graph/#{inspect(contract)}")
+
+      assert cached.status == 304
+
+      for held <- [~s("other", W/"#{document["digest"]}"), "*"] do
+        conn =
+          conn |> put_req_header("if-none-match", held) |> get("/api/graph/#{inspect(contract)}")
+
+        assert conn.status == 304, held
+      end
+
+      stale =
+        conn
+        |> put_req_header("if-none-match", ~s("other"))
+        |> get("/api/graph/#{inspect(contract)}")
+
+      assert stale.status == 200
+    end
+
+    test "a contract's overlay says its period; a bad one is refused", %{conn: conn} do
+      contract = inspect(List.first(EhOsContract.Registry.contracts()))
+      served = get(conn, "/api/graph/#{contract}/overlay?since=2026-01-01T00:00:00Z")
+
+      assert served.status == 200
+
+      assert %{"schema" => "eh_os_contract.graph_overlay.v1", "since" => "2026-01-01T00:00:00Z"} =
+               Jason.decode!(served.resp_body)
+
+      assert get(conn, "/api/graph/#{contract}/overlay?since=yesterday").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?until=tomorrow").status == 400
+
+      until = get(conn, "/api/graph/#{contract}/overlay?until=2026-02-01T00:00:00Z")
+      assert %{"until" => "2026-02-01T00:00:00Z", "since" => nil} = Jason.decode!(until.resp_body)
+    end
+
+    test "a domain's document and overlay", %{conn: conn} do
+      domain = List.first(EhOsContract.Registry.domains())
+      contracts = EhOsContract.Registry.contracts()
+      served = get(conn, "/api/graph/domain/#{inspect(domain)}")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(Document.domain(domain, contracts))
+
+      overlay = Jason.decode!(get(conn, "/api/graph/domain/#{inspect(domain)}/overlay").resp_body)
+      assert overlay == Jason.decode!(Document.encode(Overlay.domain(domain, contracts)))
+    end
+
+    test "what the registry does not hold is 404, and an unauthenticated caller gets nothing",
+         %{conn: conn} do
+      assert get(conn, "/api/graph/Not.A.Contract").status == 404
+      assert get(conn, "/api/graph/Not.A.Contract/overlay").status == 404
+      assert get(conn, "/api/graph/domain/Not.A.Domain").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/graph").status == 403
+      assert get(public, "/api/graph/Anything").status == 403
+      assert get(public, "/api/graph/domain/Anything/overlay").status == 403
+    end
+  end
+
   describe "the generated command-and-query API" do
     setup %{conn: conn} do
       {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}

@@ -13,6 +13,7 @@ defmodule EhOsContract.Pages do
       settlement/visit_settlement/events/payment_recorded.md
       settlement/visit_settlement/aggregates/visit_settlement.md
       …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
+      graph/Rehmed.Contracts.VisitSettlement.json  a contract's graph.v1 document
 
   A contract's directory is its module's last segment, underscored. Each kind has a
   directory of its own, since a contract's namespaces overlap: a read model may share
@@ -54,7 +55,8 @@ defmodule EhOsContract.Pages do
 
   @doc """
   The pages of `domain`, a domain module or its model, and of `contracts`, the v2
-  contract modules or models naming it, as `%{relative path => Markdown}`. Contracts
+  contract modules or models naming it, as `%{relative path => Markdown}`, and beside
+  them each contract's `graph.v1` document as `graph/<Contract>.json`. Contracts
   naming another domain are left out. Raises when two contracts of one context would
   share a directory, when two elements would share a page, and when a name is not
   snake_case, since pages are named after names.
@@ -78,6 +80,37 @@ defmodule EhOsContract.Pages do
     |> Enum.concat(Enum.flat_map(contracts, &contract_pages(site, &1)))
     |> paths!()
     |> Map.new(fn {path, lines} -> {path, page(domain.name, path, lines)} end)
+    |> Map.merge(Map.new(contracts, &{graph_path(&1), graph(&1)}))
+  end
+
+  # A contract's `graph.v1` document beside its pages (plan E13a, the user's decision
+  # (b) on the model pages): the bytes the API serves, indented, without the log.
+  defp graph(model),
+    do:
+      EhOsContract.Graph.Document.encode(EhOsContract.Graph.Document.contract(model),
+        pretty: true
+      ) <>
+        "\n"
+
+  @doc """
+  Whether `text`, the content of a file at `path` under the pages' directory, is a
+  contract's `graph.v1` document these pages write for `domain` — the one kind of
+  file among them that cannot start with `marker/1`.
+  """
+  @spec graph?(String.t(), String.t(), module()) :: boolean()
+  def graph?(path, text, domain) do
+    name = inspect(domain)
+
+    # Only at the path these pages give that contract: a copy of the document a
+    # person saved elsewhere under `graph/` is theirs.
+    case Jason.decode(text) do
+      {:ok,
+       %{"schema" => "eh_os_contract.graph.v1", "kind" => "contract", "domain" => ^name} = doc} ->
+        path == "graph/#{doc["contract"]}.json"
+
+      _other ->
+        false
+    end
   end
 
   # A path is made of names. Every name of a domain and a contract is snake_case (D1,
@@ -138,6 +171,7 @@ defmodule EhOsContract.Pages do
   defp entity_path(name), do: "entities/#{name}.md"
   defp context_path(name), do: "#{name}/index.md"
   defp contract_dir(model), do: "#{model.context}/#{slug(model)}"
+  defp graph_path(model), do: "graph/#{inspect(model.module)}.json"
   defp contract_path(model), do: "#{contract_dir(model)}/index.md"
   defp slug(model), do: model.module |> Module.split() |> List.last() |> Macro.underscore()
 
@@ -616,7 +650,8 @@ defmodule EhOsContract.Pages do
         link("Domain #{code(site.domain.name)}", "index.md"),
         " · context ",
         link(code(model.context), context_path(model.context)),
-        " · version #{code(model.version)}"
+        " · version #{code(model.version)} · ",
+        link("graph", graph_path(model))
       ]),
       process_section(site, model),
       section("Units", model.units, &declaration_bullet(model, :unit, &1)),

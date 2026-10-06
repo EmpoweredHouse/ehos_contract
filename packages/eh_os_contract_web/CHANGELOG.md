@@ -23,6 +23,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   its processes. A host's callers pass ids; readers of the conformance JSON move to v3 (the engine's CHANGELOG has
   the shape).
 
+- **E13a: the graph as an API.** `eh_os_contract_api/2` serves `GET <mount>/graph` (an index of contracts and
+  domains with their versions and digests), `<mount>/graph/My.Contract` (the contract's `graph.v1` document, its
+  digest as the `ETag`, `304` on `If-None-Match`), `<mount>/graph/My.Contract/overlay?since=…&until=…` (what the log
+  says over it), and `<mount>/graph/domain/My.Domain` with its overlay, behind the same resolver as `/model`; what
+  the registry does not hold is `404`. The dashboard's screens are unchanged.
+
 - **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
   eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a
   `:dev` dependency of the asset build only; the built stylesheet and fonts are unchanged, byte for byte,

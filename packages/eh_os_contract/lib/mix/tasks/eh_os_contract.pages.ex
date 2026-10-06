@@ -12,8 +12,11 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   The domain and its contracts are found among the modules of
   `config :eh_os_contract, applications:`. The pages go where `--output` says: the
   host decides whether to commit them, add them to ExDoc's `extras`, or only read
-  them. A page the model no longer has is deleted — only a file that starts with
-  the marker line of the domain's pages, so another domain's pages in the same
+  them. Beside the pages, `graph/<Contract>.json` holds each contract's `graph.v1`
+  document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
+  longer has is deleted — only a file that starts with the marker line of the
+  domain's pages, or a contract's graph document of the domain at the path the task
+  gives it (`EhOsContract.Pages.graph?/3`), so another domain's pages in the same
   directory stay — and a page is never written over a file without it, nor
   through a symbolic link: then nothing is written, and the task names what is in
   the way. Nothing outside `--output` is read or touched.
@@ -53,7 +56,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
         error in ArgumentError -> Mix.raise(Exception.message(error))
       end
 
-    found = found(output, Pages.marker(domain.__eh_os_contract_model__().name))
+    found = found(output, {Pages.marker(domain.__eh_os_contract_model__().name), domain})
     stale = for {path, :page} <- found, not Map.has_key?(pages, path), do: path
     blocked = blocked(pages, found)
 
@@ -119,18 +122,18 @@ defmodule Mix.Tasks.EhOsContract.Pages do
     end
   end
 
-  # What is under `output`, by relative path: a page this task wrote for the domain
-  # (`:page`), any other file — another domain's page too — or a symbolic link. Walked, not globbed, so nothing in `output`'s own
+  # What is under `output`, by relative path: a page this task wrote for the domain,
+  # its graph documents among them (`:page`), any other file — another domain's page too — or a symbolic link. Walked, not globbed, so nothing in `output`'s own
   # name is read as a pattern, and a link is never followed: what it points at is
   # outside what the task was given.
-  defp found(output, marker) do
+  defp found(output, mine) do
     case File.lstat(output) do
-      {:ok, _} -> walk(output, "", marker)
+      {:ok, _} -> walk(output, "", mine)
       {:error, _} -> %{}
     end
   end
 
-  defp walk(output, relative, marker) do
+  defp walk(output, relative, mine) do
     output
     |> Path.join(relative)
     |> File.ls!()
@@ -139,16 +142,24 @@ defmodule Mix.Tasks.EhOsContract.Pages do
       file = Path.join(output, path)
 
       case File.lstat!(file).type do
-        :directory -> Map.merge(acc, walk(output, path, marker))
+        :directory -> Map.merge(acc, walk(output, path, mine))
         :symlink -> Map.put(acc, path, :link)
-        :regular -> Map.put(acc, path, if(page?(file, marker), do: :page, else: :file))
+        :regular -> Map.put(acc, path, if(page?(path, file, mine), do: :page, else: :file))
         _other -> Map.put(acc, path, :file)
       end
     end)
   end
 
-  # Only the marker's bytes are read: `--output` may be a large tree of documents.
-  defp page?(file, marker) do
+  # Only the marker's bytes are read: `--output` may be a large tree of documents. A
+  # contract's graph document has no room for a marker, so it is read whole, and only
+  # where the pages put one (`EhOsContract.Pages.graph?/3`).
+  defp page?(path, file, {marker, domain}) do
+    if String.starts_with?(path, "graph/") and String.ends_with?(path, ".json"),
+      do: Pages.graph?(path, File.read!(file), domain),
+      else: marked?(file, marker)
+  end
+
+  defp marked?(file, marker) do
     case File.open(file, [:read, :binary], &IO.binread(&1, byte_size(marker))) do
       {:ok, ^marker} -> true
       _other -> false

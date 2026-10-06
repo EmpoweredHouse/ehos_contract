@@ -41,6 +41,8 @@ defmodule EhOsContract do
       Erased,
       Event,
       Graph,
+      Graph.Document,
+      Graph.Overlay,
       Implementation,
       Key,
       Key.TooLongError,

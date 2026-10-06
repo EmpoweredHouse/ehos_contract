@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.EhOsContract.Graph do
-  @shortdoc "Draws a process, a contract, a unit or a domain as a Mermaid diagram"
+  @shortdoc "Draws a process, a contract, a unit or a domain as a Mermaid diagram, or gives its graph.v1 document"
 
   @moduledoc """
   One picture of the contracts the registry finds — that is, of the binary that
@@ -51,6 +51,19 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   events: it draws contracts and what flows between them, and leaves each
   contract's own steps to `--contract`.
 
+  ## `--json`: the document a renderer is given
+
+      mix eh_os_contract.graph --json --contract rehmed.settlement --output settlement.json
+      mix eh_os_contract.graph --json --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
+      mix eh_os_contract.graph --json --system rehmed --output rehmed.json
+
+  `--json` writes the contract's or the domain's `graph.v1` document
+  (`EhOsContract.Graph.Document`) — the same bytes the API serves, its keys in order,
+  so two of them compare with `diff` — and with `--overlay` what the log says over it
+  (`EhOsContract.Graph.Overlay`). A document holds every picture of its contract or
+  domain, so `--unit`, `--lifecycle` and `--process` take no `--json`, and `--map` and
+  `--system` give the same domain document.
+
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
   every node on this diagram is written in the client's language.
   """
@@ -65,6 +78,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       mix eh_os_contract.graph --contract ID [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]
       mix eh_os_contract.graph --map DOMAIN
       mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
+      mix eh_os_contract.graph --json (--contract ID | --system DOMAIN) [--overlay [--since AT]]
 
   and --output PATH to write it to a file.
   """
@@ -81,6 +95,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         strict: [
           overlay: :boolean,
           mermaid: :boolean,
+          json: :boolean,
           since: :string,
           output: :string,
           process: :string,
@@ -104,6 +119,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     EhOsContract.Registry.load!()
 
     cond do
+      opts[:json] -> json(opts)
       opts[:map] -> domain_picture(opts[:map], &EhOsContract.Graph.context_map_to_mermaid/1, opts)
       opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
       opts[:contract] -> contract(opts)
@@ -156,6 +172,12 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     pictures = for key <- [:map, :system, :contract, :process], opts[key], do: "--#{key}"
 
     cond do
+      opts[:json] && (opts[:unit] || opts[:lifecycle] || opts[:process] || opts[:mermaid]) ->
+        Mix.raise(
+          "--json gives a contract's or a domain's whole document; pass --contract or --system, " <>
+            "without --unit, --lifecycle, --process or --mermaid"
+        )
+
       opts[:unit] && !opts[:contract] ->
         Mix.raise("--unit names a unit of a contract; pass --contract too")
 
@@ -189,8 +211,37 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     end
   end
 
+  # The document of a contract or a domain, or its overlay, as JSON.
+  defp json(opts) do
+    alias EhOsContract.Graph.{Document, Overlay}
+
+    period = [since: since(opts)]
+    contracts = EhOsContract.Registry.contracts()
+
+    document =
+      case opts[:contract] do
+        nil ->
+          domain = domain!(opts[:map] || opts[:system])
+
+          if opts[:overlay],
+            do: Overlay.domain(domain, contracts, period),
+            else: Document.domain(domain, contracts)
+
+        name ->
+          contract = contract!(name)
+
+          if opts[:overlay],
+            do: Overlay.contract(contract, period),
+            else: Document.contract(contract)
+      end
+
+    emit_output(Document.encode(document, pretty: true) <> "\n", opts)
+  end
+
   # A picture of the domain named `name`, drawn by `draw` from its module.
-  defp domain_picture(name, draw, opts) do
+  defp domain_picture(name, draw, opts), do: emit_output(draw.(domain!(name)), opts)
+
+  defp domain!(name) do
     domains = EhOsContract.Registry.domains()
     domain = Enum.find(domains, &(Atom.to_string(EhOsContract.Model.fetch(&1).name) == name))
 
@@ -199,7 +250,19 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       Mix.raise("no domain #{name}. Registered: #{Enum.join(known, ", ")}")
     end
 
-    emit_output(draw.(domain), opts)
+    domain
+  end
+
+  # By the contract's id (plan DD, P1a, #183), as the dashboard's APIs name it.
+  defp contract!(id) do
+    EhOsContract.Registry.contract(id) ||
+      Mix.raise(
+        "no contract #{id}. Registered: " <>
+          (EhOsContract.Registry.contracts()
+           |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+           |> Enum.sort()
+           |> Enum.join(", "))
+      )
   end
 
   defp system(domain, opts) do
@@ -211,18 +274,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   # A v2 contract's full graph, or one of its units.
   defp contract(opts) do
-    # By the contract's id (plan DD, P1a, #183), as the dashboard's APIs name it.
-    contract = EhOsContract.Registry.contract(opts[:contract])
-
-    unless contract do
-      known =
-        EhOsContract.Registry.contracts()
-        |> Enum.map(&EhOsContract.Model.fetch(&1).id)
-        |> Enum.sort()
-        |> Enum.join(", ")
-
-      Mix.raise("no contract #{opts[:contract]}. Registered: #{known}")
-    end
+    contract = contract!(opts[:contract])
 
     text =
       case {opts[:unit], opts[:lifecycle]} do

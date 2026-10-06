@@ -20,6 +20,7 @@ defmodule EhOsContract.Web do
     exports: [
       Api.AsyncAPI,
       Api.Conformance,
+      Api.Graph,
       Api.Model,
       Api.OpenAPI,
       Resolver,

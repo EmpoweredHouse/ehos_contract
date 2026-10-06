@@ -112,6 +112,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the report counts it never or not yet, a transition's count, traffic between contracts — and a move a lifecycle
   does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
   report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences and runs. No verdict moves.
+- **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
+  overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
+  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`) or a domain's (`--system`)
+  document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
+  eh_os_contract.pages` writes each contract's document beside the pages as `graph/<Contract>.json`, linked from
+  the contract's page, and treats those files as its own when it overwrites, checks or deletes
+  (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the

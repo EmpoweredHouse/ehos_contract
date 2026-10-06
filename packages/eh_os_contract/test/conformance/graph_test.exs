@@ -131,4 +131,34 @@ defmodule EhOsContract.GraphTest do
 
     assert File.read!(path) =~ "command_open_account -->|0 taken| event_account_opened"
   end
+
+  @tag :tmp_dir
+  test "mix eh_os_contract.graph --json gives a contract's or a domain's document, and its overlay",
+       %{tmp_dir: dir} do
+    alias EhOsContract.Graph.Document
+    path = Path.join(dir, "graph.json")
+    Mix.shell(Mix.Shell.Process)
+    on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
+    task = &Mix.Tasks.EhOsContract.Graph.run/1
+
+    task.(~w(--json --contract DispatchRig.Ledger --output #{path}))
+    assert Jason.decode!(File.read!(path)) == Document.contract(DispatchRig.Ledger)
+
+    assert File.read!(path) ==
+             Document.encode(Document.contract(DispatchRig.Ledger), pretty: true) <> "\n"
+
+    task.(~w(--json --system dispatch_rig --output #{path}))
+    assert Jason.decode!(File.read!(path))["domain"] == "DispatchRig.Domain"
+
+    task.(
+      ~w(--json --contract DispatchRig.Ledger --overlay --since 2026-01-01T00:00:00Z --output #{path})
+    )
+
+    assert %{"schema" => "eh_os_contract.graph_overlay.v1", "since" => "2026-01-01T00:00:00Z"} =
+             Jason.decode!(File.read!(path))
+
+    assert_raise Mix.Error, ~r/--json gives a contract's or a domain's whole document/, fn ->
+      task.(~w(--json --contract DispatchRig.Ledger --unit account))
+    end
+  end
 end
