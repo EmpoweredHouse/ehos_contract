@@ -8,6 +8,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The graph page selects a contract, by its id, whether or not it has a process** (plan DD, P1b,
+  eh-os-contract#186). A contract without a process could not be opened there. The selector lists each contract's
+  id, with its process's label where it has one; the declared shape of a process shows only when there is one; the
+  contract's graph, its units and its lifecycles show always. The LiveView event is `select_contract` with
+  `"contract" => <id>`, where it was `select_process` with `"<module>:<process>"`.
+
 - **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
   eh-os-contract#183). `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/<id>`,
   `<mount>/openapi/<id>` and `<mount>/asyncapi/<id>` take the contract's id; a module's name is an unknown contract,

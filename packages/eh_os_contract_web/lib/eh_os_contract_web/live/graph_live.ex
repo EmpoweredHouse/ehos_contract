@@ -5,25 +5,26 @@ defmodule EhOsContract.Web.Live.Graph do
   `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
   out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia
   (10)" for why this was parked, then unparked. From the top: each domain's context
-  map and system, then the selected process's two panels, then its contract's units.
+  map and system, then the selected contract's panels, then its units.
 
-  Both of the process's panels are scoped to whichever process the selector picks,
-  per ADR §9 ("navigation is per-process, never global"; the domain's pictures above
-  them are a dated exception there):
+  The selector picks a contract, by its id, whether or not it has a process (plan DD,
+  P1b, #186; until then it picked a process, and a contract without one could not be
+  reached). Its panels, per ADR §9 ("navigation is per-process, never global"; the
+  domain's pictures above them are a dated exception there):
 
-    * **Declared shape** — `EhOsContract.Graph.declared_to_mermaid/2`. The
-      structural view: stages, endings, promise windows — true even for a contract
-      with zero runs.
-    * **Declared versus observed** — its contract's full graph with the log laid
+    * **Declared shape of its process**, only when it has one —
+      `EhOsContract.Graph.declared_to_mermaid/2`. The structural view: stages,
+      endings, promise windows — true even for a process with zero runs.
+    * **Declared versus observed** — the contract's full graph with the log laid
       over it (`EhOsContract.Graph.contract_to_mermaid/2`, v2 plan E7c, plan EG1):
       the steps, and the actors, read models, queries and external systems around
-      them. A contract is one process, so its overlay is that process's alone.
+      them.
 
   **Above both, each domain** (plan EG2): its context map —
   `EhOsContract.Graph.context_map_to_mermaid/1`, subdomains, contexts, externals and
   their relations — and its system, the v2 contracts in their contexts, what one
   consumes from another, and the log over it (`EhOsContract.Graph.system_to_mermaid/3`).
-  **Below both, the units** of the selected v2 process's contract, each its own
+  **Below both, the units** of the selected contract, each its own
   picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
   invariants and the scenarios that pin each path. The map and the units describe
   the model rather than the log; they are here since 28 September at the user's
@@ -43,13 +44,14 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @impl true
   def mount(_params, _session, socket) do
-    processes =
+    # Plan DD, P1b (#186): every contract, by its id, whether or not it has a process.
+    contracts =
       for(
         contract <- EhOsContract.Registry.contracts(),
-        %{process: %{} = process} <- [EhOsContract.Model.fetch(contract)],
-        do: %{contract: contract, name: process.name, label: process.label}
+        model = EhOsContract.Model.fetch(contract),
+        do: %{contract: contract, id: model.id, process: model.process}
       )
-      |> Enum.sort_by(& &1.label)
+      |> Enum.sort_by(& &1.id)
 
     # Every registered domain has a map; one with a v2 contract has a system too.
     by_domain =
@@ -71,25 +73,25 @@ defmodule EhOsContract.Web.Live.Graph do
     socket =
       socket
       |> assign(:domains, domains)
-      |> assign(:processes, processes)
-      |> select_process(List.first(processes))
+      |> assign(:contracts, contracts)
+      |> select_contract(List.first(contracts))
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_event("select_process", %{"process" => key}, socket) do
-    process = Enum.find(socket.assigns.processes, &(key(&1) == key))
-    {:noreply, select_process(socket, process)}
+  def handle_event("select_contract", %{"contract" => id}, socket) do
+    selected = Enum.find(socket.assigns.contracts, &(&1.id == id))
+    {:noreply, select_contract(socket, selected)}
   end
 
-  @spec select_process(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
-  defp select_process(socket, nil) do
+  @spec select_contract(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
+  defp select_contract(socket, nil) do
     assign(socket, selected: nil, declared_mermaid: nil, overlay_mermaid: nil, units: [])
   end
 
-  defp select_process(socket, process) do
-    model = EhOsContract.Model.fetch(process.contract)
+  defp select_contract(socket, selected) do
+    model = EhOsContract.Model.fetch(selected.contract)
 
     # The log under the lifecycles is read once per contract, and only once the socket
     # is connected: the first, static render draws them declared, and the mount that
@@ -104,15 +106,20 @@ defmodule EhOsContract.Web.Live.Graph do
           name: unit.name,
           label: unit.label,
           kind: unit.kind,
-          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name),
-          lifecycle: lifecycle(process.contract, unit, lifecycles)
+          mermaid: EhOsContract.Graph.unit_to_mermaid(selected.contract, unit.name),
+          lifecycle: lifecycle(selected.contract, unit, lifecycles)
         }
       end
 
+    # A process's declared shape only where the contract has one.
+    declared =
+      selected.process &&
+        EhOsContract.Graph.declared_to_mermaid(selected.contract, selected.process.name)
+
     assign(socket,
-      selected: key(process),
-      declared_mermaid: EhOsContract.Graph.declared_to_mermaid(process.contract, process.name),
-      overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(process.contract, overlay: true),
+      selected: selected.id,
+      declared_mermaid: declared,
+      overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(selected.contract, overlay: true),
       units: units
     )
   end
@@ -165,21 +172,25 @@ defmodule EhOsContract.Web.Live.Graph do
       <% end %>
 
       <section>
-        <h3>Declared shape</h3>
+        <h3>Contract</h3>
 
-        <form :if={@processes != []} id="process-select" phx-change="select_process">
-          <select name="process">
+        <form :if={@contracts != []} id="contract-select" phx-change="select_contract">
+          <select name="contract">
             <option
-              :for={process <- @processes}
-              value={key(process)}
-              selected={key(process) == @selected}
+              :for={contract <- @contracts}
+              value={contract.id}
+              selected={contract.id == @selected}
             >
-              {process.label}
+              {option_label(contract)}
             </option>
           </select>
         </form>
 
-        <p :if={@processes == []}>No process is declared in any registered contract.</p>
+        <p :if={@contracts == []}>No contract is registered.</p>
+      </section>
+
+      <section :if={@declared_mermaid}>
+        <h3>Declared shape of its process</h3>
 
         <pre
           :if={@declared_mermaid}
@@ -192,7 +203,7 @@ defmodule EhOsContract.Web.Live.Graph do
       </section>
 
       <section :if={@overlay_mermaid}>
-        <h3>Declared versus observed, this process</h3>
+        <h3>Declared versus observed, this contract</h3>
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
@@ -227,10 +238,10 @@ defmodule EhOsContract.Web.Live.Graph do
     """
   end
 
-  # A process by its contract and its name: two contracts may name their processes
-  # alike, and each has to be reachable.
-  @spec key(map()) :: String.t()
-  defp key(process), do: "#{inspect(process.contract)}:#{process.name}"
+  # A contract by its id, and its process's label where it has one.
+  @spec option_label(map()) :: String.t()
+  defp option_label(%{id: id, process: nil}), do: id
+  defp option_label(%{id: id, process: process}), do: "#{id} — #{process.label}"
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"
