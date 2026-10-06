@@ -1,0 +1,4 @@
+Review of origin/main..HEAD (#179): code-review high + security/performance pass.
+Security/perf: CTE uses the (contract, contract_version) index (measured: index-only, 0.18 ms on 1M rows); rescue sound; names logged uninspected but written only by engine code -> no change.
+Correctness: exclude: false positive -> fixed (ids from Implementations.index); erasure literal duplicated -> fixed (Personal.erased_contract/0); rolling deploy missing from text -> fixed; other tables not read -> documented; membership assertions kept (shared test DB, as #175's tests); PLAN.md English -> no change (user's rule since 6 Oct); supervisor wiring untested -> as for #175.
+Gate: EXIT=0, check 0/33/10 and 0/76/6, engine 1379, sandbox 196, web 52, auth 286 + 1 property. Real boot on a temp DB with a module-named row: warning shown, #175's silent.
