@@ -54,7 +54,8 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   alias EhOsContract.Contract.Rules
 
   # A version segment, as `@versioned` ends a publication's name: no segment of a
-  # contract's id is one, wherever it stands.
+  # contract's id is one, wherever it stands — the first included, since a domain may
+  # be named `:v1`.
   @version ~r/^v[1-9][0-9]*\z/
 
   # What follows the namespace (`DslRules.namespace?/1`); `\z`, not `$`, which also
@@ -250,9 +251,9 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
 
   defp contract_id?(id) do
     case String.split(id, ".") do
-      [namespace | [_ | _] = rest] ->
-        DslRules.namespace?(namespace) and
-          Enum.all?(rest, &(DslRules.snake_case?(&1) and not (&1 =~ @version)))
+      [namespace | [_ | _] = rest] = segments ->
+        DslRules.namespace?(namespace) and Enum.all?(rest, &DslRules.snake_case?/1) and
+          not Enum.any?(segments, &(&1 =~ @version))
 
       _one ->
         false

@@ -61,6 +61,7 @@ defmodule EhOsContract.ContractIdTest do
           {"clinic..settlement", "an empty segment"},
           {"clinic.settlement.v1", "versioned, as a publication is"},
           {"clinic.v1.settlement", "a version segment anywhere"},
+          {"v1.settlement", "a version as the namespace"},
           {"clinic.settle:ment", "a colon, which separates a key's parts"},
           {"clinic.settle|ment", "a bar, which separates a run's parts"},
           {"clinic." <> String.duplicate("a", 94), "over 100 bytes"}
