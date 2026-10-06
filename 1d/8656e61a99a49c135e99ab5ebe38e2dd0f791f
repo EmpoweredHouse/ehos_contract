@@ -1,0 +1,1 @@
+Documentation only (CLAUDE.md, no mix check input). Facts checked against the repository: packages and their modules and mix tasks, sandbox/lib domains, docs/ contents, auth package moduledocs (Session, SignIn, Manifest), no Polish left in code comments.
