@@ -238,6 +238,28 @@ defmodule EhOsContract.PathsTest do
       assert %{taken: 1} = without |> Paths.observe() |> step(:deposit, nil, :deposited)
     end
 
+    @tag :capture_log
+    test "a contract's activity counts a command that failed, as attempted" do
+      before = Paths.activity(EhOsContract.Model.fetch(Ledger))
+      Process.put(:dispatch_rig_flag_fails, true)
+
+      assert_raise RuntimeError, fn -> dispatch(%Deposit{account_id: "a-1", amount: 1500}) end
+
+      after_ = Paths.activity(EhOsContract.Model.fetch(Ledger))
+      assert after_.commands == before.commands + 1
+      assert after_.events == before.events
+    end
+
+    test "a command refused with no event recorded in the period is no basis for never" do
+      # The account was opened in setup, before the period starts.
+      since = DateTime.utc_now()
+      {:error, _} = dispatch(%Withdraw{account_id: "a-1", amount: 500})
+
+      report = EhOsContract.Conformance.report(Ledger, since: since)
+      assert report.activity == %{events: 0, commands: 1}
+      assert report.paths.untraversed == []
+    end
+
     test "an ordered policy's command, once drained, took its step" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 3})
       {:ok, _} = dispatch(%Withdraw{account_id: "a-1", amount: 3})

@@ -220,7 +220,11 @@ defmodule EhOsContract.Report.Sentence do
   @doc "The sentences that stand in for a section with nothing in it."
   @spec no_activity() :: String.t()
   def no_activity,
-    do: "The agreed steps cannot be judged: nothing happened in this contract in this period."
+    do: "The agreed steps cannot be judged: this contract recorded no event in this period."
+
+  @doc false
+  @spec no_steps() :: String.t()
+  def no_steps, do: "The contract declares no steps."
 
   @doc false
   @spec all_steps_carried_out() :: String.t()
@@ -337,12 +341,12 @@ defmodule EhOsContract.Report.Sentence do
   defp name(%{name: name}), do: Atom.to_string(name)
 
   @spec count(non_neg_integer(), String.t(), String.t()) :: String.t() | nil
+  defp count(0, _one, _many), do: nil
+  defp count(n, one, many), do: plural(n, one, many)
+
+  @spec plural(non_neg_integer(), String.t(), String.t()) :: String.t()
   defp plural(1, one, _many), do: "1 #{one}"
   defp plural(n, _one, many), do: "#{n} #{many}"
-
-  defp count(0, _one, _many), do: nil
-  defp count(1, one, _many), do: "1 #{one}"
-  defp count(n, _one, many), do: "#{n} #{many}"
 
   @spec amount({pos_integer(), atom()}) :: String.t()
   defp amount(duration), do: EhOsContract.Duration.humanize(duration)

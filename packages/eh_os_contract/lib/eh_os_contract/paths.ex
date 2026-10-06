@@ -220,9 +220,10 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
-  What happened in the contract in the period: its events, and its commands accepted
-  or rejected. Its steps are judged only when there was any (plan DD, P1a, #183): a
-  contract nobody used has every step untaken, and that is no finding.
+  What happened in the contract in the period: its events, and its commands, whatever
+  their outcome — one that failed was attempted (plan DD, P1a, #183). A step's own
+  count is bounded by its cause's time, these by their own, so the two can disagree
+  at a period's edge.
   """
   @spec activity(map(), keyword()) :: %{
           events: non_neg_integer(),
@@ -230,14 +231,14 @@ defmodule EhOsContract.Paths do
         }
   def activity(model, opts \\ []) do
     events =
-      from(e in Event, as: :event, where: e.contract == ^model.id, select: count(e.position))
+      from(e in Event, as: :event, where: e.contract == ^model.id, select: count())
       |> bounded(opts)
       |> repo().one()
 
     commands =
       from(c in CommandRecord,
-        where: c.contract == ^model.id and c.outcome in ["accepted", "rejected"],
-        select: count(c.id)
+        where: c.contract == ^model.id,
+        select: count()
       )
       |> bounded_rows(opts)
       |> repo().one()

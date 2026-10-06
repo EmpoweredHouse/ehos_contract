@@ -167,22 +167,29 @@ defmodule EhOsContract.Report do
   @spec declarations([map()]) :: [String.t()]
   defp declarations(declared), do: for(d <- declared, do: "  " <> Sentence.declaration(d))
 
-  @spec paths(map(), map()) :: [String.t()]
-  defp paths(%{events: 0, commands: 0}, _p), do: ["  " <> Sentence.no_activity()]
-
   # What waits has a heading of its own, never the list of what nobody did, and
   # "carried out" is said only when nothing waits either — a branch is several steps,
-  # and only its head waits in a queue.
-  defp paths(_activity, p) do
-    untraversed =
-      case {p.untraversed, p.in_flight} do
-        {[], []} ->
-          ["  " <> Sentence.all_steps_carried_out()]
+  # and only its head waits in a queue. With no event recorded nothing is judged
+  # untraversed, and what waits and what fails is still said.
+  @spec paths(map(), map()) :: [String.t()]
+  defp paths(_activity, %{steps: []}), do: ["  " <> Sentence.no_steps()]
 
-        {[], _waiting} ->
+  defp paths(activity, p) do
+    untraversed =
+      case {activity.events, p.untraversed, p.in_flight, p.failing} do
+        {0, _, [], []} ->
+          ["  " <> Sentence.no_activity()]
+
+        {0, _, _waiting, _failing} ->
           []
 
-        {steps, _waiting} ->
+        {_, [], [], _} ->
+          ["  " <> Sentence.all_steps_carried_out()]
+
+        {_, [], _waiting, _} ->
+          []
+
+        {_, steps, _waiting, _} ->
           ["  Agreed steps that were never carried out:"] ++
             for s <- steps, do: "    · " <> Sentence.step(s)
       end

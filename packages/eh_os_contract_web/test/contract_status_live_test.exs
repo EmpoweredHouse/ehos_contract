@@ -186,16 +186,53 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   defp escape(sentence),
     do: sentence |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
-  test "nothing happened in the contract: the steps say so instead of listing paths" do
+  test "no event recorded in the contract: the steps say so instead of listing paths" do
     assigns = %{
       eh_os_contract_web_access: :all,
       eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(activity: %{events: 0, commands: 0}, processes: [process(runs: 0)])]
+      reports: [
+        report(
+          activity: %{events: 0, commands: 0},
+          # One declared step: a contract with none says so instead.
+          paths: %{steps: [%{}], untraversed: [], in_flight: [], failing: []},
+          processes: [process(runs: 0)]
+        )
+      ]
     }
 
     html = render_component(&ContractStatus.render/1, assigns)
 
-    assert html =~ "nothing happened in this contract in this period"
+    assert html =~ "this contract recorded no event in this period"
+    refute html =~ "Declared paths never exercised"
+  end
+
+  # Plan DD, P1a (#183): a contract that recorded no event still shows what fails.
+  test "no event recorded, and a step failing: the failure is shown, not \"no event\"" do
+    step = %{
+      from: %{kind: :event, name: :case_opened, label: "Case opened"},
+      via: %{kind: :policy, name: :assign, label: "Assign a case"},
+      to: %{kind: :command, name: :assign_case, label: "Assign a case"},
+      mode: :async,
+      taken: 0,
+      in_flight: %{effects: 0, timers: 0, lag: 0},
+      failing: %{commands: 0, subscription: %{stopped_at: 7, failure: "RuntimeError"}, effects: 0}
+    }
+
+    assigns = %{
+      eh_os_contract_web_access: :all,
+      eh_os_contract_web_base_path: "/dashboard",
+      reports: [
+        report(
+          activity: %{events: 0, commands: 0},
+          paths: %{steps: [step], untraversed: [], in_flight: [], failing: [step]}
+        )
+      ]
+    }
+
+    html = render_component(&ContractStatus.render/1, assigns)
+
+    assert html =~ "Agreed steps that are attempted and fail"
+    refute html =~ "recorded no event"
     refute html =~ "Declared paths never exercised"
   end
 

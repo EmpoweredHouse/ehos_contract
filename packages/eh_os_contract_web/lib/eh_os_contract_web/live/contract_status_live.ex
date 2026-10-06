@@ -57,14 +57,17 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <h3>Steps</h3>
           <p>{Sentence.activity(report.activity)}</p>
 
-          <p :if={idle?(report.activity)}>{Sentence.no_activity()}</p>
+          <p :if={report.paths.steps == []}>{Sentence.no_steps()}</p>
+          <p :if={report.paths.steps != [] and idle?(report)}>{Sentence.no_activity()}</p>
 
-          <div :if={not idle?(report.activity)}>
-            <h4>Declared paths never exercised</h4>
-            <p :if={carried_out?(report.paths)}>{Sentence.all_steps_carried_out()}</p>
-            <ul :if={report.paths.untraversed != []}>
-              <li :for={edge <- report.paths.untraversed}>{Sentence.step(edge)}</li>
-            </ul>
+          <div :if={report.paths.steps != []}>
+            <div :if={report.activity.events > 0}>
+              <h4>Declared paths never exercised</h4>
+              <p :if={carried_out?(report.paths)}>{Sentence.all_steps_carried_out()}</p>
+              <ul :if={report.paths.untraversed != []}>
+                <li :for={edge <- report.paths.untraversed}>{Sentence.step(edge)}</li>
+              </ul>
+            </div>
 
             <div :if={report.paths.in_flight != []}>
               <h4>Agreed steps whose work is queued</h4>
@@ -175,9 +178,13 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @spec carried_out?(map()) :: boolean()
   defp carried_out?(paths), do: paths.untraversed == [] and paths.in_flight == []
 
-  # Plan DD, P1a (#183): the steps are judged when anything happened in the contract.
+  # Plan DD, P1a (#183): "never" is judged when the contract recorded an event; with
+  # none, and nothing waiting or failing, there is nothing to say about its steps.
   @spec idle?(map()) :: boolean()
-  defp idle?(activity), do: activity.events + activity.commands == 0
+  defp idle?(report),
+    do:
+      report.activity.events == 0 and report.paths.in_flight == [] and
+        report.paths.failing == []
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"

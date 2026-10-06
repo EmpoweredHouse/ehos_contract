@@ -111,7 +111,7 @@ defmodule EhOsContract.ReportTest do
 
       assert report.activity == %{events: 0, commands: 0}
       assert paths(report).untraversed == []
-      assert text() =~ "nothing happened in this contract in this period"
+      assert text() =~ "this contract recorded no event in this period"
     end
 
     test "not yet is not never: the refusal's step waits, and is never untraversed while it does" do
@@ -197,9 +197,22 @@ defmodule EhOsContract.ReportTest do
         )
       end
 
-      p = Conformance.report(DispatchRig.Ledger).paths
+      report = Conformance.report(DispatchRig.Ledger)
+      p = report.paths
       assert [failing] = p.failing
       refute failing in p.untraversed
+
+      # Plan DD, P1a (#183): a contract that recorded nothing still says what fails.
+      idle = Report.render(%{report | activity: %{events: 0, commands: 1}})
+      assert idle =~ "Agreed steps that are attempted and fail:"
+      refute idle =~ "recorded no event"
+      refute idle =~ "never carried out"
+
+      # A contract that declares no step says so, not that all of them were taken.
+      none = Report.render(%{report | paths: %{p | steps: [], failing: []}})
+      assert none =~ "STEPS\n  Activity in this period: "
+      assert none =~ "The contract declares no steps."
+      refute none =~ "All agreed steps were carried out"
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
                "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: 1 command failed"

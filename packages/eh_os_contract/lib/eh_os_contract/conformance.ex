@@ -16,8 +16,9 @@ defmodule EhOsContract.Conformance do
   contract nobody used has every step untraversed — and listing them as findings
   turns "no data" into "we have three problems". This is the same rule promise
   evaluation rests on: with no `from` there is nothing to judge. So with no activity
-  — no event, no command accepted or rejected in the period — the list of untraversed
-  steps is **empty**. Until plan DD, P1a (#183), the rule read "zero runs".
+  — no event recorded in the period — the list of untraversed steps is **empty**, while
+  what waits and what fails is still listed. Until plan DD, P1a (#183), the rule read
+  "zero runs".
 
   **Work waiting in a queue is "not yet", not "never".** A step whose event will be
   produced by queued work is listed as in flight rather than as untraversed, and so
@@ -126,8 +127,10 @@ defmodule EhOsContract.Conformance do
     }
   end
 
-  # Every step, and the three lists of the questions. Untraversed only when something
-  # happened in the contract: no activity is no basis for a verdict.
+  # Every step, and the three lists of the questions. Untraversed only when the contract
+  # recorded an event in the period: a command refused or failed with nothing recorded
+  # is no basis for "never", as zero runs was not. What waits and what fails is listed
+  # whatever the activity: an attempted, failing path is never "nothing happened".
   defp paths(model, activity, opts) do
     steps = EhOsContract.Paths.observe(model, opts)
     in_flight = Enum.filter(steps, &waiting?/1)
@@ -135,7 +138,7 @@ defmodule EhOsContract.Conformance do
     pending = downstream_of(in_flight, steps)
 
     untraversed =
-      if activity.events + activity.commands > 0,
+      if activity.events > 0,
         do:
           Enum.filter(
             steps,
@@ -150,7 +153,8 @@ defmodule EhOsContract.Conformance do
   @doc """
   The report of `model`'s process: its runs, confirmed declarations, durations and
   promises. Its steps are the contract's, in `from_model/2`'s `paths` (plan DD, P1a,
-  #183).
+  #183). `model` has a process; for one without, there is no process to report and
+  this raises.
   """
   @spec process(map(), keyword()) :: map()
   def process(%{process: %{} = process} = model, opts \\ []) do
