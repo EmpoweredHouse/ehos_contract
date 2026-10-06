@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract do
   @moduledoc """
-  One process, written down (v2 §4.1): the contract DSL.
+  A part of a business, and at most one process, written down (v2 §4.1): the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
         use EhOsContract.Contract,

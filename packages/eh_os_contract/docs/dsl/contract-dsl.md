@@ -11,7 +11,7 @@ state, invariants, commands, events and stage groups; what reacts to events
 (policies, effects, process managers); what is read (read models, queries); what
 enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
 application) and what leaves the application (`publish`);
-the one process; and scenarios. The vocabulary is closed: a contract cannot add
+the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
 extensions.
 
 Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
@@ -21,7 +21,7 @@ extension: readers get plain data from `EhOsContract.Model`, never these structs
 
 
 ## contract
-One process, and everything born in it.
+At most one process, and everything born in the contract.
 
 ### Nested DSLs
  * [aggregate](#contract-aggregate)
@@ -1907,7 +1907,7 @@ process name, label
 ```
 
 
-The one process the contract describes: its runs, stages and promises.
+The process the contract describes, if any, at most one: its runs, stages and promises.
 
 ### Nested DSLs
  * [stage](#contract-process-stage)

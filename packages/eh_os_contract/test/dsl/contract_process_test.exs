@@ -1,6 +1,6 @@
 defmodule EhOsContract.ContractProcessTest do
   @moduledoc """
-  v2 plan, E4: **R1–R6 and K1 of v2 §6** — the one process a contract describes,
+  v2 plan, E4: **R1–R6 and K1 of v2 §6** — the process a contract describes, if any,
   and what it consumes from a sibling. Each refusal names the declaration's file and
   line, and has a control beside it that compiles.
   """
@@ -15,12 +15,45 @@ defmodule EhOsContract.ContractProcessTest do
     end
   """
 
-  describe "R1: exactly one process" do
-    test "none is refused at the first declaration" do
-      message = refuse_contract("NoProcess", @unit)
+  describe "R1: at most one process" do
+    test "none compiles, and the model has no process" do
+      model =
+        compile_contract("NoProcess", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+        """)
+
+      assert model.process == nil
+      assert [%{name: :visit_closed}] = model.events
+    end
+
+    test "without one, a terminal event is refused, since there is no run to end" do
+      message = refuse_contract("NoProcessTerminal", @unit)
 
       assert message =~
-               "R1: a contract describes one process, and this one declares none (no_process.ex:4)"
+               "R1: the contract declares no process, so event :visit_closed cannot be terminal; " <>
+                 "`terminal:` ends a process's run (no_process_terminal.ex:7)"
+    end
+
+    test "without one, a stage group is refused, since there is no run to have steps" do
+      message =
+        refuse_contract("NoProcessStage", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+            stage :closing do
+              event :visit_closed, "Wizyta zamknięta"
+            end
+          end
+        """)
+
+      assert message =~
+               "R1: the contract declares no process, so aggregate :visit cannot group events " <>
+                 "into stage :closing; a stage is a step of a process's run (no_process_stage.ex:8)"
     end
 
     test "a second is refused" do

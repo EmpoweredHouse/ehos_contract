@@ -1,8 +1,11 @@
 defmodule EhOsContract.Contract.Rules.Process do
   @moduledoc """
-  R1–R6 of v2 §6: the one process a contract describes.
+  R1–R6 of v2 §6: the process a contract describes, when it describes one.
 
-  - **R1.** Exactly one `process`: one contract, one process (v2 §3).
+  - **R1.** At most one `process`: one contract, one process (v2 §3, amended
+    6 October 2026, plan DD, P1c (#190)). A contract without one describes units
+    and what reacts to them, and has no runs, so nothing in it may say where a run
+    stands or ends: no stage group in a unit, no `terminal:` event.
   - **R2.** The process correlates on at least one field, and every such field is
     in every local event, where a unit's identity counts as declared. With no field
     every event of the contract would land in one run named after the process.
@@ -24,7 +27,7 @@ defmodule EhOsContract.Contract.Rules.Process do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Duration
-  alias EhOsContract.Contract.{Dsl, Rules}
+  alias EhOsContract.Contract.Rules
 
   @calendar Duration.calendar_units()
 
@@ -42,24 +45,23 @@ defmodule EhOsContract.Contract.Rules.Process do
       promises(process, declarations) ++ durations(process, declarations)
   end
 
-  # Pointed at the first declaration there is, or at nothing when the contract is
-  # empty; the error then names the module without a line.
+  # Without a process there are no runs, so what places an event in a run's stage
+  # or ends a run has nothing to belong to.
   def check(%{processes: []} = declarations) do
-    anchor =
-      declarations
-      |> Map.delete(:module)
-      |> Map.values()
-      |> List.flatten()
-      |> Enum.min_by(&line/1, fn -> %Dsl.ProcessDeclaration{} end)
+    stages =
+      for unit <- declarations.units, group <- unit.stages do
+        {"R1: the contract declares no process, so #{unit.kind} #{inspect(unit.name)} cannot " <>
+           "group events into stage #{inspect(group.name)}; a stage is a step of a process's run",
+         group}
+      end
 
-    [{"R1: a contract describes one process, and this one declares none", anchor}]
-  end
+    terminal =
+      for unit <- declarations.units, event <- Rules.events(unit), event.terminal do
+        {"R1: the contract declares no process, so event #{inspect(event.name)} cannot be " <>
+           "terminal; `terminal:` ends a process's run", event}
+      end
 
-  defp line(declaration) do
-    case Spark.Dsl.Entity.anno(declaration) do
-      nil -> :infinity
-      anno -> :erl_anno.line(anno)
-    end
+    stages ++ terminal
   end
 
   defp correlation(%{correlate: []} = process, _d) do

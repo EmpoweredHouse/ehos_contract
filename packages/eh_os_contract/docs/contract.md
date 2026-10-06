@@ -50,7 +50,7 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 
 ## A contract
 
-A contract belongs to one context of one domain, and holds one process. It names itself, `id: "lending.loans"` on its
+A contract belongs to one context of one domain, and holds at most one process. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
 contract records — `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
 changes the type of every event it covers, and the log's old rows are no longer read as those events; the module's
@@ -132,7 +132,9 @@ end
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.
 - **The process is the run**: `correlate` names the fields that make one run, `stage` groups its events
   when it has stages, and a `promise` is what the process owner agreed happens — from one event, eventually
-  another, within a time, or else a third. `deadline` and `cadence` bound the whole run.
+  another, within a time, or else a third. `deadline` and `cadence` bound the whole run. A contract whose
+  units only decide and record — a register of equipment, of rooms — declares no process, and then nothing
+  that belongs to a run: no `stage` group and no `terminal:` event (R1).
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario (S8). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
@@ -297,7 +299,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
-| `R1` | L2 | a contract without exactly one `process` |
+| `R1` | L2 | a contract declaring two `process`es; with none, a unit's `stage` group or a `terminal:` event |
 | `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts) |
 | `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
