@@ -92,6 +92,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **`event-without-consumer` counts an event a unit's lifecycle starts on or moves on as read** (plan DD, P1b,
+  #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
+  no verdict of the report moves.
 - **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
   user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the

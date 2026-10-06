@@ -252,4 +252,18 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     assert [message] = unread.([intake])
     assert message =~ "event :signed of #{inspect(intake)} has no consumer"
   end
+
+  # Plan DD, P1b (#186): an event a unit's lifecycle starts on or moves on is read by
+  # the report's lifecycle section (LC3), process or not, so it has a consumer.
+  test "an event a lifecycle starts on or moves on has a consumer" do
+    unread =
+      for %Finding{rule: "event-without-consumer"} = f <-
+            Completeness.findings([LifecycleRig.Visits]),
+          do: f.message
+
+    moving = ~w(booked patient_arrived cancelled closed)a
+
+    for event <- moving,
+        do: refute(Enum.any?(unread, &(&1 =~ "event #{inspect(event)} of")), "#{event} unread")
+  end
 end
