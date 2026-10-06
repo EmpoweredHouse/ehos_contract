@@ -48,25 +48,7 @@ defmodule EhOsContract.UndeclaredTypes do
   def warn(repo, models) do
     declared = for model <- models, event <- model.events, event.type != nil, do: event.type
 
-    case undeclared(repo, declared) do
-      [] ->
-        []
-
-      types ->
-        Logger.warning(
-          "EhOsContract: the event log holds #{length(types)} type(s) no contract of this " <>
-            "application declares: #{named(types)}. Those events are not read: a boundary, a " <>
-            "subscription, a read model and the report skip them, and an aggregate whose " <>
-            "stream holds one raises. A contract removed on purpose leaves its history so, " <>
-            "and a node on older code during a rolling deploy sees the newer node's types so. " <>
-            "A log written before event types became \"<contract id>.<event>\" (plan DD, ID3) " <>
-            "is read by no contract at all: the CHANGELOG says to reset the engine's schema " <>
-            "(EhOsContract.Migrations.down/up), which deletes every event it holds, so only " <>
-            "when none of them is worth keeping."
-        )
-
-        types
-    end
+    repo |> undeclared(declared) |> report()
   rescue
     error ->
       Logger.warning(
@@ -75,6 +57,29 @@ defmodule EhOsContract.UndeclaredTypes do
       )
 
       []
+  end
+
+  @doc """
+  Logs the start-up warning for `types`, the undeclared types `undeclared/2` found,
+  and returns them; logs nothing for none.
+  """
+  @spec report([String.t()]) :: [String.t()]
+  def report([]), do: []
+
+  def report(types) do
+    Logger.warning(
+      "EhOsContract: the event log holds #{length(types)} type(s) no contract of this " <>
+        "application declares: #{named(types)}. Those events are not read: a boundary, a " <>
+        "subscription, a read model and the report skip them, and an aggregate whose " <>
+        "stream holds one raises. A contract removed on purpose leaves its history so, " <>
+        "and a node on older code during a rolling deploy sees the newer node's types so. " <>
+        "A log written before event types became \"<contract id>.<event>\" (plan DD, ID3) " <>
+        "is read by no contract at all: the CHANGELOG says to reset the engine's schema " <>
+        "(EhOsContract.Migrations.down/up), which deletes every event it holds, so only " <>
+        "when none of them is worth keeping."
+    )
+
+    types
   end
 
   defp named(types) when length(types) <= @named, do: Enum.join(types, ", ")
