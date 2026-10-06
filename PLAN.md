@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 6 października (DD0, N1–N3, W1–W4, T1+T1s, X1 w `main`; S4 w PR-ze #151)
+## Handoff — stan na 6 października (fala 1 w `main`; fala 2: ID1 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,21 +41,21 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2, W3, W4, T1, T1s, X1 w `main` (#137, #138, #139, #142, #143, #145, #146, #148, #150);
-S4, ostatni etap fali 1, w PR-ze [#151](https://github.com/EmpoweredHouse/eh-os-contract/pull/151)
-(`dsl/s4-transition-without-scenario`, na `main`) — „X1 — co wyszło”, „S4 — co wyszło”. Po merge'u #151: pytanie do
-użytkownika „dalej czy stop”, tag, notatka migracyjna.
+**Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
+AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
+**Fala 2:** ID1 gotowy na `dsl/id1-contract-id` (od `main`, brama zielona, przegląd rozstrzygnięty — „ID1 — co
+wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
 
 ### Stan repozytorium
 
-- **`origin/main` = `2386feb`** (merge #150, X1, 6 października; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+- **`origin/main` = `32d7137`** (merge #151, S4, 6 października; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
   W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarty PR programu: [#151](https://github.com/EmpoweredHouse/eh-os-contract/pull/151) (S4).** #150 (X1) zmergowany 6 października, #146 (W4) i #148 (T1+T1s) 5 października; gałęzie
+- **Otwartych PR-ów programu brak.** #151 (S4) i #150 (X1) zmergowane 6 października, #146 (W4) i #148 (T1+T1s) 5 października; gałęzie
   `engine/w3-trace-core`, `engine/w4-decision`, `engine/t1-supplied-by-host` zmergowane, nieusunięte (sprzątanie na
   polecenie użytkownika). **CI stoi na billingu GitHub Actions** (joby nie są przydzielane runnerowi): kod z `main`
   przeszedł lokalną bramę, ale nie przeszedł jeszcze CI w całości — po naprawie `gh run rerun 37371291018`.
@@ -95,10 +95,10 @@ użytkownika „dalej czy stop”, tag, notatka migracyjna.
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
-     T1+T1s (#148), X1 (#150).
-  2. **Użytkownik:** merge #151 (S4, `dsl/s4-transition-without-scenario`, worktree
-     `runner-usage-optimization-b60150`); po merge'u ☑ w tabeli. **Asystent:** po fali 1 tag wersji (na polecenie) i
-     notatka migracyjna dla AppUnite i `ehos-ledger`; potem fala 2 od ID1. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta.
+  2. **Asystent:** fala 2 — ID1 na `dsl/id1-contract-id` (worktree `runner-usage-optimization-b60150`), potem ID2,
+     ID3, ID4, P1a… po kolei (tabela „Postęp”). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
+     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -534,8 +534,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 |
-| S4 | 1 | `transition-without-scenario` | DD0 | ◐ `dsl/s4-transition-without-scenario`, PR #151 |
-| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
+| S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 |
+| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ◐ `dsl/id1-contract-id`, gotowy, niewypchnięty |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ |
@@ -1303,6 +1303,63 @@ grafu, a raport liczy przejścia na logu. Werdykty bez zmian (raport i 11 grafó
 - **Dla aplikacji AppUnite i `ehos-ledger`:** aplikacja AppUnite dostanie te same ostrzeżenia co kopia w sandboxie
   (cztery, jeśli jej kontrakty się nie rozjechały) — czerwone przy `check --warnings-as-errors`; dopisać scenariusze
   albo wyjaśnić.
+
+### Po fali 1 — decyzja użytkownika i notatka migracyjna (6 października)
+
+**Fala 1 zamknięta w `main`** (`32d7137`, merge #151): DD0, N1–N3, W1–W4, T1, T1s, X1, S4 (#135–#151). **Decyzja
+użytkownika: dalej** — fala 2 od ID1. *Odrzucone:* stop po fali 1 (program zostałby bez tożsamości kontraktów i bez
+modułu procesu, czyli bez dwóch luk, od których się zaczął). **Tag wersji — jeszcze nie:** robi się tylko na wyraźne
+polecenie; do zrobienia, gdy użytkownik go zleci (proponowany na `32d7137`). Odbiór fali 1 („Weryfikacja”, punkt 1):
+Plug odrzuca `p1_reported` (T1s, 422), dwie reakcje między kontekstami mają jawne `delivery` (X1) — spełniony.
+
+**Notatka migracyjna** — co host musi zrobić przy podbiciu przypięcia z sprzed DD0 do `32d7137`:
+
+| Zmiana (etap) | Co zrobić | AppUnite (`0afdd52`, #134) |
+|---|---|---|
+| `terminal: true` na **statusie** → `final: true` (N1) | przemianować | **6 statusów**: `computers.ex` 132–135, `demands.ex` 47 i 99 |
+| `scope` scenariusza → `target` (N1) | przemianować | **2**: `demands.ex` 167, 182 |
+| `identified_by:` encji → `identity` (N1) | przemianować | nic |
+| `consumes "<nazwa>"` → `subscribe "<nazwa>"` (N2) | przemianować | nic |
+| timer z etykietą pozycyjną (N3) | dopisać cel | nic (brak timerów) |
+| pusta etykieta odmawiana (N1/D1, F2/D3, #144) | uzupełnić | nic znalezionego |
+| `schema_version` zapisywany (W1) | nic; przy wdrożeniu kroczącym z nową wersją zdarzenia subskrypcje starego węzła czekają — nie `--skip` | nic |
+| tagi dnia w strefie domeny (W2) | `time_zone:` domeny **przed** podbiciem, jeśli nie UTC (+ `tz`) | domena bez `time_zone:` = UTC; do decyzji użytkownika, czy ma być `Europe/Warsaw` |
+| inwariant domeny `:supplied` zarezerwowany (T1) | przemianować | nic |
+| reakcja na zdarzenie innego kontekstu bez `delivery:` (X1, **X10**) | dopisać `delivery:` | nic (jeden kontekst) |
+| `transition-without-scenario` (S4) | dopisać scenariusze albo wyjaśnić | **4 ostrzeżenia** (jak kopia w sandboxie); czerwone przy `--warnings-as-errors` |
+
+`ehos-ledger` — tego repozytorium tu nie czytamy; host tej samej klasy: te same wiersze, a manifest bez zmian kształtu
+od #134 (żaden etap fali 1 nie rusza generatora). Bump przypięcia robi się w tamtych repozytoriach, na polecenie
+użytkownika.
+
+### ID1 — co wyszło (6 października)
+
+Gałąź `dsl/id1-contract-id` (od `main` @ `32d7137`). `use EhOsContract.Contract, domain: …, context: …, id:
+"rehmed.settlement"` — opcjonalny w ID1. **D11** (L2): przestrzeń nazw aplikacji (jak w nazwie publikacji, z `-`),
+potem co najmniej jeden segment snake_case, **żaden segment nie jest wersją** (`v[1-9][0-9]*`, ten sam wzorzec, co
+koniec nazwy publikacji), najwyżej **100 bajtów** — więc ani `:`, ani `|` (separatory kluczy i przebiegów, które `id`
+będzie poprzedzał od ID3/ID4); odmowa przy linii `use`. **D11** (L3, `Links.Domain.namespaces/1`): pod `name:` domeny.
+**X7**: unikalny w aplikacji. Model trzyma `:id` tylko przy podanym, poza wersją i digestami deklaracji (test: ta sama
+wersja i digesty z `id:` i bez). Raport, `check` i 11 grafów sandboxa bajt w bajt bez zmian (żaden kontrakt nie ma
+jeszcze `id:` — to ID2).
+
+- **Rozstrzygnięcia asystenta (mechanika), z odrzuconymi:** limit 100 B (budżet klucza to 2048 B, `Key.budget/0`;
+  2 × 100 + reszta klucza mieści się z zapasem); *odrzucone:* bez limitu, 255 B (połowa budżetu na sam prefiks). Kod
+  D11 dla formatu i przestrzeni nazw, X7 dla unikalności — jak w planie; *odrzucone:* nowy kod. `id` obok deklaracji
+  (`Rules.contract_id/1`, `c.id` w `Links`), nie w mapie deklaracji — po przeglądzie, bo dwie reguły przechodzące po
+  wszystkich listach deklaracji (R1, puste etykiety N1) wywracały się albo musiały go pomijać.
+- **Przegląd** (`origin/main..HEAD`, dwa równolegle). Poprawność: 8 uwag — naprawione (`db67688`): wersja w środkowym
+  segmencie przechodziła (`"clinic.v1.settlement"`; próba odwrotna: pada tylko jej test); CHANGELOG mówił „żaden digest
+  się nie rusza”, a digest dokumentu eksportu (`Model.to_data/1`) się rusza — poprawione zdanie, kształt eksportu bez
+  zmian (klucz `"id"` dochodzi pod `eh_os_contract.model.v1`); `id` w mapie deklaracji (wyżej); odczyt pliku bez
+  awaryjnego `nil`; `case` bez trzeciej gałęzi; ostrzeżenia o atomach w cudzysłowie w fiksturach; „100 bajtów” wpisane
+  w moduledoc obok `@id_bytes`. Bezpieczeństwo i wydajność: nic blokującego — wzorce ASCII z `\z`, tylko literał
+  (walidacja opcji Spark), limit mieści się w budżecie klucza. **Na ID3/ID4, zapisane:** `"clinic.a"` i `"clinic.a.b"`
+  mogą istnieć obok siebie — typy zdarzeń się nie zderzą (nazwa zdarzenia nie ma kropek), ale filtr po prefiksie
+  (`LIKE 'clinic.a.%'`, temat JetStream `clinic.a.>`) złapałby oba; przy ID4 dopasowywać po całym `id`, nie po prefiksie,
+  albo odmówić `id` będącego prefiksem innego. `-` tylko w przestrzeni nazw — jak w nazwach publikacji, bez zmian.
+- **Brama:** EXIT=0; `check` 0 / 33 / 10, 0 / 76 / 6 (bez zmian); sandbox 196, silnik 1364 (+15), web 52, auth 286 + 1.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany (opcjonalny); eksport modelu z `id:` ma nowy digest.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 

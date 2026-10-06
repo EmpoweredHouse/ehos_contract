@@ -52,7 +52,9 @@ defmodule EhOsContract.Contract.Build do
   @doc false
   @spec model(map()) :: map()
   def model(dsl) do
-    %{domain: domain, context: context} = Transformer.get_persisted(dsl, :eh_os_contract_contract)
+    %{domain: domain, context: context} =
+      persisted = Transformer.get_persisted(dsl, :eh_os_contract_contract)
+
     entities = Transformer.get_entities(dsl, [:contract])
     process = Enum.find(entities, &match?(%Dsl.ProcessDeclaration{}, &1))
     prefix = process && process.name
@@ -82,7 +84,8 @@ defmodule EhOsContract.Contract.Build do
     own = %{domain: domain, context: context}
     process = process && process(process)
 
-    Map.merge(collections, %{
+    collections
+    |> Map.merge(%{
       format: 1,
       kind: :contract,
       module: Transformer.get_persisted(dsl, :module),
@@ -93,7 +96,14 @@ defmodule EhOsContract.Contract.Build do
       version: version(own, process, collections),
       digests: digests(own, process, collections)
     })
+    |> with_id(Map.get(persisted, :id))
   end
+
+  # Plan DD, ID1: the contract's `id:`, kept only where it names one, and outside the
+  # version and the declarations' digests: naming a contract changes nothing it decides
+  # or records. The exported model carries it, so the export's document digest moves.
+  defp with_id(model, nil), do: model
+  defp with_id(model, id), do: Map.put(model, :id, id)
 
   defp of(entities, struct), do: for(%{__struct__: ^struct} = e <- entities, do: e)
 

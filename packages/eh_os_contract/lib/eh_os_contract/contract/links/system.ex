@@ -5,7 +5,9 @@ defmodule EhOsContract.Contract.Links.System do
 
   - **X7.** A process's name is unique across the application: it is the prefix
     of every event type the process records (`"<process>.<event>"`, D1), so two
-    processes of one name would record events no reader could tell apart.
+    processes of one name would record events no reader could tell apart. So is a
+    contract's `id:` (plan DD, ID1), which names it to readers outside the code and
+    will prefix its event types in its place.
   - **X8.** A declaration that code implements — a unit, a policy, an effect, a
     process manager, a read model, a query — has at most one implementation, since
     dispatch and scenarios have to know which one runs.
@@ -21,7 +23,8 @@ defmodule EhOsContract.Contract.Links.System do
 
   @doc false
   @spec check(map()) :: [Links.violation()]
-  def check(system), do: processes(system) ++ capabilities(system) ++ implementations(system)
+  def check(system),
+    do: processes(system) ++ ids(system) ++ capabilities(system) ++ implementations(system)
 
   defp processes(system) do
     named =
@@ -33,6 +36,18 @@ defmodule EhOsContract.Contract.Links.System do
       {"X7: process #{inspect(name)} of #{inspect(module)} is also declared by " <>
          "#{inspect(first)} (#{Links.place(first_at)}); a process's name prefixes its event " <>
          "types, so it is unique in the application", at}
+    end
+  end
+
+  defp ids(system) do
+    named =
+      for %{id: %{value: id, at: at}} = c <- system.contracts,
+          do: {id, c.module, at}
+
+    for {id, {module, at}, {first, first_at}} <- collisions(named) do
+      {"X7: the id: #{inspect(id)} of #{inspect(module)} is also the id: of #{inspect(first)} " <>
+         "(#{Links.place(first_at)}); a contract's id names it outside the code, so it is " <>
+         "unique in the application", at}
     end
   end
 

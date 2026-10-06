@@ -392,16 +392,27 @@ defmodule EhOsContract.Contract.Links.Domain do
       for c <- Rules.commands(d), c.scope != nil, do: {"command", c, c.fields}
   end
 
-  defp namespaces(%{declarations: d, domain: domain}) do
+  defp namespaces(%{declarations: d, domain: domain} = c) do
     prefix = "#{domain.name}."
 
-    for publish <- d.publishes,
-        is_binary(publish.as),
-        not String.starts_with?(publish.as, prefix) do
-      {"D11: publish #{inspect(publish.name)} is named #{inspect(publish.as)}, outside the " <>
-         "application's namespace #{inspect(prefix)}, the name: of #{inspect(domain.module)}",
-       Links.at(publish)}
-    end
+    published =
+      for publish <- d.publishes,
+          is_binary(publish.as),
+          not String.starts_with?(publish.as, prefix) do
+        {"D11: publish #{inspect(publish.name)} is named #{inspect(publish.as)}, outside the " <>
+           "application's namespace #{inspect(prefix)}, the name: of #{inspect(domain.module)}",
+         Links.at(publish)}
+      end
+
+    # Plan DD, ID1: the contract's own name, under the same namespace.
+    named =
+      for %{value: id, at: at} <- [c.id],
+          not String.starts_with?(id, prefix) do
+        {"D11: the contract's id: #{inspect(id)} is outside the application's namespace " <>
+           "#{inspect(prefix)}, the name: of #{inspect(domain.module)}", at}
+      end
+
+    published ++ named
   end
 
   defp suggest(name, names) do

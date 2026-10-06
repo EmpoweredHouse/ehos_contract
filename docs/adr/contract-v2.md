@@ -170,6 +170,14 @@ scenario        description!   scope · actor
 > would roll that fact back — two contexts committing together without the contract saying so. A declared
 > `:in_transaction` there compiles, and `check` warns of it (`in-transaction-across-contexts`). Left out within
 > one context, it is still `:in_transaction`, and the version does not move.
+>
+> *Changed 6 October 2026, plan DD, ID1.* **A contract may name itself: `use EhOsContract.Contract, domain!, context!,
+> id`.** `id` is the domain's `name:`, then dotted snake_case segments, unversioned (`"rehmed.settlement"`), at most
+> 100 bytes, no segment a version (D11, L2), under the domain's namespace (D11, L3) and unique in the application
+> (X7). Its identity until
+> now came from the module and the process's name; `id` is the step towards an identity a rename of either does not
+> move. Optional in ID1 and outside the version; ID3 makes it required and the prefix of event types, which
+> amends D1 (§16).
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

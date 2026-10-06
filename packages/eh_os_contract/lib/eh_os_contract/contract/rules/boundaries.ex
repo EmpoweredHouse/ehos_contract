@@ -1,4 +1,8 @@
 defmodule EhOsContract.Contract.Rules.Boundaries do
+  # Plan DD, ID1: a contract's id will prefix every event type it records and the keys
+  # of its rows, so it is held well under what a key may be (plan #98).
+  @id_bytes 100
+
   @moduledoc """
   The layer-L2 rules of D10 and D11 (v2 §16): who may read what, and what crosses
   to another application. v2 §6 gives them no letter, so they carry the decision's.
@@ -27,6 +31,10 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
     still publishes. The domain's `name:` is held to the same segment by the domain
     (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
+  - A contract's `id:` (plan DD, ID1) is the application's namespace, then one or more
+    dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
+    most #{@id_bytes} bytes: it names the contract to readers outside the code, and will
+    prefix its event types and its rows' keys, where neither `:` nor `|` may stand.
   - `subscribe "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads.
 
@@ -37,13 +45,18 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   would ever see it. One that reacts to such an event takes what a policy's command
   records instead.
 
-  Two checks of the same decisions need the domain, and a Mix compiler has it (L3):
+  Three checks of the same decisions need the domain, and a Mix compiler has it (L3):
   that every actor in a scoped query's or command's `by:` declares its scope, and that a publication's
-  name is under the application's own namespace.
+  name and the contract's `id:` are under the application's own namespace.
   """
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
+
+  # A version segment, as `@versioned` ends a publication's name: no segment of a
+  # contract's id is one, wherever it stands — the first included, since a domain may
+  # be named `:v1`.
+  @version ~r/^v[1-9][0-9]*\z/
 
   # What follows the namespace (`DslRules.namespace?/1`); `\z`, not `$`, which also
   # matches before a final newline.
@@ -217,6 +230,33 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
           end
 
         empty ++ unknown ++ personal ++ idempotent ++ name(where, publish.as, publish)
+    end
+  end
+
+  @doc false
+  # Plan DD, ID1: D11 of the contract's `id:` (`Rules.contract_id/1`), which stands
+  # beside the declarations rather than among them.
+  @spec contract_id(%{value: String.t(), at: term()} | nil) :: [{String.t(), term()}]
+  def contract_id(nil), do: []
+
+  def contract_id(%{value: id, at: at}) do
+    if byte_size(id) <= @id_bytes and contract_id?(id),
+      do: [],
+      else: [
+        {"D11: the contract's id: #{inspect(id)} is not a contract's name: the application's " <>
+           "namespace, then dotted snake_case segments, unversioned, at most #{@id_bytes} bytes, " <>
+           "like \"my-shop.settlement\"", at}
+      ]
+  end
+
+  defp contract_id?(id) do
+    case String.split(id, ".") do
+      [namespace | [_ | _] = rest] = segments ->
+        DslRules.namespace?(namespace) and Enum.all?(rest, &DslRules.snake_case?/1) and
+          not Enum.any?(segments, &(&1 =~ @version))
+
+      _one ->
+        false
     end
   end
 
