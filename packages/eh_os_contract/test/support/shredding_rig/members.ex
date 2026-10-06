@@ -71,9 +71,4 @@ defmodule ShreddingRig.Members do
     handles: :joined,
     delivery: :at_least_once,
     idempotency: [key: :event_id, owner: :self]
-
-  process :membership, "Membership" do
-    correlate :membership_id
-    accountable :clerk
-  end
 end

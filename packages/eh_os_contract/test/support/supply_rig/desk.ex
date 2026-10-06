@@ -43,10 +43,6 @@ defmodule SupplyRig.Desk do
     query :visits_of_desk, %{}
     answers []
   end
-
-  process :desk, "Desk", accountable: :clerk do
-    correlate :visit_id
-  end
 end
 
 defmodule SupplyRig.Visit do

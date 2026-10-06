@@ -27,10 +27,6 @@ defmodule DispatchRig.Transfer do
     end
   end
 
-  process :transfer, "Transfer" do
-    correlate :account_id
-  end
-
   scenario "an account is moved to a branch" do
     command :move_account, %{branch_id: "b-7"}
     expect :account_moved, %{branch_id: "b-7"}

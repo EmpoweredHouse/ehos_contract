@@ -22,8 +22,4 @@ defmodule BoundaryRig.Courses do
       field :capacity, :integer
     end
   end
-
-  process :course, "Course" do
-    correlate :course_id
-  end
 end

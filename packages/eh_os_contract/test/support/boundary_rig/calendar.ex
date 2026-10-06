@@ -19,8 +19,4 @@ defmodule BoundaryRig.Calendar do
 
     event :enrolment_closed, "Enrolment closed"
   end
-
-  process :calendar, "Calendar" do
-    correlate :calendar_id
-  end
 end

@@ -53,8 +53,4 @@ defmodule ValueRig.Till do
       rule :nothing_of_one, "One grosz halves into nothing", examples: [{[1], nil}]
     end
   end
-
-  process :till, "Till" do
-    correlate :till_id
-  end
 end

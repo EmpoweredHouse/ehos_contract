@@ -33,10 +33,6 @@ defmodule BusRig.Orders do
     fields: [:order_id, :total],
     idempotent_on: [:order_id]
 
-  process :order, "Order", accountable: :clerk do
-    correlate :order_id
-  end
-
   scenario "an order is placed with its total" do
     command :place_order, %{total: 120, note: "gift wrap"}
     expect :placed, %{total: 120, note: "gift wrap"}
