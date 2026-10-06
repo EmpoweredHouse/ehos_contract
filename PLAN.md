@@ -629,7 +629,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 4 z 6 (niżej) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 5 z 6 (niżej) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1182,6 +1182,42 @@ are refused — merging them per pair makes it not matter.
   default staying as `null` rather than absent — it reads as "no default", which is all a reader may know of it.
   *Left as known:* a scenario whose givens start and end the run, with a starting trigger, reads `run` and covers
   nothing — what the runtime would do too.
+
+### E13a, batch 5 — what came out (6 October)
+
+- **`EhOsContract.Graph.Overlay`**: `contract/2` and `domain/3` give what the log says over a document, as a document
+  of its own (`schema: "eh_os_contract.graph_overlay.v1"`, its JSON Schema in `priv/schema/graph_overlay.v1.json`).
+  It says its period (`since`, `until`, ISO 8601 or null), the contract's or domain's `version`, and
+  `document_digest`, the digest of the facts document it joins (decision 4). `nodes` and `relations` are maps from
+  the facts' ids to numbers (decision 3).
+- **Only today's numbers** (decision 2), none counted anew: an event's occurrences and runs (moved from
+  `Graph.Contract` to `Paths.occurrences/2`), a process's runs, an aggregate count per lifecycle; per step its runs
+  and `of_runs`, waiting and failing by source, and the report's `untraversed` ("never") and `pending` ("not yet",
+  behind work still on its way) from the new `Conformance.steps/2`, which `process_report` now shares its predicate
+  with — the report is unchanged; a transition's count, `pending` and `untraversed` from `Conformance.lifecycles/2`;
+  between contracts, `Graph.System`'s overlay (events, waiting, failing) and each contract's runs.
+- **Where a step's numbers sit (decided here):** on the relation that ends the step — a command's `emits`, a
+  reaction's `issues` (a manager's by its `on`), a timer's `fires`, an effect's `handled_by` from its event —
+  **where step and relation match one to one.** Two shapes the DSL allows break that, and neither appears in any
+  fixture or client tree: a policy handling several events reaches one `issues` by several steps, and a manager
+  issuing one command on one event both as it starts a run and during it ends one step at two `issues` the log
+  cannot tell apart. Those relations get no numbers rather than numbers that belong to something else. *Rejected:*
+  the same numbers on both of a manager's phases (it overstates, and a sum per command counts twice); a policy step's
+  numbers on its `handled_by` when the policy issues one command (a rule that depends on the counts of a
+  declaration). **Open for the user:** whether these shapes need numbers — which would take a discriminator on a
+  policy's `issues` (batch 3 decided a policy says nothing of which event yields which) or a refusal of the shape.
+- **A move the lifecycle does not allow** (decision 5) is defined under `observed.relations.undeclared` as `{id,
+  from, to, event}`, from and to the status the aggregate stood in — the unit's id where it stood in none yet — and
+  its `count` is in `relations` with the rest.
+- **Tests:** schema and join for every fixture's and client tree's overlay; the facts document equal before and after
+  the log is written; numbers checked against `Paths` and the report, every step's numbers on its one relation, a
+  manager's and a policy's shared shapes left without numbers, "not yet" and "never" on real steps, the period
+  (`since` and `until`), a lifecycle with an undeclared move, a domain's traffic.
+- **Review before commit** (an agent). Taken: the symmetric rule above (the first version gave both of a manager's
+  phases the step's numbers); the domain's `consumed_by` id looked up in the document, not composed; tests for
+  every step's relation, for `pending: true`, for the period's other numbers and `until`; the sandbox test joins
+  `observed` ids too; the domain overlay's `undeclared` held empty by the schema. *Rejected:* `propertyNames`
+  patterns on the maps — ids are opaque, and the join test checks every key.
 
 ### Wobec programu DD
 

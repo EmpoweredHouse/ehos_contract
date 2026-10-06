@@ -94,7 +94,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   manager's relations carry the event or timer they act on and whether it starts the run; a consumed event says
   which sibling event it is (`declared_as`), a received one is handled `via_inbox`. Both are JSON-ready, say
   `"schema": "eh_os_contract.graph.v1"` and carry a `"digest"` of the rest (`Document.digest/1`). Their JSON Schema
-  ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), the one thing under `priv/` the package now
+  ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), with the overlay's, the only things under `priv/` the package
   carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
   the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
   `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
@@ -105,6 +105,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   context's terms, a role's capabilities by contract — and a contract's `scenarios`, grouped by the kind of their
   target, say which relations they exercise (`covers`). Every example and default in a document is redacted as
   `Model.to_data/1` redacts it.
+- **E13a: what the log says over a graph, as its own document.** `EhOsContract.Graph.Overlay.contract/2` and
+  `domain/3` give `eh_os_contract.graph_overlay.v1` (its schema in `priv/schema/graph_overlay.v1.json`): the period,
+  the version, the digest of the `graph.v1` document it joins, and maps from that document's ids to the numbers the
+  report and the pictures already compute — occurrences and runs, a step's runs, waiting and failing and whether
+  the report counts it never or not yet, a transition's count, traffic between contracts — and a move a lifecycle
+  does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
+  report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences and runs. No verdict moves.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the

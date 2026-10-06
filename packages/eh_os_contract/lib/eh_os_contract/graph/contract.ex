@@ -22,9 +22,7 @@ defmodule EhOsContract.Graph.Contract do
   (ADR §9, amended by plan DD, P1b, #186).
   """
 
-  import Ecto.Query
-
-  alias EhOsContract.{Event, Model, Paths}
+  alias EhOsContract.{Model, Paths}
   alias EhOsContract.Graph.{Document, Mermaid}
 
   @doc """
@@ -40,7 +38,11 @@ defmodule EhOsContract.Graph.Contract do
     scope = %{contract: model.module, domain: model.domain}
 
     steps = if overlay?, do: Paths.observe(model, opts), else: Paths.declared(model)
-    counts = if overlay?, do: event_counts(model, opts), else: %{}
+
+    counts =
+      if overlay?,
+        do: Map.new(Paths.occurrences(model, opts), fn {name, n} -> {{:event, name}, n} end),
+        else: %{}
 
     actors = Map.new(domain.actors, &{&1.name, &1})
     externals = Map.new(domain.externals, &{&1.name, &1})
@@ -316,33 +318,4 @@ defmodule EhOsContract.Graph.Contract do
           )
       end)
   end
-
-  # --- the log -------------------------------------------------------------------------
-
-  # Occurrences of each event the contract records, and of each its process includes:
-  # counted in the log, whatever run, if any, they fall in (plan DD, P1a, #183).
-  defp event_counts(model, opts) do
-    # A contract with no process still counts its own events; an included event a
-    # sibling does not declare is left out.
-    by_type =
-      Map.new(model.events, &{&1.type, &1.name})
-      |> Map.merge(
-        for(%{included: true} = e <- Model.process_events(model), into: %{}, do: {e.type, e.name})
-      )
-
-    types = Map.keys(by_type)
-
-    from(e in Event,
-      as: :event,
-      where: e.type in ^types,
-      group_by: e.type,
-      # `position`, not `id`: the `(type, position)` index answers it alone.
-      select: {e.type, count(e.position)}
-    )
-    |> EhOsContract.Graph.bounded(opts)
-    |> repo().all()
-    |> Map.new(fn {type, count} -> {{:event, Map.fetch!(by_type, type)}, count} end)
-  end
-
-  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end
