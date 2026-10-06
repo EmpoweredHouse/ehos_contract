@@ -1,0 +1,13 @@
+**Review of P1c** (two reviews in parallel, on `56874a2..b151767`; settled in `7313de2`).
+
+Correctness found no bug. Every reader of a contract's process was already safe without one after #186. A throwaway test called each reader on a contract with no process: the OpenAPI and AsyncAPI documents, the view, the pages, the glossary, the check, the deployment record and the run evaluation. All returned normally. The two that need a process, the declared shape and a promise's trace, raise a plain error. Beside `stage` groups and `terminal:`, nothing outside `process` belongs to a run. Its findings:
+- A contract that declares nothing at all compiled once the refusal of a contract without a process was gone, since that refusal was the only thing that caught it. **Fixed:** refused under R1 again, with a test.
+- A terminal event inside a stage group got two refusals in a contract without a process. **Fixed:** refused once, for the group.
+- The changelog sentence read as an instruction to remove a process. **Fixed.**
+- The new test did not read the generated documents, the pages, the view or the check. **Fixed:** it does now.
+
+Security and performance found nothing. Capability names carry no process, erasure is keyed per subject and event type, and every query on the runs table is filtered by process and guarded by a check that one exists. A contract without a process indexes no run and costs dispatch nothing extra.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Check counts unchanged: sandbox 0 errors, 33 warnings, 10 notices; engine 0, 74, 6. Tests: engine 1397, web 57, sandbox 196, auth 287 + 1 property.
+
+After #189 merged: rebased on main 56c7852 and added "Record P1b as merged" (PLAN.md only); gate again EXIT=0, same counts.
