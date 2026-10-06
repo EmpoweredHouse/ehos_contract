@@ -46,8 +46,7 @@ belong in the vocabulary: flag it, do not add it.
 - **Contradictions are kept**, tagged by speaker, never resolved silently.
 - **This is an input, not a source of truth.** Nothing goes to a client or into a contract without a
   person reviewing it.
-- **Never write into `~/Projects/ai/empowered-house-context` or `appunite/process-native-software`**
-  without being asked.
+- **Never write into `appunite/process-native-software`** without being asked.
 
 ## Inputs
 
