@@ -20,6 +20,7 @@ defmodule EhOsContract.Auth.AuthorizeTest do
       kind: Keyword.get(opts, :kind, :command),
       capability: capability,
       contract: Rehmed.Contracts.VisitSettlement,
+      contract_id: "rehmed.visit_settlement",
       version: "3f2a",
       scope: Keyword.get(opts, :scope)
     }
@@ -42,7 +43,7 @@ defmodule EhOsContract.Auth.AuthorizeTest do
                "u-anna",
                "command",
                "rehmed.record_payment",
-               "Rehmed.Contracts.VisitSettlement",
+               "rehmed.visit_settlement",
                "3f2a",
                nil,
                nil,

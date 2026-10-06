@@ -3,10 +3,12 @@ defmodule EhOsContract.EffectJob do
   The Oban job that runs one effect delivered `:at_least_once` on one event (v2 §12).
 
   Dispatch inserts it in the transaction that appends the event, so the job exists
-  exactly when the event does. **Its arguments are the effect's key and the event's
-  id, and nothing else**: the job reads the event from the log when it runs, so no
-  payload ever lands in `oban_jobs`, where the queue would keep what erasure means to
-  remove.
+  exactly when the event does. **Its arguments are the effect's key, the event's id
+  and the dispatched contract's application, and nothing else**: the job reads the
+  event from the log when it runs, so no payload ever lands in `oban_jobs`, where the
+  queue would keep what erasure means to remove. The application is where dispatch
+  found the effect besides the configured ones, which the key's contract id cannot name
+  (plan DD, ID4, #178).
 
   Oban delivers at least once, so an effect **will** see an event a second time. The
   contract names what makes that harmless (`idempotency:`, rule P3), and the event's
@@ -50,9 +52,15 @@ defmodule EhOsContract.EffectJob do
     Oban.Worker.backoff(%{job | attempt: max(attempt - snoozed, 1), max_attempts: @max_attempts})
   end
 
-  @doc "The job for `effect`'s key and the event `event_id`."
-  @spec job(String.t(), Ecto.UUID.t()) :: Oban.Job.changeset()
-  def job(effect, event_id), do: new(%{"effect" => effect, "event_id" => event_id})
+  @doc """
+  The job for `effect`'s key and the event `event_id`, dispatched by a contract of
+  `application`.
+  """
+  @spec job(String.t(), Ecto.UUID.t(), atom() | nil) :: Oban.Job.changeset()
+  def job(effect, event_id, application \\ nil) do
+    args = %{"effect" => effect, "event_id" => event_id}
+    new(if application, do: Map.put(args, "application", Atom.to_string(application)), else: args)
+  end
 
   @doc """
   Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
@@ -64,13 +72,19 @@ defmodule EhOsContract.EffectJob do
   @impl Oban.Worker
   @spec perform(Oban.Job.t()) ::
           :ok | {:error, term()} | {:snooze, pos_integer()} | {:cancel, String.t()}
-  def perform(%Oban.Job{args: %{"effect" => key, "event_id" => event_id}}) do
+  def perform(%Oban.Job{args: %{"effect" => key, "event_id" => event_id} = args}) do
+    application = application(args["application"])
+
     with %{kind: :effect, module: module} = effect when module != nil <-
-           Implementations.consumer(key),
+           Implementations.consumer(key, application),
          row = repo().get!(Event, event_id),
          true <- Map.has_key?(effect.callbacks, row.type) || {:dropped, row.type} do
       guarded(key, row, fn ->
-        Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
+        Consumer.handle!(
+          Implementations.taking(effect, row.type),
+          Consumer.decode!(row, application),
+          []
+        )
       end)
     else
       {:dropped, type} ->
@@ -174,6 +188,16 @@ defmodule EhOsContract.EffectJob do
 
       entry ->
         entry
+    end)
+  end
+
+  # An application this node has not loaded holds nothing it could run, and its name is
+  # never made an atom from a job's arguments.
+  defp application(nil), do: nil
+
+  defp application(name) do
+    Enum.find_value(Application.loaded_applications(), fn {app, _, _} ->
+      Atom.to_string(app) == name and app
     end)
   end
 

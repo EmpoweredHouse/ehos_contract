@@ -41,7 +41,7 @@ defmodule EhOsContract.Store.Suite do
         Map.merge(
           %{
             type: type,
-            contract: "EhOsContract.Store.Suite",
+            contract: "eh_os_contract.store_suite",
             contract_version: "suite",
             correlation_id: Ecto.UUID.generate(),
             actor: "system",

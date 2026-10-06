@@ -71,7 +71,7 @@ defmodule EhOsContract.CoverageTest do
 
     Repo.insert!(%EhOsContract.CommandRecord{
       id: Ecto.UUID.generate(),
-      contract: inspect(Ledger),
+      contract: EhOsContract.Model.fetch(Ledger).id,
       type: "withdraw",
       issued_by: "actor:u-1",
       correlation_id: Ecto.UUID.generate(),

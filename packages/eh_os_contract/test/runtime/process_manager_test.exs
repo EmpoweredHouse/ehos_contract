@@ -17,7 +17,7 @@ defmodule EhOsContract.ProcessManagerTest do
   alias EhOsContract.{Actor, Clock, Event, ProcessManagerRecord, Subscription, Testing, TimerJob}
 
   @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
-  @chase "DispatchRig.Ledger:process_manager:first_deposit_chase"
+  @chase "dispatch_rig.ledger:process_manager:first_deposit_chase"
 
   @opened ~U[2026-09-01 09:00:00Z]
 
@@ -253,7 +253,7 @@ defmodule EhOsContract.ProcessManagerTest do
       open()
       drain_at(0)
       [job] = timer_jobs()
-      gone = put_in(job.args["process_manager"], "DispatchRig.Ledger:process_manager:gone")
+      gone = put_in(job.args["process_manager"], "dispatch_rig.ledger:process_manager:gone")
 
       Repo.update_all(from(r in ProcessManagerRecord, where: r.name == @chase),
         set: [name: gone.args["process_manager"]]

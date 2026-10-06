@@ -9,7 +9,7 @@ defmodule EhOsContract.Consumer do
   - **A read model** projects: its callback returns `:ok`.
   - **A policy** reacts: what its callback issues is dispatched at once, as the
     policy's own actor, with the event as its cause and a key derived from it,
-    `"policy:<contract>:<name>:<event id>:<index>"`. A second delivery of the event
+    `"policy:<contract id>:<name>:<event id>:<index>"`. A second delivery of the event
     therefore appends nothing. A rejection is the unit's answer and is not a
     failure; a policy reacting to the kind of event it already reacted to down one
     chain is a cycle, and raises.
@@ -35,7 +35,7 @@ defmodule EhOsContract.Consumer do
 
   @doc """
   Hands `event` to `consumer`. `chain` is the path of policies that led to the event,
-  each link `"<contract>:<policy>:<type>"`. Raises on anything but what the
+  each link `"<contract id>:<policy>:<type>"`. Raises on anything but what the
   consumer's kind returns; an effect's `{:error, reason}` is returned, since only its
   caller knows whether to roll back or to retry.
   """
@@ -120,8 +120,10 @@ defmodule EhOsContract.Consumer do
 
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
-  type, with `__meta__` from the row. Raises when no contract of the host declares the
-  type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
+  type, with `__meta__` from the row, found by the id the row names among the configured
+  applications, the siblings their contracts consume and `application`
+  (`EhOsContract.Implementations.contract/2`). Raises
+  when no contract of the host declares the type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
   when the row was written with a newer version of the event's fields than this code
   declares (plan W1).
 
@@ -131,19 +133,20 @@ defmodule EhOsContract.Consumer do
   erasure itself, `eh_os_contract.subject_erased`, is declared by no contract, and
   reads as the `EhOsContract.Erased` it names.
   """
-  @spec decode!(Event.t()) :: struct()
-  def decode!(%Event{type: type, payload: payload} = row) do
+  @spec decode!(Event.t(), atom() | nil) :: struct()
+  def decode!(%Event{type: type, payload: payload} = row, application \\ nil) do
     if type == Personal.erased_type(),
       do: Personal.erased_event(payload),
-      else: decode_declared!(row)
+      else: decode_declared!(row, application)
   end
 
-  defp decode_declared!(row) do
+  defp decode_declared!(row, application) do
     model =
-      case Model.fetch(Module.safe_concat([row.contract])) do
-        %{kind: :contract, units: _} = model -> model
-        _other -> raise ArgumentError, "#{row.contract} is not a contract"
-      end
+      Implementations.contract(row.contract, application) ||
+        raise ArgumentError,
+              "#{inspect(row.contract)} is the id of no contract of the configured " <>
+                "applications or a sibling they consume, and the event at position " <>
+                "#{row.position} names it"
 
     values = Codec.values(model.domain)
     [decoded] = decode_all!(model, values, [row])
@@ -220,14 +223,12 @@ defmodule EhOsContract.Consumer do
   @spec newer?(Event.t()) :: boolean()
   def newer?(%Event{type: type, schema_version: written} = row) when is_integer(written) do
     with false <- type == Personal.erased_type(),
-         %{kind: :contract} = model <- Model.fetch(Module.safe_concat([row.contract])),
+         %{kind: :contract} = model <- Implementations.contract(row.contract),
          %{schema_version: declared} <- Enum.find(model.events, &(&1.type == type)) do
       written > declared
     else
       _cannot_place -> false
     end
-  rescue
-    ArgumentError -> false
   end
 
   def newer?(_row), do: false
@@ -262,7 +263,9 @@ defmodule EhOsContract.Consumer do
   end
 
   # One link of a chain: the policy, and the type of the event it reacted to.
-  defp link(consumer), do: "#{inspect(consumer.contract)}:#{consumer.name}:#{consumer.type}"
+  # Stored in the event's metadata, so it names the contract by its id (plan DD, ID4, #178).
+  defp link(consumer),
+    do: "#{Model.fetch(consumer.contract).id}:#{consumer.name}:#{consumer.type}"
 
   @doc false
   # What a reaction issued, dispatched at once as the reaction's own actor, `:policy`
@@ -291,7 +294,8 @@ defmodule EhOsContract.Consumer do
         actor: Actor.reaction(kind, consumer.name),
         causation_id: source.id,
         correlation_id: source.correlation_id,
-        idempotency_key: reaction_key(kind, consumer.contract, consumer.name, source.id, index),
+        idempotency_key:
+          reaction_key(kind, Model.fetch(consumer.contract).id, consumer.name, source.id, index),
         chain: chain
       ]
 
@@ -334,12 +338,13 @@ defmodule EhOsContract.Consumer do
 
   @doc false
   # The key a reaction's command is dispatched with: one per event and command, so a
-  # delivery again is the same command. Held to dispatch's rule as every key is; one that
-  # would break it — names past what 255 bytes leave, or a quoted module — is its SHA-256
-  # in the same form, and the key of every other reaction stays as it always was.
-  @spec reaction_key(atom(), module(), atom(), String.t(), non_neg_integer()) :: String.t()
-  def reaction_key(kind, contract, name, id, index) do
-    key = "#{kind}:#{inspect(contract)}:#{name}:#{id}:#{index}"
+  # delivery again is the same command, named by the contract's id (plan DD, ID4, #178).
+  # Held to dispatch's rule as every key is; one that would break it — names past what
+  # 255 bytes leave — is its SHA-256 in the same form, and the key of every other
+  # reaction stays as it always was.
+  @spec reaction_key(atom(), String.t(), atom(), String.t(), non_neg_integer()) :: String.t()
+  def reaction_key(kind, contract_id, name, id, index) do
+    key = "#{kind}:#{contract_id}:#{name}:#{id}:#{index}"
 
     if Dispatcher.idempotency_key?(key),
       do: key,

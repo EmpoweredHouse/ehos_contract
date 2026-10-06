@@ -23,7 +23,7 @@ defmodule EhOsContract.UndeclaredTypesTest do
           [
             %{
               type: type,
-              contract: "DispatchRig.Ledger",
+              contract: "dispatch_rig.ledger",
               contract_version: "old",
               correlation_id: Ecto.UUID.generate(),
               actor: "system:old",

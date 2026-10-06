@@ -24,10 +24,10 @@ defmodule EhOsContract.SubscriptionTest do
            "dispatch_rig.withdraw"
          ])
 
-  @lines "DispatchRig.Ledger:read_model:ledger_lines"
-  @balances "DispatchRig.Ledger:read_model:balances"
-  @movements "DispatchRig.Ledger:read_model:movements"
-  @flag "DispatchRig.Ledger:policy:flag_large_withdrawal"
+  @lines "dispatch_rig.ledger:read_model:ledger_lines"
+  @balances "dispatch_rig.ledger:read_model:balances"
+  @movements "dispatch_rig.ledger:read_model:movements"
+  @flag "dispatch_rig.ledger:policy:flag_large_withdrawal"
 
   defp dispatch(command), do: {:ok, _} = EhOsContract.dispatch(Ledger, command, actor: @clerk)
   defp deposit(amount), do: dispatch(%Deposit{account_id: "a-1", amount: amount})
@@ -158,7 +158,7 @@ defmodule EhOsContract.SubscriptionTest do
 
       # The chain of policies travels with the event, so a reaction to it continues it.
       assert flag.metadata["chain"] == [
-               "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
+               "dispatch_rig.ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
              ]
 
       assert flag.metadata["issued_by"] == "policy:flag_large_withdrawal"
@@ -174,7 +174,7 @@ defmodule EhOsContract.SubscriptionTest do
       deposit(900)
       deposit(900)
 
-      link = "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
+      link = "dispatch_rig.ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn"
 
       {:ok, _} =
         EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
@@ -206,7 +206,7 @@ defmodule EhOsContract.SubscriptionTest do
       deposit(900)
       deposit(900)
 
-      other = "DispatchRig.Ledger:return_small_change:dispatch_rig.ledger.withdrawn"
+      other = "dispatch_rig.ledger:return_small_change:dispatch_rig.ledger.withdrawn"
 
       {:ok, _} =
         EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
@@ -218,7 +218,7 @@ defmodule EhOsContract.SubscriptionTest do
       assert [flag] = flagged()
 
       assert flag.metadata["chain"] == [
-               "DispatchRig.Ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn",
+               "dispatch_rig.ledger:flag_large_withdrawal:dispatch_rig.ledger.withdrawn",
                other
              ]
     end

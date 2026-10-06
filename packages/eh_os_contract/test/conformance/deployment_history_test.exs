@@ -37,7 +37,7 @@ defmodule EhOsContract.DeploymentHistoryTest do
     Repo.insert!(
       struct(
         %Deployment{
-          contract: inspect(Promised),
+          contract: EhOsContract.Model.fetch(Promised).id,
           contract_version: version(),
           wiring_version: "wiring-old",
           events: Model.fetch(Promised).events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
@@ -109,7 +109,7 @@ defmodule EhOsContract.DeploymentHistoryTest do
 
       record_event!(%{
         type: "process_shapes.promised.request_received",
-        contract: inspect(Promised),
+        contract: EhOsContract.Model.fetch(Promised).id,
         contract_version: "old-version",
         process: "handling",
         instance_id: "handling|r-0",

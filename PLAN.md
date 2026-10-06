@@ -46,7 +46,8 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 **Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 merged on
 `dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 merged in #174
 (issue #173): the id is required and labels every event; existing logs are reset. Follow-up #175 (a start-up
-warning for undeclared types in the log) in PR #176. Next is ID4: rows and keys by the id.
+warning for undeclared types in the log) merged in #176. ID4 (rows and keys by the id) in progress: issue #178,
+branch `dd/178-rows-by-id`.
 
 ### Stan repozytorium
 
@@ -554,7 +555,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
-| ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
+| ID4 | 2 | wiersze i klucze po `id` | ID3 | ◐ `dd/178-rows-by-id` | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
@@ -677,16 +678,21 @@ in the tests and the sandbox, the two pinned versions, an `@amendments` entry fo
 D1 in ADR §16. **No compatibility with existing logs** (the user's decision, 6 October): an upgrading application
 clears its log; rejected, a one-off rewrite of stored types and old types read as aliases (#173). Process names
 stay unique (X7) for their runs. Verdicts move: every event type changes.
-**ID4 — wiersze i klucze po `id`** zamiast `inspect(module)`: Dispatcher (`entry/4` 1238, `write_row!/4` 1320,
-`idempotent/2` 1004, klucz 260), `TimerJob` 116, `Personal` 243 (`"eh_os_contract"`), `Deployment` (133, 170, 293),
-`Dependency` (113, 143), `Paths` (340, 361, 396, 517), `Conformance` (252, 382), `Coverage` 114; klucze konsumentów
-`"<id>:<rodzaj>:<nazwa>"` (`implementations.ex` 284, 372, 420; `consumer.ex` 210, 287; `process_manager.ex` 150;
-`paths.ex` 277); `Consumer.decode!(consumer, row)` bez `row.contract`; API web po `id`.
+**ID4 — rows and keys by the contract's `id`** (#178; tightened 6 October 2026), instead of `inspect(module)`:
+the `contract` column of events, commands, deployments and dependency observations, every query on it, and the
+keys of consumers, relays, inboxes, read models and reaction commands (`"<id>:<kind>:<name>"`). The three places
+that turn stored text back into a module (`Module.safe_concat/1` in `Consumer.decode!/1`, `Consumer.newer?/1`,
+`Implementations.consumer/1`) resolve the id through the configured applications' contracts, on the whole id
+(`clinic.a` ≠ `clinic.a.b`); an effect job also carries its dispatch's application. No table changes shape (the
+column is text); old rows are not read, as in ID3. The wire's `contract` field and the dashboard's APIs stay by
+module until P1a (v3). Report, `check` and graphs byte for byte unchanged. Depends on ID3.
 
 **P1a — kroki per kontrakt, procesy osobno** (przesuwa werdykty): `paths.ex` liczy wystąpienia, nie przebiegi
 (`runs` → `taken`, `Paths.activity/2`); `Conformance.from_model/2` → `%{contract, module, activity, paths,
 lifecycles, scenarios, drift}`, `Conformance.process/2` = dzisiejszy `process_report`; wire
-`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`.
+`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`. From ID4
+(#178): the wire's `contract` and the dashboard's APIs (conformance, model, AsyncAPI, OpenAPI — parameters and
+listings) name the contract's `id`, not its module.
 **P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
 `eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
 **P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą

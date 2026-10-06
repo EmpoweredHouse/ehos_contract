@@ -78,6 +78,25 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
+  `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
+  where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
+  (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
+  contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
+  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
+  **The host also clears the tables its read models project into**, which are the host's and which the reset leaves: they
+  hold projections of the log that is gone, and an ordered read model starts again from the new log's first event. An inbox's durable
+  consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
+  deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
+  to the inbox and drain it before upgrading, then delete the old consumer. An effect's job
+  carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
+  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
+  `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision
+  names the contract by it.
+- **Two contracts of one `id:` across the configured applications, or the siblings they consume, are refused when the engine scans them**
+  (plan DD, ID4, #178): `ArgumentError` naming both modules and their applications, at boot or at the first
+  dispatch. X7 refuses it within one application at compile time; across applications no compile sees both, and
+  since every row and key names the id, the two would share one history.
 - **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
   without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
   `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's

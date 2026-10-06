@@ -52,7 +52,7 @@ defmodule EhOsContract.EffectJobErrorsTest do
     kept = as_oban_keeps(:error, error, stacktrace)
 
     assert kept =~
-             "effect ShreddingRig.Members:effect:greet raised MatchError on the event at position"
+             "effect shredding_rig.members:effect:greet raised MatchError on the event at position"
 
     refute kept =~ "Crash Anna"
     assert Enum.all?(stacktrace, fn {_, _, arity, _} -> is_integer(arity) end)

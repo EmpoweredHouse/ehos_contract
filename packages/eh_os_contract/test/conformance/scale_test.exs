@@ -45,7 +45,7 @@ defmodule EhOsContract.ScaleTest do
   defp row(name, request_id, at) do
     %{
       type: "process_shapes.promised.#{name}",
-      contract: inspect(Promised),
+      contract: EhOsContract.Model.fetch(Promised).id,
       contract_version: EhOsContract.Model.fetch(Promised).version,
       process: "handling",
       instance_id: "handling|#{request_id}",

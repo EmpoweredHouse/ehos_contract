@@ -36,7 +36,7 @@ defmodule EhOsContract.ReadYourWritesTest do
   test "with it, the query waits until the read model has the write", %{position: position} do
     drained =
       Task.async(fn ->
-        Process.sleep(100) && Testing.drain(only: "DispatchRig.Ledger:read_model:ledger_lines")
+        Process.sleep(100) && Testing.drain(only: "dispatch_rig.ledger:read_model:ledger_lines")
       end)
 
     assert {:ok, [%{account_id: "a-1", amount: 10}]} = lines(min_position: position)

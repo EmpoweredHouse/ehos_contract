@@ -5,7 +5,7 @@ defmodule EhOsContract.Relay do
   `EhOsContract.Bus`. The log is the outbox; there is no outbox table.
 
   A relay is a consumer like a policy (`EhOsContract.Subscription`), with its row in
-  `eh_os_contract_subscriptions` under `"<contract>:relay:<name>"`, and it differs
+  `eh_os_contract_subscriptions` under `"<contract id>:relay:<name>"`, and it differs
   in what it does with a batch:
 
   - **It moves only when the transport holds the batch.** A step reads up to

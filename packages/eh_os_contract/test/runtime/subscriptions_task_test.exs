@@ -16,7 +16,7 @@ defmodule EhOsContract.SubscriptionsTaskTest do
   @moduletag :capture_log
 
   @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
-  @lines "DispatchRig.Ledger:read_model:ledger_lines"
+  @lines "dispatch_rig.ledger:read_model:ledger_lines"
 
   defp dispatch(command), do: {:ok, _} = EhOsContract.dispatch(Ledger, command, actor: @clerk)
   defp task(args), do: capture_io(fn -> Subscriptions.run(args) end)
@@ -47,10 +47,10 @@ defmodule EhOsContract.SubscriptionsTaskTest do
     text = output()
 
     assert text =~
-             ~r/^DispatchRig\.Ledger:read_model:ledger_lines  failing at \d+, fails at \d+ \(RuntimeError, 3 attempts\)$/m
+             ~r/^dispatch_rig\.ledger:read_model:ledger_lines  failing at \d+, fails at \d+ \(RuntimeError, 3 attempts\)$/m
 
-    assert text =~ ~r/^DispatchRig\.Ledger:read_model:balances  running at \d+$/m
-    assert text =~ ~r/^DispatchRig\.Ledger:policy:flag_large_withdrawal  running at \d+$/m
+    assert text =~ ~r/^dispatch_rig\.ledger:read_model:balances  running at \d+$/m
+    assert text =~ ~r/^dispatch_rig\.ledger:policy:flag_large_withdrawal  running at \d+$/m
   end
 
   test "--skip moves it past the poison event, and the next drain applies the rest" do
@@ -72,24 +72,24 @@ defmodule EhOsContract.SubscriptionsTaskTest do
 
   test "refuses what a person cannot decide" do
     assert_raise Mix.Error, ~r/is not failing/, fn ->
-      task(["--skip", "DispatchRig.Ledger:read_model:balances"])
+      task(["--skip", "dispatch_rig.ledger:read_model:balances"])
     end
 
     assert_raise Mix.Error, ~r/defines no reset\/0/, fn ->
-      task(["--reset", "DispatchRig.Ledger:read_model:movements"])
+      task(["--reset", "dispatch_rig.ledger:read_model:movements"])
     end
   end
 
   test "--reset of a relay moves it back, to publish the log again" do
-    task(["--reset", "BusRig.Orders:relay:order_placed"])
+    task(["--reset", "bus_rig_shop.orders:relay:order_placed"])
     assert output() =~ "moved back to the beginning of the log, to publish it again"
 
-    assert Repo.get!(EhOsContract.SubscriptionRecord, "BusRig.Orders:relay:order_placed").position ==
+    assert Repo.get!(EhOsContract.SubscriptionRecord, "bus_rig_shop.orders:relay:order_placed").position ==
              0
   end
 
   test "--reset of a policy moves it back, to react to the log" do
-    task(["--reset", "DispatchRig.Ledger:policy:flag_large_withdrawal"])
+    task(["--reset", "dispatch_rig.ledger:policy:flag_large_withdrawal"])
     assert output() =~ "moved back to the beginning of the log, to react to it"
   end
 end

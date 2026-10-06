@@ -145,7 +145,7 @@ defmodule EhOsContract.PathsTest do
         event =
           record_event!(%{
             type: "dispatch_rig.ledger.deposited",
-            contract: "DispatchRig.Ledger",
+            contract: "dispatch_rig.ledger",
             contract_version: "v",
             process: "ledger",
             instance_id: "ledger|#{account}",
@@ -154,7 +154,7 @@ defmodule EhOsContract.PathsTest do
 
         Repo.insert!(%EhOsContract.CommandRecord{
           id: Ecto.UUID.generate(),
-          contract: "DispatchRig.Ledger",
+          contract: "dispatch_rig.ledger",
           type: "flag_account",
           issued_by: "policy:flag_large_deposit",
           causation_event_id: event.id,
@@ -211,7 +211,7 @@ defmodule EhOsContract.PathsTest do
     test "a subscription stopped at an event it cannot apply fails the steps through it" do
       Repo.update_all(
         from(s in SubscriptionRecord,
-          where: s.name == "DispatchRig.Ledger:policy:flag_large_withdrawal"
+          where: s.name == "dispatch_rig.ledger:policy:flag_large_withdrawal"
         ),
         set: [status: "failing", failed_position: 42, failure: "RuntimeError"]
       )

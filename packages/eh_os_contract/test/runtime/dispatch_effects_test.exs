@@ -18,7 +18,7 @@ defmodule EhOsContract.DispatchEffectsTest do
            "dispatch_rig.withdraw"
          ])
 
-  @notify "DispatchRig.Ledger:effect:notify_branch"
+  @notify "dispatch_rig.ledger:effect:notify_branch"
 
   defp dispatch(command), do: EhOsContract.dispatch(Ledger, command, actor: @clerk)
   defp jobs, do: Repo.all(from(j in Oban.Job, order_by: j.id))
@@ -42,13 +42,19 @@ defmodule EhOsContract.DispatchEffectsTest do
   end
 
   describe "an effect delivered at least once" do
-    test "is a job holding the effect's key and the event's id, and no payload" do
+    test "is a job holding the effect's key, the event's id and the application, and no payload" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 1000})
 
       event = flagged("a-1")
 
       assert [%Oban.Job{worker: "EhOsContract.EffectJob", queue: "events", args: args}] = jobs()
-      assert args == %{"effect" => @notify, "event_id" => event.id}
+
+      assert args == %{
+               "effect" => @notify,
+               "event_id" => event.id,
+               "application" => "eh_os_contract"
+             }
+
       assert notices() == []
     end
 
@@ -113,10 +119,10 @@ defmodule EhOsContract.DispatchEffectsTest do
 
       assert {:cancel, reason} =
                EffectJob.perform(%Oban.Job{
-                 args: %{"effect" => "DispatchRig.Ledger:effect:gone", "event_id" => event.id}
+                 args: %{"effect" => "dispatch_rig.ledger:effect:gone", "event_id" => event.id}
                })
 
-      assert reason =~ "no module implements effect DispatchRig.Ledger:effect:gone"
+      assert reason =~ "no module implements effect dispatch_rig.ledger:effect:gone"
     end
   end
 

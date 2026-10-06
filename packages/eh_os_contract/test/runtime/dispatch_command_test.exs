@@ -179,8 +179,9 @@ defmodule EhOsContract.DispatchCommandTest do
 
   describe "reading the stream back" do
     test "an event is decoded by the contract that declares its type, whatever name the row stored" do
-      # A row appended before the contract's module was renamed keeps the old name in
-      # `contract`. The type is what the contract declares, so the stream still folds.
+      # A row whose `contract` names something else — written before rows named the
+      # contract's id (plan DD, ID4, #178), or by hand. The type is what the contract
+      # declares, so the stream still folds.
       {:ok, _} =
         Repo.transaction(fn ->
           EhOsContract.Store.append(
@@ -259,7 +260,7 @@ defmodule EhOsContract.DispatchCommandTest do
           [
             %{
               type: type,
-              contract: "DispatchRig.Ledger",
+              contract: "dispatch_rig.ledger",
               contract_version: "old",
               correlation_id: Ecto.UUID.generate(),
               actor: "system:old",

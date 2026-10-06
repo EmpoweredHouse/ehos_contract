@@ -240,7 +240,9 @@ defmodule EhOsContract.Personal do
               [
                 %{
                   type: @erased,
-                  contract: inspect(EhOsContract),
+                  # Declared by no contract: the library's own name, as its type begins with
+                  # (plan DD, ID4, #178).
+                  contract: "eh_os_contract",
                   contract_version: EhOsContract.version(),
                   actor: Actor.label(actor),
                   correlation_id: Ecto.UUID.generate(),

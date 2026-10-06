@@ -215,7 +215,7 @@ defmodule EhOsContract.Auth do
       subject: actor.subject,
       kind: Atom.to_string(request.kind),
       capability: request.capability,
-      contract: inspect(request.contract),
+      contract: request.contract_id,
       contract_version: request.version,
       scope_dimension: dimension,
       scope_value: recorded(value),

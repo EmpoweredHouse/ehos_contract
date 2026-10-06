@@ -171,7 +171,7 @@ defmodule EhOsContract.PromiseEdgesTest do
 
     entry = %{
       type: "promise_edges.edges.#{name}",
-      contract: inspect(Edges),
+      contract: EhOsContract.Model.fetch(Edges).id,
       contract_version: EhOsContract.Model.fetch(Edges).version,
       process: "edge",
       instance_id: "edge|#{case_id}",

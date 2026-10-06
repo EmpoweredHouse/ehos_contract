@@ -274,7 +274,7 @@ defmodule EhOsContract.Paths do
   defp mode(:in_transaction), do: :inline
   defp mode(_at_least_once), do: :async
 
-  defp key(model, kind, name), do: "#{inspect(model.module)}:#{kind}:#{name}"
+  defp key(model, kind, name), do: "#{model.id}:#{kind}:#{name}"
 
   # An event's label, from the contract that declares it; a sibling's for a consumed one.
   defp labels(model) do
@@ -337,7 +337,7 @@ defmodule EhOsContract.Paths do
       on: c.id == e.command_id,
       join: r in EventRun,
       on: r.position == e.position and r.process == ^process,
-      where: e.contract == ^inspect(model.module) and c.contract == ^inspect(model.module),
+      where: e.contract == ^model.id and c.contract == ^model.id,
       group_by: [c.type, e.type],
       select: {c.type, e.type, count(r.instance_id, :distinct)}
     )
@@ -358,7 +358,7 @@ defmodule EhOsContract.Paths do
         join: e in Event,
         as: :event,
         on: e.id == c.causation_event_id,
-        where: c.contract == ^inspect(model.module),
+        where: c.contract == ^model.id,
         where: c.outcome in ["accepted", "rejected"],
         where: like(c.issued_by, "policy:%") or like(c.issued_by, "pm:%"),
         select: %{
@@ -393,7 +393,7 @@ defmodule EhOsContract.Paths do
           join: i in InboxRecord,
           on: i.id == c.causation_event_id,
           where: i.consumer in ^inboxes,
-          where: c.contract == ^inspect(model.module),
+          where: c.contract == ^model.id,
           where: c.outcome in ["accepted", "rejected"],
           where: like(c.issued_by, "policy:%"),
           group_by: [c.issued_by, c.type, i.consumer],
@@ -514,7 +514,7 @@ defmodule EhOsContract.Paths do
 
   defp failed_commands(model, opts) do
     from(c in CommandRecord,
-      where: c.contract == ^inspect(model.module) and c.outcome == "failed",
+      where: c.contract == ^model.id and c.outcome == "failed",
       select: %{
         type: c.type,
         failed_in: c.failed_in,
