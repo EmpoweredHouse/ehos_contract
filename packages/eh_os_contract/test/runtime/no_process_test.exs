@@ -8,7 +8,20 @@ defmodule EhOsContract.NoProcessTest do
 
   use EhOsContract.DataCase, async: false
 
-  alias EhOsContract.{Actor, Conformance, EventRun, Graph, Model, Rejection, Report}
+  alias EhOsContract.{
+    Actor,
+    Check,
+    Conformance,
+    EventRun,
+    Graph,
+    Model,
+    Pages,
+    Rejection,
+    Report,
+    View
+  }
+
+  alias EhOsContract.{AsyncAPI, OpenAPI}
   alias LifecycleRig.Rooms
   alias LifecycleRig.Rooms.Commands.{OpenRoom, RetireRoom}
 
@@ -48,5 +61,13 @@ defmodule EhOsContract.NoProcessTest do
     assert Graph.contract_to_mermaid(Rooms, overlay: true) =~ "opened"
     assert Graph.unit_to_mermaid(Rooms, :room) =~ "retire_room"
     assert Graph.lifecycle_to_mermaid(Rooms, :room) =~ "retired"
+  end
+
+  test "the generated documents, the pages, the view and the check read it" do
+    assert %{} = OpenAPI.document(Rooms)
+    assert %{} = AsyncAPI.document(Rooms)
+    assert Enum.any?(Map.keys(Pages.render(LifecycleRig.Domain, [Rooms])), &(&1 =~ "room"))
+    assert View.render(LifecycleRig.Domain, [Rooms]) =~ "aggregate room"
+    assert Check.findings([Rooms]) == []
   end
 end

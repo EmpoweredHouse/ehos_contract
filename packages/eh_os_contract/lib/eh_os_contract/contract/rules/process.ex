@@ -5,7 +5,8 @@ defmodule EhOsContract.Contract.Rules.Process do
   - **R1.** At most one `process`: one contract, one process (v2 §3, amended
     6 October 2026, plan DD, P1c (#190)). A contract without one describes units
     and what reacts to them, and has no runs, so nothing in it may say where a run
-    stands or ends: no stage group in a unit, no `terminal:` event.
+    stands or ends: no stage group in a unit, no `terminal:` event. A contract that
+    declares nothing at all is refused too.
   - **R2.** The process correlates on at least one field, and every such field is
     in every local event, where a unit's identity counts as declared. With no field
     every event of the contract would land in one run named after the process.
@@ -27,7 +28,7 @@ defmodule EhOsContract.Contract.Rules.Process do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Duration
-  alias EhOsContract.Contract.Rules
+  alias EhOsContract.Contract.{Dsl, Rules}
 
   @calendar Duration.calendar_units()
 
@@ -46,7 +47,8 @@ defmodule EhOsContract.Contract.Rules.Process do
   end
 
   # Without a process there are no runs, so what places an event in a run's stage
-  # or ends a run has nothing to belong to.
+  # or ends a run has nothing to belong to. A terminal event inside a stage group is
+  # refused once, for the group.
   def check(%{processes: []} = declarations) do
     stages =
       for unit <- declarations.units, group <- unit.stages do
@@ -56,12 +58,23 @@ defmodule EhOsContract.Contract.Rules.Process do
       end
 
     terminal =
-      for unit <- declarations.units, event <- Rules.events(unit), event.terminal do
+      for unit <- declarations.units, event <- unit.events, event.terminal do
         {"R1: the contract declares no process, so event #{inspect(event.name)} cannot be " <>
            "terminal; `terminal:` ends a process's run", event}
       end
 
-    stages ++ terminal
+    empty(declarations) ++ stages ++ terminal
+  end
+
+  # A contract with nothing in it describes nothing; the error names the module
+  # without a line, since there is no declaration to point at.
+  defp empty(declarations) do
+    if declarations |> Map.delete(:module) |> Map.values() |> List.flatten() == [],
+      do: [
+        {"R1: a contract declares a process or what decides in it, and this one declares nothing",
+         %Dsl.ProcessDeclaration{}}
+      ],
+      else: []
   end
 
   defp correlation(%{correlate: []} = process, _d) do

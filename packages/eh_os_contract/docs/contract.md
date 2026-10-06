@@ -299,7 +299,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
-| `R1` | L2 | a contract declaring two `process`es; with none, a unit's `stage` group or a `terminal:` event |
+| `R1` | L2 | a contract declaring two `process`es, or nothing at all; with no process, a unit's `stage` group or a `terminal:` event |
 | `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts) |
 | `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |

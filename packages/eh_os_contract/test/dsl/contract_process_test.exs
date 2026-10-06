@@ -56,6 +56,28 @@ defmodule EhOsContract.ContractProcessTest do
                  "into stage :closing; a stage is a step of a process's run (no_process_stage.ex:8)"
     end
 
+    test "a contract that declares nothing is refused" do
+      assert refuse_contract("Empty", "") =~
+               "R1: a contract declares a process or what decides in it, and this one declares nothing"
+    end
+
+    test "without one, a terminal event in a stage group is refused once, for the group" do
+      message =
+        refuse_contract("NoProcessStageTerminal", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+            stage :closing do
+              event :visit_closed, "Wizyta zamknięta", terminal: true
+            end
+          end
+        """)
+
+      assert message =~ "cannot group events into stage :closing"
+      refute message =~ "cannot be terminal"
+    end
+
     test "a second is refused" do
       message =
         refuse_contract("TwoProcesses", """
