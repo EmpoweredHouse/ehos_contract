@@ -1,0 +1,4 @@
+P1a part 2 (086d337..HEAD): code-review high + security/performance pass.
+Correctness: idle contract hid failing/in-flight -> fixed; activity excluded failed commands -> fixed; one refused command opened every step to never -> fixed (gate on events, reverse-checked); no-steps contract said all carried out -> fixed; process/2 raises without a process -> documented; plural helper style -> fixed. Clock edges between activity and steps -> documented. Wire v2 label over the new shape -> part 3, in CHANGELOG.
+Security/perf: nothing blocking; commands table has no contract index (pre-existing) -> separate task chip; count() for events -> fixed.
+Gate: EXIT=0, check 0/33/10 and 0/76/6, engine 1380, web 53, sandbox 196, auth 286 + 1 property.
