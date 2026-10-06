@@ -20,7 +20,9 @@ defmodule EhOsContract.Supervisor do
     EhOsContract.Deployment.record!()
     repo = Application.fetch_env!(:eh_os_contract, :repo)
     EhOsContract.UndeclaredTypes.warn(repo, models)
-    EhOsContract.UndeclaredTypes.warn_contracts(repo, models)
+    # Every contract dispatch reaches, `exclude:` or not, and the siblings they consume.
+    known = Map.values(Implementations.index(nil).contracts)
+    EhOsContract.UndeclaredTypes.warn_contracts(repo, known)
 
     runners =
       case Application.get_env(:eh_os_contract, :subscriptions) do

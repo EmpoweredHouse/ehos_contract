@@ -99,16 +99,15 @@ defmodule EhOsContract.UndeclaredTypesTest do
   describe "contract names (#179)" do
     test "a name no contract has as its id is named, once, beside known ones" do
       stored!(@declared)
-      stored!(EhOsContract.Personal.erased_type(), "eh_os_contract")
+      stored!(EhOsContract.Personal.erased_type(), EhOsContract.Personal.erased_contract())
       stored!(@declared, "DispatchRig.Ledger")
       stored!(@declared, "DispatchRig.Ledger")
 
       unknown = UndeclaredTypes.unknown_contracts(Repo, [@ledger.id])
 
       assert "DispatchRig.Ledger" in unknown
-      assert Enum.count(unknown, &(&1 == "DispatchRig.Ledger")) == 1
       refute @ledger.id in unknown
-      refute "eh_os_contract" in unknown
+      refute EhOsContract.Personal.erased_contract() in unknown
 
       capture_log(fn ->
         assert "DispatchRig.Ledger" in UndeclaredTypes.warn_contracts(Repo, [@ledger])

@@ -23,9 +23,12 @@ defmodule EhOsContract.UndeclaredTypes do
   named the module before; a log written between ID3 and ID4 and not reset holds
   types every contract still declares, so the warning above stays silent, while the
   report and the commands' counts skip those events. The names are read the same
-  way, one step down the `(contract, contract_version)` index each. The commands'
-  names are not read: they have no such index, and a command that changed anything
-  left an event.
+  way, one step down the `(contract, contract_version)` index each, and compared with
+  every contract the engine dispatches to — `exclude:` keeps a contract out of the
+  report, not out of the log. The commands' names are not read: they have no such
+  index, and a command that changed anything left an event. Nor are the other tables
+  that name a contract (subscriptions, process managers, deployments): the reset that
+  clears a log written before ID4 clears them with it.
   """
 
   require Logger
@@ -97,7 +100,7 @@ defmodule EhOsContract.UndeclaredTypes do
   """
   @spec unknown_contracts(module(), [String.t()]) :: [String.t()]
   def unknown_contracts(repo, ids) do
-    known = MapSet.new(["eh_os_contract" | ids])
+    known = MapSet.new([EhOsContract.Personal.erased_contract() | ids])
 
     repo
     |> contracts()
@@ -135,7 +138,8 @@ defmodule EhOsContract.UndeclaredTypes do
       "EhOsContract: the event log files events under #{length(names)} contract name(s) " <>
         "no contract of this application has as its id: #{named(names)}. The conformance " <>
         "report and the commands' counts skip those events. A contract removed on purpose " <>
-        "leaves its history so. A name that looks like a module (\"MyApp.Contracts.Orders\") " <>
+        "leaves its history so, and a node on older code during a rolling deploy sees a " <>
+        "newer node's contract so. A name that looks like a module (\"MyApp.Contracts.Orders\") " <>
         "is a log written before rows named a contract by its id (plan DD, ID4): the " <>
         "CHANGELOG says to reset the engine's schema (EhOsContract.Migrations.down/up), " <>
         "which deletes every event it holds, so only when none of them is worth keeping."
