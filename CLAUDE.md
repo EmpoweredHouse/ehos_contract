@@ -206,8 +206,10 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   expansions: `for x in $LIST` runs once with the whole list as one argument. Once that handed `git cherry-pick`
   seven SHAs as one argument, and the `git commit --amend` after it rewrote the wrong commit. Loop over SHAs
   explicitly or through arrays.
-- **TaxVision's event names come from the workshop**, not from imagination:
-  `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
+- **TaxVision's event names come from the workshop**, not from imagination: the event storming in
+  `workshop_output/02-event-storming.md` of the
+  [`appunite/taxvision-process-native`](https://github.com/appunite/taxvision-process-native) repository (private;
+  ask the user for access). Rehmed's and AppUnite's sources are the distillations in `docs/`.
 
 ## A person is the gate, so readability is a requirement
 
