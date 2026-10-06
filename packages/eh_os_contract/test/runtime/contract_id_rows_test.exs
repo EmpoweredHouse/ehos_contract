@@ -9,7 +9,7 @@ defmodule EhOsContract.ContractIdRowsTest do
 
   alias DispatchRig.Ledger
   alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
-  alias EhOsContract.{Actor, CommandRecord, Deployment, Event, Implementations}
+  alias EhOsContract.{Actor, CommandRecord, Deployment, Event, Implementations, Model, Registry}
 
   @clerk Actor.credential("u-1", [
            "dispatch_rig.open_account",
@@ -42,5 +42,21 @@ defmodule EhOsContract.ContractIdRowsTest do
     for other <- ["dispatch_rig", "dispatch_rig.ledger.deposited", "DispatchRig.Ledger"] do
       assert Implementations.contract(other) == nil, "#{other} found a contract"
     end
+  end
+
+  # X7 refuses one id twice in an application; two applications a node scans meet only here.
+  test "two contracts of one id across the scanned applications are refused, naming both" do
+    ledger = Model.fetch(Ledger)
+    till = Model.fetch(ValueRig.Till)
+
+    assert Registry.unique_ids!([ledger, till]) == :ok
+
+    error =
+      assert_raise ArgumentError, fn ->
+        Registry.unique_ids!([ledger, %{till | id: ledger.id}])
+      end
+
+    assert error.message =~ ~s(the id: "dispatch_rig.ledger" is declared by DispatchRig.Ledger)
+    assert error.message =~ "ValueRig.Till (:eh_os_contract)"
   end
 end

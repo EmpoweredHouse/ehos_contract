@@ -89,7 +89,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   consumer on the bus is named by its key, so a transport keeps the old one: drain it before upgrading, or what
   was published to it and not yet taken stays there. An effect's job
   carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
-  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a.
+  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
+  `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision
+  names the contract by it.
+- **Two contracts of one `id:` across the configured applications are refused when the engine scans them**
+  (plan DD, ID4, #178): `ArgumentError` naming both modules and their applications, at boot or at the first
+  dispatch. X7 refuses it within one application at compile time; across applications no compile sees both, and
+  since every row and key names the id, the two would share one history.
 - **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
   without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
   `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's

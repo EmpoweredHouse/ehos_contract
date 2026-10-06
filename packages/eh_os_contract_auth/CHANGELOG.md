@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
+  holds `"rehmed.visit_settlement"` where it held `"Rehmed.Contracts.VisitSettlement"`, as every row of the engine
+  does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
+  `EhOsContract.Authorizer.Request.contract_id`, new and set by the engine on every request.
+  - **Changed:** rows written before name the module. The engine's schema is reset on this upgrade anyway (ID3, ID4);
+    the decisions table is this package's, so clear it too or read the two forms apart.
+
 - **eh-os-contract#133: the manifest offers queries and recordings.** `mix eh_os_contract.manifest` writes a
   capability for every command, query and recording a human actor may make, each naming its declaration as
   `command`, `query` or `record` (`eh-os` D-73), and the roles hold them all. Until now a deployed application's

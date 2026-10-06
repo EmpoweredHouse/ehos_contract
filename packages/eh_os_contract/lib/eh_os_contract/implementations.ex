@@ -251,6 +251,8 @@ defmodule EhOsContract.Implementations do
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__()),
           do: module.__eh_os_contract_model__()
 
+    :ok = EhOsContract.Registry.unique_ids!(contracts)
+
     consumers =
       contracts
       |> Enum.flat_map(&consumers(&1, declarations))

@@ -106,10 +106,34 @@ defmodule EhOsContract.Registry do
               "(config :elixir, :time_zone_database) and include it in the release"
     end
 
+    :ok = unique_ids!(Enum.map(contracts, & &1.__eh_os_contract_model__()))
+
     graph = %{contracts: contracts, domains: domains}
 
     :persistent_term.put(@key, graph)
     graph
+  end
+
+  @doc false
+  # Plan DD, ID4 (#178): every row and key names a contract by its id, so two contracts
+  # of one id would share a history. X7 refuses that within an application at compile
+  # time; this refuses it across the applications a node scans, which no compile sees.
+  @spec unique_ids!([map()]) :: :ok
+  def unique_ids!(models) do
+    for {id, [_, _ | _] = same} <- Enum.group_by(models, & &1.id, & &1.module) do
+      named =
+        Enum.map_join(Enum.sort(same), " and ", fn module ->
+          "#{inspect(module)} (#{inspect(Application.get_application(module))})"
+        end)
+
+      raise ArgumentError,
+            "the id: #{inspect(id)} is declared by #{named}; every row and key the engine " <>
+              "stores names a contract by its id, so the two would share one history. Give " <>
+              "one of them another id, or leave its application out of " <>
+              "config :eh_os_contract, applications:"
+    end
+
+    :ok
   end
 
   @doc "The cached scan, loading it on first use."
