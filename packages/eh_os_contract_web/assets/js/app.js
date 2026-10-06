@@ -202,7 +202,7 @@ const scratch = () => {
 // carry the raw diagram source in `data-graph`, and the hook draws it into the block. LiveView
 // leaves an ignored block's children alone — without that, every patch took the drawn SVG out of
 // every block, changed or not — and still updates its attributes, so `updated()` fires when
-// `data-graph` changes (a process switch re-rendering the declared-shape diagram).
+// `data-graph` changes (a contract switch re-rendering its diagrams).
 const Hooks = {
   MermaidRender: {
     mounted() {

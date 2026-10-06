@@ -84,8 +84,9 @@ defmodule EhOsContract.Check.Completeness do
   # ESDM's `event-without-consumer`. A consumer is what reacts to or reads the
   # event: a policy, an effect, a process manager, a read model, a boundary that
   # consults it, a contract that consumes it, a `publish`. So is the conformance
-  # half of this library, for an event a promise names or one that ends a run: the
-  # report reads it. The unit's own `evolve` does not count; ESDM's aggregate folds
+  # half of this library, for an event a promise names or one that ends a run, and for
+  # one a unit's lifecycle starts on or moves on (plan DD, P1b, #186): the report reads
+  # it, process or not. The unit's own `evolve` does not count; ESDM's aggregate folds
   # its events too.
   defp events_without_consumer(%{model: model} = c, all) do
     process = model.process
@@ -99,6 +100,7 @@ defmodule EhOsContract.Check.Completeness do
         Enum.flat_map(model.read_models, &List.wrap(&1.projects)) ++
         Enum.flat_map(model.units, fn u -> Enum.map(u.consults, & &1.event) end) ++
         Enum.map(model.publishes, & &1.from) ++
+        lifecycle_events(model) ++
         if(process,
           do: Enum.flat_map(process.promises, &[&1.from, &1.eventually, &1.or_else]),
           else: []
@@ -120,10 +122,18 @@ defmodule EhOsContract.Check.Completeness do
         "event-without-consumer",
         "event #{inspect(event.name)} of #{inspect(model.module)} has no consumer: no policy, " <>
           "effect, process manager or read model takes it, no boundary consults it, no contract " <>
-          "consumes it, nothing publishes it, and no promise names it",
+          "consumes it, nothing publishes it, no promise names it, and no lifecycle moves on it",
         declared_event(c, event.unit, event.name)
       )
     end
+  end
+
+  defp lifecycle_events(model) do
+    for unit <- model.units,
+        %{} = lifecycle <- [EhOsContract.Lifecycle.of(unit)],
+        event <-
+          Enum.map(lifecycle.initial, & &1.on) ++ Enum.map(lifecycle.transitions, & &1.event),
+        do: event
   end
 
   # ESDM's `read-model-without-query`.

@@ -883,6 +883,10 @@ Store the last computed state per process rather than recomputing on page load.
   > its context map and its system, contracts and what flows between them — above the per-process panels.
   > They stay readable because their nodes are contexts and contracts, not events: a domain has a handful of
   > each where a process has dozens of steps. Navigation inside a contract is still per process.
+  > **6 October 2026, plan DD, P1b ([#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186)):**
+  > the unit of navigation is the contract, not the process. A contract may have no process, and one picked by
+  > process could not be reached at all. The graph page selects a contract by its id; its process's declared
+  > shape shows when it has one. The readability argument holds: a contract's graph is one context's.
 - **Business labels beside technical names.** `invoice_issued` means nothing to an accountant. Satisfied for
   every declaration except the trace assertion, which has an identifier and no label — deliberately, since a
   label there would restate what the assertion already says in full and could then drift from it. The report
@@ -892,6 +896,9 @@ Store the last computed state per process rather than recomputing on page load.
   covers untraversed paths, where the natural bug is to list every declared path for a process that never
   started and turn "no data" into findings, and trace evaluation, where a run that never reached the antecedent
   is neither satisfied nor violated. Three places, one rule: absence of basis is not a verdict.
+  > **6 October 2026, plan DD, P1a ([#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183)):** for
+  > untraversed paths the basis is no longer a run but an event the contract recorded in the period: a step is
+  > the contract's, which may have no process. Promises and durations keep runs as their basis.
 
 | View | Audience | Question | Form |
 | --- | --- | --- | --- |

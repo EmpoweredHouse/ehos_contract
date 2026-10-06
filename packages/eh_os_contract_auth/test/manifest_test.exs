@@ -369,6 +369,18 @@ defmodule EhOsContract.Auth.ManifestTest do
            }
   end
 
+  # Plan DD, P1b (#186): a contract without a process offers its capabilities all the
+  # same, naming no process; EHOS keeps the field optional (eh-os#203).
+  test "a contract without a process offers capabilities that name none" do
+    without = %{EhOsContract.Model.fetch(Work) | process: nil}
+
+    %{"offers" => %{"capabilities" => capabilities}} =
+      Manifest.build(@file_v1, [Domain], [without])
+
+    assert capabilities != []
+    refute Enum.any?(capabilities, &Map.has_key?(&1, "process"))
+  end
+
   test "accepts a domain whose people only read, and refuses one where no human holds anything" do
     readers = Manifest.build(@file_v1, [ReadDomain], [ReadWork])
 

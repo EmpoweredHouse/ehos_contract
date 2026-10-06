@@ -81,6 +81,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   written under one identity reports byte for byte as before; the one verdict W3 does move, on a log whose rows
   predate a unit's identity growing, is under "Fixed" below.
 
+### Changed
+
+- **`event-without-consumer` counts an event a unit's lifecycle starts on or moves on as read** (plan DD, P1b,
+  #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
+  no verdict of the report moves.
+
 ### Fixed — can move a verdict
 
 - **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or

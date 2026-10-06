@@ -3,7 +3,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
   Same split as `ContractStatusTest`: one test through the real router
   proves `EhOsContract.Registry`/`EhOsContract.Graph` are wired for real and that both
   Mermaid strings actually reach the page; the `render/1` cases below it
-  exercise the process-selector logic with hand-built assigns, no contract
+  exercise the contract-selector logic with hand-built assigns, no contract
   or database required.
   """
 
@@ -18,19 +18,21 @@ defmodule EhOsContract.Web.Live.GraphTest do
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
   test "mounting through the real router draws both diagrams for a real contract" do
-    conn =
+    {:ok, view, _html} =
       build_conn()
       |> Access.put_actor("admin", ["eh_os_contract_admin"])
-      |> get("/dashboard/graph")
+      |> live("/dashboard/graph")
 
-    html = html_response(conn, 200)
+    # The first contract by id is selected on mount; this one is chosen.
+    html =
+      render_change(view, "select_contract", %{"contract" => "web_test_host.case_handling"})
 
     assert html =~ "Access: all"
-    assert html =~ "Case handling"
+    assert html =~ "web_test_host.case_handling — Case handling"
     assert html =~ ~s(id="declared-graph")
     assert html =~ ~s(id="overlay-graph")
 
-    # The screen opens on the process: its declared shape in the first panel, its
+    # The selected contract: its process's declared shape in the first panel, the
     # contract's full graph with the log in the second — the steps, and the actor
     # issuing them.
     assert html =~ "event_case_opened"
@@ -58,24 +60,49 @@ defmodule EhOsContract.Web.Live.GraphTest do
     # Plan LC4b: the case declares a lifecycle, drawn beside it with the log over it.
     assert html =~ ~s(id="lifecycle-graph-case")
     assert html =~ "Lifecycle, declared versus observed"
-    assert html =~ "Declared versus observed, this process"
+    assert html =~ "Declared versus observed, this contract"
+    assert html =~ "Declared shape of its process"
   end
 
-  test "two processes of one name in two contracts are each reachable" do
-    # Both fixtures name their process `handling`: a key by name alone would make one
-    # of them unreachable, so the selector keys by contract and name.
+  # The static render, before the socket connects: the first contract by id, drawn
+  # without the log over its lifecycles.
+  test "the dead render draws the first contract by id" do
+    html =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/graph")
+      |> html_response(200)
+
+    assert html =~ ~s(<option value="web_test_appeals.appeals" selected>)
+    assert html =~ ~s(id="overlay-graph")
+  end
+
+  test "an id the page did not list keeps the selection" do
     {:ok, view, _html} =
       build_conn()
       |> Access.put_actor("admin", ["eh_os_contract_admin"])
       |> live("/dashboard/graph")
 
-    appeals = "#{inspect(EhOsContract.Web.TestHost.Fixtures.Appeals)}:handling"
-    html = render_change(view, "select_process", %{"process" => appeals})
+    html = render_change(view, "select_contract", %{"contract" => "nobody.knows"})
+    assert html =~ ~r/value="web_test_appeals.appeals"[^>]*selected/
+    assert html =~ ~s(id="overlay-graph")
+  end
+
+  test "two contracts whose processes share a name are each reachable, by id" do
+    # Both fixtures name their process `handling`; the selector keys by the contract's
+    # id (plan DD, P1b, #186), so each is reachable.
+    {:ok, view, _html} =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> live("/dashboard/graph")
+
+    html = render_change(view, "select_contract", %{"contract" => "web_test_appeals.appeals"})
     assert html =~ "event_appeal_lodged"
     refute html =~ "event_case_opened"
 
-    cases = "#{inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)}:handling"
-    html = render_change(view, "select_process", %{"process" => cases})
+    html =
+      render_change(view, "select_contract", %{"contract" => "web_test_host.case_handling"})
+
     assert html =~ "event_case_opened"
   end
 
@@ -106,7 +133,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
         eh_os_contract_web_base_path: "/dashboard",
         domains: [%{name: :bare, map: "flowchart LR", system: false}],
         units: [],
-        processes: [],
+        contracts: [],
         selected: nil,
         declared_mermaid: nil,
         overlay_mermaid: "flowchart LR"
@@ -116,42 +143,47 @@ defmodule EhOsContract.Web.Live.GraphTest do
     refute html =~ ~s(id="system-graph-bare")
   end
 
-  test "no process declared anywhere says so, and draws no process diagram" do
+  test "no contract registered says so, and draws no diagram" do
     html =
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
         domains: [],
         units: [],
-        processes: [],
+        contracts: [],
         selected: nil,
         declared_mermaid: nil,
         overlay_mermaid: nil
       })
 
-    assert html =~ "No process is declared in any registered contract."
+    assert html =~ "No contract is registered."
     refute html =~ ~s(id="declared-graph")
     refute html =~ ~s(id="overlay-graph")
   end
 
-  test "the selected process's option is marked, others are not" do
+  # Plan DD, P1b (#186): a contract without a process is listed and can be selected; its
+  # process's shape is not drawn, its contract graph is.
+  test "the selected contract's option is marked, and one without a process is listed" do
     html =
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :read_only,
         eh_os_contract_web_base_path: "/dashboard",
         domains: [],
         units: [],
-        processes: [
-          %{contract: nil, name: :handling, label: "Case handling"},
-          %{contract: nil, name: :billing, label: "Billing"}
+        contracts: [
+          %{contract: nil, id: "shop.cases", process: %{name: :handling, label: "Case handling"}},
+          %{contract: nil, id: "shop.stock", process: nil}
         ],
-        selected: "nil:billing",
-        declared_mermaid: "flowchart TB",
+        selected: "shop.stock",
+        declared_mermaid: nil,
         overlay_mermaid: "flowchart LR"
       })
 
-    assert html =~ ~s(value="nil:billing" selected>)
-    refute html =~ ~s(value="nil:handling" selected>)
+    assert html =~ ~s(value="shop.stock" selected>)
+    refute html =~ ~s(value="shop.cases" selected>)
+    assert html =~ "shop.cases — Case handling"
+    refute html =~ ~s(id="declared-graph")
+    assert html =~ ~s(id="overlay-graph")
     assert html =~ "Access: read only"
   end
 end

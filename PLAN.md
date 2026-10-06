@@ -47,9 +47,11 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 `dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 merged in #174
 (issue #173): the id is required and labels every event; existing logs are reset. Follow-up #175 (a start-up
 warning for undeclared types in the log) merged in #176. ID4 merged in #181 (issue #178): rows and keys name a
-contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has) in
-progress on `dd/179-undeclared-contracts`; #180 (the domain's name must equal the EHOS application's, with
-EmpoweredHouse/eh-os#201) waits for a decision on where it goes. Next stage: P1a.
+contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
+merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
+v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b (issue #186) on
+`dd/186-nothing-assumes-process`. #180 (the domain's name must equal the EHOS application's, with
+EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
 
@@ -558,8 +560,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
-| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
-| P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
+| P1b | 2 | nic nie zakłada procesu | P1a | ◐ `dd/186-nothing-assumes-process` | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☐ | — |
@@ -696,8 +698,10 @@ activity, paths, processes, lifecycles, scenarios, drift}`; `Conformance.process
 `eh_os_contract.conformance.v3` only; the four dashboard APIs by id. Report, screen, graph ("N taken"). Six PRs:
 counting, report shape, wire, screen, APIs, graph. Depends on ID3, ID4.
 
-**P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
-`eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
+**P1b — nothing else assumes a process** (#186; tightened 6 October 2026). The manifest writes a capability's
+`"process"` only when its contract has one (EHOS reads it nowhere, eh-os#203); the graph page selects a contract by
+its id, a process's shape only when there is one; `event-without-consumer` counts an event a unit's lifecycle
+starts on or moves on as consumed (the report's lifecycle section reads it). Depends on P1a.
 **P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
 do wymagania 7 (v2 §3).
 **P1d — sandbox bez sztucznych procesów** (PR na domenę): Rehmed `scheduling`, `clinical_documentation`,

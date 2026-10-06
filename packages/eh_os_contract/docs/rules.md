@@ -176,9 +176,9 @@ a unit whose events are all `recorded_by:` has no command on purpose.
 Nothing reacts to or reads an event.
 
 No policy, effect or process manager takes it, no read model projects it, no boundary consults
-it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, or
-one marked `terminal: true`, has a reader: the conformance report. The unit's own `evolve` does
-not count, as ESDM's aggregate does not.
+it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, one
+marked `terminal: true`, or one a unit's lifecycle starts on or moves on, has a reader: the
+conformance report. The unit's own `evolve` does not count, as ESDM's aggregate does not.
 
 ## `read-model-without-query`
 
