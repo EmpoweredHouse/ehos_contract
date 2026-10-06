@@ -338,8 +338,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
       field :cost, :money, optional: true
     end
 
-    # The sale goes only forwards: no command takes a computer off sale and back
+    # The sale goes only forwards: no transition takes a computer off sale and back
     # into use.
+    #
     # The asking price comes from similar computers on Allegro (E).
     event :listed_for_sale, "Komputer wystawiony na sprzedaż", source: "A:G „For sale”, E" do
       field :asking_price, :money
@@ -355,6 +356,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     # Every way a computer ends, each a final status of the lifecycle. A computer
     # given away or disposed of from the office skips the sale.
+    #
     # Sold when accounting issues the invoice, and recorded by the person who
     # manages the equipment (E). A buyer from outside is accounting's data, never
     # this contract's.
