@@ -665,8 +665,8 @@ AppUnite: dopisać scenariusze albo wyjaśnić ostrzeżenia w PR.
 `:`/`|`, ≤ ~100 B; L3 w `Links.Domain.namespaces/1`), X7 unikalność.
 **ID2 — every contract names its `id:`** (#171; tightened 6 October 2026). Mechanical: the eleven sandbox
 contracts, the contracts the engine's, web's and auth's tests write (the `DslCase.contract/2` template among them, so
-new tests get one), and the examples in `README.md`, `packages/eh_os_contract/README.md`, `docs/contract.md` and
-`docs/adr/contract-v2.md`. Rule: `"<domain name>.<contract name>"`, the contract's name being its module's last
+new tests get one), and the examples in `README.md`, `packages/eh_os_contract/README.md` and `docs/contract.md`.
+The example in `docs/adr/contract-v2.md` stays as written (the design record is amended, not edited); ID3 amends it. Rule: `"<domain name>.<contract name>"`, the contract's name being its module's last
 segment in snake_case (`rehmed.clinical_documentation`). Report, `check` and graphs byte for byte unchanged. Depends
 on ID1; ID3 (required, event-type prefix) depends on it.
 **ID3 — `id:` wymagany; typ zdarzenia `"<id>.<zdarzenie>"`**: jedno miejsce — `Build.event/4` (build.ex 200-209).

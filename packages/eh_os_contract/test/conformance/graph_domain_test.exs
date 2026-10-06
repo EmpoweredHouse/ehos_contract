@@ -44,7 +44,7 @@ defmodule EhOsContract.GraphDomainTest do
       end
 
       defmodule #{inspect(@scheduling)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling, id: "graph_domain_clinic.#{@scheduling |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling, id: "graph_domain_clinic.#{EhOsContract.DslCase.contract_name(@scheduling)}"
 
         aggregate :slot, "Termin" do
           identity :visit_id
@@ -60,7 +60,7 @@ defmodule EhOsContract.GraphDomainTest do
       end
 
       defmodule #{inspect(@settlement)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "graph_domain_clinic.#{@settlement |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "graph_domain_clinic.#{EhOsContract.DslCase.contract_name(@settlement)}"
 
         consumes #{inspect(@scheduling)}, :booked
         subscribe "clinic.visit.booked.v1", as: :booked_elsewhere do

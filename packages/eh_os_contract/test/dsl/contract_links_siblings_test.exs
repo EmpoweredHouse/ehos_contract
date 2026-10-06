@@ -74,7 +74,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
   defp subscriber(name, publisher, consumes \\ ":visit_booked") do
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
       consumes #{inspect(Module.concat(@fixtures, publisher))}, #{consumes}
 
@@ -352,7 +352,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     defp reacting(name, publisher, reaction) do
       """
       defmodule #{inspect(Module.concat(@fixtures, name))} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
         consumes #{inspect(Module.concat(@fixtures, publisher))}, :visit_booked
 

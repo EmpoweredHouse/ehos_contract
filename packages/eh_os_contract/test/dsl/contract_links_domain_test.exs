@@ -67,7 +67,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: #{domain}, context: #{inspect(context)}, id: "#{namespace}.#{Macro.underscore(name)}"
+      use EhOsContract.Contract, domain: #{domain}, context: #{inspect(context)}, id: "#{namespace}.#{contract_name(name)}"
 
     #{body}
     end
@@ -680,12 +680,16 @@ defmodule EhOsContract.ContractLinksDomainTest do
     test "the same name with an underscore is outside it" do
       violations =
         links("LinksDashedWrong", dashed(@body, "my_shop.payment.recorded.v1"),
-          domain: inspect(@dashed)
+          domain: inspect(@dashed),
+          namespace: "my-shop"
         )
 
       assert assert_linked(violations, "D11:", "links_dashed_wrong.ex", 42) =~
                ~s|publish :payment_recorded is named "my_shop.payment.recorded.v1", outside the | <>
                  ~s|application's namespace "my-shop."|
+
+      # The publication is the only thing outside it: the contract's own id is not.
+      assert length(violations) == 1
     end
   end
 

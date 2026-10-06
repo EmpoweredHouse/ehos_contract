@@ -429,7 +429,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.#{Macro.underscore(name)}"
+          use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.#{contract_name(name)}"
 
           dcb :payer_period, "Okres płatnika" do
             identity #{inspect(identity)}
@@ -460,7 +460,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
+          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(name)}"
 
           aggregate :visit, "Wizyta" do
             identity :visit_id

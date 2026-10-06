@@ -40,7 +40,7 @@ defmodule EhOsContract.ContractLinksSystemTest do
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
       aggregate #{inspect(process)}, "Jednostka" do
         identity :case_id

@@ -18,7 +18,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     compile(
       """
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{@visits |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(@visits)}"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -69,7 +69,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       end
 
       defmodule #{inspect(@slots)} do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{@slots |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(@slots)}"
 
         dcb :slot, "Termin" do
           identity [:room_id, :slot_id]

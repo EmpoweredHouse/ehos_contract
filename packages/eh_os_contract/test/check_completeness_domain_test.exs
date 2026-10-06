@@ -57,7 +57,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule #{inspect(@settlement)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{@settlement |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(@settlement)}"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -79,7 +79,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule #{inspect(@scheduling)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling, id: "clinic.#{@scheduling |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling, id: "clinic.#{contract_name(@scheduling)}"
 
         aggregate :slot, "Termin" do
           identity :slot_id
@@ -93,7 +93,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule #{inspect(@reporting)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting, id: "clinic.#{@reporting |> Module.split() |> List.last() |> Macro.underscore()}"
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting, id: "clinic.#{contract_name(@reporting)}"
 
         consumes #{inspect(@settlement)}, :payment_recorded
 
