@@ -43,9 +43,9 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 in progress on
-`dd/171-contract-names` (issue #171, PR #172): every contract names its `id:`. ID3 in progress on
-`dd/173-event-labels`, on ID2 (issue #173): the id is required and labels every event; existing logs are cleared.
+**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 merged on
+`dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 in progress on
+`dd/173-event-labels` (issue #173): the id is required and labels every event; existing logs are cleared.
 
 ### Stan repozytorium
 
@@ -551,8 +551,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 | [#163](https://github.com/EmpoweredHouse/eh-os-contract/issues/163) |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 | [#164](https://github.com/EmpoweredHouse/eh-os-contract/issues/164) |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
-| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ◐ `dd/171-contract-names` | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
-| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ◐ `dd/173-event-labels` (on ID2, #172) | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
+| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
+| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ◐ `dd/173-event-labels` | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
