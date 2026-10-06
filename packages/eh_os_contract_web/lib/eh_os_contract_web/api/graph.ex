@@ -125,12 +125,15 @@ defmodule EhOsContract.Web.Api.Graph do
 
   defp at(nil, _which), do: {:ok, nil}
 
-  defp at(value, which) do
+  defp at(value, which) when is_binary(value) do
     case DateTime.from_iso8601(value) do
       {:ok, at, _offset} -> {:ok, at}
       {:error, _} -> {:error, "#{which} is not an ISO 8601 timestamp"}
     end
   end
+
+  # `?since[]=…` or `?since[a]=…` decodes to a list or a map: bad input, not a defect.
+  defp at(_value, which), do: {:error, "#{which} is not an ISO 8601 timestamp"}
 
   defp not_found(conn, detail),
     do: json(conn, 404, Jason.encode!(%{"error" => "not_found", "detail" => detail}))

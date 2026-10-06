@@ -2,9 +2,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   @shortdoc "Draws a process, a contract, a unit or a domain as a Mermaid diagram, or gives its graph.v1 document"
 
   @moduledoc """
-  One picture of the contracts the registry finds — that is, of the binary that
-  runs — as a Mermaid diagram. Which picture is a flag, and with none the task
-  refuses, printing the forms it takes.
+  The contracts the registry finds — that is, of the binary that runs — either as
+  one picture, a Mermaid diagram, or with `--json` as the `graph.v1` document a
+  renderer is given (below). Which picture or document is a flag, and with none the
+  task refuses, printing the forms it takes.
 
   ## `--process`: one process, for the process owner
 
@@ -60,19 +61,19 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   `--json` writes the contract's or the domain's `graph.v1` document
   (`EhOsContract.Graph.Document`) — the same bytes the API serves, its keys in order,
   so two of them compare with `diff` — and with `--overlay` what the log says over it
-  (`EhOsContract.Graph.Overlay`). A document holds every picture of its contract or
-  domain, so `--unit`, `--lifecycle` and `--process` take no `--json`, and `--map` and
-  `--system` give the same domain document.
+  (`EhOsContract.Graph.Overlay`). A document holds every fact of its contract or
+  domain, whatever a renderer draws of them, so `--unit`, `--lifecycle` and `--process`
+  take no `--json`, and `--map` and `--system` give the same domain document.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
-  every node on this diagram is written in the client's language.
+  every node of a diagram or a document is written in the client's language.
   """
 
   use Boundary, classify_to: EhOsContract
   use Mix.Task
 
   @usage """
-  mix eh_os_contract.graph draws one picture; name which:
+  mix eh_os_contract.graph draws one picture or gives one document; name which:
 
       mix eh_os_contract.graph --process NAME --mermaid [--overlay [--since AT]]
       mix eh_os_contract.graph --contract ID [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]

@@ -315,6 +315,12 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
+- **One grant for two versions of one publication** (6 October, E13a final review). `Model.capabilities/1` keeps
+  one `<publication less its version>.subscribe` grant, named after one of the names it is received under, so a
+  contract receiving `x.v1` and `x.v2` under two names has one grant (meant: the grant takes the event whichever
+  version). The graph document finds a received event's grant by its publication, so the other version's name
+  shows none. Fixing it needs the model to say which publications a grant covers — a change to
+  `Model.capabilities/1` or a helper beside it, not made in E13a. No fixture or client tree has the shape.
 - **The contract does not say which command uses a domain service** (6 October, found in E9c-2 on 28 September,
   moved out of E13 by the user's decision). A decision calls `C.DomainServices.<Name>` in its code; no DSL key says
   so, so no graph can draw the edge without reading the implementation, which the graph document must not do. EM2
@@ -629,7 +635,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy na gałęzi; merge `main`, `pre-pr-review` i PR z użytkownikiem (niżej) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy i poprawki z przeglądu końcowego na gałęzi; przed PR-em (rebase na `main`, `id` z `id:`, `pre-pr-review`) z użytkownikiem — „E13a — final review and the user's decisions” |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1232,7 +1238,8 @@ are refused — merging them per pair makes it not matter.
 - **Task:** `mix eh_os_contract.graph --json --contract M | --system NAME [--overlay [--since AT]]`; refused with
   `--unit`, `--lifecycle`, `--process`, `--mermaid` (a document holds every picture). Mermaid flags stay to E13b.
 - **Model pages, decision (b):** `mix eh_os_contract.pages` writes each contract's document, without the log, as
-  `graph/<Contract>.json` and links it from the contract's page. Such a file cannot carry the pages' marker, so the
+  `graph/<Contract>.json` and links it from the contract's page. The pages keep their Mermaid diagrams until E13b
+  (the user's decision after the final review, "E13a — final review and the user's decisions"). Such a file cannot carry the pages' marker, so the
   task takes one as its own only by content and place — a `graph.v1` contract document of this domain at the path
   the task gives that contract (`Pages.graph?/3`) — so a copy a person saved elsewhere under `graph/` stays.
 - **Plan step 8 skipped** (decision 6): no sandbox contract or domain was edited; stage labels and responsibilities go
@@ -1262,6 +1269,61 @@ sorts keys); the document from `/graph/:contract` is the function's byte for byt
 gate is EXIT=0. Not done in E13a: plan step 8 (sandbox data, decision 6). **Open for the user:** numbers for the
 two step shapes the overlay leaves without them (batch 5); the domain-service edge (in "Otwarte pytania" since
 batch 3). Remaining with the user (decision 7): merging `main`, `pre-pr-review`, the pull request.
+
+### E13a — final review and the user's decisions (6 October)
+
+**The final review** (an agent, over the whole branch against `main`) confirmed: no conformance verdict moves (the
+report is unchanged, `Conformance.steps/2` shares its predicate); redaction holds in every document and overlay;
+every graph route goes through the resolver; the same declarations give the same bytes. Fixed after it:
+
+1. **Two relations of one type between the same two nodes, in shapes the compiler accepts, had one id**, and
+   `Document.contract/1` and `domain/2` raised — so `GET <mount>/graph` (the index builds every document), every
+   graph route, `mix eh_os_contract.pages` and `graph --json` failed: a DCB consulting one event twice (`match:` or
+   `where:` apart), and a contract receiving one publication under two `as:` names (`subscribed_by` on the domain's
+   document). What tells them apart is now in the id: `as`, `match` as its field names joined, `where` as a
+   16-character hash of its prose. Both shapes are a test (`graph_document_test.exs`). The overlay's ids are not
+   affected: it puts no numbers on either relation, and an undeclared move is one per status and event.
+2. **The application's grant on the second name a publication is received under was missing**:
+   `Model.capabilities/1` keeps one grant per publication, named after one of its names, so the graph found it by
+   the name and the other name got none. The graph now finds it by the publication (contract and domain
+   documents); `Model.capabilities/1` is unchanged. Left: two *versions* of one publication received under two
+   names share one grant in `Model.capabilities/1`, and the graph cannot tell which publications it covers without
+   repeating the model's rule — "Otwarte pytania".
+3. **A non-string `since` or `until`** (`?since[]=x`) raised in the web package's graph API — now `400` like any
+   bad time (tested). The conformance route has its own copy of the parser with the same gap; it is not the same
+   helper, so it is left and noted here.
+4. **Stale text:** the CHANGELOG said `Graph.Mermaid` keeps only `render/2` and `escape/1` (`declared/1` is public
+   too); the moduledoc of `mix eh_os_contract.graph` opened as Mermaid-only and said a document "holds every
+   picture" — now every fact.
+5. **A test that could not fail** (`documents() == documents()`, two builds compared as maps) removed: the
+   encoder's test with a map of more than 32 keys nested in a list already holds byte stability. In its place every
+   real document is read back in the order written and every object's keys are checked in order.
+
+*Left as known:* the overlay without a period walks the whole log, as `/conformance` does; the index builds every
+document per request; `Paths.runs_of` is called again in the overlay for a process's runs; the sandbox coverage
+check (`GraphCoverage`) is run by hand only.
+
+**The user's decisions:**
+
+- **The model pages keep their Mermaid diagrams until E13b**, which cuts Mermaid everywhere at once (E13b, steps
+  4–5). Batch 2's "the pages lose their diagrams" is done there, not in E13a; the pages already carry the
+  document beside them.
+- **ID3 is in `main`** (#172, #174: every contract has `id:`, event types `<id>.<event>`). The switch of node ids to
+  the contract's `id:` (decision 3) is **deferred to the rebase onto `main` right before the pull request**, which
+  the user does separately.
+- **No GitHub issue for E13.** The pull request says `No issue: E13 is planned and tracked in PLAN.md` (the
+  template takes one of `Closes`, `Part of` or `No issue`).
+- **Still open, awaiting the user:** numbers in the overlay for the two step shapes that get none (a policy
+  handling several events; a manager issuing one command on one event as it starts a run and during it) —
+  batch 5.
+
+**Before the PR:**
+
+- rebase onto `main` and resolve the conflicts (`main` changed `graph_contract_test.exs` and
+  `graph_domain_test.exs`);
+- switch node ids to the contract's `id:` (decision 3);
+- `pre-pr-review`;
+- the pull request, with `No issue: E13 is planned and tracked in PLAN.md`.
 
 ### Wobec programu DD
 

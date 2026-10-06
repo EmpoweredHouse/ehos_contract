@@ -273,6 +273,8 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert get(conn, "/api/graph/#{contract}/overlay?since=yesterday").status == 400
       assert get(conn, "/api/graph/#{contract}/overlay?until=tomorrow").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?since[]=x").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?until[a]=x").status == 400
 
       until = get(conn, "/api/graph/#{contract}/overlay?until=2026-02-01T00:00:00Z")
       assert %{"until" => "2026-02-01T00:00:00Z", "since" => nil} = Jason.decode!(until.resp_body)

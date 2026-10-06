@@ -335,7 +335,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
   over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the module
   whose name it is and that name (`"event:Rehmed.Contracts.Scheduling:visit_booked"`), stable and opaque, not
-  Mermaid's — on a contract's graphs an event it consumes is the contract's, under its local name. `Graph.Mermaid` keeps only `render/2` and `escape/1` and draws every diagram as
+  Mermaid's — on a contract's graphs an event it consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
   before, byte for byte. Nothing in the report moves.
 
 ## Unreleased — 0.3.0

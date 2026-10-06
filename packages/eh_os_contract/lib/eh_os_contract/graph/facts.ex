@@ -59,8 +59,9 @@ defmodule EhOsContract.Graph.Facts do
 
   @domain_types @patterns ++ ~w(consumed_by publishes subscribed_by backed_by accountable_for)a
 
-  # What tells apart two relations of one type between the same two nodes.
-  @discriminators [:event, :on, :phase, :operation, :name]
+  # What tells apart two relations of one type between the same two nodes: a
+  # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
+  @discriminators [:event, :on, :phase, :operation, :name, :as, :match, :where]
 
   @doc "The node kinds and relation types of a contract's graph, and of a domain's."
   @spec kinds(:contract | :domain) :: %{nodes: [atom()], relations: [atom()]}
@@ -196,7 +197,7 @@ defmodule EhOsContract.Graph.Facts do
       capability =
         cond do
           own? -> ctx.grants[{:record, e.name}]
-          e.received -> ctx.grants[{:subscribe, e.name}]
+          e.received -> subscription(ctx.grants, model, e.name)
           true -> nil
         end
 
@@ -996,7 +997,7 @@ defmodule EhOsContract.Graph.Facts do
           do:
             relation(id(:publication, d, name), contract_id.(m.module),
               as: as,
-              capability: grant(granted[m.module], :subscribe, as)
+              capability: subscription(keyed(granted[m.module]), m, as)
             )
 
     # What each role may do, by contract, under the names EHOS grants it by.
@@ -1154,12 +1155,27 @@ defmodule EhOsContract.Graph.Facts do
   # name them by (`EhOsContract.Model.capabilities/1`).
   defp grants(model) do
     if compiled?(model.domain),
-      do: Map.new(Model.capabilities(model), fn {c, g} -> {{g.kind, g.name}, c} end),
+      do: keyed(Model.capabilities(model)),
       else: %{}
   end
 
-  defp grant(capabilities, kind, name),
-    do: Enum.find_value(capabilities, fn {c, g} -> (g.kind == kind and g.name == name) && c end)
+  defp keyed(capabilities), do: Map.new(capabilities, fn {c, g} -> {{g.kind, g.name}, c} end)
+
+  # The application's grant to take what it receives as `as`, only where a policy
+  # handles that name. `Model.capabilities/1` keeps one grant per publication, named
+  # after one of the names it is received under, so a publication received under two
+  # names finds its grant by the publication, not by the name.
+  defp subscription(grants, model, as) do
+    with %{from: from} <- Enum.find(model.consumes, &match?(%{kind: :published, as: ^as}, &1)),
+         true <- Enum.any?(model.policies, &(as in &1.handles)) do
+      Enum.find_value(model.consumes, fn
+        %{kind: :published, from: ^from, as: name} -> grants[{:subscribe, name}]
+        _ -> nil
+      end)
+    else
+      _ -> nil
+    end
+  end
 
   defp declaration_kind(:record), do: :event
   defp declaration_kind(kind), do: kind
@@ -1342,11 +1358,18 @@ defmodule EhOsContract.Graph.Facts do
     Map.new(relations, fn {type, rels} ->
       {type,
        Enum.map(rels, fn r ->
-         apart = for key <- @discriminators, Map.has_key?(r, key), do: to_string(r[key])
+         apart = for key <- @discriminators, Map.has_key?(r, key), do: apart(key, r[key])
          Map.put(r, :id, Document.id([type, r.from, r.to | apart]))
        end)}
     end)
   end
+
+  defp apart(:match, fields), do: "match=" <> Enum.map_join(fields, ",", &to_string/1)
+
+  defp apart(:where, prose),
+    do: "where=" <> String.slice(Base.encode16(:crypto.hash(:sha256, prose), case: :lower), 0, 16)
+
+  defp apart(_key, value), do: to_string(value)
 
   # Every kind and type present. The same fact reached twice — an event two promises
   # open, a command two ways in issue — is one element; two different elements with

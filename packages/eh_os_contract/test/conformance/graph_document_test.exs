@@ -4,8 +4,8 @@ defmodule EhOsContract.GraphDocumentTest do
   (batch 3) — and the declared shape of a process as data (batch 2), which the
   dashboard still draws. Every document of every fixture holds to the schema that
   ships in `priv/schema`, is JSON as it stands, says nothing from the log, joins on
-  ids that resolve, holds every fact today's pictures draw, and is the same document,
-  digest included, however many times it is built.
+  ids that resolve, holds every fact today's pictures draw, and is written with every
+  object's keys in order, so its bytes depend on its content alone.
   """
 
   use EhOsContract.DslCase, async: false
@@ -142,9 +142,23 @@ defmodule EhOsContract.GraphDocumentTest do
              ~s({"a":{"c":2,"d":1},"b":1})
   end
 
-  test "the same declarations give the same documents, digests included" do
-    assert documents() == documents()
+  # Every object of every real document, at every depth, is written with its keys in
+  # order — read back in the order written, not through a map, which would hide it.
+  test "every document of every fixture is written with every object's keys in order" do
+    for {module, document} <- documents() do
+      encoded = Document.encode(document)
+      assert keys_in_order?(Jason.decode!(encoded, objects: :ordered_objects)), inspect(module)
+      assert Jason.decode!(encoded) == document, inspect(module)
+    end
   end
+
+  defp keys_in_order?(%Jason.OrderedObject{values: values}) do
+    keys = Enum.map(values, &elem(&1, 0))
+    keys == Enum.sort(keys) and Enum.all?(values, &keys_in_order?(elem(&1, 1)))
+  end
+
+  defp keys_in_order?(list) when is_list(list), do: Enum.all?(list, &keys_in_order?/1)
+  defp keys_in_order?(_), do: true
 
   test "ids are unique in a document, and every relation, owner, field and scenario resolves in it" do
     for {module, document} <- documents() do
@@ -340,6 +354,90 @@ defmodule EhOsContract.GraphDocumentTest do
                for(r <- d["relations"]["handled_by"], r["from"] == event, do: r)
 
       refute Map.has_key?(node(d, "event", event), "unit")
+    end
+
+    # Two shapes the compiler accepts that put two relations of one type between the
+    # same two nodes: a DCB consulting one event twice, and one publication received
+    # under two names (the domain's `subscribed_by`). What tells them apart is in the id.
+    test "two relations of one type between the same two nodes have two ids" do
+      compile("""
+      defmodule EhOsContract.GraphDocumentTest.Twice do
+        use EhOsContract.Contract, domain: BusRig.Warehouse, context: :stock
+
+        subscribe "bus_rig_shop.order.placed.v1", as: :placed do
+          field :order_id, :id
+        end
+
+        subscribe "bus_rig_shop.order.placed.v1", as: :placed_again do
+          field :order_id, :id
+          field :total, :integer
+        end
+
+        aggregate :reservation, "Reservation" do
+          identity :order_id
+
+          command :reserve, "Reserve", by: :keeper, emits: :reserved do
+            field :total, :integer
+          end
+
+          event :reserved, "Reserved" do
+            field :total, :integer
+          end
+        end
+
+        dcb :limit, "Limit" do
+          identity :order_id
+          consults :reserved, match: :order_id
+          consults :reserved, where: "a reservation of the same week"
+          consults :reserved, where: "a reservation of the same keeper"
+          command :hold, "Hold", by: :keeper, emits: :held
+          event :held, "Held"
+        end
+
+        policy :reserve_on_order, "Reserve on an order",
+          handles: [:placed, :placed_again],
+          issues: :reserve
+
+        process :reservation, "Reservation" do
+          correlate :order_id
+        end
+      end
+      """)
+
+      module = EhOsContract.GraphDocumentTest.Twice
+      d = Document.contract(module)
+      domain = Document.domain(BusRig.Warehouse, [module])
+
+      consulted =
+        for r <- d["relations"]["consulted_by"],
+            r["to"] == Document.id([:unit, module, :limit]),
+            do: r["id"]
+
+      assert length(consulted) == 3 and consulted == Enum.uniq(consulted)
+
+      subscribed =
+        for r <- domain["relations"]["subscribed_by"], r["to"] =~ "Twice", do: r
+
+      assert ["placed", "placed_again"] == Enum.sort(Enum.map(subscribed, & &1["as"]))
+      assert subscribed |> Enum.map(& &1["id"]) |> Enum.uniq() |> length() == 2
+
+      # One grant takes the publication, under either name.
+      [{grant, %{kind: :subscribe}}] =
+        Enum.filter(Model.capabilities(module), &match?({_, %{kind: :subscribe}}, &1))
+
+      assert Enum.all?(subscribed, &(&1["capability"] == grant))
+
+      for as <- [:placed, :placed_again],
+          do:
+            assert(
+              %{"capability" => ^grant} = node(d, "event", Document.id([:event, module, as]))
+            )
+
+      for document <- [d, domain] do
+        assert {:ok, _} = JSV.validate(document, @schema)
+        ids = Enum.map(relations(document), & &1["id"])
+        assert ids == Enum.uniq(ids)
+      end
     end
 
     test "a manager's own timer may be a way in, during the run" do
