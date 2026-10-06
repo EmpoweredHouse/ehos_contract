@@ -1,0 +1,16 @@
+**Review before the pull request** (`pre-pr-review`, two rounds of two reviews: correctness, and security and performance)
+
+Fixed, each in its own commit with a test where one can fail:
+- The authorization decisions table still recorded the contract's module. The engine now passes the contract's id with every authorization request (a new field, the user's choice), and the row stores it (70e2286). Verified in reverse: one test fails on the old row.
+- Two contracts with one id in two applications that a node scans were merged without a word. They are now refused when the node scans them, naming both (37d9dce, the user's choice over a warning). A contract seen twice, from an application listed twice, still counts once (5c46650). Verified in reverse.
+- Dispatch looked up the contract's application once per event inside the append lock. It now does so once per dispatch, and only when there is an effect job (d327670, 5c46650).
+- Docs and notes that still described keys by module name, a missing note on renamed inbox consumers on the bus, and auth advice that would have deleted its audit trail (d327670, 5c46650).
+
+Left as they are, with the reason:
+- A subscription finds a contract only in the configured applications. Before, it also found one by module in any loaded application. Such a contract is already invisible to the report, the deployments and the subscriptions, so this is written down rather than worked around (in the docs of `Implementations.contract/2`).
+- An effect job's `"application"` argument can name any loaded application. It creates no atoms, and the number of indexes is bounded by the applications loaded. Writing to the jobs table is needed to do it.
+- When the duplicate-id refusal fires, the scan runs again on every call. That happens only on a node that is already misconfigured.
+
+Gate on 5c46650: `mix check` EXIT=0, `check` 0/33/10 and 0/76/6 (unchanged), engine 1374 tests (+3), sandbox 196, web 52, auth 286 + 1 property. The report, `check --format json` and the graphs of 11 processes are byte for byte equal to `main`, on an empty database and on a seeded one.
+
+Follow-ups opened during the review: #179 (start-up warning for rows filed under a name no contract has), #180 (the domain's name must equal the EHOS application's), EmpoweredHouse/eh-os#201 (bus identity from an EHOS credential).
