@@ -85,7 +85,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
   schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read,
   and every subscription registers again under its new key — an ordered read model and a process manager read the
-  log again from its start into what they already hold, a policy and a relay from its head. An effect's job
+  log again from its start into what they already hold, a policy and a relay from its head. An inbox's durable
+  consumer on the bus is named by its key, so a transport keeps the old one: drain it before upgrading, or what
+  was published to it and not yet taken stays there. An effect's job
   carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
   conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a.
 - **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract

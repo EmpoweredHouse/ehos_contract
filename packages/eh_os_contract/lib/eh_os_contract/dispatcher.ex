@@ -1024,10 +1024,14 @@ defmodule EhOsContract.Dispatcher do
   # One job per effect delivered at least once, inserted in this transaction, so the
   # job exists exactly when the event does.
   defp enqueue!(job, pairs, repo) do
+    # Where dispatch found the effects besides the configured applications, which the
+    # key's contract id cannot name (plan DD, ID4, #178); once, not once per event.
+    application = Application.get_application(job.model.module)
+
     jobs =
       for {_event, row} <- pairs,
           effect <- Implementations.effects(job.model.module, row.type),
-          do: EffectJob.job(effect.key, row.id, Application.get_application(job.model.module))
+          do: EffectJob.job(effect.key, row.id, application)
 
     if jobs != [] do
       case Oban.config() do

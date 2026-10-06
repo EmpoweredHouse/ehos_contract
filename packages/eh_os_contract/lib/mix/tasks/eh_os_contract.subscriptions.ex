@@ -11,15 +11,15 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
   itself, because an ordered consumer that skips is a read model that silently lies
   (v2 §12). Moving it is a decision, and these are the two a person can take:
 
-      mix eh_os_contract.subscriptions --skip DispatchRig.Ledger:read_model:ledger_lines
-      mix eh_os_contract.subscriptions --reset DispatchRig.Ledger:read_model:ledger_lines
+      mix eh_os_contract.subscriptions --skip dispatch_rig.ledger:read_model:ledger_lines
+      mix eh_os_contract.subscriptions --reset dispatch_rig.ledger:read_model:ledger_lines
 
   `--skip` moves a `failing` subscription past the one event it fails on, which is
   then never applied — an erasure among them: the read model keeps that subject's
   copy until it is reset. `--reset` empties a read model through its `reset/0` and
   replays the whole log into it; a read model without `reset/0` cannot be reset. A
   policy keeps no rows, so `--reset` moves it back to the beginning of the log, and
-  it reacts to the history a new policy leaves alone. A relay (`<contract>:relay:<name>`,
+  it reacts to the history a new policy leaves alone. A relay (`<contract id>:relay:<name>`,
   `EhOsContract.Relay`) is the same: `--skip` means the event never leaves the
   application, and `--reset` publishes the whole log again, under the same ids.
   """

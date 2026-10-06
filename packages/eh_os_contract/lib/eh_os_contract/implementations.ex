@@ -192,6 +192,10 @@ defmodule EhOsContract.Implementations do
   names (plan DD, ID4, #178). Looked up among the configured applications and
   `application`, when given — the one a dispatch also looked in, which an id cannot
   name. The whole id, never a prefix of it, so `clinic.a` never finds `clinic.a.b`.
+
+  A subscription and a process manager decode with no `application`: a contract whose
+  events they take is found only when its application is configured, as the report,
+  the deployments and the subscriptions themselves already require.
   """
   @spec contract(String.t(), atom() | nil) :: map() | nil
   def contract(id, application \\ nil) when is_binary(id),
