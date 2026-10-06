@@ -32,7 +32,9 @@ defmodule EhOsContract.Contract do
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its
   contexts. Neither records a compile dependency (v2 §8): the domain is checked
   against the contract by a Mix compiler, not by recompiling every contract when the
-  domain changes.
+  domain changes. `id:` (plan DD, ID1) names the contract for readers outside the
+  code, `"<domain name>.<segment>…"` (D11), unique in the application (X7); it is in
+  the model only where given, and outside the version.
 
   It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
   struct for every command, event, state, row and query and a behaviour for
@@ -45,7 +47,13 @@ defmodule EhOsContract.Contract do
     default_extensions: [extensions: [EhOsContract.Contract.Dsl]],
     opt_schema: [
       domain: [type: :atom, required: true, doc: "The application's domain module."],
-      context: [type: :atom, required: true, doc: "The domain context the process belongs to."]
+      context: [type: :atom, required: true, doc: "The domain context the process belongs to."],
+      id: [
+        type: :string,
+        doc:
+          "The contract's name for readers outside the code (plan DD, ID1): the domain's " <>
+            "`name:`, then dotted snake_case segments, like `\"rehmed.settlement\"`."
+      ]
     ]
 
   @doc """
@@ -62,7 +70,11 @@ defmodule EhOsContract.Contract do
   def handle_opts(opts) do
     quote do
       @persist {:eh_os_contract_contract,
-                %{domain: unquote(opts[:domain]), context: unquote(opts[:context])}}
+                %{
+                  domain: unquote(opts[:domain]),
+                  context: unquote(opts[:context]),
+                  id: unquote(opts[:id])
+                }}
       @persist {:eh_os_contract_line, __ENV__.line}
     end
   end

@@ -52,6 +52,7 @@ defmodule EhOsContract.Contract.Rules do
 
     %{
       module: Transformer.get_persisted(dsl, :module),
+      id: contract_id(dsl),
       units: of.(Dsl.Unit),
       policies: of.(Dsl.Policy),
       effects: of.(Dsl.Effect),
@@ -64,6 +65,20 @@ defmodule EhOsContract.Contract.Rules do
       processes: of.(Dsl.ProcessDeclaration),
       scenarios: of.(Dsl.Scenario)
     }
+  end
+
+  # Plan DD, ID1: the contract's `id:`, as written, with where its `use` stands, or
+  # `nil` when it names none.
+  defp contract_id(dsl) do
+    case Transformer.get_persisted(dsl, :eh_os_contract_contract) do
+      %{id: id} when id != nil ->
+        file = dsl |> Transformer.get_persisted(:file) |> String.to_charlist()
+        line = Transformer.get_persisted(dsl, :eh_os_contract_line)
+        %{value: id, at: :erl_anno.set_file(file, :erl_anno.new(line))}
+
+      _ ->
+        nil
+    end
   end
 
   @doc "A unit's events, whether written in a stage group or outside one."
