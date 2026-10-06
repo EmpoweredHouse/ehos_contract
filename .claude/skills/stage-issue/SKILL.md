@@ -1,6 +1,6 @@
 ---
 name: stage-issue
-description: Run a stage of a planned programme in this repository (today the DD programme in `PLAN.md`) through a GitHub issue — tighten the stage's paragraph in `PLAN.md` before it starts, open the issue in plain English for a reader outside the team, record each decision on it as it is made, link every pull request with `Closes #N`, and close it with what came of the stage. Use when starting a stage from the "Postęp" table, when a decision about a stage is made, when opening a stage's pull request, and when a stage is merged. Not for one-off fixes outside a programme, which need no issue.
+description: Run a stage of a planned programme in this repository (today the DD programme in `PLAN.md`) through a GitHub issue — tighten the stage's paragraph in `PLAN.md` before it starts, open the issue with a plain "In short" for a reader outside the team and the technical detail after it, record each decision on it as it is made, link every pull request with `Closes #N`, and close it with what came of the stage. Use when starting a stage from the "Postęp" table, when a decision about a stage is made, when opening a stage's pull request, and when a stage is merged. Not for one-off fixes outside a programme, which need no issue.
 ---
 
 # A stage as a GitHub issue
@@ -64,16 +64,19 @@ rewritten. Their issues are closed ones that link the pull request and the secti
 
 ## How an issue reads
 
-Someone outside the team, not necessarily technical, should understand from the issue what was wrong and what
-changes. Write for that person.
+An issue has two readers, and both read the same issue: someone outside the team, not necessarily technical,
+who wants to know what was wrong and what changes, and an engineer who will build or review it. Neither part
+is cut down for the other (6 October 2026; before that, issues carried no technical detail at all).
 
-- **The problem first, in the reader's terms.** What goes wrong today, for whom, with one example from the
-  test material (a clinic, an accounting firm, an equipment store). Not the module that will change.
-- **No implementation names.** No module or function names, no refusal codes (`X10`, `D11`), no file paths,
-  no line numbers. Everywhere else in prose — `PLAN.md`, `docs/adr/`, a pull request, a commit — a code may
-  stand, but never alone: its meaning first, the code in parentheses, "a reaction to another context's event
-  that leaves delivery out (X10)". Say what the library will refuse or warn about and when ("the contract will not compile",
-  "the check will warn"). The pull request carries the code; the issue links it.
+- **"In short" first, for anyone.** What goes wrong today, for whom, with one example from the test material
+  (a clinic, an accounting firm, an equipment store), and what will be different once the stage is done:
+  what the library will refuse or warn about and when ("the contract will not compile", "the check will
+  warn"). No module or function names, refusal codes or file paths in this section; a reader who stops here
+  knows what the stage is for.
+- **The technical part has no such limit.** Modules, functions, files, refusal and rule codes, the order of
+  the work — whatever an engineer needs. A code still never stands alone: its meaning first, the code in
+  parentheses, "a reaction to another context's event that leaves delivery out (X10)". Line numbers stay
+  out; they go stale before the issue closes.
 - **Concrete over abstract.** "Two contracts could record events that look identical in the log" beats
   "improves identity guarantees". A number, a name or an example beats an adjective.
 - **Scope as two short lists:** what is in, and what is deliberately out, with why for each "out".

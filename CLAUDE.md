@@ -197,7 +197,8 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   no documentation and `dialyzer` nothing to check.
 - **A code never stands alone in prose.** In `PLAN.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
-  (X10)". Issues carry no codes at all. Compiler messages and tests keep their codes; the message says the
+  (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule
+  as the rest. Compiler messages and tests keep their codes; the message says the
   meaning beside it.
 - **A pull request says what it belongs to**: `Closes #N`, `Part of #N` or `No issue: <why>` (the template;
   `.github/workflows/pr-links-issue.yml` checks it). A stage's commits end with `Part of #N`, its branch is
