@@ -83,9 +83,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
   (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
   contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
-  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read,
-  and every subscription registers again under its new key — an ordered read model and a process manager read the
-  log again from its start into what they already hold, a policy and a relay from its head. An inbox's durable
+  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
+  **It also clears the tables its read models project into**, which are the host's and which the reset leaves: they
+  hold projections of the log that is gone, and an ordered read model starts again from the new log's first event. An inbox's durable
   consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
   deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
   to the inbox and drain it before upgrading, then delete the old consumer. An effect's job

@@ -61,4 +61,12 @@ defmodule EhOsContract.ContractIdRowsTest do
     assert error.message =~ ~s(the id: "dispatch_rig.ledger" is declared by DispatchRig.Ledger)
     assert error.message =~ "ValueRig.Till (:eh_os_contract)"
   end
+
+  # A sibling a scanned contract consumes is found by its id even when no scan reaches
+  # its application: `consumes` names it by module (review of #181).
+  test "an id finds a sibling a scanned contract consumes" do
+    branch = Model.fetch(DispatchRig.Branch)
+
+    assert %{"dispatch_rig.ledger" => %{module: Ledger}} = Implementations.by_id([branch])
+  end
 end

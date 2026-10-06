@@ -193,9 +193,8 @@ defmodule EhOsContract.Implementations do
   `application`, when given — the one a dispatch also looked in, which an id cannot
   name. The whole id, never a prefix of it, so `clinic.a` never finds `clinic.a.b`.
 
-  A subscription and a process manager decode with no `application`: a contract whose
-  events they take is found only when its application is configured, as the report,
-  the deployments and the subscriptions themselves already require.
+  A subscription and a process manager decode with no `application`: they find a
+  contract of the configured applications, or a sibling one of them consumes.
   """
   @spec contract(String.t(), atom() | nil) :: map() | nil
   def contract(id, application \\ nil) when is_binary(id),
@@ -251,7 +250,7 @@ defmodule EhOsContract.Implementations do
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__()),
           do: module.__eh_os_contract_model__()
 
-    :ok = EhOsContract.Registry.unique_ids!(contracts)
+    known = by_id(contracts)
 
     consumers =
       contracts
@@ -275,8 +274,24 @@ defmodule EhOsContract.Implementations do
         |> Enum.flat_map(&inboxes(&1, declarations))
         |> Enum.sort_by(& &1.key),
       included: included(contracts),
-      contracts: Map.new(contracts, &{&1.id, &1})
+      contracts: known
     }
+  end
+
+  @doc false
+  # The contracts an id finds (plan DD, ID4, #178): the scanned ones, and the siblings
+  # they consume, which their `consumes` names by module, so a subscription decodes a
+  # sibling's event wherever the node loaded it from. One id, one contract.
+  @spec by_id([map()]) :: %{String.t() => map()}
+  def by_id(contracts) do
+    siblings =
+      for contract <- contracts,
+          %{kind: :contract, from: from} <- contract.consumes,
+          do: EhOsContract.Model.fetch(from)
+
+    known = Enum.uniq_by(contracts ++ siblings, & &1.module)
+    :ok = EhOsContract.Registry.unique_ids!(known)
+    Map.new(known, &{&1.id, &1})
   end
 
   defp inboxes(model, declarations) do
