@@ -63,7 +63,7 @@ defmodule EhOsContract.Contract.Rules.Process do
            "terminal; `terminal:` ends a process's run", event}
       end
 
-    empty(declarations) ++ stages ++ terminal
+    empty(declarations) ++ stages ++ terminal ++ waits(declarations)
   end
 
   # A contract with nothing in it describes nothing; the error names the module
@@ -187,20 +187,30 @@ defmodule EhOsContract.Contract.Rules.Process do
         )
 
     calendar =
-      for(c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}) ++
-        for pm <- d.process_managers, t <- pm.timers, t.wait != nil do
-          {"timer #{inspect(t.name)}: wait", t.wait, t}
-        end
+      for c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}
 
     for(
       {what, duration, declaration} <- fixed,
       problem <- problems(duration, Duration.units()),
       do: {"R6: #{what} #{problem}", declaration}
-    ) ++
-      for {what, duration, declaration} <- calendar,
-          problem <- problems(duration, Duration.units() ++ @calendar) do
-        {"R6: #{what} #{problem}", declaration}
-      end ++ once(process)
+    ) ++ calendar(calendar) ++ waits(d) ++ once(process)
+  end
+
+  # A process manager's timer belongs to the process manager, not to the process, so
+  # its wait is checked whether or not the contract declares one.
+  defp waits(d) do
+    calendar(
+      for pm <- d.process_managers, t <- pm.timers, t.wait != nil do
+        {"timer #{inspect(t.name)}: wait", t.wait, t}
+      end
+    )
+  end
+
+  defp calendar(durations) do
+    for {what, duration, declaration} <- durations,
+        problem <- problems(duration, Duration.units() ++ @calendar) do
+      {"R6: #{what} #{problem}", declaration}
+    end
   end
 
   defp once(process) do

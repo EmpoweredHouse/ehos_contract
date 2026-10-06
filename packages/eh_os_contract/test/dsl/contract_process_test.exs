@@ -347,6 +347,27 @@ defmodule EhOsContract.ContractProcessTest do
   end
 
   describe "R6: durations" do
+    test "a timer's wait is checked in a contract without a process too" do
+      # A timer belongs to its process manager, not to the process (#190, CodeRabbit).
+      message =
+        refuse_contract("NoProcessTimer", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed, sets: :reminder
+            timer :reminder, "Reminder", wait: {-1, :hour}
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "R6: timer :reminder: wait counts -1, which is not a non-negative integer (no_process_timer.ex:12)"
+    end
+
     test "calendar units, negative counts and malformed ones are refused where time is computed" do
       message =
         refuse_contract("Durations", """
