@@ -90,6 +90,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
   A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
   its id.
+- **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
+  `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
+  `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
+  id and add `"module"`. `EhOsContract.Registry.contract/1` finds a registered contract by its whole id. The OpenAPI
+  and AsyncAPI documents keep the module as their title.
 - **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
   `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
   reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same

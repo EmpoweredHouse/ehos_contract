@@ -18,7 +18,7 @@ defmodule EhOsContract.Web.ApiTest do
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
   # A conformance request names the contract it asks about.
-  @contract "/api/conformance?contract=EhOsContract.Web.TestHost.Fixtures.CaseHandling"
+  @contract "/api/conformance?contract=web_test_host.case_handling"
 
   setup do
     {:ok, conn: build_conn() |> put_req_header("accept", "application/json")}
@@ -64,11 +64,23 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "a named contract is served", %{conn: conn} do
-      contract = EhOsContract.Registry.contracts() |> List.first() |> inspect()
-      conn = get(conn, "/api/conformance?contract=#{contract}")
+      contract = EhOsContract.Registry.contracts() |> List.first()
+      id = EhOsContract.Model.fetch(contract).id
+      conn = get(conn, "/api/conformance?contract=#{id}")
 
       assert conn.status == 200
-      assert Jason.decode!(conn.resp_body)["report"]["module"] == contract
+      report = Jason.decode!(conn.resp_body)["report"]
+      assert report["contract"] == id
+      assert report["module"] == inspect(contract)
+    end
+
+    # Plan DD, P1a (#183): a contract is named by its id; its module's name is not one.
+    test "a module's name is not a contract's name", %{conn: conn} do
+      module = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      conn = get(conn, "/api/conformance?contract=#{module}")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "unknown contract"
     end
 
     test "without `contract=`, several registered contracts are a bad request", %{conn: conn} do
@@ -107,13 +119,15 @@ defmodule EhOsContract.Web.ApiTest do
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts()
+               |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+               |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a document is served, and its ETag is its digest", %{conn: conn} do
-      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      name = EhOsContract.Model.fetch(EhOsContract.Registry.contracts() |> List.first()).id
       conn = get(conn, "/api/asyncapi/#{name}")
 
       assert conn.status == 200
@@ -158,19 +172,21 @@ defmodule EhOsContract.Web.ApiTest do
                Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts()
+               |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+               |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a model document is served with its digest as the ETag", %{conn: conn} do
-      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      name = EhOsContract.Model.fetch(EhOsContract.Registry.contracts() |> List.first()).id
       conn = get(conn, "/api/model/#{name}")
 
       assert conn.status == 200
       document = Jason.decode!(conn.resp_body)
       assert document["schema"] == "eh_os_contract.model.v1"
-      assert document["contract"]["module"] == name
+      assert document["contract"]["id"] == name
       assert get_resp_header(conn, "etag") == [~s("#{document["digest"]}")]
     end
 
@@ -195,13 +211,15 @@ defmodule EhOsContract.Web.ApiTest do
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts()
+               |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+               |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a document is served with relative plug paths and its digest as the ETag", %{conn: conn} do
-      name = inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)
+      name = "web_test_host.case_handling"
       conn = get(conn, "/api/openapi/#{name}")
 
       assert conn.status == 200

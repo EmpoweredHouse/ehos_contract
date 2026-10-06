@@ -75,7 +75,8 @@ defmodule EhOsContract.AsyncAPI do
   def index do
     for contract <- EhOsContract.Registry.contracts() do
       %{
-        "contract" => inspect(contract),
+        "contract" => Model.fetch(contract).id,
+        "module" => inspect(contract),
         "version" => Model.fetch(contract).version,
         "digest" => contract |> document() |> get_in(["info", "x-eh-os-contract-digest"])
       }

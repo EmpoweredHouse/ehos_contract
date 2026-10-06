@@ -3,7 +3,7 @@ defmodule EhOsContract.Web.Api.OpenAPI do
   The generated OpenAPI document for one v2 contract, or the index of all of them.
 
   `GET <mount>/openapi` lists each contract with its version and document digest.
-  `GET <mount>/openapi/My.Contract` serves that contract's command-and-query API,
+  `GET <mount>/openapi/<contract id>` serves that contract's command-and-query API,
   with the digest both in `info["x-eh-os-contract-digest"]` and as the `ETag`.
 
   The same host resolver that protects conformance, model and AsyncAPI documents
@@ -34,7 +34,7 @@ defmodule EhOsContract.Web.Api.OpenAPI do
 
   @spec one(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp one(conn, name) do
-    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
+    case EhOsContract.Registry.contract(name) do
       nil ->
         json(conn, 404, %{"error" => "not_found", "detail" => "unknown contract #{name}"})
 

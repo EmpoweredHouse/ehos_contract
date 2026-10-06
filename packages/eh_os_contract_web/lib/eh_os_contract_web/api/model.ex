@@ -3,7 +3,7 @@ defmodule EhOsContract.Web.Api.Model do
   The named v2 model document for one contract, or an index of all of them.
 
   `GET <mount>/model` lists v2 contracts with their contract version and exported
-  document digest. `GET <mount>/model/My.Contract` serves
+  document digest. `GET <mount>/model/<contract id>` serves
   `EhOsContract.Model.to_data/1`, with its digest in the body and as the `ETag`.
 
   Authenticated through the same resolver as conformance and AsyncAPI: the model
@@ -37,7 +37,8 @@ defmodule EhOsContract.Web.Api.Model do
       for contract <- EhOsContract.Registry.contracts(),
           document = EhOsContract.Model.to_data(contract) do
         %{
-          "contract" => inspect(contract),
+          "contract" => EhOsContract.Model.fetch(contract).id,
+          "module" => inspect(contract),
           "version" => EhOsContract.Model.fetch(contract).version,
           "digest" => document["digest"]
         }
@@ -49,7 +50,7 @@ defmodule EhOsContract.Web.Api.Model do
 
   @spec one(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp one(conn, name) do
-    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
+    case EhOsContract.Registry.contract(name) do
       nil ->
         json(conn, 404, %{"error" => "not_found", "detail" => "unknown contract #{name}"})
 

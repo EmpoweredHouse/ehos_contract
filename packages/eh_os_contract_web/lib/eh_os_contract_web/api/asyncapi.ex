@@ -3,7 +3,7 @@ defmodule EhOsContract.Web.Api.AsyncAPI do
   The generated AsyncAPI document for one contract, or the index of all of them.
 
   `GET <mount>/asyncapi` — every contract, with its version and document digest.
-  `GET <mount>/asyncapi/My.Contract` — that contract's document.
+  `GET <mount>/asyncapi/<contract id>` — that contract's document.
 
   The digest is served twice, in `info["x-eh-os-contract-digest"]` and as the `ETag`. Not
   redundant: a consumer comparing what an instance claims against what its build
@@ -37,7 +37,7 @@ defmodule EhOsContract.Web.Api.AsyncAPI do
 
   @spec one(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp one(conn, name) do
-    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
+    case EhOsContract.Registry.contract(name) do
       nil ->
         json(conn, 404, %{"error" => "not_found", "detail" => "unknown contract #{name}"})
 

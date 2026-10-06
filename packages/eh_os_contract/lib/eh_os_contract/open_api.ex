@@ -45,7 +45,8 @@ defmodule EhOsContract.OpenAPI do
       document = document(contract)
 
       %{
-        "contract" => inspect(contract),
+        "contract" => Model.fetch(contract).id,
+        "module" => inspect(contract),
         "version" => Model.fetch(contract).version,
         "digest" => document["info"]["x-eh-os-contract-digest"]
       }

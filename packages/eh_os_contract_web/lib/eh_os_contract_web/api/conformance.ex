@@ -2,7 +2,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   @moduledoc """
   The conformance report, as data, for one contract.
 
-  `GET <mount>/conformance?contract=My.Contract&since=…&until=…`
+  `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
 
   The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
   the shape a consumer compares version to version is part of what the engine
@@ -65,7 +65,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   end
 
   defp contract(name) do
-    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
+    case EhOsContract.Registry.contract(name) do
       nil -> {:error, "unknown contract #{name}"}
       contract -> {:ok, contract}
     end
