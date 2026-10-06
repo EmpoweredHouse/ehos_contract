@@ -43,8 +43,8 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Fala 2:** ID1 gotowy na `dsl/id1-contract-id` (od `main`, brama zielona, przegląd rozstrzygnięty — „ID1 — co
-wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
+**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). Next is ID2: every contract names its
+`id:`.
 
 ### Stan repozytorium
 
@@ -549,7 +549,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 | [#162](https://github.com/EmpoweredHouse/eh-os-contract/issues/162) |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 | [#163](https://github.com/EmpoweredHouse/eh-os-contract/issues/163) |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 | [#164](https://github.com/EmpoweredHouse/eh-os-contract/issues/164) |
-| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ◐ `dsl/id1-contract-id`, PR #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
+| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ | — |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ | — |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
