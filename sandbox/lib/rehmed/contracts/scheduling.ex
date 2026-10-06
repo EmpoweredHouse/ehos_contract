@@ -32,6 +32,13 @@ defmodule Rehmed.Contracts.Scheduling do
     stage E9b.
   - **The two-person visit** (`H35`) is still undecided as one visit or two.
 
+  ## No process
+
+  The contract holds the visit as a unit, not as a run. The run the clinic described
+  crosses three contexts with the same visit, and it is statutory reporting's
+  `clinical_visit`, which includes `visit_completed` from here (distillation,
+  finding 1). Which of its three ends a visit reached is the aggregate's state.
+
   `visit_booked`, `visit_completed` and `visit_cancelled` start with the aggregate's
   name and `check` says so (`event-name-with-aggregate-prefix`): the names are the
   distillation's and the aggregate is `AGG-01`'s (plan, the decisions before E9).
@@ -75,45 +82,34 @@ defmodule Rehmed.Contracts.Scheduling do
       rejects: :only_a_visit_not_yet_held_ends_early,
       source: "C-17, aktor A-02"
 
-    stage :booking do
-      # `E-14`. The service decides what else happens to the visit: whether it is
-      # reported to P1 is a flag on the service (`AGG-15`).
-      event :visit_booked, "Pacjent umówił wizytę", source: "E-14" do
-        field :patient_id, :id, subject: :patient
-        field :service_id, {:id, :service}
-        field :specialist_id, :id
-        field :scheduled_at, :timestamp
-      end
+    # `E-14`. The service decides what else happens to the visit: whether it is
+    # reported to P1 is a flag on the service (`AGG-15`).
+    event :visit_booked, "Pacjent umówił wizytę", source: "E-14" do
+      field :patient_id, :id, subject: :patient
+      field :service_id, {:id, :service}
+      field :specialist_id, :id
+      field :scheduled_at, :timestamp
     end
 
-    # The three ends of `AGG-01` and the arrival before the good one. Nothing is
-    # ordered inside: a no-show after an arrival is refused by the invariant, not by
-    # the stages.
-    stage :attendance do
-      # `E-27`, and `H101` makes it load-bearing since the mockup: the manual presence
-      # mark opens the till.
-      event :patient_arrived, "Klient pojawił się na wizycie",
-        recorded_by: :reception,
-        source: "E-27"
+    # The three ends of `AGG-01` and the arrival before the good one. Which may follow
+    # which is the invariant's to say: a no-show after an arrival is refused by it.
+    #
+    # `E-27`, and `H101` makes it load-bearing since the mockup: the manual presence
+    # mark opens the till.
+    event :patient_arrived, "Klient pojawił się na wizycie",
+      recorded_by: :reception,
+      source: "E-27"
 
-      # `E-51`, the good end, `AGG-01`'s delivered state. The statutory two days to P1 count from
-      # here (Dz.U. 2025 poz. 866), which is why `StatutoryReporting` includes it.
-      event :visit_completed, "Pacjent wyszedł z gabinetu",
-        recorded_by: :specialist,
-        terminal: true,
-        source: "E-51"
+    # `E-51`, the good end, `AGG-01`'s delivered state. The statutory two days to P1 count from
+    # here (Dz.U. 2025 poz. 866), which is why `StatutoryReporting` includes it.
+    event :visit_completed, "Pacjent wyszedł z gabinetu",
+      recorded_by: :specialist,
+      source: "E-51"
 
-      event :visit_cancelled, "Oznaczono wizytę jako odwołaną", terminal: true, source: "E-28"
+    event :visit_cancelled, "Oznaczono wizytę jako odwołaną", source: "E-28"
 
-      # `E-35` is what `C-17` records; `E-32` is the same fact as the board wrote it.
-      event :patient_no_show, "Pacjent nie przyszedł", terminal: true, source: "E-32, E-35"
-    end
-  end
-
-  process :visit, "Wizyta: od umówienia do wyjścia z gabinetu" do
-    correlate :visit_id
-    stage :booking
-    stage :attendance
+    # `E-35` is what `C-17` records; `E-32` is the same fact as the board wrote it.
+    event :patient_no_show, "Pacjent nie przyszedł", source: "E-32, E-35"
   end
 
   scenario "recepcja umawia pacjenta — wizyta powstaje" do

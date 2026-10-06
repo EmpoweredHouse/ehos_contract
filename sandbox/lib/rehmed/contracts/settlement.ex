@@ -21,9 +21,11 @@ defmodule Rehmed.Contracts.Settlement do
 
   What then opens a settlement and freezes the price is `H177`, open for pass 2. The
   mockup's answer is followed here: **the patient's presence opens it** (scheduling's
-  `patient_arrived`, included in the run) and **the price freezes at the close**, so
-  the total comes with the close. The mockup says itself that this contradicts
-  `DEC-18`; if pass 2 decides otherwise, the total moves.
+  `patient_arrived`, which reception marks at the desk) and **the price freezes at
+  the close**, so the total comes with the close. The mockup says itself that this
+  contradicts `DEC-18`; if pass 2 decides otherwise, the total moves. The opening is
+  not declared here: nothing in this contract reacts to the arrival, so a
+  settlement's history starts with its first service line, handover or payment.
 
   ## Money
 
@@ -41,7 +43,12 @@ defmodule Rehmed.Contracts.Settlement do
   never the day it was entered, which is the incumbent's defect (`E-84`). The day
   close itself (`E-83`, `AGG-07`) is out of E9.
 
-  ## No promise
+  ## No process, and no promise
+
+  `DEC-01` made documentation and settlement independent and concurrent — the
+  specialist writes while reception settles — so no promise crosses them. Nobody
+  described a run of settling one visit either, so the contract declares no process;
+  the visit the clinic described end to end is statutory reporting's `clinical_visit`.
 
   The one timing anybody described is that a mid-visit addition reaches the desk
   before the patient does — a moment, answered by a push (`DEC-17`), with no interval
@@ -49,8 +56,6 @@ defmodule Rehmed.Contracts.Settlement do
   """
 
   use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.settlement"
-
-  consumes Rehmed.Contracts.Scheduling, :patient_arrived
 
   aggregate :visit_settlement, "Rozliczenie wizyty" do
     identity :visit_id
@@ -144,54 +149,46 @@ defmodule Rehmed.Contracts.Settlement do
       field :delta, :money
     end
 
-    stage :charging do
-      event :service_line_added, "Dodano dodatkową usługę do rozliczenia", source: "E-45" do
-        field :service_id, {:id, :service}
-      end
-
-      # `E-115`, since `K5-20` only after a change of scope.
-      event :visit_handed_over, "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
-        source: "E-115, K5-20"
+    event :service_line_added, "Dodano dodatkową usługę do rozliczenia", source: "E-45" do
+      field :service_id, {:id, :service}
     end
 
-    stage :payment do
-      # `E-55`. A split across methods is allowed, and is where the incumbent flips
-      # the sign.
-      event :payment_recorded, "Pacjent opłacił wizytę", source: "E-55" do
-        field :method, :payment_method
-        field :amount, :money
-      end
+    # `E-115`, since `K5-20` only after a change of scope.
+    event :visit_handed_over, "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
+      source: "E-115, K5-20"
 
-      event :visit_closed_commercially, "Recepcja zamknęła wizytę",
-        terminal: true,
-        source: "E-56" do
-        field :total, :money
-      end
+    # `E-55`. A split across methods is allowed, and is where the incumbent flips
+    # the sign.
+    event :payment_recorded, "Pacjent opłacił wizytę", source: "E-55" do
+      field :method, :payment_method
+      field :amount, :money
+    end
 
-      # The other meaning `C-30` carried; a visit a payer or a prepaid pass covers ends so
-      # (`AGG-01` invariant 9), and `P-08` exists to notice the others.
-      event :visit_closed_without_payment, "Zamknięto wizytę bez płatności",
-        terminal: true,
-        source: "E-53, P-08" do
-        field :total, :money
-      end
+    event :visit_closed_commercially, "Recepcja zamknęła wizytę", source: "E-56" do
+      field :total, :money
+    end
 
-      # What crosses to external payers (`30-contexts.md`: "which visits a payer owes
-      # for"), next to either close: a mixed visit is paid by the patient for what the
-      # payer does not cover (`P-31`). The model has no fact for it, so this one is
-      # ours (plan, the decision before E9b), and no amount: the payer's invoice is
-      # made outside the system (`H62`).
-      event :visit_charged_to_payer, "Wizyta obciąża płatnika zewnętrznego",
-        source: "30-contexts.md, CTX-05 → CTX-06" do
-        field :payer_id, :id
-        field :period_id, :id
-      end
+    # The other meaning `C-30` carried; a visit a payer or a prepaid pass covers ends so
+    # (`AGG-01` invariant 9), and `P-08` exists to notice the others.
+    event :visit_closed_without_payment, "Zamknięto wizytę bez płatności", source: "E-53, P-08" do
+      field :total, :money
+    end
 
-      # `E-84`. `delta` may be negative, so a refund needs no event of its own.
-      event :settlement_corrected, "Zaksięgowano korektę po zamknięciu dnia", source: "E-84" do
-        field :delta, :money
-        field :business_date, :date
-      end
+    # What crosses to external payers (`30-contexts.md`: "which visits a payer owes
+    # for"), next to either close: a mixed visit is paid by the patient for what the
+    # payer does not cover (`P-31`). The model has no fact for it, so this one is
+    # ours (plan, the decision before E9b), and no amount: the payer's invoice is
+    # made outside the system (`H62`).
+    event :visit_charged_to_payer, "Wizyta obciąża płatnika zewnętrznego",
+      source: "30-contexts.md, CTX-05 → CTX-06" do
+      field :payer_id, :id
+      field :period_id, :id
+    end
+
+    # `E-84`. `delta` may be negative, so a refund needs no event of its own.
+    event :settlement_corrected, "Zaksięgowano korektę po zamknięciu dnia", source: "E-84" do
+      field :delta, :money
+      field :business_date, :date
     end
   end
 
@@ -206,19 +203,6 @@ defmodule Rehmed.Contracts.Settlement do
     reads: :daily_totals,
     by: :reception do
     param :business_date, :date
-  end
-
-  # `DEC-01` made documentation and settlement independent and concurrent — the
-  # specialist writes while reception settles — so no promise crosses them.
-  process :visit_settlement, "Rozliczenie wizyty" do
-    correlate :visit_id
-
-    stage :opening do
-      include :patient_arrived
-    end
-
-    stage :charging
-    stage :payment
   end
 
   # VLW 00:19:58: an unpaid penalty is collected with the next visit, "pay 200 zł at

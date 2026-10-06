@@ -139,8 +139,8 @@ defmodule Rehmed.ConsumedFieldChangeTest do
     add =
       &String.replace(
         &1,
-        "        field :p1_reported, :boolean\n      end\n    end\n  end",
-        "        field :p1_reported, :boolean\n        field :note, :string, optional: true\n      end\n    end\n  end"
+        "      field :p1_reported, :boolean\n    end\n  end",
+        "      field :p1_reported, :boolean\n      field :note, :string, optional: true\n    end\n  end"
       )
 
     assert File.read!(@publisher) != add.(File.read!(@publisher))
@@ -154,8 +154,8 @@ defmodule Rehmed.ConsumedFieldChangeTest do
     rename =
       &String.replace(
         &1,
-        ~s|event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do\n        field :patient_id, :id, subject: :patient\n        field :icd10|,
-        ~s|event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do\n        field :patient_id, :id, subject: :patient\n        field :icd10_code|
+        ~s|event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do\n      field :patient_id, :id, subject: :patient\n      field :icd10|,
+        ~s|event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do\n      field :patient_id, :id, subject: :patient\n      field :icd10_code|
       )
 
     assert File.read!(@publisher) != rename.(File.read!(@publisher))
