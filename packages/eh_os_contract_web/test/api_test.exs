@@ -39,7 +39,7 @@ defmodule EhOsContract.Web.ApiTest do
       conn = conn |> Access.put_actor("u-1", ["eh_os_contract_read"]) |> get(@contract)
 
       assert conn.status == 200
-      assert %{"schema" => "eh_os_contract.conformance.v2"} = Jason.decode!(conn.resp_body)
+      assert %{"schema" => "eh_os_contract.conformance.v3"} = Jason.decode!(conn.resp_body)
     end
 
     test "and so does an admin, identically", %{conn: conn} do
@@ -68,7 +68,7 @@ defmodule EhOsContract.Web.ApiTest do
       conn = get(conn, "/api/conformance?contract=#{contract}")
 
       assert conn.status == 200
-      assert Jason.decode!(conn.resp_body)["report"]["contract"] == contract
+      assert Jason.decode!(conn.resp_body)["report"]["module"] == contract
     end
 
     test "without `contract=`, several registered contracts are a bad request", %{conn: conn} do

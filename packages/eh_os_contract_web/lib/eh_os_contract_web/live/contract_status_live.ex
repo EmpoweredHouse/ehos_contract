@@ -41,7 +41,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
       <p class="access-badge">Access: {access_label(@eh_os_contract_web_access)}</p>
 
       <div :for={report <- @reports}>
-        <h2>{inspect(report.contract)}</h2>
+        <h2>{report.contract}</h2>
 
         <section>
           <h3>Contract</h3>

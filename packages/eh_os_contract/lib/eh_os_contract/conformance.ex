@@ -38,7 +38,9 @@ defmodule EhOsContract.Conformance do
   waits and what fails is split by source; the assertions are the process's
   `promises` (v2 §13, plan E7c). An aggregate that declares its lifecycle adds the
   first two questions for its transitions, under `lifecycles` (plan LC3). `as_data/2`
-  names the shape `eh_os_contract.conformance.v2`.
+  names the shape `eh_os_contract.conformance.v3`: from plan DD, P1a (#183), the steps
+  are the contract's (`activity`, `paths`) and `contract` is its `id:`, with `module`
+  beside it. v2 is not served.
 
   ## The boundary
 
@@ -87,7 +89,7 @@ defmodule EhOsContract.Conformance do
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
       # inside the report itself and is deliberately not repeated here.
-      "schema" => "eh_os_contract.conformance.v2",
+      "schema" => "eh_os_contract.conformance.v3",
       "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "report" => contract |> report(opts) |> EhOsContract.Conformance.Wire.encode()
     }
@@ -111,7 +113,10 @@ defmodule EhOsContract.Conformance do
     activity = EhOsContract.Paths.activity(model, opts)
 
     %{
-      contract: model.module,
+      # The contract's name to readers outside the code, as every row of the log names
+      # it (plan DD, ID4, #178); its module beside it, for a reader in this code.
+      contract: model.id,
+      module: model.module,
       engine: EhOsContract.version(),
       period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
       deployment: deployment,

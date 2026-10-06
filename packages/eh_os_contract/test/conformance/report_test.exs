@@ -1,7 +1,7 @@
 defmodule EhOsContract.ReportTest do
   @moduledoc """
   The conformance report of a v2 contract (v2 §13, plan E7c): the four questions on
-  the new log, `conformance.v2` on the wire, and the sentences that say which source
+  the new log, `conformance.v3` on the wire, and the sentences that say which source
   waits and which fails.
 
   The first block pins the numbers v1 and v2 had in common — runs, promise
@@ -317,11 +317,11 @@ defmodule EhOsContract.ReportTest do
   describe "on the wire" do
     setup do: Seed.deploy()
 
-    test "a v2 contract's report is conformance.v2, and Jason takes it" do
+    test "a v2 contract's report is conformance.v3, and Jason takes it" do
       Seed.request("r-1", :request_refused)
 
       wire = Conformance.as_data(ProcessShapes.Promised)
-      assert wire["schema"] == "eh_os_contract.conformance.v2"
+      assert wire["schema"] == "eh_os_contract.conformance.v3"
 
       assert {:ok, _json} = Jason.encode(wire)
 

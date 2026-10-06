@@ -15,7 +15,7 @@ defmodule EhOsContract.Paths do
   | an effect acts | the event | the effect | — |
 
   Each end is `%{kind, name, label}`, which is what `EhOsContract.Conformance`
-  hands on as `conformance.v2`, and what the graph draws.
+  hands on as `conformance.v3`, and what the graph draws.
 
   ## Taken, waiting, failing
 

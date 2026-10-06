@@ -83,13 +83,19 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
+  user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
+  it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
+  report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
+  `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
+  A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
+  its id.
 - **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
   `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
   reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same
   way. Two deposits on one account read "2 taken" on the graph, where they read "1/1 runs", and two failures of one
   account are two. A contract's steps are counted whether or not it has a process, and an event's node on the graph
-  shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`). The conformance
-  wire carries the new step keys under `eh_os_contract.conformance.v2` until P1a's wire change lands.
+  shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`).
 - **A contract's steps are its own block of the report, judged when it recorded an event** (plan DD, P1a, #183;
   moves verdicts). `EhOsContract.Conformance.from_model/2` (now public) gives `activity` (the contract's events
   and its commands, whatever their outcome, in the period) and `paths` (`steps`, `untraversed`, `in_flight`,

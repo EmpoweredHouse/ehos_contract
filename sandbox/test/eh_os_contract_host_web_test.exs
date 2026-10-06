@@ -28,13 +28,13 @@ defmodule EhOsContractHostWebTest do
     # `EhOsContractHostWeb.Resolver` lets everyone in read-only: this host has no
     # login, and says so rather than inheriting a default.
     assert html =~ "Access: read only"
-    # Taxvision.Contracts.AccountingMonth, this host's own real contract —
-    # not packages/eh_os_contract_web's invented CaseHandling fixture.
-    assert html =~ "AccountingMonth"
+    # Taxvision.Contracts.AccountingMonth, this host's own real contract, under its id
+    # (plan DD, P1a, #183) — not packages/eh_os_contract_web's invented fixture.
+    assert html =~ "taxvision.accounting_month"
   end
 
   test "the live socket upgrade reaches the same screen as the dead render", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/dashboard/contract")
-    assert html =~ "AccountingMonth"
+    assert html =~ "taxvision.accounting_month"
   end
 end

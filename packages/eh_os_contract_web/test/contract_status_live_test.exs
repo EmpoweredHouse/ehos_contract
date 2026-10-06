@@ -48,7 +48,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     html = html_response(conn, 200)
 
-    assert html =~ inspect(CaseHandling)
+    assert html =~ "web_test_host.case_handling"
     assert html =~ "Runs in this period: 1."
     # A v2 step: the rejection reaching its policy, and the policy's command.
     assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"
@@ -340,7 +340,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   defp report(overrides \\ []) do
     Map.merge(
       %{
-        contract: CaseHandling,
+        contract: "web_test_host.case_handling",
+        module: CaseHandling,
         period: %{since: nil, until: nil},
         deployment: deployment(),
         wiring: %{version: "def456", since: nil},
