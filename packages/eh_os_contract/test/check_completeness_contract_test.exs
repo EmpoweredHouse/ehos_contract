@@ -261,9 +261,11 @@ defmodule EhOsContract.CheckCompletenessContractTest do
             Completeness.findings([LifecycleRig.Visits]),
           do: f.message
 
-    moving = ~w(booked patient_arrived cancelled closed)a
-
-    for event <- moving,
+    # Not terminal, read by nothing else: only the lifecycle reads them.
+    for event <- ~w(booked patient_arrived)a,
         do: refute(Enum.any?(unread, &(&1 =~ "event #{inspect(event)} of")), "#{event} unread")
+
+    # Control: an event of the same unit that no lifecycle moves on is still unread.
+    assert Enum.any?(unread, &(&1 =~ "event :note_added of LifecycleRig.Visits has no consumer"))
   end
 end

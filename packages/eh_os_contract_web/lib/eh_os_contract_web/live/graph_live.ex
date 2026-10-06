@@ -81,8 +81,11 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @impl true
   def handle_event("select_contract", %{"contract" => id}, socket) do
-    selected = Enum.find(socket.assigns.contracts, &(&1.id == id))
-    {:noreply, select_contract(socket, selected)}
+    # An id the page did not list keeps what is selected rather than blanking it.
+    case Enum.find(socket.assigns.contracts, &(&1.id == id)) do
+      nil -> {:noreply, socket}
+      selected -> {:noreply, select_contract(socket, selected)}
+    end
   end
 
   @spec select_contract(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
@@ -193,7 +196,6 @@ defmodule EhOsContract.Web.Live.Graph do
         <h3>Declared shape of its process</h3>
 
         <pre
-          :if={@declared_mermaid}
           class="mermaid"
           phx-hook="MermaidRender"
           phx-update="ignore"

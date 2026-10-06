@@ -18,8 +18,8 @@ defmodule EhOsContract.Graph.Contract do
   `since:` and `until:` bound the log, as in the report. Actors, read models,
   queries and externals carry no counts: nothing in the log is theirs.
 
-  It is one contract's, which is one process's: navigation stays per process (ADR
-  §9).
+  It is one contract's, whether or not it has a process: navigation is per contract
+  (ADR §9, amended by plan DD, P1b, #186).
   """
 
   import Ecto.Query

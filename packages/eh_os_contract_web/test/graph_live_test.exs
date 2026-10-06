@@ -64,6 +64,30 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "Declared shape of its process"
   end
 
+  # The static render, before the socket connects: the first contract by id, drawn
+  # without the log over its lifecycles.
+  test "the dead render draws the first contract by id" do
+    html =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/graph")
+      |> html_response(200)
+
+    assert html =~ ~s(<option value="web_test_appeals.appeals" selected>)
+    assert html =~ ~s(id="overlay-graph")
+  end
+
+  test "an id the page did not list keeps the selection" do
+    {:ok, view, _html} =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> live("/dashboard/graph")
+
+    html = render_change(view, "select_contract", %{"contract" => "nobody.knows"})
+    assert html =~ ~r/value="web_test_appeals.appeals"[^>]*selected/
+    assert html =~ ~s(id="overlay-graph")
+  end
+
   test "two contracts whose processes share a name are each reachable, by id" do
     # Both fixtures name their process `handling`; the selector keys by the contract's
     # id (plan DD, P1b, #186), so each is reachable.

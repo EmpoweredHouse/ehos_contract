@@ -93,7 +93,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 - `depends_on: :external` when the fact waits on a system; an outage then suspends a promise
   instead of breaking it.
 - **Someone reads it.** `event-without-consumer` warns of an event nothing takes: no reaction, read
-  model, boundary, sibling `consumes` or `publish`, and no promise names it nor is it `terminal`.
+  model, boundary, sibling `consumes` or `publish`, no promise names it, no unit's lifecycle starts or
+  moves on it, nor is it `terminal`.
   An event that nothing depends on is usually a field of another event (`contract-distillation`,
   step 1).
 - **A scenario shows it.** A decided event: `expect :new_event` in a scenario of the command that
