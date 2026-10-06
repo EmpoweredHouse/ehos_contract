@@ -1,0 +1,1 @@
+Documentation only (CLAUDE.md, PLAN.md, .claude/skills/stage-issue, .claude/skills/pre-pr-review, .github/ISSUE_TEMPLATE): no part of mix check reads these, checked with git diff --stat HEAD~1. No code review. Claims checked against GitHub: labels dd, wave-0..wave-5 exist; issues #153-#164 closed, #165 open, #152 says Closes #165.
