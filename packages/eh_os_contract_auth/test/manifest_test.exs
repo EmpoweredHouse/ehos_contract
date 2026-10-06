@@ -109,10 +109,6 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
 
     query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
-
-    process :work, "Work" do
-      correlate(:job_id)
-    end
   end
 
   defmodule MachineDomain do
@@ -136,10 +132,6 @@ defmodule EhOsContract.Auth.ManifestTest do
       command(:open_job, "Open a job", by: :feeder, emits: :job_opened)
       event(:job_opened, "Job opened")
     end
-
-    process :work, "Work" do
-      correlate(:job_id)
-    end
   end
 
   # A domain whose name the engine takes (D11) and EHOS does not.
@@ -159,11 +151,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     aggregate :job, "Job" do
       identity(:job_id)
       command(:start_job, "Start a job", by: :clerk, emits: :job_started)
-      event(:job_started, "Job started", terminal: true)
-    end
-
-    process :work, "Work" do
-      correlate(:job_id)
+      event(:job_started, "Job started")
     end
   end
 
@@ -183,11 +171,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     aggregate :job, "Job" do
       identity(:job_id)
       command(:start_job, "Start a job", by: :clerk, emits: :job_started)
-      event(:job_started, "Job started", terminal: true)
-    end
-
-    process :work, "Work" do
-      correlate(:job_id)
+      event(:job_started, "Job started")
     end
   end
 
@@ -217,11 +201,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
       command(:flag_job, "Flag a job", by: :auditor, emits: :job_flagged)
       event(:job_started, "Job started")
-      event(:job_flagged, "Job flagged", terminal: true)
-    end
-
-    process :work, "Work" do
-      correlate(:job_id)
+      event(:job_flagged, "Job flagged")
     end
   end
 
@@ -370,12 +350,11 @@ defmodule EhOsContract.Auth.ManifestTest do
   end
 
   # Plan DD, P1b (#186): a contract without a process offers its capabilities all the
-  # same, naming no process; EHOS keeps the field optional (eh-os#203).
+  # same, naming no process; EHOS keeps the field optional (eh-os#203). `ReadWork`
+  # declares none since P1e (#192).
   test "a contract without a process offers capabilities that name none" do
-    without = %{EhOsContract.Model.fetch(Work) | process: nil}
-
     %{"offers" => %{"capabilities" => capabilities}} =
-      Manifest.build(@file_v1, [Domain], [without])
+      Manifest.build(@file_v1, [ReadDomain], [ReadWork])
 
     assert capabilities != []
     refute Enum.any?(capabilities, &Map.has_key?(&1, "process"))
