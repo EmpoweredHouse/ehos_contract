@@ -27,8 +27,9 @@ context repository (`CLAUDE.md`).
 | | what a host has to do, one line for the migration note |
 | | the pull requests, linked by GitHub through `Closes #N` |
 
-`PLAN.md` stays in Polish, as `CLAUDE.md` says. **Issues, their comments and pull requests are in English**:
-the project will be international, and what is left on GitHub is read by people outside this team.
+**Issues, their comments and pull requests are in English**: the project will be international, and what is
+left on GitHub is read by people outside this team. So are new entries in `PLAN.md` from 6 October 2026; its
+earlier, Polish history is not translated (`CLAUDE.md`).
 
 Stages finished before this skill existed keep their "co wyszło" sections in `PLAN.md`: history is not
 rewritten. Their issues are closed ones that link the pull request and the section.

@@ -176,6 +176,12 @@ mix ecto.migrate`.
   `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
   i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
   repozytorium.
+- **Od 6 października nowe wpisy w `PLAN.md` są po angielsku** (decyzja użytkownika: projekt będzie
+  międzynarodowy, więc ślady w repozytorium i na GitHubie zostawiamy po angielsku; rozmawiamy po polsku).
+  Historia zostaje po polsku i nie jest tłumaczona; poprawka w istniejącym polskim akapicie (status, link)
+  idzie w jego języku. Issue i PR-y — zawsze po angielsku (skill `stage-issue`). *Odrzucone:* przetłumaczenie
+  całego `PLAN.md` (ponad 11 000 linii, tłumaczenie hurtem gubi uzasadnienia, jak przy pierwszych commitach);
+  zostawienie polskiego dla nowych wpisów.
 - **Publiczne funkcje w `packages/eh_os_contract/lib/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
   kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"

@@ -518,6 +518,9 @@ linii, decyzje giną w środku); wszystko w issue (model musiałby czytać API, 
 etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 - **Start etapu:** akapit etapu poniżej doprecyzowany (dwie–pięć linii), issue założone, status ◐, gałąź i numer
   issue w tabeli, w pierwszym commicie etapu.
+- **Language, from 6 October 2026 (the user's decision):** new entries in this file are written in English; the
+  Polish history above and below stays as it is, and a status or link fixed in a Polish paragraph keeps its
+  language.
 - **Pytanie z tabeli „Do decyzji przed etapem”:** odpowiedź użytkownika jako „### Przed <ID> — decyzje użytkownika
   (data)”, z odrzuconymi opcjami.
 - **Koniec etapu:** komentarz zamykający issue (co wyszło, co zostało i gdzie, wiersz do notatki migracyjnej); po
