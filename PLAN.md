@@ -50,7 +50,8 @@ warning for undeclared types in the log) merged in #176. ID4 merged in #181 (iss
 contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
 merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
-assume a process. P1c (issue #190) in PR #191. P1e (issue #192) on `dd/192-tests-without-processes`, branched from P1c. #180 (the domain's name must equal the EHOS application's, with
+assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e (issue #192) on
+`dd/192-tests-without-processes`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -562,7 +563,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☑ #189 | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
-| P1c | 2 | R1: najwyżej jeden proces | P1b | ◐ `dd/190-at-most-one-process` | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
+| P1c | 2 | R1: najwyżej jeden proces | P1b | ☑ #191 | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ☐ | — |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ◐ `dd/192-tests-without-processes` | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
