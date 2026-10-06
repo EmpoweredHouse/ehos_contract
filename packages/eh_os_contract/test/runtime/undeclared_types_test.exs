@@ -52,9 +52,12 @@ defmodule EhOsContract.UndeclaredTypesTest do
     refute @declared in undeclared
     refute EhOsContract.Personal.erased_type() in undeclared
 
-    # warn/2 reads the same log, and names what it finds among the rest.
-    log = capture_log(fn -> UndeclaredTypes.warn(Repo, [@ledger]) end)
-    assert log =~ "retired.deposited, retired.withdrawn"
+    # warn/2 reads the same log and returns what it found, among the rest; what it says
+    # is report/1's, tested on lists below, as the warning names only the first twenty.
+    capture_log(fn ->
+      found = UndeclaredTypes.warn(Repo, [@ledger])
+      assert "retired.deposited" in found and "retired.withdrawn" in found
+    end)
   end
 
   # The warning's text is tested on lists, not on the shared log: other tests' rows,
