@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **eh-os-contract#186 (plan DD, P1b): a capability names a process only when its contract has one.** The
+  manifest generator stopped with an error on a contract without a process; it now leaves `"process"` out of that
+  contract's capabilities. EHOS keeps the field optional and reads it nowhere (eh-os#203).
+  - **Note:** until EHOS takes `process` out of its authority digest (eh-os#92), the first deploy in which a
+    capability loses its `"process"` counts as an authority change and needs `ehos.application.register`. Nothing
+    in this release removes one; a contract that later drops its process does.
+
 - **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
   holds `"rehmed.visit_settlement"` where it held `"Rehmed.Contracts.VisitSettlement"`, as every row of the engine
   does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
