@@ -11,7 +11,7 @@ stale, so each place links to the next instead.
 | Place | The question it answers | When it changes |
 | --- | --- | --- |
 | `PLAN.md` | Where are we, and what comes next? The programmes, their waves, each stage's status, a short paragraph per stage, the link to its issue | When a stage starts or ends |
-| A GitHub issue | Why and how was this stage done? The problem, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed when it is merged |
+| A GitHub issue | Why and how was this stage done? In short for anyone, then the technical detail, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed by the pull request that says `Closes #N`, or by hand after its closing comment |
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
 | A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
 | The code and its tests | What the library does | — |
@@ -29,8 +29,9 @@ stage was carried out stays in its issue.
 1. **The stage's paragraph in `PLAN.md`** says, in a few lines, what it changes and what it depends on. A stage
    not yet started may be rewritten; one already done is not.
 2. **An issue** from the "Programme stage" template, with the programme's label and, where there are waves,
-   the wave's. It is written for a reader outside the team who may not be technical: no module names or file
-   paths, and a rule or refusal code only in parentheses after its meaning.
+   the wave's. Its first section, "In short", is for a reader outside the team who may not be technical: no
+   module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
+   or refusal code stands in parentheses after its meaning.
 3. **A branch** named after the issue: `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English.

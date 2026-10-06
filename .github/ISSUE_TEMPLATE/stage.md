@@ -6,14 +6,15 @@ labels: []
 
 Stage <code> of the <programme> programme, wave <n>. Status and order: the "Postęp" table in `PLAN.md`.
 
-## The problem
+## In short
 
-What goes wrong today, for whom, with one example. Written for a reader outside the team: no module names,
-refusal codes or file paths.
+For anyone, without the code: what goes wrong today, for whom, with one example, and what the library will do
+differently once this is done. No module names, refusal codes or file paths in this section.
 
-## What changes
+## Technical detail
 
-What the library will do differently, in the reader's terms.
+What changes and where, for an engineer: modules, functions, files, refusal and rule codes, the order of the
+work. A code follows its meaning: "a reaction to another context's event that leaves delivery out (X10)".
 
 ## In scope
 
