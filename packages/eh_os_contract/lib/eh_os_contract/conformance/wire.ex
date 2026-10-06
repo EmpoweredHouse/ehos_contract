@@ -23,7 +23,7 @@ defmodule EhOsContract.Conformance.Wire do
 
   | From | To | Because |
   | --- | --- | --- |
-  | module | `inspect/1` | `EhOsContract.Deployment` already writes `inspect(contract)` into the log's `contract` column, so the wire and the log agree by construction rather than by coincidence |
+  | module | `inspect/1` | the name a reader of this version already matches on; the log has named a contract by its `id:` since plan DD, ID4 (#178), and the wire follows in its next version (P1a) |
   | atom | `to_string/1` | JSON has no atoms |
   | map key | `to_string/1` | JSON has no atom keys either |
   | `{n, unit}` | `%{"count" => n, "unit" => "day"}` | a two-element array would make the reader guess which slot is which |

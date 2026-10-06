@@ -78,6 +78,16 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
+  `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
+  where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
+  (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
+  contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
+  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read,
+  and every subscription registers again under its new key — an ordered read model and a process manager read the
+  log again from its start into what they already hold, a policy and a relay from its head. An effect's job
+  carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
+  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a.
 - **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
   without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
   `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's

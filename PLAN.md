@@ -683,14 +683,16 @@ the `contract` column of events, commands, deployments and dependency observatio
 keys of consumers, relays, inboxes, read models and reaction commands (`"<id>:<kind>:<name>"`). The three places
 that turn stored text back into a module (`Module.safe_concat/1` in `Consumer.decode!/1`, `Consumer.newer?/1`,
 `Implementations.consumer/1`) resolve the id through the configured applications' contracts, on the whole id
-(`clinic.a` ≠ `clinic.a.b`). Dashboard API `contract=<id>`. No table changes shape (the column is text); old rows
-are not read, as in ID3. The wire's `contract` field stays a module until P1a (v3). Report, `check` and graphs
-byte for byte unchanged. Depends on ID3.
+(`clinic.a` ≠ `clinic.a.b`); an effect job also carries its dispatch's application. No table changes shape (the
+column is text); old rows are not read, as in ID3. The wire's `contract` field and the dashboard's APIs stay by
+module until P1a (v3). Report, `check` and graphs byte for byte unchanged. Depends on ID3.
 
 **P1a — kroki per kontrakt, procesy osobno** (przesuwa werdykty): `paths.ex` liczy wystąpienia, nie przebiegi
 (`runs` → `taken`, `Paths.activity/2`); `Conformance.from_model/2` → `%{contract, module, activity, paths,
 lifecycles, scenarios, drift}`, `Conformance.process/2` = dzisiejszy `process_report`; wire
-`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`.
+`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`. From ID4
+(#178): the wire's `contract` and the dashboard's APIs (conformance, model, AsyncAPI, OpenAPI — parameters and
+listings) name the contract's `id`, not its module.
 **P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
 `eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
 **P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
