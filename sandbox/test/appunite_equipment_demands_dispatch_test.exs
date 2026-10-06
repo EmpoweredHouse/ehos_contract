@@ -94,12 +94,12 @@ defmodule AppuniteEquipment.DemandsDispatchTest do
     assert waiting() == []
 
     assert types() == [
-             "demand.opened",
-             "demand.computer_ordered",
-             "computer.received",
-             "computer.set_up",
-             "computer.issued",
-             "demand.fulfilled"
+             "appunite_equipment.demands.opened",
+             "appunite_equipment.demands.computer_ordered",
+             "appunite_equipment.computers.received",
+             "appunite_equipment.computers.set_up",
+             "appunite_equipment.computers.issued",
+             "appunite_equipment.demands.fulfilled"
            ]
   end
 

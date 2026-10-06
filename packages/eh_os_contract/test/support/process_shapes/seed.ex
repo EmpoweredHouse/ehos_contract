@@ -56,7 +56,7 @@ defmodule ProcessShapes.Seed do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     entry = %{
-      type: "handling.#{name}",
+      type: "process_shapes.promised.#{name}",
       contract: inspect(Promised),
       contract_version: EhOsContract.Model.fetch(Promised).version,
       process: "handling",

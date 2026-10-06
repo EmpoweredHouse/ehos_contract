@@ -108,7 +108,7 @@ defmodule EhOsContract.DeploymentHistoryTest do
       Seed.request("r-1", :request_approved)
 
       record_event!(%{
-        type: "handling.request_received",
+        type: "process_shapes.promised.request_received",
         contract: inspect(Promised),
         contract_version: "old-version",
         process: "handling",

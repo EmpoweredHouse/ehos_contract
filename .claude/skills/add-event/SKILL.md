@@ -55,7 +55,7 @@ entries in `process`. An event born in a sibling process is not declared again: 
 - **`event-name-with-aggregate-prefix`** warns when an event's name starts with its unit's:
   `accounting_month_opened` in the unit `accounting_month`. The event keeps the workshop's name; either
   the unit takes another name from the material, or the warning stays, and is true (`PLAN.md`, EL1).
-- **The name lasts.** The log stores the type as `"<process>.<event>"`, and renaming it later leaves
+- **The name lasts.** The log stores the type as `"<contract id>.<event>"`, and renaming it later leaves
   every old row of a type the contract no longer declares.
 - **The label is the business's sentence**, in the domain's `language:`, written as the process owner
   says it. A word the context's glossary says to `avoid` is a warning (`label-with-avoided-term`).

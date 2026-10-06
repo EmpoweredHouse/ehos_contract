@@ -57,7 +57,9 @@ defmodule EhOsContract.Contract.Build do
 
     entities = Transformer.get_entities(dsl, [:contract])
     process = Enum.find(entities, &match?(%Dsl.ProcessDeclaration{}, &1))
-    prefix = process && process.name
+    # Plan DD, ID3 (#173): an event's type is its contract's id and its name, whatever
+    # process it belongs to; D11 refuses a contract without an id before this runs.
+    prefix = Map.get(persisted, :id)
 
     units = of(entities, Dsl.Unit)
     declarations = Rules.declarations(dsl)

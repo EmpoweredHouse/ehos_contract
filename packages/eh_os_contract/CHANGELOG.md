@@ -73,6 +73,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
+  without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
+  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host clears its event log
+  before upgrading:** events stored under the old types are not read, and no tool converts them (the user's decision;
+  rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
+  deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
+  the application: they key their runs.
 - **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
   the refusal is **X10**). Left out, it
   runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the

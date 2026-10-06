@@ -41,7 +41,7 @@ defmodule EhOsContract.DispatchCommandTest do
                )
 
       assert [event] = log()
-      assert event.type == "ledger.account_opened"
+      assert event.type == "dispatch_rig.ledger.account_opened"
       assert event.stream_id == "account:a-1"
       assert event.stream_version == 1
       assert event.tags == ["account_id:a-1", "branch_id:b-7"]
@@ -60,7 +60,7 @@ defmodule EhOsContract.DispatchCommandTest do
       assert row.outcome == "accepted"
       assert row.type == "open_account"
       assert row.issued_by == "actor:u-1"
-      assert row.emitted_types == ["ledger.account_opened"]
+      assert row.emitted_types == ["dispatch_rig.ledger.account_opened"]
       assert {row.first_position, row.last_position} == {position, position}
       assert row.instance_id == "ledger|a-1"
     end
@@ -77,7 +77,9 @@ defmodule EhOsContract.DispatchCommandTest do
       assert Enum.map(log(), & &1.stream_version) == [1, 2, 3]
 
       # Two deposits read, one type recorded.
-      assert Enum.map(rows(), & &1.given_types) |> List.last() == ["ledger.deposited"]
+      assert Enum.map(rows(), & &1.given_types) |> List.last() == [
+               "dispatch_rig.ledger.deposited"
+             ]
     end
   end
 
@@ -185,7 +187,7 @@ defmodule EhOsContract.DispatchCommandTest do
             Repo,
             [
               %{
-                type: "ledger.deposited",
+                type: "dispatch_rig.ledger.deposited",
                 contract: "DispatchRig.LedgerBeforeTheRename",
                 contract_version: "old",
                 correlation_id: Ecto.UUID.generate(),
@@ -208,10 +210,10 @@ defmodule EhOsContract.DispatchCommandTest do
     # upcaster exists: a row the declaration no longer fits has to stop the stream
     # loudly, since folding past it would decide on a state that is not the log's.
     test "a row the declaration no longer fits stops the stream, and appends nothing" do
-      stored!("ledger.deposited", %{"account_id" => "a-old"}, "account:a-old")
+      stored!("dispatch_rig.ledger.deposited", %{"account_id" => "a-old"}, "account:a-old")
 
       assert_raise ArgumentError,
-                   ~r/no longer fits "ledger.deposited" as declared: \[amount: :required\]/,
+                   ~r/no longer fits "dispatch_rig.ledger.deposited" as declared: \[amount: :required\]/,
                    fn ->
                      EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-old", amount: 1},
                        actor: clerk()
@@ -225,7 +227,7 @@ defmodule EhOsContract.DispatchCommandTest do
     # `DispatchRig.Account` folds deposits, withdrawals and interest, and passes the
     # opening over with `def evolve(state, _opened), do: state` (plan E11f-5).
     test "a row of a type evolve/2 passes over is not read, so it cannot stop the stream" do
-      stored!("ledger.account_opened", %{"account_id" => "a-old"}, "account:a-old")
+      stored!("dispatch_rig.ledger.account_opened", %{"account_id" => "a-old"}, "account:a-old")
 
       assert {:ok, %Receipt{events: [%Deposited{amount: 5}]}} =
                EhOsContract.dispatch(Ledger, %Deposit{account_id: "a-old", amount: 5},

@@ -44,7 +44,7 @@ defmodule EhOsContract.Contract.Rules do
 
     violations =
       Enum.flat_map(@groups, & &1.check(declarations)) ++
-        Rules.Boundaries.contract_id(contract_id(dsl))
+        Rules.Boundaries.contract_id(contract_id(dsl) || %{value: nil, at: use_at(dsl)})
 
     DslRules.result(dsl, [:contract], violations)
   end

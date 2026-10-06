@@ -42,7 +42,7 @@ defmodule EhOsContract.DispatchDcbTest do
   defp subscriptions(course) do
     Repo.all(
       from(e in Event,
-        where: e.type == "enrolment.student_subscribed",
+        where: e.type == "boundary_rig.enrolment.student_subscribed",
         where: fragment("? @> ?::text[]", e.tags, ^["course_id:#{course}"]),
         order_by: e.position
       )
@@ -64,7 +64,7 @@ defmodule EhOsContract.DispatchDcbTest do
       assert event.process == "enrolment"
 
       # The sibling's event is among what the decision read.
-      assert row("subscribe").given_types == ["course.course_defined"]
+      assert row("subscribe").given_types == ["boundary_rig.courses.course_defined"]
     end
 
     test "a later student reads the earlier ones' subscriptions to the same course" do
@@ -79,7 +79,11 @@ defmodule EhOsContract.DispatchDcbTest do
 
       # What the refused decision read, each type once however many of it there were.
       refused = Repo.one!(from(c in CommandRecord, where: c.outcome == "rejected"))
-      assert refused.given_types == ["course.course_defined", "enrolment.student_subscribed"]
+
+      assert refused.given_types == [
+               "boundary_rig.courses.course_defined",
+               "boundary_rig.enrolment.student_subscribed"
+             ]
     end
 
     test "control: subscriptions to another course do not count" do
@@ -126,7 +130,9 @@ defmodule EhOsContract.DispatchDcbTest do
                  actor: Actor.system(:timetable)
                )
 
-      released = Repo.one!(from(e in Event, where: e.type == "enrolment.seat_released"))
+      released =
+        Repo.one!(from(e in Event, where: e.type == "boundary_rig.enrolment.seat_released"))
+
       assert released.stream_id == nil
 
       assert {:ok, _} = subscribe("course-chem", "student-ben")

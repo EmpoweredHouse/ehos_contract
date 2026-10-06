@@ -69,7 +69,7 @@ defmodule EhOsContract.ContractLinksSystemTest do
       assert assert_linked(violations, "X7:", "sys_process_b.ex", 10) =~
                "process :visit of #{inspect(@fixtures)}.SysProcessB is also declared by " <>
                  "#{inspect(@fixtures)}.SysProcessA (sys_process_a.ex:10); a process's name " <>
-                 "prefixes its event types, so it is unique in the application"
+                 "keys its runs, so it is unique in the application"
 
       assert length(violations) == 1
     end

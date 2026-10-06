@@ -56,7 +56,7 @@ defmodule EhOsContract.InboxTest do
   defp reserved do
     Repo.all(
       from(e in Event,
-        where: e.type == "reservation.reserved",
+        where: e.type == "bus_rig_warehouse.stock.reserved",
         order_by: e.position
       )
     )
@@ -312,7 +312,9 @@ defmodule EhOsContract.InboxTest do
         )
 
       Repo.one!(
-        from(e in Event, where: e.type == "order.placed" and e.payload["order_id"] == ^id)
+        from(e in Event,
+          where: e.type == "bus_rig_shop.orders.placed" and e.payload["order_id"] == ^id
+        )
       )
     end
 

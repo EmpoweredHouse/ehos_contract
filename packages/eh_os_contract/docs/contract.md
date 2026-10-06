@@ -50,9 +50,10 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 
 ## A contract
 
-A contract belongs to one context of one domain, and holds one process. It may also name itself for readers outside
-the code, `id: "lending.loans"` on its `use`: the domain's `name:`, then dotted snake_case segments, unique in the
-application, and outside the contract's version.
+A contract belongs to one context of one domain, and holds one process. It names itself, `id: "lending.loans"` on its
+`use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
+contract records — `"lending.loans.loan_opened"` — so renaming the module or the process changes nothing stored,
+and renaming the id makes a new contract as far as the log is concerned.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
@@ -322,7 +323,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`/`:supplied`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
-| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields; a contract's `id:` that is not the namespace and dotted snake_case segments, is versioned, over 100 bytes, or outside the domain's `name:` |
+| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields; a contract without an `id:`, or one that is not the namespace and dotted snake_case segments, is versioned, over 100 bytes, or outside the domain's `name:` |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
 | `D13` | L2 | a domain's `time_zone:` the time zone database Elixir is configured with does not know |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |

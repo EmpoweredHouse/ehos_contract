@@ -73,7 +73,11 @@ defmodule EhOsContract.RelayTest do
   defp dispatch(command), do: {:ok, _} = EhOsContract.dispatch(Orders, command, actor: @clerk)
 
   defp placed(id) do
-    Repo.one!(from(e in Event, where: e.type == "order.placed" and e.payload["order_id"] == ^id))
+    Repo.one!(
+      from(e in Event,
+        where: e.type == "bus_rig_shop.orders.placed" and e.payload["order_id"] == ^id
+      )
+    )
   end
 
   defp row, do: Repo.get!(SubscriptionRecord, @relay)

@@ -91,7 +91,7 @@ defmodule EhOsContract.PromisePerItemTest do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     entry = %{
-      type: "inspection.#{name}",
+      type: "promise_per_item.per_item.#{name}",
       contract: inspect(PerItem),
       contract_version: EhOsContract.Model.fetch(PerItem).version,
       process: "inspection",

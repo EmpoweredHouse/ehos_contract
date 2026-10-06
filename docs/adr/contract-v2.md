@@ -602,6 +602,12 @@ Domain types are referenced as remote types from the `Values` module the domain 
 create no compile dependency. The event type stored in the log is the stable string
 `"<process>.<event>"`, never a module name, so renaming a module does not orphan history.
 
+> *Changed 6 October 2026, plan DD, ID3 ([#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173)).* **The
+> event type is `"<contract id>.<event>"`.** A contract's required `id:` (D11) replaces the process's name, so
+> neither renaming a module nor moving a process to another contract changes a stored type; renaming the id does.
+> This amends D1 (§16) and the schema's comment on `type`. Logs written under the old types are not read: an
+> upgrading application clears its log (the user's decision, recorded on the issue).
+
 > *Corrected 30 September 2026, plan E11f.* **True of dispatch's fold, not of the rest of the engine.**
 > Every row also stores its contract's module name in `contract`, and every `_commands` row does too, and
 > most readers select or resolve by it:

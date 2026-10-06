@@ -14,8 +14,9 @@ defmodule EhOsContract.SourcesTest do
   # EP1 (origin/main at 0b7bc84), which a contract or domain without `source:` keeps.
   # The contract's moved once since, from 304120633fb2, with plan EP4: its effect's
   # `idempotency` names a key and an owner, as every contract's with one does; and
-  # from 0233079a0430 with plan N3: its timer has a label.
-  @unsourced_version "fbeab3316603"
+  # from 0233079a0430 with plan N3: its timer has a label; and from fbeab3316603 with
+  # plan DD, ID3 (#173): its events are typed by its id, `clinic.visits`, not its process.
+  @unsourced_version "d6a1c3e1d546"
   @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
@@ -133,8 +134,8 @@ defmodule EhOsContract.SourcesTest do
 
   setup_all do
     %{
-      sourced: compile_contract("Sourced", @sourced),
-      unsourced: compile_contract("Unsourced", @unsourced)
+      sourced: compile_contract("Sourced", @sourced, id: "clinic.visits"),
+      unsourced: compile_contract("Unsourced", @unsourced, id: "clinic.visits")
     }
   end
 

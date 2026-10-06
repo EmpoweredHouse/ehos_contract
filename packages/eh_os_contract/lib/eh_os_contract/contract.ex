@@ -35,9 +35,9 @@ defmodule EhOsContract.Contract do
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its
   contexts. Neither records a compile dependency (v2 §8): the domain is checked
   against the contract by a Mix compiler, not by recompiling every contract when the
-  domain changes. `id:` (plan DD, ID1) names the contract for readers outside the
-  code, `"<domain name>.<segment>…"` (D11), unique in the application (X7); it is in
-  the model only where given, and outside the version and the declarations' digests.
+  domain changes. `id:` (plan DD, ID1; required from ID3) names the contract,
+  `"<domain name>.<segment>…"` (D11), unique in the application (X7), and types every
+  event it records, `"<id>.<event>"`.
 
   It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
   struct for every command, event, state, row and query and a behaviour for
@@ -54,8 +54,9 @@ defmodule EhOsContract.Contract do
       id: [
         type: :string,
         doc:
-          "The contract's name for readers outside the code (plan DD, ID1): the domain's " <>
-            "`name:`, then dotted snake_case segments, like `\"rehmed.settlement\"`."
+          "The contract's name (plan DD, ID1; required from ID3, D11): the domain's `name:`, " <>
+            "then dotted snake_case segments, like `\"rehmed.settlement\"`; it types every " <>
+            "event the contract records, `\"rehmed.settlement.payment_recorded\"`."
       ]
     ]
 

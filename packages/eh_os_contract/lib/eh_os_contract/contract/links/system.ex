@@ -3,11 +3,10 @@ defmodule EhOsContract.Contract.Links.System do
   X7, X8 and the part of D14 no single contract can check: names that have to be
   unique across the application, and one implementation per declaration.
 
-  - **X7.** A process's name is unique across the application: it is the prefix
-    of every event type the process records (`"<process>.<event>"`, D1), so two
-    processes of one name would record events no reader could tell apart. So is a
-    contract's `id:` (plan DD, ID1), which names it to readers outside the code and
-    will prefix its event types in its place.
+  - **X7.** A process's name is unique across the application: it keys the process's
+    runs, so two processes of one name would share runs no reader could tell apart.
+    So is a contract's `id:` (plan DD, ID1), which prefixes every event type the
+    contract records (`"<id>.<event>"`, from ID3).
   - **X8.** A declaration that code implements — a unit, a policy, an effect, a
     process manager, a read model, a query — has at most one implementation, since
     dispatch and scenarios have to know which one runs.
@@ -34,8 +33,8 @@ defmodule EhOsContract.Contract.Links.System do
 
     for {name, {module, at}, {first, first_at}} <- collisions(named) do
       {"X7: process #{inspect(name)} of #{inspect(module)} is also declared by " <>
-         "#{inspect(first)} (#{Links.place(first_at)}); a process's name prefixes its event " <>
-         "types, so it is unique in the application", at}
+         "#{inspect(first)} (#{Links.place(first_at)}); a process's name keys its runs, so it " <>
+         "is unique in the application", at}
     end
   end
 
@@ -46,7 +45,7 @@ defmodule EhOsContract.Contract.Links.System do
 
     for {id, {module, at}, {first, first_at}} <- collisions(named) do
       {"X7: the id: #{inspect(id)} of #{inspect(module)} is also the id: of #{inspect(first)} " <>
-         "(#{Links.place(first_at)}); a contract's id names it outside the code, so it is " <>
+         "(#{Links.place(first_at)}); a contract's id prefixes its event types, so it is " <>
          "unique in the application", at}
     end
   end

@@ -50,7 +50,7 @@ defmodule EhOsContract.PlugTest do
     body = json(conn)
     assert body["duplicate"] == false
     assert body["identity"] == %{"account_id" => "a-1"}
-    assert [%{"type" => "ledger.deposited", "position" => position}] = body["events"]
+    assert [%{"type" => "dispatch_rig.ledger.deposited", "position" => position}] = body["events"]
     assert body["positions"] == [position]
 
     again =
@@ -68,7 +68,7 @@ defmodule EhOsContract.PlugTest do
     conn = call(post("/records/dispatch_rig.balance_confirmed", %{account_id: "a-1"}), auditor)
 
     assert conn.status == 200
-    assert [%{"type" => "ledger.balance_confirmed"}] = json(conn)["events"]
+    assert [%{"type" => "dispatch_rig.ledger.balance_confirmed"}] = json(conn)["events"]
 
     # The control: the clerk has no capability to record it.
     refused = call(post("/records/dispatch_rig.balance_confirmed", %{account_id: "a-1"}))

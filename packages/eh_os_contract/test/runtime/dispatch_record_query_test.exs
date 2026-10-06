@@ -48,7 +48,7 @@ defmodule EhOsContract.DispatchRecordQueryTest do
                )
 
       event = List.last(log())
-      assert event.type == "ledger.interest_recorded"
+      assert event.type == "dispatch_rig.ledger.interest_recorded"
       assert {event.stream_id, event.stream_version} == {"account:a-1", 2}
       assert event.actor == "system:nightly_import"
       assert receipt.positions == [event.position]
@@ -83,7 +83,9 @@ defmodule EhOsContract.DispatchRecordQueryTest do
       assert {:ok, _} =
                EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"}, actor: auditor)
 
-      assert %{type: "ledger.balance_confirmed", actor: "actor:u-2"} = List.last(log())
+      assert %{type: "dispatch_rig.ledger.balance_confirmed", actor: "actor:u-2"} =
+               List.last(log())
+
       assert %{outcome: "accepted", type: "record:balance_confirmed"} = List.last(rows())
     end
 

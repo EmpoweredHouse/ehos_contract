@@ -41,7 +41,7 @@ defmodule EhOsContract.ValueInvariantsTest do
                  payment: %{amount: 1, note: nil}
                )
 
-      assert [%{type: "till.paid_in"}] = log()
+      assert [%{type: "value_rig.till.paid_in"}] = log()
     end
 
     test "carrying a value that breaks one is refused with it, before anything is decided" do

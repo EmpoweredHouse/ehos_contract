@@ -80,12 +80,12 @@ defmodule Taxvision.AccountingMonthTest do
     retrigger!("c-1", "2026-08")
 
     assert types() == [
-             "client.company_profile_completed",
-             "client.data_completeness_confirmed",
-             "client.registry_status_checked",
-             "client.registry_check_logged",
-             "client.registry_data_consistent",
-             "accounting_month.accounting_month_opened"
+             "taxvision.registry_watch.company_profile_completed",
+             "taxvision.registry_watch.data_completeness_confirmed",
+             "taxvision.registry_watch.registry_status_checked",
+             "taxvision.registry_watch.registry_check_logged",
+             "taxvision.registry_watch.registry_data_consistent",
+             "taxvision.accounting_month.accounting_month_opened"
            ]
 
     assert [%{verdict: :satisfied, via: :eventually}] =
@@ -102,8 +102,8 @@ defmodule Taxvision.AccountingMonthTest do
     profile!("c-2")
     retrigger!("c-2", "2026-08")
 
-    assert "client.registry_discrepancy_detected" in types()
-    refute "accounting_month.accounting_month_opened" in types()
+    assert "taxvision.registry_watch.registry_discrepancy_detected" in types()
+    refute "taxvision.accounting_month.accounting_month_opened" in types()
 
     assert {:error, %EhOsContract.Rejection{invariant: :opens_only_on_consistent_registry}} =
              EhOsContract.dispatch(
@@ -143,11 +143,11 @@ defmodule Taxvision.AccountingMonthTest do
       )
 
     assert september == [
-             "client.data_completeness_confirmed",
-             "client.registry_status_checked",
-             "client.registry_check_logged",
-             "client.registry_data_consistent",
-             "accounting_month.accounting_month_opened"
+             "taxvision.registry_watch.data_completeness_confirmed",
+             "taxvision.registry_watch.registry_status_checked",
+             "taxvision.registry_watch.registry_check_logged",
+             "taxvision.registry_watch.registry_data_consistent",
+             "taxvision.accounting_month.accounting_month_opened"
            ]
   end
 
@@ -169,7 +169,7 @@ defmodule Taxvision.AccountingMonthTest do
     Clock.at(~U[2026-10-01 07:00:00Z], fn -> Testing.drain() end)
 
     # Started, and never answered: not a negative check, and nothing opened.
-    assert of_period("2026-09") == ["client.data_completeness_confirmed"]
+    assert of_period("2026-09") == ["taxvision.registry_watch.data_completeness_confirmed"]
 
     Application.put_env(:eh_os_contract_host, Taxvision.Adapters.RegistryLookup.Fake,
       responses: %{}
@@ -177,7 +177,7 @@ defmodule Taxvision.AccountingMonthTest do
 
     Clock.at(~U[2026-11-01 07:00:00Z], fn -> Testing.drain() end)
 
-    assert "accounting_month.accounting_month_opened" in of_period("2026-10")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-10")
   end
 
   test "retrying an older month does not set the watch back, nor off the first of the month" do
@@ -194,7 +194,7 @@ defmodule Taxvision.AccountingMonthTest do
       end)
 
     Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
-    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-09")
     assert of_period("2026-04") == []
   end
 
@@ -214,7 +214,7 @@ defmodule Taxvision.AccountingMonthTest do
     assert of_period("2026-04") == []
 
     Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
-    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-09")
   end
 
   test "a timer run late catches up the months it missed, and no more" do
@@ -224,8 +224,8 @@ defmodule Taxvision.AccountingMonthTest do
     # The 1 October check runs only on 2 November: September, then October, at once.
     Clock.at(~U[2026-11-02 08:00:00Z], fn -> Testing.drain() end)
 
-    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
-    assert "accounting_month.accounting_month_opened" in of_period("2026-10")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-10")
     assert of_period("2026-11") == []
   end
 
@@ -244,7 +244,7 @@ defmodule Taxvision.AccountingMonthTest do
       end)
 
     Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
-    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert "taxvision.accounting_month.accounting_month_opened" in of_period("2026-09")
   end
 
   test "a month still running is not checked, nor one years ahead" do

@@ -71,7 +71,7 @@ defmodule EhOsContract.DispatchDcbCommitsTest do
     seated =
       Repo.aggregate(
         from(e in Event,
-          where: e.type == "enrolment.student_subscribed",
+          where: e.type == "boundary_rig.enrolment.student_subscribed",
           where: fragment("? @> ?::text[]", e.tags, ^["course_id:#{course}"])
         ),
         :count

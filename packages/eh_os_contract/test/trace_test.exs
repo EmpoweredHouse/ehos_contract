@@ -78,7 +78,12 @@ defmodule EhOsContract.TraceTest do
   @later ~U[2026-07-05 09:00:00.000000Z]
 
   defp at(run, event, occurred_at, payload \\ %{}),
-    do: %{instance_id: run, type: "desk.#{event}", occurred_at: occurred_at, payload: payload}
+    do: %{
+      instance_id: run,
+      type: "trace_core.requests.#{event}",
+      occurred_at: occurred_at,
+      payload: payload
+    }
 
   defp item(run, event, item_no, occurred_at),
     do: at(run, event, occurred_at, %{"request_id" => run, "item_no" => item_no})
@@ -94,9 +99,9 @@ defmodule EhOsContract.TraceTest do
   describe "trace/2" do
     test "names the promise's events by their stored types, with its window" do
       assert Trace.trace(Requests, :answered_in_a_day) == %{
-               from: "desk.requested",
-               eventually: "desk.answered",
-               or_else: "desk.refused",
+               from: "trace_core.requests.requested",
+               eventually: "trace_core.requests.answered",
+               or_else: "trace_core.requests.refused",
                within: {1, :day},
                identity: nil
              }
@@ -215,19 +220,19 @@ defmodule EhOsContract.TraceTest do
       occurrences = [
         %{
           instance_id: "r",
-          type: "desk.item_submitted",
+          type: "trace_core.requests.item_submitted",
           occurred_at: @from,
           payload: %{request_id: "r", item_no: 1}
         },
         %{
           instance_id: "r",
-          type: "desk.item_submitted",
+          type: "trace_core.requests.item_submitted",
           occurred_at: @from,
           payload: %{request_id: "r", item_no: 2}
         },
         %{
           instance_id: "r",
-          type: "desk.item_inspected",
+          type: "trace_core.requests.item_inspected",
           occurred_at: @inside,
           payload: %{request_id: "r", item_no: 1}
         }
@@ -254,7 +259,9 @@ defmodule EhOsContract.TraceTest do
     end
 
     test "an occurrence without its payload is refused, naming the identity", %{trace: trace} do
-      occurrences = [%{instance_id: "r", type: "desk.item_submitted", occurred_at: @from}]
+      occurrences = [
+        %{instance_id: "r", type: "trace_core.requests.item_submitted", occurred_at: @from}
+      ]
 
       assert_raise ArgumentError, ~r/needs its payload.*request_id, item_no/, fn ->
         Trace.judge(trace, occurrences, now: @later)
