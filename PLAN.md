@@ -558,7 +558,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
-| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
@@ -689,12 +689,13 @@ that turn stored text back into a module (`Module.safe_concat/1` in `Consumer.de
 column is text); old rows are not read, as in ID3. The wire's `contract` field and the dashboard's APIs stay by
 module until P1a (v3). Report, `check` and graphs byte for byte unchanged. Depends on ID3.
 
-**P1a — kroki per kontrakt, procesy osobno** (przesuwa werdykty): `paths.ex` liczy wystąpienia, nie przebiegi
-(`runs` → `taken`, `Paths.activity/2`); `Conformance.from_model/2` → `%{contract, module, activity, paths,
-lifecycles, scenarios, drift}`, `Conformance.process/2` = dzisiejszy `process_report`; wire
-`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`. From ID4
-(#178): the wire's `contract` and the dashboard's APIs (conformance, model, AsyncAPI, OpenAPI — parameters and
-listings) name the contract's `id`, not its module.
+**P1a — a contract's steps counted in occurrences; processes reported apart** (#183; tightened 6 October 2026;
+moves verdicts). `Paths`: a step's `taken` (occurrences: events for an emit, issued command rows for a reaction)
+replaces `runs`/`of_runs`; `Paths.activity/2`. `Conformance.from_model/2` (public) → `%{contract (id), module,
+activity, paths, processes, lifecycles, scenarios, drift}`; `Conformance.process/2` without step lists. Wire
+`eh_os_contract.conformance.v3` only; the four dashboard APIs by id. Report, screen, graph ("N taken"). Six PRs:
+counting, report shape, wire, screen, APIs, graph. Depends on ID3, ID4.
+
 **P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
 `eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
 **P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
