@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 6 października (fala 1 i ID1 w `main`; następny ID2)
+## Handoff — stan na 6 października (fala 1 i ID1 w `main`; ID2 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -43,8 +43,8 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). Next is ID2: every contract names its
-`id:`.
+**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 in progress on
+`dd/171-contract-names` (issue #171): every contract names its `id:`.
 
 ### Stan repozytorium
 
@@ -550,7 +550,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 | [#163](https://github.com/EmpoweredHouse/eh-os-contract/issues/163) |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 | [#164](https://github.com/EmpoweredHouse/eh-os-contract/issues/164) |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
-| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ | — |
+| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ◐ `dd/171-contract-names` | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ | — |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
@@ -663,8 +663,12 @@ AppUnite: dopisać scenariusze albo wyjaśnić ostrzeżenia w PR.
 **ID1 — `id:` kontraktu, deklarowany i sprawdzany**: `use EhOsContract.Contract, id: "rehmed.settlement"`
 (`contract.ex` 44-68), poza digestem. D11 (L2 format: pierwszy segment = `name:` domeny, potem snake_case, bez
 `:`/`|`, ≤ ~100 B; L3 w `Links.Domain.namespaces/1`), X7 unikalność.
-**ID2 — każdy kontrakt nazywa `id:`** (mechaniczne, ~120 linii): `DslCase.contract/2` (`test/support/dsl_case.ex`
-42-51), rigi, 11 kontraktów sandboxa, fikstury web/auth, README, `docs/contract.md`.
+**ID2 — every contract names its `id:`** (#171; tightened 6 October 2026). Mechanical: the eleven sandbox
+contracts, the contracts the engine's, web's and auth's tests write (the `DslCase.contract/2` template among them, so
+new tests get one), and the examples in `README.md`, `packages/eh_os_contract/README.md`, `docs/contract.md` and
+`docs/adr/contract-v2.md`. Rule: `"<domain name>.<contract name>"`, the contract's name being its module's last
+segment in snake_case (`rehmed.clinical_documentation`). Report, `check` and graphs byte for byte unchanged. Depends
+on ID1; ID3 (required, event-type prefix) depends on it.
 **ID3 — `id:` wymagany; typ zdarzenia `"<id>.<zdarzenie>"`**: jedno miejsce — `Build.event/4` (build.ex 200-209).
 Literały typów w `test/runtime/*` i `sandbox/test/*`, przepięcie dwóch wersji (`sources_test.exs:17`,
 `contract_domain_services_test.exs:315`), `@amendments` dla `use` z ADR §4.5. Dopisek do D1 w ADR §16.
