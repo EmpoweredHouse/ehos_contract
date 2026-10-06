@@ -1,0 +1,1 @@
+Test-only fix for #172 (CodeRabbit). Gate EXIT=0: check 0/33/10, 0/76/6; sandbox 196, engine 1365, web 52, auth 286+1.
