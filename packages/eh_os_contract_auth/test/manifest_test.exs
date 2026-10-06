@@ -351,7 +351,8 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   # Plan DD, P1b (#186): a contract without a process offers its capabilities all the
   # same, naming no process; EHOS keeps the field optional (eh-os#203). `ReadWork`
-  # declares none since P1e (#192).
+  # declares none since P1e (#192); a capability of every kind passes through the
+  # same `with_process/2`, so its one query stands for the others.
   test "a contract without a process offers capabilities that name none" do
     %{"offers" => %{"capabilities" => capabilities}} =
       Manifest.build(@file_v1, [ReadDomain], [ReadWork])

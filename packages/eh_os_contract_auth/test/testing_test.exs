@@ -14,7 +14,6 @@ defmodule EhOsContract.Auth.TestingTest do
     subdomain(:core, "Core", type: :core)
     context(:stock, "Stock", subdomain: :core)
 
-    actor(:keeper, :human, "Keeper")
     actor(:scheduler, :system, "Scheduler")
   end
 
