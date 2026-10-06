@@ -37,12 +37,8 @@ defmodule EhOsContract.ScenarioCaseTest do
       end
 
       event :receipt_issued, "Wydano paragon"
-      event :closed, "Zamknięto", terminal: true
+      event :closed, "Zamknięto"
       event :reminded, "Przypomniano"
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
 
     policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
@@ -296,10 +292,6 @@ defmodule EhOsContract.ScenarioCaseTest do
           event :arrived, "Przyszedł" do
             field :at, :moment
           end
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
 
         scenario "przyszedł wczoraj" do

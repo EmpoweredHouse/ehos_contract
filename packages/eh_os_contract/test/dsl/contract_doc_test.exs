@@ -36,7 +36,7 @@ defmodule EhOsContract.ContractDocTest do
 
       command :cancel, "Anulowanie", by: :reception, emits: :cancelled, rejects: :paid_in_full
 
-      event :closed, "Zamknięto", terminal: true
+      event :closed, "Zamknięto"
       event :paid, "Zapłacono" do
         field :amount, :integer
       end
@@ -77,10 +77,6 @@ defmodule EhOsContract.ContractDocTest do
         returns :integer
         rule :rounded, "Zaokrąglona", examples: [{[1], 1}, {[2], 2}]
       end
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
 
     scenario "niezapłacona — anulowanie odrzucone" do

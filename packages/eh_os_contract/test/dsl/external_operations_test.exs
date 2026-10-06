@@ -223,10 +223,6 @@ defmodule EhOsContract.ExternalOperationsTest do
           command :queue, "Zakolejkuj", by: :specialist, emits: :queued
           event :queued, "Zakolejkowano"
         end
-
-        process :report, "Zgłoszenie" do
-          correlate :report_id
-        end
       end
       """,
       "operations_quiet.ex"

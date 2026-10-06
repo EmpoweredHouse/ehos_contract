@@ -9,15 +9,11 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
   use EhOsContract.DslCase, async: false
 
-  @process """
+  @unit """
     aggregate :visit, "Wizyta" do
       identity :visit_id
       command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-      event :visit_closed, "Zamknięto", terminal: true
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
+      event :visit_closed, "Zamknięto"
     end
   """
 
@@ -44,7 +40,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
           end
         end
 
-      #{@process}
+      #{@unit}
       """)
 
     assert message =~
@@ -76,7 +72,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
           end
         end
 
-      #{@process}
+      #{@unit}
       """)
 
     assert message =~
@@ -96,7 +92,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
                  end
                end
 
-             #{@process}
+             #{@unit}
              """)
   end
 
@@ -108,7 +104,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
                end
              end
 
-           #{@process}
+           #{@unit}
            """) =~
              "F2: domain service :pricing, function :price returns nothing: say what it returns " <>
                "with `returns type` (services_silent.ex:5)"
@@ -124,7 +120,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
           end
         end
 
-      #{@process}
+      #{@unit}
       """)
 
     assert message =~
@@ -155,7 +151,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
           end
         end
 
-      #{@process}
+      #{@unit}
       """)
 
     assert [%{name: :pricing, source: "AGG-06", functions: [price, free]}] = model.domain_services
@@ -189,7 +185,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
           end
         end
 
-      #{@process}
+      #{@unit}
       """
     end
 
@@ -257,7 +253,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
             end
           end
 
-        #{@process}
+        #{@unit}
         """)
 
       implement = fn name, body ->
@@ -299,11 +295,11 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
   test "a contract without domain services hashes as it did before they existed" do
     with_one =
-      compile_contract("ServicesOne", "#{@process}\n  domain_service :pricing, \"Cennik\"\n",
+      compile_contract("ServicesOne", "#{@unit}\n  domain_service :pricing, \"Cennik\"\n",
         id: "clinic.services"
       )
 
-    without = compile_contract("ServicesNone", @process, id: "clinic.services")
+    without = compile_contract("ServicesNone", @unit, id: "clinic.services")
 
     # The service moves the version, and nothing else's digest.
     assert Map.delete(with_one.digests, "domain_service:pricing") == without.digests

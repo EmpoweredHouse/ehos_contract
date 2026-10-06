@@ -39,10 +39,6 @@ defmodule EhOsContract.ContractGenerateTest do
       end
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-
     process_manager :chase, "Pogoń" do
       correlate :visit_id
 
@@ -153,10 +149,6 @@ defmodule EhOsContract.ContractGenerateTest do
           event :month_opened, "Otwarto" do
             field :period, :period
           end
-        end
-
-        process :month, "Miesiąc" do
-          correlate :company_id
         end
 
         process_manager :reminders, "Przypomnienia" do

@@ -12,9 +12,9 @@ defmodule EhOsContract.ContractExamplesTest do
   What the examples show and E4 does not build is left out, by name: the
   implementation modules and the scenario test (E5), and the dispatch through
   `EhOsContract.Capability` (E6). §4.6's fragments are declarations out of their
-  contracts, so each is compiled inside the least contract that gives it the events,
-  commands and process it names; that surrounding code is this test's, and the
-  fragment itself stays as the ADR writes it.
+  contracts, so each is compiled inside the least contract that gives it the events
+  and commands it names; that surrounding code is this test's, and the fragment
+  itself stays as the ADR writes it.
 
   The ADR lives outside this package. Where the package is tested alone, without
   the repository around it, the file is missing and the tests are skipped.
@@ -112,10 +112,6 @@ defmodule EhOsContract.ContractExamplesTest do
           command :confirm_registry_data, "Potwierdzenie danych", by: :accountant, emits: :registry_data_consistent
       #{amend(publisher)}
         end
-
-        process :accounting_month, "Miesiąc księgowy" do
-          correlate [:company_id, :period_id]
-        end
       """)
 
       model =
@@ -126,10 +122,6 @@ defmodule EhOsContract.ContractExamplesTest do
             identity [:company_id, :period_id]
             command :generate_monthly_tasks, "Wygenerowanie tasków", emits: :monthly_tasks_generated
             event :monthly_tasks_generated, "Wygenerowano taski"
-          end
-
-          process :monthly_tasks, "Taski miesiąca" do
-            correlate [:company_id, :period_id]
           end
 
         #{String.replace(subscriber, "Taxvision.Contracts.AccountingMonth", inspect(example(:AccountingMonth)))}
@@ -148,10 +140,6 @@ defmodule EhOsContract.ContractExamplesTest do
             identity :company_id
             command :check_registry, "Kontrola", by: :accountant, emits: :registry_discrepancy_detected
             event :registry_discrepancy_detected, "Wykryto rozjazd"
-          end
-
-          process :registry_check, "Kontrola rejestrów" do
-            correlate :company_id
           end
 
         #{f.effect}
@@ -176,10 +164,6 @@ defmodule EhOsContract.ContractExamplesTest do
             identity :visit_id
         #{f.recorded}
           end
-
-          process :clinical_visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert [
@@ -203,11 +187,7 @@ defmodule EhOsContract.ContractExamplesTest do
             command :chase_documentation, "Ponaglenie", emits: :documentation_chased
             command :close_visit_clinically, "Zamknięcie", by: :specialist, emits: :visit_closed_clinically
             event :documentation_chased, "Ponaglono"
-            event :visit_closed_clinically, "Zamknięto klinicznie", terminal: true
-          end
-
-          process :clinical_visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed_clinically, "Zamknięto klinicznie"
           end
 
         #{amend(f.process_manager)}
@@ -232,10 +212,6 @@ defmodule EhOsContract.ContractExamplesTest do
             identity :visit_id
             command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded
             event :payment_recorded, "Pacjent opłacił wizytę"
-          end
-
-          process :visit_settlement, "Rozliczenie wizyty" do
-            correlate :visit_id
           end
 
         #{amend(f.read_model)}

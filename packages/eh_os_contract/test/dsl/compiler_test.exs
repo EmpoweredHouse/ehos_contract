@@ -37,11 +37,7 @@ defmodule EhOsContract.CompilerTest do
       identity :visit_id
 
       command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta", terminal: true
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
+      event :visit_closed, "Wizyta zamknięta"
     end
   end
   """

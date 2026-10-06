@@ -55,10 +55,6 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     #{fields}
         end
       end
-
-      process :booking, "Rezerwacja" do
-        correlate :booking_id
-      end
     end
     """
   end
@@ -467,10 +463,6 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
             identity :visit_id
             command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
             event :visit_billed, "Wizyta rozliczona"
-          end
-
-          process :billing, "Rozliczenie" do
-            correlate :visit_id
           end
 
           policy :bill_again, "Rozliczona — rozlicz ponownie", handles: :visit_billed,

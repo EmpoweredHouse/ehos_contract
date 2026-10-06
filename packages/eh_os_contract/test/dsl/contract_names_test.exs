@@ -11,11 +11,7 @@ defmodule EhOsContract.ContractNamesTest do
     aggregate :visit, "Wizyta" do
       identity :visit_id
       command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta", terminal: true
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
+      event :visit_closed, "Wizyta zamknięta"
     end
   """
 
@@ -30,11 +26,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :Visit, "Wizyta" do
             identity :visit_id
             command :closeVisit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -48,11 +40,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :"close\n", "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -129,14 +117,10 @@ defmodule EhOsContract.ContractNamesTest do
                    identity :visit_id
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-                   event :visit_closed, "Wizyta zamknięta", terminal: true do
+                   event :visit_closed, "Wizyta zamknięta" do
                      field :note, :string
                      field :reason, :string, label: "Przyczyna zakończenia"
                    end
-                 end
-
-                 process :visit, "Wizyta" do
-                   correlate :visit_id
                  end
                """)
     end
@@ -149,15 +133,11 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
 
           dcb :visit, "Wizyta 2" do
             identity :visit_id
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
         """)
 
@@ -172,17 +152,13 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-            event :close_visit, "Wizyta zamknięta 2", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
+            event :close_visit, "Wizyta zamknięta 2"
           end
 
           process_manager :chase, "Pogoń", correlate: :visit_id do
             starts_on :visit_closed, sets: :visit_closed
             timer :visit_closed, "Visit closed", wait: {1, :day}
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
         """)
 
@@ -243,8 +219,8 @@ defmodule EhOsContract.ContractNamesTest do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: [:visit_closed, :visit_closed_]
             command :close_visit_2, "Zamknięcie 2", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-            event :visit_closed_, "Wizyta zamknięta 2", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
+            event :visit_closed_, "Wizyta zamknięta 2"
           end
 
           read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
@@ -253,10 +229,6 @@ defmodule EhOsContract.ContractNamesTest do
 
           read_model :closed__visits, "Zamknięte wizyty 2", projects: :visit_closed do
             field :closed_on, :date
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
         """)
 
@@ -278,7 +250,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :close_visit_
-            event :close_visit_, "Wizyta zamknięta", terminal: true
+            event :close_visit_, "Wizyta zamknięta"
           end
 
           read_model :closed_visits, "Zamknięte wizyty", projects: :close_visit_ do
@@ -287,10 +259,6 @@ defmodule EhOsContract.ContractNamesTest do
 
           query :visits2, "Wizyty", reads: :closed_visits, by: :reception
           query :visits_2, "Wizyty 2", reads: :closed_visits, by: :reception
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert message =~
@@ -310,7 +278,7 @@ defmodule EhOsContract.ContractNamesTest do
                    identity :visit_id
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
                    command :close_visit2, "Zamknięcie 2", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta", terminal: true
+                   event :visit_closed, "Wizyta zamknięta"
                  end
 
                  dcb :visit_, "Wizyta 2" do
@@ -318,10 +286,6 @@ defmodule EhOsContract.ContractNamesTest do
                    command :hold_visit, "Wstrzymanie", by: :reception, emits: :visit_held
                    event :visit_held, "Wizyta wstrzymana"
                    consults :visit_closed, match: :visit_id
-                 end
-
-                 process :visit, "Wizyta" do
-                   correlate :visit_id
                  end
                """)
     end
@@ -332,7 +296,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
 
           read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
@@ -340,10 +304,6 @@ defmodule EhOsContract.ContractNamesTest do
           end
 
           query :close_visit, "Zamykane wizyty", reads: :closed_visits, by: :reception
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert message =~
@@ -364,10 +324,6 @@ defmodule EhOsContract.ContractNamesTest do
           end
 
           query :visit_noted, "Odnotowane wizyty", reads: :noted_visits, by: :reception
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert message =~
@@ -381,15 +337,11 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed, "Wizyta zamknięta"
           end
 
           effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
           effect :notify, "Powiadom 2", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         """)
 
       assert message =~ "N1: two effects are named :notify (kinds.ex:11)"
@@ -404,11 +356,7 @@ defmodule EhOsContract.ContractNamesTest do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
             command :close_visit, "Zamknięcie wizyty 2", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -426,11 +374,7 @@ defmodule EhOsContract.ContractNamesTest do
             identity :visit_id
             command :send, "Wysłanie", by: :reception, emits: :end
             command :evolve, "Rozwój", by: :reception, emits: :end
-            event :end, "Koniec", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :end, "Koniec"
           end
         """)
 
@@ -449,11 +393,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :spawn
-            event :spawn, "Coś", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :spawn, "Coś"
           end
         """)
 
@@ -468,11 +408,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :module_info
-            event :module_info, "Coś", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :module_info, "Coś"
           end
         """)
 
@@ -487,11 +423,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :state, "Stan", by: :reception, emits: :row
-            event :row, "Wiersz", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :row, "Wiersz"
           end
         """)
 
@@ -510,11 +442,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :state_, "Stan", by: :reception, emits: :row_
-            event :row_, "Wiersz", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :row_, "Wiersz"
           end
         """)
 
@@ -531,11 +459,7 @@ defmodule EhOsContract.ContractNamesTest do
                  aggregate :visit, "Wizyta" do
                    identity :visit_id
                    command :send_reminder, "Przypomnienie", by: :reception, emits: :reminder_sent
-                   event :reminder_sent, "Wysłano przypomnienie", terminal: true
-                 end
-
-                 process :visit, "Wizyta" do
-                   correlate :visit_id
+                   event :reminder_sent, "Wysłano przypomnienie"
                  end
                """)
     end

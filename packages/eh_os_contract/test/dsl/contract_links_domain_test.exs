@@ -221,10 +221,6 @@ defmodule EhOsContract.ContractLinksDomainTest do
           command :book_slot, "Rezerwacja", by: :scheduler, emits: :slot_booked
           event :slot_booked, "Zarezerwowano"
         end
-
-        process :slot, "Termin" do
-          correlate :slot_id
-        end
       """
 
       assert links("LinksOwnContext", body, context: :scheduling) == []
