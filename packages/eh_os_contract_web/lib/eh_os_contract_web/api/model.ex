@@ -35,17 +35,18 @@ defmodule EhOsContract.Web.Api.Model do
   defp index do
     contracts =
       for contract <- EhOsContract.Registry.contracts(),
-          document = EhOsContract.Model.to_data(contract) do
+          document = EhOsContract.Model.to_data(contract),
+          model = EhOsContract.Model.fetch(contract) do
         %{
-          "contract" => EhOsContract.Model.fetch(contract).id,
+          "contract" => model.id,
           "module" => inspect(contract),
-          "version" => EhOsContract.Model.fetch(contract).version,
+          "version" => model.version,
           "digest" => document["digest"]
         }
       end
       |> Enum.sort_by(& &1["contract"])
 
-    %{"schema" => "eh_os_contract.model-index.v1", "contracts" => contracts}
+    %{"schema" => "eh_os_contract.model-index.v2", "contracts" => contracts}
   end
 
   @spec one(Plug.Conn.t(), String.t()) :: Plug.Conn.t()

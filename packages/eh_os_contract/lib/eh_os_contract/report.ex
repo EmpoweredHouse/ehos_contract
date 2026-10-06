@@ -100,7 +100,11 @@ defmodule EhOsContract.Report do
         _not_recorded -> []
       end
 
-    ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
+    # Plan DD, P1a (#183): named by its id, so a report of several contracts tells them apart.
+    [
+      "CONTRACT: #{deployment.contract}",
+      "  Version #{deployment.deployed.contract_version}, #{since}."
+    ] ++
       wired ++ change ++ earlier ++ [""]
   end
 

@@ -93,8 +93,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
   `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
   `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
-  id and add `"module"`. `EhOsContract.Registry.contract/1` finds a registered contract by its whole id. The OpenAPI
-  and AsyncAPI documents keep the module as their title.
+  id and add `"module"`; the model index is `eh_os_contract.model-index.v2`. `EhOsContract.Registry.contract/1`
+  finds a registered contract by its whole id. The OpenAPI and AsyncAPI documents keep the module as their title
+  and carry the id as `info.x-eh-os-contract-id`. `mix eh_os_contract.graph --contract` takes the id too, and the
+  text report heads each contract `CONTRACT: <id>`.
 - **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
   `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
   reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same

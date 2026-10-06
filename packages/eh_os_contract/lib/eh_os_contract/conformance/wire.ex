@@ -23,7 +23,7 @@ defmodule EhOsContract.Conformance.Wire do
 
   | From | To | Because |
   | --- | --- | --- |
-  | module | `inspect/1` | a module is the code's name for itself, and stands only in `module`; the contract is named by its `id:` (`contract`), as every row of the log names it since plan DD, ID4 (#178) |
+  | module | `inspect/1` | a module is the code's name for itself; the report names the contract by its `id:` (`contract`), as every row of the log does since plan DD, ID4 (#178), and puts its module in `module` |
   | atom | `to_string/1` | JSON has no atoms |
   | map key | `to_string/1` | JSON has no atom keys either |
   | `{n, unit}` | `%{"count" => n, "unit" => "day"}` | a two-element array would make the reader guess which slot is which |

@@ -73,11 +73,11 @@ defmodule EhOsContract.AsyncAPI do
   """
   @spec index() :: [map()]
   def index do
-    for contract <- EhOsContract.Registry.contracts() do
+    for contract <- EhOsContract.Registry.contracts(), model = Model.fetch(contract) do
       %{
-        "contract" => Model.fetch(contract).id,
+        "contract" => model.id,
         "module" => inspect(contract),
-        "version" => Model.fetch(contract).version,
+        "version" => model.version,
         "digest" => contract |> document() |> get_in(["info", "x-eh-os-contract-digest"])
       }
     end
@@ -92,6 +92,8 @@ defmodule EhOsContract.AsyncAPI do
       "asyncapi" => @asyncapi_version,
       "info" => %{
         "title" => inspect(model.module),
+        # Plan DD, P1a (#183): the name the API is asked by, to join with the report.
+        "x-eh-os-contract-id" => model.id,
         "version" => model.version,
         "x-eh-os-contract-engine" => EhOsContract.version()
       },

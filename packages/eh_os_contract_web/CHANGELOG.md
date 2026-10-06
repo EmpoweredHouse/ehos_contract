@@ -8,6 +8,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
+  eh-os-contract#183). `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/<id>`,
+  `<mount>/openapi/<id>` and `<mount>/asyncapi/<id>` take the contract's id; a module's name is an unknown contract,
+  and a parameter given as a list or a map is a bad request. The indexes list `"contract"` as the id and add
+  `"module"`; the model index is `eh_os_contract.model-index.v2`. OpenAPI and AsyncAPI documents carry the id as
+  `info.x-eh-os-contract-id`. The conformance screen heads each contract with its id and shows its steps apart from
+  its processes. A host's callers pass ids; readers of the conformance JSON move to v3 (the engine's CHANGELOG has
+  the shape).
+
 - **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
   eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a
   `:dev` dependency of the asset build only; the built stylesheet and fonts are unchanged, byte for byte,

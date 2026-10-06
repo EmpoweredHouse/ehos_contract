@@ -92,6 +92,14 @@ defmodule EhOsContract.Web.ApiTest do
       assert Jason.decode!(conn.resp_body)["detail"] =~ "several contracts are registered"
     end
 
+    # A list or a map from the query string is a bad request, as an unknown name is.
+    test "a contract or a period given as a list is a bad request, not a crash", %{conn: conn} do
+      for query <- ["contract[]=x", "contract[a]=b", @contract <> "&since[]=x"] do
+        path = if String.starts_with?(query, "/"), do: query, else: "/api/conformance?" <> query
+        assert get(conn, path).status == 400, query
+      end
+    end
+
     test "an unknown contract is a bad request, not a crash", %{conn: conn} do
       conn = get(conn, "/api/conformance?contract=Not.A.Contract")
 
@@ -168,7 +176,7 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert conn.status == 200
 
-      assert %{"schema" => "eh_os_contract.model-index.v1", "contracts" => contracts} =
+      assert %{"schema" => "eh_os_contract.model-index.v2", "contracts" => contracts} =
                Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==

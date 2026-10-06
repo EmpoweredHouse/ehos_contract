@@ -64,6 +64,9 @@ defmodule EhOsContract.Web.Api.Conformance do
     end
   end
 
+  defp contract(name) when not is_binary(name),
+    do: {:error, "contract= takes one contract id"}
+
   defp contract(name) do
     case EhOsContract.Registry.contract(name) do
       nil -> {:error, "unknown contract #{name}"}
@@ -73,6 +76,7 @@ defmodule EhOsContract.Web.Api.Conformance do
 
   @spec at(String.t() | nil, String.t()) :: {:ok, DateTime.t() | nil} | {:error, String.t()}
   defp at(nil, _which), do: {:ok, nil}
+  defp at(value, which) when not is_binary(value), do: {:error, "#{which} takes one timestamp"}
 
   defp at(value, which) do
     case DateTime.from_iso8601(value) do

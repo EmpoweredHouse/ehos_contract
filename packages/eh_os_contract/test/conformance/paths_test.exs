@@ -251,9 +251,21 @@ defmodule EhOsContract.PathsTest do
     end
 
     test "a command refused with no event recorded in the period is no basis for never" do
-      # The account was opened in setup, before the period starts.
-      since = DateTime.utc_now()
-      {:error, _} = dispatch(%Withdraw{account_id: "a-1", amount: 500})
+      # The account was opened in setup, before the period, which starts an hour ahead;
+      # the refused command is recorded inside it. Times are set, not read from two
+      # clocks: the database stamps a command, the engine an event.
+      since = DateTime.add(DateTime.utc_now(), 3600)
+
+      Repo.insert!(%EhOsContract.CommandRecord{
+        id: Ecto.UUID.generate(),
+        contract: "dispatch_rig.ledger",
+        type: "withdraw",
+        issued_by: "actor:u-1",
+        correlation_id: Ecto.UUID.generate(),
+        outcome: "rejected",
+        invariant: "sufficient_balance",
+        recorded_at: DateTime.add(since, 60)
+      })
 
       report = EhOsContract.Conformance.report(Ledger, since: since)
       assert report.activity == %{events: 0, commands: 1}
