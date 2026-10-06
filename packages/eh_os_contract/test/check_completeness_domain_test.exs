@@ -72,10 +72,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         end
 
         effect :notify, "Powiadom", handles: :payment_recorded, calls: :sms, idempotency: [key: :visit_id, owner: :self]
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
       end
 
       defmodule #{inspect(@scheduling)} do
@@ -86,10 +82,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           command :book, "Rezerwacja", by: :reception, emits: :booked
           event :booked, "Zarezerwowano"
         end
-
-        process :slot, "Termin" do
-          correlate :slot_id
-        end
       end
 
       defmodule #{inspect(@reporting)} do
@@ -99,10 +91,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
         read_model :payments, "Płatności", projects: :payment_recorded do
           field :visit_id, :id
-        end
-
-        process :reporting, "Raporty" do
-          correlate :visit_id
         end
       end
       """,
@@ -149,10 +137,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           event :archived, "Zarchiwizowano"
           event :restored, "Przywrócono"
         end
-
-        process :company, "Firma", accountable: :clerk do
-          correlate :company_id
-        end
       end
       """,
       "scoped_actor.ex"
@@ -190,7 +174,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
   test "a contract consuming one of another context with no relation between them" do
     # Reporting consumes Settlement, and nothing relates the two contexts; Settlement
     # names Scheduling's entity, which the customer-supplier relation covers.
-    assert [{message, {"contracts.ex", 40}}] =
+    assert [{message, {"contracts.ex", 32}}] =
              findings("cross-bounded-context-reference-without-mapping")
 
     assert message =~
@@ -231,10 +215,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         end
 
         effect :send, "Wyślij do KSeF", handles: :issued, calls: :ksef, idempotency: [key: :invoice_id, owner: :self]
-
-        process :invoice, "Faktura" do
-          correlate :invoice_id
-        end
       end
       """,
       "billing.ex"
@@ -279,10 +259,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
             field :p1_report_id, :id, issued_by: :p1
           end
         end
-
-        process :report, "Zgłoszenie" do
-          correlate :visit_id
-        end
       end
       """,
       "reporting.ex"
@@ -325,10 +301,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           command :prepare, "Przygotuj", by: :accountant, emits: :prepared
           event :prepared, "Przygotowano"
         end
-
-        process :draft, "Szkic" do
-          correlate :draft_id
-        end
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Reports do
@@ -348,10 +320,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
         query :reports, "Raporty", reads: :filed_reports, by: :bot do
           param :report_id, :id
-        end
-
-        process :report, "Raport" do
-          correlate :report_id
         end
       end
       """,
@@ -394,10 +362,6 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           event :written, "Zapisano" do
             field :issued_by, {:enum, [:sms, :hand]}
           end
-        end
-
-        process :note, "Notatka" do
-          correlate :note_id
         end
 
         scenario "zapis ręczny" do

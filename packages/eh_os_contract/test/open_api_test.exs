@@ -27,10 +27,6 @@ defmodule EhOsContract.OpenAPITest do
     query :selected_accounts, "Selected accounts", reads: :accounts, by: :auditor do
       param :account_ids, {:list, :id}
     end
-
-    process :accounts, "Accounts" do
-      correlate :account_id
-    end
   end
 
   defmodule PersonalRows do
@@ -57,10 +53,6 @@ defmodule EhOsContract.OpenAPITest do
 
     query :profiles, "Profiles", reads: :profiles, by: :clerk do
       param :contact, :contact, optional: true
-    end
-
-    process :profiles, "Profiles" do
-      correlate :profile_id
     end
   end
 

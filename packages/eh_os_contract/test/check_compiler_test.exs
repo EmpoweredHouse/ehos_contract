@@ -21,10 +21,6 @@ defmodule EhOsContract.CheckCompilerTest do
           command :book, "Umów", by: :reception, emits: :booked
           event :booked, "Umówiono"
         end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
       """),
       "check_compiler_broken.ex"
     )

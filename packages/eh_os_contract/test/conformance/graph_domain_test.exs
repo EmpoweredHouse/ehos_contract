@@ -72,11 +72,6 @@ defmodule EhOsContract.GraphDomainTest do
           command :close, "Zamknięcie rozliczenia", by: :reception, emits: :closed
           event :closed, "Zamknięto rozliczenie"
         end
-
-        process :visit, "Rozliczenie wizyty" do
-          correlate :visit_id
-          include :booked
-        end
       end
       """,
       "graph_domain_clinic.ex"
@@ -167,10 +162,6 @@ defmodule EhOsContract.GraphDomainTest do
           end
 
           publish :settled, as: "clinic.visit.settled.v1", from: :settled, fields: [:visit_id]
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         end
 
         defmodule EhOsContract.GraphDomainTest.Visit.Settlement do
@@ -183,10 +174,6 @@ defmodule EhOsContract.GraphDomainTest do
           end
 
           publish :settled, as: "clinic.visit_settled.v1", from: :settled, fields: [:visit_id]
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
         end
         """,
         "graph_domain_twins.ex"
