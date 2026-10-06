@@ -1,0 +1,14 @@
+**Review of P1d's TaxVision part** (`c49e9bd`; one review covering correctness, and security and performance, since the change is two sandbox contracts and a test expectation).
+
+Nothing to fix:
+- **The new moduledocs hold.** The accounting month's verification stage includes registry watch's confirmation and both verdicts. Its promise starts on the confirmation. Its matching boundary consults the pulled invoice (P7). The profile being onboarding's is the contract's own earlier text (03 §4.1).
+- **The accounting month still resolves.** All four events it consumes exist unchanged, and its boundary, policy and implementations only alias them.
+- **Nothing else read `ksef_intake` or `client` as a process:** no page, seed, router or report test.
+- **The manifest test still compares the whole manifest.** The accounting month's two capabilities still name their process, and the two from registry watch no longer do.
+- **Security:** no `by:`, `recorded_by:`, field or role changed.
+
+Left as they are:
+- the status check and its log now sit in no stage. The moduledoc does not list them, since nothing reads stages outside a process;
+- "verdict" against "verdicts" between the moduledoc and the commit message.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. The sandbox's check findings are identical before and after (0 errors, 36 warnings, 10 notices), once line numbers are ignored. Tests: sandbox 196, engine 1399, web 57, auth 287 + 1 property.
