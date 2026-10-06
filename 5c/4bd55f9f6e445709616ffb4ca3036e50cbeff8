@@ -1,0 +1,16 @@
+**Review of P1d's Rehmed part** (two reviews in parallel on `23dc4c0`; settled in `5c4bd55`).
+
+Correctness found no bug. No implementation, seed, page or config relied on the three processes, their stages, or settlement consuming `patient_arrived`. Statutory reporting's `clinical_visit` is unchanged, since an included event's end of run comes from the include, not from the event. The two test edits keep their guards. A run of the check on the commit and its parent confirmed the commit message's account of 33 → 36 warnings. Its findings, all in moduledocs:
+- The docs said the run the clinic described is `clinical_visit`. The distillation's finding 1 describes one run per visit across booking, documentation and settlement, which `clinical_visit` covers only in part. **Fixed:** the docs say that no single contract can hold that run until the process module (P2b). This is the case the stage was for: a process the material describes and a contract cannot yet write.
+- "Which end a visit reached is the aggregate's state": the state records only that it ended. **Fixed.**
+- A settlement's history "starts with its first service line, handover or payment": it can also start with a close. **Fixed:** "its first event".
+- An untouched comment still said a settlement opens when the patient arrives. **Fixed:** it gives the real reason the settlement cannot know the payer, which is that it does not consume the booking.
+
+Security and performance found nothing. Personal fields and subjects are unchanged and every `by:` and `recorded_by:` stays. The dropped `consumes` removed no reaction. Dispatch writes fewer run rows.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. The sandbox's check went from 33 to 36 warnings:
+- three "process names no accountable role" warnings went with the processes;
+- five events now have no reader: four were read before only as ending a run (`visit_cancelled`, `patient_no_show`, `visit_closed_commercially`, `visit_closed_without_payment`), and `patient_arrived` was read only by the dropped include;
+- the scheduling-to-settlement relation in the client's context map now has nothing crossing it (`orphan-context-mapping`). That is true: the mockup's answer to H177, that the arrival opens a settlement, is not declared.
+
+Engine counts unchanged. Tests: sandbox 196, engine 1399, web 57, auth 287 + 1 property.
