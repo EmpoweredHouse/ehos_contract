@@ -247,6 +247,11 @@ defmodule EhOsContract.Migrations.V01 do
              where: "outcome = 'accepted' AND idempotency_key IS NOT NULL",
              name: :eh_os_contract_commands_idempotency_index
            )
+
+    # The conformance queries that start from the commands read one contract's by
+    # outcome (`Coverage`, `Paths`); `Coverage`'s decisions and `Paths`' failures also
+    # by a window of `recorded_at`. Without this, each reads the whole table (#185).
+    create index(:eh_os_contract_commands, [:contract, :outcome, :recorded_at])
   end
 
   # One row per ordered consumer, and per read model delivered in the transaction.
