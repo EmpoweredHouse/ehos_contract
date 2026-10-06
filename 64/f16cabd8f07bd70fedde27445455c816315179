@@ -1,0 +1,5 @@
+P1a parts 3-4 (89fa2c6..HEAD): code-review high + security/performance pass.
+Fixed: non-binary contract/since/until -> 400 (reverse-checked); model-index v2; graph --contract by id; CONTRACT: <id> heading; x-eh-os-contract-id; single Model.fetch in indexes; wire doc; Registry.contract/1 test; web CHANGELOG; flaky clock test made deterministic (reverse-checked).
+No change: Registry.contract/1 O(contracts) per request (persistent_term, trivial); two id lookups with different scopes (Registry for callers by name, Implementations for rows) — documented on each; Wire.encode inspects any module atom (only module is one).
+Gate: EXIT=0, check 0/33/10 and 0/76/6, engine 1381, web 55, sandbox 196, auth 286 + 1 property.
+(Rebased onto origin/main 2e26a71, which merged #182; conflict only in PLAN.md's progress table. Gate after rebase: EXIT=0, engine 1385.)
