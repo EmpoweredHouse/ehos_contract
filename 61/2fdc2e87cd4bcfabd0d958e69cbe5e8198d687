@@ -1,0 +1,4 @@
+ID1 pre-PR review, origin/main..HEAD, two reviews in parallel.
+Correctness (code-review high): 8 findings. Fixed (db67688): a version segment other than the last passed D11 (reverse-checked); CHANGELOG claimed no digest moves though the export document digest does (wording; export shape unchanged, "id" key added); id inside the declarations map (moved beside it, Rules.contract_id/1 and c.id; R1/N1 walks restored); use location raising without a persisted file; case with two clauses; quoted-atom warnings in fixtures; "100 bytes" duplicated beside @id_bytes. PLAN.md recorded (this commit).
+Security/performance: nothing blocking. Recorded for ID3/ID4: an id that is a dot-prefix of another; no change: dash only in the namespace.
+Gate: EXIT=0; check 0/33/10, 0/76/6; sandbox 196, engine 1364, web 52, auth 286+1. Report, check and 11 graphs byte-identical to main.
