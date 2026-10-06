@@ -82,6 +82,9 @@
                 "$ref": "#/$defs/step_numbers"
               },
               {
+                "$ref": "#/$defs/step_by_trigger"
+              },
+              {
                 "$ref": "#/$defs/transition_numbers"
               },
               {
@@ -255,7 +258,7 @@
     },
     "step_numbers": {
       "type": "object",
-      "description": "A step of the process, on the relation that ends it: the runs that took it out of the process's (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
+      "description": "A step of the process, on the relation that ends it — or, for a manager issuing one command on one event as a run starts and during it, the step's phase, on that phase's relation: the runs that took it out of the process's (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
       "required": [
         "runs",
         "of_runs",
@@ -354,6 +357,24 @@
         },
         "pending": {
           "type": "boolean"
+        }
+      }
+    },
+    "step_by_trigger": {
+      "type": "object",
+      "description": "A relation several steps end at — a policy handling several events, drawn as one issues: each step's numbers under the id of the event it starts from. No total: a run that took two of the steps would count twice. An entry is this or step_numbers, never both.",
+      "required": [
+        "by_trigger"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "by_trigger": {
+          "type": "object",
+          "description": "By the id of the triggering event, in the document.",
+          "minProperties": 2,
+          "additionalProperties": {
+            "$ref": "#/$defs/step_numbers"
+          }
         }
       }
     },

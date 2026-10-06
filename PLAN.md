@@ -1212,6 +1212,7 @@ are refused — merging them per pair makes it not matter.
   numbers on its `handled_by` when the policy issues one command (a rule that depends on the counts of a
   declaration). **Open for the user:** whether these shapes need numbers — which would take a discriminator on a
   policy's `issues` (batch 3 decided a policy says nothing of which event yields which) or a refusal of the shape.
+  *Resolved 6 October:* "E13a — overlay numbers for one relation with several steps, and for a manager's phases".
 - **A move the lifecycle does not allow** (decision 5) is defined under `observed.relations.undeclared` as `{id,
   from, to, event}`, from and to the status the aggregate stood in — the unit's id where it stood in none yet — and
   its `count` is in `relations` with the rest.
@@ -1267,7 +1268,8 @@ Against *Odbiór E13a*: documents and overlays pass their schemas for every cont
 the fixtures; the same declarations give the same bytes (the digest moves only with the content, and the encoding
 sorts keys); the document from `/graph/:contract` is the function's byte for byte; the dashboard is unchanged; the
 gate is EXIT=0. Not done in E13a: plan step 8 (sandbox data, decision 6). **Open for the user:** numbers for the
-two step shapes the overlay leaves without them (batch 5); the domain-service edge (in "Otwarte pytania" since
+two step shapes the overlay leaves without them (batch 5; *resolved 6 October*, see "E13a — overlay numbers for one
+relation with several steps, and for a manager's phases"); the domain-service edge (in "Otwarte pytania" since
 batch 3). Remaining with the user (decision 7): merging `main`, `pre-pr-review`, the pull request.
 
 ### E13a — final review and the user's decisions (6 October)
@@ -1313,9 +1315,9 @@ check (`GraphCoverage`) is run by hand only.
   the user does separately.
 - **No GitHub issue for E13.** The pull request says `No issue: E13 is planned and tracked in PLAN.md` (the
   template takes one of `Closes`, `Part of` or `No issue`).
-- **Still open, awaiting the user:** numbers in the overlay for the two step shapes that get none (a policy
+- ~~**Still open, awaiting the user:** numbers in the overlay for the two step shapes that get none (a policy
   handling several events; a manager issuing one command on one event as it starts a run and during it) —
-  batch 5.
+  batch 5.~~ *Resolved 6 October:* the next section.
 
 **Before the PR:**
 
@@ -1324,6 +1326,61 @@ check (`GraphCoverage`) is run by hand only.
 - switch node ids to the contract's `id:` (decision 3);
 - `pre-pr-review`;
 - the pull request, with `No issue: E13 is planned and tracked in PLAN.md`.
+
+### E13a — overlay numbers for one relation with several steps, and for a manager's phases (6 October)
+
+**The problem.** Batch 5 put a step's numbers on the relation that ends it only where step and relation match one
+to one, and left two shapes the compiler accepts without numbers: a policy handling several events (`handles: [:e1,
+:e2], issues: :c`) has one `issues` relation in the facts and one step per triggering event in the report; a process
+manager issuing one command on one event both as the event starts a run (`starts_on`) and during it (`on`) has two
+`issues` relations (`phase` start and run) and one step in the report.
+
+**The user's decisions:**
+
+1. **Several steps, one relation: keep the one relation, and give it `by_trigger`** — a map from the triggering
+   event's id (the facts document's) to exactly the numbers the report already computes for that step (`runs`,
+   `of_runs`, `waiting`, `failing`, `pending`, `untraversed`). The rule, general to any relation several steps end
+   at (a policy handling `[e1, e2]` and issuing `[c1, c2]` gives each `issues` its `by_trigger`): **an entry is flat
+   when the relation is exactly one step, `by_trigger` when it is several — never both**, which the schema holds
+   with `oneOf`. **No total of runs:** a sum counts twice a run that took both steps, and distinct runs per
+   relation are not computed today. Within decision 2.
+2. **One step, two relations: the engine splits the step by phase** — each relation gets its own numbers, in the
+   same keys. **A dated deviation from decision 2** (6 October), approved by the user: the split is no new measure,
+   but it is new computation. *The user's reason:* the per-path "never traversed" answer needs it — a phase never
+   taken must read as never — and only the engine has the per-command data before aggregation; a renderer cannot
+   split an aggregate.
+
+**How it is built.** `Paths.observe/2` with `phases: true` (only the overlay asks for it) gives such a step
+`phases: %{start: %{runs, in_flight}, run: …}`: each command the manager issued, and each event still waiting for an
+ordered manager, counts in the phase its event arrives in. **The phase comes from the runtime's own rule**:
+`ProcessManager.take/3`, which `handle!/5` now applies (an event in `starts_on` with no run starts one; any event
+reaches a running run; an `ends_on` event ends the run after its reactions; nothing reaches a run that ended — a
+later start event does **not** start a new one for the same correlation; a timer's firing is always `run`, and
+its step is not split), folded over the log from its first event by `ProcessManager.arrivals/2` with the
+subscription's decoding (`Consumer.decode_all!/3`) and `ProcessManager.correlation/2` — as a replay takes it,
+whatever the period, since a run may have started before it (tested with a period that starts during a run).
+The fold stops at the first event that does not decode — a row of newer code, say — as the subscription stops there:
+what comes after it has no phase yet, and the overlay answers rather than failing where the report says the
+subscription is failing (tested). A test dispatches real events through a fixture
+(`PhaseRig`) whose manager notes the phase its own state shows, and holds the fold to it command by command.
+`Conformance.steps/2` reads each phase for "never" and "not yet" by the report's own predicate, against the pending
+set of the whole step list, so a phase never taken is "never" while the report's step was taken (tested). A step
+the overlay finds at no relation, or at more than its phases', raises: no accepted shape reaches it, and batch 5
+skipped it silently. `failing` is the manager's (a failure in its stage is attributed to the consumer, not to
+an event), so each phase carries it whole. `sets`/`cancels` carry no numbers (batch 5), so no split there.
+
+**Per-phase numbers need not add up to the report's step:** a run that issued the command at its start and during it
+is one run there and one in each phase. **The report itself does not change:** `Paths.observe/2` and
+`Conformance.steps/2` without the option are what they were, and a test holds them equal, the option's `phases`
+dropped, for every fixture. The facts document and its schema are untouched, and so its digest. A test over every
+fixture and a compiled contract with both shapes holds that every relation a step of the report ends at has numbers
+— flat, `by_trigger` or by phase — and no other relation has a step's.
+
+*Left as known:* the fold decodes every event the manager takes, from the first, each time an overlay is computed —
+only for a manager with the shape, which no fixture but `PhaseRig` and no client tree has; a manager inside the
+dispatch transaction deployed onto history starts at the head without a replay, so until it is rebuilt the fold
+may read a run it never saw; a manager's callback may issue on start a command only its `on` declares (dispatch
+checks the union of both reactions), which then counts on the `on` relation — not split, as before.
 
 ### Wobec programu DD
 

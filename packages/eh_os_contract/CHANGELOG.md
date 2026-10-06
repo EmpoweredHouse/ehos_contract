@@ -112,6 +112,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the report counts it never or not yet, a transition's count, traffic between contracts — and a move a lifecycle
   does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
   report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences and runs. No verdict moves.
+  Every step the report has puts its numbers on a relation: flat where the relation has that one step; under
+  `by_trigger`, by the triggering event's id, where several steps end at one relation (a policy handling several
+  events), with no total; and by phase where a process manager issues one command on one event both as it starts a
+  run and during it — `Paths.observe/2` with `phases: true` splits that step's runs and waiting events by the
+  phase `EhOsContract.ProcessManager.take/3`, the rule dispatch itself applies, gives each event over the log. The
+  phases need not add up to the report's step, and the report itself is unchanged.
 - **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
   overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
   a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`) or a domain's (`--system`)
