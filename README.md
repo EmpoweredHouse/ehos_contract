@@ -216,6 +216,9 @@ including [where the keys come from, and what to configure at integration](packa
 
 ## Working on it
 
+How work is planned, recorded and reviewed — issues, pull requests, where a decision is written down — is in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 Requires Elixir `~> 1.18`, Erlang/OTP 27, and Docker (for Postgres).
 
 ```bash

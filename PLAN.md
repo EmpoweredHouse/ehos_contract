@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 6 października (fala 1 w `main`; fala 2: ID1 w toku)
+## Handoff — stan na 6 października (fala 1 i ID1 w `main`; następny ID2)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -43,12 +43,12 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Fala 2:** ID1 gotowy na `dsl/id1-contract-id` (od `main`, brama zielona, przegląd rozstrzygnięty — „ID1 — co
-wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
+**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). Next is ID2: every contract names its
+`id:`.
 
 ### Stan repozytorium
 
-- **`origin/main` = `32d7137`** (merge #151, S4, 6 października; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+- **`origin/main` = `5a90e96`** (merge #152, ID1, 6 października; przed nim `32d7137`, merge #151, S4; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
   W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
@@ -95,10 +95,10 @@ wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
-     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta.
-  2. **Asystent:** fala 2 — ID1 na `dsl/id1-contract-id` (worktree `runner-usage-optimization-b60150`), potem ID2,
-     ID3, ID4, P1a… po kolei (tabela „Postęp”). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
-     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta; z fali 2 ID1 (#152).
+  2. **Asystent:** fala 2 — ID2, potem ID3, ID4, P1a… po kolei (tabela „Postęp”), każdy przez swoje issue (skill
+     `stage-issue`, gałąź `dd/<issue>-…`). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
+     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: akapit, issue, ◐ i gałąź w tabeli; koniec: komentarz zamykający issue; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -139,6 +139,8 @@ wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
    polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
 2. `PLAN.md`, „Dopisek 5 października — DD” — decyzje, tabela „Postęp” (jedyne miejsce ze stanem programu) i
    zasady jej prowadzenia, projekt etapu, który zaczynasz, „Konwencje każdego PR-a”, decyzje przed etapem, ryzyka.
+   **Od 6 października szczegóły etapu są w jego issue** (kolumna „Issue” w tabeli; etykiety `dd`, `wave-<n>`), a
+   jak prowadzić etap przez issue — skill `.claude/skills/stage-issue/SKILL.md`.
 3. `PLAN.md`, „Dopisek 4 października — #99” i „LC… — co wyszło” — cykl życia (`from:`, `or_rejects:`), na którym
    stoi program; „Dopisek 4 października (3)” — trzecia analiza ESDM i decyzja o etykiecie timera (N3).
 4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
@@ -506,12 +508,24 @@ czas („Doba na dokumentację”).
 
 ### Postęp — jedyne miejsce, gdzie żyje stan programu
 
-Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan żyje tutaj, nie w rozmowie:
-- **Start etapu:** status ◐ i nazwa gałęzi w tabeli, w pierwszym commicie etapu.
+Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan żyje tutaj, nie w rozmowie.
+**Od 6 października (decyzja użytkownika) każdy etap ma issue na GitHubie** (etykiety `dd` i `wave-<n>`, po
+angielsku, dla czytelnika spoza zespołu): zakres, oczekiwany wynik, decyzje z odrzuconymi opcjami, przegląd, PR-y z
+`Closes #N`. Tutaj zostaje status, zakres w kilku słowach, akapit etapu i link — skill `stage-issue`. **Status żyje
+tylko tutaj, uzasadnienia tylko w issue.** Etapy zrobione wcześniej mają zamknięte issue z linkiem do PR-a i do
+„co wyszło” poniżej; tych sekcji nie przepisujemy. *Odrzucone:* wszystko dalej w `PLAN.md` (plik ma ponad 11 000
+linii, decyzje giną w środku); wszystko w issue (model musiałby czytać API, żeby się rozeznać); issue dla wszystkich
+etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
+- **Start etapu:** akapit etapu poniżej doprecyzowany (dwie–pięć linii), issue założone, status ◐, gałąź i numer
+  issue w tabeli, w pierwszym commicie etapu.
+- **Language, from 6 October 2026 (the user's decision):** new entries in this file are written in English; the
+  Polish history above and below stays as it is, and a status or link fixed in a Polish paragraph keeps its
+  language.
 - **Pytanie z tabeli „Do decyzji przed etapem”:** odpowiedź użytkownika jako „### Przed <ID> — decyzje użytkownika
   (data)”, z odrzuconymi opcjami.
-- **Koniec etapu:** „### <ID> — co wyszło (data)” pod tym dopiskiem (gałąź, rozstrzygnięcia mechaniki z
-  odrzuconymi, przegląd, brama); po merge'u status ☑ i numer PR-a.
+- **Koniec etapu:** komentarz zamykający issue (co wyszło, co zostało i gdzie, wiersz do notatki migracyjnej); po
+  merge'u status ☑ i numer PR-a. The issue closes through `Closes #N` on the stage's last pull request (earlier
+  ones say `Part of #N`); otherwise it is closed by hand after the closing comment. Do ID1 włącznie: „### <ID> — co wyszło (data)” pod tym dopiskiem.
 - **Koniec sesji:** tabela i blok „Handoff” na górze pliku pokazują następny etap; w rozmowie nie zostaje nic, czego
   nie ma tutaj.
 - **Po każdej fali:** decyzja użytkownika „dalej czy stop”, tag wersji, notatka migracyjna dla aplikacji testowej
@@ -521,61 +535,61 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 
 ☐ nie zaczęte · ◐ w toku · ☑ w `main`
 
-| Etap | Fala | Zakres | Zależy od | Status |
-|---|---|---|---|---|
-| DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
-| W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☑ #146 |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
-| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 |
-| S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 |
-| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ◐ `dsl/id1-contract-id`, gotowy, niewypchnięty |
-| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
-| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |
-| ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ |
-| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ |
-| P1b | 2 | nic nie zakłada procesu | P1a | ☐ |
-| P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ |
-| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ |
-| P1e | 2 | testy bez szablonowych procesów | P1c | ☐ |
-| P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ |
-| P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ |
-| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ |
-| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ |
-| P2e | 2 | grafy i strony procesu | P2d | ☐ |
-| P2f | 2 | procesy sandboxa jako moduły | P2d | ☐ |
-| P2g | 2 | rigi i testy o procesach | P2d | ☐ |
-| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g | ☐ |
-| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ |
-| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ |
-| T2b | 3 | `given_entity` | T2a | ☐ |
-| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ |
-| A1 | 3 | `actor_is` | T1 | ☐ |
-| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ |
-| B2 | 3 | kubełek w `match:` | W2 | ☐ |
-| B3 | 3 | DCB z generowaną tożsamością | DD0 | ☐ |
-| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ☐ |
-| S2 | 3 | scenariusze obietnic | W3, P2b | ☐ |
-| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ |
-| O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ |
-| O2 | 3 | ekran: kolejność etapów | O1 | ☐ |
-| V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ |
-| V2 | 4 | upcast przez callback | V1 | ☐ |
-| V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ |
-| V4 | 4 | zamek wobec upcastów | V3 | ☐ |
-| V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ |
-| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☐ |
-| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ |
-| L1 | 5 | słownik połączony z kodem | N1 | ☐ |
-| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ |
-| L3 | 5 | typowane referencje do agregatów | ID3 | ☐ |
-| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ |
+| Etap | Fala | Zakres | Zależy od | Status | Issue |
+|---|---|---|---|---|---|
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 | [#153](https://github.com/EmpoweredHouse/eh-os-contract/issues/153) |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 | [#154](https://github.com/EmpoweredHouse/eh-os-contract/issues/154) |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 | [#155](https://github.com/EmpoweredHouse/eh-os-contract/issues/155) |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 | [#156](https://github.com/EmpoweredHouse/eh-os-contract/issues/156) |
+| W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 | [#157](https://github.com/EmpoweredHouse/eh-os-contract/issues/157) |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 | [#158](https://github.com/EmpoweredHouse/eh-os-contract/issues/158) |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 | [#159](https://github.com/EmpoweredHouse/eh-os-contract/issues/159) |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☑ #146 | [#160](https://github.com/EmpoweredHouse/eh-os-contract/issues/160) |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 | [#161](https://github.com/EmpoweredHouse/eh-os-contract/issues/161) |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 | [#162](https://github.com/EmpoweredHouse/eh-os-contract/issues/162) |
+| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 | [#163](https://github.com/EmpoweredHouse/eh-os-contract/issues/163) |
+| S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 | [#164](https://github.com/EmpoweredHouse/eh-os-contract/issues/164) |
+| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☑ #152 | [#165](https://github.com/EmpoweredHouse/eh-os-contract/issues/165) |
+| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ | — |
+| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ | — |
+| ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ | — |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ | — |
+| P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
+| P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
+| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
+| P1e | 2 | testy bez szablonowych procesów | P1c | ☐ | — |
+| P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
+| P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ | — |
+| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ | — |
+| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ | — |
+| P2e | 2 | grafy i strony procesu | P2d | ☐ | — |
+| P2f | 2 | procesy sandboxa jako moduły | P2d | ☐ | — |
+| P2g | 2 | rigi i testy o procesach | P2d | ☐ | — |
+| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g | ☐ | — |
+| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
+| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |
+| T2b | 3 | `given_entity` | T2a | ☐ | — |
+| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ | — |
+| A1 | 3 | `actor_is` | T1 | ☐ | — |
+| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
+| B2 | 3 | kubełek w `match:` | W2 | ☐ | — |
+| B3 | 3 | DCB z generowaną tożsamością | DD0 | ☐ | — |
+| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ☐ | — |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ☐ | — |
+| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ | — |
+| O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
+| O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
+| V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
+| V2 | 4 | upcast przez callback | V1 | ☐ | — |
+| V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
+| V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
+| V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
+| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☐ | — |
+| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ | — |
+| L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
+| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
+| L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
+| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ | — |
 
 ### Program — szczegóły etapów
 

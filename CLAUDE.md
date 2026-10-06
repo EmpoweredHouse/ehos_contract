@@ -38,6 +38,8 @@ linii.
 | Co | Gdzie |
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
+| **Schemat pracy dla każdego** (człowieka i modelu): co gdzie żyje, od pomysłu do `main`, jak wrócić od linii kodu do uzasadnienia | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| **Etap programu** (dziś DD): zakres, decyzje, przegląd, PR-y — w issue na GitHubie, po angielsku; `PLAN.md` trzyma status i link | skill [`stage-issue`](.claude/skills/stage-issue/SKILL.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać domenę i kontrakt** — co się nie skompiluje, każda odmowa z kodem | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Każdy klucz obu DSL-i — typ, wymagany/opcjonalny, domyślna wartość (generowane) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
@@ -61,7 +63,8 @@ Z tego wynika, gdzie co poprawiać:
 
 - **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
 - **Ustalenie z pisania kodu** — do `PLAN.md`, i tylko tam aktualizuje się stan.
-- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie.
+- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie,
+  zakończona linkiem do issue etapu, który ją wprowadził (od 6 października).
   Sens tych plików polega na tym, że da się je porównać z tym, co faktycznie wyszło; przepisane pod aktualny
   kod przestają cokolwiek mierzyć.
 - Założenia są **świadomie z tyłu**. Gdy `docs/adr/` i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
@@ -169,12 +172,18 @@ mix ecto.migrate`.
 - **Grep po `[ąćęłńóśźż]` nie wystarcza do sprawdzenia** i to jest zapisane, bo kosztowało jeden fałszywy
   „gotowe". Spora część polszczyzny nie ma diakrytyków — `rejestry` w `registry_check.ex` przeżyło pełne
   przepisanie pliku po pliku właśnie dlatego. Przy sprawdzaniu trzeba przejść też po słowach.
-- **Dokumentacja repo robocza — `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
-  jedzie z pakietem. **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
+- **Dokumentacja repo robocza — ten plik i historia `PLAN.md` — zostaje po polsku.** To nie jest kod i nie
+  jedzie z pakietem; nowe wpisy w `PLAN.md` są od 6 października po angielsku (niżej). **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
   upubliczniona, więc `README.md` jest teraz po angielsku, po tej samej stronie granicy co
-  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
-  i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
+  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. Ten plik i
+  dotychczasowy `PLAN.md` zostają po polsku, bo ich czytelnikiem był tylko zespół pracujący w tym
   repozytorium.
+- **Od 6 października nowe wpisy w `PLAN.md` są po angielsku** (decyzja użytkownika: projekt będzie
+  międzynarodowy, więc ślady w repozytorium i na GitHubie zostawiamy po angielsku; rozmawiamy po polsku).
+  Historia zostaje po polsku i nie jest tłumaczona; poprawka w istniejącym polskim akapicie (status, link)
+  idzie w jego języku. Issue i PR-y — zawsze po angielsku (skill `stage-issue`). *Odrzucone:* przetłumaczenie
+  całego `PLAN.md` (ponad 11 000 linii, tłumaczenie hurtem gubi uzasadnienia, jak przy pierwszych commitach);
+  zostawienie polskiego dla nowych wpisów.
 - **Publiczne funkcje w `packages/eh_os_contract/lib/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
   kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
@@ -199,6 +208,13 @@ mix ecto.migrate`.
   rozwinięć — `for x in $LISTA` daje jedną iterację z całą listą w jednym argumencie, nie N iteracji. Raz
   wystarczyło, żeby `git cherry-pick` dostał siedem SHA-ów jako jeden argument, padł, a stojące po nim
   `git commit --amend` przepisało nie ten commit, co miało. Pętle po SHA-ach pisz jawnie albo przez tablice.
+- **Kod reguły nigdy nie stoi sam w prozie** (od 6 października, decyzja użytkownika). W `PLAN.md`, `docs/adr/`,
+  opisie PR-a i commicie najpierw znaczenie, potem kod w nawiasie: „reakcja na zdarzenie innego kontekstu bez
+  zadeklarowanego `delivery` (X10)”. W issue kodów nie ma wcale. Komunikaty kompilatora i testy zostają przy
+  kodach — tam znaczenie stoi obok, w treści komunikatu.
+- **PR mówi, do czego należy:** `Closes #N`, `Part of #N` albo `No issue: <powód>` (szablon PR-a; sprawdza to
+  `.github/workflows/pr-links-issue.yml`). Commit etapu kończy się `Part of #N`, gałąź etapu to
+  `dd/<issue>-<słowa>`, a komentarz w kodzie cytujący etap podaje też issue: `plan DD, ID1 (#165)`.
 - **Nazwy zdarzeń pochodzą z warsztatu**, nie z wyobraźni. Źródło:
   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
 
