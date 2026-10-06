@@ -1,0 +1,1 @@
+Workflow-only fix for #166 (CodeRabbit): word boundary before the closing keyword; regex tested locally on ten descriptions. No mix check input.
