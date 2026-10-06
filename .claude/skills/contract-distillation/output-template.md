@@ -130,7 +130,7 @@ added after, it was 7 facts to 15 fields.*
 |---|---|---|---|---|---|---|---|
 | 1 | [...] | [...] | [...] | [...] | [yes / no / not stated] | [patient / payer / regulator / internal] | [source] |
 
-### Deadline, cadence, accountability
+### Deadline, recurrence, accountability
 
 - **Deadline on the whole case:** [N, unit / none stated] — [source]
 - **Recurring on a schedule, or triggered:** [schedule, how often / triggered / unclear] — [source]

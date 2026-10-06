@@ -257,7 +257,8 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   (`unverified-declaration`). A contract that declares it no longer compiles (`undefined function cadence/1`):
   delete the line. The report's `declarations` hold at most the confirmed `deadline`. A process is digested as it
   was with no cadence declared, so no other contract's version moves; one that declared it moves once, when the
-  line goes.
+  line goes. The exported model (`EhOsContract.Model.to_data/1`) loses the `"cadence"` key from `"process"`, where
+  it was `null` unless declared, so that document's own `"digest"` moves for every contract with a process.
 
 ## Unreleased — 0.3.0
 
