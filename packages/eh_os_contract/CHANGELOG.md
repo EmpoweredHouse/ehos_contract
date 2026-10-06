@@ -28,9 +28,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
-  domain's `name:`, then dotted snake_case segments, unversioned, at most 100 bytes (**D11**, at compile time); under
-  the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the model as `:id`
-  only where given, and outside the version and every digest: naming a contract moves nothing. Later stages make it
+  domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
+  time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the
+  model as `:id` only where given, and outside the contract's version and its declarations' digests, so no deployment
+  counts it as a change and no verdict moves. The exported model (`EhOsContract.Model.to_data/1`) carries it as
+  `"id"`, so that document's own `"digest"` does change when an `id:` is added. Later stages make it
   required and the prefix of the contract's event types.
 - **`mix eh_os_contract.check` warns of a lifecycle transition no scenario takes**
   (`transition-without-scenario`, plan DD stage S4). A transition is taken by a scenario of a command whose `given` leaves the

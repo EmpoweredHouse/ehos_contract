@@ -1,4 +1,8 @@
 defmodule EhOsContract.Contract.Rules.Boundaries do
+  # Plan DD, ID1: a contract's id will prefix every event type it records and the keys
+  # of its rows, so it is held well under what a key may be (plan #98).
+  @id_bytes 100
+
   @moduledoc """
   The layer-L2 rules of D10 and D11 (v2 §16): who may read what, and what crosses
   to another application. v2 §6 gives them no letter, so they carry the decision's.
@@ -28,8 +32,8 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     still publishes. The domain's `name:` is held to the same segment by the domain
     (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
   - A contract's `id:` (plan DD, ID1) is the application's namespace, then one or more
-    dotted snake_case segments, unversioned — `"rehmed.settlement"` — of at most
-    100 bytes: it names the contract to readers outside the code, and will
+    dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
+    most #{@id_bytes} bytes: it names the contract to readers outside the code, and will
     prefix its event types and its rows' keys, where neither `:` nor `|` may stand.
   - `subscribe "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads.
@@ -49,9 +53,9 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
 
-  # Plan DD, ID1: a contract's id will prefix every event type it records and the keys
-  # of its rows, so it is held well under what a key may be (plan #98).
-  @id_bytes 100
+  # A version segment, as `@versioned` ends a publication's name: no segment of a
+  # contract's id is one, wherever it stands.
+  @version ~r/^v[1-9][0-9]*\z/
 
   # What follows the namespace (`DslRules.namespace?/1`); `\z`, not `$`, which also
   # matches before a final newline.
@@ -75,7 +79,6 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
       for(u <- declarations.units, c <- u.commands, v <- command(c, u), do: v),
       Enum.flat_map(declarations.publishes, &publish(&1, events, identity, unit_of)),
       shared_names(declarations.publishes),
-      contract_id(declarations.id),
       for(
         %{from: from, via: :subscribe} = c <- declarations.consumes,
         is_binary(from),
@@ -229,9 +232,13 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     end
   end
 
-  defp contract_id(nil), do: []
+  @doc false
+  # Plan DD, ID1: D11 of the contract's `id:` (`Rules.contract_id/1`), which stands
+  # beside the declarations rather than among them.
+  @spec contract_id(%{value: String.t(), at: term()} | nil) :: [{String.t(), term()}]
+  def contract_id(nil), do: []
 
-  defp contract_id(%{value: id, at: at}) do
+  def contract_id(%{value: id, at: at}) do
     if byte_size(id) <= @id_bytes and contract_id?(id),
       do: [],
       else: [
@@ -243,9 +250,9 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
 
   defp contract_id?(id) do
     case String.split(id, ".") do
-      [namespace, _ | _] = segments ->
-        DslRules.namespace?(namespace) and Enum.all?(tl(segments), &DslRules.snake_case?/1) and
-          not (List.last(segments) =~ ~r/^v[0-9]+\z/)
+      [namespace | [_ | _] = rest] ->
+        DslRules.namespace?(namespace) and
+          Enum.all?(rest, &(DslRules.snake_case?(&1) and not (&1 =~ @version)))
 
       _one ->
         false

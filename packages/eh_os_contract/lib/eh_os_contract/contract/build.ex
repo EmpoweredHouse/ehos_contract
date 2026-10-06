@@ -100,7 +100,8 @@ defmodule EhOsContract.Contract.Build do
   end
 
   # Plan DD, ID1: the contract's `id:`, kept only where it names one, and outside the
-  # version and every digest: naming a contract changes nothing it decides or records.
+  # version and the declarations' digests: naming a contract changes nothing it decides
+  # or records. The exported model carries it, so the export's document digest moves.
   defp with_id(model, nil), do: model
   defp with_id(model, id), do: Map.put(model, :id, id)
 

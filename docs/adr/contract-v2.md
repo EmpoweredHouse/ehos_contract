@@ -173,7 +173,8 @@ scenario        description!   scope · actor
 >
 > *Changed 6 October 2026, plan DD, ID1.* **A contract may name itself: `use EhOsContract.Contract, domain!, context!,
 > id`.** `id` is the domain's `name:`, then dotted snake_case segments, unversioned (`"rehmed.settlement"`), at most
-> 100 bytes (D11, L2), under the domain's namespace (D11, L3) and unique in the application (X7). Its identity until
+> 100 bytes, no segment a version (D11, L2), under the domain's namespace (D11, L3) and unique in the application
+> (X7). Its identity until
 > now came from the module and the process's name; `id` is the step towards an identity a rename of either does not
 > move. Optional in ID1 and outside the version; ID3 makes it required and the prefix of event types, which
 > amends D1 (§16).

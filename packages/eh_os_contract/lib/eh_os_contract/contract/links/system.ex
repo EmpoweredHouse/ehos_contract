@@ -41,7 +41,7 @@ defmodule EhOsContract.Contract.Links.System do
 
   defp ids(system) do
     named =
-      for %{declarations: %{id: %{value: id, at: at}}} = c <- system.contracts,
+      for %{id: %{value: id, at: at}} = c <- system.contracts,
           do: {id, c.module, at}
 
     for {id, {module, at}, {first, first_at}} <- collisions(named) do

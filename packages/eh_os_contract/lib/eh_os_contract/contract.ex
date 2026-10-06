@@ -34,7 +34,7 @@ defmodule EhOsContract.Contract do
   against the contract by a Mix compiler, not by recompiling every contract when the
   domain changes. `id:` (plan DD, ID1) names the contract for readers outside the
   code, `"<domain name>.<segment>…"` (D11), unique in the application (X7); it is in
-  the model only where given, and outside the version.
+  the model only where given, and outside the version and the declarations' digests.
 
   It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
   struct for every command, event, state, row and query and a behaviour for

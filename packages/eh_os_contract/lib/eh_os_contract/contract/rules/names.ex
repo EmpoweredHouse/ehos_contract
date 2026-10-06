@@ -61,7 +61,7 @@ defmodule EhOsContract.Contract.Rules.Names do
   # --- N1: a label says something ----------------------------------------------------
 
   defp labels(d) do
-    d |> Map.drop([:module, :id]) |> Map.values() |> List.flatten() |> DslRules.blank_labels("N1")
+    d |> Map.delete(:module) |> Map.values() |> List.flatten() |> DslRules.blank_labels("N1")
   end
 
   # --- N1: snake_case ---------------------------------------------------------------

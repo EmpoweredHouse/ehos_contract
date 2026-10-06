@@ -41,7 +41,12 @@ defmodule EhOsContract.Contract.Rules do
   @impl true
   def transform(dsl) do
     declarations = declarations(dsl)
-    DslRules.result(dsl, [:contract], Enum.flat_map(@groups, & &1.check(declarations)))
+
+    violations =
+      Enum.flat_map(@groups, & &1.check(declarations)) ++
+        Rules.Boundaries.contract_id(contract_id(dsl))
+
+    DslRules.result(dsl, [:contract], violations)
   end
 
   @doc false
@@ -52,7 +57,6 @@ defmodule EhOsContract.Contract.Rules do
 
     %{
       module: Transformer.get_persisted(dsl, :module),
-      id: contract_id(dsl),
       units: of.(Dsl.Unit),
       policies: of.(Dsl.Policy),
       effects: of.(Dsl.Effect),
@@ -67,14 +71,24 @@ defmodule EhOsContract.Contract.Rules do
     }
   end
 
-  # Plan DD, ID1: the contract's `id:`, as written, with where its `use` stands, or
-  # `nil` when it names none.
-  defp contract_id(dsl) do
+  @doc false
+  # Plan DD, ID1: the contract's `id:`, as written, with where its `use` stands (`nil`
+  # when the file is not known), or `nil` when it names none. Kept beside the
+  # declarations, not among them: every rule that walks all of them reads lists of
+  # Spark entities.
+  @spec contract_id(map()) :: %{value: String.t(), at: :erl_anno.anno() | nil} | nil
+  def contract_id(dsl) do
     case Transformer.get_persisted(dsl, :eh_os_contract_contract) do
-      %{id: id} when id != nil ->
-        file = dsl |> Transformer.get_persisted(:file) |> String.to_charlist()
-        line = Transformer.get_persisted(dsl, :eh_os_contract_line)
-        %{value: id, at: :erl_anno.set_file(file, :erl_anno.new(line))}
+      %{id: id} when id != nil -> %{value: id, at: use_at(dsl)}
+      _ -> nil
+    end
+  end
+
+  defp use_at(dsl) do
+    case {Transformer.get_persisted(dsl, :file),
+          Transformer.get_persisted(dsl, :eh_os_contract_line)} do
+      {file, line} when is_binary(file) and is_integer(line) ->
+        :erl_anno.set_file(String.to_charlist(file), :erl_anno.new(line))
 
       _ ->
         nil

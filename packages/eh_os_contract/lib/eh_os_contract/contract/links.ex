@@ -37,6 +37,7 @@ defmodule EhOsContract.Contract.Links do
           module: module(),
           model: map(),
           declarations: map(),
+          id: %{value: String.t(), at: :erl_anno.anno() | nil} | nil,
           at: :erl_anno.anno() | nil,
           domain: map() | nil
         }
@@ -95,6 +96,7 @@ defmodule EhOsContract.Contract.Links do
         module: module,
         model: model,
         declarations: Rules.declarations(dsl),
+        id: Rules.contract_id(dsl),
         at: use_at(dsl.persist),
         domain: domain(model.domain)
       }

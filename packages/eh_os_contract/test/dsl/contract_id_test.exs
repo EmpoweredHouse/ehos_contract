@@ -40,8 +40,8 @@ defmodule EhOsContract.ContractIdTest do
 
       aggregate #{inspect(process)}, "Jednostka" do
         identity :case_id
-        command :"open_#{process}", "Otwórz", by: :reception, emits: :"#{process}_opened"
-        event :"#{process}_opened", "Otwarto"
+        command #{inspect(:"open_#{process}")}, "Otwórz", by: :reception, emits: #{inspect(:"#{process}_opened")}
+        event #{inspect(:"#{process}_opened")}, "Otwarto"
       end
 
       process #{inspect(process)}, "Proces" do
@@ -60,6 +60,7 @@ defmodule EhOsContract.ContractIdTest do
           {"Clinic.settlement", "a namespace not lowercase"},
           {"clinic..settlement", "an empty segment"},
           {"clinic.settlement.v1", "versioned, as a publication is"},
+          {"clinic.v1.settlement", "a version segment anywhere"},
           {"clinic.settle:ment", "a colon, which separates a key's parts"},
           {"clinic.settle|ment", "a bar, which separates a run's parts"},
           {"clinic." <> String.duplicate("a", 94), "over 100 bytes"}

@@ -392,7 +392,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       for c <- Rules.commands(d), c.scope != nil, do: {"command", c, c.fields}
   end
 
-  defp namespaces(%{declarations: d, domain: domain}) do
+  defp namespaces(%{declarations: d, domain: domain} = c) do
     prefix = "#{domain.name}."
 
     published =
@@ -406,17 +406,10 @@ defmodule EhOsContract.Contract.Links.Domain do
 
     # Plan DD, ID1: the contract's own name, under the same namespace.
     named =
-      case d.id do
-        %{value: id, at: at} when is_binary(id) ->
-          if String.starts_with?(id, prefix),
-            do: [],
-            else: [
-              {"D11: the contract's id: #{inspect(id)} is outside the application's namespace " <>
-                 "#{inspect(prefix)}, the name: of #{inspect(domain.module)}", at}
-            ]
-
-        nil ->
-          []
+      for %{value: id, at: at} <- [c.id],
+          not String.starts_with?(id, prefix) do
+        {"D11: the contract's id: #{inspect(id)} is outside the application's namespace " <>
+           "#{inspect(prefix)}, the name: of #{inspect(domain.module)}", at}
       end
 
     published ++ named

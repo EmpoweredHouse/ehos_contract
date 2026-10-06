@@ -47,7 +47,7 @@ defmodule EhOsContract.Contract.Rules.Process do
   def check(%{processes: []} = declarations) do
     anchor =
       declarations
-      |> Map.drop([:module, :id])
+      |> Map.delete(:module)
       |> Map.values()
       |> List.flatten()
       |> Enum.min_by(&line/1, fn -> %Dsl.ProcessDeclaration{} end)
