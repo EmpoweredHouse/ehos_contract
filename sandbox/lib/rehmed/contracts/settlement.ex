@@ -25,7 +25,7 @@ defmodule Rehmed.Contracts.Settlement do
   the close**, so the total comes with the close. The mockup says itself that this
   contradicts `DEC-18`; if pass 2 decides otherwise, the total moves. The opening is
   not declared here: nothing in this contract reacts to the arrival, so a
-  settlement's history starts with its first service line, handover or payment.
+  settlement's history starts with its first event.
 
   ## Money
 
@@ -46,9 +46,10 @@ defmodule Rehmed.Contracts.Settlement do
   ## No process, and no promise
 
   `DEC-01` made documentation and settlement independent and concurrent — the
-  specialist writes while reception settles — so no promise crosses them. Nobody
-  described a run of settling one visit either, so the contract declares no process;
-  the visit the clinic described end to end is statutory reporting's `clinical_visit`.
+  specialist writes while reception settles — so no promise crosses them. The
+  distillation's process 4 is a visit's settlement, but it argues for one run per visit
+  across booking, documentation and settlement (finding 1), which no single contract
+  can hold until the process module (plan DD, P2b). The contract declares none.
 
   The one timing anybody described is that a mid-visit addition reaches the desk
   before the patient does — a moment, answered by a push (`DEC-17`), with no interval
@@ -120,7 +121,7 @@ defmodule Rehmed.Contracts.Settlement do
     # So do the payer and the period, when a payer covers the visit: the payer is set
     # at booking and the settlement screen shows it on the line it covers (the
     # mockup's "who pays" column), and the period is the month of the visit. The settlement cannot
-    # know either itself, since it opens only when the patient arrives.
+    # know either itself, since both are set at booking, which it does not consume.
     command :close_settlement, "Zamknij wizytę komercyjnie",
       by: :reception,
       emits: [:visit_closed_commercially, :visit_closed_without_payment, :visit_charged_to_payer],

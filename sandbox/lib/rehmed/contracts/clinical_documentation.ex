@@ -2,8 +2,10 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   @moduledoc """
   Clinical documentation (`CTX-03`): the codes of a visit and the specialist's
   clinical close, which is what hands a medical event to statutory reporting. It
-  declares no process: the visit's run is statutory reporting's `clinical_visit`,
-  which includes the clinical close from here (distillation, finding 1).
+  declares no process: the visit's run spans booking, documentation and settlement
+  (distillation, finding 1), more than one contract can hold until the process module
+  (plan DD, P2b). Statutory reporting's `clinical_visit` includes the clinical close
+  from here.
 
   Written from `AGG-02` in `2-Solution/20-aggregates.md` and process 2 of
   `docs/rehmed-2026-08-18-distillation.md` (v2 plan, E9), the best-evidenced process

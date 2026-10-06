@@ -34,10 +34,12 @@ defmodule Rehmed.Contracts.Scheduling do
 
   ## No process
 
-  The contract holds the visit as a unit, not as a run. The run the clinic described
-  crosses three contexts with the same visit, and it is statutory reporting's
-  `clinical_visit`, which includes `visit_completed` from here (distillation,
-  finding 1). Which of its three ends a visit reached is the aggregate's state.
+  The contract holds the visit as a unit, not as a run. The distillation describes one
+  run per visit across booking, documentation and settlement (finding 1); no single
+  contract can hold it, since a process sits in one contract until the process module
+  (plan DD, P2b). Statutory reporting's `clinical_visit` covers part of it and includes
+  `visit_completed` from here. Which of the three ends a visit reached is in its
+  events: the state records only that it ended.
 
   `visit_booked`, `visit_completed` and `visit_cancelled` start with the aggregate's
   name and `check` says so (`event-name-with-aggregate-prefix`): the names are the
