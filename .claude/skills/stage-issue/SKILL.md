@@ -17,15 +17,17 @@ context repository (`CLAUDE.md`).
 
 ## What goes where
 
-| `PLAN.md` | the stage's issue |
-| --- | --- |
-| the programme's outline, waves and order | the problem the stage solves, for a reader outside the team |
-| the "Postęp" table: stage, wave, scope in a few words, dependencies, status, issue | what is in scope and what is deliberately left out |
-| the stage's paragraph: two to five lines of what it changes, written before it starts | the expected result, and how anyone can see it |
-| decisions that bind several stages (a user's choice before a wave) | every decision taken during the stage, with the options it beat |
-| the migration note after a wave | the review: what each review found and what happened to it |
-| | what a host has to do, one line for the migration note |
-| | the pull requests, linked by GitHub through `Closes #N` |
+`CONTRIBUTING.md`, "Where things live", has the one table of what `PLAN.md`, an issue, `docs/adr/`, a pull
+request and the code each hold, and the scheme a person follows. This skill does not repeat it; it says what
+an assistant does at each step. In short: `PLAN.md` holds the programme's outline, the status, a few lines a
+stage and the issue's link; the issue holds the problem, scope, expected result, decisions and the review;
+`docs/adr/` holds what the library is meant to be, changed only by a dated amendment.
+
+**A decision goes to `docs/adr/` when a reader of the library in six months would misunderstand it without
+it** — a rule of the contract, a shape later stages build on (an identifier's form, what a reaction across
+contexts must declare). A decision about how the stage was carried out stays in the issue (which module holds
+a check, which code a refusal gets). An amendment ends with the issue's link, and the issue lists the
+amendments its stage made under "Changes to the design record". `PLAN.md` links only the issue.
 
 **Issues, their comments and pull requests are in English**: the project will be international, and what is
 left on GitHub is read by people outside this team. So are new entries in `PLAN.md` from 6 October 2026; its
@@ -44,9 +46,13 @@ rewritten. Their issues are closed ones that link the pull request and the secti
    stage of another programme does not get `dd` by default. The title names the change, not the stage code: "Contracts can name themselves",
    not "ID1". The stage code goes in the first line of the body.
 3. **Mark the start in `PLAN.md`:** ◐, the branch, and the issue number in the "Postęp" table, in the stage's
-   first commit.
+   first commit. Name the branch after the issue, `dd/<issue>-<few-words>` (`dd/165-contract-id`), and end every
+   commit message of the stage with `Part of #N`, so `git blame` leads from a line to the issue. A code comment
+   that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
 4. **Record each decision on the issue when it is made**, as a comment: what was decided, the options that lost
    and why, and who decided (the user, or the assistant on a mechanical question). Not at the end, from memory.
+   A decision that changes what the library is meant to be also gets its dated amendment in `docs/adr/`, linking
+   the issue, and the issue's "Changes to the design record" names it.
 5. **The pull request that finishes the stage says `Closes #N`**, so GitHub links it and closes the issue on
    merge. When the stage takes several, the earlier ones say `Part of #N`, which links them and closes nothing;
    only the last one says `Closes #N`. If a stage ends without such a pull request, close the issue by hand
@@ -65,7 +71,9 @@ changes. Write for that person.
 - **The problem first, in the reader's terms.** What goes wrong today, for whom, with one example from the
   test material (a clinic, an accounting firm, an equipment store). Not the module that will change.
 - **No implementation names.** No module or function names, no refusal codes (`X10`, `D11`), no file paths,
-  no line numbers. Say what the library will refuse or warn about and when ("the contract will not compile",
+  no line numbers. Everywhere else in prose — `PLAN.md`, `docs/adr/`, a pull request, a commit — a code may
+  stand, but never alone: its meaning first, the code in parentheses, "a reaction to another context's event
+  that leaves delivery out (X10)". Say what the library will refuse or warn about and when ("the contract will not compile",
   "the check will warn"). The pull request carries the code; the issue links it.
 - **Concrete over abstract.** "Two contracts could record events that look identical in the log" beats
   "improves identity guarantees". A number, a name or an example beats an adjective.

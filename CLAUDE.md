@@ -38,6 +38,7 @@ linii.
 | Co | Gdzie |
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
+| **Schemat pracy dla każdego** (człowieka i modelu): co gdzie żyje, od pomysłu do `main`, jak wrócić od linii kodu do uzasadnienia | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | **Etap programu** (dziś DD): zakres, decyzje, przegląd, PR-y — w issue na GitHubie, po angielsku; `PLAN.md` trzyma status i link | skill [`stage-issue`](.claude/skills/stage-issue/SKILL.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać domenę i kontrakt** — co się nie skompiluje, każda odmowa z kodem | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
@@ -62,7 +63,8 @@ Z tego wynika, gdzie co poprawiać:
 
 - **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
 - **Ustalenie z pisania kodu** — do `PLAN.md`, i tylko tam aktualizuje się stan.
-- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie.
+- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie,
+  zakończona linkiem do issue etapu, który ją wprowadził (od 6 października).
   Sens tych plików polega na tym, że da się je porównać z tym, co faktycznie wyszło; przepisane pod aktualny
   kod przestają cokolwiek mierzyć.
 - Założenia są **świadomie z tyłu**. Gdy `docs/adr/` i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
@@ -206,6 +208,13 @@ mix ecto.migrate`.
   rozwinięć — `for x in $LISTA` daje jedną iterację z całą listą w jednym argumencie, nie N iteracji. Raz
   wystarczyło, żeby `git cherry-pick` dostał siedem SHA-ów jako jeden argument, padł, a stojące po nim
   `git commit --amend` przepisało nie ten commit, co miało. Pętle po SHA-ach pisz jawnie albo przez tablice.
+- **Kod reguły nigdy nie stoi sam w prozie** (od 6 października, decyzja użytkownika). W `PLAN.md`, `docs/adr/`,
+  opisie PR-a i commicie najpierw znaczenie, potem kod w nawiasie: „reakcja na zdarzenie innego kontekstu bez
+  zadeklarowanego `delivery` (X10)”. W issue kodów nie ma wcale. Komunikaty kompilatora i testy zostają przy
+  kodach — tam znaczenie stoi obok, w treści komunikatu.
+- **PR mówi, do czego należy:** `Closes #N`, `Part of #N` albo `No issue: <powód>` (szablon PR-a; sprawdza to
+  `.github/workflows/pr-links-issue.yml`). Commit etapu kończy się `Part of #N`, gałąź etapu to
+  `dd/<issue>-<słowa>`, a komentarz w kodzie cytujący etap podaje też issue: `plan DD, ID1 (#165)`.
 - **Nazwy zdarzeń pochodzą z warsztatu**, nie z wyobraźni. Źródło:
   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
 

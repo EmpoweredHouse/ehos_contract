@@ -31,6 +31,10 @@ What anyone can see once it is done: a refusal, a warning, a page, a test that p
 
 Recorded as comments when they are made: what was chosen, the options that lost and why, and who decided.
 
+## Changes to the design record
+
+The dated amendments this stage made in `docs/adr/`, each linking back here, or "none".
+
 ## For applications using the library
 
 What a host has to do when it upgrades, or "nothing".
