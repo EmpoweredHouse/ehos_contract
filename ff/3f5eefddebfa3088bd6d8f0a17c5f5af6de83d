@@ -1,0 +1,4 @@
+ID2 pre-PR review, origin/main..HEAD, two reviews in parallel.
+Correctness (code-review high): 6 findings. Fixed: LinksDashedWrong without its namespace (a second, hidden D11 violation; now asserted as one, reverse-checked); the template underscoring a whole dotted name; seven inline copies of the name rule (now DslCase.contract_name/1); PLAN.md listing the ADR example in scope. No change: tightening a stage paragraph at its start is step 1 of stage-issue; stage codes are not rule codes; id on the context line keeps pinned lines.
+Security/performance: no findings; one side effect noted: the exported model digest and the model API ETag change once per contract.
+Gate EXIT=0: check 0/33/10, 0/76/6; sandbox 196, engine 1365, web 52, auth 286+1. Report and 11 graphs byte-identical; check findings identical apart from line numbers the formatter moved.
