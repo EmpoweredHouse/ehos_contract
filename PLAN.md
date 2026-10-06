@@ -524,7 +524,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 - **Pytanie z tabeli „Do decyzji przed etapem”:** odpowiedź użytkownika jako „### Przed <ID> — decyzje użytkownika
   (data)”, z odrzuconymi opcjami.
 - **Koniec etapu:** komentarz zamykający issue (co wyszło, co zostało i gdzie, wiersz do notatki migracyjnej); po
-  merge'u status ☑ i numer PR-a. Do ID1 włącznie: „### <ID> — co wyszło (data)” pod tym dopiskiem.
+  merge'u status ☑ i numer PR-a. The issue closes through `Closes #N` on the stage's last pull request (earlier
+  ones say `Part of #N`); otherwise it is closed by hand after the closing comment. Do ID1 włącznie: „### <ID> — co wyszło (data)” pod tym dopiskiem.
 - **Koniec sesji:** tabela i blok „Handoff” na górze pliku pokazują następny etap; w rozmowie nie zostaje nic, czego
   nie ma tutaj.
 - **Po każdej fali:** decyzja użytkownika „dalej czy stop”, tag wersji, notatka migracyjna dla aplikacji testowej

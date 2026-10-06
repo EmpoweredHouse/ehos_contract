@@ -94,8 +94,8 @@ The hook still asks for the note: record it once you have checked the diff is do
    pushed.
 8. **Open the pull request.** Its "How it was tested" section says what you ran, with the gate's
    exit code. A "Review" section lists what each review found and what happened to each finding,
-   or says the change is documentation only. A stage of a programme says `Closes #N` (or
-   `Part of #N`) for its issue, and the review goes on that issue as a comment too, in the plain
+   or says the change is documentation only. A stage of a programme links its issue: `Closes #N` on
+   the pull request that finishes the stage, `Part of #N` on any before it, and the review goes on that issue as a comment too, in the plain
    form `.claude/skills/stage-issue/SKILL.md` describes.
 
 After review comments or a failed CI run, fix, commit, and go through steps 3–7 again for the new

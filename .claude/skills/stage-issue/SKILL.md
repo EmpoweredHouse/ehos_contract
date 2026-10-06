@@ -39,19 +39,23 @@ rewritten. Their issues are closed ones that link the pull request and the secti
 1. **Before the stage starts, tighten its paragraph in `PLAN.md`.** A stage not yet started may be rewritten:
    say in two to five lines what it changes and what it depends on, drop line numbers that have gone stale,
    and move anything that turned out to belong to another stage there. Do not touch stages already done.
-2. **Open the issue** from `.github/ISSUE_TEMPLATE/stage.md`, with the labels `dd` and `wave-<n>` (the
-   programme's and the wave's). The title names the change, not the stage code: "Contracts can name themselves",
+2. **Open the issue** from `.github/ISSUE_TEMPLATE/stage.md`, with the programme's label (`dd` for the DD
+   programme) and, when the programme has waves, the wave's (`wave-<n>`). The template applies none, so that a
+   stage of another programme does not get `dd` by default. The title names the change, not the stage code: "Contracts can name themselves",
    not "ID1". The stage code goes in the first line of the body.
 3. **Mark the start in `PLAN.md`:** ◐, the branch, and the issue number in the "Postęp" table, in the stage's
    first commit.
 4. **Record each decision on the issue when it is made**, as a comment: what was decided, the options that lost
    and why, and who decided (the user, or the assistant on a mechanical question). Not at the end, from memory.
-5. **Every pull request of the stage says `Closes #N`** (or `Part of #N` when the stage takes several), so
-   GitHub links it and closes the issue on merge. The review note (`pre-pr-review`) goes on the issue as a
+5. **The pull request that finishes the stage says `Closes #N`**, so GitHub links it and closes the issue on
+   merge. When the stage takes several, the earlier ones say `Part of #N`, which links them and closes nothing;
+   only the last one says `Closes #N`. If a stage ends without such a pull request, close the issue by hand
+   after the closing comment. The review note (`pre-pr-review`) goes on the issue as a
    comment too, in the plain form below.
 6. **When the stage is merged:** ☑ and the pull request in `PLAN.md`; a closing comment on the issue with what
    came of it — what changed for a user of the library, what is left for later and where, the line for the
-   migration note. No new "co wyszło" section in `PLAN.md`.
+   migration note. Check the issue is closed; a comment alone does not close it. No new "co wyszło" section in
+   `PLAN.md`.
 
 ## How an issue reads
 

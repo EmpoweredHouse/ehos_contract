@@ -1,7 +1,7 @@
 ---
 name: Programme stage
 about: One stage of a planned programme (see PLAN.md and the stage-issue skill)
-labels: ["dd"]
+labels: []
 ---
 
 Stage <code> of the <programme> programme, wave <n>. Status and order: the "Postęp" table in `PLAN.md`.

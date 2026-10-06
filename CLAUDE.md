@@ -170,11 +170,11 @@ mix ecto.migrate`.
 - **Grep po `[ąćęłńóśźż]` nie wystarcza do sprawdzenia** i to jest zapisane, bo kosztowało jeden fałszywy
   „gotowe". Spora część polszczyzny nie ma diakrytyków — `rejestry` w `registry_check.ex` przeżyło pełne
   przepisanie pliku po pliku właśnie dlatego. Przy sprawdzaniu trzeba przejść też po słowach.
-- **Dokumentacja repo robocza — `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
-  jedzie z pakietem. **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
+- **Dokumentacja repo robocza — ten plik i historia `PLAN.md` — zostaje po polsku.** To nie jest kod i nie
+  jedzie z pakietem; nowe wpisy w `PLAN.md` są od 6 października po angielsku (niżej). **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
   upubliczniona, więc `README.md` jest teraz po angielsku, po tej samej stronie granicy co
-  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
-  i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
+  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. Ten plik i
+  dotychczasowy `PLAN.md` zostają po polsku, bo ich czytelnikiem był tylko zespół pracujący w tym
   repozytorium.
 - **Od 6 października nowe wpisy w `PLAN.md` są po angielsku** (decyzja użytkownika: projekt będzie
   międzynarodowy, więc ślady w repozytorium i na GitHubie zostawiamy po angielsku; rozmawiamy po polsku).
