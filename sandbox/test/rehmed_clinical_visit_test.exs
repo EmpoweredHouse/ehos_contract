@@ -84,8 +84,8 @@ defmodule Rehmed.ClinicalVisitTest do
 
   defp verdicts(opts \\ []), do: Trace.evaluate(StatutoryReporting, @promise, opts)
 
-  # An event's type is its home process's name and its own (D1): statutory
-  # reporting's events are the clinical visit's.
+  # An event's type is its contract's id and its own name (D1, amended by plan DD, ID3,
+  # #173): statutory reporting's events are `rehmed.statutory_reporting.*`.
   defp types, do: Repo.all(from(e in Event, order_by: e.position, select: e.type))
 
   test "a massage closed clinically keeps the promise the other way: nothing is owed to P1" do
@@ -98,7 +98,7 @@ defmodule Rehmed.ClinicalVisitTest do
 
     assert [%{verdict: :satisfied, via: :or_else, instance_id: instance}] = verdicts()
     assert instance =~ id
-    assert "clinical_visit.p1_reporting_not_required" in types()
+    assert "rehmed.statutory_reporting.p1_reporting_not_required" in types()
   end
 
   test "physiotherapy is queued on the close, sent by the effect, and keeps the promise" do
@@ -112,7 +112,9 @@ defmodule Rehmed.ClinicalVisitTest do
     assert [%{verdict: :satisfied, via: :eventually}] = verdicts()
 
     # The integration recorded the registry's answer, as the integration.
-    sent = Repo.one!(from(e in Event, where: e.type == "clinical_visit.p1_report_sent"))
+    sent =
+      Repo.one!(from(e in Event, where: e.type == "rehmed.statutory_reporting.p1_report_sent"))
+
     assert sent.actor == "system:p1_integration"
   end
 
@@ -127,10 +129,10 @@ defmodule Rehmed.ClinicalVisitTest do
     visit("patient-anna")
 
     Clock.at(DateTime.add(@left, 23 * 3600), fn -> Testing.drain() end)
-    refute "visit_documentation.documentation_overdue_task_created" in types()
+    refute "rehmed.clinical_documentation.documentation_overdue_task_created" in types()
 
     Clock.at(DateTime.add(@left, 25 * 3600), fn -> Testing.drain() end)
-    assert "visit_documentation.documentation_overdue_task_created" in types()
+    assert "rehmed.clinical_documentation.documentation_overdue_task_created" in types()
   end
 
   test "the chase ends with the clinical close, and creates no task" do
@@ -138,6 +140,6 @@ defmodule Rehmed.ClinicalVisitTest do
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
     Clock.at(DateTime.add(@left, 25 * 3600), fn -> Testing.drain() end)
-    refute "visit_documentation.documentation_overdue_task_created" in types()
+    refute "rehmed.clinical_documentation.documentation_overdue_task_created" in types()
   end
 end

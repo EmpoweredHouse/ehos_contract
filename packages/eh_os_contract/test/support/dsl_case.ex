@@ -40,10 +40,12 @@ defmodule EhOsContract.DslCase do
   may do (v2 §8).
   """
   @spec contract(String.t(), String.t()) :: String.t()
-  def contract(name, body) do
+  def contract(name, body), do: source(name, body, "clinic.#{contract_name(name)}")
+
+  defp source(name, body, id) do
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(name)}"
+      use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "#{id}"
 
     #{body}
     end
@@ -69,10 +71,15 @@ defmodule EhOsContract.DslCase do
     name |> contract(body) |> compile_error("#{Macro.underscore(name)}.ex") |> Exception.message()
   end
 
-  @doc "Compiles the contract `contract/2` writes and returns its model."
-  @spec compile_contract(String.t(), String.t()) :: map()
-  def compile_contract(name, body) do
-    compile(contract(name, body), "#{Macro.underscore(name)}.ex")
+  @doc """
+  Compiles the contract `contract/2` writes and returns its model. `id:` in `opts` gives
+  it another id than its own name's: two contracts compared by version or digest share
+  one, since an id types every event (plan DD, ID3).
+  """
+  @spec compile_contract(String.t(), String.t(), keyword()) :: map()
+  def compile_contract(name, body, opts \\ []) do
+    id = Keyword.get(opts, :id, "clinic.#{contract_name(name)}")
+    compile(source(name, body, id), "#{Macro.underscore(name)}.ex")
     EhOsContract.Model.fetch(Module.concat(EhOsContract.Fixtures, name))
   end
 

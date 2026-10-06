@@ -1924,7 +1924,7 @@ The one process the contract describes: its runs, stages and promises.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#contract-process-name){: #contract-process-name .spark-required} | `atom` |  | The process's name, the prefix of its event types. |
+| [`name`](#contract-process-name){: #contract-process-name .spark-required} | `atom` |  | The process's name, which keys its runs. |
 | [`label`](#contract-process-label){: #contract-process-label .spark-required} | `String.t` |  | What the business calls it. |
 ### Options
 

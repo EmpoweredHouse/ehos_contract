@@ -63,10 +63,10 @@ defmodule Taxvision.MatchingTest do
     Testing.drain()
 
     assert [%{"turnover_id" => "t-1", "ksef_number" => @number}] =
-             payloads("accounting_month.turnover_matched_with_invoice")
+             payloads("taxvision.accounting_month.turnover_matched_with_invoice")
 
     assert [%{"turnover_id" => "t-2"}] =
-             payloads("accounting_month.turnover_without_invoice_flagged")
+             payloads("taxvision.accounting_month.turnover_without_invoice_flagged")
   end
 
   # `evolve/2` passes statements over, so a match does not read them (plan E11f-5): before,
@@ -102,14 +102,14 @@ defmodule Taxvision.MatchingTest do
       )
 
     assert length(read) == 2
-    assert Enum.all?(read, &("ksef_intake.invoice_pulled_from_ksef" in &1))
-    refute Enum.any?(read, &("accounting_month.bank_turnover_list_created" in &1))
+    assert Enum.all?(read, &("taxvision.document_intake.invoice_pulled_from_ksef" in &1))
+    refute Enum.any?(read, &("taxvision.accounting_month.bank_turnover_list_created" in &1))
   end
 
   test "KSeF's number is held to its format: a number missing its checksum is not recorded" do
     assert {:error, {:invalid, [ksef_number: {:invariant, :ksef_format}]}} =
              invoice!("c-1", "5265877635-20260814-0A1B2C3D4E5F")
 
-    assert payloads("ksef_intake.invoice_pulled_from_ksef") == []
+    assert payloads("taxvision.document_intake.invoice_pulled_from_ksef") == []
   end
 end

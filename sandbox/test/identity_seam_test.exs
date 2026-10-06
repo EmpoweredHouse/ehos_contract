@@ -42,7 +42,10 @@ defmodule Taxvision.IdentitySeamTest do
     do: credential("u-accountant", [@open], %{@open => %{"company_id" => companies}})
 
   defp opened,
-    do: Repo.all(from(e in Event, where: e.type == "accounting_month.accounting_month_opened"))
+    do:
+      Repo.all(
+        from(e in Event, where: e.type == "taxvision.accounting_month.accounting_month_opened")
+      )
 
   # c-1's profile complete and August never checked, so that past the door the
   # domain's answer is its own: no consistent check, no month.

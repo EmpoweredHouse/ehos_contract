@@ -170,7 +170,7 @@ defmodule EhOsContract.PromiseEdgesTest do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     entry = %{
-      type: "edge.#{name}",
+      type: "promise_edges.edges.#{name}",
       contract: inspect(Edges),
       contract_version: EhOsContract.Model.fetch(Edges).version,
       process: "edge",

@@ -38,7 +38,7 @@ defmodule EhOsContract.DispatchCommandScopeTest do
 
   test "a value within the grant is decided" do
     assert {:ok, _} = move("b-7", clerk(["b-7", "b-9"]))
-    assert Repo.all(from(e in Event, select: e.type)) == ["transfer.account_moved"]
+    assert Repo.all(from(e in Event, select: e.type)) == ["dispatch_rig.transfer.account_moved"]
   end
 
   test "a value outside the grant is refused, and nothing is appended" do

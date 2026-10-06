@@ -43,7 +43,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
           Repo,
           [
             %{
-              type: "ledger.deposited",
+              type: "dispatch_rig.ledger.deposited",
               contract: "DispatchRig.Ledger",
               contract_version: "commits",
               process: "ledger",
@@ -149,7 +149,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
                 Repo,
                 [
                   %{
-                    type: "ledger.deposited",
+                    type: "dispatch_rig.ledger.deposited",
                     contract: "DispatchRig.Ledger",
                     contract_version: "commits",
                     correlation_id: Ecto.UUID.generate(),
@@ -173,7 +173,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
       amounts =
         Repo.all(
           from(e in EhOsContract.Event,
-            where: e.stream_id == ^stream and e.type == "ledger.deposited",
+            where: e.stream_id == ^stream and e.type == "dispatch_rig.ledger.deposited",
             order_by: e.stream_version,
             select: e.payload["amount"]
           )

@@ -1022,7 +1022,7 @@ defmodule EhOsContract.Contract.Dsl do
       name: [
         type: :atom,
         required: true,
-        doc: "The process's name, the prefix of its event types."
+        doc: "The process's name, which keys its runs."
       ],
       label: [type: :string, required: true, doc: "What the business calls it."],
       correlate: [

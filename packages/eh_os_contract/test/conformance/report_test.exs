@@ -262,7 +262,7 @@ defmodule EhOsContract.ReportTest do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     entry = %{
-      type: "handling.#{name}",
+      type: "process_shapes.promised.#{name}",
       contract: inspect(ProcessShapes.Promised),
       contract_version: "gone",
       process: "handling",

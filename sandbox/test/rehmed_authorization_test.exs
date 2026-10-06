@@ -118,7 +118,7 @@ defmodule Rehmed.AuthorizationTest do
     assert decisions("u-specialist") == [["rehmed.add_service_line", "allowed", nil]]
 
     assert Repo.all(from(e in Event, select: {e.type, e.actor})) ==
-             [{"visit_settlement.service_line_added", "actor:u-specialist"}]
+             [{"rehmed.settlement.service_line_added", "actor:u-specialist"}]
   end
 
   test "a request without a credential stops at the door, before any decision" do
@@ -175,7 +175,7 @@ defmodule Rehmed.AuthorizationTest do
     assert [%{"p1_reported" => true}] =
              Repo.all(
                from(e in Event,
-                 where: e.type == "visit_documentation.visit_closed_clinically",
+                 where: e.type == "rehmed.clinical_documentation.visit_closed_clinically",
                  select: e.payload
                )
              )
@@ -218,7 +218,7 @@ defmodule Rehmed.AuthorizationTest do
     assert [%{"total" => 20_000}] =
              Repo.all(
                from(e in Event,
-                 where: e.type == "visit_settlement.visit_closed_commercially",
+                 where: e.type == "rehmed.settlement.visit_closed_commercially",
                  select: e.payload
                )
              )

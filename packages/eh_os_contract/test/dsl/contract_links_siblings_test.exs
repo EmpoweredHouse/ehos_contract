@@ -482,8 +482,10 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         """
       end
 
-      left_out = compile_contract("SibX10LeftOut", body.(""))
-      declared = compile_contract("SibX10Declared", body.(", delivery: :in_transaction"))
+      left_out = compile_contract("SibX10LeftOut", body.(""), id: "clinic.x10")
+
+      declared =
+        compile_contract("SibX10Declared", body.(", delivery: :in_transaction"), id: "clinic.x10")
 
       assert [%{delivery: :in_transaction}] = left_out.policies
       assert [%{delivery: :in_transaction}] = left_out.read_models

@@ -30,7 +30,7 @@ defmodule EhOsContract.DispatchEffectsTest do
       Repo.one!(
         from(e in Event,
           where:
-            e.type == "ledger.account_flagged" and
+            e.type == "dispatch_rig.ledger.account_flagged" and
               fragment("? @> ?", e.tags, ^["account_id:#{account}"])
         )
       )
@@ -59,7 +59,7 @@ defmodule EhOsContract.DispatchEffectsTest do
       end)
 
       assert jobs() == []
-      refute "ledger.account_flagged" in types()
+      refute "dispatch_rig.ledger.account_flagged" in types()
     end
 
     test "control: a deposit that flags nothing inserts no job" do
@@ -96,7 +96,7 @@ defmodule EhOsContract.DispatchEffectsTest do
                  args: %{"effect" => @notify, "event_id" => deposited.__meta__.id}
                })
 
-      assert reason =~ "no longer takes ledger.deposited"
+      assert reason =~ "no longer takes dispatch_rig.ledger.deposited"
     end
 
     test "is retried when it answers {:error, reason}" do
@@ -156,7 +156,7 @@ defmodule EhOsContract.DispatchEffectsTest do
                      dispatch(%Withdraw{account_id: "a-1", amount: 99})
                    end
 
-      refute "ledger.withdrawn" in types()
+      refute "dispatch_rig.ledger.withdrawn" in types()
 
       assert %{outcome: "failed", failed_in: "effect:audit_withdrawal"} =
                Repo.one!(from(c in CommandRecord, where: c.type == "withdraw"))
@@ -164,7 +164,7 @@ defmodule EhOsContract.DispatchEffectsTest do
 
     test "control: the amount next to it is appended" do
       {:ok, _} = dispatch(%Withdraw{account_id: "a-1", amount: 98})
-      assert "ledger.withdrawn" in types()
+      assert "dispatch_rig.ledger.withdrawn" in types()
     end
   end
 end

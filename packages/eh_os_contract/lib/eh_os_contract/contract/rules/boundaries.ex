@@ -31,10 +31,11 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
     still publishes. The domain's `name:` is held to the same segment by the domain
     (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
-  - A contract's `id:` (plan DD, ID1) is the application's namespace, then one or more
+  - A contract has an `id:` (plan DD, ID1; required from ID3), the application's namespace, then one or more
     dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
-    most #{@id_bytes} bytes: it names the contract to readers outside the code, and will
-    prefix its event types and its rows' keys, where neither `:` nor `|` may stand.
+    most #{@id_bytes} bytes: it names the contract to readers outside the code, prefixes
+    its event types (`"<id>.<event>"`), and will prefix its rows' keys, where neither `:`
+    nor `|` may stand.
   - `subscribe "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads.
 
@@ -236,8 +237,15 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   @doc false
   # Plan DD, ID1: D11 of the contract's `id:` (`Rules.contract_id/1`), which stands
   # beside the declarations rather than among them.
-  @spec contract_id(%{value: String.t(), at: term()} | nil) :: [{String.t(), term()}]
-  def contract_id(nil), do: []
+  @spec contract_id(%{value: String.t() | nil, at: term()}) :: [{String.t(), term()}]
+  # Plan DD, ID3 (#173): the id labels every event the contract records, so there is no
+  # contract without one.
+  def contract_id(%{value: nil, at: at}) do
+    [
+      {"D11: the contract names no id:, which labels every event it records; add one, the " <>
+         "application's namespace and the contract's name, like `id: \"my-shop.settlement\"`", at}
+    ]
+  end
 
   def contract_id(%{value: id, at: at}) do
     if byte_size(id) <= @id_bytes and contract_id?(id),

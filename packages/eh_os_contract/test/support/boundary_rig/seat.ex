@@ -41,7 +41,7 @@ defmodule BoundaryRig.Seat do
         repo,
         [
           %{
-            type: "enrolment.student_subscribed",
+            type: "boundary_rig.enrolment.student_subscribed",
             contract: inspect(BoundaryRig.Enrolment),
             contract_version: "race",
             tags: ["course_id:#{course}", "student_id:#{student}"],

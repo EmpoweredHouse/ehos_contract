@@ -119,7 +119,7 @@ defmodule EhOsContract.Trace do
   A contract declares `promise` in its one `process` (v2 §13, plan E7c). The runs
   are the rows of `eh_os_contract_event_runs` for that process, so an event another
   contract decided and this one includes counts in its run (D7), and the events are
-  named by their stored types, `"<process>.<event>"`.
+  named by their stored types, `"<contract id>.<event>"`.
   `test/conformance/promise_test.exs` pins the verdicts.
 
   But **the report aggregates to numbers** (`summary/1`). "Which company has no
@@ -201,7 +201,7 @@ defmodule EhOsContract.Trace do
   The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
   contract, and nothing from the log.
 
-  Its events are named by their stored types, `"<process>.<event>"` — the sibling's
+  Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
   for an event the contract includes (D7). Its `identity` is set when the unit of
   `from`'s event is strictly finer than the process's correlation, which is when the
   promise is made per item inside a run.

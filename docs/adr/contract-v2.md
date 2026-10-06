@@ -602,6 +602,12 @@ Domain types are referenced as remote types from the `Values` module the domain 
 create no compile dependency. The event type stored in the log is the stable string
 `"<process>.<event>"`, never a module name, so renaming a module does not orphan history.
 
+> *Changed 6 October 2026, plan DD, ID3 ([#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173)).* **The
+> event type is `"<contract id>.<event>"`.** A contract's required `id:` (D11) replaces the process's name: renaming
+> a process no longer changes a stored type, while renaming the id, or moving an event to a contract with another id,
+> does. This amends D1 (§16) and the `type` comment of the events table in §10. Logs written under the old types are
+> not read: an upgrading application resets the engine's schema (the user's decision, recorded on the issue).
+
 > *Corrected 30 September 2026, plan E11f.* **True of dispatch's fold, not of the rest of the engine.**
 > Every row also stores its contract's module name in `contract`, and every `_commands` row does too, and
 > most readers select or resolve by it:
@@ -1058,7 +1064,7 @@ migrations (D2).
 CREATE TABLE eh_os_contract_events (
   position         bigint GENERATED ALWAYS AS IDENTITY (CACHE 1) PRIMARY KEY,
   id               uuid NOT NULL UNIQUE,
-  type             text NOT NULL,                -- "<process>.<event>"
+  type             text NOT NULL,                -- "<process>.<event>" (from ID3: "<contract id>.<event>", §8)
   schema_version   integer NOT NULL DEFAULT 1,
   contract         text NOT NULL,
   contract_version text NOT NULL,
@@ -1554,7 +1560,7 @@ one is a dated note here.
 
 | | Decision |
 | --- | --- |
-| D1 | Names: `emits:` (ESDM says `publishes`); `promise` instead of `trace`, which collides with process mining's "trace" (one case's event sequence); event type `"<process>.<event>"`; actor kinds `:human \| :system`, ESDM's pair — a service is a `:system` actor `backed_by` an external. |
+| D1 | Names: `emits:` (ESDM says `publishes`); `promise` instead of `trace`, which collides with process mining's "trace" (one case's event sequence); event type `"<process>.<event>"` (*changed 6 October 2026, plan DD, ID3: `"<contract id>.<event>"`, §8*); actor kinds `:human \| :system`, ESDM's pair — a service is a `:system` actor `backed_by` an external. |
 | D2 | Migrations collapse into one version at the cut, as V01 did ("the final shape, not the history"). |
 | D3 | A contract without an implementation stays legal (Rehmed, the invented fixtures); `check` notes it. |
 | D4 | ESDM's rules split as §6 does: structural rules are L2/L3 errors, completeness rules are L5 warnings. |

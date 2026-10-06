@@ -299,9 +299,11 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
   test "a contract without domain services hashes as it did before they existed" do
     with_one =
-      compile_contract("ServicesOne", "#{@process}\n  domain_service :pricing, \"Cennik\"\n")
+      compile_contract("ServicesOne", "#{@process}\n  domain_service :pricing, \"Cennik\"\n",
+        id: "clinic.services"
+      )
 
-    without = compile_contract("ServicesNone", @process)
+    without = compile_contract("ServicesNone", @process, id: "clinic.services")
 
     # The service moves the version, and nothing else's digest.
     assert Map.delete(with_one.digests, "domain_service:pricing") == without.digests
@@ -315,7 +317,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # scenarios lost the raw `scope` key, keeping the resolved `target`; and from
     # 2d4f6e4d01fe with plan N3: its timers have labels; and from ccaadcbebb04 with plan
     # W2: it records a day's close, the event its day tags are tested on, its date of a
-    # business day the domain declares.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "b50c8a8121d7"
+    # business day the domain declares; and from b50c8a8121d7 with plan DD, ID3 (#173): its
+    # events are typed by its id, `dispatch_rig.ledger`, not its process.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "256523735770"
   end
 end
