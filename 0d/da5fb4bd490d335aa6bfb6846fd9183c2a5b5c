@@ -1,0 +1,1 @@
+Fix-up after #150 merged, for #151: merge of origin/main (600eb75, via the app) and a PLAN.md-only commit settling CodeRabbit's one comment (stale S4 status). Documentation only (git diff HEAD~1 --stat: PLAN.md), so no code review; gate after the merge EXIT=0, check 0/33/10 and 0/76/6, sandbox 196, engine 1349, web 52, auth 286+1.
