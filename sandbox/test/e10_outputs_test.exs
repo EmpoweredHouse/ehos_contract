@@ -85,6 +85,8 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   # The sandbox's `ehos.yaml` names TaxVision, since Rehmed is registered beside it.
+  # Registry Watch declares no process, so its two capabilities name none; the
+  # accounting month's name theirs (plan DD, P1d, #195).
   @tag :tmp_dir
   test "the manifest task extends ehos.yaml with TaxVision's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "taxvision.json")
@@ -107,7 +109,6 @@ defmodule EhOsContractHost.E10OutputsTest do
                    "name" => "taxvision.complete_company_profile",
                    "command" => "complete_company_profile",
                    "label" => "Uzupełnij profil firmy",
-                   "process" => "client",
                    "principals" => ["human"]
                  },
                  %{
@@ -128,7 +129,6 @@ defmodule EhOsContractHost.E10OutputsTest do
                    "name" => "taxvision.retrigger_verification",
                    "command" => "retrigger_verification",
                    "label" => "Ponów weryfikację",
-                   "process" => "client",
                    "principals" => ["human"]
                  }
                ],

@@ -15,6 +15,14 @@ defmodule Taxvision.Contracts.DocumentIntake do
   `ksef_number` is given by KSeF, not by TaxVision (`issued_by: :ksef`), and held to
   its format by the domain's value, since a number read from a PDF can lose a digit
   (02 §3.2).
+
+  ## No process
+
+  What is here is one fact the integration records for each invoice it pulls, not a
+  run with a start and an end; the month the invoice is settled in is the accounting
+  month's, which consumes it for matching (P7). The contract declares no process;
+  the `ksef_intake` it had until plan DD, P1d (#195) was there only because every
+  contract once had to name one.
   """
 
   use EhOsContract.Contract,
@@ -36,9 +44,5 @@ defmodule Taxvision.Contracts.DocumentIntake do
       field :amount_minor, :integer
       field :issued_on, :date
     end
-  end
-
-  process :ksef_intake, "Pobieranie faktur z KSeF", accountable: :accountant do
-    correlate :company_id
   end
 end
