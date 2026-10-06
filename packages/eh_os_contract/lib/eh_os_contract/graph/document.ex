@@ -6,7 +6,9 @@ defmodule EhOsContract.Graph.Document do
   ## The documents
 
   A document is a **graph of facts** (`EhOsContract.Graph.Facts`): `nodes` grouped by
-  kind and `relations` grouped by type, every kind and type present. It holds no
+  kind and `relations` grouped by type, every kind and type present, and a contract's
+  `scenarios` grouped by the kind of their target. Example and default data in it are
+  redacted as in `EhOsContract.Model.to_data/1`. It holds no
   pictures — which facts are shown together, and how, is the renderer's — and
   nothing from the log. It is JSON-ready data — string keys, atoms as strings,
   modules without `Elixir.` — whose top level says what it is: `schema`
@@ -118,7 +120,7 @@ defmodule EhOsContract.Graph.Document do
 
   @doc """
   The document of `contract`: its graph of facts (`EhOsContract.Graph.Facts`) under
-  `nodes` and `relations`, with what it is — the contract's module and `id:`, the
+  `nodes`, `relations` and `scenarios`, with what it is — the contract's module and `id:`, the
   domain it names, the id of its context, its `version` — and the document's
   `digest`.
   """
@@ -136,7 +138,8 @@ defmodule EhOsContract.Graph.Document do
       "context" => id([:context, model.domain, model.context]),
       "version" => model.version,
       "nodes" => Model.json_data(facts.nodes),
-      "relations" => Model.json_data(facts.relations)
+      "relations" => Model.json_data(facts.relations),
+      "scenarios" => Model.json_data(facts.scenarios)
     })
   end
 

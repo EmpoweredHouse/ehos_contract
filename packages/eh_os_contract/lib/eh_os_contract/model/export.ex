@@ -15,6 +15,11 @@ defmodule EhOsContract.Model.Export do
     {contract, redact_domain_examples(domain, values)}
   end
 
+  @doc false
+  @spec redact_domain(map()) :: map()
+  def redact_domain(domain),
+    do: redact_domain_examples(domain, Map.new(domain.values, &{&1.name, &1}))
+
   defp redact_scenarios(model, values) do
     Map.update!(model, :scenarios, fn scenarios ->
       Enum.map(scenarios, &redact_scenario(&1, model, values))

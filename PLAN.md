@@ -629,7 +629,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 3 z 6 (niżej) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 4 z 6 (niżej) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1141,6 +1141,47 @@ are refused — merging them per pair makes it not matter.
    label applies to every node; null says it was declared without words.
 7. **E13a ends at the push of batch 6.** Merging `main` (DD has moved on, #174 among others), `pre-pr-review` and the
    pull request are done with the user, after their approval.
+
+### E13a, batch 4 — what came out (6 October)
+
+- **Labels first (decision 6):** every node has `name` and `label`, the label the client's words or `null` — a stage,
+  status or rule without words, a promise, a publication, the domain document's contract and anything known by name
+  alone. The schema's `label` is nullable everywhere.
+- **The panels' content, per the catalogue:** fields in one shape (`name`, `label`, `type`, `required`, and only what
+  applies of `default`, `personal_of`, `subject`, `value`, `refers_to`, `issued_by`, `supplied_by`), a type as
+  JSON (a name, `{list}`, `{enum: [{value, label}]}`), `issued_by` resolved through an entity's identity;
+  capabilities (a person's grant on a command, query or recorded event; the application's `<name>.subscribe` on a
+  received event a policy handles, and on `subscribed_by`); scope, creates, delivery, idempotency, wait/at, within,
+  deadline, cadence, terminal (an included event's from its `include`), final, unit kind, identity, generated,
+  state, query params and returns, domain service functions, an actor's role, scope and responsibilities, an
+  external's direction, operations and latency, a value's type, unit, fields and invariants, an entity's identity
+  and fields; in the domain's document a subdomain's type, a context's language and whole terms, a contract's
+  `contract_id`, `process` and `correlate`, and each actor's `capabilities` by contract. A consumed event carries
+  its sibling's label, fields, type and schema version.
+- **Scenarios**, grouped `unit`, `policy`, `process_manager`, `query`, each with `target` and `covers`. A manager's
+  scenario starts the run when its event is a `starts_on` one and no given started a run (decision 1); a timer's
+  covers its `fires` to each command the scenario issues — not every `fires` of the timer, which would count a
+  command the case does not show. The domain's document has no `scenarios` key: it holds no declaration a scenario
+  targets.
+- **Redaction:** the whole model and domain pass `Model.Export.redact/2` before anything is read, and a consumed
+  event's sibling too; a domain's document passes `Model.Export.redact_domain/1` (new, `@doc false`). Tested on
+  a fixture with personal data in a scenario, a state default, a domain service's example and a value's
+  invariant examples, in both documents (and the test fails with redaction cut out), and on every sandbox
+  document for Rehmed's PESEL and codes.
+- **Coverage check** (`GraphCoverage`) now holds `gives` to a field's `issued_by`, the unit picture's scenario
+  counts to the `unit` scenarios covering each arrow, an event's `terminal`, a promise's window and a state card's
+  fields. Run once by hand over the sandbox: nothing missing.
+- **Review before commit** (an agent, on the batch's diff). Taken, each checked: a domain service returning
+  `{:id, entity}` kept its tuple (`Dsl.Returns` has no name, so the model never rewrites it) — rewritten as a
+  field is; a value typed as another value, or as an entity's id, now names it (`value`, `refers_to`,
+  `issued_by`) and the value it names is in the document; `expected_latency` is any duration the DSL takes (no rule
+  narrows it), so the schema gives it its own looser shape; content tests against the model for every fixture
+  (delivery, idempotency, timers, queries, commands, events, units, statuses, the process), the received event's
+  grant and a publication's null label. *Rejected:* `capabilities` on the contract document's actor — the catalogue
+  puts them on the domain's, and the contract's has `may_issue` with each declaration's `capability`; a redacted
+  default staying as `null` rather than absent — it reads as "no default", which is all a reader may know of it.
+  *Left as known:* a scenario whose givens start and end the run, with a starting trigger, reads `run` and covers
+  nothing — what the runtime would do too.
 
 ### Wobec programu DD
 

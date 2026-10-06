@@ -2,8 +2,9 @@ defmodule EhOsContract.GraphDocumentTest do
   @moduledoc """
   Plan E13a: the `graph.v1` document of every contract and every domain of the client
   trees — TaxVision, Rehmed, AppUnite's equipment — holds to the schema the engine
-  ships, and every id in it resolves. The engine's own suite checks its
-  fixtures; these are the documents a renderer will actually be given.
+  ships, every id in it resolves, and none carries a personal value of Rehmed's. The
+  engine's own suite checks its fixtures; these are the documents a renderer will
+  actually be given.
   """
 
   use ExUnit.Case, async: true
@@ -37,13 +38,33 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  test "ids are unique in a document, and every relation and owner resolves in it" do
-    owners = ~w(unit stage process process_manager of context subdomain contract)
+  # The fields naming an owner, by kind: a value's `unit` is a unit of measure, and a
+  # domain's contract's `process` is the process's name and label.
+  @owners %{
+    "stage" => ~w(process),
+    "promise" => ~w(process),
+    "status" => ~w(unit),
+    "invariant" => ~w(of),
+    "constraint" => ~w(of),
+    "command" => ~w(unit),
+    "event" => ~w(unit stage contract),
+    "timer" => ~w(process_manager),
+    "actor" => ~w(context),
+    "value" => ~w(context),
+    "entity" => ~w(context),
+    "context" => ~w(subdomain),
+    "contract" => ~w(context)
+  }
 
+  test "ids are unique in a document, and every relation, owner and scenario resolves in it" do
     for {module, document} <- documents() do
       nodes = for {_kind, ns} <- document["nodes"], n <- ns, do: n
       relations = for {_type, rs} <- document["relations"], r <- rs, do: r
-      ids = Enum.map(nodes, & &1["id"]) ++ Enum.map(relations, & &1["id"])
+      scenarios = for {_kind, ss} <- document["scenarios"] || %{}, s <- ss, do: s
+
+      ids =
+        Enum.map(nodes, & &1["id"]) ++
+          Enum.map(relations, & &1["id"]) ++ Enum.map(scenarios, & &1["id"])
 
       assert ids == Enum.uniq(ids), "#{inspect(module)}: #{inspect(ids -- Enum.uniq(ids))}"
 
@@ -53,10 +74,40 @@ defmodule EhOsContract.GraphDocumentTest do
         assert MapSet.member?(here, id), "#{inspect(module)}: #{r["id"]} ends at #{id}"
       end
 
-      for n <- nodes, key <- owners, id = n[key], id != nil do
+      for {kind, ns} <- document["nodes"],
+          n <- ns,
+          key <- Map.get(@owners, kind, []),
+          id = n[key] do
         assert MapSet.member?(here, id), "#{inspect(module)}: #{n["id"]}'s #{key} is #{id}"
       end
+
+      relation_ids = MapSet.new(relations, & &1["id"])
+
+      for s <- scenarios do
+        assert MapSet.member?(here, s["target"]), "#{inspect(module)}: #{s["id"]}"
+
+        for id <- s["covers"],
+            do: assert(MapSet.member?(relation_ids, id), "#{inspect(module)}: #{s["id"]} #{id}")
+      end
     end
+  end
+
+  # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing, a
+  # sibling's event, whose personal fields are declared there: the same values the
+  # exported model is held to (`E10OutputsTest`), in every graph document.
+  test "no document carries Rehmed's personal scenario values" do
+    for {module, document} <- documents() do
+      encoded = Jason.encode!(document)
+
+      for personal <- ["85010112345", "M54.5", "93.39"] do
+        refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
+      end
+    end
+
+    # And the check is not empty: the scenarios are there, with what is not personal.
+    reporting = Document.contract(Rehmed.Contracts.StatutoryReporting)
+    assert [%{"event" => %{"data" => data}} | _] = reporting["scenarios"]["policy"]
+    assert Map.has_key?(data, "pesel") and data["pesel"] == nil
   end
 
   test "a domain's document does not depend on the order its contracts are given in" do

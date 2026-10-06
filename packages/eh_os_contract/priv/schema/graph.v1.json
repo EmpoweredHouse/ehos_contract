@@ -12,6 +12,54 @@
     }
   ],
   "$defs": {
+    "avoid": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "calendar_duration": {
+      "type": "object",
+      "description": "A wait, which may count calendar units.",
+      "required": [
+        "amount",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": [
+            "second",
+            "minute",
+            "hour",
+            "day",
+            "week",
+            "month",
+            "year"
+          ]
+        }
+      }
+    },
     "contract_document": {
       "type": "object",
       "description": "A contract's document.",
@@ -25,7 +73,8 @@
         "version",
         "digest",
         "nodes",
-        "relations"
+        "relations",
+        "scenarios"
       ],
       "additionalProperties": false,
       "properties": {
@@ -435,8 +484,84 @@
               }
             }
           }
+        },
+        "scenarios": {
+          "type": "object",
+          "description": "The contract's scenarios, by the kind of their target.",
+          "required": [
+            "unit",
+            "policy",
+            "process_manager",
+            "query"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "unit": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scenario_unit"
+              }
+            },
+            "policy": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scenario_policy"
+              }
+            },
+            "process_manager": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scenario_process_manager"
+              }
+            },
+            "query": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scenario_query"
+              }
+            }
+          }
         }
       }
+    },
+    "data": {
+      "type": "object",
+      "description": "A scenario's data, keyed by field; a personal field's value is null."
+    },
+    "delivery": {
+      "enum": [
+        "in_transaction",
+        "at_least_once"
+      ],
+      "description": "In the transaction that records the event, or after it."
+    },
+    "described": {
+      "type": "object",
+      "required": [
+        "name",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$",
+      "description": "A hash of the document without this key."
     },
     "domain_document": {
       "type": "object",
@@ -532,7 +657,7 @@
             "actor": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/node_actor"
+                "$ref": "#/$defs/node_domain_actor"
               }
             },
             "external": {
@@ -663,10 +788,172 @@
         }
       }
     },
-    "digest": {
-      "type": "string",
-      "pattern": "^[0-9a-f]+$",
-      "description": "A hash of the document without this key."
+    "duration": {
+      "type": "object",
+      "description": "A window in fixed units.",
+      "required": [
+        "amount",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": [
+            "second",
+            "minute",
+            "hour",
+            "day"
+          ]
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "description": "A field, in the one shape every declaration has: a command's, an event's, a state's, a read model's, a query's parameter, a value's, an entity's, a domain service's argument. What does not apply to it is absent.",
+      "required": [
+        "name",
+        "label",
+        "type",
+        "required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {
+          "description": "Its default, redacted as the exported model is."
+        },
+        "personal_of": {
+          "type": "string",
+          "description": "The name of the field holding the id of the person whose personal data this is."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The id of the subject whose id this field holds."
+        },
+        "value": {
+          "type": "string",
+          "description": "The id of the domain value its type is."
+        },
+        "refers_to": {
+          "type": "string",
+          "description": "The id of the entity it identifies."
+        },
+        "issued_by": {
+          "type": "string",
+          "description": "The id of the external that gives it its value: its own, or its entity's identity's."
+        },
+        "supplied_by": {
+          "const": "host",
+          "description": "The host gives it, not the caller."
+        }
+      }
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "happened": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event",
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "The event's id."
+          },
+          "data": {
+            "$ref": "#/$defs/data"
+          }
+        }
+      }
+    },
+    "idempotency": {
+      "type": "object",
+      "description": "What tells a second delivery from a first, and who keeps it harmless.",
+      "required": [
+        "key",
+        "owner"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "owner": {
+          "enum": [
+            "self",
+            "downstream",
+            "infrastructure"
+          ]
+        }
+      }
+    },
+    "issued": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "command",
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The command's id."
+          },
+          "data": {
+            "$ref": "#/$defs/data"
+          }
+        }
+      }
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The client's words; null where none are declared. Never the name in their place: whether to show the name instead is the reader's choice."
+    },
+    "latency": {
+      "type": "object",
+      "description": "How long the system takes to answer, as the domain declares it.",
+      "required": [
+        "amount",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
     },
     "node_actor": {
       "type": "object",
@@ -687,8 +974,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -700,6 +986,28 @@
         "context": {
           "type": "string",
           "description": "The id of the context it belongs to, where the domain says."
+        },
+        "actor_kind": {
+          "enum": [
+            "human",
+            "system"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "description": "A person's role in EHOS: the domain's name and the actor's."
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "responsibilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/described"
+          }
         }
       }
     },
@@ -711,7 +1019,8 @@
         "name",
         "label",
         "source",
-        "unit"
+        "unit",
+        "fields"
       ],
       "additionalProperties": false,
       "properties": {
@@ -723,8 +1032,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -736,6 +1044,21 @@
         "unit": {
           "type": "string",
           "description": "The unit's id."
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "scope": {
+          "type": "string",
+          "description": "The field a grant narrows it to."
+        },
+        "creates": {
+          "const": true,
+          "description": "It creates its aggregate."
+        },
+        "capability": {
+          "type": "string",
+          "description": "The name EHOS grants it by; absent where no person may issue it."
         }
       }
     },
@@ -759,8 +1082,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -794,8 +1116,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -823,11 +1144,10 @@
         },
         "name": {
           "type": "string",
-          "description": "The declaration's name."
+          "description": "The contract's module."
         },
         "label": {
-          "type": "string",
-          "description": "The contract's module: a contract has no label of its own."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -839,18 +1159,44 @@
         "context": {
           "type": "string",
           "description": "The id of its context."
+        },
+        "contract_id": {
+          "type": "string",
+          "description": "The contract's id:, where it declares one."
+        },
+        "process": {
+          "type": "object",
+          "required": [
+            "name",
+            "label"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "label": {
+              "$ref": "#/$defs/label"
+            }
+          }
+        },
+        "correlate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
-    "node_domain_context": {
+    "node_domain_actor": {
       "type": "object",
-      "description": "A bounded context of the domain, in its subdomain.",
+      "description": "Who acts: a person's role or a system, with what the role may do.",
       "required": [
         "id",
         "name",
         "label",
         "source",
-        "subdomain"
+        "capabilities"
       ],
       "additionalProperties": false,
       "properties": {
@@ -862,8 +1208,99 @@
           "description": "The declaration's name."
         },
         "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "context": {
           "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "description": "The id of the context it belongs to, where the domain says."
+        },
+        "actor_kind": {
+          "enum": [
+            "human",
+            "system"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "description": "A person's role in EHOS: the domain's name and the actor's."
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "responsibilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/described"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "capability",
+              "kind",
+              "contract",
+              "declaration"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string",
+                "description": "The name EHOS grants it by."
+              },
+              "kind": {
+                "enum": [
+                  "command",
+                  "query",
+                  "record"
+                ]
+              },
+              "contract": {
+                "type": "string",
+                "description": "The contract's id."
+              },
+              "declaration": {
+                "type": "string",
+                "description": "The declaration's id in the contract's document: a reference into another document."
+              }
+            }
+          }
+        }
+      }
+    },
+    "node_domain_context": {
+      "type": "object",
+      "description": "A bounded context of the domain, in its subdomain.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "subdomain",
+        "terms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -875,6 +1312,74 @@
         "subdomain": {
           "type": "string",
           "description": "The subdomain's id."
+        },
+        "language": {
+          "type": "string",
+          "description": "Its own language, where it is not the domain's."
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "text",
+              "definition",
+              "source",
+              "avoid",
+              "translations"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "definition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "avoid": {
+                "$ref": "#/$defs/avoid"
+              },
+              "translations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "language",
+                    "text",
+                    "definition",
+                    "avoid"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "language": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "definition": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "avoid": {
+                      "$ref": "#/$defs/avoid"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -898,8 +1403,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -921,7 +1425,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "functions"
       ],
       "additionalProperties": false,
       "properties": {
@@ -933,8 +1438,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -942,6 +1446,118 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "label",
+              "arguments",
+              "returns",
+              "rules"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "label": {
+                "$ref": "#/$defs/label"
+              },
+              "arguments": {
+                "$ref": "#/$defs/fields"
+              },
+              "returns": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "required"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "$ref": "#/$defs/type"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "default": {
+                    "description": "Its default, redacted as the exported model is."
+                  },
+                  "personal_of": {
+                    "type": "string",
+                    "description": "The name of the field holding the id of the person whose personal data this is."
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "The id of the subject whose id this field holds."
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "The id of the domain value its type is."
+                  },
+                  "refers_to": {
+                    "type": "string",
+                    "description": "The id of the entity it identifies."
+                  },
+                  "issued_by": {
+                    "type": "string",
+                    "description": "The id of the external that gives it its value: its own, or its entity's identity's."
+                  },
+                  "supplied_by": {
+                    "const": "host",
+                    "description": "The host gives it, not the caller."
+                  }
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "label",
+                    "source",
+                    "examples"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "$ref": "#/$defs/label"
+                    },
+                    "source": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "arguments",
+                          "result"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "arguments": {
+                            "type": "array"
+                          },
+                          "result": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -952,7 +1568,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "delivery"
       ],
       "additionalProperties": false,
       "properties": {
@@ -964,8 +1581,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -973,6 +1589,12 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "delivery": {
+          "$ref": "#/$defs/delivery"
+        },
+        "idempotency": {
+          "$ref": "#/$defs/idempotency"
         }
       }
     },
@@ -995,8 +1617,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1008,6 +1629,12 @@
         "context": {
           "type": "string",
           "description": "The id of the context it belongs to, where the domain says."
+        },
+        "identity": {
+          "type": "string"
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
         }
       }
     },
@@ -1018,7 +1645,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "fields"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1030,8 +1658,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1055,6 +1682,24 @@
         "declared_as": {
           "type": "string",
           "description": "The sibling's event id, under its name there, in the sibling's document: a reference into another document. Absent for the contract's own and for a received event."
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "terminal": {
+          "const": true,
+          "description": "It ends the run."
+        },
+        "type": {
+          "type": "string",
+          "description": "Its type in the log; absent in a contract without a process and for a received event."
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "capability": {
+          "type": "string",
+          "description": "A person's grant to record it, or, for a received event a policy handles, the application's grant to take it."
         }
       }
     },
@@ -1077,8 +1722,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1086,6 +1730,28 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "direction": {
+          "enum": [
+            "inbound",
+            "outbound",
+            "bidirectional"
+          ]
+        },
+        "unavailable_looks_like": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_latency": {
+          "$ref": "#/$defs/latency"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/described"
+          }
         }
       }
     },
@@ -1109,8 +1775,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1132,7 +1797,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "delivery"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1144,8 +1810,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1153,6 +1818,12 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "delivery": {
+          "$ref": "#/$defs/delivery"
+        },
+        "idempotency": {
+          "$ref": "#/$defs/idempotency"
         }
       }
     },
@@ -1163,7 +1834,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "correlate"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1175,8 +1847,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1184,6 +1855,18 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "correlate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deadline": {
+          "$ref": "#/$defs/timed"
+        },
+        "cadence": {
+          "$ref": "#/$defs/timed"
         }
       }
     },
@@ -1194,7 +1877,10 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "state",
+        "correlate",
+        "delivery"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1206,8 +1892,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1215,6 +1900,21 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "state": {
+          "$ref": "#/$defs/fields"
+        },
+        "correlate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delivery": {
+          "$ref": "#/$defs/delivery"
+        },
+        "idempotency": {
+          "$ref": "#/$defs/idempotency"
         }
       }
     },
@@ -1238,8 +1938,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1251,6 +1950,13 @@
         "process": {
           "type": "string",
           "description": "The process's id."
+        },
+        "within": {
+          "$ref": "#/$defs/duration"
+        },
+        "unverified": {
+          "const": true,
+          "description": "The owner has yet to confirm it."
         }
       }
     },
@@ -1273,8 +1979,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1292,7 +1997,9 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "params",
+        "returns"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1304,8 +2011,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1313,6 +2019,21 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "params": {
+          "$ref": "#/$defs/fields"
+        },
+        "returns": {
+          "enum": [
+            "many",
+            "one"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "capability": {
+          "type": "string"
         }
       }
     },
@@ -1323,7 +2044,9 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "fields",
+        "delivery"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1335,8 +2058,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1344,6 +2066,12 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "delivery": {
+          "$ref": "#/$defs/delivery"
         }
       }
     },
@@ -1367,8 +2095,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1403,8 +2130,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1416,6 +2142,10 @@
         "unit": {
           "type": "string",
           "description": "The aggregate's id."
+        },
+        "final": {
+          "const": true,
+          "description": "The unit's life ends in it."
         }
       }
     },
@@ -1426,7 +2156,8 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "type"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1438,8 +2169,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1447,6 +2177,13 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "type": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ]
         }
       }
     },
@@ -1469,8 +2206,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1501,8 +2237,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1514,6 +2249,13 @@
         "process_manager": {
           "type": "string",
           "description": "The process manager's id."
+        },
+        "wait": {
+          "$ref": "#/$defs/calendar_duration"
+        },
+        "at": {
+          "type": "string",
+          "description": "The state field holding the moment it fires."
         }
       }
     },
@@ -1524,7 +2266,10 @@
         "id",
         "name",
         "label",
-        "source"
+        "source",
+        "unit_kind",
+        "identity",
+        "state"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1536,8 +2281,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1545,6 +2289,26 @@
             "null"
           ],
           "description": "Where it comes from in the material."
+        },
+        "unit_kind": {
+          "enum": [
+            "aggregate",
+            "dcb"
+          ]
+        },
+        "identity": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "generated": {
+          "enum": [
+            "uuid"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/fields"
         }
       }
     },
@@ -1567,8 +2331,7 @@
           "description": "The declaration's name."
         },
         "label": {
-          "type": "string",
-          "description": "The client's words, or the name where there are none."
+          "$ref": "#/$defs/label"
         },
         "source": {
           "type": [
@@ -1580,6 +2343,61 @@
         "context": {
           "type": "string",
           "description": "The id of the context it belongs to, where the domain says."
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "label",
+              "source",
+              "satisfied_by",
+              "violated_by"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "label": {
+                "$ref": "#/$defs/label"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "satisfied_by": {
+                "type": "array"
+              },
+              "violated_by": {
+                "type": "array"
+              }
+            }
+          }
+        },
+        "value": {
+          "type": "string",
+          "description": "The id of the domain value its type is."
+        },
+        "refers_to": {
+          "type": "string",
+          "description": "The id of the entity it identifies."
+        },
+        "issued_by": {
+          "type": "string",
+          "description": "The id of the external that gives it its value: its own, or its entity's identity's."
         }
       }
     },
@@ -2662,6 +3480,10 @@
         "as": {
           "type": "string",
           "description": "The name it has in the contract."
+        },
+        "capability": {
+          "type": "string",
+          "description": "The application's grant to take it, where a policy handles it: never a person's."
         }
       }
     },
@@ -2694,6 +3516,359 @@
           "type": "string"
         }
       }
+    },
+    "scenario_policy": {
+      "type": "object",
+      "description": "A policy's: the event delivered, the commands issued.",
+      "required": [
+        "id",
+        "description",
+        "target",
+        "covers",
+        "event",
+        "issues",
+        "illustrates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The id of what it is about."
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the relations it exercises, which the engine computes."
+        },
+        "event": {
+          "type": "object",
+          "required": [
+            "event",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "event": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/$defs/data"
+            }
+          }
+        },
+        "issues": {
+          "$ref": "#/$defs/issued"
+        },
+        "illustrates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scenario_process_manager": {
+      "type": "object",
+      "description": "A process manager's: the run so far, the event or timer that arrives and whether it starts the run, and what the manager does.",
+      "required": [
+        "id",
+        "description",
+        "target",
+        "covers",
+        "given",
+        "trigger",
+        "phase",
+        "issues",
+        "sets",
+        "cancels",
+        "illustrates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The id of what it is about."
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the relations it exercises, which the engine computes."
+        },
+        "given": {
+          "$ref": "#/$defs/happened"
+        },
+        "trigger": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "event": {
+              "type": "string"
+            },
+            "timer": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/$defs/data"
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "event"
+              ]
+            },
+            {
+              "required": [
+                "timer"
+              ]
+            }
+          ]
+        },
+        "phase": {
+          "enum": [
+            "start",
+            "run"
+          ]
+        },
+        "issues": {
+          "$ref": "#/$defs/issued"
+        },
+        "sets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cancels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ended": {
+          "const": true,
+          "description": "The run ends."
+        },
+        "state": {
+          "$ref": "#/$defs/data"
+        },
+        "illustrates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scenario_query": {
+      "type": "object",
+      "description": "A query's: the events projected, the parameters, the rows answered.",
+      "required": [
+        "id",
+        "description",
+        "target",
+        "covers",
+        "given",
+        "params",
+        "illustrates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The id of what it is about."
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the relations it exercises, which the engine computes."
+        },
+        "given": {
+          "$ref": "#/$defs/happened"
+        },
+        "params": {
+          "$ref": "#/$defs/data"
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/data"
+          }
+        },
+        "illustrates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scenario_unit": {
+      "type": "object",
+      "description": "A unit's: the command after the events given, and the events it emits or the rule it is refused on.",
+      "required": [
+        "id",
+        "description",
+        "target",
+        "covers",
+        "given",
+        "command",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The id of what it is about."
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the relations it exercises, which the engine computes."
+        },
+        "actor": {
+          "type": "string"
+        },
+        "given": {
+          "$ref": "#/$defs/happened"
+        },
+        "command": {
+          "type": "object",
+          "required": [
+            "command",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/$defs/data"
+            }
+          }
+        },
+        "expect": {
+          "$ref": "#/$defs/happened"
+        },
+        "rejected": {
+          "type": "string",
+          "description": "The id of the rule it is refused on."
+        }
+      }
+    },
+    "timed": {
+      "type": "object",
+      "description": "A process's deadline or cadence, and whether the owner has yet to confirm it.",
+      "required": [
+        "amount",
+        "unit",
+        "unverified"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": [
+            "second",
+            "minute",
+            "hour",
+            "day",
+            "week",
+            "month",
+            "year"
+          ]
+        },
+        "unverified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "type": {
+      "description": "A field's type: a built-in's name or a domain value's name (then the field's value names its node), a list of a type, or an inline enum with each member's label.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "list"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "list": {
+              "$ref": "#/$defs/type"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "enum"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "enum": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "$ref": "#/$defs/label"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

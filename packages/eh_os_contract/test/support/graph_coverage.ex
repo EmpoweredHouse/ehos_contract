@@ -4,8 +4,11 @@ defmodule EhOsContract.GraphCoverage do
   of the six pictures (`EhOsContract.Graph.Contract`, `Declared`, `Unit`, `Lifecycle`,
   `ContextMap`, `System`) is a view the renderer will build from the document in
   E13b; this says, for every node and edge of a picture, which fact it is, and lists
-  those the document lacks. What is drawing only — a lifecycle's start — is skipped,
-  and so is `gives`, which a field's `issued_by` carries from batch 4 on.
+  those the document lacks. What is drawing only — a lifecycle's start — is skipped.
+  `gives` is a field's `issued_by` (batch 4); and where a picture says more of a node
+  or an edge than that it is there — a scenario count on a unit's arrow, an event's
+  `terminal`, a promise's window, a state card's fields — that is held to the
+  document too.
 
   It goes with the pictures, in E13b.
   """
@@ -20,7 +23,8 @@ defmodule EhOsContract.GraphCoverage do
   @spec contract(module(), map() | nil) :: [String.t()]
   def contract(contract, document \\ nil) do
     model = Model.fetch(contract)
-    facts = facts(document || Document.contract(model))
+    document = document || Document.contract(model)
+    facts = facts(document)
     c = model.module
 
     pictures =
@@ -56,7 +60,16 @@ defmodule EhOsContract.GraphCoverage do
       for {type, rs} <- document["relations"], r <- rs, do: Map.put(r, "type", type)
 
     stages = for n <- get_in(document, ["nodes", "stage"]) || [], do: n["id"]
-    %{nodes: Map.new(nodes), relations: relations, stages: stages}
+
+    # How many of a unit's scenarios cover each relation: the count a unit's arrow shows.
+    covered =
+      for s <- get_in(document, ["scenarios", "unit"]) || [],
+          id <- s["covers"],
+          reduce: %{} do
+        acc -> Map.update(acc, id, 1, &(&1 + 1))
+      end
+
+    %{nodes: Map.new(nodes), relations: relations, stages: stages, covered: covered}
   end
 
   defp missing(picture, ctx, facts) do
@@ -67,6 +80,13 @@ defmodule EhOsContract.GraphCoverage do
           id != :drawing,
           not Map.has_key?(facts.nodes, id),
           do: "node #{drawn} (as #{id})"
+
+    said =
+      for n <- picture.nodes,
+          fact = facts.nodes[ids[n.id]],
+          fact != nil,
+          problem <- said(n, fact),
+          do: "node #{n.id}: #{problem}"
 
     # A group is its node, and each of its members names it in the owner field of the
     # group's kind: a unit's commands and events their `unit`, a stage's events their
@@ -87,11 +107,39 @@ defmodule EhOsContract.GraphCoverage do
 
     edges =
       for e <- picture.edges,
-          e.relation not in [:gives, :undeclared],
+          e.relation != :undeclared,
           not edge?(e, ids, ctx, facts),
           do: "edge #{e.relation} #{e.from} -> #{e.to}"
 
-    nodes ++ groups ++ edges
+    # A unit's picture counts its scenarios on each arrow, and draws no count for none.
+    counted =
+      for e <- picture.edges,
+          Map.has_key?(ctx, :unit) and e.relation in [:emits, :refused_on],
+          drawn = Map.get(e, :scenarios, 0),
+          r = counted(e, ids, facts),
+          Map.get(facts.covered, r && r["id"], 0) != drawn,
+          do: "edge #{e.relation} #{e.from} -> #{e.to}: #{drawn} scenarios drawn"
+
+    nodes ++ said ++ groups ++ edges ++ counted
+  end
+
+  # What a picture says of a node besides its being there.
+  defp said(%{kind: :event, terminal: terminal}, fact) do
+    if terminal == Map.get(fact, "terminal", false), do: [], else: ["terminal #{terminal}"]
+  end
+
+  defp said(%{kind: :state, fields: fields}, fact) do
+    drawn = Enum.map(fields, &to_string(&1.name))
+    if drawn == Enum.map(fact["state"], & &1["name"]), do: [], else: ["state #{inspect(drawn)}"]
+  end
+
+  defp said(_node, _fact), do: []
+
+  # The relation a unit's arrow with a scenario count is.
+  defp counted(e, ids, facts) do
+    Enum.find(facts.relations, fn r ->
+      r["type"] == to_string(e.relation) and r["from"] == ids[e.from] and r["to"] == ids[e.to]
+    end)
   end
 
   # The fact a picture's node is: the same id, but for what batch 3 renamed or what is
@@ -134,7 +182,19 @@ defmodule EhOsContract.GraphCoverage do
        when relation in [:eventually, :or_else] do
     promise = Document.id([:promise, ctx.contract, ctx.model.process.name, e.promise])
     to = if relation == :eventually, do: "fulfils", else: "or_else"
-    has?(facts, "opens", ids[e.from], promise) and has?(facts, to, ids[e.to], promise)
+    within = facts.nodes[promise] && facts.nodes[promise]["within"]
+
+    has?(facts, "opens", ids[e.from], promise) and has?(facts, to, ids[e.to], promise) and
+      (relation == :or_else or Model.json_data(e[:within]) == within)
+  end
+
+  # An external gives a field of a command or an event its value.
+  defp edge?(%{relation: :gives} = e, ids, _ctx, facts) do
+    fact = facts.nodes[ids[e.to]]
+
+    Enum.any?((fact && fact["fields"]) || [], fn f ->
+      f["name"] == to_string(e.field) and f["issued_by"] == ids[e.from]
+    end)
   end
 
   defp edge?(e, ids, _ctx, facts) do

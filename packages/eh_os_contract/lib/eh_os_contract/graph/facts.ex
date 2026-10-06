@@ -23,6 +23,20 @@ defmodule EhOsContract.Graph.Facts do
   A relation's id is its type, its two ends and what tells it apart from another of
   that type between them (`@discriminators`), so what the log says of it later joins
   on it.
+
+  **A node carries what its panel shows** (plan E13a, batch 4): a declaration's
+  fields in one shape (`field/2`), what a person needs to be granted to use it, its
+  delivery and idempotency, its windows. A `label` is the client's words or `nil`,
+  never the name put in their place: which to show is the renderer's choice. What
+  holds example or default data — scenarios, defaults, a domain service's rule
+  examples, a value's invariant examples — is redacted first, as
+  `EhOsContract.Model.to_data/1` redacts it, so no personal value leaves in a
+  document.
+
+  **Scenarios** are neither nodes nor relations: a contract's are grouped by the
+  kind of their target (`unit`, `policy`, `process_manager`, `query`), each naming
+  its `target` and the ids of the relations it exercises (`covers`), which the
+  engine computes so a count on an arrow and the list behind it come from one place.
   """
 
   alias EhOsContract.{Lifecycle, Model}
@@ -57,29 +71,52 @@ defmodule EhOsContract.Graph.Facts do
 
   @doc """
   The facts of `contract`: `%{nodes: %{kind => [node]}, relations: %{type =>
-  [relation]}}`, every kind and type present, empty or not. Its own declarations are
-  scoped to the contract, the domain's — actors, externals, publications, values,
-  entities, subjects, contexts — to the domain, and only those its declarations name
-  are in it.
+  [relation]}, scenarios: %{target kind => [scenario]}}`, every kind, type and
+  target kind present, empty or not. Its own declarations are scoped to the
+  contract, the domain's — actors, externals, publications, values, entities,
+  subjects, contexts — to the domain, and only those its declarations name are in
+  it.
   """
-  @spec contract(module() | map()) :: %{nodes: map(), relations: map()}
+  @spec contract(module() | map()) :: %{nodes: map(), relations: map(), scenarios: map()}
   def contract(contract) do
-    model = Model.fetch(contract)
-    domain = domain_model(model.domain)
+    {model, domain} = redacted(contract)
     c = model.module
-    events = events(model)
+    ctx = context(model.domain, domain, grants(model))
+    events = events(model, ctx)
 
     {process_nodes, process_relations} = process(model)
-    {unit_nodes, unit_relations} = units(model)
-    {reaction_nodes, reaction_relations} = reactions(model, events)
+    {unit_nodes, unit_relations} = units(model, ctx)
+    {reaction_nodes, reaction_relations} = reactions(model, events, ctx)
 
     own = %{
       command:
-        for(cmd <- model.commands, do: node(:command, c, cmd, unit: id(:unit, c, cmd.unit))),
+        for cmd <- model.commands do
+          node(:command, c, cmd,
+            unit: id(:unit, c, cmd.unit),
+            fields: fields(cmd.fields, ctx),
+            scope: cmd[:scope],
+            creates: cmd[:creates],
+            capability: ctx.grants[{:command, cmd.name}]
+          )
+        end,
       event: Enum.map(events, & &1.node),
-      read_model: Enum.map(model.read_models, &node(:read_model, c, &1)),
-      query: Enum.map(model.queries, &node(:query, c, &1)),
-      domain_service: Enum.map(model.domain_services, &node(:domain_service, c, &1))
+      read_model:
+        for rm <- model.read_models do
+          node(:read_model, c, rm, fields: fields(rm.fields, ctx), delivery: rm.delivery)
+        end,
+      query:
+        for q <- model.queries do
+          node(:query, c, q,
+            params: fields(q.params, ctx),
+            returns: q.returns,
+            scope: q.scope,
+            capability: ctx.grants[{:query, q.name}]
+          )
+        end,
+      domain_service:
+        for s <- model.domain_services do
+          node(:domain_service, c, s, functions: Enum.map(s.functions, &function(&1, ctx)))
+        end
     }
 
     nodes = Map.merge(own, process_nodes) |> Map.merge(unit_nodes) |> Map.merge(reaction_nodes)
@@ -97,17 +134,28 @@ defmodule EhOsContract.Graph.Facts do
       ]
       |> Enum.reduce(&Map.merge(&2, &1, fn _type, a, b -> a ++ b end))
 
-    {domain_nodes, backed} = domain_nodes(model, domain, events, relations)
+    {domain_nodes, backed} = domain_nodes(model, domain, events, relations, ctx)
 
-    nodes
-    |> Map.merge(domain_nodes)
-    |> group(@contract_kinds, Map.put(relations, :backed_by, backed), @contract_types)
+    facts =
+      nodes
+      |> Map.merge(domain_nodes)
+      |> group(@contract_kinds, Map.put(relations, :backed_by, backed), @contract_types)
+
+    Map.put(facts, :scenarios, scenarios(model, facts.relations))
+  end
+
+  # The model and its domain with every example and default redacted, as
+  # `Model.to_data/1` exports them.
+  defp redacted(contract) do
+    model = Model.fetch(contract)
+    Model.Export.redact(model, domain_model(model.domain))
   end
 
   # Every event this contract names: its own, those it consumes from a sibling under
   # the name they have here, those it receives from another application — each with
-  # where it is declared and whether the process includes it.
-  defp events(model) do
+  # where it is declared and whether the process includes it. A consumed one is as
+  # its sibling declares it, a received one as this contract's `subscribe` reads it.
+  defp events(model, ctx) do
     c = model.module
     included = Map.new((model.process && model.process.includes) || [], &{&1.event, &1})
 
@@ -117,15 +165,21 @@ defmodule EhOsContract.Graph.Facts do
 
     consumed =
       for %{kind: :contract, from: from, events: names, renames: renames} <- model.consumes,
+          {sibling, _domain} = redacted(from),
           original <- names do
-        declared = Enum.find(Model.fetch(from).events, &(&1.name == original))
+        declared = Enum.find(sibling.events, &(&1.name == original))
         name = Map.get(renames, original, original)
         %{name: name, declared: declared, from: id(:event, from, original), received: false}
       end
 
     received =
-      for %{kind: :published, as: as} <- model.consumes,
-          do: %{name: as, declared: %{name: as, label: nil}, from: nil, received: true}
+      for %{kind: :published, as: as, fields: fields} <- model.consumes,
+          do: %{
+            name: as,
+            declared: %{name: as, label: nil, fields: fields},
+            from: nil,
+            received: true
+          }
 
     for e <- own ++ consumed ++ received do
       include = included[e.name]
@@ -133,8 +187,18 @@ defmodule EhOsContract.Graph.Facts do
       own? = e.from == nil and not e.received
 
       # A stage is this process's: a consumed event sits in one only where an `include`
-      # puts it, whatever stage its sibling gives it there.
+      # puts it, whatever stage its sibling gives it there. So is how it ends the run.
       stage = if own?, do: declared.stage, else: include && include.stage
+      terminal = if own?, do: declared.terminal, else: include && include.terminal
+
+      # A person records an event of this contract; the application is granted one it
+      # receives. A sibling's is granted in the sibling.
+      capability =
+        cond do
+          own? -> ctx.grants[{:record, e.name}]
+          e.received -> ctx.grants[{:subscribe, e.name}]
+          true -> nil
+        end
 
       Map.put(
         e,
@@ -143,7 +207,12 @@ defmodule EhOsContract.Graph.Facts do
           unit: own? && id(:unit, c, declared.unit),
           stage: stage_id(model, stage),
           included: include != nil,
-          declared_as: e.from
+          declared_as: e.from,
+          fields: fields(declared.fields, ctx),
+          terminal: terminal,
+          type: declared[:type],
+          schema_version: declared[:schema_version],
+          capability: capability
         )
       )
     end
@@ -161,13 +230,12 @@ defmodule EhOsContract.Graph.Facts do
 
     promises =
       for pr <- p.promises do
-        %{
-          id: promise_id.(pr.name),
-          name: pr.name,
-          label: to_string(pr.name),
-          source: pr[:source],
-          process: pid
-        }
+        # A promise has no words of its own in the DSL.
+        with_attrs(%{id: promise_id.(pr.name), name: pr.name, label: nil, source: pr[:source]},
+          process: pid,
+          within: pr.within,
+          unverified: pr.unverified
+        )
       end
 
     promised =
@@ -181,14 +249,16 @@ defmodule EhOsContract.Graph.Facts do
           do: {:accountable_for, relation(id(:actor, model.domain, actor), pid)}
 
     {%{
-       process: [node(:process, c, p)],
+       process: [
+         node(:process, c, p, correlate: p.correlate, deadline: p.deadline, cadence: p.cadence)
+       ],
        stage:
          for(
            s <- p.stages,
            do: %{
              id: stage_id(model, s.name),
              name: s.name,
-             label: s.label || to_string(s.name),
+             label: s.label,
              source: s[:source],
              process: pid
            }
@@ -201,20 +271,24 @@ defmodule EhOsContract.Graph.Facts do
   defp stage_id(model, stage), do: Document.id([:stage, model.module, model.process.name, stage])
 
   # Units with their statuses and rules, and what a unit is built from.
-  defp units(model) do
+  defp units(model, ctx) do
     c = model.module
 
     statuses =
       for u <- model.units,
           lifecycle = Lifecycle.of(u),
           s <- lifecycle.statuses,
-          do: %{
-            id: status_id(c, u.name, s.name),
-            name: s.name,
-            label: s.label || to_string(s.name),
-            source: s[:source],
-            unit: id(:unit, c, u.name)
-          }
+          do:
+            with_attrs(
+              %{
+                id: status_id(c, u.name, s.name),
+                name: s.name,
+                label: s.label,
+                source: s[:source]
+              },
+              unit: id(:unit, c, u.name),
+              final: s[:final]
+            )
 
     invariants =
       for u <- model.units,
@@ -260,7 +334,15 @@ defmodule EhOsContract.Graph.Facts do
       end
 
     {%{
-       unit: Enum.map(model.units, &node(:unit, c, &1)),
+       unit:
+         for u <- model.units do
+           node(:unit, c, u,
+             unit_kind: u.kind,
+             identity: u.identity,
+             generated: u[:generated],
+             state: fields(u.state.fields, ctx)
+           )
+         end,
        status: statuses,
        invariant: invariants
      }, typed(built ++ consulted ++ lifecycle)}
@@ -277,7 +359,7 @@ defmodule EhOsContract.Graph.Facts do
     %{
       id: Document.id([kind, c, owner_kind, owner, rule.name]),
       name: rule.name,
-      label: rule.label || to_string(rule.name),
+      label: rule.label,
       source: rule[:source],
       of: id(owner_kind, c, owner)
     }
@@ -300,18 +382,21 @@ defmodule EhOsContract.Graph.Facts do
 
     refused =
       for cmd <- model.commands, r <- cmd.rejects do
-        unit = units[cmd.unit]
-
-        to =
-          if unit && Enum.any?(unit.invariants, &(&1.name == r)),
-            do: Document.id([:invariant, c, :unit, cmd.unit, r]),
-            else: Document.id([:constraint, c, :command, cmd.name, r])
-
         {:refused_on,
-         relation(id(:command, c, cmd.name), to, outside_from: cmd[:or_rejects] == r || nil)}
+         relation(id(:command, c, cmd.name), refusal(c, units[cmd.unit], cmd.name, r),
+           outside_from: cmd[:or_rejects] == r || nil
+         )}
       end
 
     typed(emits ++ allowed ++ refused)
+  end
+
+  # The rule a command is refused on: an invariant of its unit, or else a constraint of
+  # its own.
+  defp refusal(c, unit, command, rule) do
+    if unit && Enum.any?(unit.invariants, &(&1.name == rule)),
+      do: Document.id([:invariant, c, :unit, unit.name, rule]),
+      else: Document.id([:constraint, c, :command, command, rule])
   end
 
   # Who may issue, record and ask what.
@@ -345,7 +430,7 @@ defmodule EhOsContract.Graph.Facts do
 
   # Policies, effects and process managers with their timers and rules, and the flow
   # through them.
-  defp reactions(model, events) do
+  defp reactions(model, events, ctx) do
     c = model.module
     received = MapSet.new(for e <- events, e.received, do: e.name)
 
@@ -370,7 +455,11 @@ defmodule EhOsContract.Graph.Facts do
       for pm <- model.process_managers,
           t <- pm.timers,
           do:
-            Map.put(node(:timer, c, t), :process_manager, id(:process_manager, c, pm.name))
+            node(:timer, c, t,
+              process_manager: id(:process_manager, c, pm.name),
+              wait: t.wait,
+              at: t.at
+            )
             |> Map.put(:id, timer_id(c, pm.name, t.name))
 
     policy =
@@ -417,9 +506,15 @@ defmodule EhOsContract.Graph.Facts do
 
     # A process manager's invariants join the units' under `:invariant` in `group/4`.
     {%{
-       policy: Enum.map(model.policies, &node(:policy, c, &1)),
-       effect: Enum.map(model.effects, &node(:effect, c, &1)),
-       process_manager: Enum.map(model.process_managers, &node(:process_manager, c, &1)),
+       policy: Enum.map(model.policies, &reaction(:policy, c, &1)),
+       effect: Enum.map(model.effects, &reaction(:effect, c, &1)),
+       process_manager:
+         for pm <- model.process_managers do
+           reaction(:process_manager, c, pm,
+             state: fields(pm.state.fields, ctx),
+             correlate: pm.correlate
+           )
+         end,
        timer: timers,
        constraint: constraints,
        invariant_pm: pm_invariants
@@ -427,6 +522,17 @@ defmodule EhOsContract.Graph.Facts do
   end
 
   defp timer_id(c, pm, timer), do: Document.id([:timer, c, pm, timer])
+
+  # A reaction runs in the dispatch's transaction or after it, and says what makes a
+  # second delivery harmless.
+  defp reaction(kind, c, declaration, attrs \\ []) do
+    node(
+      kind,
+      c,
+      declaration,
+      attrs ++ [delivery: declaration.delivery, idempotency: declaration.idempotency]
+    )
+  end
 
   # A process manager: what starts it, what it handles during its run and what ends
   # it, and on each way in what it issues, sets and cancels — with the way in on the
@@ -466,6 +572,172 @@ defmodule EhOsContract.Graph.Facts do
       end
 
     Enum.uniq(entering ++ acting ++ ending ++ fires)
+  end
+
+  # The scenarios, grouped by what they are about — a unit, a policy, a process
+  # manager or a query; an effect and a read model are no scenario's target (S6) —
+  # each with the ids of the relations it exercises. Their data is already redacted.
+  defp scenarios(model, relations) do
+    c = model.module
+
+    find = fn type, from, to, attrs ->
+      Enum.find_value(relations[type], fn r ->
+        (r.from == from and r.to == to and Enum.all?(attrs, fn {k, v} -> r[k] == v end)) && r.id
+      end)
+    end
+
+    groups = [aggregate: :unit, dcb: :unit, policy: :policy, process_manager: :process_manager]
+    groups = groups ++ [query: :query]
+
+    for s <- model.scenarios,
+        group = groups[s.target.kind],
+        reduce: Map.new([:unit, :policy, :process_manager, :query], &{&1, []}) do
+      acc ->
+        base = %{
+          id: Document.id([:scenario, c, s.description]),
+          description: s.description,
+          target: id(group, c, s.target.name)
+        }
+
+        {shape, covers} = scenario(group, s, model, find)
+        covers = covers |> Enum.reject(&is_nil/1) |> Enum.uniq()
+        Map.update!(acc, group, &(&1 ++ [base |> Map.merge(shape) |> Map.put(:covers, covers)]))
+    end
+  end
+
+  # A unit's: who issues which command after which events, and what it emits or the
+  # rule it is refused on. It covers the command's arrow to each expected event, or to
+  # that rule.
+  defp scenario(:unit, s, model, find) do
+    c = model.module
+    command = id(:command, c, s.trigger.name)
+    unit = Enum.find(model.units, &(&1.name == s.target.name))
+    rule = s.rejected && refusal(c, unit, s.trigger.name, s.rejected)
+
+    covers =
+      for(e <- s.expect, do: find.(:emits, command, id(:event, c, e.event), [])) ++
+        [rule && find.(:refused_on, command, rule, [])]
+
+    {with_attrs(
+       %{
+         given: happened(c, s.given),
+         command: %{command: command, data: s.trigger.data},
+         expect: happened(c, s.expect)
+       },
+       actor: s.actor && id(:actor, model.domain, s.actor),
+       rejected: rule
+     ), covers}
+  end
+
+  # A policy's: the event delivered and the commands it issues. It covers the event's
+  # arrow to the policy and the policy's to each command.
+  defp scenario(:policy, s, model, find) do
+    c = model.module
+    me = id(:policy, c, s.target.name)
+    event = id(:event, c, s.trigger.name)
+
+    covers =
+      [find.(:handled_by, event, me, [])] ++
+        for i <- s.issues, do: find.(:issues, me, id(:command, c, i.command), [])
+
+    {%{
+       event: %{event: event, data: s.trigger.data},
+       issues: issued(c, s.issues),
+       illustrates: illustrated(c, :policy, s.target.name, [], s)
+     }, covers}
+  end
+
+  # A process manager's: the run so far, the event or timer that arrives, whether it
+  # starts the run, and what the manager issues, sets, cancels, whether it ends and
+  # what it holds after. It starts the run when its event is one the run starts on and
+  # no given has started one, as `EhOsContract.ScenarioCase` and dispatch read it
+  # (decision 1 before batch 4); otherwise it arrives during the run, and a timer
+  # always does. It covers the way the trigger reaches the manager — `starts`, or
+  # `handled_by` where the event is handled during the run, plus `ends` where it ends
+  # the run; a timer's `fires` to each command issued — and each `issues`, `sets` and
+  # `cancels` the manager does on that way in.
+  defp scenario(:process_manager, s, model, find) do
+    c = model.module
+    pm = Enum.find(model.process_managers, &(&1.name == s.target.name))
+    me = id(:process_manager, c, pm.name)
+    starts = Enum.map(pm.starts_on, & &1.event)
+    timer? = Enum.any?(pm.timers, &(&1.name == s.trigger.name))
+    started? = Enum.any?(s.given, &(&1.event in starts))
+    phase = if not timer? and s.trigger.name in starts and not started?, do: :start, else: :run
+
+    {trigger, way} =
+      if timer?,
+        do: {timer_id(c, pm.name, s.trigger.name), :timer},
+        else: {id(:event, c, s.trigger.name), :event}
+
+    command = &id(:command, c, &1)
+    timer = &timer_id(c, pm.name, &1)
+    on = [on: trigger, phase: phase]
+
+    entering =
+      cond do
+        timer? -> for i <- s.issues, do: find.(:fires, trigger, command.(i.command), [])
+        phase == :start -> [find.(:starts, trigger, me, [])]
+        true -> [find.(:handled_by, trigger, me, [])]
+      end
+
+    ending = if timer?, do: [], else: [find.(:ends, trigger, me, [])]
+
+    acting =
+      for(i <- s.issues, do: find.(:issues, me, command.(i.command), on)) ++
+        for(t <- s.sets, do: find.(:sets, me, timer.(t), on)) ++
+        for t <- s.cancels, do: find.(:cancels, me, timer.(t), on)
+
+    {with_attrs(
+       %{
+         given: happened(c, s.given),
+         trigger: %{way => trigger, :data => s.trigger.data},
+         phase: phase,
+         issues: issued(c, s.issues),
+         sets: Enum.map(s.sets, timer),
+         cancels: Enum.map(s.cancels, timer),
+         illustrates: illustrated(c, :process_manager, pm.name, pm[:invariants] || [], s)
+       },
+       ended: s.ended,
+       state: s[:state]
+     ), entering ++ ending ++ acting}
+  end
+
+  # A query's: the events projected, the parameters asked with, the rows answered. It
+  # covers the query's read and each given event's projection into what it reads.
+  defp scenario(:query, s, model, find) do
+    c = model.module
+    query = Enum.find(model.queries, &(&1.name == s.target.name))
+    me = id(:query, c, query.name)
+    read = id(:read_model, c, query.reads)
+
+    covers =
+      [find.(:reads, me, read, [])] ++
+        for g <- s.given, do: find.(:projected_into, id(:event, c, g.event), read, [])
+
+    {with_attrs(
+       %{
+         given: happened(c, s.given),
+         params: s.trigger.data,
+         illustrates: illustrated(c, :query, query.name, [], s)
+       },
+       answers: s[:answers]
+     ), covers}
+  end
+
+  defp happened(c, events),
+    do: for(e <- events, do: %{event: id(:event, c, e.event), data: e.data})
+
+  defp issued(c, commands),
+    do: for(i <- commands, do: %{command: id(:command, c, i.command), data: i.data})
+
+  # The rules a scenario shows: the owner's invariants where it has the name, else its
+  # constraints.
+  defp illustrated(c, kind, owner, invariants, s) do
+    for name <- Map.get(s, :illustrates, []) do
+      rule = if Enum.any?(invariants, &(&1.name == name)), do: :invariant, else: :constraint
+      Document.id([rule, c, kind, owner, name])
+    end
   end
 
   # What an event rests on, the consumed ones' as their sibling declares it.
@@ -508,7 +780,7 @@ defmodule EhOsContract.Graph.Facts do
   # — each in the domain's order. A contract may name what its domain does not
   # declare, or a domain that does not exist (v2 §8): that one is a node by its name,
   # so every relation still ends at a node.
-  defp domain_nodes(model, domain, events, relations) do
+  defp domain_nodes(model, domain, events, relations, ctx) do
     d = model.domain
 
     acting =
@@ -523,7 +795,7 @@ defmodule EhOsContract.Graph.Facts do
     # only for an actor already on it.
     backing = for a <- actors, Map.get(a, :backed_by) != nil, do: a.backed_by
 
-    {values, entities, subjects, issuers} = referenced(domain, fields(model))
+    {values, entities, subjects, issuers} = referenced(domain, all_fields(model))
 
     resting =
       Enum.flat_map(model.effects, &List.wrap(&1.calls)) ++
@@ -543,19 +815,17 @@ defmodule EhOsContract.Graph.Facts do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    context_of = &(Map.get(&1, :context) && id(:context, d, &1.context))
-
     backed =
       for a <- actors,
           Map.get(a, :backed_by) != nil,
           do: relation(id(:actor, d, a.name), id(:external, d, a.backed_by))
 
     {%{
-       actor: for(a <- actors, do: node(:actor, d, a, context: context_of.(a))),
-       external: Enum.map(declared(domain.externals, resting), &node(:external, d, &1)),
+       actor: for(a <- actors, do: actor(a, ctx)),
+       external: for(x <- declared(domain.externals, resting), do: external(x, ctx)),
        publication: for(p <- publications, do: publication(d, p, model)),
-       value: for(v <- values, do: node(:value, d, v, context: context_of.(v))),
-       entity: for(e <- entities, do: node(:entity, d, e, context: context_of.(e))),
+       value: for(v <- values, do: value(v, ctx)),
+       entity: for(e <- entities, do: entity(e, ctx)),
        subject: Enum.map(subjects, &node(:subject, d, &1)),
        context: Enum.map(declared(domain.contexts, contexts), &node(:context, d, &1))
      }, backed}
@@ -578,11 +848,12 @@ defmodule EhOsContract.Graph.Facts do
           _ -> nil
         end)
 
-    %{id: id, name: wire, label: wire, source: nil}
+    # A publication is a name on the wire, with no words of its own in the DSL.
+    %{id: id, name: wire, label: nil, source: nil}
   end
 
   # Every field the contract declares, wherever it sits.
-  defp fields(model) do
+  defp all_fields(model) do
     consumed =
       for %{kind: :contract, from: from, events: names} <- model.consumes,
           e <- Model.fetch(from).events,
@@ -600,7 +871,7 @@ defmodule EhOsContract.Graph.Facts do
       Enum.flat_map(model.process_managers, & &1.state.fields) ++
       Enum.flat_map(model.read_models, & &1.fields) ++
       Enum.flat_map(model.queries, & &1.params) ++
-      for(s <- model.domain_services, f <- s.functions, a <- f.arguments ++ [f.returns], do: a)
+      for(s <- model.domain_services, f <- s.functions, a <- f.arguments ++ [returned(f)], do: a)
   end
 
   # The values, entities and subjects fields name, values' and entities' own fields
@@ -634,7 +905,8 @@ defmodule EhOsContract.Graph.Facts do
           kind in [:value, :entity],
           x = if(kind == :value, do: values, else: entities)[name],
           x != nil,
-          f <- x.fields,
+          # A value is followed through its own type as well as its fields.
+          f <- if(kind == :value and x.type != nil, do: [x | x.fields], else: x.fields),
           do: f
 
     follow(nested ++ rest, values, entities, {Enum.reverse(new) ++ found, seen})
@@ -664,8 +936,9 @@ defmodule EhOsContract.Graph.Facts do
   """
   @spec domain(module() | map(), [module() | map()]) :: %{nodes: map(), relations: map()}
   def domain(domain, contracts) do
-    domain = Model.fetch(domain)
+    domain = domain |> Model.fetch() |> Model.Export.redact_domain()
     d = domain.module
+    ctx = context(d, domain, %{})
     contexts = MapSet.new(domain.contexts, & &1.name)
 
     models =
@@ -713,10 +986,36 @@ defmodule EhOsContract.Graph.Facts do
               event: id(:event, m.module, p.from)
             )
 
+    granted = Map.new(models, &{&1.module, Model.capabilities(&1)})
+
+    # The grant to take it is the application's, never a person's: only where a policy
+    # handles it (`EhOsContract.Model.capabilities/1`).
     subscribed =
       for m <- models,
           %{kind: :published, from: name, as: as} <- m.consumes,
-          do: relation(id(:publication, d, name), contract_id.(m.module), as: as)
+          do:
+            relation(id(:publication, d, name), contract_id.(m.module),
+              as: as,
+              capability: grant(granted[m.module], :subscribe, as)
+            )
+
+    # What each role may do, by contract, under the names EHOS grants it by.
+    capabilities =
+      Enum.group_by(
+        for m <- models,
+            {capability, g} <- Enum.sort(granted[m.module]),
+            role <- g.roles do
+          {role,
+           %{
+             capability: capability,
+             kind: g.kind,
+             contract: contract_id.(m.module),
+             declaration: id(declaration_kind(g.kind), m.module, g.name)
+           }}
+        end,
+        &elem(&1, 0),
+        &elem(&1, 1)
+      )
 
     wire =
       Enum.uniq(
@@ -753,32 +1052,38 @@ defmodule EhOsContract.Graph.Facts do
         {:accountable_for, relation(id(:actor, d, a), contract_id.(m.module))}
       end
 
-    context_of = &(Map.get(&1, :context) && id(:context, d, &1.context))
-
     nodes = %{
-      subdomain: Enum.map(domain.subdomains, &node(:subdomain, d, &1)),
+      subdomain: for(s <- domain.subdomains, do: node(:subdomain, d, s, type: s.type)),
       context:
-        for(
-          c <- domain.contexts,
-          do: node(:context, d, c, subdomain: id(:subdomain, d, c.subdomain))
-        ),
+        for c <- domain.contexts do
+          node(:context, d, c,
+            subdomain: id(:subdomain, d, c.subdomain),
+            language: c.language,
+            terms: Enum.map(c.terms, &term/1)
+          )
+        end,
+      # A contract has no words of its own in the DSL; its process has.
       contract:
         for m <- models do
-          %{
-            id: contract_id.(m.module),
-            name: m.module,
-            label: inspect(m.module),
-            source: nil,
-            context: id(:context, d, m.context)
-          }
+          with_attrs(%{id: contract_id.(m.module), name: m.module, label: nil, source: nil},
+            context: id(:context, d, m.context),
+            contract_id: Map.get(m, :id),
+            process: m.process && %{name: m.process.name, label: m.process.label},
+            correlate: m.process && m.process.correlate
+          )
         end,
       event: events,
       publication:
-        for(w <- wire, do: %{id: id(:publication, d, w), name: w, label: w, source: nil}),
-      actor: for(a <- domain.actors, do: node(:actor, d, a, context: context_of.(a))),
-      external: Enum.map(domain.externals, &node(:external, d, &1)),
-      value: for(v <- domain.values, do: node(:value, d, v, context: context_of.(v))),
-      entity: for(e <- domain.entities, do: node(:entity, d, e, context: context_of.(e))),
+        for(w <- wire, do: %{id: id(:publication, d, w), name: w, label: nil, source: nil}),
+      actor:
+        for a <- domain.actors do
+          a
+          |> actor(ctx)
+          |> Map.put(:capabilities, Map.get(capabilities, "#{domain.name}.#{a.name}", []))
+        end,
+      external: for(x <- domain.externals, do: external(x, ctx)),
+      value: for(v <- domain.values, do: value(v, ctx)),
+      entity: for(e <- domain.entities, do: entity(e, ctx)),
       subject: Enum.map(domain.subjects, &node(:subject, d, &1))
     }
 
@@ -792,9 +1097,10 @@ defmodule EhOsContract.Graph.Facts do
   # --- shared --------------------------------------------------------------------------
 
   defp domain_model(module) do
-    if Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0),
+    if compiled?(module),
       do: Model.fetch(module),
       else: %{
+        name: nil,
         actors: [],
         externals: [],
         values: [],
@@ -804,30 +1110,228 @@ defmodule EhOsContract.Graph.Facts do
       }
   end
 
+  defp compiled?(module),
+    do: Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0)
+
   defp id(kind, scope, name), do: Document.id([kind, scope, name])
 
-  # A node of a declaration: its id, name, label (or name) and source, and the owner
-  # fields given, an owner of `nil` or `false` left out.
-  defp node(kind, scope, declaration, owners \\ []) do
-    base = %{
-      id: id(kind, scope, declaration.name),
-      name: declaration.name,
-      label: Map.get(declaration, :label) || to_string(declaration.name),
-      source: Map.get(declaration, :source)
-    }
-
-    for {key, value} <- owners, value not in [nil, false], into: base, do: {key, value}
+  # A node of a declaration: its id, name, label and source — the label the client's
+  # words or `nil`, never the name in their place — and what else is given.
+  defp node(kind, scope, declaration, attrs \\ []) do
+    with_attrs(
+      %{
+        id: id(kind, scope, declaration.name),
+        name: declaration.name,
+        label: Map.get(declaration, :label),
+        source: Map.get(declaration, :source)
+      },
+      attrs
+    )
   end
 
-  # A relation from one node id to another, with what its type adds; an attribute
-  # given as `nil` or `false` is left out, so a relation has a key only for what it
-  # says. Its id is given in `group/4`, once its type is known.
-  defp relation(from, to, attrs \\ []) do
-    for {key, value} <- attrs,
-        value not in [nil, false],
-        into: %{from: from, to: to},
+  # A relation from one node id to another, with what its type adds. Its id is given
+  # in `group/4`, once its type is known.
+  defp relation(from, to, attrs \\ []), do: with_attrs(%{from: from, to: to}, attrs)
+
+  # An attribute given as `nil` or `false` is left out, so an element has a key only
+  # for what it says (batch 3: absent, not null).
+  defp with_attrs(base, attrs),
+    do: for({key, value} <- attrs, value not in [nil, false], into: base, do: {key, value})
+
+  # What a field's content is resolved against: the domain's module, its name, its
+  # values and entities, and the capabilities of the contract by kind and name.
+  defp context(d, domain, grants) do
+    %{
+      d: d,
+      name: Map.get(domain, :name),
+      values: MapSet.new(domain.values, & &1.name),
+      entities: Map.new(domain.entities, &{&1.name, &1}),
+      grants: grants
+    }
+  end
+
+  # The contract's capabilities keyed `{kind, name}`, where its domain is compiled to
+  # name them by (`EhOsContract.Model.capabilities/1`).
+  defp grants(model) do
+    if compiled?(model.domain),
+      do: Map.new(Model.capabilities(model), fn {c, g} -> {{g.kind, g.name}, c} end),
+      else: %{}
+  end
+
+  defp grant(capabilities, kind, name),
+    do: Enum.find_value(capabilities, fn {c, g} -> (g.kind == kind and g.name == name) && c end)
+
+  defp declaration_kind(:record), do: :event
+  defp declaration_kind(kind), do: kind
+
+  defp fields(fields, ctx), do: Enum.map(fields || [], &field(&1, ctx))
+
+  # A field in the one shape every panel shows: name, label, type, whether it is
+  # required, and what applies of its default, whose personal data it is, the subject
+  # it points at, the domain value its type is, the entity it identifies, the external
+  # that issues it — its own `issued_by:` or its entity's identity's — and whether the
+  # host supplies it.
+  defp field(f, ctx) do
+    issuer = Map.get(f, :issued_by) || issued_through(f, ctx.entities)
+
+    for {key, value} <- [
+          default: Map.get(f, :default),
+          personal_of: Map.get(f, :personal),
+          subject: Map.get(f, :subject) && id(:subject, ctx.d, f.subject),
+          value: value_of(f.type, ctx),
+          refers_to: Map.get(f, :refers_to) && id(:entity, ctx.d, f.refers_to),
+          issued_by: issuer && id(:external, ctx.d, issuer),
+          supplied_by: Map.get(f, :supplied_by)
+        ],
+        value != nil,
+        into: %{
+          name: f.name,
+          label: Map.get(f, :label),
+          type: type(f.type),
+          required: not Map.get(f, :optional, false)
+        },
         do: {key, value}
   end
+
+  # A type as data: a built-in's or a domain value's name, `%{list: type}`, or an
+  # inline enum with each member's label.
+  defp type({:list, inner}), do: %{list: type(inner)}
+
+  defp type({:enum, members}) do
+    %{
+      enum:
+        for m <- members do
+          case m do
+            {value, label} -> %{value: value, label: label}
+            value -> %{value: value, label: nil}
+          end
+        end
+    }
+  end
+
+  defp type(name), do: name
+
+  defp value_of({:list, inner}, ctx), do: value_of(inner, ctx)
+
+  defp value_of(name, ctx) when is_atom(name),
+    do: if(MapSet.member?(ctx.values, name), do: id(:value, ctx.d, name))
+
+  defp value_of(_type, _ctx), do: nil
+
+  # A domain service's function: its arguments, its result and its rules with their
+  # examples, which `redacted/1` has already redacted.
+  defp function(f, ctx) do
+    returns = field(returned(f), ctx)
+
+    %{
+      name: f.name,
+      label: f.label,
+      arguments: fields(f.arguments, ctx),
+      returns: Map.drop(returns, [:name, :label]),
+      rules:
+        for r <- f.rules do
+          %{
+            name: r.name,
+            label: r.label,
+            source: r[:source],
+            examples:
+              for({arguments, result} <- r.examples, do: %{arguments: arguments, result: result})
+          }
+        end
+    }
+  end
+
+  # What a function returns, as a field without a name: `{:id, entity}` read the way
+  # the model reads it on every named field (`EhOsContract.Domain.Build.reference/1`).
+  defp returned(f), do: EhOsContract.Domain.Build.reference(Map.put(f.returns, :name, nil))
+
+  # The domain's declarations, as both documents carry them; one known by its name
+  # alone carries nothing else.
+  defp actor(a, ctx) do
+    node(:actor, ctx.d, a,
+      context: in_context(a, ctx),
+      actor_kind: Map.get(a, :kind),
+      role: Map.get(a, :kind) == :human && ctx.name && "#{ctx.name}.#{a.name}",
+      scope: Map.get(a, :scope),
+      responsibilities: described(Map.get(a, :responsibilities))
+    )
+  end
+
+  defp external(x, ctx) do
+    node(:external, ctx.d, x,
+      direction: Map.get(x, :direction),
+      unavailable_looks_like: Map.get(x, :unavailable_looks_like),
+      expected_latency: duration(Map.get(x, :expected_latency)),
+      operations: described(Map.get(x, :operations))
+    )
+  end
+
+  defp value(v, ctx) do
+    typed = Map.get(v, :type) && field(v, ctx)
+
+    # A value typed as another value, or as an entity's id, names it as a field would.
+    node(:value, ctx.d, v,
+      context: in_context(v, ctx),
+      type: typed && typed.type,
+      value: typed && typed[:value],
+      refers_to: typed && typed[:refers_to],
+      issued_by: typed && typed[:issued_by],
+      unit: Map.get(v, :unit),
+      fields: Map.has_key?(v, :fields) && fields(v.fields, ctx),
+      invariants:
+        Map.has_key?(v, :invariants) &&
+          for i <- v.invariants do
+            %{
+              name: i.name,
+              label: i.label,
+              source: i[:source],
+              satisfied_by: i.satisfied_by,
+              violated_by: i.violated_by
+            }
+          end
+    )
+  end
+
+  defp entity(e, ctx) do
+    node(:entity, ctx.d, e,
+      context: in_context(e, ctx),
+      identity: Map.get(e, :identity),
+      fields: Map.has_key?(e, :fields) && fields(e.fields, ctx)
+    )
+  end
+
+  defp in_context(declaration, ctx),
+    do: Map.get(declaration, :context) && id(:context, ctx.d, declaration.context)
+
+  defp described(nil), do: nil
+
+  defp described(items),
+    do: for(x <- items, do: %{name: x.name, label: x.label, source: x[:source]})
+
+  defp duration({amount, unit}), do: %{amount: amount, unit: unit}
+  defp duration(other), do: other
+
+  # A term of a context's glossary, whole: its definition, what to avoid and why, and
+  # its translations.
+  defp term(t) do
+    %{
+      text: t.text,
+      definition: t.definition,
+      source: t[:source],
+      avoid: avoid(t.avoid),
+      translations:
+        for tr <- t.translations do
+          %{
+            language: tr.language,
+            text: tr.text,
+            definition: tr.definition,
+            avoid: avoid(tr.avoid)
+          }
+        end
+    }
+  end
+
+  defp avoid(items), do: for(a <- items, do: %{text: a.text, reason: a.reason})
 
   # Relations tagged with their type, grouped.
   defp typed(pairs), do: Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))

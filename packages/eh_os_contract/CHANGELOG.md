@@ -98,7 +98,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
   the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
   `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
-  moves.
+  moves. A node's `label` is the client's words or `null`, never its name. Each node carries what a panel shows
+  of it — fields in one shape (type, required, default, whose personal data, the subject, value or entity it
+  names, the external that issues it), capabilities, delivery and idempotency, windows, terminal and final, a
+  unit's state, a query's parameters, a domain service's functions, an actor's role, an external's operations, a
+  context's terms, a role's capabilities by contract — and a contract's `scenarios`, grouped by the kind of their
+  target, say which relations they exercise (`covers`). Every example and default in a document is redacted as
+  `Model.to_data/1` redacts it.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the
