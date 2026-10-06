@@ -16,6 +16,7 @@ defmodule EhOsContract.AuthorizerTest do
       kind: :query,
       capability: capability,
       contract: __MODULE__,
+      contract_id: "authorizer_test.contract",
       version: "v",
       scope: scope
     }

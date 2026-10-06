@@ -253,6 +253,7 @@ defmodule EhOsContract.Auth.SchemaTest do
       kind: :command,
       capability: "rehmed.record_payment",
       contract: Rehmed.Contracts.VisitSettlement,
+      contract_id: "rehmed.visit_settlement",
       version: "3f2a",
       scope: nil
     }

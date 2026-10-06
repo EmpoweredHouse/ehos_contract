@@ -40,16 +40,19 @@ defmodule EhOsContract.Authorizer do
     What an actor asks to do: the capability, under the name EHOS grants it by
     (`EhOsContract.Model.capabilities/1`), and for a scoped query or command (plan E9c) the dimension and the
     value asked for, both as strings, in the form a credential's `scp` carries them.
+    `contract` is the contract's module and `contract_id` its `id:`, the name a record of
+    the decision stores, as every row of the engine does (plan DD, ID4, #178).
     """
 
-    @enforce_keys [:kind, :capability, :contract, :version]
-    defstruct [:kind, :capability, :contract, :version, :scope]
+    @enforce_keys [:kind, :capability, :contract, :contract_id, :version]
+    defstruct [:kind, :capability, :contract, :contract_id, :version, :scope]
 
     @typedoc "One request to authorize."
     @type t :: %__MODULE__{
             kind: :command | :query | :record,
             capability: String.t(),
             contract: module(),
+            contract_id: String.t(),
             version: String.t(),
             scope: nil | {dimension :: String.t(), value :: String.t() | nil}
           }

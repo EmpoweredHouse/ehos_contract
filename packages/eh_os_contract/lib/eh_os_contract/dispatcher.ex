@@ -509,6 +509,7 @@ defmodule EhOsContract.Dispatcher do
       kind: :command,
       capability: capability(model, :command, declaration.name),
       contract: model.module,
+      contract_id: model.id,
       version: model.version,
       scope: scope && {scope.dimension, scope.value}
     })
@@ -547,6 +548,7 @@ defmodule EhOsContract.Dispatcher do
       kind: :record,
       capability: capability(model, :record, declaration.name),
       contract: model.module,
+      contract_id: model.id,
       version: model.version
     })
   end
@@ -562,6 +564,7 @@ defmodule EhOsContract.Dispatcher do
       kind: :query,
       capability: capability(model, :query, declaration.name),
       contract: model.module,
+      contract_id: model.id,
       version: model.version,
       scope: scope && {scope.dimension, scope.value}
     })
