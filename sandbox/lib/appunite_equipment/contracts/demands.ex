@@ -17,6 +17,11 @@ defmodule AppuniteEquipment.Contracts.Demands do
   demand that is not open stands, and the demand stays on the waiting list — an open
   question for the process owner (PLAN.md, 4 October (2)).
 
+  From the need to the issue is the demand's lifecycle, open, ordered and
+  fulfilled, which the engine follows from the events; it is not a run declared
+  here. The contract declares no process; the `demand` it had was there until plan
+  DD, P1d (#195) only because every contract once had to name one.
+
   What is left out: which computer the shelf holds for which demand. The person,
   the account and the courier are one move with the issue (E), so a demand is
   never "assigned" before it is fulfilled.
@@ -95,7 +100,6 @@ defmodule AppuniteEquipment.Contracts.Demands do
     end
 
     event :fulfilled, "Wydano komputer — zapotrzebowanie zaspokojone",
-      terminal: true,
       source: "cf.pdf, E (2026-10-04)" do
       field :computer_id, :id
     end
@@ -124,11 +128,6 @@ defmodule AppuniteEquipment.Contracts.Demands do
   end
 
   query :waiting_list, "Kto czeka na komputer", reads: :waiting, by: :equipment_manager
-
-  process :demand, "Zapotrzebowanie: od potrzeby do wydania komputera",
-    accountable: :equipment_manager do
-    correlate :demand_id
-  end
 
   scenario "Ola zaczyna 1 listopada — zapotrzebowanie otwarte" do
     command :open_demand, %{
