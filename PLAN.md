@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 6 października (fala 1 w `main`; fala 2: ID1 w toku)
+## Handoff — stan na 6 października (fala 1 i ID1 w `main`; następny ID2)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -48,7 +48,7 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 
 ### Stan repozytorium
 
-- **`origin/main` = `32d7137`** (merge #151, S4, 6 października; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+- **`origin/main` = `5a90e96`** (merge #152, ID1, 6 października; przed nim `32d7137`, merge #151, S4; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
   W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
@@ -95,10 +95,10 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
-     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta.
-  2. **Asystent:** fala 2 — ID1 na `dsl/id1-contract-id` (worktree `runner-usage-optimization-b60150`), potem ID2,
-     ID3, ID4, P1a… po kolei (tabela „Postęp”). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
-     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta; z fali 2 ID1 (#152).
+  2. **Asystent:** fala 2 — ID2, potem ID3, ID4, P1a… po kolei (tabela „Postęp”), każdy przez swoje issue (skill
+     `stage-issue`, gałąź `dd/<issue>-…`). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
+     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: akapit, issue, ◐ i gałąź w tabeli; koniec: komentarz zamykający issue; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
