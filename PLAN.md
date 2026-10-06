@@ -47,9 +47,11 @@ AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka mig
 `dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 merged in #174
 (issue #173): the id is required and labels every event; existing logs are reset. Follow-up #175 (a start-up
 warning for undeclared types in the log) merged in #176. ID4 merged in #181 (issue #178): rows and keys name a
-contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has) in
-progress on `dd/179-undeclared-contracts`; #180 (the domain's name must equal the EHOS application's, with
-EmpoweredHouse/eh-os#201) waits for a decision on where it goes. Next stage: P1a.
+contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
+merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
+v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b (issue #186) on
+`dd/186-nothing-assumes-process`. #180 (the domain's name must equal the EHOS application's, with
+EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
 
@@ -558,7 +560,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
-| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ◐ `dd/186-nothing-assumes-process` | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
