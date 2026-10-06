@@ -31,9 +31,10 @@ whatever runs `:in_transaction` holds every other write in the application while
 database, and put anything slow behind `:at_least_once`.
 
 A policy or an effect delivered at least once does not compile unless it names what makes a second
-delivery harmless, because the event *will* arrive twice. A policy or a read model that reacts to an event of
-another context has to say how it is delivered: left to the default, a failure in one part of the business
-would undo a fact recorded in another, and the contract would never have said the two commit together.
+delivery harmless, because an event may be delivered more than once. A policy or a read model that reacts to an
+event of another context does not compile until it says how it is delivered: run `:in_transaction`, a failure in
+one part of the business undoes a fact recorded in another, so that has to be a choice the contract states, and
+`mix eh_os_contract.check` warns of it.
 
 **Conformance.** The same contract, compared against the log dispatch has been writing: which declared
 steps never ran, what happened that nobody declared, which promises were broken, and which contract version
@@ -293,6 +294,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 ## Status
 
 A working prototype, not a released library — nothing here has shipped to a real client yet.
-The full test suite runs in CI on every pull request that changes code (see the badge above); one that
-changes only the team's working documents skips it. Licensed under
+The full test suite runs in CI on every pull request that changes code once it is ready for review — a draft
+waits until it is marked ready (see the badge above); one that changes only the team's working documents skips
+it. Licensed under
 [Apache 2.0](LICENSE).
