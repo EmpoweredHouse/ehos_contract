@@ -1,0 +1,11 @@
+**Review of P1e** (two reviews in parallel on `origin/main..45f7fd2`; settled in the last commit).
+
+Correctness found no bug and no test that now passes for the wrong reason. It checked the risky cases one by one: `refute`s backed by a positive assertion, a findings list still produced by its own rule, the domain graph's budget computed from `process != nil`. Every expected line that moved points at the same declaration with the same message: 4 lines up per removed block, 8 where two went. One identity-order test got stronger, since the process's `correlate` no longer moves the version too. Its findings:
+- The manifest's test of a contract without a process now uses a contract with one query, where the hand-built model had a command, a query and a recording. **Kept**, with a comment: every kind of capability goes through the same `with_process/2`, so the query stands for the others. The other contracts without a process in that file are refusal rigs (a snake_case name, a domain without humans) and cannot build a manifest.
+- The testing helper's `:keeper` actor was named only by the removed process. **Removed.**
+- The domain graph's Settlement fixture keeps a `consumes` that only the removed `include` read. **Left**: the test draws the edge from `consumes`, which is what it asserts.
+- The completeness test could also refute `:cancelled` and `:closed`, read now only through the lifecycle. **Left**: #186 tests that rule.
+
+Security and performance found nothing. Nothing outside `test/` and `PLAN.md` changed. Every `by:`, `personal:` and `subject:` survives, and the processes that guard what they test (`Work` for the manifest's `"process"`, `DispatchRig.Ledger` for runs) are kept. Without a process the rigs write fewer run rows, all inside the Ecto sandbox.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Engine check: 74 → 70 warnings. Five `process-without-accountable` warnings went with the processes that named no accountable role. One `event-without-consumer` warning is new, for `BoundaryRig.Waitlist`'s `:waitlist_left`, which ending a run no longer counts as reading. Sandbox counts unchanged. Tests unchanged: engine 1398, web 57, sandbox 196, auth 287 + 1 property. `process` blocks in the packages' tests: 210 → 61.
