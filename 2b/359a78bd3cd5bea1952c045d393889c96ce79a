@@ -1,0 +1,11 @@
+**Review of P1d's first part: removing `cadence`** (two reviews in parallel on `origin/main..e8bdaf8`; settled in the commit after it).
+
+Correctness found no bug. Nothing in the engine, the dashboard, the auth package, the mix tasks, the generated documents or the conformance wire reads `cadence` any more. The digest helper puts `cadence: nil` back in both places a process was hashed, and the digest sorts keys, so every contract that never declared one keeps its version. A dump of every engine and sandbox contract's version and digests before and after showed that: only the four that declared it moved. R6 still refuses a second `deadline` and a calendar unit outside a timer's wait. Its findings:
+- The exported model (`Model.to_data/1`) loses `"cadence": null` from every process, so that document's own digest moves for every contract with a process. **Fixed:** the changelog says so. Found by both reviews.
+- The `change-contract` skill still had a `cadence` row. **Removed.** The `contract-distillation` skill still asked for a cadence. **Reworded:** it asks whether a process recurs on a schedule, as a note for the contract's author.
+- `Duration.humanize/1` drops the numeral at a count of one ("within hour"). **Left:** both callers put a word in front of it, as its doc says. It is not tied to `cadence`.
+- An over-long moduledoc line in a fixture. **Reflowed.**
+
+Security and performance found nothing else. The manifest does not carry the contract's version, so EHOS's authority digest is untouched. Deployment records move only for the two sandbox contracts that declared a cadence.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Check counts unchanged: sandbox 0, 33, 10; engine 0, 70, 6. Tests: engine 1399 (+1, the refusal of `cadence`), web 57, sandbox 196, auth 287 + 1 property.
