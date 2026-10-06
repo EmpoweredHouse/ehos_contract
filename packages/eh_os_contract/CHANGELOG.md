@@ -27,6 +27,15 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The conformance report finds one contract's commands through an index** (#185):
+  `eh_os_contract_commands (contract, outcome, recorded_at)`, added to V01 in place, as V01 is until 0.3.0 is
+  released. Before it, every query of `Coverage` and `Paths` on that table read all of it; reads bounded by
+  `recorded_at` and of failed commands gain the most. No verdict moves, and nothing has to be done: a database
+  created from an earlier V01 is recorded at version 1, so `up/0` leaves it without the index and only slower. The
+  reset of the engine's schema that naming contracts by their `id:` asks for (plan DD, stage ID4, #178) creates it;
+  without a reset, `CREATE INDEX CONCURRENTLY IF NOT EXISTS
+  eh_os_contract_commands_contract_outcome_recorded_at_index ON eh_os_contract_commands (contract, outcome,
+  recorded_at)`, outside a transaction, builds it without stopping dispatch.
 - **A warning at start-up when the event log files events under a contract name no contract has as its id**
   (#179). The engine names them and goes on. It catches a log written before rows named a contract by its id (plan
   DD, ID4, #178) and not reset: its event types are still declared, so the warning of #175 says nothing, while the

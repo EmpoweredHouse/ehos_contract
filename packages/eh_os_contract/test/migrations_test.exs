@@ -110,6 +110,12 @@ defmodule EhOsContract.MigrationsTest do
            SELECT pg_get_constraintdef(oid) FROM pg_constraint
            WHERE conname = 'eh_os_contract_events_id_key'
            """) == "UNIQUE (id)"
+
+    # The conformance queries find one contract's commands by outcome and time (#185).
+    assert one("""
+           SELECT pg_get_indexdef(indexrelid) FROM pg_index
+           WHERE indexrelid = 'eh_os_contract_commands_contract_outcome_recorded_at_index'::regclass
+           """) =~ "btree (contract, outcome, recorded_at)"
   end
 
   test "no column of the engine's tables is limited to 255 characters" do
