@@ -559,7 +559,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
-| P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
+| P1b | 2 | nic nie zakłada procesu | P1a | ◐ `dd/186-nothing-assumes-process` | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☐ | — |
@@ -696,8 +696,10 @@ activity, paths, processes, lifecycles, scenarios, drift}`; `Conformance.process
 `eh_os_contract.conformance.v3` only; the four dashboard APIs by id. Report, screen, graph ("N taken"). Six PRs:
 counting, report shape, wire, screen, APIs, graph. Depends on ID3, ID4.
 
-**P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
-`eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
+**P1b — nothing else assumes a process** (#186; tightened 6 October 2026). The manifest writes a capability's
+`"process"` only when its contract has one (EHOS reads it nowhere, eh-os#203); the graph page selects a contract by
+its id, a process's shape only when there is one; `event-without-consumer` counts an event a unit's lifecycle
+starts on or moves on as consumed (the report's lifecycle section reads it). Depends on P1a.
 **P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
 do wymagania 7 (v2 §3).
 **P1d — sandbox bez sztucznych procesów** (PR na domenę): Rehmed `scheduling`, `clinical_documentation`,
