@@ -38,7 +38,7 @@ defmodule EhOsContract.KeyBudgetTest do
              "key_rig.count_bin",
              "key_rig.stock_shelf"
            ])
-  @watch "KeyRig.Bins:process_manager:watch"
+  @watch "key_rig.bins:process_manager:watch"
 
   # A value whose escaped form is `bytes` long.
   defp id(bytes), do: String.duplicate("|", div(bytes, 3)) <> String.duplicate("x", rem(bytes, 3))
@@ -133,17 +133,17 @@ defmodule EhOsContract.KeyBudgetTest do
     defp watch(bin_id), do: ProcessManager.stream(@watch, Key.join([@site, @aisle, bin_id]))
 
     test "of exactly the budget starts its run" do
-      assert byte_size(watch(id(478))) == Key.budget()
-      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(478)), actor: @stocker)
+      assert byte_size(watch(id(477))) == Key.budget()
+      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(477)), actor: @stocker)
 
       assert %{failing: []} = Testing.drain(only: @watch)
       assert Repo.aggregate(ProcessManagerRecord, :count) == 1
     end
 
     test "a byte over stops its subscription with Key.TooLongError until it is skipped" do
-      assert byte_size(watch(id(479))) == Key.budget() + 1
+      assert byte_size(watch(id(478))) == Key.budget() + 1
       # The dispatch's own keys fit: only the manager's does not.
-      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(479)), actor: @stocker)
+      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(478)), actor: @stocker)
 
       assert %{failing: [@watch]} = Testing.drain(only: @watch)
 
@@ -159,7 +159,7 @@ defmodule EhOsContract.KeyBudgetTest do
 
     test "over the budget on an event no run takes is taken as before, not a stop" do
       # The watch reacts on a count, but only a restock starts a run: nothing to write.
-      count = %KeyRig.Bins.Commands.CountBin{site_id: @site, aisle_id: @aisle, bin_id: id(479)}
+      count = %KeyRig.Bins.Commands.CountBin{site_id: @site, aisle_id: @aisle, bin_id: id(478)}
       {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, count, actor: @stocker)
 
       assert %{failing: []} = Testing.drain(only: @watch)
@@ -167,7 +167,7 @@ defmodule EhOsContract.KeyBudgetTest do
     end
 
     test "names the manager and the bytes, and no value" do
-      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(479)), actor: @stocker)
+      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(478)), actor: @stocker)
       [row] = Repo.all(Event)
       consumer = Enum.find(EhOsContract.Implementations.subscribed(), &(&1.key == @watch))
 

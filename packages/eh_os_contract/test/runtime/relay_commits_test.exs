@@ -32,7 +32,7 @@ defmodule EhOsContract.RelayCommitsTest do
     def consumer(_opts, _consumer), do: raise("not consumed from")
   end
 
-  @relay "BusRig.Orders:relay:order_placed"
+  @relay "bus_rig_shop.orders:relay:order_placed"
   @clerk Actor.credential("u-1", ["bus_rig_shop.place_order"])
 
   setup do

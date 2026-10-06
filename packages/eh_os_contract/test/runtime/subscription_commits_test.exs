@@ -17,7 +17,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
   alias EhOsContract.CommitRepo, as: Repo
   alias EhOsContract.{Implementations, Store, Subscription, SubscriptionRecord}
 
-  @lines "DispatchRig.Ledger:read_model:ledger_lines"
+  @lines "dispatch_rig.ledger:read_model:ledger_lines"
 
   setup do
     previous = Application.fetch_env!(:eh_os_contract, :repo)
@@ -106,7 +106,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
     alias DispatchRig.Ledger
     alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
 
-    @change "DispatchRig.Ledger:policy:return_small_change"
+    @change "dispatch_rig.ledger:policy:return_small_change"
     @clerk EhOsContract.Actor.credential("u-1", [
              "dispatch_rig.open_account",
              "dispatch_rig.deposit",
@@ -184,7 +184,7 @@ defmodule EhOsContract.SubscriptionCommitsTest do
   end
 
   describe "a rebuilt inline read model" do
-    @balances "DispatchRig.Ledger:read_model:balances"
+    @balances "dispatch_rig.ledger:read_model:balances"
 
     test "goes back to dispatch while a person resets it again, without a deadlock" do
       balances = Implementations.consumer(@balances)

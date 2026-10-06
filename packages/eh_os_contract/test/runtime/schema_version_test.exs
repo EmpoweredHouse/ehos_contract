@@ -115,7 +115,7 @@ defmodule EhOsContract.SchemaVersionTest do
   end
 
   test "a policy waits at a newer row: nothing moves and no attempt is counted" do
-    flag = "DispatchRig.Ledger:policy:flag_large_withdrawal"
+    flag = "dispatch_rig.ledger:policy:flag_large_withdrawal"
     Testing.drain(only: flag)
     before = Repo.get!(SubscriptionRecord, flag).position
 
@@ -133,7 +133,7 @@ defmodule EhOsContract.SchemaVersionTest do
   end
 
   test "a read model applies what comes before a newer row in its batch, and waits at it" do
-    lines = "DispatchRig.Ledger:read_model:ledger_lines"
+    lines = "dispatch_rig.ledger:read_model:ledger_lines"
     Subscription.register!(Repo, [Implementations.consumer(lines)])
     Testing.drain(only: lines)
     before = Repo.get!(SubscriptionRecord, lines).position
@@ -165,7 +165,7 @@ defmodule EhOsContract.SchemaVersionTest do
   end
 
   test "a process manager waits at a newer row, and keeps no state from it" do
-    chase = "DispatchRig.Ledger:process_manager:first_deposit_chase"
+    chase = "dispatch_rig.ledger:process_manager:first_deposit_chase"
     Subscription.register!(Repo, [Implementations.consumer(chase)])
     Testing.drain(only: chase)
 
@@ -194,7 +194,7 @@ defmodule EhOsContract.SchemaVersionTest do
       newer!(DispatchRig.Ledger, :account_flagged, {"account:a-9", 0})
 
     job = %Oban.Job{
-      args: %{"effect" => "DispatchRig.Ledger:effect:notify_branch", "event_id" => newer.id}
+      args: %{"effect" => "dispatch_rig.ledger:effect:notify_branch", "event_id" => newer.id}
     }
 
     assert {:snooze, 30} = EffectJob.perform(job)
@@ -227,7 +227,7 @@ defmodule EhOsContract.SchemaVersionTest do
     end
 
     test "publishes what comes before a newer row, and waits at it" do
-      relay = "BusRig.Orders:relay:order_placed"
+      relay = "bus_rig_shop.orders:relay:order_placed"
       Subscription.register!(Repo, [Implementations.consumer(relay)])
       clerk = Actor.credential("u-1", ["bus_rig_shop.place_order"])
 
@@ -250,7 +250,7 @@ defmodule EhOsContract.SchemaVersionTest do
     end
 
     test "waits at a newer row, and publishes nothing of it" do
-      relay = "BusRig.Orders:relay:order_placed"
+      relay = "bus_rig_shop.orders:relay:order_placed"
       Subscription.register!(Repo, [Implementations.consumer(relay)])
       before = Repo.get!(SubscriptionRecord, relay).position
 

@@ -119,17 +119,20 @@ defmodule EhOsContract.UnstorableBytesTest do
   test "a reaction's derived key holds to the rule however long its names are" do
     id = Ecto.UUID.generate()
 
-    assert EhOsContract.Consumer.reaction_key(:policy, DispatchRig.Ledger, :echo_deposit, id, 0) ==
-             "policy:DispatchRig.Ledger:echo_deposit:#{id}:0"
+    assert EhOsContract.Consumer.reaction_key(
+             :policy,
+             "dispatch_rig.ledger",
+             :echo_deposit,
+             id,
+             0
+           ) ==
+             "policy:dispatch_rig.ledger:echo_deposit:#{id}:0"
 
-    long = Module.concat([String.duplicate("A", 240)])
-
-    for contract <- [long, :"Elixir.Foo Bar"] do
-      key = EhOsContract.Consumer.reaction_key(:policy, contract, :echo_deposit, id, 0)
-      assert "policy:sha256:" <> hex = key
-      assert byte_size(hex) == 64
-      assert EhOsContract.Dispatcher.idempotency_key?(key)
-    end
+    long = String.to_atom(String.duplicate("a", 240))
+    key = EhOsContract.Consumer.reaction_key(:policy, "dispatch_rig.ledger", long, id, 0)
+    assert "policy:sha256:" <> hex = key
+    assert byte_size(hex) == 64
+    assert EhOsContract.Dispatcher.idempotency_key?(key)
   end
 
   test "open: takes a function, never the codec's own mark that lets any bytes in" do

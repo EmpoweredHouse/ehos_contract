@@ -50,7 +50,7 @@ defmodule EhOsContract.BootTest do
 
     consumers =
       Enum.map(index.consumers, fn
-        %{key: "ShreddingRig.Members:read_model:members"} = consumer ->
+        %{key: "shredding_rig.members:read_model:members"} = consumer ->
           %{consumer | module: Unforgetting}
 
         consumer ->

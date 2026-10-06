@@ -211,7 +211,7 @@ defmodule EhOsContract.PathsTest do
     test "a subscription stopped at an event it cannot apply fails the steps through it" do
       Repo.update_all(
         from(s in SubscriptionRecord,
-          where: s.name == "DispatchRig.Ledger:policy:flag_large_withdrawal"
+          where: s.name == "dispatch_rig.ledger:policy:flag_large_withdrawal"
         ),
         set: [status: "failing", failed_position: 42, failure: "RuntimeError"]
       )

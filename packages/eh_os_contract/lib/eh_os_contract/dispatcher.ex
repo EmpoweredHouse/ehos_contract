@@ -269,7 +269,7 @@ defmodule EhOsContract.Dispatcher do
 
   defp caught_up(model, declaration, %{min_position: position} = opts)
        when is_integer(position) do
-    key = "#{inspect(model.module)}:read_model:#{declaration.reads}"
+    key = "#{model.id}:read_model:#{declaration.reads}"
     read_model = Enum.find(model.read_models, &(&1.name == declaration.reads))
     until = System.monotonic_time(:millisecond) + Map.get(opts, :wait, 5000)
     wait_for(repo(), key, read_model.delivery, position, until)

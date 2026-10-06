@@ -23,7 +23,7 @@ defmodule EhOsContract.ErasureTest do
 
   @clerk Actor.credential("u-clerk", ["shredding_rig.join", "shredding_rig.rename"])
   @officer Actor.credential("u-officer", [])
-  @names "ShreddingRig.Members:read_model:member_names"
+  @names "shredding_rig.members:read_model:member_names"
 
   defp join_member(membership, member, name) do
     EhOsContract.dispatch(
@@ -230,7 +230,7 @@ defmodule EhOsContract.ErasureTest do
 
       members =
         Implementations.subscribed()
-        |> Enum.find(&(&1.key == "ShreddingRig.Members:read_model:members"))
+        |> Enum.find(&(&1.key == "shredding_rig.members:read_model:members"))
         |> Implementations.taking(Personal.erased_type())
 
       assert Consumer.handle!(members, erased, []) == :ok
@@ -239,7 +239,7 @@ defmodule EhOsContract.ErasureTest do
     test "a read model nobody implemented has nothing to forget, and stops no erasure" do
       members =
         Implementations.subscribed()
-        |> Enum.find(&(&1.key == "ShreddingRig.Members:read_model:members"))
+        |> Enum.find(&(&1.key == "shredding_rig.members:read_model:members"))
         |> Implementations.taking(Personal.erased_type())
 
       erased = %Erased{subject: :member, id: "member-anna"}
@@ -250,7 +250,7 @@ defmodule EhOsContract.ErasureTest do
       balances =
         Enum.find(
           Implementations.subscribed(),
-          &(&1.key == "DispatchRig.Ledger:read_model:balances")
+          &(&1.key == "dispatch_rig.ledger:read_model:balances")
         )
 
       refute Map.has_key?(balances.callbacks, Personal.erased_type())
@@ -258,7 +258,7 @@ defmodule EhOsContract.ErasureTest do
       members =
         Enum.find(
           Implementations.subscribed(),
-          &(&1.key == "ShreddingRig.Members:read_model:members")
+          &(&1.key == "shredding_rig.members:read_model:members")
         )
 
       assert members.callbacks[Personal.erased_type()] == :forget
@@ -367,7 +367,7 @@ defmodule EhOsContract.ErasureTest do
       members =
         Enum.find(
           Implementations.subscribed(),
-          &(&1.key == "ShreddingRig.Members:read_model:members")
+          &(&1.key == "shredding_rig.members:read_model:members")
         )
 
       assert_raise ArgumentError,

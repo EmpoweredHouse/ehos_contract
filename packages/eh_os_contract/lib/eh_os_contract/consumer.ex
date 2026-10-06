@@ -261,7 +261,9 @@ defmodule EhOsContract.Consumer do
   end
 
   # One link of a chain: the policy, and the type of the event it reacted to.
-  defp link(consumer), do: "#{inspect(consumer.contract)}:#{consumer.name}:#{consumer.type}"
+  # Stored in the event's metadata, so it names the contract by its id (plan DD, ID4, #178).
+  defp link(consumer),
+    do: "#{Model.fetch(consumer.contract).id}:#{consumer.name}:#{consumer.type}"
 
   @doc false
   # What a reaction issued, dispatched at once as the reaction's own actor, `:policy`
@@ -290,7 +292,8 @@ defmodule EhOsContract.Consumer do
         actor: Actor.reaction(kind, consumer.name),
         causation_id: source.id,
         correlation_id: source.correlation_id,
-        idempotency_key: reaction_key(kind, consumer.contract, consumer.name, source.id, index),
+        idempotency_key:
+          reaction_key(kind, Model.fetch(consumer.contract).id, consumer.name, source.id, index),
         chain: chain
       ]
 
@@ -333,12 +336,13 @@ defmodule EhOsContract.Consumer do
 
   @doc false
   # The key a reaction's command is dispatched with: one per event and command, so a
-  # delivery again is the same command. Held to dispatch's rule as every key is; one that
-  # would break it — names past what 255 bytes leave, or a quoted module — is its SHA-256
-  # in the same form, and the key of every other reaction stays as it always was.
-  @spec reaction_key(atom(), module(), atom(), String.t(), non_neg_integer()) :: String.t()
-  def reaction_key(kind, contract, name, id, index) do
-    key = "#{kind}:#{inspect(contract)}:#{name}:#{id}:#{index}"
+  # delivery again is the same command, named by the contract's id (plan DD, ID4, #178).
+  # Held to dispatch's rule as every key is; one that would break it — names past what
+  # 255 bytes leave — is its SHA-256 in the same form, and the key of every other
+  # reaction stays as it always was.
+  @spec reaction_key(atom(), String.t(), atom(), String.t(), non_neg_integer()) :: String.t()
+  def reaction_key(kind, contract_id, name, id, index) do
+    key = "#{kind}:#{contract_id}:#{name}:#{id}:#{index}"
 
     if Dispatcher.idempotency_key?(key),
       do: key,

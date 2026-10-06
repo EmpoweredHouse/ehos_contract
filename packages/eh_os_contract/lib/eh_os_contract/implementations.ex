@@ -69,7 +69,7 @@ defmodule EhOsContract.Implementations do
   that projects personal data every erasure, `:forget` (v2 §14); `forgets` holds the
   subject types it forgets, the ones whose personal data it projects.
   `module` is `nil` for a declaration nobody implemented. `key` names it,
-  `"<contract>:<kind>:<name>"`: its row in `eh_os_contract_subscriptions` and its
+  `"<contract id>:<kind>:<name>"`: its row in `eh_os_contract_subscriptions` and its
   effect jobs' argument. `version` is what that row compares to
   tell a changed declaration: the digest of the declaration and of every event it
   takes, so a read model whose event gained a field is stale too.
@@ -178,28 +178,14 @@ defmodule EhOsContract.Implementations do
     do: Map.merge(consumer, %{type: type, callback: Map.fetch!(consumer.callbacks, type)})
 
   @doc """
-  The consumer whose key is `key`, or `nil`. Looked up where dispatch looks: the
-  configured applications and the application of the contract the key names, so an
-  effect's job finds the effect its dispatch enqueued it for.
+  The consumer whose key, `"<contract id>:<kind>:<name>"`, is `key`, or `nil`. Looked
+  up among the configured applications and `application`, when given: an effect's job
+  passes the one its dispatch looked in, which the key's id cannot name (plan DD, ID4,
+  #178).
   """
   @spec consumer(String.t(), atom() | nil) :: consumer() | nil
-  def consumer(key, application \\ nil) do
-    [contract | _] = String.split(key, ":")
-
-    Enum.find(
-      index_of(List.wrap(application) ++ List.wrap(own(existing(contract)))).consumers,
-      &(&1.key == key)
-    )
-  end
-
-  defp own(nil), do: nil
-  defp own(contract), do: Application.get_application(contract)
-
-  defp existing(contract) do
-    Module.safe_concat([contract])
-  rescue
-    ArgumentError -> nil
-  end
+  def consumer(key, application \\ nil),
+    do: Enum.find(index_of(List.wrap(application)).consumers, &(&1.key == key))
 
   @doc """
   The contract whose `id` is `id`, or `nil`: what a row of the log or a consumer's key
@@ -298,7 +284,7 @@ defmodule EhOsContract.Implementations do
         from: from,
         fields: fields,
         policies: policies,
-        key: "#{inspect(model.module)}:inbox:#{as}"
+        key: "#{model.id}:inbox:#{as}"
       }
     end
   end
@@ -386,7 +372,7 @@ defmodule EhOsContract.Implementations do
       callbacks: %{type => publication.from},
       forgets: MapSet.new(),
       publication: publication,
-      key: "#{inspect(model.module)}:relay:#{publication.name}",
+      key: "#{model.id}:relay:#{publication.name}",
       version:
         EhOsContract.Digest.hash([
           Map.fetch!(model.digests, "publish:#{publication.name}"),
@@ -434,7 +420,7 @@ defmodule EhOsContract.Implementations do
         |> Map.merge(timers)
         |> Map.merge(forgets),
       forgets: subjects,
-      key: "#{inspect(model.module)}:#{kind}:#{declaration.name}",
+      key: "#{model.id}:#{kind}:#{declaration.name}",
       version:
         EhOsContract.Digest.hash([
           Map.fetch!(model.digests, "#{kind}:#{declaration.name}")

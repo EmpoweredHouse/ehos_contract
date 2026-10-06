@@ -274,7 +274,7 @@ defmodule EhOsContract.Paths do
   defp mode(:in_transaction), do: :inline
   defp mode(_at_least_once), do: :async
 
-  defp key(model, kind, name), do: "#{inspect(model.module)}:#{kind}:#{name}"
+  defp key(model, kind, name), do: "#{model.id}:#{kind}:#{name}"
 
   # An event's label, from the contract that declares it; a sibling's for a consumed one.
   defp labels(model) do

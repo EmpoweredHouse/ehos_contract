@@ -108,7 +108,7 @@ defmodule EhOsContract.DispatchInlineTest do
       # The contract is in the key: the index of accepted keys spans the application,
       # and two contracts may each have a policy of the same name on the same event.
       assert flag.idempotency_key ==
-               "policy:DispatchRig.Ledger:flag_large_deposit:#{deposited.__meta__.id}:0"
+               "policy:dispatch_rig.ledger:flag_large_deposit:#{deposited.__meta__.id}:0"
 
       assert flagged.causation_id == flag.id
     end
@@ -150,7 +150,7 @@ defmodule EhOsContract.DispatchInlineTest do
       # The message names the path that closed the loop, link by link from the root.
       # One that only said "cycle" would leave somebody reading every policy of the
       # contract to find the two that feed each other.
-      link = "DispatchRig.Ledger:echo_deposit:dispatch_rig.ledger.deposited"
+      link = "dispatch_rig.ledger:echo_deposit:dispatch_rig.ledger.deposited"
       assert error.message =~ "never end: #{inspect([link, link])}"
 
       assert Enum.map(log(), & &1.type) == ["dispatch_rig.ledger.account_opened"]

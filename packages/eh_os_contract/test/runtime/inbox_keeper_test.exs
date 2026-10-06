@@ -63,7 +63,7 @@ defmodule EhOsContract.InboxKeeperTest do
     end
   end
 
-  @inbox "BusRig.Stock:inbox:order_placed"
+  @inbox "bus_rig_warehouse.stock:inbox:order_placed"
 
   setup do
     previous = Application.get_env(:eh_os_contract, :bus)

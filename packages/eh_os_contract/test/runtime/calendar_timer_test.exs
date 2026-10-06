@@ -11,7 +11,7 @@ defmodule EhOsContract.CalendarTimerTest do
   alias BoundaryRig.Courses.Commands.DefineCourse
   alias EhOsContract.{Actor, Clock, ProcessManagerRecord, Testing}
 
-  @review "BoundaryRig.Enrolment:process_manager:course_review"
+  @review "boundary_rig.enrolment:process_manager:course_review"
 
   defp define_at(at, course) do
     Clock.at(at, fn ->

@@ -43,7 +43,7 @@ defmodule EhOsContract.Testing do
         EhOsContract.Testing.drain()
       end)
 
-  `only:` narrows it to the consumers with those keys (`"<contract>:<kind>:<name>"`).
+  `only:` narrows it to the consumers with those keys (`"<contract id>:<kind>:<name>"`).
   Effect jobs are Oban's and run queue-wide, so with `only:` they run only when it
   names an effect.
 

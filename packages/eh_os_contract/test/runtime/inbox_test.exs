@@ -38,8 +38,8 @@ defmodule EhOsContract.InboxTest do
   }
 
   @clerk Actor.credential("u-1", ["bus_rig_shop.place_order"])
-  @inbox "BusRig.Stock:inbox:order_placed"
-  @relay "BusRig.Orders:relay:order_placed"
+  @inbox "bus_rig_warehouse.stock:inbox:order_placed"
+  @relay "bus_rig_shop.orders:relay:order_placed"
   @name "bus_rig_shop.order.placed.v1"
 
   defp inbox, do: Enum.find(Implementations.inboxes(), &(&1.key == @inbox))
@@ -236,7 +236,7 @@ defmodule EhOsContract.InboxTest do
   # path from another application.
   test "a received step does not take on the failures of the policy's own subscription" do
     Repo.insert!(%EhOsContract.SubscriptionRecord{
-      name: "BusRig.Stock:policy:reserve_for_order",
+      name: "bus_rig_warehouse.stock:policy:reserve_for_order",
       kind: "policy",
       mode: "ordered",
       version: "v",

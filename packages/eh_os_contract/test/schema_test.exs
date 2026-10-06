@@ -385,7 +385,7 @@ defmodule EhOsContract.SchemaTest do
               "read_model:ledger_lines",
               "process_manager:first_deposit_chase"
             ] do
-          assert Subscription.rebuild(SchemaRepo, "DispatchRig.Ledger:" <> kind) == :ok
+          assert Subscription.rebuild(SchemaRepo, "dispatch_rig.ledger:" <> kind) == :ok
         end
 
         assert Testing.drain().failing == []

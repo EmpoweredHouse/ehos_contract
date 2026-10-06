@@ -147,7 +147,7 @@ defmodule EhOsContract.ProcessManager do
         else: Enum.filter(pm.starts_on, &(&1.event == name))
 
     if not replay? and Enum.any?(reactions, &(&1.issues != [])) and exported?(consumer, name, 2) do
-      link = "#{inspect(consumer.contract)}:#{consumer.name}:#{row.type}"
+      link = "#{Model.fetch(consumer.contract).id}:#{consumer.name}:#{row.type}"
 
       if link in chain do
         raise ArgumentError,

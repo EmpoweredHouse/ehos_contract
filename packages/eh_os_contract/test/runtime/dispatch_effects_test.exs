@@ -18,7 +18,7 @@ defmodule EhOsContract.DispatchEffectsTest do
            "dispatch_rig.withdraw"
          ])
 
-  @notify "DispatchRig.Ledger:effect:notify_branch"
+  @notify "dispatch_rig.ledger:effect:notify_branch"
 
   defp dispatch(command), do: EhOsContract.dispatch(Ledger, command, actor: @clerk)
   defp jobs, do: Repo.all(from(j in Oban.Job, order_by: j.id))
@@ -119,10 +119,10 @@ defmodule EhOsContract.DispatchEffectsTest do
 
       assert {:cancel, reason} =
                EffectJob.perform(%Oban.Job{
-                 args: %{"effect" => "DispatchRig.Ledger:effect:gone", "event_id" => event.id}
+                 args: %{"effect" => "dispatch_rig.ledger:effect:gone", "event_id" => event.id}
                })
 
-      assert reason =~ "no module implements effect DispatchRig.Ledger:effect:gone"
+      assert reason =~ "no module implements effect dispatch_rig.ledger:effect:gone"
     end
   end
 
