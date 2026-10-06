@@ -1,0 +1,4 @@
+P1a part 1 (origin/main..HEAD): code-review high + security/performance pass.
+Security/perf: no regression; queries cheaper (no event_runs join, no count distinct); event_counts now count(position) for index-only scans -> fixed.
+Correctness: no remaining step runs/of_runs readers; graph event_counts MatchError on an unloadable sibling (pre-existing) -> fixed; stale prose -> fixed; ADR answers the retry-loop argument for failures -> fixed; dead code -> fixed. Wire keeps the v2 name over new keys until part 3 -> accepted, in CHANGELOG. Gate on cuts until part 2 (runs > 0) -> part 2. PLAN.md English -> user's rule.
+Gate: EXIT=0, check 0/33/10 and 0/76/6, engine 1377.
