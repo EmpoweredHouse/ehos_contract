@@ -1,0 +1,1 @@
+Fix-up for #152 (CodeRabbit): version-shaped first segment refused. Small fix, reviewed inline: reverse check fails only the new test; gate EXIT=0, check 0/33/10, 0/76/6, sandbox 196, engine 1365, web 52, auth 286+1.
