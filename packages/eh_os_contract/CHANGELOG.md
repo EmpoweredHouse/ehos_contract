@@ -27,6 +27,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A warning at start-up when the event log holds types no contract declares** (#175). The engine names them and
+  goes on. It catches a log written before event types became `"<contract id>.<event>"` (plan DD, ID3) and not reset,
+  which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the
+  history of a contract removed on purpose. The log's distinct types are read one index step each, so a long log
+  costs no more than a short one with as many types.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the
