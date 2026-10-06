@@ -21,7 +21,7 @@ its delivery says:
 
 | Reaction | Runs | Use it for |
 | --- | --- | --- |
-| a read model or a policy, `:in_transaction` (their default) | inside the dispatch transaction; if it raises, nothing is appended | projections and follow-up commands in the same database |
+| a read model or a policy, `:in_transaction` (their default within one context) | inside the dispatch transaction; if it raises, nothing is appended | projections and follow-up commands in the same database |
 | a read model, a policy or a process manager, `:at_least_once` | fed from the log in order, after the commit, by a subscription that resumes where it stopped | whatever may lag the command |
 | an effect, `:at_least_once` (its default, and the only way it runs when it `calls:` a system) | as an Oban job inserted **in the dispatch transaction** | anything with outside I/O: mail, HTTP, another system |
 | an effect without `calls:`, `:in_transaction` | inside the dispatch transaction, after the policies | a side effect in the same database |
@@ -31,20 +31,29 @@ whatever runs `:in_transaction` holds every other write in the application while
 database, and put anything slow behind `:at_least_once`.
 
 A policy or an effect delivered at least once does not compile unless it names what makes a second
-delivery harmless, because the event *will* arrive twice.
+delivery harmless, because an event may be delivered more than once. A policy or a read model that reacts to an
+event of another context does not compile until it says how it is delivered: run `:in_transaction`, a failure in
+one part of the business undoes a fact recorded in another, so that has to be a choice the contract states, and
+`mix eh_os_contract.check` warns of it.
 
 **Conformance.** The same contract, compared against the log dispatch has been writing: which declared
 steps never ran, what happened that nobody declared, which promises were broken, and which contract version
 was deployed when.
 
-## Where it is going
+## Between applications
 
-Today every application in this repository runs in one BEAM node against one Postgres. The next step is
-several OTP applications side by side, exchanging events through a broker such as NATS JetStream. An event
-leaves an application only through a contract's `publish`, and a generated AsyncAPI document
-(`EhOsContract.AsyncAPI`) already describes those in the standard format a broker's tooling reads. The shape
-this is expected to take: each application keeps its own log, a relay publishes from it as an ordered
-subscription, and a receiving application takes messages into an inbox. **None of this is built yet.**
+Several applications can exchange events, each keeping its own log. An event leaves an application only
+through a contract's `publish`: a relay reads the log in order and hands each published event to an
+`EhOsContract.Bus`. A receiving application takes it into an inbox, deduplicated, and only a policy reacts to
+it — another application's event never enters the receiver's log. A generated AsyncAPI document
+(`EhOsContract.AsyncAPI`) describes what each application publishes, in the format a broker's tooling reads.
+
+The library ships one bus, `EhOsContract.Bus.Local`, for tests and a single node, and depends on no broker. The
+adapter for a real one (NATS JetStream) belongs to EHOS, the platform the applications run on.
+
+Next is the DD programme — domain-driven design checked by code: each rule of the model that can be written
+down gets something that checks it. Its stages are the GitHub issues labelled
+[`dd`](https://github.com/EmpoweredHouse/eh-os-contract/issues?q=label%3Add).
 
 ## The question the conformance half answers
 
@@ -242,9 +251,9 @@ boundaries below would be documentation rather than a check.
 | --- | --- |
 | [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — the domain and contract DSLs, dispatch, the event store, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
-| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | verifies EHOS credentials against keys kept in the application's database |
+| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
 | [`sandbox`](sandbox) | a host application around the packages, with the test material below |
-| [`docs`](docs) | the starting assumptions (`docs/adr/`) and workshop material |
+| [`docs`](docs) | the starting assumptions (`docs/adr/`), distillations of the test material, and workshop material |
 
 The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
 of it requiring a client application to exist. That is the part meant to eventually ship to Hex.
@@ -253,10 +262,9 @@ of it requiring a client application to exist. That is the part meant to eventua
 [above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
 router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
 
-The sandbox — `sandbox/lib/taxvision/` and `sandbox/lib/rehmed/`, the domains, contracts and
-implementations of two unrelated clients, accounting and healthcare — is test material and the library's first
-consumer,
-kept around so the library's assumptions get exercised against something other than its own
+The sandbox — `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/` and `sandbox/lib/appunite_equipment/`, the
+domains, contracts and implementations of three unrelated businesses, accounting, healthcare and a company's
+equipment — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
 imagination. [`boundary`](https://hex.pm/packages/boundary) enforces the line between the two
 from the first commit, so it's a fact the compiler checks, not a promise in a document.
 
@@ -267,7 +275,8 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
 | A project generator (`mix eh_os_contract.new`) | Worth building once something has been copied twice — at a second real client, not before. |
 | Real registries, real mail | A behaviour plus a fake. Real integrations are the client's domain cost and carry no signal for the library. |
-| Identity: login, users, accounts | The library takes an actor as an opaque subject with the capabilities and scopes its verified credential grants; EHOS derives those from the contract's `by:` through the application manifest, and only a `:system` actor is checked against `by:` directly. Authentication belongs to EHOS and the application — `eh_os_contract_auth` verifies EHOS's credential — and access to the dashboard to the host that mounts it. |
+| Identity: accounts, roles, sign-in screens | The library takes an actor as an opaque subject with the capabilities and scopes its verified credential grants; EHOS derives those from the contract's `by:` through the application manifest, and only a `:system` actor is checked against `by:` directly. EHOS owns accounts and its own sign-in screens: `eh_os_contract_auth` verifies EHOS's credentials and hands a person to EHOS to sign in, and access to the dashboard is decided by the host that mounts it. |
+| A message broker | The library defines a bus and ships a local one; the adapter for a real broker belongs to EHOS. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
 | Anything that answers a question about one specific customer | The moment this library can tell you "which customer's order hasn't shipped yet," it has stopped checking conformance and started being a worse copy of the client's own application. |
 
@@ -285,5 +294,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 ## Status
 
 A working prototype, not a released library — nothing here has shipped to a real client yet.
-The full test suite runs in CI on every change (see the badge above). Licensed under
+The full test suite runs in CI on every pull request that changes code once it is ready for review — a draft
+waits until it is marked ready (see the badge above); one that changes only the team's working documents skips
+it. Licensed under
 [Apache 2.0](LICENSE).
