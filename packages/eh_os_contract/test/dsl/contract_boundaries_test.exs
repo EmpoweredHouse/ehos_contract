@@ -12,16 +12,12 @@ defmodule EhOsContract.ContractBoundariesTest do
       identity :visit_id
       command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-      event :visit_closed, "Wizyta zamknięta", terminal: true do
+      event :visit_closed, "Wizyta zamknięta" do
         field :clinic_id, :id
         field :closed_at, :timestamp
         field :patient_id, :id, subject: :patient
         field :patient_name, :string, personal: :patient_id
       end
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
 
     read_model :open_visits, "Wizyty do rozliczenia", projects: :visit_closed do
@@ -47,11 +43,7 @@ defmodule EhOsContract.ContractBoundariesTest do
               field :clinic_id, :id, optional: true
             end
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -83,10 +75,6 @@ defmodule EhOsContract.ContractBoundariesTest do
             end
 
             event :visit_booked, "Wizyta zarezerwowana"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
 
           read_model :visits, "Wizyty", projects: :visit_booked do
@@ -122,11 +110,7 @@ defmodule EhOsContract.ContractBoundariesTest do
               field :patient_name, :string, personal: :patient_id
             end
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -149,11 +133,7 @@ defmodule EhOsContract.ContractBoundariesTest do
               field :clinic_id, :id
             end
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
@@ -185,19 +165,19 @@ defmodule EhOsContract.ContractBoundariesTest do
         """)
 
       assert message =~
-               "D10: query :nobody_asks names no by:, so nobody could be granted it (query_wrong.ex:25)"
+               "D10: query :nobody_asks names no by:, so nobody could be granted it (query_wrong.ex:21)"
 
       assert message =~
                "D10: query :by_room is scoped by :room_id, which is not a field of read model " <>
-                 ":open_visits (query_wrong.ex:27)"
+                 ":open_visits (query_wrong.ex:23)"
 
       assert message =~
                "D10: query :unparametrised is scoped by :clinic_id, which is not one of its params " <>
-                 "(query_wrong.ex:32)"
+                 "(query_wrong.ex:28)"
 
       assert message =~
                "D10: query :mistyped is scoped by :clinic_id, a :id in the read model and a :string " <>
-                 "param (query_wrong.ex:36)"
+                 "param (query_wrong.ex:32)"
     end
 
     test "control: v2 §16's query, with its capability" do
@@ -234,11 +214,11 @@ defmodule EhOsContract.ContractBoundariesTest do
 
       assert message =~
                "D11: publication :visit_lost is built from :visit_lost, which is not an event of " <>
-                 "this contract (publish_wrong.ex:25)"
+                 "this contract (publish_wrong.ex:21)"
 
       assert message =~
                "D11: publication :visit_closed carries :total, which event :visit_closed does not " <>
-                 "have (publish_wrong.ex:27)"
+                 "have (publish_wrong.ex:23)"
 
       assert message =~
                "D11: publication :visit_closed carries :patient_name, which is personal; a copy on " <>
@@ -248,7 +228,7 @@ defmodule EhOsContract.ContractBoundariesTest do
                "D11: publication :visit_closed is idempotent on :clinic_id, which it does not carry"
 
       assert message =~
-               "D11: publication :visit_closed_again carries no fields (publish_wrong.ex:33)"
+               "D11: publication :visit_closed_again carries no fields (publish_wrong.ex:29)"
 
       assert message =~
                ~s|D11: publication :visit_closed_again is named "rehmed.visit.closed.v1", like an | <>

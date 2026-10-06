@@ -25,10 +25,6 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       event :reminded, "Przypomniano"
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-    end
-
     policy :thank, "Podziękuj za płatność", handles: :paid, issues: :remind,
       delivery: :at_least_once, idempotency: [key: :event_id, owner: :infrastructure]
 
@@ -177,10 +173,6 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
             identity :visit_id
             command :pay, "Płatność", by: :reception, emits: :paid
             event :paid, "Zapłacono"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
 
           process_manager :chase, "Pogoń" do
@@ -344,10 +336,6 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
             event :reminded, "Przypomniano"
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
           policy :thank, "Podziękuj", handles: :paid, issues: :remind,
             delivery: :at_least_once, idempotency: [key: :event_id, owner: :downstream]
 
@@ -359,7 +347,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       assert message =~
                "P3: policy :thank issues commands to this engine, so no system downstream keeps " <>
-                 "its idempotency; its owner is :self or :infrastructure (downstream_policy.ex:16)"
+                 "its idempotency; its owner is :self or :infrastructure (downstream_policy.ex:12)"
 
       assert message =~ "P3: process manager :chase issues commands to this engine"
     end
@@ -373,10 +361,6 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
             command :remind, "Przypomnienie", emits: :reminded
             event :paid, "Zapłacono"
             event :reminded, "Przypomniano"
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
           end
 
           effect :receipt, "Wyślij paragon", handles: :paid, calls: :mail,
@@ -403,10 +387,6 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
               identity :visit_id
               command :pay, "Płatność", by: :reception, emits: :paid
               event :paid, "Zapłacono"
-            end
-
-            process :visit, "Wizyta" do
-              correlate :visit_id
             end
 
             effect :receipt, "Wyślij paragon", handles: :paid, idempotency: #{idempotency}

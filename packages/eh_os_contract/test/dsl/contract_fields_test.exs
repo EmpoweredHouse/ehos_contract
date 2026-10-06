@@ -533,14 +533,10 @@ defmodule EhOsContract.ContractFieldsTest do
 
           command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-          event :visit_closed, "Wizyta zamknięta", terminal: true do
+          event :visit_closed, "Wizyta zamknięta" do
             field :patient_id, :id, subject: :patient
             field :name, :string, personal: :patient_id
           end
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
 
         process_manager :chase, "Pogoń za dokumentacją" do
@@ -587,7 +583,7 @@ defmodule EhOsContract.ContractFieldsTest do
       assert message =~
                "F7: process manager :chase, state, field :phone is personal, and a process " <>
                  "manager's state is stored outside the log, where erasure cannot reach it " <>
-                 "(personal_outside.ex:24)"
+                 "(personal_outside.ex:20)"
     end
 
     test "control: personal in an event and in a read model's row" do

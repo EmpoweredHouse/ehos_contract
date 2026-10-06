@@ -12,12 +12,8 @@ defmodule EhOsContract.ContractConsumersTest do
       identity :visit_id
       command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
       command :remind, "Przypomnienie", by: :reception, emits: :reminded
-      event :visit_closed, "Wizyta zamknięta", terminal: true
+      event :visit_closed, "Wizyta zamknięta"
       event :reminded, "Przypomniano"
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
   """
 
@@ -33,11 +29,11 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P1: policy :remind_on_close handles :visit_lost, which is neither an event of this " <>
-                 "contract nor one it consumes (policy_wrong.ex:16)"
+                 "contract nor one it consumes (policy_wrong.ex:12)"
 
       assert message =~
                "P1: policy :remind_on_close issues :send_invoice, which is not a command of this " <>
-                 "contract (policy_wrong.ex:16)"
+                 "contract (policy_wrong.ex:12)"
     end
 
     test "control: a policy on a consumed event compiles" do
@@ -69,14 +65,14 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P2: effect :notify calls [:mail], so it cannot run :in_transaction: an external " <>
-                 "call is not rolled back with the append (effect_wrong.ex:16)"
+                 "call is not rolled back with the append (effect_wrong.ex:12)"
 
       assert message =~
                "P3: effect :notify_again is delivered :at_least_once, so it names its " <>
-                 "idempotency: what makes a second delivery harmless (effect_wrong.ex:17)"
+                 "idempotency: what makes a second delivery harmless (effect_wrong.ex:13)"
 
       assert message =~ "P3: policy :remind_later is delivered :at_least_once"
-      assert message =~ "(effect_wrong.ex:19)"
+      assert message =~ "(effect_wrong.ex:15)"
     end
 
     test "control: v2 §4.6's effect, and a process manager without idempotency, compile" do
@@ -125,7 +121,7 @@ defmodule EhOsContract.ContractConsumersTest do
         """)
 
       assert message =~
-               "contract -> timer -> later defined in timer_unlabelled.ex:18::\n" <>
+               "contract -> timer -> later defined in timer_unlabelled.ex:14::\n" <>
                  "  required :label option not found"
     end
 
@@ -149,7 +145,7 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P4: process manager :chase starts on :visit_opened, which is neither an event of " <>
-                 "this contract, one it consumes, nor a timer of its own (manager_wrong.ex:21)"
+                 "this contract, one it consumes, nor a timer of its own (manager_wrong.ex:17)"
 
       assert message =~ "P4: process manager :chase ends on :visit_forgotten"
       assert message =~ "P4: process manager :chase sets :nudge, which is not a timer of its own"
@@ -159,19 +155,19 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P4: process manager :chase issues :call_patient, which is not a command of this " <>
-                 "contract (manager_wrong.ex:22)"
+                 "contract (manager_wrong.ex:18)"
 
       assert message =~
                "P4: process manager :chase: timer :reminder_due has both wait: and at:; keep one " <>
-                 "(manager_wrong.ex:23)"
+                 "(manager_wrong.ex:19)"
 
       assert message =~
                "P4: process manager :chase: timer :deadline fires at :due_on, which is :date, not " <>
-                 ":timestamp (manager_wrong.ex:24)"
+                 ":timestamp (manager_wrong.ex:20)"
 
       assert message =~
                "P4: process manager :chase: timer :idle has neither wait: nor at:; give it exactly " <>
-                 "one (manager_wrong.ex:25)"
+                 "one (manager_wrong.ex:21)"
 
       refute message =~ "reacts on :reminder_due"
     end
@@ -185,7 +181,7 @@ defmodule EhOsContract.ContractConsumersTest do
           end
         """)
 
-      assert message =~ "P4: process manager :chase starts on no event (manager_idle.ex:16)"
+      assert message =~ "P4: process manager :chase starts on no event (manager_idle.ex:12)"
     end
 
     test "one delivered in the transaction is refused" do
@@ -199,7 +195,7 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P4: process manager :chase is fed from the log in order, after the transaction; " <>
-                 "it cannot run :in_transaction (manager_inline.ex:16)"
+                 "it cannot run :in_transaction (manager_inline.ex:12)"
     end
 
     test "control: v2 §4.6's shape, with a timer at a timestamp too, compiles" do
@@ -242,11 +238,11 @@ defmodule EhOsContract.ContractConsumersTest do
 
       assert message =~
                "P5: read model :closed_visits projects :visit_lost, which is neither an event of " <>
-                 "this contract nor one it consumes (read_wrong.ex:16)"
+                 "this contract nor one it consumes (read_wrong.ex:12)"
 
       assert message =~
                "P5: query :closed_today reads :open_visits, which is not a read model of this " <>
-                 "contract (read_wrong.ex:20)"
+                 "contract (read_wrong.ex:16)"
     end
   end
 end

@@ -27,31 +27,40 @@ defmodule EhOsContract.ContractLinksSystemTest do
     )
 
     # X8's contract, implemented by the modules its tests compile.
-    {file, source} = unit_contract("SysImplemented", process: :implemented, command: :close)
+    {file, source} = unit_contract("SysImplemented", unit: :implemented, command: :close)
     compile(source, file)
 
     :ok
   end
 
-  # A contract with one aggregate: the command at line 6, the process at line 10.
+  # A contract with one aggregate: the command at line 6, the process, if `process:`
+  # names one, at line 10, and what `extra:` adds from line 9, or 13 after a process.
   defp unit_contract(name, opts) do
-    process = Keyword.fetch!(opts, :process)
+    unit = Keyword.fetch!(opts, :unit)
     command = Keyword.fetch!(opts, :command)
+
+    process =
+      if process = opts[:process] do
+        """
+
+          process #{inspect(process)}, "Proces" do
+            correlate :case_id
+          end
+        """
+      else
+        ""
+      end
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-      aggregate #{inspect(process)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Jednostka" do
         identity :case_id
         command #{inspect(command)}, "Komenda", by: :reception, emits: :done
         event :done, "Zrobione"
       end
-
-      process #{inspect(process)}, "Proces" do
-        correlate :case_id
-      end
-    #{Keyword.get(opts, :extra, "")}
+    #{process}#{Keyword.get(opts, :extra, "")}
     end
     """
 
@@ -62,8 +71,8 @@ defmodule EhOsContract.ContractLinksSystemTest do
     test "two contracts declaring one process" do
       violations =
         links([
-          unit_contract("SysProcessA", process: :visit, command: :open_a),
-          unit_contract("SysProcessB", process: :visit, command: :open_b)
+          unit_contract("SysProcessA", unit: :visit, process: :visit, command: :open_a),
+          unit_contract("SysProcessB", unit: :visit, process: :visit, command: :open_b)
         ])
 
       assert assert_linked(violations, "X7:", "sys_process_b.ex", 10) =~
@@ -87,9 +96,9 @@ defmodule EhOsContract.ContractLinksSystemTest do
 
       violations =
         links([
-          unit_contract("SysNameA", process: :first, command: :open_a),
-          unit_contract("SysNameB", process: :second, command: :open_a),
-          unit_contract("SysNameC", process: :third, command: :open_c, extra: query)
+          unit_contract("SysNameA", unit: :first, command: :open_a),
+          unit_contract("SysNameB", unit: :second, command: :open_a),
+          unit_contract("SysNameC", unit: :third, command: :open_c, extra: query)
         ])
 
       assert assert_linked(
@@ -105,7 +114,7 @@ defmodule EhOsContract.ContractLinksSystemTest do
         violations,
         "D14: query :open_a of #{inspect(@fixtures)}.SysNameC",
         "sys_name_c.ex",
-        17
+        13
       )
 
       assert length(violations) == 2
@@ -124,16 +133,12 @@ defmodule EhOsContract.ContractLinksSystemTest do
           event :done, "Zrobione"
           event :open_a, "Otwarte", recorded_by: :reception
         end
-
-        process :fourth, "Proces" do
-          correlate :case_id
-        end
       end
       """
 
       violations =
         links([
-          unit_contract("SysNameCmd", process: :first_rec, command: :open_a),
+          unit_contract("SysNameCmd", unit: :first_rec, command: :open_a),
           {"sys_name_d.ex", recorded}
         ])
 
@@ -149,8 +154,8 @@ defmodule EhOsContract.ContractLinksSystemTest do
 
     test "control: distinct names pass" do
       assert links([
-               unit_contract("SysDistinctA", process: :one, command: :open_one),
-               unit_contract("SysDistinctB", process: :two, command: :open_two)
+               unit_contract("SysDistinctA", unit: :one, command: :open_one),
+               unit_contract("SysDistinctB", unit: :two, command: :open_two)
              ]) == []
     end
   end

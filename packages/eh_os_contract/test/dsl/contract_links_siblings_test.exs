@@ -343,7 +343,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
   end
 
   describe "X10: a reaction to another context's event declares its delivery" do
-    # A subscriber in :settlement whose reaction, at line 16, takes the publisher's
+    # A subscriber in :settlement whose reaction, at line 12, takes the publisher's
     # :visit_booked.
     defp reacting(name, publisher, reaction) do
       """
@@ -356,10 +356,6 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
           identity :visit_id
           command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
           event :visit_billed, "Wizyta rozliczona"
-        end
-
-        process :billing, "Rozliczenie" do
-          correlate :visit_id
         end
 
       #{reaction}
@@ -389,7 +385,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
                violations,
                "X10: policy :bill_on_booking takes :visit_booked",
                "sib_x10_policy_billing.ex",
-               16
+               12
              ) =~
                ":visit_booked of #{inspect(@fixtures)}.SibX10PolicyBooking (context :scheduling), " <>
                  "not of context :settlement, and declares no delivery"
@@ -437,7 +433,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
                violations,
                "X10: read model :bookings takes :visit_booked",
                "sib_x10_read_model_billing.ex",
-               16
+               12
              ) =~ "Declare `delivery: :at_least_once`"
     end
 
