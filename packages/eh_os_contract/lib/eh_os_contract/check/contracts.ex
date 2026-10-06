@@ -7,6 +7,8 @@ defmodule EhOsContract.Check.Contracts do
     earlier stage than the event it reacts to.
   - `competing-in-transaction-consumers` — an event two or more policies or effects
     react to inside the emitting transaction.
+  - `in-transaction-across-contexts` — a reaction declared `:in_transaction` on an
+    event of a sibling contract of another context (plan DD, X1).
   - `free-text-not-personal` — a `:string` field of an event not marked personal.
   - `emits-never-produced` — an event a command `emits:` that no `emit/1` of its
     implementation names.
@@ -30,7 +32,9 @@ defmodule EhOsContract.Check.Contracts do
 
     competing(linked) ++
       Enum.flat_map(linked, fn c ->
-        backward(c) ++ free_text(c) ++ never_emitted(c, implemented(c.module, implementations))
+        backward(c) ++
+          across_contexts(c) ++
+          free_text(c) ++ never_emitted(c, implemented(c.module, implementations))
       end)
   end
 
@@ -133,6 +137,49 @@ defmodule EhOsContract.Check.Contracts do
           "transaction that records it — #{Enum.join(names, ", ")} — and nothing says which " <>
           "comes first. If one depends on the other, have it react to what the other decides",
         first
+      )
+    end
+  end
+
+  # X10 refuses such a reaction left without `delivery`, so every one found here was
+  # declared `:in_transaction` on purpose; the warning asks for the reason. Each
+  # sibling is built once, for its context, and a reaction is named once, with every
+  # event it takes from another context.
+  defp across_contexts(%{model: model} = c) do
+    elsewhere =
+      for %{kind: :contract, from: from} <- model.consumes,
+          %{model: sibling} <- [Links.contract(from)],
+          sibling.domain == model.domain,
+          sibling.context != model.context,
+          into: %{},
+          do: {from, sibling.context}
+
+    for {kind, reactions, declared, takes, instead} <- [
+          {"policy", model.policies, c.declarations.policies, :handles,
+           "`delivery: :at_least_once` with its `idempotency`"},
+          {"effect", model.effects, c.declarations.effects, :handles,
+           "`delivery: :at_least_once` with its `idempotency`"},
+          {"read model", model.read_models, c.declarations.read_models, :projects,
+           "`delivery: :at_least_once`"}
+        ],
+        reaction <- reactions,
+        reaction.delivery == :in_transaction,
+        foreign =
+          for(
+            event <- List.wrap(Map.fetch!(reaction, takes)),
+            {:contract, from, _original} <- [Model.consumed(model, event)],
+            context = elsewhere[from],
+            context != nil,
+            do: "#{inspect(event)} of #{inspect(from)} (context #{inspect(context)})"
+          ),
+        foreign != [] do
+      Finding.new(
+        "in-transaction-across-contexts",
+        "#{kind} #{inspect(reaction.name)} of #{inspect(model.module)} takes " <>
+          "#{Enum.join(foreign, " and ")} inside the transaction that records it, so context " <>
+          "#{inspect(model.context)} commits with another and the reaction's failure rolls the " <>
+          "event back; unless they have to commit together, use #{instead}",
+        at(declared, reaction.name)
       )
     end
   end

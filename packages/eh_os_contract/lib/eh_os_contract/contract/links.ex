@@ -12,7 +12,7 @@ defmodule EhOsContract.Contract.Links do
   The rules come in groups, one module each, as L2's do:
 
   - `Links.Domain` — X1–X4 and the parts of D10 and D11 that need the domain.
-  - `Links.Siblings` — X5–X6, what a contract consumes from a sibling contract.
+  - `Links.Siblings` — X5, X6 and X10, what a contract consumes from a sibling contract.
   - `Links.System` — X7, X8 and D14's names, unique across the application.
   - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
 

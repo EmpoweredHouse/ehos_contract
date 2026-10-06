@@ -42,7 +42,7 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 
 This is the decision the kind leaves open, and it is about the log, not about speed.
 
-**`:in_transaction`** (the default for a policy and a read model) runs inside the dispatch that
+**`:in_transaction`** (the default for a policy and a read model, within one context) runs inside the dispatch that
 appended the event (`EhOsContract.Dispatcher`, step 7): read models project, then policies react,
 then effects act. What a policy issues is dispatched at once, in the same transaction.
 
@@ -77,6 +77,11 @@ that calls out, fans out, or may be slow. The compiler and `check` push the same
   no effect calls (`operation-never-called`).
 - `P2` refuses an effect that `calls:` an external delivered `:in_transaction`: a call cannot be
   rolled back with the append.
+- `X10` refuses a policy or a read model that takes an event of a sibling contract of another
+  context and leaves `delivery` out: two contexts committing together is a choice to write down, not
+  a default. `check` warns of one declared `:in_transaction` there (`in-transaction-across-contexts`);
+  explain it in the pull request, or make it `:at_least_once` (a policy with its `idempotency`; a
+  read model takes none). The warning covers an effect declared `:in_transaction` there too.
 - `in-transaction-policy-fan-out` warns when a scenario shows an in-transaction policy issuing more
   than one command: each holds the append lock for the whole list.
 - `competing-in-transaction-consumers` warns when two in-transaction policies or effects take one

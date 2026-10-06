@@ -163,6 +163,13 @@ scenario        description!   scope · actor
 > the type to them (§11), and `use EhOsContract.ScenarioCase, domain: D` writes a test per example. ESDM's
 > value-object invariants are prose; this is the library's addition, in the shape the aggregate's invariant already
 > had.
+>
+> *Changed 5 October 2026, plan DD, X1.* **`delivery=:in_transaction` of a policy and a read model is a default
+> only within a context.** One that takes an event of a sibling contract of another context declares `delivery`
+> (X10, L3): left out, it would run in the transaction that records the other context's fact, and its failure
+> would roll that fact back — two contexts committing together without the contract saying so. A declared
+> `:in_transaction` there compiles, and `check` warns of it (`in-transaction-across-contexts`). Left out within
+> one context, it is still `:in_transaction`, and the version does not move.
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

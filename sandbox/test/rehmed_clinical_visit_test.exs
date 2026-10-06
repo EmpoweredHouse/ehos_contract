@@ -92,6 +92,10 @@ defmodule Rehmed.ClinicalVisitTest do
     id = visit("patient-anna")
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
+    # The policy takes another context's event, so it runs after the close's
+    # transaction, on the drain (plan DD, X1).
+    Clock.at(DateTime.add(@left, 3600), fn -> Testing.drain() end)
+
     assert [%{verdict: :satisfied, via: :or_else, instance_id: instance}] = verdicts()
     assert instance =~ id
     assert "clinical_visit.p1_reporting_not_required" in types()
@@ -101,7 +105,7 @@ defmodule Rehmed.ClinicalVisitTest do
     id = visit("patient-anna")
     {:ok, _} = close(id, true, DateTime.add(@left, 3600))
 
-    # Queued in the close's transaction, sent after it.
+    # Queued and sent after the close's transaction, on the drain.
     assert [%{verdict: :pending}] = verdicts(now: DateTime.add(@left, 3600))
     Clock.at(DateTime.add(@left, 7200), fn -> Testing.drain() end)
 

@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract.Links.Siblings do
   @moduledoc """
-  X5–X6 of v2 §6: what a contract consumes from a sibling contract of the same
+  X5, X6 and X10 of v2 §6: what a contract consumes from a sibling contract of the same
   application, `consumes Sibling, events`, checked against the sibling as it is
   compiled now — which is how a change to an event reaches every subscriber (v2 §7).
 
@@ -15,6 +15,15 @@ defmodule EhOsContract.Contract.Links.Siblings do
     every event it `consults`. A `correlate` field no local event carries is an `:id`
     there, as a run's key has to be (F8). The error stands at the subscriber's declaration and
     names the sibling's event, with its file and line.
+
+  - **X10** (plan DD, X1). A policy or a read model that takes an event of a sibling
+    of another context declares its `delivery`. Left out, it runs `:in_transaction`,
+    inside the transaction that records the other context's event, so a failure of
+    the reaction rolls that event back, and the two contexts commit together without
+    the contract saying so. The error stands at the reaction. A declared
+    `:in_transaction` compiles, and `mix eh_os_contract.check` warns about it
+    (`in-transaction-across-contexts`). An effect and a process manager are left
+    alone: undeclared, they run `:at_least_once`.
 
   `projects` names an event and no field of it: which fields a projection reads is
   in its implementation, which matches on the sibling's own struct, so the compiler
@@ -42,7 +51,8 @@ defmodule EhOsContract.Contract.Links.Siblings do
     values = EhOsContract.Codec.values(c.model.domain)
 
     existence ++
-      correlation(c, events, values) ++ managers(c, events, values) ++ matches(c, events, values)
+      correlation(c, events, values) ++
+      managers(c, events, values) ++ matches(c, events, values) ++ x10(c, siblings)
   end
 
   # --- X5 ---------------------------------------------------------------------------
@@ -76,6 +86,41 @@ defmodule EhOsContract.Contract.Links.Siblings do
          Links.at(consumes)}
       end
     end
+  end
+
+  # --- X10 --------------------------------------------------------------------------
+
+  defp x10(c, siblings) do
+    elsewhere =
+      for {_consumes, %{} = sibling} <- siblings,
+          sibling.model.domain == c.model.domain,
+          sibling.model.context != c.model.context,
+          into: %{},
+          do: {sibling.module, sibling.model.context}
+
+    for {kind, reactions, takes} <- [
+          {"policy", c.declarations.policies, :handles},
+          {"read model", c.declarations.read_models, :projects}
+        ],
+        %{delivery: nil} = reaction <- reactions,
+        foreign = foreign(c, reaction, takes, elsewhere),
+        foreign != [] do
+      {"X10: #{kind} #{inspect(reaction.name)} takes #{Enum.join(foreign, " and ")}, not of " <>
+         "context #{inspect(c.model.context)}, and declares no delivery; left out, it runs " <>
+         "inside the transaction that records the event, so its failure rolls the other " <>
+         "context's fact back. Declare `delivery: :at_least_once`, or " <>
+         "`delivery: :in_transaction` if the two have to commit together", Links.at(reaction)}
+    end
+  end
+
+  # The events a reaction takes from a sibling of another context, under their local
+  # names, each with where it comes from: one error a reaction, however many it takes.
+  defp foreign(c, reaction, takes, elsewhere) do
+    for event <- List.wrap(Map.fetch!(reaction, takes)),
+        {:contract, from, _original} <- [Model.consumed(c.model, event)],
+        context = elsewhere[from],
+        context != nil,
+        do: "#{inspect(event)} of #{inspect(from)} (context #{inspect(context)})"
   end
 
   # --- X6 ---------------------------------------------------------------------------

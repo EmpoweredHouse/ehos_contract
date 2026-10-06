@@ -124,6 +124,20 @@ event, run one after another in an order the contract does not state. If one dep
 the other does, have it react to the event the other decides, so the order is a path the
 process shows. Read models are not counted: they decide nothing.
 
+## `in-transaction-across-contexts`
+
+**warning**
+
+A reaction to another context's event runs inside the transaction that records it.
+
+A policy, an effect or a read model declared `delivery: :in_transaction` on an event of a
+sibling contract of another context runs in the transaction that records the event, so the
+two contexts commit together and the reaction's failure rolls the other context's fact back.
+Contexts usually agree eventually: `:at_least_once` — a policy and an effect with their
+`idempotency` (P3), a read model with none. A policy or a read model left without `delivery`
+there does not compile (X10), so for them this warning is only ever about one declared on
+purpose; say why in the pull request.
+
 ## `free-text-not-personal`
 
 **notice**

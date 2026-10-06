@@ -170,6 +170,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
   policy :month_opens_on_consistent_registry, "Zgodne rejestry — miesiąc się otwiera",
     handles: :registry_data_consistent,
     issues: :open_month,
+    delivery: :at_least_once,
+    idempotency: [key: :event_id, owner: :infrastructure],
     source: "03 §5, step 2"
 
   # P6: when a statement (CSV/MT940) is uploaded, parse it into turnovers and match them.

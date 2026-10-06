@@ -153,7 +153,10 @@ say the `state` its run holds after the trigger — `state %{check_at: "2026-02-
 `ScenarioCase` compares after folding the delivered event, as the engine does. A reaction delivered
 `:at_least_once` names what makes a second delivery harmless and who keeps it so, `idempotency: [key:
 :event_id, owner: :downstream]`: its own code (`:self`), the system an effect calls, given the key
-(`:downstream`), or the engine (`:infrastructure`), which keys the commands a policy issues. `consumes` takes a sibling contract's events, and
+(`:downstream`), or the engine (`:infrastructure`), which keys the commands a policy issues. A policy or a
+read model left without `delivery` runs `:in_transaction`, inside the transaction that records the event — so
+one that takes an event of a sibling of another context has to declare it (**X10**), and
+`mix eh_os_contract.check` warns of a declared `:in_transaction` there. `consumes` takes a sibling contract's events, and
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
@@ -327,6 +330,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal |
+| `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
 | `X7` | L3 | two processes of the system with one name, and so one event type |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |

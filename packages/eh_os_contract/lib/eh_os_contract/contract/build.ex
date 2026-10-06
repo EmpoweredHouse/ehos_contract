@@ -66,11 +66,11 @@ defmodule EhOsContract.Contract.Build do
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
-      policies: entities |> of(Dsl.Policy) |> Enum.map(&reaction/1),
+      policies: entities |> of(Dsl.Policy) |> Enum.map(&(&1 |> reaction() |> delivery())),
       effects: entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> reaction() |> operations())),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
-      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
+      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&(&1 |> plain() |> delivery())),
       queries:
         entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
@@ -106,6 +106,12 @@ defmodule EhOsContract.Contract.Build do
 
   defp reaction(declaration),
     do: declaration |> plain() |> without_empty(:constraints) |> idempotency()
+
+  # Plan DD, X1: a policy or a read model left without `delivery` runs inside the
+  # transaction, as it always has, so no contract written without it moves its digest.
+  # The DSL leaves it `nil` so that X10 can tell a declared one from a default.
+  defp delivery(%{delivery: nil} = reaction), do: %{reaction | delivery: :in_transaction}
+  defp delivery(reaction), do: reaction
 
   # Plan EP5a: `calls` keeps the systems an effect calls, as every reader has always
   # read it, and the operations it names go under their own key, only where it names

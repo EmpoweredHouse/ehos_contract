@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4, T1+T1s w PR-ach #146, #148)
+## Handoff — stan na 5 października, późny wieczór (DD0, N1–N3, W1–W4, T1+T1s w `main`; X1 gotowy na gałęzi)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,23 +41,24 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4 (wspólne reguły decyzji) w PR-ze
-#146 (na `main`); T1+T1s (`supplied_by: :host`, `Supplier`, sandbox) w PR-ze #148 (na #146); potem X1, S4 w dowolnej
-kolejności.
+Fala 1: N1, N2, N3, W1, W2, W3, W4, T1, T1s w `main` (#137, #138, #139, #142, #143, #145, #146, #148); X1 zrobiony
+na `claude/dsl-x1-in-transaction-4447a3` (od `main`, brama zielona, przegląd rozstrzygnięty — „X1 — co wyszło”),
+niewypchnięty; po nim S4, ostatni etap fali 1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `5be6358`** (merge #145, W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
+- **`origin/main` = `5576b99`** (merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+  W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4
-  (`engine/w4-decision`, na `main`, z `main` wmergowanym) → [#148](https://github.com/EmpoweredHouse/eh-os-contract/pull/148)
-  T1+T1s (`engine/t1-supplied-by-host`, na #146). CI stoi na billingu GitHub Actions (job nie startuje).
-  Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
-  (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
+- **Otwartych PR-ów programu brak.** #146 (W4) i #148 (T1+T1s) zmergowane 5 października; gałęzie
+  `engine/w3-trace-core`, `engine/w4-decision`, `engine/t1-supplied-by-host` zmergowane, nieusunięte (sprzątanie na
+  polecenie użytkownika). **CI stoi na billingu GitHub Actions** (joby nie są przydzielane runnerowi): kod z `main`
+  przeszedł lokalną bramę, ale nie przeszedł jeszcze CI w całości — po naprawie `gh run rerun 37371291018`.
+  Poza programem otwarte jeszcze #140 (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -69,7 +70,9 @@ kolejności.
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października, wieczór):** `w3-public-trace-core-c3ed23` — sesja W3 i W4 (`engine/w4-decision`);
+- **Worktree (5 października, późny wieczór):** `runner-usage-optimization-b60150` — sesja X1
+  (`claude/dsl-x1-in-transaction-4447a3`; katalog po sesji CI z #147); `w3-public-trace-core-c3ed23` — sesja W3, W4 i
+  T1 (`engine/t1-supplied-by-host`, zmergowana);
   `computer-ordering-process-f84437` — poprzednia sesja DD (`engine/w2-day-tags`);
   `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
   `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
@@ -90,10 +93,11 @@ kolejności.
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145). **Użytkownik:**
-     merge #146 (W4), potem #148 (T1+T1s); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W4 w PR-ze #146 (na `main`), T1+T1s w PR-ze #148 (na #146); potem X1, S4, każdy na gałęzi od
-     głowy stosu albo od `main` po merge'ach (tabela „Postęp” żyje na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
+     T1+T1s (#148).
+  2. **Użytkownik:** polecenie push i PR dla X1 (`claude/dsl-x1-in-transaction-4447a3`, worktree
+     `runner-usage-optimization-b60150`); po merge'u ☑ w tabeli. **Asystent:** S4 na gałęzi od `main` (tabela „Postęp” żyje na gałęzi etapu); po fali 1 notatka migracyjna dla AppUnite i
+     `ehos-ledger`. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -525,10 +529,10 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host`, PR #148 (na #146) |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host`, PR #148 (z T1) |
-| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☑ #146 |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
+| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ◐ `claude/dsl-x1-in-transaction-4447a3` |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
@@ -1209,6 +1213,54 @@ historii — dla PC1) i `Contract.Data.cast/3` (z ScenarioCase). Raport i grafy 
   Bezpieczeństwo i wydajność: nic od średniej wagi; żadne sprawdzenie nie zniknęło z dispatchu, komunikaty bez wartości.
 - **Brama:** EXIT=0; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 194, silnik 1312, web 52, auth 286 + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
+
+### X1 — co wyszło (5 października)
+
+Gałąź `claude/dsl-x1-in-transaction-4447a3` (od `main` @ `5576b99`, worktree `runner-usage-optimization-b60150`).
+Polityka albo read model, który bierze zdarzenie kontraktu-siostry tej samej domeny **z innego `context:`** i nie
+deklaruje `delivery`, nie kompiluje się: **X10** (L3, obok X5 w `contract/links/siblings.ex`), jeden błąd na reakcję,
+z każdym obcym zdarzeniem pod nazwą lokalną (także po `as:`). Domyślne `delivery` polityki i read modelu w `dsl.ex`
+to teraz `nil`, a `Build` rozwiązuje je na `:in_transaction` — kontrakt bez `delivery` zachowuje wersję (test
+porównuje wersję z jawnym `:in_transaction`). Jawne `:in_transaction` na takim zdarzeniu kompiluje się, a `check`
+ostrzega: **`in-transaction-across-contexts`** (L5, `check/contracts.ex`), także dla efektu. Efekt i process manager
+nie dostają X10: domyślnie są `:at_least_once`. Wewnątrz jednego kontekstu nic się nie zmienia; zdarzenia z innej
+aplikacji (`consumes "<nazwa>"`) nie są objęte.
+
+- **Rozstrzygnięcia asystenta (mechanika):** nowy kod **X10** zamiast rozszerzenia X5 — X5 mówi o nazwach (czy
+  siostra i zdarzenie istnieją), X10 o semantyce dostarczenia; *odrzucone:* trzecie zdanie X5. Brak `delivery` jako
+  `nil` w deklaracji, rozwiązywany w `Build`; *odrzucone:* osobny znacznik „zadeklarowane” obok wartości (drugi klucz
+  na jedno pytanie). Ryzyko z przeglądu: przyszła reguła czytająca deklaracje (`policy.delivery == :in_transaction`)
+  pominie polityki bez `delivery` — reguły czytające dostarczenie mają czytać model; zapisane w komentarzu `dsl.ex`.
+- **Sandbox, wybór asystenta:** `report_on_clinical_close` (Rehmed, dokumentacja kliniczna → sprawozdawczość) i
+  `month_opens_on_consistent_registry` (TaxVision, cykl życia klienta → miesiąc) są `:at_least_once` z
+  `idempotency: [key: :event_id, owner: :infrastructure]` — kontekst reaguje na fakt innego po transakcji (DDD:
+  spójność ostateczna między kontekstami); *odrzucone:* jawne `:in_transaction` (dwa ostrzeżenia L5 do wyjaśniania w
+  danych testowych i zamknięcie wizyty cofane przez błąd zgłoszenia do P1). Skutek: jeden test
+  (`rehmed_clinical_visit_test.exs`) opróżnia subskrypcje po zamknięciu; w grafach `clinical_visit` i
+  `accounting_month` krawędzie tych polityk przechodzą z inline na `async`. Odbiór fali 1, punkt 1 („dwie reakcje
+  między kontekstami mają jawne `delivery`”) — spełniony.
+- **Przegląd** (`origin/main..HEAD`, dwa równolegle). Poprawność: 9 uwag — naprawione: rada „`:at_least_once` z
+  `idempotency`” dla read modelu, który `idempotency` nie przyjmuje (katalog, CHANGELOG, skill; `ac32849`); CHANGELOG
+  mówił, że efekty są nietknięte, a ostrzeżenie je obejmuje; X10 (`2fd3851`) i L5 (`ac32849`) dawały błąd na każde zdarzenie, nie na reakcję;
+  L5 budował siostrę na każdą parę reakcja–zdarzenie; brak testu `as:`; nagłówek CHANGELOG „X1:” mylony z kodem X1.
+  Próba odwrotna: grupowanie X10 i rada read modelu — pada tylko ich test. Bez zmian: `nil` w deklaracjach (wyżej);
+  wspólny warunek „inny kontekst” w X10 i L5 (dwie warstwy, każda ze swoim testem i kontrolą). Bezpieczeństwo i
+  wydajność: nic blokującego — podwójnego wydania nie ma (klucz reakcji i `Dispatcher.idempotent/2` te same w obu
+  trybach, także przy wdrożeniu kroczącym), PESEL nie trafia w nowe miejsce (polityka to subskrypcja, nie zadanie
+  Obana). **Zostawione świadomie, do wiadomości:** (1) jedno zdarzenie, którego komenda wywraca się nie odmową,
+  zatrzymuje subskrypcję (`failing`) — w Rehmedzie wstrzymuje kolejne zgłoszenia P1 do decyzji człowieka (`mix
+  eh_os_contract.subscriptions`); wcześniej to samo cofało zamknięcie wizyty; (2) pacjent usunięty między zamknięciem a
+  krokiem polityki — zgłoszenie nie powstaje, bez wiersza odmowy (`:subject_erased` jako `:ok`); (3) przy mieszanych
+  wersjach węzłów odrzucona inline komenda może zostać wydana ponownie przez nowy węzeł; (4) czas zgłoszenia to czas
+  kroku subskrypcji, więc opóźnienie biegacza przesuwa werdykt obietnicy P1.
+- **Brama:** EXIT=0 na commitach z kodem; `check` 0 / 29 / 10 (sandbox, bez zmian — żadnego nowego ostrzeżenia),
+  0 / 75 / 6 (silnik); sandbox 196, silnik 1347 (+7), web 52, auth 286 + 1 property. Diff raportu i `check` przed i
+  po: dwie wersje kontraktów (`StatutoryReporting`, `AccountingMonth`) i „Declarations changed” na zmienionej
+  polityce; w `check` przesunięty numer linii jednego ostrzeżenia `accounting_month.ex` (176 → 178); nic więcej.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** aplikacja AppUnite ma jeden kontekst (`equipment`) — nic. Każdy host z
+  polityką albo read modelem na zdarzeniu siostry z innego kontekstu bez `delivery:` przestaje się kompilować (X10):
+  dopisać `delivery: :at_least_once` (polityka z `idempotency`, P3) albo `:in_transaction` z wyjaśnieniem ostrzeżenia.
+  Efekt jawnie `:in_transaction` na takim zdarzeniu daje ostrzeżenie (czerwone przy `--warnings-as-errors`).
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 

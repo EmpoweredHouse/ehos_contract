@@ -1,7 +1,8 @@
 defmodule EhOsContract.ContractLinksSiblingsTest do
   @moduledoc """
   v2 plan, E5b: **X5–X6** (v2 §6, §7) — a subscriber checked against the sibling
-  contract it consumes from, as that sibling is compiled now. A violation stands at
+  contract it consumes from, as that sibling is compiled now; and plan DD, X1:
+  **X10**, a reaction to an event of another context that leaves `delivery` out. A violation stands at
   the subscriber's declaration and names the publisher's event with its file and
   line; each has a control beside it that passes.
   """
@@ -18,6 +19,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
         context :settlement, "Rozliczenia", subdomain: :core
+        context :scheduling, "Umawianie wizyt", subdomain: :core
         actor :reception, :human, "Recepcja"
 
         entity :visit, "Wizyta", context: :settlement, identity: :visit_id do
@@ -338,6 +340,156 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     test "controls: an optional field added, and a change to a field no declaration uses" do
       assert pair("sib_added", @fields <> "      field :note, :string, optional: true") == []
       assert pair("sib_unused", "      field :visit_id, :id\n      field :room, :integer") == []
+    end
+  end
+
+  describe "X10: a reaction to another context's event declares its delivery" do
+    # A subscriber in :settlement whose reaction, at line 16, takes the publisher's
+    # :visit_booked.
+    defp reacting(name, publisher, reaction) do
+      """
+      defmodule #{inspect(Module.concat(@fixtures, name))} do
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+        consumes #{inspect(Module.concat(@fixtures, publisher))}, :visit_booked
+
+        aggregate :billing, "Rozliczenie" do
+          identity :visit_id
+          command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+          event :visit_billed, "Wizyta rozliczona"
+        end
+
+        process :billing, "Rozliczenie" do
+          correlate :visit_id
+        end
+
+      #{reaction}
+      end
+      """
+    end
+
+    @policy ~s(policy :bill_on_booking, "Rezerwacja — wizyta do rozliczenia", ) <>
+              "handles: :visit_booked, issues: :bill_visit"
+    @read_model ~s(read_model :bookings, "Rezerwacje", projects: :visit_booked do\n) <>
+                  "    field :visit_id, :id\n  end"
+
+    defp across(test, context, reaction) do
+      camel = Macro.camelize(test)
+
+      links([
+        {"#{test}_booking.ex",
+         publisher("#{camel}Booking", @fields) |> String.replace(":settlement", context)},
+        {"#{test}_billing.ex", reacting("#{camel}Billing", "#{camel}Booking", reaction)}
+      ])
+    end
+
+    test "a policy left without delivery on another context's event" do
+      violations = across("sib_x10_policy", ":scheduling", "  " <> @policy)
+
+      assert assert_linked(
+               violations,
+               "X10: policy :bill_on_booking takes :visit_booked",
+               "sib_x10_policy_billing.ex",
+               16
+             ) =~
+               ":visit_booked of #{inspect(@fixtures)}.SibX10PolicyBooking (context :scheduling), " <>
+                 "not of context :settlement, and declares no delivery"
+    end
+
+    test "one error a reaction, naming each event it takes from another context by its local name" do
+      camel = "SibX10Renamed"
+
+      violations =
+        links([
+          {"sib_x10_renamed_booking.ex",
+           publisher("#{camel}Booking", @fields)
+           |> String.replace(":settlement", ":scheduling")
+           |> String.replace("emits: :visit_booked", "emits: [:visit_booked, :visit_moved]")
+           |> String.replace(
+             "    event :visit_booked,",
+             "    event :visit_moved, \"Wizyta przesunięta\"\n    event :visit_booked,"
+           )},
+          {"sib_x10_renamed_billing.ex",
+           reacting("#{camel}Billing", "#{camel}Booking", """
+             policy :bill_on_booking, "Rezerwacja — wizyta do rozliczenia",
+               handles: [:booked, :visit_billed, :visit_moved], issues: :bill_visit
+           """)
+           |> String.replace(
+             ", :visit_booked\n",
+             ", [:visit_booked, :visit_moved], as: [visit_booked: :booked]\n"
+           )}
+        ])
+
+      assert [%{message: message}] = Enum.filter(violations, &(&1.message =~ "X10"))
+
+      assert message =~
+               "takes :booked of #{inspect(@fixtures)}.#{camel}Booking (context :scheduling) and "
+
+      assert message =~
+               "and :visit_moved of #{inspect(@fixtures)}.#{camel}Booking (context :scheduling), not"
+
+      refute message =~ ":visit_billed"
+    end
+
+    test "a read model left without delivery on another context's event" do
+      violations = across("sib_x10_read_model", ":scheduling", "  " <> @read_model)
+
+      assert assert_linked(
+               violations,
+               "X10: read model :bookings takes :visit_booked",
+               "sib_x10_read_model_billing.ex",
+               16
+             ) =~ "Declare `delivery: :at_least_once`"
+    end
+
+    test "control: a declared delivery, either one, passes" do
+      at_least_once =
+        @policy <>
+          ", delivery: :at_least_once, idempotency: [key: :event_id, owner: :infrastructure]"
+
+      assert across("sib_x10_declared", ":scheduling", "  " <> at_least_once) == []
+
+      assert across(
+               "sib_x10_inline",
+               ":scheduling",
+               "  " <> @policy <> ", delivery: :in_transaction"
+             ) ==
+               []
+    end
+
+    test "left out, delivery is :in_transaction in the model, and the version does not move" do
+      body = fn delivery ->
+        """
+          aggregate :billing, "Rozliczenie" do
+            identity :visit_id
+            command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+            event :visit_billed, "Wizyta rozliczona"
+          end
+
+          process :billing, "Rozliczenie" do
+            correlate :visit_id
+          end
+
+          policy :bill_again, "Rozliczona — rozlicz ponownie", handles: :visit_billed,
+            issues: :bill_visit#{delivery}
+
+          read_model :billed, "Rozliczone", projects: :visit_billed#{delivery} do
+            field :visit_id, :id
+          end
+        """
+      end
+
+      left_out = compile_contract("SibX10LeftOut", body.(""))
+      declared = compile_contract("SibX10Declared", body.(", delivery: :in_transaction"))
+
+      assert [%{delivery: :in_transaction}] = left_out.policies
+      assert [%{delivery: :in_transaction}] = left_out.read_models
+      assert left_out.version == declared.version
+    end
+
+    test "control: a reaction to an event of its own context may leave delivery out" do
+      assert across("sib_x10_same", ":settlement", "  " <> @policy) == []
+      assert across("sib_x10_same_rm", ":settlement", "  " <> @read_model) == []
     end
   end
 end

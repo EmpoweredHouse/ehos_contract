@@ -60,6 +60,20 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
+  the refusal is **X10**). Left out, it
+  runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the
+  reaction rolls that event back. **X10** now refuses such a reaction without `delivery:` at compile time; one
+  that names `delivery: :in_transaction` compiles, and `mix eh_os_contract.check` warns about it
+  (`in-transaction-across-contexts`). Only consumers of a sibling contract of the same domain and another
+  `context:` are affected; within one context nothing changes, and a reaction that leaves `delivery` out keeps
+  `:in_transaction` and its contract's version. An effect (`:at_least_once` unless declared) is not refused, but
+  one declared `:in_transaction` on another context's event gets the same warning, which turns
+  `check --warnings-as-errors` red. **A host with such a reaction adds `delivery:`** — `:at_least_once` (with
+  its `idempotency` for a policy, P3; a read model takes none), or `:in_transaction` and an explanation for the
+  warning. Choosing `:at_least_once` moves the reaction after the transaction: an overlay
+  step goes from inline to subscribed, and a test that read the reaction's result straight after the dispatch
+  drains the subscriptions first.
 - **T1: a domain value's invariant may no longer be named `:supplied`** (D9), the word a request's refusal now
   puts where an invariant's name goes, as it already could not be `:required`, `:type` or `:generated`. Rename one
   that was.
