@@ -1,0 +1,1 @@
+Documentation only (root README.md; excluded from the CI gate, read by no test). Claims checked against the code: Relay, Bus.Local, Inbox moduledocs; X10 in #150; auth package Session/SignIn/Manifest; sandbox/lib domains; ci.yml paths.
