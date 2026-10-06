@@ -19,8 +19,8 @@ defmodule EhOsContract.Paths do
 
   ## Taken, waiting, failing
 
-  **Taken** is counted in runs: the distinct runs of the contract's
-  process in which the step happened. A command emitted an event when the event's
+  **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
+  P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
   row names the command's row (`command_id`); a reaction issued a command when a row
   of `eh_os_contract_commands` names its actor and, as its cause, an event of the
   step's type. Another application's event never enters this log (D12): a policy on
@@ -30,7 +30,7 @@ defmodule EhOsContract.Paths do
   back and delivered again by the transport, and leaves nothing here, so a path that
   always fails reads as untraversed (#65).
   An effect leaves nothing in the log when it acts, so whether it was
-  taken is not known, and its `runs` is `nil`: never untraversed, only waiting or
+  taken is not known, and its `taken` is `nil`: never untraversed, only waiting or
   failing.
 
   **Waiting** — "not yet", never "never" — has three sources, each counted apart
@@ -39,7 +39,7 @@ defmodule EhOsContract.Paths do
   not run yet (`effects`).
 
   **Failing** has three too: commands that failed where the step runs, attributed
-  through the row's `failed_in` (`commands`, in runs); the consumer's subscription
+  through the row's `failed_in` (`commands`, each failed command once); the consumer's subscription
   stopped at an event it cannot apply (`subscription`); effect jobs Oban discarded
   (`effects`). A command that failed in its decision, or in a read model's
   projection, fails every step it emits: which of them it would have taken is not
@@ -344,7 +344,7 @@ defmodule EhOsContract.Paths do
   # for a timer, by its firing. One row is one occurrence: a redelivery the idempotency
   # key turns away writes none (plan DD, P1a, #183).
   # A timer's firing names its timer in the payload; any other event's payload is the
-  # domain's, whose own `timer` field would split the runs, so it is read only there.
+  # domain's, whose own `timer` field would split the count, so it is read only there.
   defp issued(model, opts) do
     elapsed = ProcessManager.elapsed()
 
@@ -514,7 +514,6 @@ defmodule EhOsContract.Paths do
         type: c.type,
         failed_in: c.failed_in,
         issued_by: c.issued_by,
-        run: c.instance_id,
         at: c.recorded_at
       }
     )

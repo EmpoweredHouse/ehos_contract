@@ -1477,8 +1477,10 @@ the person's.
 > was taken: the events of its type its command appended, or the command rows its reaction issued, accepted or
 > rejected (an idempotent redelivery writes no row). Failed commands count likewise. Two deposits on one account
 > are two, where they were one run; the argument for runs — a single busy account would read as a
-> well-travelled path — loses to a contract without a process having no count at all. A process keeps its runs,
-> durations and promises, judged per run as before.
+> well-travelled path — loses to a contract without a process having no count at all. So does the argument for
+> failures counted in runs, that a retry loop on one run would read as a wide outage: fifty failures read "50
+> commands failed", which is what happened, and a process's runs still say how much of the business a failure
+> touches. A process keeps its runs, durations and promises, judged per run as before.
 
 | Fate | Modules |
 | --- | --- |

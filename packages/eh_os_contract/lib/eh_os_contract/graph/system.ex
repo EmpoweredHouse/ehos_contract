@@ -64,7 +64,7 @@ defmodule EhOsContract.Graph.System do
     contract_nodes =
       for m <- models do
         node = %{id: ids[m.module], kind: :contract, name: m.module, label: contract_label(m)}
-        if overlay?, do: Map.put(node, :runs, runs(m, observed, opts)), else: node
+        if overlay?, do: Map.put(node, :runs, runs(m, opts)), else: node
       end
 
     between =
@@ -169,9 +169,9 @@ defmodule EhOsContract.Graph.System do
 
   # A process's runs: a step counts occurrences (plan DD, P1a, #183), so the process
   # is asked for its own.
-  defp runs(%{process: nil}, _observed, _opts), do: nil
+  defp runs(%{process: nil}, _opts), do: nil
 
-  defp runs(model, _observed, opts),
+  defp runs(model, opts),
     do: Paths.runs_of(model, Atom.to_string(model.process.name), opts)
 
   # How many events of each type the log holds, in the period. `count(position)`

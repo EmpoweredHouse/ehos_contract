@@ -94,7 +94,7 @@ defmodule EhOsContract.Conformance do
   # --- a v2 contract (v2 §13, plan E7c) ---------------------------------------------------
   #
   # The same four questions. A path is a step of `EhOsContract.Paths` — from, via, to,
-  # each `%{kind, name, label}` — with its runs and each source of waiting and failing
+  # each `%{kind, name, label}` — with how often it was taken and each source of waiting and failing
   # apart; the assertions are the process's promises, judged by `EhOsContract.Trace`;
   # the deployed version is `EhOsContract.Deployment`'s. What is left out: a
   # declaration or a promise the owner has not confirmed, and every step when no run

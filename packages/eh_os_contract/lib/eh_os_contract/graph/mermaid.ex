@@ -19,7 +19,7 @@ defmodule EhOsContract.Graph.Mermaid do
           required(:id) => String.t(),
           required(:kind) => atom(),
           required(:label) => String.t() | [String.t()],
-          optional(:counts) => {non_neg_integer(), non_neg_integer()} | nil
+          optional(:counts) => non_neg_integer() | nil
         }
 
   @typedoc "An edge of a graph built as data."

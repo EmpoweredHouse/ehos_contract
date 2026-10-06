@@ -558,7 +558,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☑ #172 | [#171](https://github.com/EmpoweredHouse/eh-os-contract/issues/171) |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☑ #174 | [#173](https://github.com/EmpoweredHouse/eh-os-contract/issues/173) |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
-| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ◐ `dd/183-steps-per-contract` | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☐ | — |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |

@@ -312,11 +312,12 @@ defmodule EhOsContract.Graph.Contract do
     includes = (model.process && model.process.includes) || []
     names = Enum.map(model.events, & &1.name) ++ Enum.map(includes, & &1.event)
 
+    # A sibling this node cannot load declares nothing here, and is left out.
     by_type =
-      Map.new(names, fn name ->
-        {_contract, e} = Model.declaring(model, name)
-        {e.type, name}
-      end)
+      for name <- names,
+          {_contract, e} <- [Model.declaring(model, name)],
+          into: %{},
+          do: {e.type, name}
 
     types = Map.keys(by_type)
 
@@ -324,7 +325,8 @@ defmodule EhOsContract.Graph.Contract do
       as: :event,
       where: e.type in ^types,
       group_by: e.type,
-      select: {e.type, count(e.id)}
+      # `position`, not `id`: the `(type, position)` index answers it alone.
+      select: {e.type, count(e.position)}
     )
     |> EhOsContract.Graph.bounded(opts)
     |> repo().all()
