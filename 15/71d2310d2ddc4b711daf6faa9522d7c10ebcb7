@@ -1,0 +1,11 @@
+**Review of the fix for CodeRabbit's comment on #191** (`1571d23`).
+
+CodeRabbit found that R6 checked a process manager's timer wait only in a contract with a process. In a contract without one, a negative or malformed wait compiled. The gap existed only on this branch, since `main` refused every contract without a process. Fixed: the wait is checked in both branches, and a test covers a contract without a process.
+
+Both reviews found nothing to fix:
+- **Correctness.** With a process, the refusals and their messages and order are unchanged, and nothing is reported twice. No other check in the branch for a contract with a process concerns something outside the process.
+- **Security and performance.** Before the fix, a bad wait would have crashed the process manager's runner on every retry (unknown unit, a count that is not an integer) or fired the timer at once (a negative count). The fix closes both.
+
+Left out: R6 sets no upper bound on a count. `{10_000_000, :year}` compiles and fails when the timer is set. The contract's author has to write that, and it holds with or without a process, so it is not this stage's to fix.
+
+Gate: `mix check` in `sandbox/`, EXIT=0, check counts unchanged; engine tests 1398.
