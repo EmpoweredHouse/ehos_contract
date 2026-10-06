@@ -90,6 +90,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   account are two. A contract's steps are counted whether or not it has a process, and an event's node on the graph
   shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`). The conformance
   wire carries the new step keys under `eh_os_contract.conformance.v2` until P1a's wire change lands.
+- **A contract's steps are its own block of the report, judged when anything happened in it** (plan DD, P1a, #183;
+  moves verdicts). `EhOsContract.Conformance.from_model/2` (now public) gives `activity` (the contract's events
+  and accepted or rejected commands in the period) and `paths` (`steps`, `untraversed`, `in_flight`, `failing`)
+  at the report's level; a process (`Conformance.process/2`, now public) keeps its runs, declarations, duration and
+  promises, without lists of steps. "Never carried out" is listed when the contract had any activity, where it
+  was listed when its process had any run: a contract without a process is judged, and so is one whose events
+  belong to no run. The text report and the screen print a STEPS block before PROCESS; with no activity it says
+  "nothing happened in this contract in this period".
 - **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
   `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
   where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers

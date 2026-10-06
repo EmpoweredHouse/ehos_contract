@@ -179,8 +179,7 @@ defmodule EhOsContract.InboxTest do
 
     assert [%{from: %{name: :order_placed}}] =
              Conformance.report(BusRig.Stock)
-             |> Map.fetch!(:processes)
-             |> hd()
+             |> Map.fetch!(:paths)
              |> Map.fetch!(:untraversed)
 
     assert "event:order_placed->policy:reserve_for_order->command:reserve_stock" in EhOsContract.Deployment.edge_labels(
@@ -194,8 +193,7 @@ defmodule EhOsContract.InboxTest do
              for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
 
     assert Conformance.report(BusRig.Stock)
-           |> Map.fetch!(:processes)
-           |> hd()
+           |> Map.fetch!(:paths)
            |> Map.fetch!(:untraversed) ==
              []
 

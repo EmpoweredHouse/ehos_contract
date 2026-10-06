@@ -210,9 +210,17 @@ defmodule EhOsContract.Report.Sentence do
   def runs(1), do: "1 run"
   def runs(n), do: "#{n} runs"
 
+  @doc "What happened in a contract in the period: its events and its commands."
+  @spec activity(%{events: non_neg_integer(), commands: non_neg_integer()}) :: String.t()
+  def activity(%{events: events, commands: commands}),
+    do:
+      "Activity in this period: #{plural(events, "event", "events")}, " <>
+        "#{plural(commands, "command", "commands")}."
+
   @doc "The sentences that stand in for a section with nothing in it."
-  @spec no_runs() :: String.t()
-  def no_runs, do: "The agreed steps cannot be judged: there was not a single run in this period."
+  @spec no_activity() :: String.t()
+  def no_activity,
+    do: "The agreed steps cannot be judged: nothing happened in this contract in this period."
 
   @doc false
   @spec all_steps_carried_out() :: String.t()
@@ -329,6 +337,9 @@ defmodule EhOsContract.Report.Sentence do
   defp name(%{name: name}), do: Atom.to_string(name)
 
   @spec count(non_neg_integer(), String.t(), String.t()) :: String.t() | nil
+  defp plural(1, one, _many), do: "1 #{one}"
+  defp plural(n, _one, many), do: "#{n} #{many}"
+
   defp count(0, _one, _many), do: nil
   defp count(1, one, _many), do: "1 #{one}"
   defp count(n, _one, many), do: "#{n} #{many}"

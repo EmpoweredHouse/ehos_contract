@@ -12,11 +12,12 @@ defmodule EhOsContract.Conformance do
   promises and durations are judged per **run**. And the report has to avoid lying in
   the three situations where lying is easy:
 
-  **Zero runs is no basis for a verdict, not three untraversed paths.** A process
-  that never started has every step untraversed — and listing them as findings
+  **Nothing happening is no basis for a verdict, not three untraversed paths.** A
+  contract nobody used has every step untraversed — and listing them as findings
   turns "no data" into "we have three problems". This is the same rule promise
-  evaluation rests on: with no `from` there is nothing to judge. So with zero runs
-  the list of untraversed steps is **empty**.
+  evaluation rests on: with no `from` there is nothing to judge. So with no activity
+  — no event, no command accepted or rejected in the period — the list of untraversed
+  steps is **empty**. Until plan DD, P1a (#183), the rule read "zero runs".
 
   **Work waiting in a queue is "not yet", not "never".** A step whose event will be
   produced by queued work is listed as in flight rather than as untraversed, and so
@@ -92,17 +93,21 @@ defmodule EhOsContract.Conformance do
   end
 
   # --- a v2 contract (v2 §13, plan E7c) ---------------------------------------------------
-  #
-  # The same four questions. A path is a step of `EhOsContract.Paths` — from, via, to,
-  # each `%{kind, name, label}` — with how often it was taken and each source of waiting and failing
-  # apart; the assertions are the process's promises, judged by `EhOsContract.Trace`;
-  # the deployed version is `EhOsContract.Deployment`'s. What is left out: a
-  # declaration or a promise the owner has not confirmed, and every step when no run
-  # happened.
 
+  @doc """
+  The report of the contract `model` (`EhOsContract.Model.fetch/1`), as `report/2`
+  gives it. The four questions: a path is a step of `EhOsContract.Paths` — from, via,
+  to, each `%{kind, name, label}` — with how often it was taken and each source of
+  waiting and failing apart, and the steps are the contract's whether or not it has a
+  process (plan DD, P1a, #183); the assertions are a process's promises, judged by
+  `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
+  left out: a declaration or a promise the owner has not confirmed, and every untaken
+  step when nothing happened in the contract.
+  """
   @spec from_model(map(), keyword()) :: map()
-  defp from_model(model, opts) do
+  def from_model(model, opts \\ []) do
     deployment = Deployment.report(model.module, opts)
+    activity = EhOsContract.Paths.activity(model, opts)
 
     %{
       contract: model.module,
@@ -112,26 +117,25 @@ defmodule EhOsContract.Conformance do
       # The code's half of the deployment, beside the agreement's: a v2 contract's
       # wiring is its steps and the modules that implement them.
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
-      processes: List.wrap(model.process && process_report(model, opts)),
+      activity: activity,
+      paths: paths(model, activity, opts),
+      processes: List.wrap(model.process && process(model, opts)),
       lifecycles: lifecycles(model, opts),
       scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift(model, opts)
     }
   end
 
-  @spec process_report(map(), keyword()) :: map()
-  defp process_report(model, opts) do
-    process = model.process
+  # Every step, and the three lists of the questions. Untraversed only when something
+  # happened in the contract: no activity is no basis for a verdict.
+  defp paths(model, activity, opts) do
     steps = EhOsContract.Paths.observe(model, opts)
-    runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
-
     in_flight = Enum.filter(steps, &waiting?/1)
     failing = Enum.filter(steps, &failing?/1)
-
     pending = downstream_of(in_flight, steps)
 
     untraversed =
-      if runs > 0,
+      if activity.events + activity.commands > 0,
         do:
           Enum.filter(
             steps,
@@ -139,6 +143,18 @@ defmodule EhOsContract.Conformance do
                 not MapSet.member?(pending, &1.from))
           ),
         else: []
+
+    %{steps: steps, untraversed: untraversed, in_flight: in_flight, failing: failing}
+  end
+
+  @doc """
+  The report of `model`'s process: its runs, confirmed declarations, durations and
+  promises. Its steps are the contract's, in `from_model/2`'s `paths` (plan DD, P1a,
+  #183).
+  """
+  @spec process(map(), keyword()) :: map()
+  def process(%{process: %{} = process} = model, opts \\ []) do
+    runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
 
     %{
       process: process.name,
@@ -150,9 +166,6 @@ defmodule EhOsContract.Conformance do
             %{unverified: false} = value <- [Map.get(process, key)] do
           %{key: key, value: {value.amount, value.unit}}
         end,
-      untraversed: untraversed,
-      in_flight: in_flight,
-      failing: failing,
       duration: duration(model, opts),
       promises: promises(model, opts)
     }

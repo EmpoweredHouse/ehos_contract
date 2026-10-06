@@ -220,6 +220,32 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
+  What happened in the contract in the period: its events, and its commands accepted
+  or rejected. Its steps are judged only when there was any (plan DD, P1a, #183): a
+  contract nobody used has every step untaken, and that is no finding.
+  """
+  @spec activity(map(), keyword()) :: %{
+          events: non_neg_integer(),
+          commands: non_neg_integer()
+        }
+  def activity(model, opts \\ []) do
+    events =
+      from(e in Event, as: :event, where: e.contract == ^model.id, select: count(e.position))
+      |> bounded(opts)
+      |> repo().one()
+
+    commands =
+      from(c in CommandRecord,
+        where: c.contract == ^model.id and c.outcome in ["accepted", "rejected"],
+        select: count(c.id)
+      )
+      |> bounded_rows(opts)
+      |> repo().one()
+
+    %{events: events, commands: commands}
+  end
+
+  @doc """
   Distinct runs of the contract's process in the period, over its own events' types
   and the ones it includes. A process's own count: a step is counted in occurrences,
   not runs (plan DD, P1a, #183).

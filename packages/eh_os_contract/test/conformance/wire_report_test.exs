@@ -81,7 +81,7 @@ defmodule EhOsContract.Conformance.WireReportTest do
       [p] = data["report"]["processes"]
       [promise] = p["promises"]
       assert {:ok, _, _} = DateTime.from_iso8601(promise["declaration_changed_at"])
-      assert [_waiting] = p["in_flight"]
+      assert [_waiting] = data["report"]["paths"]["in_flight"]
     end
 
     test "for a timed run, whose confirmed deadline is measured" do

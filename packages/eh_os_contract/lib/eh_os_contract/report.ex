@@ -29,6 +29,7 @@ defmodule EhOsContract.Report do
     [
       header(report),
       deployment(report.deployment, report.wiring),
+      steps(report.activity, report.paths),
       Enum.map(report.processes, &process/1),
       Enum.map(Map.get(report, :lifecycles, []), &lifecycle/1),
       scenarios(report.scenarios),
@@ -151,9 +152,14 @@ defmodule EhOsContract.Report do
       ["  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
-      paths(p) ++
       assertions(p.promises) ++
       [""]
+  end
+
+  # Plan DD, P1a (#183): the contract's steps, whether or not it has a process.
+  @spec steps(map(), map()) :: [String.t()]
+  defp steps(activity, p) do
+    ["STEPS", "  " <> Sentence.activity(activity)] ++ paths(activity, p) ++ [""]
   end
 
   # Confirmed declarations only. The 25-day deadline will not appear here until
@@ -161,13 +167,13 @@ defmodule EhOsContract.Report do
   @spec declarations([map()]) :: [String.t()]
   defp declarations(declared), do: for(d <- declared, do: "  " <> Sentence.declaration(d))
 
-  @spec paths(map()) :: [String.t()]
-  defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
+  @spec paths(map(), map()) :: [String.t()]
+  defp paths(%{events: 0, commands: 0}, _p), do: ["  " <> Sentence.no_activity()]
 
   # What waits has a heading of its own, never the list of what nobody did, and
   # "carried out" is said only when nothing waits either — a branch is several steps,
   # and only its head waits in a queue.
-  defp paths(p) do
+  defp paths(_activity, p) do
     untraversed =
       case {p.untraversed, p.in_flight} do
         {[], []} ->

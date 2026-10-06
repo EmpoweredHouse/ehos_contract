@@ -25,6 +25,7 @@ defmodule EhOsContract.ReportTest do
   defp data(opts \\ []), do: Conformance.report(Promised, opts)
   defp text(opts \\ []), do: opts |> data() |> Report.render()
   defp process(report), do: report.processes |> Enum.find(&(&1.process == :handling))
+  defp paths(report), do: report.paths
 
   defp names(steps),
     do: for(s <- steps, do: {s.from.name, s.via && s.via.name, s.to && s.to.name})
@@ -76,15 +77,15 @@ defmodule EhOsContract.ReportTest do
     end
   end
 
-  describe "the steps of a v2 process" do
+  describe "the steps of a contract" do
     setup do: Seed.deploy()
 
     test "50 runs, none refused: the refusal branch's three steps, each reported once" do
       for n <- 1..50, do: Seed.request("r-#{n}", :request_approved)
 
-      p = process(data())
-
-      assert p.runs == 50
+      report = data()
+      assert process(report).runs == 50
+      p = paths(report)
 
       assert names(p.untraversed) == [
                {:decide_request, nil, :request_refused},
@@ -100,23 +101,24 @@ defmodule EhOsContract.ReportTest do
       Seed.request("r-50", :request_refused)
       Seed.run_queue()
 
-      p = process(data())
+      p = paths(data())
       assert p.untraversed == [] and p.in_flight == [] and p.failing == []
     end
 
-    test "zero runs is no basis, not nine findings" do
-      p = process(data())
+    # Plan DD, P1a (#183): the gate is the contract's activity, not its process's runs.
+    test "no activity is no basis, not nine findings" do
+      report = data()
 
-      assert p.runs == 0
-      assert p.untraversed == []
-      assert text() =~ "not a single run in this period"
+      assert report.activity == %{events: 0, commands: 0}
+      assert paths(report).untraversed == []
+      assert text() =~ "nothing happened in this contract in this period"
     end
 
     test "not yet is not never: the refusal's step waits, and is never untraversed while it does" do
       Seed.request("r-1", :request_approved)
       Seed.request("r-2", :request_refused)
 
-      p = process(data())
+      p = paths(data())
 
       assert names(p.in_flight) == [{:request_refused, :notify_on_refusal, :notify_refusal}]
       refute {:request_refused, :notify_on_refusal, :notify_refusal} in names(p.untraversed)
@@ -132,8 +134,28 @@ defmodule EhOsContract.ReportTest do
       refute t =~ "All agreed steps were carried out"
 
       Seed.run_queue()
-      p = process(data())
+      p = paths(data())
       assert p.in_flight == [] and p.untraversed == []
+    end
+
+    # Plan DD, P1a (#183): the steps are the contract's, in a block of their own before
+    # the process, which keeps its runs and promises and no list of steps.
+    test "the steps are the contract's block, with its activity, before the process" do
+      Seed.request("r-1", :request_approved)
+
+      report = data()
+      assert %{events: events, commands: commands} = report.activity
+      assert events > 0 and commands > 0
+      refute Map.has_key?(process(report), :untraversed)
+
+      t = text()
+      [steps, process] = String.split(t, "PROCESS: ", parts: 2)
+
+      assert steps =~
+               "STEPS\n  Activity in this period: #{events} events, #{commands} commands.\n" <>
+                 "  Agreed steps that were never carried out:"
+
+      refute process =~ "Agreed steps"
     end
 
     test "untaken steps read with their business labels and the consumer they run through" do
@@ -175,7 +197,7 @@ defmodule EhOsContract.ReportTest do
         )
       end
 
-      [p] = Conformance.report(DispatchRig.Ledger).processes
+      p = Conformance.report(DispatchRig.Ledger).paths
       assert [failing] = p.failing
       refute failing in p.untraversed
 
@@ -291,7 +313,7 @@ defmodule EhOsContract.ReportTest do
       assert {:ok, _json} = Jason.encode(wire)
 
       [p] = wire["report"]["processes"]
-      [step] = p["in_flight"]
+      [step] = wire["report"]["paths"]["in_flight"]
 
       assert step["from"] == %{
                "kind" => "event",
