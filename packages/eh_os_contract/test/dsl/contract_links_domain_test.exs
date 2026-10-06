@@ -63,10 +63,11 @@ defmodule EhOsContract.ContractLinksDomainTest do
   defp source(name, body, opts) do
     domain = Keyword.get(opts, :domain, inspect(@domain))
     context = Keyword.get(opts, :context, :settlement)
+    namespace = Keyword.get(opts, :namespace, "clinic")
 
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: #{domain}, context: #{inspect(context)}
+      use EhOsContract.Contract, domain: #{domain}, context: #{inspect(context)}, id: "#{namespace}.#{Macro.underscore(name)}"
 
     #{body}
     end
@@ -673,7 +674,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
     test "control: a namespace with a dash, the domain's name: (#50)" do
       body = dashed(@body, "my-shop.payment.recorded.v1")
-      assert links("LinksDashedRight", body, domain: inspect(@dashed)) == []
+      assert links("LinksDashedRight", body, domain: inspect(@dashed), namespace: "my-shop") == []
     end
 
     test "the same name with an underscore is outside it" do

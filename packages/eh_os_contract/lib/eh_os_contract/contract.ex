@@ -3,7 +3,10 @@ defmodule EhOsContract.Contract do
   One process, written down (v2 §4.1): the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
-        use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
+        use EhOsContract.Contract,
+          domain: Rehmed.Domain,
+          context: :settlement,
+          id: "rehmed.visit_settlement"
 
         aggregate :visit_settlement, "Rozliczenie wizyty" do
           identity :visit_id

@@ -6,7 +6,7 @@ defmodule KeyRig.Audit do
   bin: an included run, whose key `KeyRig.Bins`'s own keys do not bound (issue #98).
   """
 
-  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock
+  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock, id: "key_rig.audit"
 
   consumes KeyRig.Bins, :restocked
 

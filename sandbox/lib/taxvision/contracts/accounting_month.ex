@@ -51,7 +51,10 @@ defmodule Taxvision.Contracts.AccountingMonth do
   (`event-name-with-aggregate-prefix`, kept by decision before E9).
   """
 
-  use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting_month
+  use EhOsContract.Contract,
+    domain: Taxvision.Domain,
+    context: :accounting_month,
+    id: "taxvision.accounting_month"
 
   consumes Taxvision.Contracts.RegistryWatch, [
     :data_completeness_confirmed,

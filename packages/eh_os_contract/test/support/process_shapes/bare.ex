@@ -7,7 +7,10 @@ defmodule ProcessShapes.Bare do
   v2 is decided or recorded, never written around dispatch.
   """
 
-  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
+  use EhOsContract.Contract,
+    domain: ProcessShapes.Domain,
+    context: :batching,
+    id: "process_shapes.bare"
 
   aggregate :batch, "Batch" do
     identity [:tenant_id, :batch_id]

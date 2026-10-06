@@ -10,7 +10,10 @@ defmodule ProcessShapes.Timed do
   run that ended as it started could never be open past its hour.
   """
 
-  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :timing
+  use EhOsContract.Contract,
+    domain: ProcessShapes.Domain,
+    context: :timing,
+    id: "process_shapes.timed"
 
   aggregate :timed, "Timed run" do
     identity :run_id

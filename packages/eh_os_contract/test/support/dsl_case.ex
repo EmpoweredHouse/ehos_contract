@@ -43,7 +43,7 @@ defmodule EhOsContract.DslCase do
   def contract(name, body) do
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: Clinic, context: :settlement
+      use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
     #{body}
     end

@@ -44,7 +44,8 @@ defmodule EhOsContract.PromisePerItemTest do
 
     use EhOsContract.Contract,
       domain: EhOsContract.PromisePerItemTest.Domain,
-      context: :inspection
+      context: :inspection,
+      id: "promise_per_item.per_item"
 
     aggregate :item, "Item" do
       identity [:case_id, :item_no]

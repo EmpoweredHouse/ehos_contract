@@ -6,7 +6,7 @@ defmodule KeyRig.Shelves do
   and the stream's three, so a refusal of a shelf is its stream's (issue #98).
   """
 
-  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock
+  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock, id: "key_rig.shelves"
 
   aggregate :shelf, "Shelf" do
     identity [:site_id, :aisle_id, :shelf_id]

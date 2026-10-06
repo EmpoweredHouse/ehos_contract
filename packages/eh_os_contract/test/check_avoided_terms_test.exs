@@ -37,7 +37,7 @@ defmodule EhOsContract.CheckAvoidedTermsTest do
       defmodule EhOsContract.CheckAvoidedTermsTest.Visits do
         use EhOsContract.Contract,
           domain: EhOsContract.CheckAvoidedTermsTest.Clinic,
-          context: :scheduling
+          context: :scheduling, id: "avoided.visits"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id

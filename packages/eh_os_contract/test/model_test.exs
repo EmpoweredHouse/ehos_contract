@@ -15,7 +15,10 @@ defmodule EhOsContract.ModelTest do
 
   defmodule PersonalExport do
     @moduledoc false
-    use EhOsContract.Contract, domain: ShreddingRig.Domain, context: :membership
+    use EhOsContract.Contract,
+      domain: ShreddingRig.Domain,
+      context: :membership,
+      id: "shredding_rig.personal_export"
 
     aggregate :profile, "Profile" do
       identity :profile_id
@@ -79,7 +82,10 @@ defmodule EhOsContract.ModelTest do
   # personal fields are declared there, not here.
   defmodule PersonalConsumer do
     @moduledoc false
-    use EhOsContract.Contract, domain: ShreddingRig.Domain, context: :membership
+    use EhOsContract.Contract,
+      domain: ShreddingRig.Domain,
+      context: :membership,
+      id: "shredding_rig.personal_consumer"
 
     consumes EhOsContract.ModelTest.PersonalExport, :registered,
       as: [registered: :member_registered]

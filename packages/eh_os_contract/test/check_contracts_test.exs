@@ -17,7 +17,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{@visits |> Module.split() |> List.last() |> Macro.underscore()}"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -123,7 +123,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Orphaned do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.orphaned"
 
         consumes EhOsContract.CheckContractsTest.Nowhere, :arrived
 
@@ -171,7 +171,7 @@ defmodule EhOsContract.CheckContractsTest do
       end
 
       defmodule EhOsContract.CheckContractsTest.Desk do
-        use EhOsContract.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk
+        use EhOsContract.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk, id: "notes.desk"
 
         aggregate :desk, "Recepcja" do
           identity :visit_id
@@ -203,7 +203,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Reception do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.reception"
 
         consumes #{inspect(@visits)}, :booked, as: [booked: :visit_booked]
 
@@ -235,7 +235,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Billing do
-        use EhOsContract.Contract, domain: Clinic, context: :billing
+        use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.billing"
 
         consumes #{inspect(@visits)}, :booked
 
@@ -292,7 +292,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Desk2 do
-        use EhOsContract.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.desk2"
 
         consumes #{inspect(@visits)}, :booked
 

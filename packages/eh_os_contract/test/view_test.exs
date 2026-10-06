@@ -28,7 +28,7 @@ defmodule EhOsContract.ViewTest do
       end
 
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{@visits |> Module.split() |> List.last() |> Macro.underscore()}"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id

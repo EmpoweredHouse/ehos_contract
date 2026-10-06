@@ -39,7 +39,7 @@ defmodule EhOsContract.GraphContractTest do
       end
 
       defmodule #{inspect(@contract)} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :invoicing
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :invoicing, id: "graph_clinic.#{@contract |> Module.split() |> List.last() |> Macro.underscore()}"
 
         aggregate :draft, "Draft" do
           identity :draft_id

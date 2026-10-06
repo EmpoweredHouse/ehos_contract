@@ -166,7 +166,7 @@ defmodule MyApp.Domain do
 end
 
 defmodule MyApp.Contracts.Onboarding do
-  use EhOsContract.Contract, domain: MyApp.Domain, context: :onboarding
+  use EhOsContract.Contract, domain: MyApp.Domain, context: :onboarding, id: "my_app.onboarding"
 
   aggregate :application, "Application" do
     identity :application_id

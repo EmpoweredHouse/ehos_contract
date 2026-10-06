@@ -10,7 +10,10 @@ defmodule EhOsContract.OpenAPITest do
 
   defmodule ListQuery do
     @moduledoc false
-    use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.list_query"
 
     aggregate :account, "Account" do
       identity :account_id
@@ -32,7 +35,10 @@ defmodule EhOsContract.OpenAPITest do
 
   defmodule PersonalRows do
     @moduledoc false
-    use EhOsContract.Contract, domain: ShreddingRig.Domain, context: :membership
+    use EhOsContract.Contract,
+      domain: ShreddingRig.Domain,
+      context: :membership,
+      id: "shredding_rig.personal_rows"
 
     aggregate :profile, "Profile" do
       identity :profile_id

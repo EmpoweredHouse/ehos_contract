@@ -58,7 +58,7 @@ defmodule EhOsContract.ExternalOperationsTest do
   defp reporting(name, effects) do
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting, id: "clinic.#{Macro.underscore(name)}"
 
       aggregate :report, "Zgłoszenie" do
         identity :report_id
@@ -216,7 +216,7 @@ defmodule EhOsContract.ExternalOperationsTest do
       defmodule EhOsContract.ExternalOperationsTest.QuietReports do
         use EhOsContract.Contract,
           domain: EhOsContract.ExternalOperationsTest.Quiet,
-          context: :reporting
+          context: :reporting, id: "quiet.quiet_reports"
 
         aggregate :report, "Zgłoszenie" do
           identity :report_id

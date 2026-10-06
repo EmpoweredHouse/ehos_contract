@@ -40,7 +40,10 @@ defmodule UniversalityGate.TreatmentEpisode do
     both.
   """
 
-  use EhOsContract.Contract, domain: UniversalityGate.Domain, context: :treatment
+  use EhOsContract.Contract,
+    domain: UniversalityGate.Domain,
+    context: :treatment,
+    id: "universality_gate.treatment_episode"
 
   aggregate :episode, "Treatment episode" do
     identity :episode_id

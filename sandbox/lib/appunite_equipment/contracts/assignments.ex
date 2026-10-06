@@ -16,7 +16,10 @@ defmodule AppuniteEquipment.Contracts.Assignments do
   replacement (E), and an employee who stays keeps the computer for years.
   """
 
-  use EhOsContract.Contract, domain: AppuniteEquipment.Domain, context: :equipment
+  use EhOsContract.Contract,
+    domain: AppuniteEquipment.Domain,
+    context: :equipment,
+    id: "appunite_equipment.assignments"
 
   consumes AppuniteEquipment.Contracts.Computers, [
     :issued,

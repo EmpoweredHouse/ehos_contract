@@ -17,7 +17,8 @@ defmodule EhOsContract.ContractTest do
     @moduledoc false
     use EhOsContract.Contract,
       domain: EhOsContract.ContractTest.Clinic,
-      context: :settlement
+      context: :settlement,
+      id: "clinic.golden"
 
     aggregate :visit, "Wizyta", source: "AGG-03" do
       identity :visit_id
@@ -63,7 +64,8 @@ defmodule EhOsContract.ContractTest do
     @moduledoc false
     use EhOsContract.Contract,
       domain: EhOsContract.ContractTest.Clinic,
-      context: :settlement
+      context: :settlement,
+      id: "clinic.reordered"
 
     process :visit, "Wizyta" do
       correlate :visit_id
@@ -109,7 +111,8 @@ defmodule EhOsContract.ContractTest do
     @moduledoc false
     use EhOsContract.Contract,
       domain: EhOsContract.ContractTest.Clinic,
-      context: :settlement
+      context: :settlement,
+      id: "clinic.changed"
 
     aggregate :visit, "Wizyta", source: "AGG-03" do
       identity :visit_id
@@ -165,6 +168,7 @@ defmodule EhOsContract.ContractTest do
                module: Golden,
                domain: EhOsContract.ContractTest.Clinic,
                context: :settlement,
+               id: "clinic.golden",
                process: %{
                  name: :visit,
                  label: "Wizyta",
@@ -315,7 +319,7 @@ defmodule EhOsContract.ContractTest do
       defmodule EhOsContract.ContractTest.Named do
         use EhOsContract.Contract,
           domain: EhOsContract.ContractTest.ClinicDomain,
-          context: :settlement
+          context: :settlement, id: "clinic.named"
 
         subscribe "rehmed.visit.closed.v1", as: :closed_elsewhere do
           field :visit_id, :id
@@ -425,7 +429,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :billing
+          use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.#{Macro.underscore(name)}"
 
           dcb :payer_period, "Okres płatnika" do
             identity #{inspect(identity)}
@@ -456,7 +460,7 @@ defmodule EhOsContract.ContractTest do
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :settlement
+          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
@@ -498,7 +502,7 @@ defmodule EhOsContract.ContractTest do
         compile_error(
           """
           defmodule EhOsContract.ContractTest.UnknownOption do
-            use EhOsContract.Contract, domain: Clinic, context: :settlement
+            use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.unknown_option"
 
             aggregate :visit, "Wizyta" do
               identity :visit_id

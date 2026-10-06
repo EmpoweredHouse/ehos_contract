@@ -56,7 +56,7 @@ application, and outside the contract's version.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
-  use EhOsContract.Contract, domain: Lending.Domain, context: :loans
+  use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"
 
   aggregate :loan, "Loan of a copy" do
     identity :loan_id

@@ -34,7 +34,10 @@ defmodule EhOsContract.TraceTest do
     within a day — a promise made per item inside the request's run.
     """
 
-    use EhOsContract.Contract, domain: EhOsContract.TraceTest.Domain, context: :desk
+    use EhOsContract.Contract,
+      domain: EhOsContract.TraceTest.Domain,
+      context: :desk,
+      id: "trace_core.requests"
 
     aggregate :request, "Request" do
       identity [:request_id]

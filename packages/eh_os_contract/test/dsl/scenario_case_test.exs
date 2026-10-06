@@ -284,7 +284,7 @@ defmodule EhOsContract.ScenarioCaseTest do
       end
 
       defmodule EhOsContract.Fixtures.Moments do
-        use EhOsContract.Contract, domain: EhOsContract.Fixtures.MomentDomain, context: :clinic
+        use EhOsContract.Contract, domain: EhOsContract.Fixtures.MomentDomain, context: :clinic, id: "moments.moments"
 
         aggregate :visit, "Wizyta" do
           identity :visit_id

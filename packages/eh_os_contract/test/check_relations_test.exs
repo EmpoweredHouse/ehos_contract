@@ -36,7 +36,7 @@ defmodule EhOsContract.CheckRelationsTest do
   defp contract(name, context, consumes) do
     """
     defmodule EhOsContract.CheckRelationsTest.#{name} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: #{inspect(context)}
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: #{inspect(context)}, id: "relations.#{Macro.underscore(name)}"
 
       #{consumes}
 

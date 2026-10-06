@@ -46,7 +46,10 @@ defmodule AppuniteEquipment.Contracts.Computers do
     (`Assignments`), and its employee, who needs another computer (`Demands`).
   """
 
-  use EhOsContract.Contract, domain: AppuniteEquipment.Domain, context: :equipment
+  use EhOsContract.Contract,
+    domain: AppuniteEquipment.Domain,
+    context: :equipment,
+    id: "appunite_equipment.computers"
 
   aggregate :computer, "Komputer" do
     # Generated, not the serial number: an identity is an `:id`, and the serial

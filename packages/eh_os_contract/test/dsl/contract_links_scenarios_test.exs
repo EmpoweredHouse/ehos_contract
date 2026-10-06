@@ -43,7 +43,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
          aggregate :visit, "Wizyta" do
            identity :visit_id
@@ -111,7 +111,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
          aggregate :visit, "Wizyta" do
            identity :visit_id
@@ -167,7 +167,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
          aggregate :booking, "Rezerwacja" do
            identity :booking_id
@@ -193,7 +193,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
          consumes #{inspect(Module.concat(@fixtures, booking))}, :visit_booked
 
@@ -259,7 +259,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
          domain_service :pricing, "Cennik" do
            function :fee, "Opłata" do

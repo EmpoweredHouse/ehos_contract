@@ -102,7 +102,7 @@ defmodule EhOsContract.ContractExamplesTest do
       [publisher, subscriber] = String.split(f.consumes, "\n\n", parts: 2)
 
       compile_example("AccountingMonth", """
-        use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting
+        use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting, id: "taxvision.accounting_month"
 
         aggregate :accounting_month, "Miesiąc księgowy" do
           identity [:company_id, :period_id]
@@ -117,7 +117,7 @@ defmodule EhOsContract.ContractExamplesTest do
 
       model =
         compile_example("MonthlyTasks", """
-          use EhOsContract.Contract, domain: Taxvision.Domain, context: :tasks
+          use EhOsContract.Contract, domain: Taxvision.Domain, context: :tasks, id: "taxvision.monthly_tasks"
 
           aggregate :monthly_tasks, "Taski miesiąca" do
             identity [:company_id, :period_id]
@@ -139,7 +139,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "an effect", %{four_six: f} do
       model =
         compile_example("Notification", """
-          use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting
+          use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting, id: "taxvision.notification"
 
           aggregate :registry_check, "Kontrola rejestrów" do
             identity :company_id
@@ -167,7 +167,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "facts recorded rather than decided (D6)", %{four_six: f} do
       model =
         compile_example("Recorded", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical
+          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.recorded"
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
@@ -191,7 +191,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a process manager", %{four_six: f} do
       model =
         compile_example("DocumentationChase", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical
+          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.documentation_chase"
 
           consumes Rehmed.Contracts.Scheduling, :visit_completed
 
@@ -223,7 +223,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a read model and a query", %{four_six: f} do
       model =
         compile_example("DailyTotals", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
+          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.daily_totals"
 
           aggregate :visit_settlement, "Rozliczenie wizyty" do
             identity :visit_id
@@ -244,7 +244,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a run over foreign events, and a promise (ClinicalVisit)", %{four_six: f} do
       model =
         compile_example("ClinicalVisit", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical
+          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.clinical_visit"
 
         #{f.run}
         """)
@@ -262,7 +262,7 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a dynamic consistency boundary (PayerSettlement)", %{four_six: f} do
       model =
         compile_example("PayerSettlement", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
+          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.payer_settlement"
 
           consumes Rehmed.Contracts.VisitSettlement, [:visit_marked_settled_with_payer, :visit_excluded_from_invoice]
           consumes Rehmed.Contracts.Scheduling, :visit_completed

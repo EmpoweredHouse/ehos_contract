@@ -40,7 +40,7 @@ defmodule EhOsContract.ContractLinksSystemTest do
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{Macro.underscore(name)}"
 
       aggregate #{inspect(process)}, "Jednostka" do
         identity :case_id
@@ -116,7 +116,7 @@ defmodule EhOsContract.ContractLinksSystemTest do
       # with a command of that name. The event is at line 8.
       recorded = """
       defmodule #{inspect(@fixtures)}.SysNameD do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sys_name_d"
 
         aggregate :fourth, "Jednostka" do
           identity :case_id
