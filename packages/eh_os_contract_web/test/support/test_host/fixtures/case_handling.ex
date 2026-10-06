@@ -12,7 +12,8 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
 
   use EhOsContract.Contract,
     domain: EhOsContract.Web.TestHost.Fixtures.Domain,
-    context: :cases
+    context: :cases,
+    id: "web_test_host.case_handling"
 
   aggregate :case, "Case" do
     identity :case_id

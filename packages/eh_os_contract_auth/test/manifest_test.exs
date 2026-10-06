@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule Work do
     @moduledoc false
-    use EhOsContract.Contract, domain: Domain, context: :work
+    use EhOsContract.Contract, domain: Domain, context: :work, id: "manifest-rig.work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -96,7 +96,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule ReadWork do
     @moduledoc false
-    use EhOsContract.Contract, domain: ReadDomain, context: :work
+    use EhOsContract.Contract, domain: ReadDomain, context: :work, id: "read-rig.read_work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -126,7 +126,10 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule MachineWork do
     @moduledoc false
-    use EhOsContract.Contract, domain: MachineDomain, context: :work
+    use EhOsContract.Contract,
+      domain: MachineDomain,
+      context: :work,
+      id: "machine-rig.machine_work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -151,7 +154,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule SnakeWork do
     @moduledoc false
-    use EhOsContract.Contract, domain: SnakeDomain, context: :work
+    use EhOsContract.Contract, domain: SnakeDomain, context: :work, id: "manifest_rig.snake_work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -175,7 +178,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule TrailingWork do
     @moduledoc false
-    use EhOsContract.Contract, domain: TrailingDomain, context: :work
+    use EhOsContract.Contract, domain: TrailingDomain, context: :work, id: "shop_.trailing_work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -202,7 +205,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule LongWork do
     @moduledoc false
-    use EhOsContract.Contract, domain: LongDomain, context: :work
+    use EhOsContract.Contract, domain: LongDomain, context: :work, id: "long-rig.long_work"
 
     aggregate :job, "Job" do
       identity(:job_id)
@@ -236,7 +239,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule Entries do
     @moduledoc false
-    use EhOsContract.Contract, domain: Ledger, context: :entries
+    use EhOsContract.Contract, domain: Ledger, context: :entries, id: "ledger.entries"
 
     aggregate :entry, "Entry" do
       identity(:entry_id)

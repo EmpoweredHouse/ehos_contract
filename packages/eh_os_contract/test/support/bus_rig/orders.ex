@@ -7,7 +7,7 @@ defmodule BusRig.Orders do
   published at all.
   """
 
-  use EhOsContract.Contract, domain: BusRig.Shop, context: :sales
+  use EhOsContract.Contract, domain: BusRig.Shop, context: :sales, id: "bus_rig_shop.orders"
 
   aggregate :order, "Order" do
     identity :order_id

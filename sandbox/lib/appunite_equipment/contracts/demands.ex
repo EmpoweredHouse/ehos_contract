@@ -22,7 +22,10 @@ defmodule AppuniteEquipment.Contracts.Demands do
   never "assigned" before it is fulfilled.
   """
 
-  use EhOsContract.Contract, domain: AppuniteEquipment.Domain, context: :equipment
+  use EhOsContract.Contract,
+    domain: AppuniteEquipment.Domain,
+    context: :equipment,
+    id: "appunite_equipment.demands"
 
   consumes AppuniteEquipment.Contracts.Computers, [:issued, :lost]
 

@@ -8,7 +8,10 @@ defmodule LifecycleRig.Visits do
   arrival whatever the status — the defect the graph exists to catch.
   """
 
-  use EhOsContract.Contract, domain: LifecycleRig.Domain, context: :visits
+  use EhOsContract.Contract,
+    domain: LifecycleRig.Domain,
+    context: :visits,
+    id: "lifecycle_rig.visits"
 
   aggregate :visit, "Visit" do
     identity :visit_id

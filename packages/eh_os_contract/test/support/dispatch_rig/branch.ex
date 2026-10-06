@@ -11,7 +11,10 @@ defmodule DispatchRig.Branch do
   the run it draws over another contract's events.
   """
 
-  use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+  use EhOsContract.Contract,
+    domain: DispatchRig.Domain,
+    context: :ledger,
+    id: "dispatch_rig.branch"
 
   consumes DispatchRig.Ledger, :account_opened
 

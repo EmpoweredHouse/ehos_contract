@@ -32,7 +32,7 @@ defmodule EhOsContract.CheckDirectionsTest do
       defmodule EhOsContract.CheckDirectionsTest.Reports do
         use EhOsContract.Contract,
           domain: EhOsContract.CheckDirectionsTest.Clinic,
-          context: :reporting
+          context: :reporting, id: "directions.reports"
 
         aggregate :report, "Raport" do
           identity :report_id

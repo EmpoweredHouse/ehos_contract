@@ -43,12 +43,22 @@ defmodule EhOsContract.DslCase do
   def contract(name, body) do
     """
     defmodule EhOsContract.Fixtures.#{name} do
-      use EhOsContract.Contract, domain: Clinic, context: :settlement
+      use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(name)}"
 
     #{body}
     end
     """
   end
+
+  @doc """
+  A contract's name as its `id:` takes it (plan DD, ID2, #171): the last segment of its
+  module, in snake_case — `EhOsContract.Fixtures.SibBilling` or `"Billing.Payer"` →
+  `"sib_billing"`, `"payer"`. Tests put it after their domain's name, so the rule
+  stays in one place when later stages change how an id is formed.
+  """
+  @spec contract_name(module() | String.t()) :: String.t()
+  def contract_name(module) when is_atom(module), do: module |> inspect() |> contract_name()
+  def contract_name(name), do: name |> String.split(".") |> List.last() |> Macro.underscore()
 
   @doc """
   Compiles the contract `contract/2` writes, as the file `<name, underscored>.ex`, and

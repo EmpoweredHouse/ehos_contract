@@ -9,7 +9,10 @@ defmodule BoundaryRig.Enrolment do
   domain service's, which the decision calls.
   """
 
-  use EhOsContract.Contract, domain: BoundaryRig.Domain, context: :enrolment
+  use EhOsContract.Contract,
+    domain: BoundaryRig.Domain,
+    context: :enrolment,
+    id: "boundary_rig.enrolment"
 
   consumes BoundaryRig.Courses, :course_defined
   consumes BoundaryRig.Calendar, :enrolment_closed

@@ -66,7 +66,7 @@ defmodule EhOsContract.CheckTest do
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
     defmodule EhOsContract.CheckTest.Unimplemented do
-      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.unimplemented"
 
       aggregate :pile, "Pile" do
         identity :pile_id
@@ -100,7 +100,7 @@ defmodule EhOsContract.CheckTest do
   test "a contract made only of recorded events needs no implementation" do
     Code.compile_string("""
     defmodule EhOsContract.CheckTest.RecordedOnly do
-      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.recorded_only"
 
       aggregate :inbox, "Inbox" do
         identity :message_id

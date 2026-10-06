@@ -9,7 +9,7 @@ defmodule ValueRig.Till do
   one.
   """
 
-  use EhOsContract.Contract, domain: ValueRig.Domain, context: :till
+  use EhOsContract.Contract, domain: ValueRig.Domain, context: :till, id: "value_rig.till"
 
   aggregate :till, "Till" do
     identity :till_id

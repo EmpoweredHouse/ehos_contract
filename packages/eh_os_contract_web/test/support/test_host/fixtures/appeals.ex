@@ -23,7 +23,8 @@ defmodule EhOsContract.Web.TestHost.Fixtures.Appeals do
 
   use EhOsContract.Contract,
     domain: EhOsContract.Web.TestHost.Fixtures.AppealsDomain,
-    context: :appeals
+    context: :appeals,
+    id: "web_test_appeals.appeals"
 
   aggregate :appeal, "Appeal" do
     identity :appeal_id

@@ -6,7 +6,7 @@ defmodule SupplyRig.Desk do
   host; noting an arrival takes the visit from the clerk and the moment from the host.
   """
 
-  use EhOsContract.Contract, domain: SupplyRig.Domain, context: :desk
+  use EhOsContract.Contract, domain: SupplyRig.Domain, context: :desk, id: "supply_rig.desk"
 
   aggregate :visit, "Visit" do
     identity :visit_id

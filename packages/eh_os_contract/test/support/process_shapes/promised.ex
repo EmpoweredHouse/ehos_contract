@@ -13,7 +13,10 @@ defmodule ProcessShapes.Promised do
   event, the policy's command, the command's event.
   """
 
-  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :handling
+  use EhOsContract.Contract,
+    domain: ProcessShapes.Domain,
+    context: :handling,
+    id: "process_shapes.promised"
 
   aggregate :request, "Request" do
     identity :request_id

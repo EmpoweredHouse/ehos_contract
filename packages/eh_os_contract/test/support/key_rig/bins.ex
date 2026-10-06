@@ -7,7 +7,7 @@ defmodule KeyRig.Bins do
   whose key starts with this module's name, the longest of the three (issue #98).
   """
 
-  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock
+  use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock, id: "key_rig.bins"
 
   aggregate :bin, "Bin" do
     identity [:site_id, :aisle_id, :bin_id]

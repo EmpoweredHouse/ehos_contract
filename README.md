@@ -93,7 +93,7 @@ flagged for review.
 
 ```elixir
 defmodule Acme.Contracts.InvoiceFiling do
-  use EhOsContract.Contract, domain: Acme.Domain, context: :invoicing
+  use EhOsContract.Contract, domain: Acme.Domain, context: :invoicing, id: "acme.invoice_filing"
 
   aggregate :case, "Case" do
     identity :case_id

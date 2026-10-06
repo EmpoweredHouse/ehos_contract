@@ -7,7 +7,10 @@ defmodule DispatchRig.Transfer do
   keeps saying what it says.
   """
 
-  use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+  use EhOsContract.Contract,
+    domain: DispatchRig.Domain,
+    context: :ledger,
+    id: "dispatch_rig.transfer"
 
   aggregate :transfer, "Transfer" do
     identity :account_id

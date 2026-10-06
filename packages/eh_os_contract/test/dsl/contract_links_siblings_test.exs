@@ -44,7 +44,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{domain}, context: :settlement
+      use EhOsContract.Contract, domain: #{domain}, context: :settlement, id: "#{Keyword.get(opts, :namespace, "clinic")}.#{contract_name(name)}"
 
       aggregate :booking, "Rezerwacja" do
         identity :booking_id
@@ -74,7 +74,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
   defp subscriber(name, publisher, consumes \\ ":visit_booked") do
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
       consumes #{inspect(Module.concat(@fixtures, publisher))}, #{consumes}
 
@@ -141,7 +141,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
     subscriber = """
     defmodule #{inspect(Module.concat(@fixtures, "SibTwoValuesBilling"))} do
-      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sib_two_values_billing"
 
       consumes #{inspect(Module.concat(@fixtures, "SibTwoValuesBooking"))}, :visit_booked
 
@@ -202,7 +202,10 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
       violations =
         links([
           {"sib_other_domain_booking.ex",
-           publisher("SibOtherDomainBooking", @fields, domain: "UniversalityGate.Domain")
+           publisher("SibOtherDomainBooking", @fields,
+             domain: "UniversalityGate.Domain",
+             namespace: "universality_gate"
+           )
            |> String.replace(":settlement", ":treatment")
            |> String.replace(":reception", ":attending_physician")},
           {"sib_other_domain_billing.ex",
@@ -270,7 +273,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
       # run's key may hold (F8), as a manager's undeclared correlation is.
       observer = """
       defmodule #{inspect(@fixtures)}.SibObserver do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sib_observer"
 
         consumes #{inspect(@fixtures)}.SibObservedBooking, :visit_booked
 
@@ -349,7 +352,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     defp reacting(name, publisher, reaction) do
       """
       defmodule #{inspect(Module.concat(@fixtures, name))} do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
         consumes #{inspect(Module.concat(@fixtures, publisher))}, :visit_booked
 

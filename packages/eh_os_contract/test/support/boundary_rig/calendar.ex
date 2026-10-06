@@ -7,7 +7,10 @@ defmodule BoundaryRig.Calendar do
   course.
   """
 
-  use EhOsContract.Contract, domain: BoundaryRig.Domain, context: :enrolment
+  use EhOsContract.Contract,
+    domain: BoundaryRig.Domain,
+    context: :enrolment,
+    id: "boundary_rig.calendar"
 
   aggregate :calendar, "Calendar" do
     identity :calendar_id

@@ -8,7 +8,10 @@ defmodule BusRig.Stock do
   what the inbox did not drop.
   """
 
-  use EhOsContract.Contract, domain: BusRig.Warehouse, context: :stock
+  use EhOsContract.Contract,
+    domain: BusRig.Warehouse,
+    context: :stock,
+    id: "bus_rig_warehouse.stock"
 
   subscribe "bus_rig_shop.order.placed.v1", as: :order_placed do
     field :order_id, :id

@@ -7,7 +7,10 @@ defmodule BoundaryRig.Waitlist do
   addresses it by that identity.
   """
 
-  use EhOsContract.Contract, domain: BoundaryRig.Domain, context: :enrolment
+  use EhOsContract.Contract,
+    domain: BoundaryRig.Domain,
+    context: :enrolment,
+    id: "boundary_rig.waitlist"
 
   aggregate :entry, "Waiting-list entry" do
     identity :entry_id, generated: :uuid

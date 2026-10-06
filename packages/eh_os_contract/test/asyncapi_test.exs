@@ -13,7 +13,10 @@ defmodule EhOsContract.AsyncAPITest do
 
   defmodule Published do
     @moduledoc false
-    use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.published"
 
     aggregate :transfer, "Transfer" do
       identity :transfer_id
@@ -48,7 +51,10 @@ defmodule EhOsContract.AsyncAPITest do
 
   defmodule CollidingNames do
     @moduledoc false
-    use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.colliding_names"
 
     aggregate :probe, "Probe" do
       identity :probe_id
@@ -77,7 +83,10 @@ defmodule EhOsContract.AsyncAPITest do
   # publication's fields changed: the two sides of "the digest is about content".
   defmodule ReorderedNames do
     @moduledoc false
-    use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.reordered_names"
 
     aggregate :probe, "Probe" do
       identity :probe_id
@@ -104,7 +113,10 @@ defmodule EhOsContract.AsyncAPITest do
 
   defmodule ChangedNames do
     @moduledoc false
-    use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.changed_names"
 
     aggregate :probe, "Probe" do
       identity :probe_id
