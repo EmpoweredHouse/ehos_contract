@@ -1,0 +1,4 @@
+P1b (64f16ca..HEAD): code-review high + security/performance pass.
+Security/perf: nothing blocking; select_contract tolerates unknown ids; missing key crashes only the client's LiveView (existing pattern); repeated selections can trigger log queries (existing, authorized viewers).
+Correctness: model.process sweep found no unguarded site; R1 still refuses a process-less contract, so tests build one by hand until P1c/P1d. Fixed: ADR amendments (navigation per contract; basis for untraversed), stale comments, weak lifecycle test (control added), dead-render test, unknown id keeps selection, add-event skill, changelog section, redundant :if.
+Gate: EXIT=0, check 0/33/10 and 0/74/6 (2 fewer: LifecycleRig :booked, :patient_arrived), engine 1386, web 57, sandbox 196, auth 287 + 1 property.
