@@ -121,7 +121,8 @@ defmodule EhOsContract.Consumer do
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
   type, with `__meta__` from the row, found by the id the row names among the configured
-  applications and `application` (`EhOsContract.Implementations.contract/2`). Raises
+  applications, the siblings their contracts consume and `application`
+  (`EhOsContract.Implementations.contract/2`). Raises
   when no contract of the host declares the type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
   when the row was written with a newer version of the event's fields than this code
   declares (plan W1).
@@ -144,7 +145,8 @@ defmodule EhOsContract.Consumer do
       Implementations.contract(row.contract, application) ||
         raise ArgumentError,
               "#{inspect(row.contract)} is the id of no contract of the configured " <>
-                "applications, and the event at position #{row.position} names it"
+                "applications or a sibling they consume, and the event at position " <>
+                "#{row.position} names it"
 
     values = Codec.values(model.domain)
     [decoded] = decode_all!(model, values, [row])

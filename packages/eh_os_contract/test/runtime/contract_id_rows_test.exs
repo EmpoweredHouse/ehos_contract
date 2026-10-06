@@ -68,5 +68,10 @@ defmodule EhOsContract.ContractIdRowsTest do
     branch = Model.fetch(DispatchRig.Branch)
 
     assert %{"dispatch_rig.ledger" => %{module: Ledger}} = Implementations.by_id([branch])
+
+    # One this node cannot load is left out, not raised on: every dispatch builds this.
+    missing = %{kind: :contract, from: DispatchRig.NotInThisRelease, events: [:x]}
+    with_missing = %{branch | consumes: [missing | branch.consumes]}
+    assert %{"dispatch_rig.ledger" => _} = Implementations.by_id([with_missing])
   end
 end

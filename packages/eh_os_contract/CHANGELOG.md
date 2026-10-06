@@ -84,7 +84,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
   contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
   schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
-  **It also clears the tables its read models project into**, which are the host's and which the reset leaves: they
+  **The host also clears the tables its read models project into**, which are the host's and which the reset leaves: they
   hold projections of the log that is gone, and an ordered read model starts again from the new log's first event. An inbox's durable
   consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
   deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
@@ -93,7 +93,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
   `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision
   names the contract by it.
-- **Two contracts of one `id:` across the configured applications are refused when the engine scans them**
+- **Two contracts of one `id:` across the configured applications, or the siblings they consume, are refused when the engine scans them**
   (plan DD, ID4, #178): `ArgumentError` naming both modules and their applications, at boot or at the first
   dispatch. X7 refuses it within one application at compile time; across applications no compile sees both, and
   since every row and key names the id, the two would share one history.

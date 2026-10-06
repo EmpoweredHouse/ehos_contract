@@ -281,12 +281,16 @@ defmodule EhOsContract.Implementations do
   @doc false
   # The contracts an id finds (plan DD, ID4, #178): the scanned ones, and the siblings
   # they consume, which their `consumes` names by module, so a subscription decodes a
-  # sibling's event wherever the node loaded it from. One id, one contract.
+  # sibling's event wherever the node loaded it from. One id, one contract. A sibling
+  # this node cannot load is left out, to the decode that names its id, rather than
+  # failing every dispatch.
   @spec by_id([map()]) :: %{String.t() => map()}
   def by_id(contracts) do
     siblings =
       for contract <- contracts,
           %{kind: :contract, from: from} <- contract.consumes,
+          Code.ensure_loaded?(from),
+          function_exported?(from, :__eh_os_contract_model__, 0),
           do: EhOsContract.Model.fetch(from)
 
     known = Enum.uniq_by(contracts ++ siblings, & &1.module)
