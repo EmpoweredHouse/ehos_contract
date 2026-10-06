@@ -1,8 +1,12 @@
 defmodule EhOsContract.Contract.Rules.Process do
   @moduledoc """
-  R1–R6 of v2 §6: the one process a contract describes.
+  R1–R6 of v2 §6: the process a contract describes, when it describes one.
 
-  - **R1.** Exactly one `process`: one contract, one process (v2 §3).
+  - **R1.** At most one `process`: one contract, one process (v2 §3, amended
+    6 October 2026, plan DD, P1c (#190)). A contract without one describes units
+    and what reacts to them, and has no runs, so nothing in it may say where a run
+    stands or ends: no stage group in a unit, no `terminal:` event. A contract that
+    declares nothing at all is refused too.
   - **R2.** The process correlates on at least one field, and every such field is
     in every local event, where a unit's identity counts as declared. With no field
     every event of the contract would land in one run named after the process.
@@ -42,24 +46,35 @@ defmodule EhOsContract.Contract.Rules.Process do
       promises(process, declarations) ++ durations(process, declarations)
   end
 
-  # Pointed at the first declaration there is, or at nothing when the contract is
-  # empty; the error then names the module without a line.
+  # Without a process there are no runs, so what places an event in a run's stage
+  # or ends a run has nothing to belong to. A terminal event inside a stage group is
+  # refused once, for the group.
   def check(%{processes: []} = declarations) do
-    anchor =
-      declarations
-      |> Map.delete(:module)
-      |> Map.values()
-      |> List.flatten()
-      |> Enum.min_by(&line/1, fn -> %Dsl.ProcessDeclaration{} end)
+    stages =
+      for unit <- declarations.units, group <- unit.stages do
+        {"R1: the contract declares no process, so #{unit.kind} #{inspect(unit.name)} cannot " <>
+           "group events into stage #{inspect(group.name)}; a stage is a step of a process's run",
+         group}
+      end
 
-    [{"R1: a contract describes one process, and this one declares none", anchor}]
+    terminal =
+      for unit <- declarations.units, event <- unit.events, event.terminal do
+        {"R1: the contract declares no process, so event #{inspect(event.name)} cannot be " <>
+           "terminal; `terminal:` ends a process's run", event}
+      end
+
+    empty(declarations) ++ stages ++ terminal ++ waits(declarations)
   end
 
-  defp line(declaration) do
-    case Spark.Dsl.Entity.anno(declaration) do
-      nil -> :infinity
-      anno -> :erl_anno.line(anno)
-    end
+  # A contract with nothing in it describes nothing; the error names the module
+  # without a line, since there is no declaration to point at.
+  defp empty(declarations) do
+    if declarations |> Map.delete(:module) |> Map.values() |> List.flatten() == [],
+      do: [
+        {"R1: a contract declares a process or what decides in it, and this one declares nothing",
+         %Dsl.ProcessDeclaration{}}
+      ],
+      else: []
   end
 
   defp correlation(%{correlate: []} = process, _d) do
@@ -172,20 +187,30 @@ defmodule EhOsContract.Contract.Rules.Process do
         )
 
     calendar =
-      for(c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}) ++
-        for pm <- d.process_managers, t <- pm.timers, t.wait != nil do
-          {"timer #{inspect(t.name)}: wait", t.wait, t}
-        end
+      for c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}
 
     for(
       {what, duration, declaration} <- fixed,
       problem <- problems(duration, Duration.units()),
       do: {"R6: #{what} #{problem}", declaration}
-    ) ++
-      for {what, duration, declaration} <- calendar,
-          problem <- problems(duration, Duration.units() ++ @calendar) do
-        {"R6: #{what} #{problem}", declaration}
-      end ++ once(process)
+    ) ++ calendar(calendar) ++ waits(d) ++ once(process)
+  end
+
+  # A process manager's timer belongs to the process manager, not to the process, so
+  # its wait is checked whether or not the contract declares one.
+  defp waits(d) do
+    calendar(
+      for pm <- d.process_managers, t <- pm.timers, t.wait != nil do
+        {"timer #{inspect(t.name)}: wait", t.wait, t}
+      end
+    )
+  end
+
+  defp calendar(durations) do
+    for {what, duration, declaration} <- durations,
+        problem <- problems(duration, Duration.units() ++ @calendar) do
+      {"R6: #{what} #{problem}", declaration}
+    end
   end
 
   defp once(process) do

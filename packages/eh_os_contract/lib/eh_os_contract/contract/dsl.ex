@@ -8,7 +8,7 @@ defmodule EhOsContract.Contract.Dsl do
   (policies, effects, process managers); what is read (read models, queries); what
   enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
   application) and what leaves the application (`publish`);
-  the one process; and scenarios. The vocabulary is closed: a contract cannot add
+  the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
   Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
@@ -1008,7 +1008,8 @@ defmodule EhOsContract.Contract.Dsl do
 
   @process %Spark.Dsl.Entity{
     name: :process,
-    describe: "The one process the contract describes: its runs, stages and promises.",
+    describe:
+      "The process the contract describes, if any, at most one: its runs, stages and promises.",
     target: ProcessDeclaration,
     args: [:name, :label],
     entities: [
@@ -1184,7 +1185,7 @@ defmodule EhOsContract.Contract.Dsl do
               %Spark.Dsl.Section{
                 name: :contract,
                 top_level?: true,
-                describe: "One process, and everything born in it.",
+                describe: "At most one process, and everything born in the contract.",
                 entities: [
                   @aggregate,
                   @dcb,

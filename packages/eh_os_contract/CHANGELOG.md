@@ -27,6 +27,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A contract may describe no process** (plan DD, stage P1c, #190). R1 refuses a second `process`, and in a
+  contract without one, a unit's `stage` group and a `terminal:` event, which only a run has. Such a contract
+  dispatches with no run indexed, runs its scenarios, and gets a report with its steps, lifecycles and
+  scenarios and no process section. A contract that declares nothing at all is still refused. No verdict of a
+  contract that compiled before moves, and nothing has to be done. Removing a process from an existing contract
+  is another matter: it changes the contract's version and ends its runs (P1d).
 - **The conformance report finds one contract's commands through an index** (#185):
   `eh_os_contract_commands (contract, outcome, recorded_at)`, added to V01 in place, as V01 is until 0.3.0 is
   released. Before it, every query of `Coverage` and `Paths` on that table read all of it; reads bounded by

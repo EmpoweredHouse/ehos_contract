@@ -1,6 +1,6 @@
 defmodule EhOsContract.ContractProcessTest do
   @moduledoc """
-  v2 plan, E4: **R1–R6 and K1 of v2 §6** — the one process a contract describes,
+  v2 plan, E4: **R1–R6 and K1 of v2 §6** — the process a contract describes, if any,
   and what it consumes from a sibling. Each refusal names the declaration's file and
   line, and has a control beside it that compiles.
   """
@@ -15,12 +15,67 @@ defmodule EhOsContract.ContractProcessTest do
     end
   """
 
-  describe "R1: exactly one process" do
-    test "none is refused at the first declaration" do
-      message = refuse_contract("NoProcess", @unit)
+  describe "R1: at most one process" do
+    test "none compiles, and the model has no process" do
+      model =
+        compile_contract("NoProcess", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+        """)
+
+      assert model.process == nil
+      assert [%{name: :visit_closed}] = model.events
+    end
+
+    test "without one, a terminal event is refused, since there is no run to end" do
+      message = refuse_contract("NoProcessTerminal", @unit)
 
       assert message =~
-               "R1: a contract describes one process, and this one declares none (no_process.ex:4)"
+               "R1: the contract declares no process, so event :visit_closed cannot be terminal; " <>
+                 "`terminal:` ends a process's run (no_process_terminal.ex:7)"
+    end
+
+    test "without one, a stage group is refused, since there is no run to have steps" do
+      message =
+        refuse_contract("NoProcessStage", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+            stage :closing do
+              event :visit_closed, "Wizyta zamknięta"
+            end
+          end
+        """)
+
+      assert message =~
+               "R1: the contract declares no process, so aggregate :visit cannot group events " <>
+                 "into stage :closing; a stage is a step of a process's run (no_process_stage.ex:8)"
+    end
+
+    test "a contract that declares nothing is refused" do
+      assert refuse_contract("Empty", "") =~
+               "R1: a contract declares a process or what decides in it, and this one declares nothing"
+    end
+
+    test "without one, a terminal event in a stage group is refused once, for the group" do
+      message =
+        refuse_contract("NoProcessStageTerminal", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+            stage :closing do
+              event :visit_closed, "Wizyta zamknięta", terminal: true
+            end
+          end
+        """)
+
+      assert message =~ "cannot group events into stage :closing"
+      refute message =~ "cannot be terminal"
     end
 
     test "a second is refused" do
@@ -292,6 +347,27 @@ defmodule EhOsContract.ContractProcessTest do
   end
 
   describe "R6: durations" do
+    test "a timer's wait is checked in a contract without a process too" do
+      # A timer belongs to its process manager, not to the process (#190, CodeRabbit).
+      message =
+        refuse_contract("NoProcessTimer", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed, sets: :reminder
+            timer :reminder, "Reminder", wait: {-1, :hour}
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "R6: timer :reminder: wait counts -1, which is not a non-negative integer (no_process_timer.ex:12)"
+    end
+
     test "calendar units, negative counts and malformed ones are refused where time is computed" do
       message =
         refuse_contract("Durations", """
