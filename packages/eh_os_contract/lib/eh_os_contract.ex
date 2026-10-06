@@ -112,7 +112,10 @@ defmodule EhOsContract do
      Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2
      contract declares personal fields and the vault has no master key to seal
      them with, and `EhOsContract.Personal.check_forgetting!/1` when a read model
-     projects personal data and defines no `forget/2`.
+     projects personal data and defines no `forget/2`. After it,
+     `EhOsContract.UndeclaredTypes.warn/2` logs a warning, and goes on, when the log
+     holds event types no contract declares — a log written before event types became
+     `"<contract id>.<event>"`, which the rest of the engine would skip silently.
   2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
      the log, marks the read models whose declaration changed `stale`, and rebuilds
      those that define `reset/0` (v2 §12).
