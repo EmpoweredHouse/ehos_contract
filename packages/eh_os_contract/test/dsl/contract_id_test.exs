@@ -104,6 +104,20 @@ defmodule EhOsContract.ContractIdTest do
     refute Map.has_key?(unnamed, :id)
     assert named.version == unnamed.version
     assert named.digests == unnamed.digests
+
+    # The export carries it, so the exported document's own digest moves with it.
+    named_export = EhOsContract.Model.to_data(Module.concat(@fixtures, "IdVersioned"))
+    unnamed_export = EhOsContract.Model.to_data(Module.concat(@fixtures, "IdUnnamed"))
+
+    assert named_export["contract"]["id"] == "clinic.versioned"
+    refute Map.has_key?(unnamed_export["contract"], "id")
+
+    # The id is part of what that digest covers: dropped, the same document hashes otherwise.
+    body = Map.delete(named_export, "digest")
+    without_id = Map.update!(body, "contract", &Map.delete(&1, "id"))
+
+    assert EhOsContract.Digest.document_hash(body) == named_export["digest"]
+    refute EhOsContract.Digest.document_hash(without_id) == named_export["digest"]
   end
 
   describe "D11 (L3): the id is under the domain's namespace" do
