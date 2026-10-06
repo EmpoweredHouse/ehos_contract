@@ -44,7 +44,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Contract, domain: #{domain}, context: :settlement, id: "#{Keyword.get(opts, :namespace, "clinic")}.#{Macro.underscore(name)}"
+      use EhOsContract.Contract, domain: #{domain}, context: :settlement, id: "#{Keyword.get(opts, :namespace, "clinic")}.#{contract_name(name)}"
 
       aggregate :booking, "Rezerwacja" do
         identity :booking_id
