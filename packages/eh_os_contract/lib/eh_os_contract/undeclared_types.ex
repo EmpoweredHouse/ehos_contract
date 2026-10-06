@@ -22,8 +22,8 @@ defmodule EhOsContract.UndeclaredTypes do
   require Logger
 
   @doc """
-  The types `repo`'s log holds that are not among `declared`, sorted. The engine's own
-  types — an erasure, a timer's firing — are always declared.
+  The types `repo`'s log holds that are not among `declared`, in Elixir's order. The
+  engine's own types — an erasure, a timer's firing — are always declared.
   """
   @spec undeclared(module(), [String.t()]) :: [String.t()]
   def undeclared(repo, declared) do
@@ -32,11 +32,17 @@ defmodule EhOsContract.UndeclaredTypes do
     repo
     |> types()
     |> Enum.reject(&MapSet.member?(known, &1))
+    |> Enum.sort()
   end
+
+  # At most this many types are named in the warning, then how many more there are.
+  @named 20
 
   @doc """
   Logs a warning naming the types `undeclared/2` finds for the application's
-  contracts, and returns them. Called once, at start-up.
+  contracts, and returns them. Called once, at start-up. A failure to read the log —
+  a missing table, a timeout — is logged and returns `[]`: the check never stops a
+  start.
   """
   @spec warn(module(), [map()]) :: [String.t()]
   def warn(repo, models) do
@@ -49,17 +55,32 @@ defmodule EhOsContract.UndeclaredTypes do
       types ->
         Logger.warning(
           "EhOsContract: the event log holds #{length(types)} type(s) no contract of this " <>
-            "application declares: #{Enum.join(types, ", ")}. Those events are not read: a " <>
-            "boundary, a subscription, a read model and the report skip them, and an " <>
-            "aggregate whose stream holds one raises. If the log was written before event " <>
-            "types became \"<contract id>.<event>\" (plan DD, ID3), reset the engine's schema " <>
-            "(EhOsContract.Migrations.down/up, see the CHANGELOG); if a contract was removed " <>
-            "on purpose, this is its history."
+            "application declares: #{named(types)}. Those events are not read: a boundary, a " <>
+            "subscription, a read model and the report skip them, and an aggregate whose " <>
+            "stream holds one raises. A contract removed on purpose leaves its history so, " <>
+            "and a node on older code during a rolling deploy sees the newer node's types so. " <>
+            "A log written before event types became \"<contract id>.<event>\" (plan DD, ID3) " <>
+            "is read by no contract at all: the CHANGELOG says to reset the engine's schema " <>
+            "(EhOsContract.Migrations.down/up), which deletes every event it holds, so only " <>
+            "when none of them is worth keeping."
         )
 
         types
     end
+  rescue
+    error ->
+      Logger.warning(
+        "EhOsContract: could not check the event log for undeclared types, and goes on: " <>
+          Exception.message(error)
+      )
+
+      []
   end
+
+  defp named(types) when length(types) <= @named, do: Enum.join(types, ", ")
+
+  defp named(types),
+    do: Enum.join(Enum.take(types, @named), ", ") <> " and #{length(types) - @named} more"
 
   defp engine_types,
     do: [EhOsContract.Personal.erased_type(), EhOsContract.ProcessManager.elapsed()]

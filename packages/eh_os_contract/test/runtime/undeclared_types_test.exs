@@ -43,18 +43,37 @@ defmodule EhOsContract.UndeclaredTypesTest do
     stored!("retired.deposited")
     stored!("retired.withdrawn")
 
-    assert UndeclaredTypes.undeclared(Repo, [@declared]) == [
-             "retired.deposited",
-             "retired.withdrawn"
-           ]
+    # Contained, not equal: the test database is shared, and may hold rows of its own.
+    undeclared = UndeclaredTypes.undeclared(Repo, [@declared])
+
+    assert Enum.filter(undeclared, &String.starts_with?(&1, "retired.")) ==
+             ["retired.deposited", "retired.withdrawn"]
+
+    refute @declared in undeclared
+    refute EhOsContract.Personal.erased_type() in undeclared
 
     log = capture_log(fn -> UndeclaredTypes.warn(Repo, [@ledger]) end)
 
-    assert log =~
-             "the event log holds 2 type(s) no contract of this application declares: " <>
-               "retired.deposited, retired.withdrawn"
+    assert log =~ "retired.deposited, retired.withdrawn"
 
     assert log =~ "reset the engine's schema"
+
+    assert log =~ "when none of them is worth keeping"
+  end
+
+  test "a long list is cut short, and says how many more" do
+    for n <- 1..23, do: stored!("retired.kind_#{String.pad_leading("#{n}", 2, "0")}")
+
+    log = capture_log(fn -> UndeclaredTypes.warn(Repo, [@ledger]) end)
+
+    assert log =~ "retired.kind_20 and "
+    refute log =~ "retired.kind_21"
+  end
+
+  test "a log it cannot read is reported, and the start goes on" do
+    log = capture_log(fn -> assert UndeclaredTypes.warn(NoSuchRepo, [@ledger]) == [] end)
+
+    assert log =~ "could not check the event log for undeclared types, and goes on"
   end
 
   test "control: a log of declared types only says nothing" do
