@@ -43,7 +43,8 @@ etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem progr
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 **Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
 AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Fala 2:** ID1 w toku na `dsl/id1-contract-id` (od `main`).
+**Fala 2:** ID1 gotowy na `dsl/id1-contract-id` (od `main`, brama zielona, przegląd rozstrzygnięty — „ID1 — co
+wyszło”), niewypchnięty; następny ID2 (każdy kontrakt nazywa `id:`).
 
 ### Stan repozytorium
 
@@ -534,7 +535,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☑ #151 |
-| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ◐ `dsl/id1-contract-id` |
+| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ◐ `dsl/id1-contract-id`, gotowy, niewypchnięty |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ |
@@ -1330,6 +1331,35 @@ Plug odrzuca `p1_reported` (T1s, 422), dwie reakcje między kontekstami mają ja
 `ehos-ledger` — tego repozytorium tu nie czytamy; host tej samej klasy: te same wiersze, a manifest bez zmian kształtu
 od #134 (żaden etap fali 1 nie rusza generatora). Bump przypięcia robi się w tamtych repozytoriach, na polecenie
 użytkownika.
+
+### ID1 — co wyszło (6 października)
+
+Gałąź `dsl/id1-contract-id` (od `main` @ `32d7137`). `use EhOsContract.Contract, domain: …, context: …, id:
+"rehmed.settlement"` — opcjonalny w ID1. **D11** (L2): przestrzeń nazw aplikacji (jak w nazwie publikacji, z `-`),
+potem co najmniej jeden segment snake_case, **żaden segment nie jest wersją** (`v[1-9][0-9]*`, ten sam wzorzec, co
+koniec nazwy publikacji), najwyżej **100 bajtów** — więc ani `:`, ani `|` (separatory kluczy i przebiegów, które `id`
+będzie poprzedzał od ID3/ID4); odmowa przy linii `use`. **D11** (L3, `Links.Domain.namespaces/1`): pod `name:` domeny.
+**X7**: unikalny w aplikacji. Model trzyma `:id` tylko przy podanym, poza wersją i digestami deklaracji (test: ta sama
+wersja i digesty z `id:` i bez). Raport, `check` i 11 grafów sandboxa bajt w bajt bez zmian (żaden kontrakt nie ma
+jeszcze `id:` — to ID2).
+
+- **Rozstrzygnięcia asystenta (mechanika), z odrzuconymi:** limit 100 B (budżet klucza to 2048 B, `Key.budget/0`;
+  2 × 100 + reszta klucza mieści się z zapasem); *odrzucone:* bez limitu, 255 B (połowa budżetu na sam prefiks). Kod
+  D11 dla formatu i przestrzeni nazw, X7 dla unikalności — jak w planie; *odrzucone:* nowy kod. `id` obok deklaracji
+  (`Rules.contract_id/1`, `c.id` w `Links`), nie w mapie deklaracji — po przeglądzie, bo dwie reguły przechodzące po
+  wszystkich listach deklaracji (R1, puste etykiety N1) wywracały się albo musiały go pomijać.
+- **Przegląd** (`origin/main..HEAD`, dwa równolegle). Poprawność: 8 uwag — naprawione (`db67688`): wersja w środkowym
+  segmencie przechodziła (`"clinic.v1.settlement"`; próba odwrotna: pada tylko jej test); CHANGELOG mówił „żaden digest
+  się nie rusza”, a digest dokumentu eksportu (`Model.to_data/1`) się rusza — poprawione zdanie, kształt eksportu bez
+  zmian (klucz `"id"` dochodzi pod `eh_os_contract.model.v1`); `id` w mapie deklaracji (wyżej); odczyt pliku bez
+  awaryjnego `nil`; `case` bez trzeciej gałęzi; ostrzeżenia o atomach w cudzysłowie w fiksturach; „100 bajtów” wpisane
+  w moduledoc obok `@id_bytes`. Bezpieczeństwo i wydajność: nic blokującego — wzorce ASCII z `\z`, tylko literał
+  (walidacja opcji Spark), limit mieści się w budżecie klucza. **Na ID3/ID4, zapisane:** `"clinic.a"` i `"clinic.a.b"`
+  mogą istnieć obok siebie — typy zdarzeń się nie zderzą (nazwa zdarzenia nie ma kropek), ale filtr po prefiksie
+  (`LIKE 'clinic.a.%'`, temat JetStream `clinic.a.>`) złapałby oba; przy ID4 dopasowywać po całym `id`, nie po prefiksie,
+  albo odmówić `id` będącego prefiksem innego. `-` tylko w przestrzeni nazw — jak w nazwach publikacji, bez zmian.
+- **Brama:** EXIT=0; `check` 0 / 33 / 10, 0 / 76 / 6 (bez zmian); sandbox 196, silnik 1364 (+15), web 52, auth 286 + 1.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany (opcjonalny); eksport modelu z `id:` ma nowy digest.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
