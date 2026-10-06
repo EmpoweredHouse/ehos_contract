@@ -1,0 +1,1 @@
+Fix-up for #176 (CodeRabbit): warning text split into report/1 so its tests do not depend on the shared log. Reverse-checked. Gate EXIT=0: sandbox 196, engine 1371, web 52, auth 286+1.
