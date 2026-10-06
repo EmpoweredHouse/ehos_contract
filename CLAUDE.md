@@ -1,240 +1,236 @@
-# eh_os_contract — repozytorium biblioteki
+# eh_os_contract — the library's repository
 
-To jest repozytorium biblioteki `eh_os_contract`: kontrakt procesu biznesowego i dwie rzeczy na nim
-zbudowane — dispatch zdarzeń dla aplikacji sterowanej zdarzeniami i sprawdzanie, czy to, co się stało,
-zgadza się z tym, co kontrakt mówi. Inne repozytoria instalują pakiety stąd — z gita, przez `sparse:`,
-docelowo z Hexa.
+This is the repository of the `eh_os_contract` library: a contract of a business process, and two things built
+on it — dispatching events for an event-driven application, and checking whether what happened matches what the
+contract says. Other repositories install its packages from git (`sparse:`), later from Hex.
 
-| Katalog | Co |
+| Directory | What |
 | --- | --- |
-| `packages/eh_os_contract/` | **biblioteka** — DSL kontraktu, dispatch, log, zgodność, `docs/contract.md` |
-| `packages/eh_os_contract_web/` | montowalny dashboard |
-| `packages/eh_os_contract_auth/` | weryfikacja credentiali EHOS-a, klucze z JWKS (etap EA; skąd klucze i co skonfigurować przy integracji — jego `README.md`) |
-| `sandbox/` | host deweloperski `:eh_os_contract_host` i dane testowe: TaxVision, Rehmed, endpoint Phoenixa |
-| `docs/` | założenia (`docs/adr/`) i materiał warsztatowy |
+| `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md` |
+| `packages/eh_os_contract_web/` | the mountable dashboard |
+| `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
+| `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment |
+| `docs/` | the design record (`docs/adr/`), distillations and workshop material |
 
-Każdy z czterech to osobny projekt Mix. Pakiety budują się i testują same, bez `sandbox/` — i to jest
-własność, której pilnujemy: `sandbox/` jest pierwszym konsumentem biblioteki, nie jej częścią.
+Each of the four is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
+is a property we keep: `sandbox/` is the library's first consumer, not part of it.
 
-**Do 23 września pakiet nazywał się `pns` (moduły `PNS.*`, host `:pns_prototype`, tabele `pns_*`).**
-Wszystko w kodzie nosi już nową nazwę — `eh_os_contract`, `EhOsContract`, `:eh_os_contract_host`. Stara
-zostaje tylko w `docs/adr/` i w historii `PLAN.md`, bo to zapis, nie opis stanu: `PNS.X` tam to dzisiejsze
-`EhOsContract.X`.
+**`sandbox/` is not a product.** The library is. TaxVision (`sandbox/lib/taxvision/`), Rehmed
+(`sandbox/lib/rehmed/`) and AppUnite's equipment (`sandbox/lib/appunite_equipment/`) are **test material**: each
+has a domain, contracts and implementations that decide and react, so that dispatch and the report have
+something to check. What writing a contract teaches goes into the library's work, not into notes about a
+client, and a contract that cannot be written is a **better** result than one written beside the material. An
+invented medical domain, `UniversalityGate`, lives in `packages/eh_os_contract/test/support/` and says so in its
+first line.
 
-**`sandbox/` nie jest produktem i nie budujemy w nim aplikacji dla nikogo.** Produktem jest biblioteka;
-TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdzamy, czy DSL się trzyma. Dlatego wnioski z pisania kontraktu idą do `PLAN.md` jako praca nad biblioteką, a nie do
-notatek o kliencie, i dlatego kontrakt, którego nie da się napisać, jest **lepszym** wynikiem niż
-kontrakt napisany obok materiału.
+Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
+the code has the new name; the old one remains only in `docs/adr/` and in `PLAN.md`'s history, where `PNS.X`
+means today's `EhOsContract.X`.
 
-Od 18 sierpnia dane testowe są z dwóch domen, TaxVision (`sandbox/lib/taxvision/`) i Rehmed
-(`sandbox/lib/rehmed/`): każda ma domenę, kontrakty v2 i implementacje, które decydują i reagują. Rehmed miał
-być wyłącznie kontraktami — od E6 ma kod, bo bez niego dispatch i raport nie miałyby czego sprawdzać
-(poprawka z 29 września, E11d). Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
-jest w `packages/eh_os_contract/test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w pierwszej
-linii.
+## Before you change anything
 
-## Zanim cokolwiek zmienisz
-
-| Co | Gdzie |
+| What | Where |
 | --- | --- |
-| Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
-| **Schemat pracy dla każdego** (człowieka i modelu): co gdzie żyje, od pomysłu do `main`, jak wrócić od linii kodu do uzasadnienia | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-| **Etap programu** (dziś DD): zakres, decyzje, przegląd, PR-y — w issue na GitHubie, po angielsku; `PLAN.md` trzyma status i link | skill [`stage-issue`](.claude/skills/stage-issue/SKILL.md) |
-| Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
-| **Jak napisać domenę i kontrakt** — co się nie skompiluje, każda odmowa z kodem | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
-| Każdy klucz obu DSL-i — typ, wymagany/opcjonalny, domyślna wartość (generowane) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
-| **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
-| Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
-| Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
-| Kto zaakceptował, zakres komercyjny, stan recenzji | repo kontekstu — **nie tutaj** |
+| How work is planned, recorded and reviewed, for a person and an assistant alike: where each thing lives, from an idea to `main`, how to follow a line of code back to its reason | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| The programmes, their stages and **their status** | [`PLAN.md`](PLAN.md), the "Postęp" table |
+| A stage's scope, decisions, review and pull requests | its GitHub issue (labels `dd`, `wave-<n>`); how to run a stage through one: the [`stage-issue`](.claude/skills/stage-issue/SKILL.md) skill |
+| What this repository is, the gate, the structure | [`README.md`](README.md) |
+| **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
+| Every rule of `mix eh_os_contract.check` (generated) | [`packages/eh_os_contract/docs/rules.md`](packages/eh_os_contract/docs/rules.md) |
+| The initial assumptions and decisions, the `§N` code comments cite | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
+| The contract language v2, its rules and shapes | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
+| Code shapes, schemas, pitfalls, libraries: the `notes §N` comments cite | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
+| What each decision beat, rejected alternatives | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 
-`docs/adr/` to **założenia, nie rekord decyzji.** Nikt ich tutaj nie akceptuje i nie ma po co: decyzja, żeby
-tę ideę sprawdzić, już padła, a zadaniem tego repozytorium jest ją zwalidować. Aparat, który do niego
-należał — kto recenzował, kto zaakceptował, zakres komercyjny — **został w repo kontekstu** i tam ma zostać.
-Trzymany w dwóch miejscach zestarzeje się w jednym z nich.
+`PLAN.md` is long and written for an assistant that needs the whole context in one file; its entries before
+6 October 2026 are in Polish and are not translated. Read the handoff at its top, then the programme you work on.
 
-**Do `~/Projects/ai/empowered-house-context` nie piszemy. Nigdy.** Ani commita, ani gałęzi, ani poprawki w
-pliku. Wszystko, co potrzebne, jest tutaj — założenia w `docs/adr/`, stan w `PLAN.md`. Reguła jest z 6
-sierpnia i ma powód: pakiet projektowy żył w obu repozytoriach naraz, poprawki jechały na gałąź w tamtym,
-podczas gdy autorytatywne pliki były już tutaj, i **przez pół dnia istniały dwie kopie tej samej treści**.
-Czytać stamtąd wolno, jeśli o to poprosisz. Pisać — nie.
+**`docs/adr/` holds assumptions, and is deliberately behind the code.** When `docs/adr/` and `PLAN.md` differ,
+`PLAN.md` is newer. Where a correction goes:
 
-Z tego wynika, gdzie co poprawiać:
+- **An implementation detail**: `docs/adr/technology-notes.md`, in place, in one commit.
+- **What writing the code taught about a stage**: its issue. `PLAN.md` changes only its status.
+- **An assumption that turned out wrong, or a rule of the contract a stage changes**: a **dated amendment** in
+  `docs/adr/`, never a silent rewrite, ending with the link to the stage's issue. These files are worth keeping
+  only because they can be compared with what actually happened; rewritten to match today's code, they measure
+  nothing. Twice an assumption proved wrong while writing the code, and both times the fix belonged in
+  `docs/adr/`, not in a comment working around it.
 
-- **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
-- **Ustalenie z pisania kodu** — do `PLAN.md`, i tylko tam aktualizuje się stan.
-- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie,
-  zakończona linkiem do issue etapu, który ją wprowadził (od 6 października).
-  Sens tych plików polega na tym, że da się je porównać z tym, co faktycznie wyszło; przepisane pod aktualny
-  kod przestają cokolwiek mierzyć.
-- Założenia są **świadomie z tyłu**. Gdy `docs/adr/` i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
+## What the library is, and is not
 
-Założenia myliły się już dwa razy i oba razy wyszło to przy pisaniu kodu. Jeśli mylą się znowu, poprawka
-idzie do `docs/adr/` — nie do komentarza obchodzącego problem.
+An application describes its business as two kinds of Elixir module, in the manner of ESDM: a **domain** — its
+words and their definitions, contexts and how they relate, actors, values, the external systems it depends
+on — and **contracts**, each in one context and, until the DD programme's wave 2 changes it, describing one
+process: the units that decide (aggregates, boundaries), their
+commands, events, invariants and lifecycles, what reacts to the events, what is read, the process they belong
+to, its promises, and scenarios. Both are Spark DSLs; what is wrong with them fails the compile, with a code
+and a message (`docs/contract.md`). Everything the library does reads those modules.
 
-## Czym biblioteka jest, a czym nie
+**`packages/eh_os_contract`, the engine:**
 
-Dwie połowy na jednym modelu — domenie i kontraktach (DSL v2, na wzór ESDM). **Zdarzenia**: `dispatch` pyta,
-czy aktor może wydać komendę, sprawdza pola, czyta historię jednostki z logu, pozwala implementacji
-zdecydować i dopisuje tylko to, co kontrakt deklaruje; log jest własny silnika (event sourcing). Reakcje —
-read modele, polityki, process managery, efekty — jadą w transakcji dispatchu (`:in_transaction`) albo po
-niej (`:at_least_once`: subskrypcja z logu, efekt przez Obana wstawionego w tę samą transakcję). **Między
-aplikacjami** (E12, od 1 października): zdarzenie wychodzi tylko przez `publish` — relay czyta log i oddaje je
-behaviourowi `EhOsContract.Bus` — a przychodzi do inboxu, który bierze tylko polityka (`D12`), nigdy do logu
-odbiorcy. Adaptery transportu (JetStream przez `gnat`, relay EHOS-a) są po stronie EHOS-a; biblioteka ma tylko
-`Bus.Local` do testów i jednego węzła i od żadnego brokera nie zależy (`docs/adr/architecture.md` §9–10, poprawka
-z 1 października). Dane spoza kodu aplikacji — surowe, z credentialem — wchodzą przez `EhOsContract.call/3`, na
-którym stoi Plug. **Zgodność** odpowiada na jedno pytanie:
+- **Dispatch and the log.** `EhOsContract.dispatch/3` asks whether the actor may issue the command (an
+  `EhOsContract.Authorizer`), checks its fields, reads the unit's history from the engine's own event log
+  (Postgres), lets the implementation decide, and appends only what the contract declares. A unit's state is
+  its events, folded. Personal fields are encrypted per subject, and erasing a subject destroys its key
+  (crypto-shredding, `EhOsContract.Vault`). A field the host must supply rather than the caller comes from an
+  `EhOsContract.Supplier`.
+- **Reactions.** Read models, policies, process managers with timers, and effects run inside the dispatch's
+  transaction (`:in_transaction`) or after it (`:at_least_once`: an ordered subscription to the log, or an Oban
+  job inserted in the same transaction). A reaction to another context's event has to say which.
+- **Between applications.** An event leaves only through `publish`: a relay reads the log and hands it to an
+  `EhOsContract.Bus`. One arrives in an inbox that only a policy takes, never in the receiver's log. The library
+  ships `Bus.Local`, for tests and a single node; transport adapters (JetStream, EHOS's relay) are EHOS's, and
+  the library depends on no broker.
+- **The door from outside.** Raw data with a credential enters through `EhOsContract.call/3`, and over HTTP
+  through `EhOsContract.Plug` on top of it. The contract also generates OpenAPI and AsyncAPI documents and an
+  exported model.
+- **Tests from the contract.** Scenarios run as tests (`EhOsContract.ScenarioCase`) against the same rules
+  dispatch applies.
+- **Conformance.** It answers one question:
 
-> Czy wdrożony kod robi to, co mówi zdefiniowany proces?
+  > Does the deployed code do what the defined process says?
 
-Ekran ma **cztery pytania i ani jednego więcej**: które zadeklarowane ścieżki nigdy nie zostały przejechane,
-które przejścia nie są zadeklarowane, które obietnice (`promise`) są łamane, która wersja kontraktu jest
-wdrożona i od kiedy.
+  The report and the dashboard ask **four questions and no more**: which declared paths were never taken,
+  which transitions were not declared, which promises are broken, and which version of the contract is
+  deployed and since when.
+- **Tasks:** `check` (the rules a compiler cannot hold: errors, warnings and notices), `report`, `graph`, `pages`, `glossary`,
+  `view`, `subscriptions`, `rewrap`.
 
-Wszystko inne ma właściciela: wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta**.
-Kiedy EhOsContract zacznie odpowiadać „która firma nie ma otwartego lipca", staje się drugim, gorszym ekranem
-aplikacji klienta. Od v2 biblioteka prowadzi read modele i query klienta — to jego stan, deklarowany w
-kontrakcie — ale dashboard go nie pokazuje: pokazuje zgodność.
+**`packages/eh_os_contract_web`** is a dashboard a host mounts: each contract's conformance and its graph, and a
+JSON API with the model, the conformance and the OpenAPI and AsyncAPI documents. The host decides who may see it
+(`EhOsContract.Web.Resolver`).
 
-## Brama
+**`packages/eh_os_contract_auth`** connects an application to EHOS, the platform that hosts it: it verifies the
+credentials EHOS issues against keys kept in the application's database (and is the `Authorizer` for them),
+signs a person in to the application's pages through EHOS's own sign-in, and writes the application manifest
+EHOS deploys from (`mix eh_os_contract.manifest`). The engine does not depend on it.
+
+Everything else has an owner: performance is GCP's, errors are Datadog's, **the state of the business is the
+client application's**. The library keeps the client's read models and queries — their state, declared in the
+contract — but the dashboard does not show them; it shows conformance. Once it answers "which company has no
+open July", it becomes a second, worse screen of the client's application.
+
+## The gate
 
 ```bash
 docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
-`mix check` w `sandbox/` to `format --check-formatted`, `compile --force --warnings-as-errors`,
-`eh_os_contract.check`, testy sandboxa, a potem `mix check` każdego pakietu osobnym wywołaniem —
-`packages/eh_os_contract` (z `eh_os_contract.docs --check` i `eh_os_contract.rules --check`, które pilnują,
-że referencja obu DSL-i w jego `docs/dsl/` i katalog reguł w `docs/rules.md` są wygenerowane z kodu, a nie
-pisane ręcznie; a `test/docs_test.exs` trzyma przy kodzie przykłady i tabelę odmów w `docs/contract.md`),
-`packages/eh_os_contract_web` i `packages/eh_os_contract_auth`. **Musi przechodzić.** Osobne wywołania, nie umbrella — pakiet ma stać sam,
-i to jest własność, której pilnujemy. Brama mieszka w `sandbox/`, bo tylko on widzi wszystkie projekty;
-każdy pakiet ma też własne `mix check`, które przechodzi bez niego.
-`--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
-przełącznika granice są dokumentacją. Postgres słucha na **5433**.
+`mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
+`eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
+`packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
+DSL reference in `docs/dsl/` and the rule catalogue in `docs/rules.md` to the code, and `test/docs_test.exs`,
+which holds the examples and the refusal table of `docs/contract.md` to it), `packages/eh_os_contract_web` and
+`packages/eh_os_contract_auth`. **It has to pass.** Separate invocations, not an umbrella, so that each package
+stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
+required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
+listens on **5433**.
 
-**Nie rurkuj bramy do `tail` przed commitem.** `mix check | tail -4 && git commit` sprawdza kod wyjścia
-**`tail`**, który jest zawsze zerowy — więc commit idzie na czerwonym, a Ty widzisz cztery ostatnie linie i
-nie widzisz liczby padnięć. Zdarzyło się 6 sierpnia: scommitowane 24 padnięcia. Jeśli musisz skrócić wyjście:
+**Do not pipe the gate into `tail` before a commit.** `mix check | tail -4 && git commit` checks the exit code
+of `tail`, which is always zero, so the commit goes in on red while you see four lines and not the failure
+count. It happened on 6 August: 24 failures committed. To shorten the output:
 
 ```bash
 out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 ```
 
-**`mix run` w `MIX_ENV=test` pisze poza Ecto Sandboxem** (tym od transakcji w testach, nie katalogiem
-`sandbox/`). Ecto Sandbox obejmuje testy, nie zadania mixa — więc jedno
-`MIX_ENV=test mix run -e '...'` zostawia wiersze **na stałe** w bazie testowej i wywala potem wszystko, co
-liczy rekordy. Ta sama pułapka, którą `EhOsContract.Deployment.record!` zastawia przy boocie. Do oglądania czegokolwiek
-używaj `MIX_ENV=dev`; jeśli już wpadniesz, ratuje `MIX_ENV=test mix ecto.drop && mix ecto.create &&
-mix ecto.migrate`.
+**`mix run` with `MIX_ENV=test` writes outside the Ecto sandbox** (the test transaction, not the `sandbox/`
+directory). The Ecto sandbox covers tests, not Mix tasks, so one `MIX_ENV=test mix run -e '...'` leaves rows in
+the test database **for good** and breaks everything that counts records afterwards — the same trap
+`EhOsContract.Deployment.record!` sets at boot. Look at anything with `MIX_ENV=dev`; if you fall in,
+`MIX_ENV=test mix ecto.drop && mix ecto.create && mix ecto.migrate` recovers.
 
-**Bazy Postgresa są wspólne dla wszystkich worktree** — nazwy są stałe (`eh_os_contract_host_test`, `…_dev`,
-`eh_os_contract_test` …). Z tego dwie pułapki, obie z 4 października:
+**The Postgres databases are shared by every worktree**: their names are fixed (`eh_os_contract_host_test`,
+`…_dev`, `eh_os_contract_test`, …). Two traps follow, both from 4 October:
 
-- **`too_many_connections`.** Brama obok cudzego `phx.server` albo cudzych testów pada na połączeniach, nie na
-  kodzie (`AppendLockTest`, `SchemaTest`). Nie ponawiaj w pętli: zatrzymaj własny serwer dev, poczekaj, aż
-  `lsof -nP -iTCP:5433 | awk 'NR>1 && $1 ~ /beam/' | wc -l` spadnie poniżej ~10, i puść bramę raz.
-- **Migracja z niezmergowanej gałęzi zmienia bazę testową wszystkim.** Brama LC4a usunęła kolumnę, której
-  `main` jeszcze używał, i testy na innych gałęziach padły. Po bramie na gałęzi z migracją, której nie ma w
-  `main`, przywróć schemat (`psql` w kontenerze: cofnij zmianę i usuń wiersz z `schema_migrations`) albo powiedz
-  o tym użytkownikowi.
+- **`too_many_connections`.** The gate next to someone else's `phx.server` or tests fails on connections, not on
+  code (`AppendLockTest`, `SchemaTest`). Do not retry in a loop: stop your own dev server, wait until
+  `lsof -nP -iTCP:5433 | awk 'NR>1 && $1 ~ /beam/' | wc -l` is below about 10, and run the gate once.
+- **A migration on an unmerged branch changes the test database for everyone.** After the gate on a branch with
+  a migration `main` does not have, restore the schema (`psql` in the container: undo the change and delete its
+  row from `schema_migrations`), or tell the user.
 
-## Konwencje, które łatwo złamać
+## Language
 
-- **`boundary`: moduły procesowe są rodzeństwem, nie hierarchią.** Dostęp do cudzych tabel wymaga jawnego
-  `deps`. Pierwsza wersja miała `Taxvision` zależny od własnych dzieci i `boundary` słusznie ją odrzucił.
-- **Implementacje wskazują kontrakt, nigdy odwrotnie** (`use Kontrakt, aggregate: :x`). Kontrakt, który
-  nazywałby swój kod, byłby od niego zależny kompilacyjnie, a kod zależy od kontraktu — każda zmiana kodu
-  rekompilowałaby kontrakt i wszystko po nim. Z tego samego powodu kontrakt wskazuje domenę przez `domain:`
-  bez zależności kompilacyjnej, a związki między nimi sprawdza kompilator Mixa (L3). Do E11 ta reguła
-  brzmiała „reguła wskazuje MFA, nigdy capture” — to był jej kształt w v1.
-- **Sprawdzenia w ciele makra, nie w `quote`.** To tworzy zależność kompilacyjną i sprawia, że błąd wskazuje
-  implementację, nie bibliotekę.
-- **Zdarzenia i komendy to literały.** `emit/1` i `issue/1` biorą literały struktur (I4), bo od tego
-  zależy, czy graf statyczny jest faktem, czy heurystyką.
-- **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
-  komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to wszystko w `packages/` i
-  `sandbox/`** — `lib/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`, `mix.exs` — oraz `docs/`.
-  `config/`, migracje i `mix.exs` zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
-- **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
-  moduledoku ani nazwie. Konkretnie: `label` i `source` w domenie i kontrakcie, nazwy tasków, temat
-  powiadomienia (klucze v1 — opisy `example`, `unavailable_looks_like` — zniknęły w E11). **Od v2 (etap E3,
-  25 września) także:** w domenie
-  tekst `term`, jego `definition`, `avoid` i tekst tłumaczenia (`translation`), a w kontrakcie v2 prozę
-  `where` przy `consults` i opisy scenariuszy — to słownik i przypadki, które właściciel procesu czyta
-  zdaniami. Poza tymi miejscami polski string też jest błędem.
-  Raport zgodności był tu wcześniej piątym wyjątkiem i **przestał być, 6 sierpnia**: renderer przeniósł się
-  do silnika (`EhOsContract.Report`, dawniej `Taxvision.Report` w drzewie klienta) i wypisuje po angielsku — decyzja
-  zapisana w `PLAN.md`. Etykiety kontraktu (`label`, `from_label`, `to_label`) nadal wychodzą w raporcie
-  dosłownie, w języku, w którym je zadeklarował klient — regułą jest teraz "silnik pisze swoje zdania po
-  angielsku", nie "kto czyta cały artefakt".
-- **Grep po `[ąćęłńóśźż]` nie wystarcza do sprawdzenia** i to jest zapisane, bo kosztowało jeden fałszywy
-  „gotowe". Spora część polszczyzny nie ma diakrytyków — `rejestry` w `registry_check.ex` przeżyło pełne
-  przepisanie pliku po pliku właśnie dlatego. Przy sprawdzaniu trzeba przejść też po słowach.
-- **Dokumentacja repo robocza — ten plik i historia `PLAN.md` — zostaje po polsku.** To nie jest kod i nie
-  jedzie z pakietem; nowe wpisy w `PLAN.md` są od 6 października po angielsku (niżej). **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
-  upubliczniona, więc `README.md` jest teraz po angielsku, po tej samej stronie granicy co
-  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. Ten plik i
-  dotychczasowy `PLAN.md` zostają po polsku, bo ich czytelnikiem był tylko zespół pracujący w tym
-  repozytorium.
-- **Od 6 października nowe wpisy w `PLAN.md` są po angielsku** (decyzja użytkownika: projekt będzie
-  międzynarodowy, więc ślady w repozytorium i na GitHubie zostawiamy po angielsku; rozmawiamy po polsku).
-  Historia zostaje po polsku i nie jest tłumaczona; poprawka w istniejącym polskim akapicie (status, link)
-  idzie w jego języku. Issue i PR-y — zawsze po angielsku (skill `stage-issue`). *Odrzucone:* przetłumaczenie
-  całego `PLAN.md` (ponad 11 000 linii, tłumaczenie hurtem gubi uzasadnienia, jak przy pierwszych commitach);
-  zostawienie polskiego dla nowych wpisów.
-- **Publiczne funkcje w `packages/eh_os_contract/lib/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
-  kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
-- Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
-  i to był błąd, który zdążył się rozlać po bibliotece. **Poprawianie wstecz jest osobnym zadaniem** —
-  patrz `PLAN.md`, bo jest sprzężone z assercjami testów bram kompilacyjnych.
-- **Komunikaty commitów po angielsku**, z tej samej reguły: `git log` czyta recenzent, nigdy klient.
-  Dwanaście pierwszych commitów jest po polsku i **zostaje** — historia sprzed reguły nie jest przepisywana,
-  bo te wiadomości niosą uzasadnienia decyzji i tłumaczenie ich hurtem gubi więcej, niż porządkuje.
-- **Polski cudzysłów zamykający to `”` (U+201D), nie `"`.** Wpisanie ASCII-owego `"` w środku
-  stringu kończy string i wywala kompilację z komunikatem o nieoczekiwanym tokenie w miejscu
-  **otwierającego** `„`, czyli kilka znaków przed prawdziwą przyczyną. Zdarzyło się trzy razy w jeden dzień.
-- **Wyrażenie regularne na tekście klienta zawsze z flagą `u`.** Bez niej `\R`, `\s` i `\w` czytają bajty, a
-  polszczyzna ma w UTF-8 bajty, które coś znaczą: `~r/\R/` łapie `0x85`, drugi bajt „ą”. Zdarzyło się 28 września
-  w grafach EG1 — każda polska etykieta traciła „ą”, a testy przechodziły, bo żaden nie miał „ą”. Test tekstu
-  klienta pisz z polską etykietą.
-- **Z flagą `u` `\d` to każda cyfra Unicode, nie `[0-9]`.** Format ASCII — numer KSeF, NIP, data — pisz
-  `[0-9]`. Zdarzyło się 28 września w E9c-2: data zapisana cyframi arabsko-indyjskimi przechodziła wyrażenie,
-  `String.to_integer/1` rzucał wyjątek i nagranie faktury kończyło się wyjątkiem zamiast odmowy inwariantu.
-- Przy pisaniu do pliku pamiętaj o `encoding: :unicode` — Erlang trzyma stdout w latin1, kiedy wyjście
-  nie jest terminalem, i psuje każdy polski znak.
-- **W skryptach powłoki nie licz na dzielenie na słowa.** Shell to zsh, a zsh **nie dzieli** nierozdzielonych
-  rozwinięć — `for x in $LISTA` daje jedną iterację z całą listą w jednym argumencie, nie N iteracji. Raz
-  wystarczyło, żeby `git cherry-pick` dostał siedem SHA-ów jako jeden argument, padł, a stojące po nim
-  `git commit --amend` przepisało nie ten commit, co miało. Pętle po SHA-ach pisz jawnie albo przez tablice.
-- **Kod reguły nigdy nie stoi sam w prozie** (od 6 października, decyzja użytkownika). W `PLAN.md`, `docs/adr/`,
-  opisie PR-a i commicie najpierw znaczenie, potem kod w nawiasie: „reakcja na zdarzenie innego kontekstu bez
-  zadeklarowanego `delivery` (X10)”. W issue kodów nie ma wcale. Komunikaty kompilatora i testy zostają przy
-  kodach — tam znaczenie stoi obok, w treści komunikatu.
-- **PR mówi, do czego należy:** `Closes #N`, `Part of #N` albo `No issue: <powód>` (szablon PR-a; sprawdza to
-  `.github/workflows/pr-links-issue.yml`). Commit etapu kończy się `Part of #N`, gałąź etapu to
-  `dd/<issue>-<słowa>`, a komentarz w kodzie cytujący etap podaje też issue: `plan DD, ID1 (#165)`.
-- **Nazwy zdarzeń pochodzą z warsztatu**, nie z wyobraźni. Źródło:
-  `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
+**Everything in this repository and on GitHub is in English**: code, comments, docs, `PLAN.md`'s new entries,
+commit messages, issues, pull requests. We may talk in Polish; what we leave behind is English, because the
+project will be international.
 
-## Człowiek jest bramą, więc czytelność jest wymaganiem
+The one exception is **text the client reads in sentences, inside strings**: the `label` and `source` of
+declarations in a domain and a contract, a term, its `definition`, `avoid` and `translation`, the `where` prose
+of `consults`, scenario descriptions, task names, a notification's subject. The test material's clients are
+Polish, so those strings are Polish there; nowhere else is a Polish string correct, and never in a comment, a
+doc or a name. The engine writes its own sentences in English; a client's labels appear in its output as the
+client wrote them.
 
-Kod idzie jako PR i weryfikuje go człowiek. Z tego wynikają dwie rzeczy przy generowaniu:
+History is not rewritten: `PLAN.md` before 6 October 2026, the first twelve commit messages and the workshop
+material in `docs/warsztat-*.md` stay in Polish.
 
-1. **Uwaga recenzenta idzie tam, gdzie jest losowość** — czyli na funkcje decyzyjne. Szkielet, migracje i
-   granice są deterministyczne i recenzuje się je raz na wzorzec, nie raz na wystąpienie.
-2. **Mały diff.** PR, którego nie da się przeczytać z uwagą, nie jest recenzowany, tylko przybijany. To jest
-   ograniczenie funkcjonalne, nie stylistyczne.
+Polish text in strings has its own pitfalls, each of which has already cost a broken build or a false "done":
 
-## Czego nie budujemy
+- **The Polish closing quote is `”` (U+201D), not `"`.** An ASCII `"` inside a string ends it, and the compiler
+  reports an unexpected token at the **opening** `„`, a few characters before the real cause.
+- **A regex over client text always takes the `u` flag.** Without it `\R`, `\s` and `\w` read bytes, and Polish
+  has meaningful bytes in UTF-8: `~r/\R/` matches `0x85`, the second byte of "ą". Test client text with a Polish
+  label that has an "ą".
+- **With the `u` flag, `\d` is any Unicode digit.** Write an ASCII format — a KSeF number, a NIP, a date — as
+  `[0-9]`.
+- **Write files with `encoding: :unicode`.** Erlang keeps stdout in latin1 when it is not a terminal and mangles
+  every Polish character.
+- **Grepping for `[ąćęłńóśźż]` does not find all Polish.** Much of it has no diacritics; check the words too.
 
-`mix eh_os_contract.new` (dopiero przy drugim kliencie). Prawdziwych parserów i integracji — koszt domenowy klienta,
-zero sygnału dla biblioteki. **Tożsamości** — logowania, kont, ról, providera OIDC: silnik zna aktora
-wyłącznie jako nieprzezroczysty `subject`, uwierzytelnia aplikacja klienta, dostęp do dashboardu
-rozstrzyga host przez `EhOsContract.Web.Resolver` (od 23 września; wcześniej `PNS.Auth` z logowaniem i kontami, z
-czasów, gdy silnik miał być właścicielem EHOS). **Od 25 września (D14 w v2 §16)** credential wydaje EHOS, a
-weryfikuje go osobny pakiet `eh_os_contract_auth` (etap EA w `PLAN.md`), który implementuje
-`EhOsContract.Authorizer` kontraktu; rdzeń od niego nie zależy i dalej niczego nie weryfikuje. Role to aktorzy
-kontraktu (v2 §18), nie osobna deklaracja. Alertów i widoków operacyjnych. **Czegokolwiek, co
-odpowiada na pytanie o konkretną firmę.**
+## Conventions that are easy to break
+
+- **`boundary`: process modules are siblings, not a hierarchy.** Reaching another's tables needs an explicit
+  `deps`.
+- **Implementations point at the contract, never the other way** (`use Contract, aggregate: :x`). A contract
+  naming its code would depend on it at compile time while the code depends on the contract, so every change to
+  the code would recompile the contract and everything after it. For the same reason a contract names its domain
+  through `domain:` without a compile dependency, and a Mix compiler checks the links between them.
+- **Checks in the macro body, not in `quote`.** That creates the compile dependency and makes an error point at
+  the implementation, not at the library.
+- **Events and commands are literals.** `emit/1` and `issue/1` take struct literals, because that decides
+  whether the static graph is a fact or a guess.
+- **Public functions in `packages/eh_os_contract/lib/` have `@doc` and `@spec`.** Without them the package has
+  no documentation and `dialyzer` nothing to check.
+- **A code never stands alone in prose.** In `PLAN.md`, `docs/adr/`, a pull request or a commit, the meaning
+  comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
+  (X10)". Issues carry no codes at all. Compiler messages and tests keep their codes; the message says the
+  meaning beside it.
+- **A pull request says what it belongs to**: `Closes #N`, `Part of #N` or `No issue: <why>` (the template;
+  `.github/workflows/pr-links-issue.yml` checks it). A stage's commits end with `Part of #N`, its branch is
+  `dd/<issue>-<words>`, and a code comment citing a stage cites its issue: `plan DD, ID1 (#165)`
+  (`CONTRIBUTING.md`).
+- **Do not rely on word splitting in shell scripts.** The shell is zsh, which does **not** split unquoted
+  expansions: `for x in $LIST` runs once with the whole list as one argument. Once that handed `git cherry-pick`
+  seven SHAs as one argument, and the `git commit --amend` after it rewrote the wrong commit. Loop over SHAs
+  explicitly or through arrays.
+- **TaxVision's event names come from the workshop**, not from imagination: the event storming in
+  `workshop_output/02-event-storming.md` of the
+  [`appunite/taxvision-process-native`](https://github.com/appunite/taxvision-process-native) repository (private;
+  ask the user for access). Rehmed's and AppUnite's sources are the distillations in `docs/`.
+
+## A person is the gate, so readability is a requirement
+
+Code goes in as a pull request and a person verifies it. Two things follow when generating it:
+
+1. **A reviewer's attention goes where the variance is**: to the functions that decide. The skeleton,
+   migrations and boundaries are deterministic and are reviewed once per pattern, not once per occurrence.
+2. **A small diff.** A pull request that cannot be read with attention is not reviewed, only approved. That is a
+   functional limit, not a matter of style.
+
+## What we do not build
+
+- **A project generator** (`mix eh_os_contract.new`): not before something has been copied by a second client.
+- **Real integrations in the test material**: a behaviour and a fake. A real registry or mail server is a
+  client's domain cost and teaches the library nothing.
+- **Identity**: accounts, roles, sign-in and sign-out screens, an identity provider. EHOS owns them. The engine
+  knows an actor only as an opaque subject with the capabilities its verified credential grants; roles are the
+  contract's actors. `eh_os_contract_auth` verifies EHOS's credentials and hands a person to EHOS to sign in; it
+  shows no sign-in screen of its own.
+- **A message broker or its adapters**: EHOS's. The library defines `EhOsContract.Bus` and ships only the local
+  one.
+- **An API layer of its own** (REST or GraphQL) beyond the generated documents and the `call/3` door.
+- **Alerts, operational views, metrics.**
+- **Anything that answers a question about one particular company or customer.**

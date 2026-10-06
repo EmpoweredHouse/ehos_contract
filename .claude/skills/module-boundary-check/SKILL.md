@@ -93,7 +93,6 @@ Pick by what the business says, not by what the code will look like:
   Contexts are siblings, not a hierarchy (`CLAUDE.md`).
 - **No new DSL word to make an action feel more rigorous.** If none fits, say so and ask; a new word
   goes to the user with an example.
-- **Never write into `~/Projects/ai/empowered-house-context`.**
 
 ## Procedure
 
