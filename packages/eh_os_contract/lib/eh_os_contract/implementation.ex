@@ -259,10 +259,9 @@ defmodule EhOsContract.Implementation do
   defp a(kind) when kind in [:aggregate, :effect], do: "an #{human(kind)}"
   defp a(kind), do: "a #{human(kind)}"
 
-  @doc """
-  The structs an implementation of the declaration touches, each with the alias it
-  gets: `{module, alias}`.
-  """
+  # The structs an implementation of the declaration touches, each with the alias it
+  # gets: `{module, alias}`.
+  @doc false
   @spec aliases(map(), atom(), atom()) :: [{module(), module()}]
   def aliases(model, kind, name) do
     behaviour = Model.module_for(model, kind, name)

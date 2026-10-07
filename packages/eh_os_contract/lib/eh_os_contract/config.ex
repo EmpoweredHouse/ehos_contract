@@ -117,8 +117,9 @@ defmodule EhOsContract.Config do
   Ecto repo, Oban), and `:ecto_repos` is Ecto's; both are left alone, except a module
   key that looks like a misspelling of `EhOsContract.Vault` or names one of its
   modules (`EhOsContract.Vault.Local`), which is refused. Whether a configured module
-  implements its behaviour is checked where it is used: `EhOsContract.Supplier.check!/1`
-  and `EhOsContract.Vault.check!/1` at boot.
+  implements its behaviour is checked at boot, where it is used: the supplier when a
+  contract declares a field `supplied_by: :host`, the vault when one declares a
+  personal field.
 
   **No error repeats a value.** The vault's keys and the bus's options may hold
   secrets, so a message names the key and what was expected, never what was given.
@@ -193,7 +194,8 @@ defmodule EhOsContract.Config do
     end
   end
 
-  @doc "The schema's documentation as Markdown, for the generated reference."
+  # The schema's documentation as Markdown, for the generated reference.
+  @doc false
   @spec docs() :: String.t()
   def docs, do: Spark.Options.docs(@schema)
 

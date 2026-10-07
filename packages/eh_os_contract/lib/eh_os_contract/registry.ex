@@ -13,31 +13,30 @@ defmodule EhOsContract.Registry do
 
   @key {__MODULE__, :graph}
 
-  @doc """
-  Scans the configured applications and caches the result in `:persistent_term`.
-
-  **Which applications is configuration, and it has to be.** Until the engine was
-  extracted (2026-08-20) this defaulted to the one application there was, so the
-  question never came up; a library that defaults to its own name scans itself,
-  finds no contracts, and reports a perfectly healthy empty graph — which is what
-  happened the first time this compiled as a package.
-
-      config :eh_os_contract, applications: [:my_app]
-
-  A list rather than one name, because a host may keep client trees in more than
-  one application. Passing `app` explicitly stays for tests.
-
-  **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
-  `inspect/1`, to drop from the scan before anything downstream ever sees them.**
-  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and `EhOsContract.Trace` all read
-  contracts through this one registry, so one config key keeps a
-  namespace out of every one of them at once — the alternative would be an
-  exception written into each report by hand. Not a DSL word: which binary is
-  running is an operational fact a deployer states in configuration, never a
-  claim the contract itself makes. Empty by default, so the existing property —
-  the graph comes from the binary that actually runs, in full — is unchanged
-  unless a deployer opts into narrowing it.
-  """
+  # Scans the configured applications and caches the result in `:persistent_term`.
+  #
+  # **Which applications is configuration, and it has to be.** Until the engine was
+  # extracted (2026-08-20) this defaulted to the one application there was, so the
+  # question never came up; a library that defaults to its own name scans itself,
+  # finds no contracts, and reports a perfectly healthy empty graph — which is what
+  # happened the first time this compiled as a package.
+  #
+  #     config :eh_os_contract, applications: [:my_app]
+  #
+  # A list rather than one name, because a host may keep client trees in more than
+  # one application. Passing `app` explicitly stays for tests.
+  #
+  # **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
+  # `inspect/1`, to drop from the scan before anything downstream ever sees them.**
+  # `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and `EhOsContract.Trace` all read
+  # contracts through this one registry, so one config key keeps a
+  # namespace out of every one of them at once — the alternative would be an
+  # exception written into each report by hand. Not a DSL word: which binary is
+  # running is an operational fact a deployer states in configuration, never a
+  # claim the contract itself makes. Empty by default, so the existing property —
+  # the graph comes from the binary that actually runs, in full — is unchanged
+  # unless a deployer opts into narrowing it.
+  @doc false
   @spec load!(atom() | [atom()] | nil) :: %{
           contracts: [module()],
           processes: [module()],
@@ -168,7 +167,8 @@ defmodule EhOsContract.Registry do
   def process(id) when is_binary(id),
     do: Enum.find(processes(), &(EhOsContract.Model.fetch(&1).id == id))
 
-  @doc "The cached scan, loading it on first use."
+  # The cached scan, loading it on first use.
+  @doc false
   @spec graph() :: %{contracts: [module()], processes: [module()], domains: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do

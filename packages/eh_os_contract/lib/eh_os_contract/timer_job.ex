@@ -34,7 +34,9 @@ defmodule EhOsContract.TimerJob do
   alias EhOsContract.{Clock, Implementations, Model, ProcessManager, ProcessManagerRecord, Store}
   alias EhOsContract.Subscription.Runner
 
-  @doc "The job for `timer` of the run `correlation` of process manager `key`, due `at`."
+  # The job for `timer` of the run `correlation` of process manager `key`, due `at`.
+  # Called by process_manager.ex.
+  @doc false
   @spec job(String.t(), String.t(), String.t(), map()) :: Oban.Job.changeset()
   def job(key, correlation, timer, %{"token" => token, "at" => at}) do
     new(
@@ -49,11 +51,10 @@ defmodule EhOsContract.TimerJob do
     )
   end
 
-  @doc """
-  Appends the timer's firing to the run's stream, if the timer is due and still the
-  run's; snoozes one that is not due; does nothing for one that is no longer the
-  run's; cancels one whose process manager is no longer deployed.
-  """
+  # Appends the timer's firing to the run's stream, if the timer is due and still the
+  # run's; snoozes one that is not due; does nothing for one that is no longer the
+  # run's; cancels one whose process manager is no longer deployed.
+  @doc false
   @impl Oban.Worker
   @spec perform(Oban.Job.t()) :: :ok | {:snooze, pos_integer()} | {:cancel, String.t()}
   def perform(%Oban.Job{args: %{"at" => at} = args}) do

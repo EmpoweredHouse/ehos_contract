@@ -59,7 +59,8 @@ defmodule EhOsContract.Vault do
   """
   @callback check() :: :ok | {:error, String.t()}
 
-  @doc "The configured implementation: `config :eh_os_contract, vault:`, `EhOsContract.Vault.Local` by default."
+  # The configured implementation: `config :eh_os_contract, vault:`, `EhOsContract.Vault.Local` by default.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:vault)
 
@@ -67,18 +68,21 @@ defmodule EhOsContract.Vault do
   @spec wrap(binary(), binary()) :: {kek_id(), binary()}
   def wrap(key, context), do: impl().wrap(key, context)
 
-  @doc "Unwraps through the configured vault (`c:unwrap/3`)."
+  # Unwraps through the configured vault (`c:unwrap/3`).
+  # Called by personal.ex.
+  @doc false
   @spec unwrap(kek_id(), binary(), binary()) :: {:ok, binary()} | :error
   def unwrap(kek_id, wrapped, context), do: impl().unwrap(kek_id, wrapped, context)
 
-  @doc "The configured vault's current master key (`c:current/0`)."
+  # The configured vault's current master key (`c:current/0`).
+  # Called by eh_os_contract.rewrap.ex, personal.ex.
+  @doc false
   @spec current() :: kek_id()
   def current, do: impl().current()
 
-  @doc """
-  Raises when `contracts` — v2 models — declare a personal field and the configured
-  vault is not ready. What the engine runs at boot.
-  """
+  # Raises when `contracts` — v2 models — declare a personal field and the configured
+  # vault is not ready. What the engine runs at boot.
+  @doc false
   @spec check!([map()]) :: :ok
   def check!(models) do
     case Enum.filter(models, &EhOsContract.Personal.declares?/1) do

@@ -197,18 +197,17 @@ defmodule EhOsContract.Trace do
     )
   end
 
-  @doc """
-  The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
-  contract, and nothing from the log.
-
-  Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
-  for an event the contract includes (D7). Its `identity` is set when the unit of
-  `from`'s event is strictly finer than the process's correlation, which is when the
-  promise is made per item inside a run.
-
-  Raises `ArgumentError` when the contract declares no such promise, and for a domain,
-  which declares none.
-  """
+  # The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
+  # contract, and nothing from the log.
+  #
+  # Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
+  # for an event the contract includes (D7). Its `identity` is set when the unit of
+  # `from`'s event is strictly finer than the process's correlation, which is when the
+  # promise is made per item inside a run.
+  #
+  # Raises `ArgumentError` when the contract declares no such promise, and for a domain,
+  # which declares none.
+  @doc false
   @spec trace(module() | map(), atom()) :: trace()
   def trace(contract, name) do
     model = Model.fetch(contract)
@@ -230,25 +229,24 @@ defmodule EhOsContract.Trace do
     )
   end
 
-  @doc """
-  Verdicts for every run in `occurrences` in which the trace's `from` occurred — the
-  rules of this module, over events given rather than read. Pure: it reads neither
-  the log nor the clock, so the same events judged at the same moment always give
-  the same verdicts.
-
-  - `now:` (required) — the moment of judgement, which tells `:pending` from
-    `:violated`.
-  - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
-    unavailable; a window that closed empty with one inside it is `:suspended`.
-    Defaults to none.
-
-  Occurrences of types other than the trace's three are ignored. For a trace with an
-  `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
-  it; one without a payload, or with an identity field under an atom key, raises
-  `ArgumentError` naming the field — read as missing, it would pair every such event
-  with every other and resolve items it is not about. An `eventually` or `or_else`
-  without every identity field is about no item, and is left out.
-  """
+  # Verdicts for every run in `occurrences` in which the trace's `from` occurred — the
+  # rules of this module, over events given rather than read. Pure: it reads neither
+  # the log nor the clock, so the same events judged at the same moment always give
+  # the same verdicts.
+  #
+  # - `now:` (required) — the moment of judgement, which tells `:pending` from
+  #   `:violated`.
+  # - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
+  #   unavailable; a window that closed empty with one inside it is `:suspended`.
+  #   Defaults to none.
+  #
+  # Occurrences of types other than the trace's three are ignored. For a trace with an
+  # `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
+  # it; one without a payload, or with an identity field under an atom key, raises
+  # `ArgumentError` naming the field — read as missing, it would pair every such event
+  # with every other and resolve items it is not about. An `eventually` or `or_else`
+  # without every identity field is about no item, and is left out.
+  @doc false
   @spec judge(trace(), [occurrence()], keyword()) :: [verdict()]
   def judge(trace, occurrences, opts) do
     now = Keyword.fetch!(opts, :now)
@@ -411,14 +409,14 @@ defmodule EhOsContract.Trace do
   defp aggregate_resolved(item_verdicts, :satisfied),
     do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
 
-  @doc """
-  Verdicts collapsed to numbers — this is the shape that goes into the report.
-
-  `satisfied` is broken down by `via`, because "satisfied through `or_else`" is
-  different business information from "satisfied through `eventually`" despite the
-  identical verdict: in both cases the agreement was kept, but in one the month
-  opened and in the other it stalled.
-  """
+  # Verdicts collapsed to numbers — this is the shape that goes into the report.
+  #
+  # `satisfied` is broken down by `via`, because "satisfied through `or_else`" is
+  # different business information from "satisfied through `eventually`" despite the
+  # identical verdict: in both cases the agreement was kept, but in one the month
+  # opened and in the other it stalled.
+  # Called by conformance.ex.
+  @doc false
   @spec summary([verdict()]) :: map()
   def summary(verdicts) do
     %{

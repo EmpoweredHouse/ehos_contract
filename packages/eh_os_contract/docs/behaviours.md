@@ -298,7 +298,7 @@ is bounded by the implementation.
 `dispatch/3` and `record/3` from the application's own code are not asked: the
 struct it builds is trusted, as everything else in it is. A node with a contract
 declaring a supplied field does not start without an implementation configured,
-one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (`EhOsContract.Supplier.check!/1`, at the engine's boot); the
+one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (checked at the engine's boot); the
 Mix tasks that only read contracts do not ask.
 
 ### Callbacks

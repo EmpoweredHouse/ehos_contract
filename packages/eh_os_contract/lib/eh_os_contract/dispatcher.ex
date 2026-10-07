@@ -138,16 +138,8 @@ defmodule EhOsContract.Dispatcher do
           | :key_too_long
           | {:not_supplied, term()}
 
-  @doc """
-  Dispatches `command`, a struct a v2 contract generated, to `contract`.
-
-  `opts`: `actor:` (an `EhOsContract.Actor`, required), `idempotency_key:` (opaque,
-  never personal data), `correlation_id:` (a UUID; a new one when missing) and
-  `causation_id:`. `supply: true`, which `call/3` sets, asks the
-  `EhOsContract.Supplier` for the fields declared `supplied_by: :host` once the actor
-  is authorized (plan T1); the application's own code leaves it out, and then fills
-  those fields itself — its struct is trusted, and checked as every other field is.
-  """
+  # Documented on `EhOsContract.dispatch/3`, which delegates here.
+  @doc false
   @spec dispatch(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, Rejection.t() | refusal()}
   def dispatch(contract, %module{} = command, opts) do
@@ -176,25 +168,8 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  @doc """
-  Records `event`, which the contract declares `recorded_by:` — an observation, or
-  an integration's answer — without a decision (v2 §11, D6).
-
-  A credential's actor is asked of the `EhOsContract.Authorizer` for the event's
-  capability, `<domain>.<event>` (`EhOsContract.Model.capabilities/1`), as a
-  command's is — a person who saw something, reception marking the patient's
-  arrival. An event only `:system` actors record has no capability, and a
-  credential is refused `:missing_capability`. A `:system` actor records it when the
-  event's `recorded_by:` names it: an integration writing down what a system
-  answered. Until E9a a credential was
-  refused, because no capability named a recording. Otherwise it goes as a command
-  does — the fields checked, the
-  idempotency key honoured, the unit's stream version as the append's condition,
-  the consumers in the transaction run, the `accepted` row written with the type
-  `"record:<event>"` — only without a decider. An event of an aggregate whose
-  identity is generated is recorded only for one a command created:
-  `{:error, :not_created}` otherwise.
-  """
+  # Documented on `EhOsContract.record/3`, which delegates here.
+  @doc false
   @spec record(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, refusal() | :not_created}
   def record(contract, %module{} = event, opts) do
@@ -232,27 +207,8 @@ defmodule EhOsContract.Dispatcher do
     }
   end
 
-  @doc """
-  Asks a query of a v2 contract, and returns what its implementation answers (v2
-  §11, D10). Nothing is written: a read is not a fact.
-
-  A credential's actor is asked of the `EhOsContract.Authorizer` for the query's
-  capability, and for a scoped query with the value of the scope parameter, so a
-  value outside the grant is refused before the implementation runs. A `:system`
-  actor the query's `by:` names is the application's own code, and is not narrowed.
-
-  **Every row is checked again**: for a credential's actor, a row whose scope field
-  is not among the values the credential grants raises
-  `EhOsContract.Authorizer.OutsideScopeError`, so a wrong `where` cannot hand one
-  clinic another's rows. So do rows that are not the read model's.
-
-  **Read your writes** (v2 §11): `min_position:` — the `position` of a dispatch's
-  receipt — waits until the read model the query reads has taken that position,
-  polling its subscription row for up to `wait:` milliseconds (5000), and then
-  refuses with `{:error, :not_caught_up}` rather than answer from before the write.
-  A read model delivered in the transaction has taken every committed event, unless
-  it is being rebuilt.
-  """
+  # Documented on `EhOsContract.query/3`, which delegates here.
+  @doc false
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, refusal()}
   def query(contract, %module{} = params, opts) do
@@ -311,13 +267,13 @@ defmodule EhOsContract.Dispatcher do
   @typedoc "What `call/3` is asked: a command, a recording or a query, by its capability."
   @type call :: {:command | :record | :query, String.t()}
 
-  @doc """
-  The contract and the declaration `capability` names among `contracts`: a command,
-  a recording or a query, as `kind` says, under the name EHOS grants it by
-  (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
-  them declares as that kind — `<name>.subscribe` among them, which no caller
-  calls.
-  """
+  # The contract and the declaration `capability` names among `contracts`: a command,
+  # a recording or a query, as `kind` says, under the name EHOS grants it by
+  # (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
+  # them declares as that kind — `<name>.subscribe` among them, which no caller
+  # calls.
+  # Called by plug.ex.
+  @doc false
   @spec route([module()], :command | :record | :query, String.t()) ::
           {:ok, Model.t(), map()} | {:error, :not_found}
   def route(contracts, kind, capability) do
@@ -341,40 +297,8 @@ defmodule EhOsContract.Dispatcher do
     end)
   end
 
-  @doc """
-  The one way in for what arrives from outside the application's code: a capability's
-  name and the data as a caller sent it, with the credential it came with
-  (plan E12d). `EhOsContract.Plug` is one door onto it; a form, or a job that carries
-  a person's credential, is another.
-
-      EhOsContract.call(
-        {:command, "rehmed.record_payment"},
-        %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
-        actor: actor, idempotency_key: "req-81"
-      )
-
-  **Whether the caller may is answered first.** Data that is not a map, fields that do
-  not decode against the declaration, a correlation id that is not a UUID: each is
-  asked of the `EhOsContract.Authorizer` as the call would have been, so a caller
-  without the capability is refused whatever it sent, and learns nothing about the
-  declaration's fields; one with it is told what is wrong. Then it goes through
-  `dispatch/3`, `record/3` or `query/3`, so everything they check is checked here
-  the same way.
-
-  `input` is a map with string keys, as JSON decodes; a query's values may come as
-  text, as a query string carries them. `opts`: `actor:`, a credential's
-  `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
-  which dispatches structs; `contracts:`, the contracts this door serves (every
-  registered one by default); for a command or a recording `idempotency_key:` and
-  `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
-  to read a write, as `query/3` takes them — set by the door's own code, an integer
-  each, never taken from the caller: `wait:` bounds how long the call polls.
-
-  Besides what those three answer: `{:error, :not_found}` for a capability none of
-  the contracts declares as that kind, `{:error, :no_actor}` without a credential,
-  and, once the caller may, `{:error, :not_an_object}` and
-  `{:error, :correlation_id_is_not_a_uuid}`.
-  """
+  # Documented on `EhOsContract.call/3`, which delegates here.
+  @doc false
   @spec call(call(), term(), keyword() | map()) ::
           {:ok, Receipt.t() | [struct()] | struct() | nil}
           | {:error,
@@ -722,12 +646,11 @@ defmodule EhOsContract.Dispatcher do
   defp keyed(%{idempotency_key: key}),
     do: if(idempotency_key?(key), do: :ok, else: {:error, :idempotency_key_invalid})
 
-  @doc """
-  Whether `key` is an idempotency key the log holds: printable ASCII (`0x21`–`0x7E`) of 1 to
-  255 bytes, what a text column, `jsonb` and a btree entry all take. A command with any other
-  key is refused with `:idempotency_key_invalid`. The keys the library derives for the
-  commands a reaction issues hold to it too.
-  """
+  # Whether `key` is an idempotency key the log holds: printable ASCII (`0x21`–`0x7E`) of 1 to
+  # 255 bytes, what a text column, `jsonb` and a btree entry all take. A command with any other
+  # key is refused with `:idempotency_key_invalid`. The keys the library derives for the
+  # commands a reaction issues hold to it too.
+  @doc false
   # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
   @spec idempotency_key?(term()) :: boolean()
   def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/

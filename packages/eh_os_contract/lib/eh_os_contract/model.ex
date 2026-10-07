@@ -571,10 +571,10 @@ defmodule EhOsContract.Model do
   @spec version(contract()) :: String.t()
   def version(contract), do: contract!(contract).version
 
-  @doc """
-  One digest per declaration, keyed `"<kind>:<name>"`. What
-  `EhOsContract.Deployment` records to say which declaration moved.
-  """
+  # One digest per declaration, keyed `"<kind>:<name>"`. What
+  # `EhOsContract.Deployment` records to say which declaration moved.
+  # Called by deployment.ex.
+  @doc false
   @spec digests(contract()) :: %{String.t() => String.t()}
   def digests(contract), do: contract!(contract).digests
 end

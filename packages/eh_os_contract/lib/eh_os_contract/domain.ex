@@ -73,21 +73,19 @@ defmodule EhOsContract.Domain do
       ]
     ]
 
-  @doc """
-  The words of the DSL: for every entity, by its path from the module body, the keys
-  it takes — positional arguments first, then options, in the order the entity
-  defines them. Derived from the extension, never listed by hand, so a test that
-  pins it notices every word added or removed.
-  """
+  # The words of the DSL: for every entity, by its path from the module body, the keys
+  # it takes — positional arguments first, then options, in the order the entity
+  # defines them. Derived from the extension, never listed by hand, so a test that
+  # pins it notices every word added or removed.
+  @doc false
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary, do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Domain.Dsl.sections())
 
-  @doc """
-  Whether `zone` is one the time zone database Elixir is configured with knows
-  (plan W2): asked as dispatch asks it, so a database module that is configured but
-  not there — Tz's database without `{:tz, …}` among the deps — answers `false`, as an
-  unknown zone does, rather than raising.
-  """
+  # Whether `zone` is one the time zone database Elixir is configured with knows
+  # (plan W2): asked as dispatch asks it, so a database module that is configured but
+  # not there — Tz's database without `{:tz, …}` among the deps — answers `false`, as an
+  # unknown zone does, rather than raising.
+  @doc false
   @spec time_zone_known?(term()) :: boolean()
   def time_zone_known?(zone) when is_binary(zone) do
     match?({:ok, _}, DateTime.shift_zone(~U[2026-01-01 00:00:00Z], zone))

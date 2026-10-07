@@ -61,24 +61,26 @@ defmodule EhOsContract.Relay do
 
   alias EhOsContract.{Bus, Event}
 
-  @doc "How many events one step of a relay reads and publishes at most."
+  # How many events one step of a relay reads and publishes at most.
+  # Called by subscription.ex.
+  @doc false
   @spec batch() :: pos_integer()
   def batch, do: 100
 
-  @doc """
-  The message a relay publishes for `event`: its id is `<event id>/<name>`, where
-  `name` is the versioned name the publication declares, its correlation the
-  event's, and its payload the declared `fields` of the event, as stored, and nothing
-  else. A field the event does not carry is `nil`.
-
-  Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
-  the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
-  same values — a fact recorded twice, or a log moved under new ids — has the key of
-  the first. Without such fields, or with one of them `nil`, the key is the id.
-
-  It takes the payload as stored, so the relay holds each event to the version its
-  fields were written with before it builds the message (plan W1).
-  """
+  # The message a relay publishes for `event`: its id is `<event id>/<name>`, where
+  # `name` is the versioned name the publication declares, its correlation the
+  # event's, and its payload the declared `fields` of the event, as stored, and nothing
+  # else. A field the event does not carry is `nil`.
+  #
+  # Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
+  # the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
+  # same values — a fact recorded twice, or a log moved under new ids — has the key of
+  # the first. Without such fields, or with one of them `nil`, the key is the id.
+  #
+  # It takes the payload as stored, so the relay holds each event to the version its
+  # fields were written with before it builds the message (plan W1).
+  # Called by subscription.ex.
+  @doc false
   @spec message(map(), Event.t()) :: Bus.Message.t()
   def message(%{publication: publication}, %Event{} = event) do
     stored = event.payload || %{}

@@ -179,21 +179,19 @@ defmodule EhOsContract.Deployment do
   defp key(%{kind: :process, id: id}), do: "process:" <> id
   defp key(%{id: id}), do: id
 
-  @doc """
-  A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
-  `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
-  changes no run's verdict, so it must not draw a boundary that stops judging the
-  runs before it. Public for its test.
-  """
+  # A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
+  # `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
+  # changes no run's verdict, so it must not draw a boundary that stops judging the
+  # runs before it. Public for its test.
+  @doc false
   @spec promise_digest(map()) :: String.t()
   def promise_digest(promise),
     do: promise |> Map.take([:from, :eventually, :within, :or_else]) |> EhOsContract.Digest.hash()
 
-  @doc """
-  A v2 contract's declared steps as the labels a deployment records:
-  `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
-  a timer and an effect.
-  """
+  # A v2 contract's declared steps as the labels a deployment records:
+  # `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
+  # a timer and an effect.
+  @doc false
   @spec edge_labels(module()) :: [String.t()]
   def edge_labels(contract) do
     for step <- EhOsContract.Paths.declared(contract) do
@@ -216,23 +214,23 @@ defmodule EhOsContract.Deployment do
     )
   end
 
-  @doc """
-  What changed between two recorded deployments.
-
-  Paths are reported separately from events because they move independently: a
-  reaction can add a path without an event being added or removed.
-
-  `declarations` is the part event names and edges could never show. A promise
-  whose `within` moved, an event whose field became `personal:`, a process whose
-  `correlate` moved, a field type that changed — all of them move
-  `contract_version` and none of them adds or removes an event or a path, so
-  until this key existed the diff reported a change to the agreement as four
-  empty lists.
-
-  It is `:not_recorded` when either side predates the column. "Compared, nothing
-  moved" and "could not be compared" are different statements, and collapsing
-  them would put a false negative exactly where the mechanism is meant to speak.
-  """
+  # What changed between two recorded deployments.
+  #
+  # Paths are reported separately from events because they move independently: a
+  # reaction can add a path without an event being added or removed.
+  #
+  # `declarations` is the part event names and edges could never show. A promise
+  # whose `within` moved, an event whose field became `personal:`, a process whose
+  # `correlate` moved, a field type that changed — all of them move
+  # `contract_version` and none of them adds or removes an event or a path, so
+  # until this key existed the diff reported a change to the agreement as four
+  # empty lists.
+  #
+  # It is `:not_recorded` when either side predates the column. "Compared, nothing
+  # moved" and "could not be compared" are different statements, and collapsing
+  # them would put a false negative exactly where the mechanism is meant to speak.
+  # Called by v01.ex.
+  @doc false
   @spec diff(t(), t()) :: change()
   def diff(%__MODULE__{} = old, %__MODULE__{} = new) do
     %{
@@ -260,19 +258,19 @@ defmodule EhOsContract.Deployment do
     }
   end
 
-  @doc """
-  When each declaration last changed, for one contract or process module.
-
-  The answer `EhOsContract.Conformance` needs in order to stop folding runs judged under a
-  superseded promise into the same counts as runs judged under the current one.
-
-  Three exclusions, each of which would otherwise be a lie. Rows with no recorded
-  digests drop out **before** pairing, so the day the column arrived does not read
-  as "every declaration changed at once". A key absent from the older row is a
-  birth rather than a change, because no run can have been judged under a rule
-  that did not yet exist. And a later change overwrites an earlier one, so the
-  value is the *last* time this declaration moved, not the first.
-  """
+  # When each declaration last changed, for one contract or process module.
+  #
+  # The answer `EhOsContract.Conformance` needs in order to stop folding runs judged under a
+  # superseded promise into the same counts as runs judged under the current one.
+  #
+  # Three exclusions, each of which would otherwise be a lie. Rows with no recorded
+  # digests drop out **before** pairing, so the day the column arrived does not read
+  # as "every declaration changed at once". A key absent from the older row is a
+  # birth rather than a change, because no run can have been judged under a rule
+  # that did not yet exist. And a later change overwrites an earlier one, so the
+  # value is the *last* time this declaration moved, not the first.
+  # Called by conformance.ex.
+  @doc false
   @spec declaration_boundaries(module()) :: %{String.t() => DateTime.t()}
   def declaration_boundaries(contract) do
     contract
@@ -289,20 +287,20 @@ defmodule EhOsContract.Deployment do
     end)
   end
 
-  @doc """
-  The fourth question, assembled for one contract: what is deployed, since when,
-  which versions the log holds, and what the last change was.
-
-  `since` is the first time an event was seen under the deployed wiring, not a
-  deploy timestamp — the engine is not told about deploys, it observes them. A
-  deployment that has emitted nothing yet has `since: nil`, which is honest: it
-  is deployed and unproven.
-
-  A process module stamps no event with its version, so nothing in the log can say
-  when it came into force: its `since` is when the deployment that carries its version
-  was first recorded, `nil` when none was, and it has no versions in the log (plan DD,
-  P2d, #213).
-  """
+  # The fourth question, assembled for one contract: what is deployed, since when,
+  # which versions the log holds, and what the last change was.
+  #
+  # `since` is the first time an event was seen under the deployed wiring, not a
+  # deploy timestamp — the engine is not told about deploys, it observes them. A
+  # deployment that has emitted nothing yet has `since: nil`, which is honest: it
+  # is deployed and unproven.
+  #
+  # A process module stamps no event with its version, so nothing in the log can say
+  # when it came into force: its `since` is when the deployment that carries its version
+  # was first recorded, `nil` when none was, and it has no versions in the log (plan DD,
+  # P2d, #213).
+  # Called by conformance.ex.
+  @doc false
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []) do
     case Model.fetch(contract) do

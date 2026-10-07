@@ -60,12 +60,11 @@ defmodule EhOsContract.Contract do
       ]
     ]
 
-  @doc """
-  The words of the DSL: for every entity, by its path from the module body, the keys
-  it takes — positional arguments first, then options, in the order the entity
-  defines them. Derived from the extension, never listed by hand, so a test that
-  pins it notices every word added or removed.
-  """
+  # The words of the DSL: for every entity, by its path from the module body, the keys
+  # it takes — positional arguments first, then options, in the order the entity
+  # defines them. Derived from the extension, never listed by hand, so a test that
+  # pins it notices every word added or removed.
+  @doc false
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary,
     do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Contract.Dsl.sections())
