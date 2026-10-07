@@ -35,9 +35,10 @@ defmodule Rehmed.Contracts.Scheduling do
   ## No process
 
   The contract holds the visit as a unit, not as a run. The distillation describes one
-  run per visit across booking, documentation and settlement (finding 1); no single
-  contract can hold it, since a process sits in one contract until the process module
-  (plan DD, P2b). Statutory reporting's `clinical_visit` covers part of it and includes
+  run per visit across booking, documentation and settlement (finding 1). Today it
+  could be written only inside one of the three contracts, consuming the others'
+  events just for the run, and it belongs to none of them; its place is the process
+  module (plan DD, P2b). Statutory reporting's `clinical_visit` covers part of it and includes
   `visit_completed` from here. Which of the three ends a visit reached is in its
   events: the state records only that it ended.
 

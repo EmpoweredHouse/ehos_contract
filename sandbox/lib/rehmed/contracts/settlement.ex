@@ -48,8 +48,9 @@ defmodule Rehmed.Contracts.Settlement do
   `DEC-01` made documentation and settlement independent and concurrent — the
   specialist writes while reception settles — so no promise crosses them. The
   distillation's process 4 is a visit's settlement, but it argues for one run per visit
-  across booking, documentation and settlement (finding 1), which no single contract
-  can hold until the process module (plan DD, P2b). The contract declares none.
+  across booking, documentation and settlement (finding 1), which belongs to none of
+  the three contracts; its place is the process module (plan DD, P2b). The contract
+  declares none.
 
   The one timing anybody described is that a mid-visit addition reaches the desk
   before the patient does — a moment, answered by a push (`DEC-17`), with no interval
