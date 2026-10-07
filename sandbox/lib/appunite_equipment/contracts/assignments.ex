@@ -7,8 +7,9 @@ defmodule AppuniteEquipment.Contracts.Assignments do
   It decides nothing. Every decision about a computer is
   `AppuniteEquipment.Contracts.Computers`'s, because every rule is about one
   computer; this contract takes the events of an assignment from it and
-  declares their order, which the computer's own run cannot, since a computer goes
-  round the loop many times. So the report can say, per assignment, which ones were
+  declares their order per assignment, which the computer's lifecycle cannot: a
+  computer goes round the loop many times, and its lifecycle says where it is, not
+  which issue a return answers. So the report can say, per assignment, which ones were
   issued and never came back, and which came back without a return being started.
 
   A computer stolen from the employee ends the assignment too: `lost` names it.

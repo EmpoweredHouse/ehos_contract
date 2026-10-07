@@ -10,23 +10,21 @@ defmodule AppuniteEquipment.Contracts.Computers do
   engine follows from the events (#99); what is to be done follows from it and the
   setup, and is the Inventory read model's.
 
-  ## One aggregate, and a run per assignment
+  ## One aggregate with a lifecycle, and a run per assignment
 
   Every rule in the material is about one computer — whether it is set up, where it
   is, whether it is for sale — so every decision is this aggregate's, over one
   stream. The process owner chose to verify the run **per assignment**, from the
-  issue to the return (distillation, "Zanim przeczytasz", shape B). A contract holds
-  one process and every local event must carry its correlation, so that run is a
+  issue to the return (distillation, "Zanim przeczytasz", shape B). That run is a
   sibling contract, `AppuniteEquipment.Contracts.Assignments`, which consumes the
-  events of an assignment. What is left here is the computer's own run, from
-  the invoice to one of its four ends, in four stages: intake, use, sale, ending.
-  The computer goes round the same loop for years, and a contract's stages claim an
-  order only forwards, so the whole loop is one stage, `:use`, inside which no order
-  is claimed. Its beginning and its end go only forwards — nothing is registered
-  after it was in use, and nothing takes a computer off sale — and that is what the
-  stages claim. A first version had no stages at all, and its diagram was one row
-  of seventeen boxes that said nothing (3 October 2026). The order inside the loop is
-  the aggregate's lifecycle, not the process's (#99, 4 October 2026).
+  events of an assignment.
+
+  A computer's own life — from the invoice, round the same loop for years, to one
+  of its four ends — is not a run here but the aggregate's lifecycle: the engine
+  follows where the computer is from the events, and the four final statuses are
+  its ends (#99, 4 October 2026). The contract declares no process; the `computer`
+  it had, with the stages intake, use, sale and ending, was there until plan DD,
+  P1d (#195) only because every contract once had to name one.
 
   ## What is left out, and why
 
@@ -276,120 +274,111 @@ defmodule AppuniteEquipment.Contracts.Computers do
       rejects: :only_from_the_office,
       source: "A:F „Utylizacja”, E"
 
-    stage :intake do
-      # The invoice gives the price, the purchase date — the warranty runs from it,
-      # though the reseller keeps that register — and the serial number.
-      event :received, "Komputer przyszedł i został spisany z faktury",
-        depends_on: :apple_reseller,
-        source: "T l.88–90, E, cf.pdf" do
-        field :profile, :hardware_profile
-        field :serial_number, :serial_number
-        field :chip, :chip
-        field :price, :money
-        field :purchased_on, :date
-        field :invoice_number, :id
-      end
+    # The invoice gives the price, the purchase date — the warranty runs from it,
+    # though the reseller keeps that register — and the serial number.
+    event :received, "Komputer przyszedł i został spisany z faktury",
+      depends_on: :apple_reseller,
+      source: "T l.88–90, E, cf.pdf" do
+      field :profile, :hardware_profile
+      field :serial_number, :serial_number
+      field :chip, :chip
+      field :price, :money
+      field :purchased_on, :date
+      field :invoice_number, :id
     end
 
-    # The loop: issued, returned, cleaned, set up, issued again — for years. The run
-    # claims no order inside: the computer's lifecycle does, and the assignment's own
-    # run (`Assignments`) claims the order of one issue and its return.
-    stage :use do
-      event :set_up, "Komputer ustawiony (MDM, szyfrowanie dysku)", source: "E"
+    # The loop: issued, returned, cleaned, set up, issued again — for years. Its
+    # order is the lifecycle's, and the assignment's own run (`Assignments`) claims
+    # the order of one issue and its return.
+    event :set_up, "Komputer ustawiony (MDM, szyfrowanie dysku)", source: "E"
 
-      # The handover document is written from the serial number and this date, which is
-      # the shipping date (E). Picked up in person, it has no tracking number.
-      # Assigning the person, setting up their account, packing and calling the
-      # courier are one move (E, 4 October 2026), and it answers one demand.
-      event :issued, "Wydano komputer pracownikowi", source: "T l.100–102, E" do
-        field :demand_id, :id
-        field :assignment_id, :id
-        field :employee_id, :id, subject: :employee
-        field :shipped_on, :date
-        field :tracking_number, :id, optional: true
-        field :as_replacement, :boolean
-      end
-
-      event :return_started, "Pracownik zwraca komputer",
-        source: "A:F „W trakcie zwrotu”, T l.100" do
-        field :assignment_id, :id
-        field :reason, :return_reason
-        field :returned_on, :date
-      end
-
-      # Seen arriving, not decided: nothing can refuse a parcel that came back.
-      event :returned, "Zwrócony komputer dotarł do biura",
-        recorded_by: :equipment_manager,
-        source: "A:F" do
-        field :assignment_id, :id
-      end
-
-      event :wiped, "Komputer sformatowany przed odłożeniem na półkę",
-        source: "A:G „Do wyczyszczenia”, E"
-
-      event :sent_for_service, "Komputer wysłany do Innergo",
-        source: "A:F „Innergo spa”, T l.106" do
-        field :reason, :service_reason
-      end
-
-      # What Innergo answered, retyped from its panel: the report used to go into a
-      # comment on the computer's row (T l.106), the cost into the spreadsheet (E).
-      # The diagnosis is about the computer, never a person, so it stays free text.
-      event :service_returned, "Komputer wrócił z Innergo z diagnozą",
-        recorded_by: :equipment_manager,
-        depends_on: :apple_reseller,
-        source: "T l.106–108, E" do
-        field :diagnosis, :string
-        field :cost, :money, optional: true
-      end
+    # The handover document is written from the serial number and this date, which is
+    # the shipping date (E). Picked up in person, it has no tracking number.
+    # Assigning the person, setting up their account, packing and calling the
+    # courier are one move (E, 4 October 2026), and it answers one demand.
+    event :issued, "Wydano komputer pracownikowi", source: "T l.100–102, E" do
+      field :demand_id, :id
+      field :assignment_id, :id
+      field :employee_id, :id, subject: :employee
+      field :shipped_on, :date
+      field :tracking_number, :id, optional: true
+      field :as_replacement, :boolean
     end
 
-    # The sale goes only forwards: no command takes a computer off sale and back
+    event :return_started, "Pracownik zwraca komputer",
+      source: "A:F „W trakcie zwrotu”, T l.100" do
+      field :assignment_id, :id
+      field :reason, :return_reason
+      field :returned_on, :date
+    end
+
+    # Seen arriving, not decided: nothing can refuse a parcel that came back.
+    event :returned, "Zwrócony komputer dotarł do biura",
+      recorded_by: :equipment_manager,
+      source: "A:F" do
+      field :assignment_id, :id
+    end
+
+    event :wiped, "Komputer sformatowany przed odłożeniem na półkę",
+      source: "A:G „Do wyczyszczenia”, E"
+
+    event :sent_for_service, "Komputer wysłany do Innergo",
+      source: "A:F „Innergo spa”, T l.106" do
+      field :reason, :service_reason
+    end
+
+    # What Innergo answered, retyped from its panel: the report used to go into a
+    # comment on the computer's row (T l.106), the cost into the spreadsheet (E).
+    # The diagnosis is about the computer, never a person, so it stays free text.
+    event :service_returned, "Komputer wrócił z Innergo z diagnozą",
+      recorded_by: :equipment_manager,
+      depends_on: :apple_reseller,
+      source: "T l.106–108, E" do
+      field :diagnosis, :string
+      field :cost, :money, optional: true
+    end
+
+    # The sale goes only forwards: no transition takes a computer off sale and back
     # into use.
-    stage :sale do
-      # The asking price comes from similar computers on Allegro (E).
-      event :listed_for_sale, "Komputer wystawiony na sprzedaż", source: "A:G „For sale”, E" do
-        field :asking_price, :money
-      end
-
-      event :reserved, "Komputer zarezerwowany na ryneczku", source: "T l.96, E" do
-        field :buyer_id, :id, subject: :employee
-      end
-
-      event :reservation_dropped, "Rezerwacja przepadła", source: "E"
-
-      event :listed_externally, "Komputer wystawiony na Allegro", source: "E"
+    #
+    # The asking price comes from similar computers on Allegro (E).
+    event :listed_for_sale, "Komputer wystawiony na sprzedaż", source: "A:G „For sale”, E" do
+      field :asking_price, :money
     end
 
-    # Every way a computer ends. A loss comes from any stage, and a computer given
-    # away or disposed of from the office skips the sale: both only skip forwards.
-    stage :ending do
-      # Sold when accounting issues the invoice, and recorded by the person who
-      # manages the equipment (E). A buyer from outside is accounting's data, never
-      # this contract's.
-      event :sold, "Komputer sprzedany", terminal: true, source: "T l.110–112, E" do
-        field :price, :money
-        field :invoice_number, :id
-        field :channel, :sale_channel
-      end
+    event :reserved, "Komputer zarezerwowany na ryneczku", source: "T l.96, E" do
+      field :buyer_id, :id, subject: :employee
+    end
 
-      event :donated, "Komputer oddany na cele charytatywne",
-        terminal: true,
-        source: "A:F „Charity”"
+    event :reservation_dropped, "Rezerwacja przepadła", source: "E"
 
-      event :disposed, "Komputer zutylizowany", terminal: true, source: "A:F „Utylizacja”"
+    event :listed_externally, "Komputer wystawiony na Allegro", source: "E"
 
-      # One was stolen recently (E). Found again is "a small chance", and not modelled.
-      # Only from an employee (#126), so it names the assignment it ends and the person
-      # who now needs another computer (cf.pdf: a theft leads back to a purchase or the
-      # shelf).
-      event :lost, "Komputer zgubiony albo skradziony",
-        recorded_by: :equipment_manager,
-        terminal: true,
-        source: "A:F „Lost”, E, cf.pdf" do
-        field :assignment_id, :id
-        field :employee_id, :id, subject: :employee
-      end
+    # Every way a computer ends, each a final status of the lifecycle. A computer
+    # given away or disposed of from the office skips the sale.
+    #
+    # Sold when accounting issues the invoice, and recorded by the person who
+    # manages the equipment (E). A buyer from outside is accounting's data, never
+    # this contract's.
+    event :sold, "Komputer sprzedany", source: "T l.110–112, E" do
+      field :price, :money
+      field :invoice_number, :id
+      field :channel, :sale_channel
+    end
+
+    event :donated, "Komputer oddany na cele charytatywne", source: "A:F „Charity”"
+
+    event :disposed, "Komputer zutylizowany", source: "A:F „Utylizacja”"
+
+    # One was stolen recently (E). Found again is "a small chance", and not modelled.
+    # Only from an employee (#126), so it names the assignment it ends and the person
+    # who now needs another computer (cf.pdf: a theft leads back to a purchase or the
+    # shelf).
+    event :lost, "Komputer zgubiony albo skradziony",
+      recorded_by: :equipment_manager,
+      source: "A:F „Lost”, E, cf.pdf" do
+      field :assignment_id, :id
+      field :employee_id, :id, subject: :employee
     end
   end
 
@@ -443,15 +432,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   query :inventory_list, "Lista komputerów", reads: :inventory, by: :equipment_manager
-
-  process :computer, "Komputer: od faktury do sprzedaży, oddania, utylizacji albo utraty",
-    accountable: :equipment_manager do
-    correlate :computer_id
-    stage :intake
-    stage :use
-    stage :sale
-    stage :ending
-  end
 
   scenario "komputer z faktury Innergo — spisany do inventory" do
     command :receive_computer, %{

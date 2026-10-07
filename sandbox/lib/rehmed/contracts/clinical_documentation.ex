@@ -1,7 +1,11 @@
 defmodule Rehmed.Contracts.ClinicalDocumentation do
   @moduledoc """
   Clinical documentation (`CTX-03`): the codes of a visit and the specialist's
-  clinical close, which is what hands a medical event to statutory reporting.
+  clinical close, which is what hands a medical event to statutory reporting. It
+  declares no process: the visit's run spans booking, documentation and settlement
+  (distillation, finding 1), so it belongs to none of the three contracts; its place
+  is the process module (plan DD, P2b). Statutory reporting's `clinical_visit` includes the clinical close
+  from here.
 
   Written from `AGG-02` in `2-Solution/20-aggregates.md` and process 2 of
   `docs/rehmed-2026-08-18-distillation.md` (v2 plan, E9), the best-evidenced process
@@ -100,33 +104,27 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
       emits: :documentation_overdue_task_created,
       source: "P-23; decyzja klienta 2026-08-13"
 
-    stage :documentation do
-      # `E-44`, observed; about two minutes per code on a paper cheat-sheet today.
-      # Corrected codes are a new fact rather than an overwrite, which is what the
-      # regulation's "data obtained later" path suggests (distillation, process 2).
-      event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do
-        field :patient_id, :id, subject: :patient
-        field :icd10, :string, personal: :patient_id
-        field :icd9, :string, personal: :patient_id
-      end
-
-      event :documentation_overdue_task_created, "Utworzono zadanie o zaległej dokumentacji",
-        source: "P-23, P-25; decyzja klienta 2026-08-13"
+    # `E-44`, observed; about two minutes per code on a paper cheat-sheet today.
+    # Corrected codes are a new fact rather than an overwrite, which is what the
+    # regulation's "data obtained later" path suggests (distillation, process 2).
+    event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do
+      field :patient_id, :id, subject: :patient
+      field :icd10, :string, personal: :patient_id
+      field :icd9, :string, personal: :patient_id
     end
 
-    stage :closing do
-      # `E-52`, "triggers P1 dispatch". The codes are optional because a service that
-      # is not reported closes without them.
-      event :visit_closed_clinically, "Zamknięto wizytę przez specjalistę",
-        terminal: true,
-        source: "E-52" do
-        field :patient_id, :id, subject: :patient
-        field :pesel, :string, personal: :patient_id
-        field :icd10, :string, personal: :patient_id, optional: true
-        field :icd9, :string, personal: :patient_id, optional: true
-        field :practitioner_number, :id
-        field :p1_reported, :boolean
-      end
+    event :documentation_overdue_task_created, "Utworzono zadanie o zaległej dokumentacji",
+      source: "P-23, P-25; decyzja klienta 2026-08-13"
+
+    # `E-52`, "triggers P1 dispatch". The codes are optional because a service that
+    # is not reported closes without them.
+    event :visit_closed_clinically, "Zamknięto wizytę przez specjalistę", source: "E-52" do
+      field :patient_id, :id, subject: :patient
+      field :pesel, :string, personal: :patient_id
+      field :icd10, :string, personal: :patient_id, optional: true
+      field :icd9, :string, personal: :patient_id, optional: true
+      field :practitioner_number, :id
+      field :p1_reported, :boolean
     end
   end
 
@@ -139,18 +137,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
       issues: :create_documentation_overdue_task
 
     ends_on :visit_closed_clinically
-  end
-
-  process :visit_documentation,
-          "Dokumentacja wizyty: od wyjścia pacjenta do zamknięcia klinicznego" do
-    correlate :visit_id
-
-    stage :departure do
-      include :visit_completed
-    end
-
-    stage :documentation
-    stage :closing
   end
 
   scenario "fizjoterapeuta koduje rozpoznanie i procedurę" do

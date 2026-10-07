@@ -41,6 +41,16 @@ defmodule Taxvision.Contracts.RegistryWatch do
   profile's completion is recorded here, where the check reads it — ours, and said
   so. The historical-data checkbox (`ConfirmDataCompleteness`) is part of it.
 
+  ## No process of its own
+
+  The monthly check belongs to the accounting month's run: its verification stage
+  includes the confirmed data and the registries' verdict from here
+  (`Taxvision.Contracts.AccountingMonth`), and its promise starts on the
+  confirmation. The company's profile is onboarding's and has no run here. So the
+  contract declares no process; the `client` it had, with a `profile` and a
+  `verification` stage, was there until plan DD, P1d (#195) only because every
+  contract once had to name one.
+
   ## Left out
 
   The service status (lead / active / suspended for non-payment) and the VAT
@@ -107,48 +117,44 @@ defmodule Taxvision.Contracts.RegistryWatch do
       field :vat_status, :string
     end
 
-    stage :profile do
-      event :company_profile_completed, "Uzupełniono profil firmy",
-        source: "03 §4.1 CompanyProfileCompleted" do
-        field :legal_form, :string
-        field :vat_status, :string
-      end
+    event :company_profile_completed, "Uzupełniono profil firmy",
+      source: "03 §4.1 CompanyProfileCompleted" do
+      field :legal_form, :string
+      field :vat_status, :string
     end
 
-    stage :verification do
-      event :data_completeness_confirmed, "Potwierdzono komplet danych firmy na miesiąc",
-        source: "02 §3.1 DataCompletenessConfirmed" do
-        field :period_id, :period
-      end
+    event :data_completeness_confirmed, "Potwierdzono komplet danych firmy na miesiąc",
+      source: "02 §3.1 DataCompletenessConfirmed" do
+      field :period_id, :period
+    end
 
-      event :registry_status_checked,
-            "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
-            recorded_by: :registry_integration,
-            depends_on: :registries,
-            source: "02 §3.1 RegistryStatusChecked; WF 00:30:54" do
-        field :period_id, :period
-        field :legal_form, :string
-        field :vat_status, :string
-        field :vies_status, :string
-      end
+    event :registry_status_checked,
+          "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
+          recorded_by: :registry_integration,
+          depends_on: :registries,
+          source: "02 §3.1 RegistryStatusChecked; WF 00:30:54" do
+      field :period_id, :period
+      field :legal_form, :string
+      field :vat_status, :string
+      field :vies_status, :string
+    end
 
-      event :registry_check_logged, "Zapisano datę ostatniego sprawdzenia rejestrów",
-        source: "02 §3.1 RegistryCheckLogged" do
-        field :period_id, :period
-      end
+    event :registry_check_logged, "Zapisano datę ostatniego sprawdzenia rejestrów",
+      source: "02 §3.1 RegistryCheckLogged" do
+      field :period_id, :period
+    end
 
-      event :registry_data_consistent, "Dane firmy zgadzają się z rejestrami",
-        source: "02 §3.1 RegistryDataConsistent" do
-        field :period_id, :period
-      end
+    event :registry_data_consistent, "Dane firmy zgadzają się z rejestrami",
+      source: "02 §3.1 RegistryDataConsistent" do
+      field :period_id, :period
+    end
 
-      # The differences, not the company's whole data set: legal form and VAT status
-      # are public registry data, not a person's, so nothing here is sealed.
-      event :registry_discrepancy_detected, "Dane firmy nie zgadzają się z rejestrami",
-        source: "02 §3.1 RegistryDiscrepancyDetected; WF 00:32:27" do
-        field :period_id, :period
-        field :differences, {:list, :registry_difference}
-      end
+    # The differences, not the company's whole data set: legal form and VAT status
+    # are public registry data, not a person's, so nothing here is sealed.
+    event :registry_discrepancy_detected, "Dane firmy nie zgadzają się z rejestrami",
+      source: "02 §3.1 RegistryDiscrepancyDetected; WF 00:32:27" do
+      field :period_id, :period
+      field :differences, {:list, :registry_difference}
     end
   end
 
@@ -182,12 +188,6 @@ defmodule Taxvision.Contracts.RegistryWatch do
       at: :check_at,
       issues: :check_registries,
       source: "02-event-storming.md §3.1"
-  end
-
-  process :client, "Firma klienta: dane i zgodność z rejestrami", accountable: :accountant do
-    correlate :company_id
-    stage :profile
-    stage :verification
   end
 
   scenario "księgowa uzupełnia profil firmy" do
