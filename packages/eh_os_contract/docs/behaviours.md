@@ -172,13 +172,17 @@ decision, and the row is asked of the configured implementation:
       @behaviour EhOsContract.Entities
 
       @impl true
-      def fetch(Clinic.Domain, :service, id) do
-        case MyApp.Repo.get(MyApp.Service, id) do
+      def fetch(actor, Clinic.Domain, :service, id) do
+        case MyApp.Repo.get_by(MyApp.Service, id: id, clinic_id: MyApp.clinic_of(actor)) do
           nil -> :not_found
           service -> {:ok, service}
         end
       end
     end
+
+The actor is the one dispatch authorized: a host that keeps several tenants' rows
+answers only with what that actor's tenant has, and `:not_found` otherwise, so a
+caller cannot have a decision read, and its record keep, another tenant's row.
 
 ### What the engine does with the answer
 
@@ -200,7 +204,7 @@ and before the decision's transaction: when the decision meets a conflict and ru
 again, it decides on the same rows. A retry of a command already accepted under its
 idempotency key gets its receipt without asking. A command dispatched inside a
 transaction of the caller's, or issued by a policy that reacts inside dispatch's, is
-asked inside that transaction, and while another append waits on it: keep `c:EhOsContract.Entities.fetch/3`
+asked inside that transaction, and while another append waits on it: keep `c:EhOsContract.Entities.fetch/4`
 a local read. The call has no time limit of the engine's.
 
 What was read is kept with the command's record, accepted or rejected, the row's
@@ -208,15 +212,17 @@ declared fields whole: an entity with a long text or a long list makes every com
 that reads it that much larger.
 
 A node with a contract whose command `reads:` does not start without an
-implementation configured, one that is loaded and exports `c:EhOsContract.Entities.fetch/3`.
+implementation configured, one that is loaded and exports `c:EhOsContract.Entities.fetch/4`.
 
 ### Callbacks
 
 ```elixir
-@callback fetch(domain :: module(), entity :: atom(), id :: String.t()) :: {:ok, map()} | :not_found
+@callback fetch(actor :: EhOsContract.Actor.t(), domain :: module(), entity :: atom(), id :: String.t()) ::
+  {:ok, map()} | :not_found
 ```
 
-The row of the entity `entity` of `domain` identified by `id`, or `:not_found`.
+The row of the entity `entity` of `domain` identified by `id`, as `actor`, the one
+who issued the command, may have it decided on; or `:not_found`.
 
 ## EhOsContract.Store
 

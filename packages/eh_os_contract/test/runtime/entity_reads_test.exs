@@ -29,6 +29,8 @@ defmodule EhOsContract.EntityReadsTest do
   test "the decision gets the entity's declared fields, and the row keeps what was read" do
     assert {:ok, %Receipt{events: [%Placed{total: 12}]}} = place("order-1")
     assert fetched() == ["product-tea"]
+    # The host is told who asks, so it can answer with that actor's rows only.
+    assert Process.get(:read_rig_actor) == @clerk
 
     # `shelf`, which the host's row has and the domain does not declare, is not kept.
     assert row!("place_order").inputs == %{
@@ -78,7 +80,7 @@ defmodule EhOsContract.EntityReadsTest do
     )
 
     error = assert_raise Entities.UnfitRowError, fn -> place("order-1") end
-    assert error.message =~ "ReadRig.Entities.fetch/3 returned a row of entity :product"
+    assert error.message =~ "ReadRig.Entities.fetch/4 returned a row of entity :product"
     assert error.message =~ "price: :type"
     assert error.message =~ "on_sale: :required"
     refute error.message =~ "four"
@@ -146,7 +148,7 @@ defmodule EhOsContract.EntityReadsTest do
                  "entities implementation is configured"
     end
 
-    test "an implementation that is no module exporting fetch/3 is refused as well" do
+    test "an implementation that is no module exporting fetch/4 is refused as well" do
       for impl <- [ReadRig.NoSuchEntities, ReadRig.Domain] do
         Application.put_env(:eh_os_contract, :entities, impl)
         error = assert_raise ArgumentError, fn -> Entities.check!(@models) end

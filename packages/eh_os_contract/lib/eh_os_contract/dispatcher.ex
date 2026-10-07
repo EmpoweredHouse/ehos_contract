@@ -715,7 +715,7 @@ defmodule EhOsContract.Dispatcher do
   # row deleted since would turn the receipt into a refusal.
   defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
     with :new <- idempotent(repo(), job) do
-      Entities.read(job.model, job.declaration, job.command)
+      Entities.read(job.model, job.declaration, job.command, job.ctx.actor)
     else
       {:ok, receipt} -> {:replayed, receipt}
       refused -> refused

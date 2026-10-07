@@ -14,13 +14,17 @@ defmodule EhOsContract.Entities do
         @behaviour EhOsContract.Entities
 
         @impl true
-        def fetch(Clinic.Domain, :service, id) do
-          case MyApp.Repo.get(MyApp.Service, id) do
+        def fetch(actor, Clinic.Domain, :service, id) do
+          case MyApp.Repo.get_by(MyApp.Service, id: id, clinic_id: MyApp.clinic_of(actor)) do
             nil -> :not_found
             service -> {:ok, service}
           end
         end
       end
+
+  The actor is the one dispatch authorized: a host that keeps several tenants' rows
+  answers only with what that actor's tenant has, and `:not_found` otherwise, so a
+  caller cannot have a decision read, and its record keep, another tenant's row.
 
   ## What the engine does with the answer
 
@@ -42,7 +46,7 @@ defmodule EhOsContract.Entities do
   again, it decides on the same rows. A retry of a command already accepted under its
   idempotency key gets its receipt without asking. A command dispatched inside a
   transaction of the caller's, or issued by a policy that reacts inside dispatch's, is
-  asked inside that transaction, and while another append waits on it: keep `fetch/3`
+  asked inside that transaction, and while another append waits on it: keep `fetch/4`
   a local read. The call has no time limit of the engine's.
 
   What was read is kept with the command's record, accepted or rejected, the row's
@@ -50,10 +54,10 @@ defmodule EhOsContract.Entities do
   that reads it that much larger.
 
   A node with a contract whose command `reads:` does not start without an
-  implementation configured, one that is loaded and exports `fetch/3`.
+  implementation configured, one that is loaded and exports `fetch/4`.
   """
 
-  alias EhOsContract.{Codec, Model}
+  alias EhOsContract.{Actor, Codec, Model}
 
   defmodule UnfitRowError do
     @moduledoc """
@@ -66,9 +70,10 @@ defmodule EhOsContract.Entities do
   end
 
   @doc """
-  The row of the entity `entity` of `domain` identified by `id`, or `:not_found`.
+  The row of the entity `entity` of `domain` identified by `id`, as `actor`, the one
+  who issued the command, may have it decided on; or `:not_found`.
   """
-  @callback fetch(domain :: module(), entity :: atom(), id :: String.t()) ::
+  @callback fetch(actor :: Actor.t(), domain :: module(), entity :: atom(), id :: String.t()) ::
               {:ok, map()} | :not_found
 
   # The configured implementation, `config :eh_os_contract, entities: MyEntities`, or
@@ -78,7 +83,7 @@ defmodule EhOsContract.Entities do
   def impl, do: EhOsContract.Config.get(:entities)
 
   # Refuses to go on when a command of `models` reads an entity and the configured
-  # implementation is missing, not loaded, or does not export `fetch/3`: every such
+  # implementation is missing, not loaded, or does not export `fetch/4`: every such
   # command would fail. Called when the engine starts. Raises `ArgumentError` naming the
   # contract and the commands.
   @doc false
@@ -86,7 +91,7 @@ defmodule EhOsContract.Entities do
   def check!(models) do
     impl = impl()
 
-    unless impl && Code.ensure_loaded?(impl) && function_exported?(impl, :fetch, 3) do
+    unless impl && Code.ensure_loaded?(impl) && function_exported?(impl, :fetch, 4) do
       for model <- models,
           reading = for(c <- model.commands, Map.get(c, :reads, []) != [], do: c.name),
           reading != [] do
@@ -105,21 +110,21 @@ defmodule EhOsContract.Entities do
   defp missing(nil), do: "no entities implementation is configured"
 
   defp missing(impl),
-    do: "the configured implementation #{inspect(impl)} is not a module that exports fetch/3"
+    do: "the configured implementation #{inspect(impl)} is not a module that exports fetch/4"
 
-  # The rows `declaration`, a command of `model`, reads for `command`: `{:ok, reads}`,
-  # each row under its name in `reads:`, `{:ok, %{}}` for a command that reads nothing,
-  # or `{:error, {:invalid, [{field, :unknown}]}}` for the first row not found.
-  # Called by dispatcher.ex.
+  # The rows `declaration`, a command of `model`, reads for `command`, issued by `actor`:
+  # `{:ok, reads}`, each row under its name in `reads:`, `{:ok, %{}}` for a command that
+  # reads nothing, or `{:error, {:invalid, [{field, :unknown}]}}` for the first row not
+  # found. Called by dispatcher.ex.
   @doc false
-  @spec read(map(), map(), struct(), module() | nil) ::
+  @spec read(map(), map(), struct(), Actor.t(), module() | nil) ::
           {:ok, %{atom() => map()}} | {:error, {:invalid, [{atom(), :unknown}]}}
-  def read(model, declaration, command, impl \\ impl()) do
+  def read(model, declaration, command, actor, impl \\ impl()) do
     Enum.reduce_while(Map.get(declaration, :reads, []), {:ok, %{}}, fn {name, field},
                                                                        {:ok, acc} ->
       %{refers_to: entity} = Enum.find(declaration.fields, &(&1.name == field))
 
-      case fetch!(impl, model, entity, Map.fetch!(command, field)) do
+      case fetch!(impl, actor, model, entity, Map.fetch!(command, field)) do
         {:ok, row} -> {:cont, {:ok, Map.put(acc, name, row)}}
         :not_found -> {:halt, {:error, {:invalid, [{field, :unknown}]}}}
       end
@@ -147,14 +152,14 @@ defmodule EhOsContract.Entities do
   defp declared(model, entity),
     do: Enum.find(Model.fetch(model.domain).entities, &(&1.name == entity))
 
-  defp fetch!(nil, model, _entity, _id) do
+  defp fetch!(nil, _actor, model, _entity, _id) do
     raise ArgumentError,
           "#{inspect(model.module)} has a command that reads entities, and no entities " <>
             "implementation is configured (config :eh_os_contract, entities: MyEntities)"
   end
 
-  defp fetch!(impl, model, entity, id) do
-    case impl.fetch(model.domain, entity, id) do
+  defp fetch!(impl, actor, model, entity, id) do
+    case impl.fetch(actor, model.domain, entity, id) do
       {:ok, row} when is_map(row) ->
         {:ok, fitted!(impl, model, entity, id, row)}
 
@@ -163,7 +168,7 @@ defmodule EhOsContract.Entities do
 
       other ->
         raise ArgumentError,
-              "#{inspect(impl)}.fetch/3 returned #{shape(other)} for entity " <>
+              "#{inspect(impl)}.fetch/4 returned #{shape(other)} for entity " <>
                 "#{inspect(entity)}; it returns {:ok, row} or :not_found"
     end
   end
@@ -180,7 +185,7 @@ defmodule EhOsContract.Entities do
 
     if problems != [] do
       raise UnfitRowError,
-            "#{inspect(impl)}.fetch/3 returned a row of entity #{inspect(entity)} that does " <>
+            "#{inspect(impl)}.fetch/4 returned a row of entity #{inspect(entity)} that does " <>
               "not fit its declaration: #{inspect(problems)}"
     end
 

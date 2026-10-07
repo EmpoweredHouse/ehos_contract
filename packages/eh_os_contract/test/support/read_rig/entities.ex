@@ -10,7 +10,8 @@ defmodule ReadRig.Entities do
   @behaviour EhOsContract.Entities
 
   @impl true
-  def fetch(ReadRig.Domain, :product, id) do
+  def fetch(actor, ReadRig.Domain, :product, id) do
+    Process.put(:read_rig_actor, actor)
     Process.put(:read_rig_fetched, [id | Process.get(:read_rig_fetched, [])])
 
     case Process.get({:read_rig_row, id}, :default) do
