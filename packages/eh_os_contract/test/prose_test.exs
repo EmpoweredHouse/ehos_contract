@@ -25,6 +25,24 @@ defmodule EhOsContract.Docs.ProseTest do
              }
     end
 
+    test "ignores a covers comment shown in a code block" do
+      page = """
+      ```markdown
+      <!-- covers: entities contract.made_up -->
+      ```
+      """
+
+      assert Prose.covers(page) == %{entities: [], keys: [], rules: []}
+    end
+
+    test "refuses a comment that is nearly a covers comment, rather than ignoring it" do
+      for page <- ["<!-- Covers: entities contract.policy -->", "<!-- cover: rules x -->"] do
+        assert_raise ArgumentError, ~r/is written `<!-- covers: ... -->`/, fn ->
+          Prose.covers(page)
+        end
+      end
+    end
+
     test "refuses a group it cannot read, naming it" do
       assert_raise ArgumentError, ~r/"policies contract.policy"/, fn ->
         Prose.covers("<!-- covers: policies contract.policy -->")
@@ -100,6 +118,38 @@ defmodule EhOsContract.Docs.ProseTest do
     test "fills the configuration's keys" do
       filled = Prose.fill("<!-- generated: config -->\n<!-- /generated -->\n")
       assert filled =~ "`:applications`"
+    end
+
+    test "fills a region whose opener has trailing spaces or a CRLF ending" do
+      assert Prose.fill("<!-- generated: config -->  \n<!-- /generated -->\n") =~
+               "`:applications`"
+
+      assert Prose.fill("<!-- generated: config -->\r\n<!-- /generated -->\r\n") =~
+               "`:applications`"
+    end
+
+    test "leaves a region shown in a code block as it is" do
+      page = """
+      ```markdown
+      <!-- generated: config -->
+      an example
+      <!-- /generated -->
+      ```
+      """
+
+      assert Prose.fill(page) == page
+    end
+
+    # Otherwise a region read to the wrong closer replaces the prose between them.
+    test "refuses openers and closers out of order, or sharing a line with text" do
+      for page <- [
+            "<!-- /generated -->\n<!-- generated: config -->\nprose\n<!-- /generated -->\n",
+            "<!-- generated: config -->\n<!-- generated: config -->\n<!-- /generated -->\n",
+            "text <!-- generated: config -->\n<!-- /generated -->\n",
+            "<!-- generated: config --><!-- /generated -->\n"
+          ] do
+        assert_raise ArgumentError, ~r/line [0-9]+/, fn -> Prose.fill(page) end
+      end
     end
 
     test "refuses a region it does not know, an entity no DSL has, and one left open" do

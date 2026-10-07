@@ -105,7 +105,11 @@ defmodule EhOsContract.Docs.ModulePages do
       clauses =
         for {{^name, ^arity}, list} <- specs,
             spec <- list,
-            do: name |> Code.Typespec.spec_to_quoted(spec) |> local_types(module) |> Macro.to_string()
+            do:
+              name
+              |> Code.Typespec.spec_to_quoted(spec)
+              |> local_types(module)
+              |> Macro.to_string()
 
       {clauses, {name, arity} in optional, doc |> text() |> qualify(module)}
     end
@@ -134,7 +138,10 @@ defmodule EhOsContract.Docs.ModulePages do
   defp qualify(doc, module) do
     name = inspect(module)
 
-    Regex.replace(~r/`([ct]:)?([a-z_][a-zA-Z0-9_]*[!?]?)\/([0-9]+)`/u, doc, fn whole, kind, fun, arity ->
+    Regex.replace(~r/`([ct]:)?([a-z_][a-zA-Z0-9_]*[!?]?)\/([0-9]+)`/u, doc, fn whole,
+                                                                               kind,
+                                                                               fun,
+                                                                               arity ->
       arity = String.to_integer(arity)
 
       cond do
@@ -154,7 +161,8 @@ defmodule EhOsContract.Docs.ModulePages do
   end
 
   defp callback?(module, fun, arity) do
-    behaviour?(module) and {String.to_existing_atom(fun), arity} in module.behaviour_info(:callbacks)
+    behaviour?(module) and
+      {String.to_existing_atom(fun), arity} in module.behaviour_info(:callbacks)
   rescue
     ArgumentError -> false
   end

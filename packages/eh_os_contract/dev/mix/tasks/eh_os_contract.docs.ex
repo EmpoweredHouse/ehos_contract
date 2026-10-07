@@ -48,20 +48,13 @@ defmodule Mix.Tasks.EhOsContract.Docs do
 
     Mix.Task.run("compile")
 
+    generated = EhOsContract.Docs.generated()
     filled = for path <- EhOsContract.Docs.prose(), do: {path, Prose.fill(File.read!(path))}
-    pages = EhOsContract.Docs.generated() ++ filled
+    pages = generated ++ filled
     stale = for {path, markdown} <- pages, current(path) != markdown, do: {path, markdown}
 
-    case EhOsContract.Docs.prose() |> Enum.map(&File.read!/1) |> Prose.uncovered() do
-      [] ->
-        :ok
+    report_coverage(Enum.map(filled, &elem(&1, 1)), opts[:coverage])
 
-      gaps ->
-        Mix.shell().info(
-          "#{length(gaps)} top-level entities and rules are covered by no prose page" <>
-            if(opts[:coverage], do: ":\n  " <> Enum.join(gaps, "\n  "), else: " (--coverage lists them)")
-        )
-    end
     listed = MapSet.new(pages, &elem(&1, 0))
 
     left_over =
@@ -74,7 +67,9 @@ defmodule Mix.Tasks.EhOsContract.Docs do
 
     cond do
       paths == [] ->
-        Mix.shell().info("#{length(pages)} pages with generated content: current")
+        Mix.shell().info(
+          "#{length(generated)} generated pages and #{length(filled)} prose pages: current"
+        )
 
       opts[:check] ->
         Mix.raise(
@@ -89,6 +84,26 @@ defmodule Mix.Tasks.EhOsContract.Docs do
 
         Enum.each(left_over, &File.rm!/1)
         Mix.shell().info("regenerated #{Enum.join(paths, ", ")}")
+    end
+  end
+
+  # Not a failure: the concept pages that will cover them are not written yet.
+  defp report_coverage(prose, list?) do
+    case Prose.uncovered(prose) do
+      [] ->
+        :ok
+
+      gaps when list? ->
+        Mix.shell().info(
+          "#{length(gaps)} top-level entities and rules are covered by no prose page:\n  " <>
+            Enum.join(gaps, "\n  ")
+        )
+
+      gaps ->
+        Mix.shell().info(
+          "#{length(gaps)} top-level entities and rules are covered by no prose page " <>
+            "(--coverage lists them)"
+        )
     end
   end
 

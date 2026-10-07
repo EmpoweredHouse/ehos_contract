@@ -19,7 +19,7 @@ defmodule EhOsContract.DocsTest do
 
   use EhOsContract.DslCase, async: false
 
-  @pages ["README.md", "docs/contract.md", "docs/authorization.md"]
+  @pages EhOsContract.Docs.prose()
 
   defp read(path), do: File.read!(path)
 

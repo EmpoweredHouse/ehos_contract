@@ -208,7 +208,7 @@ locals_without_parens = spark_locals_without_parens ++ own_locals_without_parens
 [
   # `:ecto_sql` for `EhOsContract.Migrations`' version modules.
   import_deps: [:ecto_sql],
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: ["{mix,.formatter}.exs", "{config,lib,test,dev}/**/*.{ex,exs}"],
   # Named once, used twice: `export:` is what a consumer's `import_deps: [:eh_os_contract]`
   # reads, the top-level key is what this package's own `mix format` uses — and
   # without the second, the fixtures in `test/support/` are the one place in the

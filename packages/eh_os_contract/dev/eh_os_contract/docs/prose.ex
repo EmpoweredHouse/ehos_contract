@@ -13,8 +13,8 @@ defmodule EhOsContract.Docs.Prose do
   `docs/rules.md`. A name that no longer exists fails `test/docs_test.exs`, so a page
   about something renamed or removed is found the day it happens.
 
-  **A generated region** is a pair of comments with what the generator writes between
-  them:
+  **A generated region** is a pair of comments, each on a line of its own, with what
+  the generator writes between them:
 
       <!-- generated: dsl-keys contract.policy -->
       ...
@@ -24,56 +24,81 @@ defmodule EhOsContract.Docs.Prose do
   reference page prints them; `config` is the configuration's keys. `mix
   eh_os_contract.docs` rewrites every region, and `--check` fails on one that
   differs from the code. A page keeps its prose and borrows the facts.
+
+  Both are read outside fenced code blocks only, so a page may show the syntax in a
+  code block, as this one does. A comment that looks like either but cannot be read
+  (`<!-- Covers: -->`, an opener sharing its line with text, a closer with no opener)
+  is refused rather than ignored: a page whose region is never filled would pass
+  `--check` while showing stale facts, and a region read to the wrong closer would
+  replace the prose between them.
   """
 
   alias EhOsContract.Docs.DslPages
 
-  @extensions [EhOsContract.Domain.Dsl, EhOsContract.Contract.Dsl, EhOsContract.Process.Dsl]
-
   @typedoc "What a page says it covers."
   @type covers() :: %{entities: [String.t()], keys: [String.t()], rules: [String.t()]}
+
+  @doc "Every entity of the three DSLs, by its path: `{\"contract.policy\", entity}`."
+  @spec entities() :: [{String.t(), Spark.Dsl.Entity.t()}]
+  def entities do
+    for extension <- EhOsContract.Docs.extensions(),
+        {path, entity} <- DslPages.entities(extension),
+        do: {Enum.join(path, "."), entity}
+  end
 
   @doc "Every name a page may cover: the entities, keys and rules that exist."
   @spec names() :: covers()
   def names do
-    entities = for extension <- @extensions, pair <- DslPages.entities(extension), do: pair
+    entities = entities()
 
     %{
-      entities: for({path, _entity} <- entities, do: Enum.join(path, ".")),
+      entities: Enum.map(entities, &elem(&1, 0)),
       keys:
         for(
           {path, entity} <- entities,
           key <- DslPages.key_names(entity),
-          do: Enum.join(path ++ [to_string(key)], ".")
+          do: "#{path}.#{key}"
         ),
       rules: Enum.map(EhOsContract.Check.Catalog.rules(), & &1.id)
     }
   end
 
   @doc """
-  What `markdown` says it covers, from every `<!-- covers: ... -->` in it. Raises on a
-  comment it cannot read, naming the part.
+  What `markdown` says it covers, from every `<!-- covers: ... -->` outside its code
+  blocks. Raises on a comment it cannot read, naming it.
   """
   @spec covers(String.t()) :: covers()
   def covers(markdown) do
-    empty = %{entities: [], keys: [], rules: []}
+    prose = markdown |> lines() |> Enum.reject(&elem(&1, 1)) |> Enum.map_join("\n", &elem(&1, 0))
 
-    for [body] <- Regex.scan(~r/<!--\s*covers:(.*?)-->/su, markdown, capture: :all_but_first),
-        group <- String.split(body, ";", trim: true),
-        group = String.trim(group),
-        group != "",
-        reduce: empty do
+    for [whole, word, body] <-
+          Regex.scan(~r/<!--\s*(covers?)\s*:(.*?)-->/isu, prose),
+        reduce: %{entities: [], keys: [], rules: []} do
       acc ->
-        case String.split(group, ~r/\s+/u, parts: 2) do
-          [kind, list] when kind in ["entities", "keys", "rules"] ->
-            names = list |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-            Map.update!(acc, String.to_existing_atom(kind), &(&1 ++ names))
-
-          _other ->
-            raise ArgumentError,
-                  "a covers comment has #{inspect(group)}; it takes `entities`, `keys` " <>
-                    "and `rules`, each followed by names separated by commas"
+        if word != "covers" do
+          raise ArgumentError, "#{inspect(whole)} is written `<!-- covers: ... -->`"
         end
+
+        body
+        |> String.split(";", trim: true)
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        |> Enum.reduce(acc, &group/2)
+    end
+  end
+
+  @kinds %{"entities" => :entities, "keys" => :keys, "rules" => :rules}
+
+  defp group(group, acc) do
+    with [kind, list] <- String.split(group, ~r/\s+/u, parts: 2),
+         {:ok, key} <- Map.fetch(@kinds, kind) do
+      names = list |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+      Map.update!(acc, key, &(&1 ++ names))
+    else
+      _other ->
+        raise ArgumentError,
+              "a covers comment has #{inspect(group)}; it takes `entities`, `keys` " <>
+                "and `rules`, each followed by names separated by commas"
     end
   end
 
@@ -108,34 +133,89 @@ defmodule EhOsContract.Docs.Prose do
   end
 
   @doc """
-  `markdown` with every generated region rewritten from the code. Raises on a region
-  it does not know, or one left open.
+  `markdown` with every generated region rewritten from the code, everything else
+  kept as it was. Raises, naming the line, on a region it does not know, an opener
+  or closer that does not stand on a line of its own, and a region left open or
+  closed twice.
   """
   @spec fill(String.t()) :: String.t()
   def fill(markdown) do
-    if Regex.scan(~r/<!--\s*generated:/u, markdown) |> length() !=
-         Regex.scan(~r/<!--\s*\/generated\s*-->/u, markdown) |> length() do
-      raise ArgumentError, "a generated region is not closed with <!-- /generated -->"
-    end
+    entities = Map.new(entities())
 
-    Regex.replace(
-      ~r/(<!--\s*generated:\s*(.*?)\s*-->\n).*?(<!--\s*\/generated\s*-->)/su,
-      markdown,
-      fn _whole, open, what, close -> open <> "\n" <> region(what) <> "\n\n" <> close end
-    )
+    {out, open} =
+      markdown
+      |> lines()
+      |> Enum.with_index(1)
+      |> Enum.reduce({[], nil}, fn {{line, in_code?}, number}, {out, open} ->
+        step(line, in_code?, number, out, open, entities)
+      end)
+
+    if open, do: raise(ArgumentError, "the generated region at line #{open} is not closed")
+
+    out |> Enum.reverse() |> Enum.join()
   end
 
-  defp region("config"), do: String.trim(EhOsContract.Config.docs())
+  @opener ~r/\A\s*<!--\s*generated:\s*(.+?)\s*-->\s*\z/u
+  @closer ~r/\A\s*<!--\s*\/generated\s*-->\s*\z/u
 
-  defp region("dsl-keys " <> path) do
-    entities = for extension <- @extensions, pair <- DslPages.entities(extension), do: pair
+  # A region's own lines are dropped and written again when it closes.
+  defp step(line, true, _number, out, nil, _entities), do: {[line | out], nil}
 
-    case Enum.find(entities, fn {here, _entity} -> Enum.join(here, ".") == path end) do
-      {_path, entity} -> DslPages.keys_table(entity)
-      nil -> raise ArgumentError, "a generated region names the entity #{path}, which no DSL has"
+  defp step(line, _in_code?, number, out, open, entities) do
+    text = String.trim_trailing(line, "\n")
+
+    cond do
+      open == nil and Regex.match?(@opener, text) ->
+        [_, what] = Regex.run(@opener, text)
+        {[region(what, entities, number) <> "\n\n", newline(line), line | out], number}
+
+      open != nil and Regex.match?(@closer, text) ->
+        {[line | out], nil}
+
+      Regex.match?(~r/<!--\s*\/?generated\b/u, text) ->
+        raise ArgumentError,
+              "line #{number}: a generated region's opener and closer each stand on a line " <>
+                "of their own, in order; got #{inspect(String.trim(text))}"
+
+      open != nil ->
+        {out, open}
+
+      true ->
+        {[line | out], nil}
     end
   end
 
-  defp region(other),
-    do: raise(ArgumentError, "a generated region asks for #{inspect(other)}; it takes `dsl-keys <entity>` or `config`")
+  defp newline(line), do: if(String.ends_with?(line, "\r\n"), do: "\r\n", else: "\n")
+
+  defp region("config", _entities, _number), do: String.trim(EhOsContract.Config.docs())
+
+  defp region("dsl-keys " <> path, entities, number) do
+    case Map.fetch(entities, String.trim(path)) do
+      {:ok, entity} ->
+        DslPages.keys_table(entity)
+
+      :error ->
+        raise ArgumentError,
+              "line #{number}: a generated region names the entity #{path}, which no DSL has"
+    end
+  end
+
+  defp region(other, _entities, number) do
+    raise ArgumentError,
+          "line #{number}: a generated region asks for #{inspect(other)}; it takes " <>
+            "`dsl-keys <entity>` or `config`"
+  end
+
+  # Each line with its newline, and whether it is inside a fenced code block (the
+  # fences themselves count as inside).
+  defp lines(markdown) do
+    markdown
+    |> String.split(~r/(?<=\n)/u)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map_reduce(false, fn line, fenced? ->
+      fence? = Regex.match?(~r/\A\s*(```|~~~)/u, line)
+      {{line, fenced? or fence?}, if(fence?, do: not fenced?, else: fenced?)}
+    end)
+    |> elem(0)
+  end
 end
