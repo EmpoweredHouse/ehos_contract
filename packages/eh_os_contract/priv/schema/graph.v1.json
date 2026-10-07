@@ -67,7 +67,7 @@
         "schema",
         "kind",
         "contract",
-        "contract_id",
+        "module",
         "domain",
         "context",
         "version",
@@ -86,14 +86,11 @@
         },
         "contract": {
           "type": "string",
-          "description": "The contract's module."
+          "description": "The contract's id: (plan DD, ID3), which names it outside the code; every id of what the contract declares is scoped to it."
         },
-        "contract_id": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "The contract's id:, where it declares one."
+        "module": {
+          "type": "string",
+          "description": "The contract's module, for a reader in the code."
         },
         "domain": {
           "type": "string",
@@ -1135,7 +1132,8 @@
         "name",
         "label",
         "source",
-        "context"
+        "context",
+        "module"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1144,7 +1142,7 @@
         },
         "name": {
           "type": "string",
-          "description": "The contract's module."
+          "description": "The contract's id:, which names it outside the code; its node's id is scoped to it."
         },
         "label": {
           "$ref": "#/$defs/label"
@@ -1160,9 +1158,9 @@
           "type": "string",
           "description": "The id of its context."
         },
-        "contract_id": {
+        "module": {
           "type": "string",
-          "description": "The contract's id:, where it declares one."
+          "description": "The contract's module, for a reader in the code."
         },
         "process": {
           "type": "object",
@@ -1692,7 +1690,7 @@
         },
         "type": {
           "type": "string",
-          "description": "Its type in the log; absent in a contract without a process and for a received event."
+          "description": "Its type in the log, \"<contract id>.<event>\" of the contract that declares it; absent for a received event."
         },
         "schema_version": {
           "type": "integer"
@@ -1863,9 +1861,6 @@
           }
         },
         "deadline": {
-          "$ref": "#/$defs/timed"
-        },
-        "cadence": {
           "$ref": "#/$defs/timed"
         }
       }
@@ -3794,7 +3789,7 @@
     },
     "timed": {
       "type": "object",
-      "description": "A process's deadline or cadence, and whether the owner has yet to confirm it.",
+      "description": "A process's deadline, and whether the owner has yet to confirm it.",
       "required": [
         "amount",
         "unit",

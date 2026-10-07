@@ -39,7 +39,7 @@ defmodule EhOsContract.Graph.Declared do
   end
 
   defp shape(model, process) do
-    contract = model.module
+    contract = model.id
     domain = domain(model.domain)
     externals = Map.new(domain.externals, &{&1.name, &1.label})
 

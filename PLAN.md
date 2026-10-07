@@ -635,7 +635,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; przed PR-em (rebase na `main`, `id` z `id:`, `pre-pr-review`) z użytkownikiem — „E13a — fixes after the final review (7 October)” |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); przed PR-em `pre-pr-review` z użytkownikiem |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -869,7 +869,15 @@ records. E13b gains the views (step 2).
 Read from the generated DSL references (`docs/dsl/`), the models of all eleven sandbox contracts and their
 domains, and the six builders; checked for completeness against both DSL references, option by option, by a
 review agent the same day, and corrected by its findings (listed at the end). `<C>` is the contract module, `<D>`
-the domain module; ids stay opaque to readers. Every node has `id`, `name`, `label` (the client's words, or the
+the domain module; ids stay opaque to readers.
+
+*7 October, at the rebase onto `main` (decision B):* `<C>` in every id below is the contract's `id:`
+(`command:rehmed.settlement:close_settlement`), `<D>` stays the domain's module. The contract's envelope says
+`contract` (its id) and `module` where it said `contract` (module) and `contract_id`; the domain's `contract` node
+is named by the id, with `module` beside it, and has no `contract_id`. A process has no `cadence` (P1d), and an
+event's `type` is `"<id>.<event>"` in every contract, with or without a process (ID3) — absent only for a received
+event. The overlay counts occurrences, not runs (P1a). What changed and why: "E13a — rebased onto `main`, ids from
+the contract's `id:` (7 October)". Every node has `id`, `name`, `label` (the client's words, or the
 name), and `source` where the DSL has one. A duration is `{amount, unit}` everywhere.
 
 **Envelopes.** A contract's document: `schema`, `kind: "contract"`, `contract` (module), `contract_id` (the
@@ -1476,6 +1484,49 @@ vacuous as root, and kept for a non-root run.
 **Gone with D** (checked in the code): an unknown `contract` module raising inside the replay; phases differing from
 the runtime after `Subscription.skip/2` or an undecodable row; personal data decrypted on every overlay request; the
 new public runtime API (`take/3`, `arrivals/2`, `correlation/2`); per-phase "never" against the report's line.
+
+### E13a — rebased onto `main`, ids from the contract's `id:` (7 October)
+
+The branch was rebased onto `main` at `4b8d826` (the merge of #211, after P2c's #212), from `083b7b9`. `main` had
+moved by the whole of wave 2 up to P2c. The rules the user set for the rebase: everything that is not E13a's stays
+as `main` has it, E13a adapts to `main`'s shapes, and decision B is done here.
+
+**Conflicts** were only where E13a and `main` changed the same lines: the graph builders (`Graph.Contract`,
+`Graph.System`, `Graph.Mermaid`, `Graph.declared_to_mermaid/2`), `Conformance`, the graph task and both CHANGELOGs.
+Each kept `main`'s change and put E13a's on top. The phase split and its removal (two commits of the branch) leave
+`process_manager.ex` as `main` has it.
+
+**What `main` changed that E13a adapts to:**
+- **A step counts occurrences, not runs** (P1a, #183). The overlay's step numbers are `taken`, where they were `runs`
+  and `of_runs`; an event's are its `occurrences` alone (`Paths.occurrences/2`, now `main`'s count); a process keeps
+  its `runs`. `Conformance.steps/2` reads "never" as the report now does: when the contract recorded an event in the
+  period (`Paths.activity/2`), not when its process had a run, so it reads a contract with no process too. Its tests
+  hold the overlay's "never" to the report's `paths.untraversed` for every fixture, not only those with a process.
+- **Contracts are named by their `id:` outside the code** (ID3, ID4, P1a). The graph API takes
+  `/graph/rehmed.settlement` and refuses a module's name as an unknown contract; its index gives `contract` (the id)
+  and `module`, as `/model`'s does. `mix eh_os_contract.graph --json --contract` takes the id, as `--contract` already
+  did on `main`. The model pages write a contract's document as `graph/<contract id>.json`. A domain has no id and is
+  still named by its module.
+- **`Model.process/1` and `Model.process_events/1`** (P2a) are how every E13a reader reaches the process; a contract
+  without one (P1c) has no process, stage or promise nodes. **`cadence` is gone** (P1d): from the process node, the
+  schema and the tests.
+- **Test contracts declare a process only when the test is about one** (P1e): `PhaseRig` gets `id:
+  "phase_rig.visits"` and loses its template process; so do six contracts the graph tests compile. The process
+  manager's runtime test reads the new event types and consumer key.
+
+**Decision B (the user's, 7 October): ids follow the contract's `id:`.** What a contract declares is scoped to its
+id — `event:rehmed.scheduling:visit_booked` where it was `event:Rehmed.Contracts.Scheduling:visit_booked` — and
+what a domain declares to the domain's module, as before (`actor:Rehmed.Domain:reception`). ID3 makes `id:`
+required, so no contract is without one and no fallback was needed. A consumed event's `declared_as` names the
+sibling's id; a domain's `contract` node is `contract:<id>`, named by its id, with its `module`. The document's
+envelope names the contract as the wire (v3) and the APIs do: `contract` (the id) and `module`; `contract_id` is
+gone. The builders of the six Mermaid pictures make their ids the same way, which the coverage test needs; the
+Mermaid identifiers stay the module's, so the dashboard is byte for byte `main`'s. The overlay keys on the same ids
+and says `contract` and `module` the same way. Moving a contract's module now moves no id, which is what an overlay
+joining on them needs.
+
+*Left as it is:* a process module (P2b) is in no document: no reader shows one before P2e, which builds the
+process's graph as `graph.v1`.
 
 ### Wobec programu DD
 

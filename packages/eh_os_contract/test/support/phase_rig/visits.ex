@@ -8,7 +8,7 @@ defmodule PhaseRig.Visits do
   ends on the close; a close with no run open starts one and ends it at once.
   """
 
-  use EhOsContract.Contract, domain: PhaseRig.Domain, context: :visits
+  use EhOsContract.Contract, id: "phase_rig.visits", domain: PhaseRig.Domain, context: :visits
 
   aggregate :visit, "Visit" do
     identity :visit_id
@@ -27,10 +27,6 @@ defmodule PhaseRig.Visits do
     event :reminded, "Reminded of a visit"
 
     event :noted, "Visit noted"
-  end
-
-  process :visiting, "Visiting", accountable: :clerk do
-    correlate :visit_id
   end
 
   policy :remind_on_change, "Remind on a booking or a move",

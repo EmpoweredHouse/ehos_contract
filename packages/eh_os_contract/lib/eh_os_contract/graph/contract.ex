@@ -35,7 +35,7 @@ defmodule EhOsContract.Graph.Contract do
     model = Model.fetch(contract)
     domain = domain(model.domain)
     overlay? = Keyword.get(opts, :overlay, false)
-    scope = %{contract: model.module, domain: model.domain}
+    scope = %{contract: model.id, domain: model.domain}
 
     steps = if overlay?, do: Paths.observe(model, opts), else: Paths.declared(model)
 
@@ -84,7 +84,7 @@ defmodule EhOsContract.Graph.Contract do
     groups =
       for {unit, members} <- units, members != [] do
         %{
-          id: Document.id([:unit, model.module, unit.name]),
+          id: Document.id([:unit, model.id, unit.name]),
           kind: :unit,
           name: unit.name,
           label: unit.label,

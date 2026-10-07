@@ -44,7 +44,7 @@ defmodule EhOsContract.Graph.Unit do
           s.trigger.kind == :command,
           do: s
 
-    contract = model.module
+    contract = model.id
     state = state_node(contract, unit)
 
     {built_from, from_elsewhere} = built_from(model, unit, events)
@@ -143,7 +143,7 @@ defmodule EhOsContract.Graph.Unit do
   # consistency boundary consults — nodes of their own when they are not the unit's.
   defp built_from(model, %{kind: :dcb} = unit, events) do
     own = MapSet.new(events, & &1.name)
-    contract = model.module
+    contract = model.id
 
     edges =
       for c <- unit.consults do
@@ -174,8 +174,8 @@ defmodule EhOsContract.Graph.Unit do
       for e <- events,
           do:
             Document.edge(
-              id(model.module, :event, e.name),
-              id(model.module, :state, unit.name),
+              id(model.id, :event, e.name),
+              id(model.id, :state, unit.name),
               :builds
             )
 

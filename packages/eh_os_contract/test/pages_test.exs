@@ -51,7 +51,7 @@ defmodule EhOsContract.PagesTest do
     test "one per element: the domain, each value and context, the contract and each declaration",
          %{pages: pages} do
       assert Enum.sort(Map.keys(pages)) == [
-               "graph/ValueRig.Till.json",
+               "graph/value_rig.till.json",
                "index.md",
                "till/index.md",
                "till/till/aggregates/till.md",
@@ -429,20 +429,20 @@ defmodule EhOsContract.PagesTest do
     test "a contract's graph document is the task's at its own path only", %{tmp_dir: dir} do
       run(["--output", dir])
       assert_received {:mix_shell, :info, [_written]}
-      ours = File.read!(Path.join(dir, "graph/ValueRig.Till.json"))
-      assert Jason.decode!(ours)["contract"] == "ValueRig.Till"
+      ours = File.read!(Path.join(dir, "graph/value_rig.till.json"))
+      assert Jason.decode!(ours)["contract"] == "value_rig.till"
 
       # The document of a contract the domain no longer has is deleted; a copy a person
       # saved under another name, and a person's JSON, stay.
       gone =
-        String.replace(ours, ~s("contract": "ValueRig.Till"), ~s("contract": "ValueRig.Gone"))
+        String.replace(ours, ~s("contract": "value_rig.till"), ~s("contract": "value_rig.gone"))
 
-      File.write!(Path.join(dir, "graph/ValueRig.Gone.json"), gone)
-      File.write!(Path.join(dir, "graph/ValueRig.Till-before.json"), ours)
+      File.write!(Path.join(dir, "graph/value_rig.gone.json"), gone)
+      File.write!(Path.join(dir, "graph/value_rig.till-before.json"), ours)
       File.write!(Path.join(dir, "graph/notes.json"), ~s({"mine": true}))
 
       # Nor does the task fail on a file it cannot read, or one whose contract is no name.
-      odd = String.replace(ours, ~s("contract": "ValueRig.Till"), ~s("contract": {"a": 1}))
+      odd = String.replace(ours, ~s("contract": "value_rig.till"), ~s("contract": {"a": 1}))
       File.write!(Path.join(dir, "graph/odd.json"), odd)
       locked = Path.join(dir, "graph/locked.json")
       File.write!(locked, ours)
@@ -452,17 +452,17 @@ defmodule EhOsContract.PagesTest do
       run(["--output", dir])
       assert_received {:mix_shell, :info, [written]}
       assert written == "#{dir}: 16 pages written, 1 left over deleted"
-      refute File.exists?(Path.join(dir, "graph/ValueRig.Gone.json"))
-      assert File.read!(Path.join(dir, "graph/ValueRig.Till-before.json")) == ours
+      refute File.exists?(Path.join(dir, "graph/value_rig.gone.json"))
+      assert File.read!(Path.join(dir, "graph/value_rig.till-before.json")) == ours
       assert File.exists?(Path.join(dir, "graph/notes.json"))
       assert File.exists?(Path.join(dir, "graph/odd.json"))
       assert File.exists?(locked)
       File.chmod!(locked, 0o600)
 
       # A person's file at the path the task would write is in the way.
-      File.write!(Path.join(dir, "graph/ValueRig.Till.json"), ~s({"mine": true}))
+      File.write!(Path.join(dir, "graph/value_rig.till.json"), ~s({"mine": true}))
       error = assert_raise Mix.Error, fn -> run(["--output", dir]) end
-      assert error.message =~ "graph/ValueRig.Till.json"
+      assert error.message =~ "graph/value_rig.till.json"
     end
 
     test "asks where the pages go" do

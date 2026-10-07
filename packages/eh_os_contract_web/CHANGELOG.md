@@ -8,6 +8,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13a: the graph as an API.** `eh_os_contract_api/2` serves `GET <mount>/graph` (an index of contracts — each
+  `contract`, its id, with its `module` — and domains, with their versions and digests),
+  `<mount>/graph/rehmed.settlement` (the contract's `graph.v1` document, its digest as the `ETag`, `304` on
+  `If-None-Match`), `<mount>/graph/rehmed.settlement/overlay?since=…&until=…` (what the log says over it), and
+  `<mount>/graph/domain/Rehmed.Domain` with its overlay, behind the same resolver as `/model`. A contract is named by
+  its `id:`, as the other APIs name it, and a module's name is an unknown contract; a domain, which has no id, by its
+  module. What the registry does not hold is `404`, and an overlay whose `since` is after its `until` is `400`. The
+  dashboard's screens are unchanged.
+
 - **The graph page selects a contract, by its id, whether or not it has a process** (plan DD, P1b,
   eh-os-contract#186). A contract without a process could not be opened there. The selector lists each contract's
   id, with its process's label where it has one; the declared shape of a process shows only when there is one; the
@@ -22,13 +31,6 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `info.x-eh-os-contract-id`. The conformance screen heads each contract with its id and shows its steps apart from
   its processes. A host's callers pass ids; readers of the conformance JSON move to v3 (the engine's CHANGELOG has
   the shape).
-
-- **E13a: the graph as an API.** `eh_os_contract_api/2` serves `GET <mount>/graph` (an index of contracts and
-  domains with their versions and digests), `<mount>/graph/My.Contract` (the contract's `graph.v1` document, its
-  digest as the `ETag`, `304` on `If-None-Match`), `<mount>/graph/My.Contract/overlay?since=…&until=…` (what the log
-  says over it), and `<mount>/graph/domain/My.Domain` with its overlay, behind the same resolver as `/model`; what
-  the registry does not hold is `404`, and an overlay whose `since` is after its `until` is `400`. The dashboard's
-  screens are unchanged.
 
 - **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
   eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a

@@ -42,7 +42,7 @@ defmodule EhOsContract.Graph.System do
       |> Enum.filter(&(&1.domain == domain.module))
 
     here = MapSet.new(models, & &1.module)
-    ids = Map.new(models, &{&1.module, Document.id([:contract, &1.module])})
+    ids = Map.new(models, &{&1.module, Document.id([:contract, &1.id])})
 
     edges =
       for m <- models,

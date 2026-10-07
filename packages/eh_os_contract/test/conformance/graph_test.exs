@@ -141,7 +141,7 @@ defmodule EhOsContract.GraphTest do
     on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
     task = &Mix.Tasks.EhOsContract.Graph.run/1
 
-    task.(~w(--json --contract DispatchRig.Ledger --output #{path}))
+    task.(~w(--json --contract dispatch_rig.ledger --output #{path}))
     assert Jason.decode!(File.read!(path)) == Document.contract(DispatchRig.Ledger)
 
     assert File.read!(path) ==
@@ -151,14 +151,14 @@ defmodule EhOsContract.GraphTest do
     assert Jason.decode!(File.read!(path))["domain"] == "DispatchRig.Domain"
 
     task.(
-      ~w(--json --contract DispatchRig.Ledger --overlay --since 2026-01-01T00:00:00Z --output #{path})
+      ~w(--json --contract dispatch_rig.ledger --overlay --since 2026-01-01T00:00:00Z --output #{path})
     )
 
     assert %{"schema" => "eh_os_contract.graph_overlay.v1", "since" => "2026-01-01T00:00:00Z"} =
              Jason.decode!(File.read!(path))
 
     assert_raise Mix.Error, ~r/--json gives a contract's or a domain's whole document/, fn ->
-      task.(~w(--json --contract DispatchRig.Ledger --unit account))
+      task.(~w(--json --contract dispatch_rig.ledger --unit account))
     end
   end
 
@@ -167,7 +167,7 @@ defmodule EhOsContract.GraphTest do
 
     stdout =
       ExUnit.CaptureIO.capture_io(fn ->
-        Mix.Tasks.EhOsContract.Graph.run(~w(--json --contract DispatchRig.Ledger --overlay))
+        Mix.Tasks.EhOsContract.Graph.run(~w(--json --contract dispatch_rig.ledger --overlay))
       end)
 
     assert %{"schema" => "eh_os_contract.graph_overlay.v1"} = Jason.decode!(stdout)

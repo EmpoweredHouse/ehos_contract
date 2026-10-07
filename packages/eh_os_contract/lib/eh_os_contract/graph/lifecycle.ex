@@ -47,8 +47,8 @@ defmodule EhOsContract.Graph.Lifecycle do
 
     # A lifecycle's statuses are its aggregate's: two aggregates may name theirs alike.
     id = fn
-      nil -> Document.id([:start, model.module, name])
-      status -> Document.id([:status, model.module, name, status])
+      nil -> Document.id([:start, model.id, name])
+      status -> Document.id([:status, model.id, name, status])
     end
 
     nodes =

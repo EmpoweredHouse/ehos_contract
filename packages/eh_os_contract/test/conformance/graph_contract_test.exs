@@ -281,16 +281,11 @@ defmodule EhOsContract.GraphContractTest do
             event :visit_closed, "Closed"
           end
 
-          # The order is the visit's, so the process correlates both by the visit.
           aggregate :order, "Order" do
             identity :visit_id
             invariant :paid, "The order is paid"
             command :ship_order, "Ship", by: :reception, emits: :order_shipped, rejects: :paid
             event :order_shipped, "Shipped"
-          end
-
-          process :visit, "Visit" do
-            correlate :visit_id
           end
 
           scenario "unpaid visit" do
@@ -313,8 +308,8 @@ defmodule EhOsContract.GraphContractTest do
         |> Enum.find(&(&1.kind == :invariant))
       end
 
-      assert rule.(:visit).id == "invariant:EhOsContract.Fixtures.GraphTwinRules:visit:paid"
-      assert rule.(:order).id == "invariant:EhOsContract.Fixtures.GraphTwinRules:order:paid"
+      assert rule.(:visit).id == "invariant:clinic.graph_twin_rules:visit:paid"
+      assert rule.(:order).id == "invariant:clinic.graph_twin_rules:order:paid"
     end
 
     test "a label written over several lines stays on its node's line" do

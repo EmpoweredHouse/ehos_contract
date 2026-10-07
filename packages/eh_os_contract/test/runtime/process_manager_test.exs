@@ -303,7 +303,7 @@ defmodule EhOsContract.ProcessManagerTest do
     # `PhaseRig`'s manager starts on a close and ends on it: a close with no run open
     # starts the run and ends it in the same step, and a close during a run ends it.
     # Drained before each command too, so the manager is deployed before the first.
-    @visits "PhaseRig.Visits:process_manager:watch"
+    @visits "phase_rig.visits:process_manager:watch"
 
     defp visit(command, id) do
       Testing.drain()
@@ -317,7 +317,7 @@ defmodule EhOsContract.ProcessManagerTest do
 
     test "with no run yet, starts the run and ends it in one step" do
       visit(Close, "v-1")
-      [closed] = of("visiting.closed")
+      [closed] = of("phase_rig.visits.closed")
 
       assert %ProcessManagerRecord{completed_at: completed_at, timers: timers} = visit_run("v-1")
       assert completed_at == closed.occurred_at
@@ -326,7 +326,7 @@ defmodule EhOsContract.ProcessManagerTest do
       # The run ended: a booking after it starts none, and nothing is noted.
       visit(Book, "v-1")
       assert visit_run("v-1").completed_at == completed_at
-      assert of("visiting.noted") == []
+      assert of("phase_rig.visits.noted") == []
     end
 
     test "during a run, ends it" do
@@ -335,7 +335,7 @@ defmodule EhOsContract.ProcessManagerTest do
 
       visit(Close, "v-2")
       assert %ProcessManagerRecord{completed_at: %DateTime{}} = visit_run("v-2")
-      assert length(of("visiting.noted")) == 1
+      assert length(of("phase_rig.visits.noted")) == 1
     end
   end
 

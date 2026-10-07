@@ -19,6 +19,7 @@
         "schema",
         "kind",
         "contract",
+        "module",
         "version",
         "document_digest",
         "since",
@@ -37,7 +38,11 @@
         },
         "contract": {
           "type": "string",
-          "description": "The module of the contract it is of."
+          "description": "The id: of the contract it is of."
+        },
+        "module": {
+          "type": "string",
+          "description": "The contract's module, for a reader in the code."
         },
         "version": {
           "type": "string",
@@ -179,7 +184,6 @@
         "relations": {
           "type": "object",
           "description": "Numbers by the id of a consumed_by relation of the document: what crosses between two contracts.",
-
           "additionalProperties": {
             "oneOf": [
               {
@@ -219,18 +223,13 @@
     },
     "event_numbers": {
       "type": "object",
-      "description": "An event: how often the log holds it in the period, and in how many runs of the process.",
+      "description": "An event: how often the log holds it in the period, whatever run, if any, each falls in.",
       "required": [
-        "occurrences",
-        "runs"
+        "occurrences"
       ],
       "additionalProperties": false,
       "properties": {
         "occurrences": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "runs": {
           "type": "integer",
           "minimum": 0
         }
@@ -259,10 +258,9 @@
     },
     "step_numbers": {
       "type": "object",
-      "description": "A step of the process, on the relation that ends it: the runs that took it out of the process's (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
+      "description": "A step of the contract, on the relation that ends it: how often it was taken in the period (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
       "required": [
-        "runs",
-        "of_runs",
+        "taken",
         "waiting",
         "failing",
         "untraversed",
@@ -270,16 +268,13 @@
       ],
       "additionalProperties": false,
       "properties": {
-        "runs": {
+        "taken": {
           "type": [
             "integer",
             "null"
           ],
-          "minimum": 0
-        },
-        "of_runs": {
-          "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Occurrences: the events its command appended, or the commands its reaction issued, accepted or rejected."
         },
         "waiting": {
           "type": "object",
@@ -307,7 +302,7 @@
         },
         "failing": {
           "type": "object",
-          "description": "Commands that failed where the step runs (in runs), effect jobs discarded, the consumer's subscription stopped.",
+          "description": "Commands that failed where the step runs (each failed command once), effect jobs discarded, the consumer's subscription stopped.",
           "required": [
             "commands",
             "effects",
@@ -365,7 +360,7 @@
     },
     "step_by_trigger": {
       "type": "object",
-      "description": "A relation several steps end at — a policy handling several events, drawn as one issues: each step's numbers under the id of the event it starts from. No total: a run that took two of the steps would count twice. An entry is this or step_numbers, never both.",
+      "description": "A relation several steps end at — a policy handling several events, drawn as one issues: each step's numbers under the id of the event it starts from. No total, as the report gives none. An entry is this or step_numbers, never both.",
       "required": [
         "by_trigger"
       ],

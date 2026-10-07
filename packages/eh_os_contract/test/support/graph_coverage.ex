@@ -25,11 +25,12 @@ defmodule EhOsContract.GraphCoverage do
     model = Model.fetch(contract)
     document = document || Document.contract(model)
     facts = facts(document)
-    c = model.module
+    c = model.id
+    process = Model.process(model)
 
     pictures =
       [{Contract.build(model), %{}}] ++
-        if(model.process, do: [{Declared.build(model, model.process.name), %{}}], else: []) ++
+        if(process, do: [{Declared.build(model, process.name), %{}}], else: []) ++
         for(u <- model.units, do: {Unit.build(model, u.name), %{unit: u.name}}) ++
         for u <- model.units,
             EhOsContract.Lifecycle.of(u),
@@ -180,7 +181,7 @@ defmodule EhOsContract.GraphCoverage do
 
   defp edge?(%{relation: relation} = e, ids, ctx, facts)
        when relation in [:eventually, :or_else] do
-    promise = Document.id([:promise, ctx.contract, ctx.model.process.name, e.promise])
+    promise = Document.id([:promise, ctx.contract, Model.process(ctx.model).name, e.promise])
     to = if relation == :eventually, do: "fulfils", else: "or_else"
     within = facts.nodes[promise] && facts.nodes[promise]["within"]
 

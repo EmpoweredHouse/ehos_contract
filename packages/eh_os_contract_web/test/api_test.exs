@@ -222,10 +222,13 @@ defmodule EhOsContract.Web.ApiTest do
                Jason.decode!(conn.resp_body)
 
       assert Enum.map(cs, & &1["contract"]) ==
-               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts()
+               |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+               |> Enum.sort()
 
       [first | _] = cs
-      contract = Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == first["contract"]))
+      contract = EhOsContract.Registry.contract(first["contract"])
+      assert first["module"] == inspect(contract)
       assert first["digest"] == Document.contract(contract)["digest"]
       assert [%{"domain" => _, "name" => _, "digest" => _} | _] = ds
     end
@@ -234,7 +237,8 @@ defmodule EhOsContract.Web.ApiTest do
          %{conn: conn} do
       contract = List.first(EhOsContract.Registry.contracts())
       document = Document.contract(contract)
-      served = get(conn, "/api/graph/#{inspect(contract)}")
+      id = EhOsContract.Model.fetch(contract).id
+      served = get(conn, "/api/graph/#{id}")
 
       assert served.status == 200
       assert served.resp_body == Document.encode(document)
@@ -243,13 +247,13 @@ defmodule EhOsContract.Web.ApiTest do
       cached =
         conn
         |> put_req_header("if-none-match", ~s("#{document["digest"]}"))
-        |> get("/api/graph/#{inspect(contract)}")
+        |> get("/api/graph/#{id}")
 
       assert cached.status == 304
 
       for held <- [~s("other", W/"#{document["digest"]}"), "*"] do
         conn =
-          conn |> put_req_header("if-none-match", held) |> get("/api/graph/#{inspect(contract)}")
+          conn |> put_req_header("if-none-match", held) |> get("/api/graph/#{id}")
 
         assert conn.status == 304, held
       end
@@ -257,13 +261,13 @@ defmodule EhOsContract.Web.ApiTest do
       stale =
         conn
         |> put_req_header("if-none-match", ~s("other"))
-        |> get("/api/graph/#{inspect(contract)}")
+        |> get("/api/graph/#{id}")
 
       assert stale.status == 200
     end
 
     test "a contract's overlay says its period; a bad one is refused", %{conn: conn} do
-      contract = inspect(List.first(EhOsContract.Registry.contracts()))
+      contract = EhOsContract.Model.fetch(List.first(EhOsContract.Registry.contracts())).id
       served = get(conn, "/api/graph/#{contract}/overlay?since=2026-01-01T00:00:00Z")
 
       assert served.status == 200
@@ -300,9 +304,14 @@ defmodule EhOsContract.Web.ApiTest do
 
     test "what the registry does not hold is 404, and an unauthenticated caller gets nothing",
          %{conn: conn} do
+      # A contract is named by its id: its module's name is an unknown contract.
+      module = inspect(List.first(EhOsContract.Registry.contracts()))
+
       for path <- [
-            "/api/graph/Not.A.Contract",
-            "/api/graph/Not.A.Contract/overlay",
+            "/api/graph/not_a.contract",
+            "/api/graph/not_a.contract/overlay",
+            "/api/graph/#{module}",
+            "/api/graph/#{module}/overlay",
             "/api/graph/domain/Not.A.Domain",
             "/api/graph/domain/Not.A.Domain/overlay"
           ],

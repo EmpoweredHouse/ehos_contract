@@ -81,7 +81,7 @@ defmodule EhOsContract.Graph.Facts do
   @spec contract(module() | map()) :: %{nodes: map(), relations: map(), scenarios: map()}
   def contract(contract) do
     {model, domain} = redacted(contract)
-    c = model.module
+    c = model.id
     ctx = context(model.domain, domain, grants(model))
     events = events(model, ctx)
 
@@ -157,8 +157,9 @@ defmodule EhOsContract.Graph.Facts do
   # where it is declared and whether the process includes it. A consumed one is as
   # its sibling declares it, a received one as this contract's `subscribe` reads it.
   defp events(model, ctx) do
-    c = model.module
-    included = Map.new((model.process && model.process.includes) || [], &{&1.event, &1})
+    c = model.id
+    process = Model.process(model)
+    included = Map.new((process && process.includes) || [], &{&1.event, &1})
 
     own =
       for e <- model.events,
@@ -170,7 +171,7 @@ defmodule EhOsContract.Graph.Facts do
           original <- names do
         declared = Enum.find(sibling.events, &(&1.name == original))
         name = Map.get(renames, original, original)
-        %{name: name, declared: declared, from: id(:event, from, original), received: false}
+        %{name: name, declared: declared, from: id(:event, sibling.id, original), received: false}
       end
 
     received =
@@ -221,11 +222,15 @@ defmodule EhOsContract.Graph.Facts do
 
   # The process, its stages and promises, who answers for it, and the events that
   # open, fulfil or settle each promise otherwise.
-  defp process(%{process: nil}), do: {%{process: [], stage: [], promise: []}, %{}}
-
   defp process(model) do
-    c = model.module
-    p = model.process
+    case Model.process(model) do
+      nil -> {%{process: [], stage: [], promise: []}, %{}}
+      p -> process(model, p)
+    end
+  end
+
+  defp process(model, p) do
+    c = model.id
     pid = id(:process, c, p.name)
     promise_id = &Document.id([:promise, c, p.name, &1])
 
@@ -251,7 +256,7 @@ defmodule EhOsContract.Graph.Facts do
 
     {%{
        process: [
-         node(:process, c, p, correlate: p.correlate, deadline: p.deadline, cadence: p.cadence)
+         node(:process, c, p, correlate: p.correlate, deadline: p.deadline)
        ],
        stage:
          for(
@@ -269,11 +274,13 @@ defmodule EhOsContract.Graph.Facts do
   end
 
   defp stage_id(_model, nil), do: nil
-  defp stage_id(model, stage), do: Document.id([:stage, model.module, model.process.name, stage])
+
+  defp stage_id(model, stage),
+    do: Document.id([:stage, model.id, Model.process(model).name, stage])
 
   # Units with their statuses and rules, and what a unit is built from.
   defp units(model, ctx) do
-    c = model.module
+    c = model.id
 
     statuses =
       for u <- model.units,
@@ -368,7 +375,7 @@ defmodule EhOsContract.Graph.Facts do
 
   # What a command emits, which statuses it may be issued in, and what it is refused on.
   defp commands(model) do
-    c = model.module
+    c = model.id
     units = Map.new(model.units, &{&1.name, &1})
 
     emits =
@@ -402,7 +409,7 @@ defmodule EhOsContract.Graph.Facts do
 
   # Who may issue, record and ask what.
   defp access(model) do
-    c = model.module
+    c = model.id
     d = model.domain
 
     pairs =
@@ -415,7 +422,7 @@ defmodule EhOsContract.Graph.Facts do
 
   # Read models with the events they project, and the queries over them.
   defp read_side(model) do
-    c = model.module
+    c = model.id
 
     projected =
       for rm <- model.read_models, e <- List.wrap(rm.projects) do
@@ -432,7 +439,7 @@ defmodule EhOsContract.Graph.Facts do
   # Policies, effects and process managers with their timers and rules, and the flow
   # through them.
   defp reactions(model, events, ctx) do
-    c = model.module
+    c = model.id
     received = MapSet.new(for e <- events, e.received, do: e.name)
 
     constraints =
@@ -579,7 +586,7 @@ defmodule EhOsContract.Graph.Facts do
   # manager or a query; an effect and a read model are no scenario's target (S6) —
   # each with the ids of the relations it exercises. Their data is already redacted.
   defp scenarios(model, relations) do
-    c = model.module
+    c = model.id
 
     find = fn type, from, to, attrs ->
       Enum.find_value(relations[type], fn r ->
@@ -610,7 +617,7 @@ defmodule EhOsContract.Graph.Facts do
   # rule it is refused on. It covers the command's arrow to each expected event, or to
   # that rule.
   defp scenario(:unit, s, model, find) do
-    c = model.module
+    c = model.id
     command = id(:command, c, s.trigger.name)
     unit = Enum.find(model.units, &(&1.name == s.target.name))
     rule = s.rejected && refusal(c, unit, s.trigger.name, s.rejected)
@@ -633,7 +640,7 @@ defmodule EhOsContract.Graph.Facts do
   # A policy's: the event delivered and the commands it issues. It covers the event's
   # arrow to the policy and the policy's to each command.
   defp scenario(:policy, s, model, find) do
-    c = model.module
+    c = model.id
     me = id(:policy, c, s.target.name)
     event = id(:event, c, s.trigger.name)
 
@@ -658,7 +665,7 @@ defmodule EhOsContract.Graph.Facts do
   # the run; a timer's `fires` to each command issued — and each `issues`, `sets` and
   # `cancels` the manager does on that way in.
   defp scenario(:process_manager, s, model, find) do
-    c = model.module
+    c = model.id
     pm = Enum.find(model.process_managers, &(&1.name == s.target.name))
     me = id(:process_manager, c, pm.name)
     starts = Enum.map(pm.starts_on, & &1.event)
@@ -707,7 +714,7 @@ defmodule EhOsContract.Graph.Facts do
   # A query's: the events projected, the parameters asked with, the rows answered. It
   # covers the query's read and each given event's projection into what it reads.
   defp scenario(:query, s, model, find) do
-    c = model.module
+    c = model.id
     query = Enum.find(model.queries, &(&1.name == s.target.name))
     me = id(:query, c, query.name)
     read = id(:read_model, c, query.reads)
@@ -746,15 +753,14 @@ defmodule EhOsContract.Graph.Facts do
     for e <- events,
         external = e.declared[:depends_on],
         external != nil do
-      {:depends_on,
-       relation(id(:event, model.module, e.name), id(:external, model.domain, external))}
+      {:depends_on, relation(id(:event, model.id, e.name), id(:external, model.domain, external))}
     end
     |> typed()
   end
 
   # What leaves for another application and what comes from one.
   defp wire(model) do
-    c = model.module
+    c = model.id
     d = model.domain
 
     out =
@@ -788,7 +794,7 @@ defmodule EhOsContract.Graph.Facts do
       Enum.flat_map(model.commands, & &1.by) ++
         Enum.flat_map(model.events, & &1.recorded_by) ++
         Enum.flat_map(model.queries, &List.wrap(&1.by)) ++
-        List.wrap(model.process && model.process.accountable)
+        List.wrap(Model.process(model)[:accountable])
 
     actors = declared(domain.actors, acting)
 
@@ -946,10 +952,13 @@ defmodule EhOsContract.Graph.Facts do
       contracts
       |> Enum.map(&Model.fetch/1)
       |> Enum.filter(&(&1.domain == d))
-      |> Enum.sort_by(& &1.module)
+      |> Enum.sort_by(& &1.id)
 
     here = MapSet.new(models, & &1.module)
-    contract_id = &Document.id([:contract, &1])
+    # Everything of a contract is named by its `id:` (plan DD, ID3, #173), which the
+    # log names it by too; a sibling is reached here by its module.
+    ids = Map.new(models, &{&1.module, &1.id})
+    contract_id = &Document.id([:contract, ids[&1]])
 
     consumed =
       for m <- models,
@@ -968,14 +977,15 @@ defmodule EhOsContract.Graph.Facts do
     events =
       for {module, name} <- crossing,
           e = Enum.find(Model.fetch(module).events, &(&1.name == name)),
-          do: node(:event, module, e, contract: contract_id.(module))
+          do: node(:event, ids[module], e, contract: contract_id.(module))
 
     consumed_by =
       consumed
       |> Enum.group_by(fn {from, to, _, _} -> {from, to} end)
       |> Enum.map(fn {{from, to}, items} ->
         relation(contract_id.(from), contract_id.(to),
-          events: for({_, _, name, as} <- items, do: %{event: id(:event, from, name), as: as})
+          events:
+            for({_, _, name, as} <- items, do: %{event: id(:event, ids[from], name), as: as})
         )
       end)
       |> Enum.sort_by(&{&1.from, &1.to})
@@ -984,7 +994,7 @@ defmodule EhOsContract.Graph.Facts do
       for {m, p} <- published,
           do:
             relation(contract_id.(m.module), id(:publication, d, p.as),
-              event: id(:event, m.module, p.from)
+              event: id(:event, m.id, p.from)
             )
 
     granted = Map.new(models, &{&1.module, Model.capabilities(&1)})
@@ -1011,7 +1021,7 @@ defmodule EhOsContract.Graph.Facts do
              capability: capability,
              kind: g.kind,
              contract: contract_id.(m.module),
-             declaration: id(declaration_kind(g.kind), m.module, g.name)
+             declaration: id(declaration_kind(g.kind), m.id, g.name)
            }}
         end,
         &elem(&1, 0),
@@ -1049,7 +1059,9 @@ defmodule EhOsContract.Graph.Facts do
       end
 
     accountable =
-      for m <- models, m.process, a <- List.wrap(m.process.accountable) do
+      for m <- models,
+          p = Model.process(m),
+          a <- List.wrap(p && p.accountable) do
         {:accountable_for, relation(id(:actor, d, a), contract_id.(m.module))}
       end
 
@@ -1066,11 +1078,15 @@ defmodule EhOsContract.Graph.Facts do
       # A contract has no words of its own in the DSL; its process has.
       contract:
         for m <- models do
-          with_attrs(%{id: contract_id.(m.module), name: m.module, label: nil, source: nil},
+          p = Model.process(m)
+
+          # Named by its id, as everything outside the code names it (plan DD, P1a,
+          # #183); its module beside it, for a reader in the code.
+          with_attrs(%{id: contract_id.(m.module), name: m.id, label: nil, source: nil},
             context: id(:context, d, m.context),
-            contract_id: Map.get(m, :id),
-            process: m.process && %{name: m.process.name, label: m.process.label},
-            correlate: m.process && m.process.correlate
+            module: m.module,
+            process: p && %{name: p.name, label: p.label},
+            correlate: p && p.correlate
           )
         end,
       event: events,

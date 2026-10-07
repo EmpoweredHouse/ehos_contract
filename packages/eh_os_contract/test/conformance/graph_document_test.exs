@@ -87,6 +87,9 @@ defmodule EhOsContract.GraphDocumentTest do
 
   defp node(document, kind, id), do: Enum.find(document["nodes"][kind], &(&1["id"] == id))
 
+  # What a contract declares is scoped to its `id:` (plan DD, ID3, #173).
+  defp scope(contract), do: Model.fetch(contract).id
+
   test "every document of every fixture holds to the schema" do
     for {module, document} <- documents() do
       case JSV.validate(document, @schema) do
@@ -295,9 +298,19 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   describe "the facts of a contract" do
+    # The user's decision B (7 October): ids follow the contract's `id:`, as the log and
+    # the dashboard's APIs name it, so a module moved under the same id moves no id.
+    test "the contract is named by its id, and what it declares is scoped to it" do
+      d = Document.contract(DispatchRig.Ledger)
+
+      assert %{"contract" => "dispatch_rig.ledger", "module" => "DispatchRig.Ledger"} = d
+      assert node(d, "command", "command:dispatch_rig.ledger:withdraw")
+      assert node(d, "actor", "actor:DispatchRig.Domain:clerk")
+    end
+
     test "a process manager's relations carry the way in they act on" do
       d = Document.contract(DispatchRig.Ledger)
-      id = &Document.id([&1, DispatchRig.Ledger | List.wrap(&2)])
+      id = &Document.id([&1, scope(DispatchRig.Ledger) | List.wrap(&2)])
       pm = id.(:process_manager, :first_deposit_chase)
       due = id.(:timer, [:first_deposit_chase, :first_deposit_due])
 
@@ -314,7 +327,7 @@ defmodule EhOsContract.GraphDocumentTest do
 
     test "a rule is its owner's, and a command outside its statuses is refused on one" do
       d = Document.contract(LifecycleRig.Visits)
-      id = &Document.id([&1, LifecycleRig.Visits | List.wrap(&2)])
+      id = &Document.id([&1, scope(LifecycleRig.Visits) | List.wrap(&2)])
       admit = id.(:command, :admit_patient)
       rule = id.(:invariant, [:unit, :visit, :only_a_booked_visit])
 
@@ -338,7 +351,7 @@ defmodule EhOsContract.GraphDocumentTest do
     test "a received event is handled through the inbox and comes from a publication" do
       d = Document.contract(BusRig.Stock)
       model = Model.fetch(BusRig.Stock)
-      event = Document.id([:event, BusRig.Stock, :order_placed])
+      event = Document.id([:event, scope(BusRig.Stock), :order_placed])
       publication = Document.id([:publication, model.domain, "bus_rig_shop.order.placed.v1"])
 
       assert relation(d, "received_as", publication, event)
@@ -355,7 +368,10 @@ defmodule EhOsContract.GraphDocumentTest do
     test "two relations of one type between the same two nodes have two ids" do
       compile("""
       defmodule EhOsContract.GraphDocumentTest.Twice do
-        use EhOsContract.Contract, domain: BusRig.Warehouse, context: :stock
+        use EhOsContract.Contract,
+          domain: BusRig.Warehouse,
+          context: :stock,
+          id: "bus_rig_warehouse.twice"
 
         subscribe "bus_rig_shop.order.placed.v1", as: :placed do
           field :order_id, :id
@@ -390,10 +406,6 @@ defmodule EhOsContract.GraphDocumentTest do
         policy :reserve_on_order, "Reserve on an order",
           handles: [:placed, :placed_again],
           issues: :reserve
-
-        process :reservation, "Reservation" do
-          correlate :order_id
-        end
       end
       """)
 
@@ -403,13 +415,13 @@ defmodule EhOsContract.GraphDocumentTest do
 
       consulted =
         for r <- d["relations"]["consulted_by"],
-            r["to"] == Document.id([:unit, module, :limit]),
+            r["to"] == Document.id([:unit, scope(module), :limit]),
             do: r["id"]
 
       assert length(consulted) == 3 and consulted == Enum.uniq(consulted)
 
       subscribed =
-        for r <- domain["relations"]["subscribed_by"], r["to"] =~ "Twice", do: r
+        for r <- domain["relations"]["subscribed_by"], r["to"] =~ "twice", do: r
 
       assert ["placed", "placed_again"] == Enum.sort(Enum.map(subscribed, & &1["as"]))
       assert subscribed |> Enum.map(& &1["id"]) |> Enum.uniq() |> length() == 2
@@ -423,7 +435,8 @@ defmodule EhOsContract.GraphDocumentTest do
       for as <- [:placed, :placed_again],
           do:
             assert(
-              %{"capability" => ^grant} = node(d, "event", Document.id([:event, module, as]))
+              %{"capability" => ^grant} =
+                node(d, "event", Document.id([:event, scope(module), as]))
             )
 
       for document <- [d, domain] do
@@ -436,10 +449,6 @@ defmodule EhOsContract.GraphDocumentTest do
     test "a manager's own timer may be a way in, during the run" do
       model =
         compile_contract("GraphFactsTimer", """
-          process :visit, "Visit" do
-            correlate :visit_id
-          end
-
           aggregate :visit, "Visit" do
             identity :visit_id
             command :book, "Book", by: :reception, emits: :booked
@@ -457,7 +466,7 @@ defmodule EhOsContract.GraphDocumentTest do
         """)
 
       d = Document.contract(model)
-      id = &Document.id([&1, model.module | List.wrap(&2)])
+      id = &Document.id([&1, model.id | List.wrap(&2)])
       pm = id.(:process_manager, :chase)
       later = id.(:timer, [:chase, :later])
 
@@ -472,10 +481,6 @@ defmodule EhOsContract.GraphDocumentTest do
       # `Clinic`, the domain `compile_contract/2` names, does not exist (v2 §8).
       model =
         compile_contract("GraphFactsNoDomain", """
-          process :visit, "Visit" do
-            correlate :visit_id
-          end
-
           aggregate :visit, "Visit" do
             identity :visit_id
             command :book, "Book", by: :reception, emits: :booked
@@ -510,10 +515,10 @@ defmodule EhOsContract.GraphDocumentTest do
         """)
 
       d = Document.contract(model)
-      here = Document.id([:event, model.module, :opened])
+      here = Document.id([:event, model.id, :opened])
 
       assert %{"declared_as" => sibling, "included" => true} = node(d, "event", here)
-      assert sibling == Document.id([:event, DispatchRig.Ledger, :account_opened])
+      assert sibling == Document.id([:event, scope(DispatchRig.Ledger), :account_opened])
       refute Enum.any?(nodes(d), &(&1["id"] == sibling))
     end
   end
@@ -565,7 +570,10 @@ defmodule EhOsContract.GraphDocumentTest do
       end
 
       defmodule EhOsContract.GraphDocumentTest.Visits do
-        use EhOsContract.Contract, domain: EhOsContract.GraphDocumentTest.Clinic, context: :visits
+        use EhOsContract.Contract,
+          domain: EhOsContract.GraphDocumentTest.Clinic,
+          context: :visits,
+          id: "graph_clinic.visits"
 
         aggregate :visit, "Visit" do
           identity :visit_id
@@ -629,7 +637,7 @@ defmodule EhOsContract.GraphDocumentTest do
     setup do
       %{
         d: Document.contract(EhOsContract.GraphDocumentTest.Visits),
-        id: &Document.id([&1, EhOsContract.GraphDocumentTest.Visits | List.wrap(&2)]),
+        id: &Document.id([&1, scope(EhOsContract.GraphDocumentTest.Visits) | List.wrap(&2)]),
         domain: &Document.id([&1, EhOsContract.GraphDocumentTest.Clinic, &2])
       }
     end
@@ -751,8 +759,8 @@ defmodule EhOsContract.GraphDocumentTest do
           EhOsContract.GraphDocumentTest.Visits
         ])
 
-      contract = Document.id([:contract, EhOsContract.GraphDocumentTest.Visits])
-      id = &Document.id([&1, EhOsContract.GraphDocumentTest.Visits, &2])
+      contract = Document.id([:contract, scope(EhOsContract.GraphDocumentTest.Visits)])
+      id = &Document.id([&1, scope(EhOsContract.GraphDocumentTest.Visits), &2])
 
       assert %{"capabilities" => capabilities} = node(d, "actor", domain.(:actor, :reception))
 
@@ -774,8 +782,12 @@ defmodule EhOsContract.GraphDocumentTest do
 
       assert %{"capabilities" => []} = node(d, "actor", domain.(:actor, :feed))
 
-      assert %{"label" => nil, "process" => %{"name" => "visit", "label" => "Visit"}} =
-               node(d, "contract", contract)
+      assert %{
+               "name" => "graph_clinic.visits",
+               "module" => "EhOsContract.GraphDocumentTest.Visits",
+               "label" => nil,
+               "process" => %{"name" => "visit", "label" => "Visit"}
+             } = node(d, "contract", contract)
     end
   end
 
@@ -785,7 +797,7 @@ defmodule EhOsContract.GraphDocumentTest do
       for c <- Registry.contracts() do
         model = Model.fetch(c)
         d = Document.contract(model)
-        id = &Document.id([&1, model.module | List.wrap(&2)])
+        id = &Document.id([&1, model.id | List.wrap(&2)])
         json = &Model.json_data/1
         put = &if(&2 in [nil, false], do: &1, else: Map.put(&1, &3, json.(&2)))
 
@@ -837,9 +849,9 @@ defmodule EhOsContract.GraphDocumentTest do
                 )
         end
 
-        for p <- List.wrap(model.process) do
+        for p <- List.wrap(Model.process(model)) do
           n = node(d, "process", id.(:process, p.name))
-          assert {n["deadline"], n["cadence"]} == {json.(p.deadline), json.(p.cadence)}
+          assert n["deadline"] == json.(p.deadline)
           assert n["correlate"] == json.(p.correlate)
         end
       end
@@ -852,7 +864,7 @@ defmodule EhOsContract.GraphDocumentTest do
         Enum.filter(Model.capabilities(BusRig.Stock), &match?({_, %{kind: :subscribe}}, &1))
 
       assert %{"capability" => ^grant} =
-               node(d, "event", Document.id([:event, BusRig.Stock, :order_placed]))
+               node(d, "event", Document.id([:event, scope(BusRig.Stock), :order_placed]))
     end
 
     test "a publication has no words of its own" do
@@ -882,7 +894,7 @@ defmodule EhOsContract.GraphDocumentTest do
   describe "scenarios" do
     test "a unit's covers the arrows to what it expects, or to the rule it is refused on" do
       d = Document.contract(DispatchRig.Ledger)
-      id = &Document.id([&1, DispatchRig.Ledger | List.wrap(&2)])
+      id = &Document.id([&1, scope(DispatchRig.Ledger) | List.wrap(&2)])
       withdraw = id.(:command, :withdraw)
       rule = id.(:invariant, [:unit, :account, :balance_never_negative])
       by = &Enum.find(d["scenarios"]["unit"], fn s -> s["description"] == &1 end)
@@ -900,10 +912,6 @@ defmodule EhOsContract.GraphDocumentTest do
     test "a process manager's starts its run only on a starting event with no run before it" do
       model =
         compile_contract("GraphFactsChase", """
-          process :visit, "Visit" do
-            correlate :visit_id
-          end
-
           aggregate :visit, "Visit" do
             identity :visit_id
             command :book, "Book", by: :reception, emits: :booked
@@ -954,7 +962,7 @@ defmodule EhOsContract.GraphDocumentTest do
         """)
 
       d = Document.contract(model)
-      id = &Document.id([&1, model.module | List.wrap(&2)])
+      id = &Document.id([&1, model.id | List.wrap(&2)])
       pm = id.(:process_manager, :chase)
       later = id.(:timer, [:chase, :later])
       remind = id.(:command, :remind)
@@ -1027,10 +1035,10 @@ defmodule EhOsContract.GraphDocumentTest do
   describe "the declared shape of a process" do
     test "its stages are groups in their order, the order an edge between them" do
       graph = Declared.build(ProcessShapes.Promised, :handling)
-      stage = &Document.id([:stage, ProcessShapes.Promised, :handling, &1])
+      stage = &Document.id([:stage, scope(ProcessShapes.Promised), :handling, &1])
       model = Model.fetch(ProcessShapes.Promised)
 
-      assert Enum.map(graph.groups, & &1.name) == Enum.map(model.process.stages, & &1.name)
+      assert Enum.map(graph.groups, & &1.name) == Enum.map(Model.process(model).stages, & &1.name)
 
       assert %{from: from, to: to, relation: :precedes} =
                Enum.find(graph.edges, &(&1.relation == :precedes))
@@ -1038,12 +1046,13 @@ defmodule EhOsContract.GraphDocumentTest do
       assert {from, to} == {stage.(:intake), stage.(:decision)}
 
       intake = Enum.find(graph.groups, &(&1.name == :intake))
-      assert Document.id([:event, ProcessShapes.Promised, :request_received]) in intake.nodes
+
+      assert Document.id([:event, scope(ProcessShapes.Promised), :request_received]) in intake.nodes
     end
 
     test "a promise is an edge with its window, and its or_else another" do
       graph = Declared.build(ProcessShapes.Promised, :handling)
-      event = &Document.id([:event, ProcessShapes.Promised, &1])
+      event = &Document.id([:event, scope(ProcessShapes.Promised), &1])
 
       assert %{within: %{amount: 2, unit: :day}, promise: promise} =
                Enum.find(graph.edges, &(&1.relation == :eventually))
@@ -1063,7 +1072,7 @@ defmodule EhOsContract.GraphDocumentTest do
     test "an included event has the id it has on the contract's full graph" do
       declared = Declared.build(DispatchRig.Branch, :branch)
       full = Contract.build(DispatchRig.Branch)
-      id = Document.id([:event, DispatchRig.Branch, :account_opened])
+      id = Document.id([:event, scope(DispatchRig.Branch), :account_opened])
 
       assert Enum.any?(declared.nodes, &(&1.id == id))
       assert Enum.any?(full.nodes, &(&1.id == id))

@@ -22,15 +22,17 @@ defmodule EhOsContract.Graph.Document do
   digest, and a reader that has the digest already need not fetch it again. What the
   log says over it is another document (plan E13a, batch 5), joined on the same ids.
 
-  **An id is stable and opaque.** It is made from the declaration's kind, the module
-  whose name it is and the names that pick it out there (`id/1`), so the same
-  declaration has the same id in every version of the contract, and an overlay or a
-  renderer joins on it. In a contract's document that module is the contract: an
+  **An id is stable and opaque.** It is made from the declaration's kind, what it is
+  declared in and the names that pick it out there (`id/1`), so the same declaration
+  has the same id in every version of the contract, and an overlay or a renderer
+  joins on it. What a contract declares is scoped to the contract's `id:` (plan DD,
+  ID3, #173), as the log names it, so moving the contract's module moves no id: an
   event it consumes is a node under the name it has *here*, which a rename may make
-  another than its sibling's, so it is `event:<this contract>:<local name>` and
+  another than its sibling's, so it is `event:<this contract's id>:<local name>` and
   says which sibling event it is in `declared_as`. An actor, an external system, a
-  context, a subdomain and a publication are the domain's. Nothing should read an id
-  apart: a client's name may hold any character, a colon included.
+  context, a subdomain and a publication are the domain's, scoped to the domain's
+  module. Nothing should read an id apart: a client's name may hold any character, a
+  colon included.
 
   ## The pictures, until E13b
 
@@ -120,7 +122,8 @@ defmodule EhOsContract.Graph.Document do
 
   @doc """
   The document of `contract`: its graph of facts (`EhOsContract.Graph.Facts`) under
-  `nodes`, `relations` and `scenarios`, with what it is — the contract's module and `id:`, the
+  `nodes`, `relations` and `scenarios`, with what it is — the contract's `id:` as
+  `contract`, which names it outside the code (plan DD, P1a, #183), its `module`, the
   domain it names, the id of its context, its `version` — and the document's
   `digest`.
   """
@@ -132,8 +135,8 @@ defmodule EhOsContract.Graph.Document do
     seal(%{
       "schema" => @schema,
       "kind" => "contract",
-      "contract" => Model.json_data(model.module),
-      "contract_id" => Model.json_data(Map.get(model, :id)),
+      "contract" => model.id,
+      "module" => Model.json_data(model.module),
       "domain" => Model.json_data(model.domain),
       "context" => id([:context, model.domain, model.context]),
       "version" => model.version,
@@ -207,9 +210,11 @@ defmodule EhOsContract.Graph.Document do
   defp seal(body), do: Map.put(body, "digest", digest(body))
 
   @doc """
-  The id of a declaration: its kind, then the module whose name it is, then the names
-  that pick it out there — `[:event, Rehmed.Contracts.VisitSettlement, :visit_settled]`
-  is `"event:Rehmed.Contracts.VisitSettlement:visit_settled"`.
+  The id of a declaration: its kind, then what it is declared in — a contract's `id:`,
+  or a domain's module — then the names that pick it out there —
+  `[:event, "rehmed.settlement", :visit_settled]` is
+  `"event:rehmed.settlement:visit_settled"`, `[:actor, Rehmed.Domain, :reception]` is
+  `"actor:Rehmed.Domain:reception"`.
   """
   @spec id([atom() | String.t()]) :: String.t()
   def id(parts), do: Enum.map_join(parts, ":", &part/1)
@@ -224,10 +229,11 @@ defmodule EhOsContract.Graph.Document do
   defp part(name), do: name
 
   @doc """
-  A node of `kind` named `name`, declared in `scope`, with its label or, lacking one,
-  its name.
+  A node of `kind` named `name`, declared in `scope` — a contract's id or a domain's
+  module — with its label or, lacking one, its name.
   """
-  @spec graph_node(atom(), module(), atom() | String.t(), String.t() | nil) :: graph_node()
+  @spec graph_node(atom(), module() | String.t(), atom() | String.t(), String.t() | nil) ::
+          graph_node()
   def graph_node(kind, scope, name, label),
     do: %{id: id([kind, scope, name]), kind: kind, name: name, label: label || to_string(name)}
 

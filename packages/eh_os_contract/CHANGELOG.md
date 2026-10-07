@@ -27,6 +27,53 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E13a: a contract and a domain as `graph.v1` documents — graphs of facts.**
+  `EhOsContract.Graph.Document.contract/1` gives a contract's document and `Document.domain/2` a domain's: every
+  declaration a relation can end at as a node, grouped by kind (`command`, `event`, `policy`, `timer`, `status`,
+  `stage`, `promise`, …, and the domain's actors, externals, values, entities, subjects and contexts it names),
+  every link between them as a relation, grouped by type (`emits`, `handled_by`, `starts`, `ends`, `issues`,
+  `sets`, `cancels`, `fires`, `may_issue`, `refused_on`, `transition`, `opens`, `fulfils`, `published_as`, … and
+  the eight context-mapping patterns), each with a stable, opaque id; ownership is a field naming the owner's id.
+  An id is scoped to the contract's `id:` for what the contract declares (`"command:rehmed.settlement:close_settlement"`)
+  and to the domain's module for what the domain declares (`"actor:Rehmed.Domain:reception"`), so moving a contract's
+  module moves no id; the document names its contract by its id (`"contract"`) with its `"module"` beside it, as
+  the dashboard's APIs do, and a domain's document names each contract node by its id too.
+  They hold no pictures — which facts are shown together is the renderer's — and nothing from the log. A process
+  manager's relations carry the event or timer they act on and whether it starts the run; a consumed event says
+  which sibling event it is (`declared_as`), a received one is handled `via_inbox`. Both are JSON-ready, say
+  `"schema": "eh_os_contract.graph.v1"` and carry a `"digest"` of the rest (`Document.digest/1`). Their JSON Schema
+  ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), with the overlay's, the only things under `priv/` the package
+  carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
+  the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
+  `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
+  moves. A node's `label` is the client's words or `null`, never its name. Each node carries what a panel shows
+  of it — fields in one shape (type, required, default, whose personal data, the subject, value or entity it
+  names, the external that issues it), capabilities, delivery and idempotency, windows, terminal and final, a
+  unit's state, a query's parameters, a domain service's functions, an actor's role, an external's operations, a
+  context's terms, a role's capabilities by contract — and a contract's `scenarios`, grouped by the kind of their
+  target, say which relations they exercise (`covers`). Every example and default in a document is redacted as
+  `Model.to_data/1` redacts it.
+- **E13a: what the log says over a graph, as its own document.** `EhOsContract.Graph.Overlay.contract/2` and
+  `domain/3` give `eh_os_contract.graph_overlay.v1` (its schema in `priv/schema/graph_overlay.v1.json`): the period,
+  the version, the digest of the `graph.v1` document it joins, and maps from that document's ids to the numbers the
+  report and the pictures already compute — an event's occurrences, a process's runs, how often a step was taken,
+  waiting and failing and whether the report counts it never or not yet, a transition's count, traffic between
+  contracts — and a move a lifecycle
+  does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
+  report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences. No verdict moves.
+  A step's `untraversed` is the report's reading of it: true exactly when the report lists the step as never
+  traversed. A step's numbers sit on the relation that ends it: flat where the relation has that one step; under
+  `by_trigger`, by the triggering event's id, where several steps end at one relation (a policy handling several
+  events) — one entry per line of the report — with no total. **A process manager that issues one command on one
+  event both as the event starts a run and during it gets no numbers on those two relations** (`phase` start and
+  run): the report reads them as one step, and the log does not record which phase a command was issued in.
+- **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
+  overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
+  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`, by its id) or a domain's (`--system`)
+  document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
+  eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
+  the contract's page, and treats those files as its own when it overwrites, checks or deletes
+  (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
 - **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
   #210). The rules between modules refuse a process module whose `domain:` is not a compiled domain (X1), whose
   `id:` is outside the domain's `name:` (D11), whose `accountable` is no actor of the domain (X2), whose
@@ -73,48 +120,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the
   history of a contract removed on purpose. The log's distinct types are read one index step each, so a long log
   costs no more than a short one with as many types.
-- **E13a: a contract and a domain as `graph.v1` documents — graphs of facts.**
-  `EhOsContract.Graph.Document.contract/1` gives a contract's document and `Document.domain/2` a domain's: every
-  declaration a relation can end at as a node, grouped by kind (`command`, `event`, `policy`, `timer`, `status`,
-  `stage`, `promise`, …, and the domain's actors, externals, values, entities, subjects and contexts it names),
-  every link between them as a relation, grouped by type (`emits`, `handled_by`, `starts`, `ends`, `issues`,
-  `sets`, `cancels`, `fires`, `may_issue`, `refused_on`, `transition`, `opens`, `fulfils`, `published_as`, … and
-  the eight context-mapping patterns), each with a stable, opaque id; ownership is a field naming the owner's id.
-  They hold no pictures — which facts are shown together is the renderer's — and nothing from the log. A process
-  manager's relations carry the event or timer they act on and whether it starts the run; a consumed event says
-  which sibling event it is (`declared_as`), a received one is handled `via_inbox`. Both are JSON-ready, say
-  `"schema": "eh_os_contract.graph.v1"` and carry a `"digest"` of the rest (`Document.digest/1`). Their JSON Schema
-  ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), with the overlay's, the only things under `priv/` the package
-  carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
-  the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
-  `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
-  moves. A node's `label` is the client's words or `null`, never its name. Each node carries what a panel shows
-  of it — fields in one shape (type, required, default, whose personal data, the subject, value or entity it
-  names, the external that issues it), capabilities, delivery and idempotency, windows, terminal and final, a
-  unit's state, a query's parameters, a domain service's functions, an actor's role, an external's operations, a
-  context's terms, a role's capabilities by contract — and a contract's `scenarios`, grouped by the kind of their
-  target, say which relations they exercise (`covers`). Every example and default in a document is redacted as
-  `Model.to_data/1` redacts it.
-- **E13a: what the log says over a graph, as its own document.** `EhOsContract.Graph.Overlay.contract/2` and
-  `domain/3` give `eh_os_contract.graph_overlay.v1` (its schema in `priv/schema/graph_overlay.v1.json`): the period,
-  the version, the digest of the `graph.v1` document it joins, and maps from that document's ids to the numbers the
-  report and the pictures already compute — occurrences and runs, a step's runs, waiting and failing and whether
-  the report counts it never or not yet, a transition's count, traffic between contracts — and a move a lifecycle
-  does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
-  report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences and runs. No verdict moves.
-  A step's `untraversed` is the report's reading of it: true exactly when the report lists the step as never
-  traversed. A step's numbers sit on the relation that ends it: flat where the relation has that one step; under
-  `by_trigger`, by the triggering event's id, where several steps end at one relation (a policy handling several
-  events) — one entry per line of the report — with no total. **A process manager that issues one command on one
-  event both as the event starts a run and during it gets no numbers on those two relations** (`phase` start and
-  run): the report reads them as one step, and the log does not record which phase a command was issued in.
-- **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
-  overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
-  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`) or a domain's (`--system`)
-  document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
-  eh_os_contract.pages` writes each contract's document beside the pages as `graph/<Contract>.json`, linked from
-  the contract's page, and treats those files as its own when it overwrites, checks or deletes
-  (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
 - **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the
@@ -167,6 +172,17 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **E13a: a graph built as data says what each edge is, not how it looks.** `build/*` of `Graph.Contract`,
+  `Graph.Unit`, `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System` return `EhOsContract.Graph.Document.graph()`:
+  an edge has a `relation`, read in its direction (`:emits`, `:issues`, `:records`, `:calls`, `:consumed_by`, a
+  context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
+  over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the contract's
+  `id:` (the domain's module for an actor, an external, a context) and that name
+  (`"event:rehmed.scheduling:visit_booked"`), stable and opaque, not Mermaid's — on a contract's graphs an event it
+  consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
+  before, byte for byte. Nothing in the report moves. **A host that calls `build/*` itself** reads an edge's
+  `relation` where it read `line`, `head` and the label, and the overlay's numbers where it read words; the
+  dashboard does so already. E13b removes these builders, with Mermaid, in favour of the `graph.v1` document.
 - **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
   user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
@@ -226,16 +242,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   user's decision; rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
   deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
   the application: they key their runs.
-- **E13a: a graph built as data says what each edge is, not how it looks.** `build/*` of `Graph.Contract`,
-  `Graph.Unit`, `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System` return `EhOsContract.Graph.Document.graph()`:
-  an edge has a `relation`, read in its direction (`:emits`, `:issues`, `:records`, `:calls`, `:consumed_by`, a
-  context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
-  over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the module
-  whose name it is and that name (`"event:Rehmed.Contracts.Scheduling:visit_booked"`), stable and opaque, not
-  Mermaid's — on a contract's graphs an event it consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
-  before, byte for byte. Nothing in the report moves. **A host that calls `build/*` itself** reads an edge's
-  `relation` where it read `line`, `head` and the label, and the overlay's numbers where it read words; the
-  dashboard does so already. E13b removes these builders, with Mermaid, in favour of the `graph.v1` document.
 - **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
   the refusal is **X10**). Left out, it
   runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the

@@ -188,8 +188,8 @@ defmodule EhOsContract.GraphDomainTest do
       graph = EhOsContract.Graph.System.build(@domain, contracts)
 
       assert Enum.map(graph.nodes, & &1.id) == [
-               "contract:EhOsContract.GraphDomainTest.VisitSettlement",
-               "contract:EhOsContract.GraphDomainTest.Visit.Settlement",
+               "contract:graph_domain_clinic.visit_settlement",
+               "contract:graph_domain_clinic.settlement",
                "publication:EhOsContract.GraphDomainTest.Clinic:clinic.visit.settled.v1",
                "publication:EhOsContract.GraphDomainTest.Clinic:clinic.visit_settled.v1"
              ]

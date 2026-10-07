@@ -13,7 +13,7 @@ defmodule EhOsContract.Pages do
       settlement/visit_settlement/events/payment_recorded.md
       settlement/visit_settlement/aggregates/visit_settlement.md
       …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
-      graph/Rehmed.Contracts.VisitSettlement.json  a contract's graph.v1 document
+      graph/rehmed.settlement.json  a contract's graph.v1 document, by its id
 
   A contract's directory is its module's last segment, underscored. Each kind has a
   directory of its own, since a contract's namespaces overlap: a read model may share
@@ -56,7 +56,7 @@ defmodule EhOsContract.Pages do
   @doc """
   The pages of `domain`, a domain module or its model, and of `contracts`, the v2
   contract modules or models naming it, as `%{relative path => Markdown}`, and beside
-  them each contract's `graph.v1` document as `graph/<Contract>.json`. Contracts
+  them each contract's `graph.v1` document as `graph/<contract id>.json`. Contracts
   naming another domain are left out. Raises when two contracts of one context would
   share a directory, when two elements would share a page, and when a name is not
   snake_case, since pages are named after names.
@@ -177,7 +177,7 @@ defmodule EhOsContract.Pages do
   defp entity_path(name), do: "entities/#{name}.md"
   defp context_path(name), do: "#{name}/index.md"
   defp contract_dir(model), do: "#{model.context}/#{slug(model)}"
-  defp graph_path(model), do: "graph/#{inspect(model.module)}.json"
+  defp graph_path(model), do: "graph/#{model.id}.json"
   defp contract_path(model), do: "#{contract_dir(model)}/index.md"
   defp slug(model), do: model.module |> Module.split() |> List.last() |> Macro.underscore()
 

@@ -5,9 +5,9 @@ defmodule EhOsContract.Graph.Overlay do
   facts keep their digest whatever the log holds.
 
   It carries **only the numbers the pictures and the report compute today** (the
-  user's decision 2 before batch 4): an event's occurrences and runs, a process's
-  runs, a step's runs out of the process's, what waits and what fails there and
-  whether the report counts it as never taken or not yet; a lifecycle transition's
+  user's decision 2 before batch 4): an event's occurrences, a process's runs, how
+  often a step was taken, what waits and what fails there and whether the report
+  counts it as never taken or not yet; a lifecycle transition's
   count, "not yet" and "never", and an aggregate's count; between contracts, the
   events the log holds and what waits or fails at the consumer, and each contract's
   runs. They come from `EhOsContract.Paths`, `EhOsContract.Conformance` and, between
@@ -42,13 +42,13 @@ defmodule EhOsContract.Graph.Overlay do
   yet". They sit on a relation in one of two ways (plan E13a, the user's decisions
   of 6 and 7 October):
 
-  - **One step, one relation:** the step's numbers, flat — `runs`, `of_runs`,
-    `waiting`, `failing`, `untraversed`, `pending`.
+  - **One step, one relation:** the step's numbers, flat — `taken`, `waiting`,
+    `failing`, `untraversed`, `pending`.
   - **Several steps, one relation** — a policy handling several events, which the
     facts draw as one `issues`: `%{by_trigger: %{event id => numbers}}`, each step's
     numbers under the id of the event it starts from, as the report has one line per
-    step, and no total (a run that took two of the steps would count twice). An entry
-    is flat or `by_trigger`, never both.
+    step, and no total, which the report does not give either. An entry is flat or
+    `by_trigger`, never both.
 
   **One step, two relations get no numbers:** a manager issuing one command on one
   event both as the event starts a run and during it has two `issues` (`phase` start
@@ -80,7 +80,7 @@ defmodule EhOsContract.Graph.Overlay do
     model = Model.fetch(contract)
     document = Document.contract(model)
     period = Keyword.take(opts, [:since, :until])
-    c = model.module
+    c = model.id
     id = &Document.id([&1, c, &2])
 
     steps = model |> Conformance.steps(period) |> Enum.uniq()
@@ -88,11 +88,11 @@ defmodule EhOsContract.Graph.Overlay do
     lifecycles = Conformance.lifecycles(model, period)
 
     events =
-      for {name, {occurrences, runs}} <- Paths.occurrences(model, period),
-          do: {id.(:event, name), %{occurrences: occurrences, runs: runs}}
+      for {name, occurrences} <- Paths.occurrences(model, period),
+          do: {id.(:event, name), %{occurrences: occurrences}}
 
     process =
-      for p <- List.wrap(model.process),
+      for p <- List.wrap(Model.process(model)),
           do:
             {id.(:process, p.name), %{runs: Paths.runs_of(model, Atom.to_string(p.name), period)}}
 
@@ -103,7 +103,8 @@ defmodule EhOsContract.Graph.Overlay do
     seal(
       %{
         "kind" => "contract",
-        "contract" => Model.json_data(c),
+        "contract" => c,
+        "module" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
         "nodes" => Map.new(events ++ process ++ units),
@@ -255,8 +256,7 @@ defmodule EhOsContract.Graph.Overlay do
 
   defp numbers(step) do
     %{
-      runs: step.runs,
-      of_runs: step.of_runs,
+      taken: step.taken,
       waiting: step.in_flight,
       failing: step.failing,
       untraversed: step.untraversed,

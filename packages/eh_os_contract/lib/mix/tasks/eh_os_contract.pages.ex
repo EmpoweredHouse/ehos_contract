@@ -12,7 +12,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   The domain and its contracts are found among the modules of
   `config :eh_os_contract, applications:`. The pages go where `--output` says: the
   host decides whether to commit them, add them to ExDoc's `extras`, or only read
-  them. Beside the pages, `graph/<Contract>.json` holds each contract's `graph.v1`
+  them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
   document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
   longer has is deleted — only a file that starts with the marker line of the
   domain's pages, or a contract's graph document of the domain at the path the task
