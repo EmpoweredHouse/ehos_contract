@@ -79,6 +79,18 @@ defmodule EhOsContract.EntityReadsTest do
     refute error.message =~ "four"
   end
 
+  test "a row of another entity than the one asked for raises, and nothing is decided on it" do
+    Process.put(
+      {:read_rig_row, "product-tea"},
+      {:ok, %{product_id: "product-coffee", price: 9, on_sale: true}}
+    )
+
+    error = assert_raise Entities.UnfitRowError, fn -> place("order-1") end
+    assert error.message =~ "product_id: :not_the_one_asked_for"
+    refute error.message =~ "product-coffee"
+    assert Repo.all(Event) == []
+  end
+
   test "an answer of another shape raises" do
     Process.put({:read_rig_row, "product-tea"}, {:error, :down})
 

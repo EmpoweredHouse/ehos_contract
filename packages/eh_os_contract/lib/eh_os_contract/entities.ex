@@ -136,8 +136,10 @@ defmodule EhOsContract.Entities do
     end)
   end
 
-  defp fields(model, entity),
-    do: Enum.find(Model.fetch(model.domain).entities, &(&1.name == entity)).fields
+  defp fields(model, entity), do: declared(model, entity).fields
+
+  defp declared(model, entity),
+    do: Enum.find(Model.fetch(model.domain).entities, &(&1.name == entity))
 
   defp fetch!(nil, model, _entity, _id) do
     raise ArgumentError,
@@ -148,7 +150,7 @@ defmodule EhOsContract.Entities do
   defp fetch!(impl, model, entity, id) do
     case impl.fetch(model.domain, entity, id) do
       {:ok, row} when is_map(row) ->
-        {:ok, fitted!(impl, model, entity, row)}
+        {:ok, fitted!(impl, model, entity, id, row)}
 
       :not_found ->
         :not_found
@@ -160,21 +162,23 @@ defmodule EhOsContract.Entities do
     end
   end
 
-  # The entity's declared fields of `row`, held to their types.
-  defp fitted!(impl, model, entity, row) do
-    fields = fields(model, entity)
-    values = Codec.values(model.domain)
+  # The entity's declared fields of `row`, held to their types, and to the identity
+  # asked for: a row of another one would be decided on, and recorded, as this one.
+  defp fitted!(impl, model, entity, id, row) do
+    %{fields: fields, identity: identity} = declared(model, entity)
     fitted = Map.new(fields, &{&1.name, Map.get(row, &1.name)})
 
-    case Codec.problems(fields, fitted, values, model.domain) do
-      [] ->
-        fitted
+    problems =
+      Codec.problems(fields, fitted, Codec.values(model.domain), model.domain) ++
+        if(fitted[identity] in [nil, id], do: [], else: [{identity, :not_the_one_asked_for}])
 
-      problems ->
-        raise UnfitRowError,
-              "#{inspect(impl)}.fetch/3 returned a row of entity #{inspect(entity)} that does " <>
-                "not fit its declaration: #{inspect(problems)}"
+    if problems != [] do
+      raise UnfitRowError,
+            "#{inspect(impl)}.fetch/3 returned a row of entity #{inspect(entity)} that does " <>
+              "not fit its declaration: #{inspect(problems)}"
     end
+
+    fitted
   end
 
   # The answer's shape, never its values.
