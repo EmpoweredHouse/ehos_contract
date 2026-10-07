@@ -115,12 +115,20 @@ defmodule EhOsContract.Implementations do
   @spec effects(module(), String.t()) :: [inline()]
   def effects(contract, type), do: Map.get(index(contract).effects, type, [])
 
-  @doc """
-  The processes of the v2 contracts that `include` events of `type` (D7), each with
-  the fields that correlate its runs, in the applications dispatch of `contract`
-  looks in: the runs an event of that type belongs to besides its home run.
+  @typedoc """
+  A process an event belongs to besides its home run: `name` is what its runs are
+  filed under, a contract process's name, or a process module's `id:` (plan DD, P2c,
+  #210), and `correlate` the fields that key them.
   """
-  @spec included(module(), String.t()) :: [%{name: atom(), correlate: [atom()]}]
+  @type included :: %{name: atom() | String.t(), correlate: [atom()]}
+
+  @doc """
+  The processes that `include` events of `type` (D7), each with the fields that
+  correlate its runs, in the applications dispatch of `contract` looks in: the runs an
+  event of that type belongs to besides its home run. A contract's process, and every
+  process module (`EhOsContract.Process`) that includes the type in one of its stages.
+  """
+  @spec included(module(), String.t()) :: [included()]
   def included(contract, type), do: Map.get(index(contract).included, type, [])
 
   @doc """
@@ -208,7 +216,7 @@ defmodule EhOsContract.Implementations do
           consumers: [consumer()],
           subscribed: [consumer()],
           inboxes: [inbox()],
-          included: %{String.t() => [%{name: atom(), correlate: [atom()]}]},
+          included: %{String.t() => [included()]},
           contracts: %{String.t() => map()}
         }
   def index(contract), do: index_of(List.wrap(contract && Application.get_application(contract)))
@@ -250,6 +258,12 @@ defmodule EhOsContract.Implementations do
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__()),
           do: module.__eh_os_contract_model__()
 
+    processes =
+      for module <- modules,
+          function_exported?(module, :__eh_os_contract_model__, 0),
+          match?(%{kind: :process}, module.__eh_os_contract_model__()),
+          do: module.__eh_os_contract_model__()
+
     known = by_id(contracts)
 
     consumers =
@@ -273,7 +287,7 @@ defmodule EhOsContract.Implementations do
         contracts
         |> Enum.flat_map(&inboxes(&1, declarations))
         |> Enum.sort_by(& &1.key),
-      included: included(contracts),
+      included: runs_of(contracts, processes),
       contracts: known
     }
   end
@@ -341,15 +355,42 @@ defmodule EhOsContract.Implementations do
   # A process includes a sibling's event by the name it consumes it under, and the
   # event is stored under the sibling's type. Another application's event is received
   # into an inbox, never this log (D12), so its runs are not written here.
-  defp included(contracts) do
-    for model <- contracts,
-        %{} = process <- [EhOsContract.Model.process(model)],
-        %{included: true, type: type} <- EhOsContract.Model.process_events(model),
-        uniq: true do
-      {type, %{name: process.name, correlate: process.correlate}}
-    end
+  #
+  # A process module names each event by its contract, and its runs are filed under
+  # its id. An include the node cannot resolve — a contract it cannot load, an event
+  # that contract does not declare, a contract of another domain — is left out, as the
+  # rules between modules refuse it at compile time (X5). Those rules run per project,
+  # and a process module of a dependency listed in `:applications` is scanned here
+  # too, so the domain is checked again: another application's process gets no runs
+  # filed for this application's events.
+  @doc false
+  @spec runs_of([map()], [map()]) :: %{optional(String.t()) => [map()]}
+  def runs_of(contracts, processes) do
+    of_contracts =
+      for model <- contracts,
+          %{} = process <- [EhOsContract.Model.process(model)],
+          %{included: true, type: type} <- EhOsContract.Model.process_events(model),
+          do: {type, %{name: process.name, correlate: process.correlate}}
+
+    of_modules =
+      for process <- processes,
+          %{includes: includes} <- process.stages,
+          %{contract: contract, event: name} <- includes,
+          %{events: events, domain: domain} <- [loaded(contract)],
+          domain == process.domain,
+          %{type: type} <- [Enum.find(events, &(&1.name == name))],
+          do: {type, %{name: process.id, correlate: process.correlate}}
+
+    (of_contracts ++ of_modules)
+    |> Enum.uniq()
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Map.new(fn {type, runs} -> {type, Enum.sort(runs)} end)
+  end
+
+  defp loaded(contract) do
+    if Code.ensure_loaded?(contract) and
+         function_exported?(contract, :__eh_os_contract_model__, 0),
+       do: contract.__eh_os_contract_model__()
   end
 
   @doc """

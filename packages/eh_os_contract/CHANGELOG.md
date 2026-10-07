@@ -27,6 +27,15 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
+  #210). The rules between modules refuse a process module whose `domain:` is not a compiled domain (X1), whose
+  `id:` is outside the domain's `name:` (D11), whose `accountable` is no actor of the domain (X2), whose
+  `include:` names no compiled contract of the domain or an event that contract does not declare itself (X5),
+  whose `correlate` field an included event lacks, makes optional or personal, or types as no identifier or
+  another one (X6), and whose `id:` another process of the system has (X7). Dispatch files each event a
+  process module includes into a row of `eh_os_contract_event_runs` under the module's `id:`, keyed by its
+  `correlate`, beside the event's home run; a contract's own runs are unchanged. No reader shows those runs
+  yet, so no verdict moves.
 - **A process can be written as a module of its own** (plan DD, stage P2b, #205): `use EhOsContract.Process`,
   with `id:`, `label:` and `domain:`, `correlate`, stages that `include:` the events of named contracts,
   `ends_on`, promises and a `deadline`. It compiles to a model of kind `:process` that

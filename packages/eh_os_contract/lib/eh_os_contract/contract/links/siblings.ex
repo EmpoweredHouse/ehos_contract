@@ -197,9 +197,19 @@ defmodule EhOsContract.Contract.Links.Siblings do
     |> Map.new(&{&1.name, &1.type})
   end
 
-  # A domain value of `:id` on one side and a plain `:id` on the other are the same
-  # identifier (plan E9c); two different values are not, whatever they rest on.
-  defp problems(consumed, field, type, values) do
+  @doc """
+  What is wrong with `field` of a sibling's event as a field that tells one run, or one
+  boundary, from another (X6): `[]`, or one problem, a phrase that follows the field's
+  name. `consumed` is the event as `%{sibling:, event:, at:}`: the module declaring it,
+  its model and where it is declared; `type` is the type the reader gives the field,
+  and `values` the domain's values by name. A process module's includes are checked
+  through it as a contract's are (plan DD, P2c, #210).
+
+  A domain value of `:id` on one side and a plain `:id` on the other are the same
+  identifier (plan E9c); two different values are not, whatever they rest on.
+  """
+  @spec problems(map(), atom(), term(), map()) :: [String.t()]
+  def problems(consumed, field, type, values) do
     event =
       "event #{inspect(consumed.event.name)} of #{inspect(consumed.sibling)} " <>
         "(#{Links.place(consumed.at)})"
