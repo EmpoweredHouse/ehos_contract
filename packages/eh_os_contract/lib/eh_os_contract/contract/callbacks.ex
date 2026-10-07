@@ -1,22 +1,9 @@
 defmodule EhOsContract.Contract.Callbacks do
   # What an implementation of one declaration has to define (v2 §5): the one list the
   # generated behaviour is written from and `EhOsContract.Implementation` checks
-  # against, so the two cannot disagree.
-  #
-  # | Kind | Callbacks |
-  # | --- | --- |
-  # | aggregate, dcb | one per command, `(command, state) :: decision`; `evolve/2` when the unit declares a state |
-  # | policy | one per handled event, `(event) :: issued` |
-  # | effect | one per handled event, `(event) :: :ok \\| {:error, term}` |
-  # | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
-  # | read model | one per projected event, `(event) :: :ok` |
-  # | query | one, named after it, `(params, ctx) :: rows` |
-  # | domain service | one per function, `(arguments…) :: result`, typed as declared |
-  # | value, of a domain | one per invariant, `(value) :: boolean` (plan EL2b) |
-  #
-  # A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
-  # issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
-  # unit's own, a boundary's consulted ones too, and a process manager's triggers.
+  # against, so the two cannot disagree. Its published description, a table per kind
+  # with the shapes of a decision and of what a reaction issues, is
+  # `EhOsContract.Implementation`'s moduledoc: change it with a callback's shape here.
   #
   # Each callback also says what it may produce, for the implementation macros: a
   # command's callback emits that command's events and rejects on its invariants; a

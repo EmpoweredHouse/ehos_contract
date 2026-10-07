@@ -46,7 +46,8 @@ defmodule EhOsContract.ScenarioCase do
   **Data.** Scenario data is plain data, as everything a contract compiles to is:
   a timestamp is written as an ISO 8601 string with an offset,
   `"2026-09-01T09:00:00Z"`, a date as an ISO 8601 date, `"2026-09-01"`, and a decimal
-  as an integer or a string of digits, never as a struct. An ISO 8601 string becomes the `DateTime` or `Date` of a `:timestamp` or `:date` field
+  as an integer or a string of digits, never as a struct. An ISO 8601 string becomes
+  the `DateTime` or `Date` of a `:timestamp` or `:date` field
   here, and a digit string or an integer the `Decimal` of a `:decimal`, including
   inside a domain value. The unit's identity is the scenario's own: the value a
   scenario gives it anywhere, or `"scenario"`. Every given, and then the trigger,

@@ -130,14 +130,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
     Enum.sort_by(findings, &{Map.fetch!(rank, &1.level), &1.message, &1.rule})
   end
 
-  # What the task prints for `findings`, as `format` says: `:human`, two lines a
-  # finding and a count; `:json`, one array and nothing else (plan EL1).
-  #
-  # A finding's second line says where the declaration it is about was written, when
-  # anything does, and where its rule is documented; a finding with neither has none. In JSON a finding is `rule`,
-  # `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
-  # when nothing says where) and `documentation` (`null` for a repeated compiler rule,
-  # which the catalog does not document).
+  # What the task prints for `findings`, as `format` says (plan EL1); the format, as a
+  # program reads it, is in the task's moduledoc, so change it there with this.
   # Called by this task and its tests.
   @doc false
   @spec render([Finding.t()], :human | :json) :: String.t()

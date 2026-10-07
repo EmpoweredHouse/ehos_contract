@@ -2,21 +2,9 @@ defmodule EhOsContract.Paths do
   # The declared paths of a v2 contract, and what the log says about each (v2 §13,
   # plan E7c).
   #
-  # A contract makes the command a node of its own, so a path is one **step** of
-  # these kinds:
-  #
-  # | Step | from | via | to |
-  # | --- | --- | --- | --- |
-  # | a command emits | the command | — | the event |
-  # | a reaction issues | the event | the policy or process manager | the command |
-  # | a policy issues on a received event | another application's event | the policy | the command |
-  # | a timer issues | the timer | the process manager | the command |
-  # | an effect acts | the event | the effect | — |
-  #
-  # Each end is `%{kind, name, label}`, which is what `EhOsContract.Conformance`
-  # hands on as `conformance.v3`, and what the graph draws.
-  #
-  # ## Taken, waiting, failing
+  # The steps, their ends and what taken, waiting and failing mean, as a host reads
+  # them in `report.paths`, are published in `EhOsContract.Conformance`'s moduledoc
+  # ("The shape"): change it with what is computed here. How each is counted:
   #
   # **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
   # P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's

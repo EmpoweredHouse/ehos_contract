@@ -8,6 +8,8 @@ defmodule EhOsContract.Web.Layouts do
 
   embed_templates "layouts/*"
 
+  @spec root(map()) :: Phoenix.LiveView.Rendered.t()
+
   @doc """
   The two-screen nav, shared by both LiveViews rather than duplicated —
   `base_path` comes from the session (`EhOsContract.Web.Router.__session__/3`)
@@ -17,6 +19,7 @@ defmodule EhOsContract.Web.Layouts do
   attr :base_path, :string, required: true
   attr :current, :atom, required: true
 
+  @spec nav(map()) :: Phoenix.LiveView.Rendered.t()
   def nav(assigns) do
     ~H"""
     <nav>
