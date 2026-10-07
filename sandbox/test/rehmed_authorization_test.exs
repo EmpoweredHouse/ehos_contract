@@ -50,6 +50,12 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   @visit %{visit_id: "visit-anna"}
+  @booking %{
+    patient_id: "patient-anna",
+    service_id: "service-physiotherapy",
+    specialist_id: "specialist-ewa",
+    scheduled_at: "2026-10-05T09:00:00Z"
+  }
   @payer_period %{payer_id: "payer-luxmed", period_id: "2026-09"}
   @close %{
     visit_id: "visit-anna",
@@ -65,12 +71,7 @@ defmodule Rehmed.AuthorizationTest do
   # door answers 404 for it (the last test).
   defp entries do
     commands = %{
-      "rehmed.book_visit" => %{
-        patient_id: "patient-anna",
-        service_id: "service-physiotherapy",
-        specialist_id: "specialist-ewa",
-        scheduled_at: "2026-10-05T09:00:00Z"
-      },
+      "rehmed.book_visit" => @booking,
       "rehmed.cancel_visit" => @visit,
       "rehmed.record_no_show" => @visit,
       "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
@@ -189,6 +190,48 @@ defmodule Rehmed.AuthorizationTest do
 
     assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
              {503, %{"error" => "not_supplied"}}
+
+    assert Repo.aggregate(Event, :count) == written
+  end
+
+  test "a booking reads its service from the catalogue, and the visit keeps its P1 flag" do
+    # Plan DD, T2s (#245): whether the visit is reported to P1 is the catalogue's to say,
+    # as it stood when the visit was booked (`AGG-15`).
+    reception = credential("u-reception", ["rehmed.book_visit"])
+
+    # A booking creates the visit, so it carries an idempotency key.
+    book = fn service ->
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> reception)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("idempotency-key", "booking-" <> service)
+      |> post(
+        "/api/rehmed/commands/rehmed.book_visit",
+        Jason.encode!(%{@booking | service_id: service})
+      )
+    end
+
+    for {service, reported} <- [{"service-physiotherapy", true}, {"service-fitness", false}] do
+      booked = book.(service)
+      assert booked.status == 200
+
+      assert [%{"p1_reported" => ^reported}] =
+               Repo.all(
+                 from(e in Event,
+                   where: e.type == "rehmed.scheduling.visit_booked",
+                   where: fragment("?->>'service_id' = ?", e.payload, ^service),
+                   select: e.payload
+                 )
+               )
+    end
+
+    # A service the catalogue does not have names nothing: refused as the field's
+    # problem, and nothing is written.
+    written = Repo.aggregate(Event, :count)
+    unknown = book.("service-yoga")
+
+    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
+             {422, %{"invalid" => %{"service_id" => "unknown"}}}
 
     assert Repo.aggregate(Event, :count) == written
   end

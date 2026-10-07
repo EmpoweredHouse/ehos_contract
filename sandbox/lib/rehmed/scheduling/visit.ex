@@ -7,14 +7,17 @@ defmodule Rehmed.Scheduling.Visit do
 
   use Rehmed.Contracts.Scheduling, aggregate: :visit
 
+  # The service as the catalogue has it now: whether the visit is reported to P1 is
+  # fixed at booking (`AGG-15`).
   @impl true
-  def book_visit(%BookVisit{} = booking, _state) do
+  def book_visit(%BookVisit{} = booking, _state, %{service: service}) do
     emit(%VisitBooked{
       visit_id: booking.visit_id,
       patient_id: booking.patient_id,
       service_id: booking.service_id,
       specialist_id: booking.specialist_id,
-      scheduled_at: booking.scheduled_at
+      scheduled_at: booking.scheduled_at,
+      p1_reported: service.p1_reported
     })
   end
 

@@ -35,14 +35,16 @@ defmodule Rehmed.ClinicalVisitTest do
     :ok
   end
 
-  # A visit booked, the patient arrived, and left the room at `@left`.
-  defp visit(patient) do
+  # A visit booked for `service`, the patient arrived, and left the room at `@left`. The
+  # booking records whether the service is reported to P1 (plan DD, T2s (#245)), so a
+  # visit later closed as not reported is booked for a service that is not.
+  defp visit(patient, service \\ "service-physiotherapy") do
     {:ok, booked} =
       EhOsContract.dispatch(
         Scheduling,
         %BookVisit{
           patient_id: patient,
-          service_id: "service-physiotherapy",
+          service_id: service,
           specialist_id: "specialist-ewa",
           scheduled_at: ~U[2026-09-01 09:00:00Z]
         },
@@ -89,8 +91,8 @@ defmodule Rehmed.ClinicalVisitTest do
   # #173): statutory reporting's events are `rehmed.statutory_reporting.*`.
   defp types, do: Repo.all(from(e in Event, order_by: e.position, select: e.type))
 
-  test "a massage closed clinically keeps the promise the other way: nothing is owed to P1" do
-    id = visit("patient-anna")
+  test "a fitness visit closed clinically keeps the promise the other way: nothing is owed to P1" do
+    id = visit("patient-anna", "service-fitness")
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
     # The policy takes another context's event, so it runs after the close's
@@ -137,7 +139,7 @@ defmodule Rehmed.ClinicalVisitTest do
   end
 
   test "the chase ends with the clinical close, and creates no task" do
-    id = visit("patient-anna")
+    id = visit("patient-anna", "service-fitness")
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
     Clock.at(DateTime.add(@left, 25 * 3600), fn -> Testing.drain() end)
