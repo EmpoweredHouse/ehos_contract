@@ -14,6 +14,8 @@ defmodule EhOsContract.Docs.DslPages do
   table cell as text, so options have none.
   """
 
+  import EhOsContract.Docs, only: [shift: 1]
+
   @doc """
   The pages of `extension`, as `{path, markdown}`: `index` for the index and one per
   top-level entity beside it, `<prefix>-<entity>.md`.
@@ -198,17 +200,6 @@ defmodule EhOsContract.Docs.DslPages do
   defp moduledoc(extension) do
     {:docs_v1, _, _, _, %{"en" => doc}, _, _} = Code.fetch_docs(extension)
     doc
-  end
-
-  # A description's own headings sit below the page's: `#` becomes `###`.
-  defp shift(text) do
-    text
-    |> String.trim()
-    |> String.split(~r/(```.*?```)/su, include_captures: true)
-    |> Enum.map_join(fn
-      "```" <> _ = code -> code
-      prose -> Regex.replace(~r/^(#+)/mu, prose, "##\\1")
-    end)
   end
 
   defp first_sentence(text) do

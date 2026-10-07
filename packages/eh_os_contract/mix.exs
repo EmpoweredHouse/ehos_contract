@@ -117,6 +117,8 @@ defmodule EhOsContract.MixProject do
           "docs/contract.md",
           "docs/authorization.md",
           "docs/configuration.md",
+          "docs/cli.md",
+          "docs/behaviours.md",
           "docs/rules.md"
         ] ++
           dsl_reference("domain") ++
