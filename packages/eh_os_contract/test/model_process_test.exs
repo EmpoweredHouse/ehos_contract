@@ -54,12 +54,13 @@ defmodule EhOsContract.ModelProcessTest do
       context: :handling,
       id: "process_shapes.flat_followup"
 
-    consumes Promised, [:request_refused, :refusal_notified]
+    consumes Promised, [:request_refused, :refusal_notified, :request_completed]
 
     process :refusals, "Refusals", accountable: :reviewer do
       correlate :request_id
       include :request_refused
       include :refusal_notified, terminal: true
+      include :request_completed
     end
   end
 
@@ -123,12 +124,15 @@ defmodule EhOsContract.ModelProcessTest do
       assert received.declaration.name == :request_received
       assert received.declaration.label == "Request received"
 
-      # `request_refused` ends no run in `Promised`, nor here; `refusal_notified` ends
-      # one in both, and here only because its include says so.
+      # `request_completed` ends a run in `Promised` and none here, since its include
+      # does not say so; `refusal_notified` ends one here because its include does.
       assert [
                %{name: :request_refused, stage: nil, terminal: false, contract: Promised},
-               %{name: :refusal_notified, stage: nil, terminal: true, contract: Promised}
+               %{name: :refusal_notified, stage: nil, terminal: true, contract: Promised},
+               %{name: :request_completed, stage: nil, terminal: false, contract: Promised}
              ] = Model.process_events(Flat)
+
+      assert Enum.find(Model.process_events(Promised), &(&1.name == :request_completed)).terminal
     end
 
     test "are the same from a module or its model" do

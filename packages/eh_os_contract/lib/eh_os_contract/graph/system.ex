@@ -98,8 +98,12 @@ defmodule EhOsContract.Graph.System do
 
   # --- nodes ---------------------------------------------------------------------------
 
-  defp contract_label(%{module: module, process: nil}), do: short(module)
-  defp contract_label(%{module: module, process: p}), do: "#{short(module)} · #{p.label}"
+  defp contract_label(%{module: module} = model) do
+    case Model.process(model) do
+      nil -> short(module)
+      process -> "#{short(module)} · #{process.label}"
+    end
+  end
 
   defp short(module), do: module |> Module.split() |> List.last()
 
