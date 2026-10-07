@@ -90,9 +90,16 @@ defmodule EhOsContract.Auth.MixProject do
       # Only what hexdocs publishes: `mix check` builds the docs in `:test`, which also
       # compiles `test/support/` (the engine's `mix.exs` says why it matters).
       filter_modules: &lib_module?/2,
-      source_ref: "v#{@version}"
+      # The package is a directory of its repository, so a source link names it. A build
+      # of the docs for a commit (.github/scripts/build-docs.sh) links there; a release,
+      # to its version tag.
+      source_ref: source_ref(),
+      source_url_pattern:
+        "#{@source_url}/blob/#{source_ref()}/packages/eh_os_contract_auth/%{path}#L%{line}"
     ]
   end
+
+  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "v#{@version}")
 
   @lib Path.join(__DIR__, "lib") <> "/"
 

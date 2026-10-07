@@ -1,0 +1,143 @@
+name: docs
+
+# The documentation of the three packages, as a file to download: ExDoc's HTML, the
+# Markdown it is made from, and an index (.github/scripts/build-docs.sh). Nothing is
+# published: a GitHub Pages site of this private repository would be public on its
+# plan, so the docs stay where the code is (#201, #237).
+#
+# By hand, for any branch, tag or full commit SHA: Actions → docs → Run workflow; or
+# `gh workflow run docs.yml -f ref=<ref>`. The archive is the run's artifact, kept
+# 30 days. On a published release it is also attached to the release, and kept with it.
+# The build script is the checked-out ref's, so a ref from before #237 cannot be built.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or full 40-character commit SHA to build the documentation of
+        required: true
+        default: main
+  release:
+    types: [published]
+
+# The build reads; only the job that attaches the archive to a release writes.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.name.outputs.name }}
+
+    steps:
+      # Before anything reads it: a ref is text a person typed, so it reaches the
+      # scripts through the environment, never written into one, and is refused unless
+      # it is a branch's, tag's or commit's name. A release builds its tag as a tag, so
+      # a branch of the same name cannot stand in for it.
+      - name: Check the ref
+        id: ref
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          INPUT: ${{ inputs.ref }}
+        run: |
+          ref="${TAG:-$INPUT}"
+          if [[ ! "$ref" =~ ^[A-Za-z0-9._/][A-Za-z0-9._/-]*$ || "$ref" == *..* ]]; then
+            echo "'$ref' is not a branch, tag or commit name" >&2
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          if [[ -n "$TAG" ]]; then
+            echo "checkout=refs/tags/$TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "checkout=$INPUT" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No token is left in .git/config: the dependencies' code runs while they compile,
+      # and nothing after the checkout needs git to authenticate.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.checkout }}
+          persist-credentials: false
+
+      - name: Name the archive
+        id: name
+        env:
+          REF: ${{ steps.ref.outputs.ref }}
+        run: echo "name=eh-os-contract-docs-${REF//\//-}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      # Restored, never saved. A run by hand executes this file from one branch and
+      # fetches the dependencies of another ref; saving them would put that ref's
+      # dependencies into the branch's cache, `main`'s included, where ci.yml's gate
+      # would restore them. ci.yml saves these keys; this only reads them.
+      - name: Restore engine deps
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/eh_os_contract/deps
+          key: eh-os-contract-core-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+
+      - name: Restore dashboard foundation deps
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/eh_os_contract_web/deps
+          key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+
+      - name: Restore credential verifier deps
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/eh_os_contract_auth/deps
+          key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+
+      - name: Install engine deps
+        working-directory: packages/eh_os_contract
+        run: mix deps.get
+
+      # `--only test`, as in ci.yml: the dashboard's `:dev` dependency is in a private
+      # repository this job has no credentials for, and the docs build under MIX_ENV=test.
+      - name: Install dashboard foundation deps
+        working-directory: packages/eh_os_contract_web
+        run: mix deps.get --only test
+
+      - name: Install credential verifier deps
+        working-directory: packages/eh_os_contract_auth
+        run: mix deps.get
+
+      - name: Build the documentation
+        env:
+          REF: ${{ steps.ref.outputs.ref }}
+        run: .github/scripts/build-docs.sh "$RUNNER_TEMP/docs" "$REF"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: ${{ runner.temp }}/docs
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true
+
+  attach:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.name }}
+          path: docs
+
+      - name: Attach the archive to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ needs.build.outputs.name }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          (cd docs && zip -qr "../$NAME.zip" .)
+          gh release upload --clobber --repo "$GITHUB_REPOSITORY" -- "$TAG" "$NAME.zip"
