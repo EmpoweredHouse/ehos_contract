@@ -27,6 +27,21 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The report, the deployment record and the check show a process module** (plan DD, stage P2d, #213).
+  `EhOsContract.Registry` finds process modules beside contracts (`processes/0`, `process/1` by id).
+  `EhOsContract.Conformance.report/2` of a process module gives the process section a contract's process gets
+  — its runs, its duration against `deadline`, its promises' verdicts and its confirmed declarations — with its
+  deployment, and `mix eh_os_contract.report` prints process modules after the contracts.
+  `EhOsContract.Deployment.record!/1` writes a row per process module, under `"process:<id>"`, with its
+  version and the digests of its promises, so a promise's verdict is read against the version it was made
+  under. `mix eh_os_contract.check` counts an event a process module includes as read
+  (`event-without-consumer`) and applies `process-without-accountable`, `unverified-declaration` and
+  `promise-without-within` to process modules. `EhOsContract.Model.process/1`, `process_events/1` and
+  `declaring/2` answer for a process module. The conformance wire (`eh_os_contract.conformance.v3`) and the
+  dashboard do not list process modules yet, and `Conformance.as_data/2` refuses one. No verdict of a contract
+  moves. One correction for contracts too: the deployment the report shows for a version is the row recorded
+  last, so after the wiring changes under the same version the report shows the new wiring and its date, where
+  it showed the first row's, and no "since the previous version" line for a wiring-only change.
 - **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
   #210). The rules between modules refuse a process module whose `domain:` is not a compiled domain (X1), whose
   `id:` is outside the domain's `name:` (D11), whose `accountable` is no actor of the domain (X2), whose

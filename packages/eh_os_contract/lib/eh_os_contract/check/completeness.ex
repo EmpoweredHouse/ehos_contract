@@ -21,11 +21,14 @@ defmodule EhOsContract.Check.Completeness do
 
   @doc """
   Every finding of a completeness rule about `contracts`, v2 contract modules,
-  and the domains they name.
+  and the domains they name. `processes`, the process modules, are read for what they
+  include: an event one includes has a reader, the report of its runs (plan DD, P2d,
+  #213).
   """
-  @spec findings([module()]) :: [Finding.t()]
-  def findings(contracts) do
+  @spec findings([module()], [module()]) :: [Finding.t()]
+  def findings(contracts, processes \\ []) do
     linked = contracts |> Enum.map(&Links.contract/1) |> Enum.reject(&is_nil/1)
+    included = included(processes)
 
     domains =
       for {domain, members} <- Enum.group_by(linked, & &1.model.domain),
@@ -34,15 +37,23 @@ defmodule EhOsContract.Check.Completeness do
           finding <- domain(domain, members),
           do: finding
 
-    domains ++ Enum.flat_map(linked, &contract(&1, linked))
+    domains ++ Enum.flat_map(linked, &contract(&1, linked, included))
+  end
+
+  # Every event a process module includes, as `{contract, event}`.
+  defp included(processes) do
+    for module <- processes,
+        event <- Model.process_events(module),
+        into: MapSet.new(),
+        do: {event.contract, event.name}
   end
 
   # --- one contract --------------------------------------------------------------
 
-  defp contract(c, all) do
+  defp contract(c, all, included) do
     Enum.concat([
       units_without_events(c),
-      events_without_consumer(c, all),
+      events_without_consumer(c, all, included),
       read_models_without_query(c),
       managers_without_ends_on(c),
       managers_without_event_reactions(c),
@@ -87,9 +98,9 @@ defmodule EhOsContract.Check.Completeness do
   # consults it, a contract that consumes it, a `publish`. So is the conformance
   # half of this library, for an event a promise names or one that ends a run, and for
   # one a unit's lifecycle starts on or moves on (plan DD, P1b, #186): the report reads
-  # it, process or not. The unit's own `evolve` does not count; ESDM's aggregate folds
-  # its events too.
-  defp events_without_consumer(%{model: model} = c, all) do
+  # it, process or not; and for one a process module includes (plan DD, P2d, #213). The
+  # unit's own `evolve` does not count; ESDM's aggregate folds its events too.
+  defp events_without_consumer(%{model: model} = c, all, included) do
     process = Model.process(model)
 
     local =
@@ -114,7 +125,9 @@ defmodule EhOsContract.Check.Completeness do
           event <- events,
           do: event
 
-    consumed = MapSet.new(local ++ siblings)
+    of_modules = for {contract, event} <- included, contract == model.module, do: event
+
+    consumed = MapSet.new(local ++ siblings ++ of_modules)
 
     for event <- model.events,
         not event.terminal,

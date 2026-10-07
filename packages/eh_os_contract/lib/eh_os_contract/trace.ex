@@ -582,7 +582,7 @@ defmodule EhOsContract.Trace do
   # overwhelming majority — fetch a column it never reads.
   @spec occurrences(map(), trace(), keyword()) :: [occurrence()]
   defp occurrences(model, trace, opts) do
-    process = Atom.to_string(Model.process(model).name)
+    process = to_string(Model.process(model).name)
     types = types(trace)
 
     query =

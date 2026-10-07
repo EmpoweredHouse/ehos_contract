@@ -23,8 +23,21 @@ defmodule EhOsContract.Report do
 
   alias EhOsContract.Report.Sentence
 
-  @doc "The report for one contract over a period, as text to print."
+  @doc """
+  The report for one contract over a period, as text to print; or for one process
+  module, its deployment and its process section (plan DD, P2d, #213).
+  """
   @spec render(map()) :: String.t()
+  def render(%{process: _} = report) do
+    [
+      header(report),
+      process_deployment(report.deployment),
+      Enum.map(report.processes, &process/1)
+    ]
+    |> List.flatten()
+    |> Enum.join("\n")
+  end
+
   def render(report) do
     [
       header(report),
@@ -106,6 +119,35 @@ defmodule EhOsContract.Report do
       "  Version #{deployment.deployed.contract_version}, #{since}."
     ] ++
       wired ++ change ++ earlier ++ [""]
+  end
+
+  # A process module's version, in force since the deployment that carries it was first
+  # recorded: no event is stamped with it.
+  @spec process_deployment(map()) :: [String.t()]
+  defp process_deployment(deployment) do
+    since =
+      case deployment.deployed.since do
+        nil -> "not recorded as deployed"
+        at -> "deployed since #{day(at)}"
+      end
+
+    change =
+      case deployment.changed do
+        nil ->
+          []
+
+        c ->
+          [
+            "  Since the previous version: " <>
+              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}."
+          ] ++ declarations_changed(c.declarations)
+      end
+
+    [
+      "PROCESS MODULE: #{deployment.process}",
+      "  Version #{deployment.deployed.version}, #{since}."
+    ] ++
+      change ++ [""]
   end
 
   # The line events and paths could never carry: a promise whose window moved, or an

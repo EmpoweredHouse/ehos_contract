@@ -72,6 +72,15 @@ defmodule EhOsContract.Conformance do
   measured. A false metric is worse than a missing one when it is the metric the
   product sells. `EhOsContract.Trace.evaluate/3` still evaluates an unconfirmed
   promise; the report is the only thing that omits it.
+
+  ## A process module
+
+  A process module (`use EhOsContract.Process`) gets the process section of a contract's
+  report, and only that, under `processes` (plan DD, P2d, #213): its runs, its confirmed
+  declarations, its duration against its `deadline` and its promises' verdicts, and its
+  deployment. It has no steps, lifecycles or scenarios of its own; those are its
+  contracts'. Its report is keyed `process:`, its `id:`, where a contract's is keyed
+  `contract:`.
   """
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
@@ -82,9 +91,17 @@ defmodule EhOsContract.Conformance do
   Separate from `report/2` rather than replacing it: everything in this package
   reads the Elixir shape, and a transport is the only caller that needs the other
   one. See `EhOsContract.Conformance.Wire` for what each mapping is and why.
+
+  A process module is not on the wire, which `eh_os_contract.conformance.v3` names
+  for a contract (the decision on #213), and is refused by name.
   """
   @spec as_data(module(), keyword()) :: map()
   def as_data(contract, opts \\ []) do
+    with %{kind: :process, module: module} <- Model.fetch(contract) do
+      raise ArgumentError,
+            "#{inspect(module)} is a process module, which the conformance wire does not carry yet"
+    end
+
     %{
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
@@ -106,9 +123,24 @@ defmodule EhOsContract.Conformance do
   `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
   left out: a declaration or a promise the owner has not confirmed, and every untaken
   step when nothing happened in the contract.
+
+  The model of a process module gives its own report; see `report/2`.
   """
   @spec from_model(map(), keyword()) :: map()
-  def from_model(model, opts \\ []) do
+  def from_model(model, opts \\ [])
+
+  def from_model(%{kind: :process} = model, opts) do
+    %{
+      process: model.id,
+      module: model.module,
+      engine: EhOsContract.version(),
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: Deployment.report(model.module, opts),
+      processes: [process(model, opts)]
+    }
+  end
+
+  def from_model(model, opts) do
     deployment = Deployment.report(model.module, opts)
     activity = EhOsContract.Paths.activity(model, opts)
 
@@ -159,13 +191,14 @@ defmodule EhOsContract.Conformance do
   The report of `model`'s process: its runs, confirmed declarations, durations and
   promises. Its steps are the contract's, in `from_model/2`'s `paths` (plan DD, P1a,
   #183). `model` has a process; for one without, there is no process to report and
-  this raises.
+  this raises. A process module is one, and its runs are filed under its `id:` (plan
+  DD, P2d, #213).
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do
     %{} = process = Model.process(model)
 
-    runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
+    runs = EhOsContract.Paths.runs_of(model, to_string(process.name), opts)
 
     %{
       process: process.name,
