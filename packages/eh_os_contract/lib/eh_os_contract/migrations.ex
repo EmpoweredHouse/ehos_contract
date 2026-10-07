@@ -177,16 +177,16 @@ defmodule EhOsContract.Migrations do
 
   # Refuses to start the engine on a database whose storage is not at
   # `current_version/0`: below it, every command's row would fail on a column this
-  # release writes and the database lacks (plan DD, T2a, #240); above it, a newer
-  # release migrated it. Called when the engine starts, with the host's repo, outside
-  # any migration. Raises `ArgumentError` naming both versions and what to do.
+  # release writes and the database lacks (plan DD, T2a, #240). Storage above it is let
+  # through: a node of this release restarting while a newer one rolls out, or the code
+  # rolled back without its migration, runs on columns it does not know, which every
+  # version so far only adds. Called when the engine starts, with the host's repo,
+  # outside any migration. Raises `ArgumentError` naming both versions and what to do,
+  # and a database it cannot ask raises as itself, never as missing storage.
   @doc false
   @spec check!(module()) :: :ok
   def check!(repo) do
-    case recorded(repo) do
-      @current_version ->
-        :ok
-
+    case recorded!(repo) do
       0 ->
         raise ArgumentError,
               "the database has no eh_os_contract storage in its current schema: add a " <>
@@ -198,17 +198,24 @@ defmodule EhOsContract.Migrations do
                 "release needs version #{@current_version}: add a migration calling " <>
                 "EhOsContract.Migrations.up(version: #{@current_version}) and run it"
 
-      recorded ->
-        known!(recorded)
+      _current_or_newer ->
+        :ok
     end
-
-    :ok
   end
 
   defp recorded(repo) do
     case repo.query(@version_query, [], log: false) do
       {:ok, %{rows: [[version]]}} when is_binary(version) -> String.to_integer(version)
       _ -> 0
+    end
+  end
+
+  # As `recorded/1`, but an error of the database is raised: at boot, a refused
+  # connection read as "no storage" would send the operator to run a migration that ran.
+  defp recorded!(repo) do
+    case repo.query!(@version_query, [], log: false) do
+      %{rows: [[version]]} when is_binary(version) -> String.to_integer(version)
+      _no_table_or_no_comment -> 0
     end
   end
 

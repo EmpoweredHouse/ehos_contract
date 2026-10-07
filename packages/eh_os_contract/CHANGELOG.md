@@ -38,7 +38,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `inputs`, of `eh_os_contract_commands`. A scenario gives a row with `given_entity` (S12, and X9 for its
   fields). A value invariant may no longer be named `:unknown` (D9). **A host has to act:** add a migration
   calling `EhOsContract.Migrations.up(version: 2)` (and `down(version: 2)`), since the storage is now at
-  version 2 and **the engine no longer starts on storage at another version** than the one it needs; and
+  version 2 and **the engine no longer starts on storage missing or older** than the version it needs; and
   configure `entities:` once a contract declares `reads:`, or the node does not start.
 
 - **The report, the deployment record and the check show a process module** (plan DD, stage P2d, #213).

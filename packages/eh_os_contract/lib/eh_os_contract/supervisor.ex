@@ -18,10 +18,10 @@ defmodule EhOsContract.Supervisor do
     EhOsContract.Vault.check!(models)
     EhOsContract.Supplier.check!(models)
     EhOsContract.Entities.check!(models)
-    EhOsContract.Migrations.check!(EhOsContract.Config.fetch!(:repo))
+    repo = EhOsContract.Config.fetch!(:repo)
+    EhOsContract.Migrations.check!(repo)
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
-    repo = EhOsContract.Config.fetch!(:repo)
     EhOsContract.UndeclaredTypes.warn(repo, models)
     # Every contract dispatch reaches, `exclude:` or not, and the siblings they consume.
     known = Map.values(Implementations.index(nil).contracts)

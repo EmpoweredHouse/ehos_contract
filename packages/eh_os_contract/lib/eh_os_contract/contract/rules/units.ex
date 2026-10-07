@@ -104,11 +104,11 @@ defmodule EhOsContract.Contract.Rules.Units do
   defp read_by_reaction(%{reads: []}, _issuers), do: []
   defp read_by_reaction(_command, nil), do: []
 
-  defp read_by_reaction(command, [first | _]) do
+  defp read_by_reaction(command, issuers) do
     [
-      {"reads entities and is issued by #{first}; a command that reads is issued only by an " <>
-         "actor in by:, since a reaction's would be looked up inside the transaction that " <>
-         "reacted", command}
+      {"reads entities and is issued by #{Enum.join(Enum.uniq(issuers), ", ")}; a command " <>
+         "that reads is issued only by an actor in by:, since a reaction's would be looked up " <>
+         "inside the transaction that reacted", command}
     ]
   end
 
@@ -313,19 +313,13 @@ defmodule EhOsContract.Contract.Rules.Units do
     end
   end
 
+  # The same walk of what reactions issue as A8's, so the two cannot drift apart.
   defp reachable(d) do
-    issued =
-      MapSet.new(
-        Enum.flat_map(d.policies, & &1.issues) ++
-          Enum.flat_map(d.process_managers, fn pm ->
-            Enum.flat_map(pm.starts_on, & &1.issues) ++
-              Enum.flat_map(pm.on, & &1.issues) ++ Enum.flat_map(pm.timers, & &1.issues)
-          end)
-      )
+    issued = issuers(d)
 
     for command <- Rules.commands(d),
         command.by == [],
-        not MapSet.member?(issued, command.name) do
+        not Map.has_key?(issued, command.name) do
       {"C1: command #{inspect(command.name)} can be issued by no one: give it by:, or have a " <>
          "policy or a process manager of this contract issue it", command}
     end

@@ -180,9 +180,12 @@ decision, and the row is asked of the configured implementation:
       end
     end
 
-The actor is the one dispatch authorized: a host that keeps several tenants' rows
-answers only with what that actor's tenant has, and `:not_found` otherwise, so a
-caller cannot have a decision read, and its record keep, another tenant's row.
+The actor is the one dispatch authorized: a person's credential, or one of the
+application's `:system` actors the command names in `by:`; never a reaction, which
+cannot issue a command that reads. A host that keeps several tenants' rows answers a
+credential only with what its tenant has, and `:not_found` otherwise, so a caller
+cannot have a decision read, and its record keep, another tenant's row; it decides
+what a `:system` actor may read.
 
 ### What the engine does with the answer
 
@@ -202,11 +205,12 @@ caller cannot have a decision read, and its record keep, another tenant's row.
 Once per command, after the caller is authorized and what it sent is found sound,
 and before the decision's transaction: when the decision meets a conflict and runs
 again, it decides on the same rows. A retry of a command already accepted under its
-idempotency key gets its receipt without asking. Only an actor issues a command that
-reads, never a policy or a process manager (the contract does not compile otherwise),
-so a reaction never waits on the host. A command the host dispatches inside a
-transaction of its own is asked inside that one: keep `c:EhOsContract.Entities.fetch/4` a local read. The
-call has no time limit of the engine's.
+idempotency key gets its receipt without asking. No policy or process manager issues
+a command that reads (the contract does not compile otherwise). A command the host's
+code dispatches inside a transaction — its own, or one a read model or an effect runs
+in — is asked inside that one, and after an append made in it, while every other
+writer of the log waits: keep `c:EhOsContract.Entities.fetch/4` a local read. The call has no time limit of
+the engine's.
 
 What was read is kept with the command's record, accepted or rejected, the row's
 declared fields whole: an entity with a long text or a long list makes every command

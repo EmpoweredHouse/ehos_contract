@@ -118,9 +118,11 @@ defmodule EhOsContract do
      `supplied_by: :host` and no supplier is configured, when a command `reads:` an
      entity and no `EhOsContract.Entities` is configured, when a read model
      projects personal data and defines no `forget/2`, and when the database's
-     storage is not at the version this release needs (`EhOsContract.Migrations`):
-     a host that upgrades the package without running its new migration is told so
-     at boot, not by the first command. Then
+     storage is missing or older than the version this release needs
+     (`EhOsContract.Migrations`): a host that upgrades the package without running its
+     new migration is told so at boot, not by the first command. Storage a newer
+     release migrated is let through, so a node can restart during a rolling deploy.
+     Then
      `EhOsContract.Deployment.record!/0` writes what that binary declared and since
      when: without it the report could not tell history from drift. After the
      deployment is recorded, it logs a warning, and goes on, when the log holds
