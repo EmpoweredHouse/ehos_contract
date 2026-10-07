@@ -358,6 +358,28 @@ defmodule EhOsContract.PagesTest do
     end
   end
 
+  # The E13a pre-PR review: a contract's graph document is named after its id:, which a
+  # model built by hand is not held to.
+  test "a contract whose id: is no dotted name gets no graph document outside the pages" do
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+
+    assert_raise ArgumentError, ~r|would be named after "../../escape"|, fn ->
+      Pages.render(ValueRig.Domain, [%{till | id: "../../escape"}])
+    end
+
+    domain = inspect(ValueRig.Domain)
+
+    claimed =
+      Jason.encode!(%{
+        "schema" => "eh_os_contract.graph.v1",
+        "kind" => "contract",
+        "domain" => domain,
+        "contract" => "sub/escape"
+      })
+
+    refute Pages.graph?("graph/sub/escape.json", claimed, ValueRig.Domain)
+  end
+
   describe "mix eh_os_contract.pages" do
     setup do
       Mix.shell(Mix.Shell.Process)

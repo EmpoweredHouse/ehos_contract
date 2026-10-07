@@ -80,7 +80,7 @@ defmodule EhOsContract.Pages do
     |> Enum.concat(Enum.flat_map(contracts, &contract_pages(site, &1)))
     |> paths!()
     |> Map.new(fn {path, lines} -> {path, page(domain.name, path, lines)} end)
-    |> Map.merge(Map.new(contracts, &{graph_path(&1), graph(&1)}))
+    |> Map.merge(Map.new(contracts, &{graph_path!(&1), graph(&1)}))
   end
 
   # A contract's `graph.v1` document beside its pages (plan E13a, the user's decision
@@ -112,7 +112,7 @@ defmodule EhOsContract.Pages do
          "contract" => contract
        }}
       when is_binary(contract) ->
-        path == "graph/#{contract}.json"
+        graph_id?(contract) and path == "graph/#{contract}.json"
 
       _other ->
         false
@@ -177,7 +177,25 @@ defmodule EhOsContract.Pages do
   defp entity_path(name), do: "entities/#{name}.md"
   defp context_path(name), do: "#{name}/index.md"
   defp contract_dir(model), do: "#{model.context}/#{slug(model)}"
+
+  # A contract's document is named after its `id:`, which D11 holds to dotted names; a
+  # model built by hand is not held to it, and an id such as `"../x"` would write
+  # outside the directory, as `paths!/1` says of a page.
+  defp graph_path!(model) do
+    unless graph_id?(model.id) do
+      raise ArgumentError,
+            "the graph document of #{inspect(model.module)} would be named after " <>
+              "#{inspect(model.id)}; a contract's document is named after its id:, a dotted name"
+    end
+
+    graph_path(model)
+  end
+
   defp graph_path(model), do: "graph/#{model.id}.json"
+
+  defp graph_id?(id),
+    do: EhOsContract.Contract.Rules.Boundaries.id_form(%{value: id, at: nil}, "contract") == []
+
   defp contract_path(model), do: "#{contract_dir(model)}/index.md"
   defp slug(model), do: model.module |> Module.split() |> List.last() |> Macro.underscore()
 
