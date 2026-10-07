@@ -1,0 +1,1 @@
+pre-pr-review, #218 fix-up 2 (CodeRabbit outside-diff): compiler doc limits X10 to policies and read models, names what check reports instead (missing implementation, declared :in_transaction across contexts), verified in links/siblings.ex and the catalog; check doc says it reads the configured applications less exclude:. Gate: mix check in sandbox EXIT=0.
