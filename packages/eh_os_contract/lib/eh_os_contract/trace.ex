@@ -411,14 +411,14 @@ defmodule EhOsContract.Trace do
   defp aggregate_resolved(item_verdicts, :satisfied),
     do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
 
-  @doc """
-  Verdicts collapsed to numbers — this is the shape that goes into the report.
-
-  `satisfied` is broken down by `via`, because "satisfied through `or_else`" is
-  different business information from "satisfied through `eventually`" despite the
-  identical verdict: in both cases the agreement was kept, but in one the month
-  opened and in the other it stalled.
-  """
+  # Verdicts collapsed to numbers — this is the shape that goes into the report.
+  #
+  # `satisfied` is broken down by `via`, because "satisfied through `or_else`" is
+  # different business information from "satisfied through `eventually`" despite the
+  # identical verdict: in both cases the agreement was kept, but in one the month
+  # opened and in the other it stalled.
+  # Called by conformance.ex.
+  @doc false
   @spec summary([verdict()]) :: map()
   def summary(verdicts) do
     %{

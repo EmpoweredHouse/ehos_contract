@@ -105,10 +105,10 @@ defmodule EhOsContract.Authorizer do
     end
   end
 
-  @doc """
-  The values `actor`'s credential grants `capability` along `dimension`, or `[]`.
-  What a query's rows are checked against.
-  """
+  # The values `actor`'s credential grants `capability` along `dimension`, or `[]`.
+  # What a query's rows are checked against.
+  # Called by dispatcher.ex.
+  @doc false
   @spec granted(Actor.t(), String.t(), String.t()) :: [String.t()]
   def granted(%Actor{scopes: scopes}, capability, dimension) do
     case scopes do
@@ -117,10 +117,9 @@ defmodule EhOsContract.Authorizer do
     end
   end
 
-  @doc """
-  The configured implementation: `config :eh_os_contract, authorizer: MyAuthorizer`,
-  and `EhOsContract.Authorizer.Default` when nothing is configured.
-  """
+  # The configured implementation: `config :eh_os_contract, authorizer: MyAuthorizer`,
+  # and `EhOsContract.Authorizer.Default` when nothing is configured.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:authorizer)
 

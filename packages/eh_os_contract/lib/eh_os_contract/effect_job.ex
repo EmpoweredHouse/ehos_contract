@@ -39,12 +39,11 @@ defmodule EhOsContract.EffectJob do
 
   alias EhOsContract.{Consumer, Event, Implementations}
 
-  @doc """
-  Oban's backoff over the attempts that ran (plan W1). A snooze raises `attempt` and
-  `max_attempts` by one each, and Oban's default backoff scales `attempt` by
-  `max_attempts` once that passes 20, so a job that waited out a long deploy would
-  retry a real failure after days instead of seconds.
-  """
+  # Oban's backoff over the attempts that ran (plan W1). A snooze raises `attempt` and
+  # `max_attempts` by one each, and Oban's default backoff scales `attempt` by
+  # `max_attempts` once that passes 20, so a job that waited out a long deploy would
+  # retry a real failure after days instead of seconds.
+  @doc false
   @impl Oban.Worker
   @spec backoff(Oban.Job.t()) :: pos_integer()
   def backoff(%Oban.Job{attempt: attempt, max_attempts: max_attempts} = job) do
@@ -52,23 +51,22 @@ defmodule EhOsContract.EffectJob do
     Oban.Worker.backoff(%{job | attempt: max(attempt - snoozed, 1), max_attempts: @max_attempts})
   end
 
-  @doc """
-  The job for `effect`'s key and the event `event_id`, dispatched by a contract of
-  `application`.
-  """
+  # The job for `effect`'s key and the event `event_id`, dispatched by a contract of
+  # `application`.
+  # Called by dispatcher.ex.
+  @doc false
   @spec job(String.t(), Ecto.UUID.t(), atom() | nil) :: Oban.Job.changeset()
   def job(effect, event_id, application \\ nil) do
     args = %{"effect" => effect, "event_id" => event_id}
     new(if application, do: Map.put(args, "application", Atom.to_string(application)), else: args)
   end
 
-  @doc """
-  Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
-  retried, `{:snooze, seconds}` when the event was written by newer code than this node
-  runs (`EhOsContract.NewerSchemaError`), or `{:cancel, reason}` when the wiring the
-  job was enqueued for is gone —
-  no module implements the effect, or it no longer takes the event's type.
-  """
+  # Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
+  # retried, `{:snooze, seconds}` when the event was written by newer code than this node
+  # runs (`EhOsContract.NewerSchemaError`), or `{:cancel, reason}` when the wiring the
+  # job was enqueued for is gone —
+  # no module implements the effect, or it no longer takes the event's type.
+  @doc false
   @impl Oban.Worker
   @spec perform(Oban.Job.t()) ::
           :ok | {:error, term()} | {:snooze, pos_integer()} | {:cancel, String.t()}

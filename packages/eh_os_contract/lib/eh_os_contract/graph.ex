@@ -273,10 +273,10 @@ defmodule EhOsContract.Graph do
   def system_to_mermaid(domain, contracts, opts \\ []),
     do: EhOsContract.Graph.System.to_mermaid(domain, contracts, opts)
 
-  @doc """
-  `query`, over events bound as `:event`, narrowed to the period `opts` names with
-  `:since` and `:until`, as every reader of the log narrows it.
-  """
+  # `query`, over events bound as `:event`, narrowed to the period `opts` names with
+  # `:since` and `:until`, as every reader of the log narrows it.
+  # Called by contract.ex, system.ex.
+  @doc false
   @spec bounded(Ecto.Query.t(), keyword()) :: Ecto.Query.t()
   def bounded(query, opts),
     do: query |> maybe_since(opts[:since]) |> maybe_until(opts[:until])

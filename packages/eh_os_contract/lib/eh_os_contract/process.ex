@@ -73,11 +73,10 @@ defmodule EhOsContract.Process do
       source: [type: :string, doc: "Where the process comes from in the material."]
     ]
 
-  @doc """
-  The words of the DSL: for every entity, by its path from the module body, the keys
-  it takes — positional arguments first, then options, in the order the entity
-  defines them. Derived from the extension, never listed by hand.
-  """
+  # The words of the DSL: for every entity, by its path from the module body, the keys
+  # it takes — positional arguments first, then options, in the order the entity
+  # defines them. Derived from the extension, never listed by hand.
+  @doc false
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary,
     do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Process.Dsl.sections())

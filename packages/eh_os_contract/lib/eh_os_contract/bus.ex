@@ -116,10 +116,10 @@ defmodule EhOsContract.Bus do
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 
-  @doc """
-  The configured adapter and its options, from `config :eh_os_contract, bus:` — a
-  module or `{module, opts}` — or `nil` when there is none.
-  """
+  # The configured adapter and its options, from `config :eh_os_contract, bus:` — a
+  # module or `{module, opts}` — or `nil` when there is none.
+  # Called by subscription.ex, supervisor.ex.
+  @doc false
   @spec adapter() :: {module(), keyword()} | nil
   def adapter do
     case EhOsContract.Config.get(:bus) do

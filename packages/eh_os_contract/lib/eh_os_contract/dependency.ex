@@ -131,13 +131,13 @@ defmodule EhOsContract.Dependency do
     end
   end
 
-  @doc """
-  The moments each dependency of a contract was seen unavailable, by dependency name.
-
-  One query for the whole evaluation, then filtered per run in memory: a promise is
-  evaluated once per run, and a query per run would make the report's cost grow with the
-  client's traffic.
-  """
+  # The moments each dependency of a contract was seen unavailable, by dependency name.
+  #
+  # One query for the whole evaluation, then filtered per run in memory: a promise is
+  # evaluated once per run, and a query per run would make the report's cost grow with the
+  # client's traffic.
+  # Called by trace.ex.
+  @doc false
   @spec observations_by_external(module(), keyword()) :: %{String.t() => [DateTime.t()]}
   def observations_by_external(contract, opts \\ []) do
     name = EhOsContract.Model.fetch(contract).id

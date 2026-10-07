@@ -85,10 +85,10 @@ defmodule EhOsContract.Actor do
   def reaction(kind, name) when is_atom(kind) and is_atom(name),
     do: %__MODULE__{kind: :reaction, name: {kind, name}}
 
-  @doc """
-  How the actor is written to the log and to `_commands` (v2 §10.3): `"actor:<subject>"`
-  for a credential's, `"system:<name>"`, or `"<reaction kind>:<name>"`.
-  """
+  # How the actor is written to the log and to `_commands` (v2 §10.3): `"actor:<subject>"`
+  # for a credential's, `"system:<name>"`, or `"<reaction kind>:<name>"`.
+  # Called by dispatcher.ex, personal.ex, v01.ex.
+  @doc false
   @spec label(t()) :: String.t()
   def label(%__MODULE__{kind: :credential, subject: subject}), do: "actor:#{subject}"
   def label(%__MODULE__{kind: :system, name: name}), do: "system:#{name}"
