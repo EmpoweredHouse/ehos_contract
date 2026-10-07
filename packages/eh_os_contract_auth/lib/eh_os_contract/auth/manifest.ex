@@ -118,7 +118,7 @@ defmodule EhOsContract.Auth.Manifest do
   # spelling too, and told to take it.
   defp select_domain!(domains, _contracts, wanted) do
     exact = Enum.filter(domains, &(to_string(&1.name) == wanted))
-    dashed = Enum.filter(domains, &application_name?(&1.name, wanted))
+    dashed = Enum.filter(domains, &(String.replace(to_string(&1.name), "_", "-") == wanted))
 
     case {exact, dashed} do
       {[domain], _dashed} ->
@@ -140,16 +140,6 @@ defmodule EhOsContract.Auth.Manifest do
               "domain #{inspect(wanted)} is ambiguous; matching modules: #{modules}; give one of " <>
                 "them another name:"
     end
-  end
-
-  @doc false
-  # Whether a domain's `name:` is the application EHOS knows as `application`: the same, or with
-  # each `_` spelled `-`, since EHOS's names have no `_`. The manifest picks its domain by it, and
-  # `EhOsContract.Auth.child_spec/1` holds the configured audience to it (#180).
-  @spec application_name?(atom() | String.t(), String.t()) :: boolean()
-  def application_name?(name, application) do
-    name = to_string(name)
-    name == application or String.replace(name, "_", "-") == application
   end
 
   defp known(domains) do

@@ -451,11 +451,13 @@ above if it is not a public one.
 
 **The application in `audience` is a domain's name.** Every name the application publishes, and
 every contract id it stores, begins with its domain's `name:`, and EHOS lets an application publish
-only under the name it registered. So the part of `audience` before the `/` must equal the `name:`
-of one domain with contracts, with `-` allowed for `_` (`audience: "my-shop/prod"` for
-`name: :my_shop`), and any other domain with contracts in the same application must declare no
-`publish`, since it would publish under a name that is not the application's. Otherwise
-`EhOsContract.Auth` refuses to start, naming what it found and how to fix it.
+only under the name it registered. So `audience` must be `<application>/<environment>` with both
+parts present, its application must equal the `name:` of one domain with contracts exactly
+(`audience: "my-shop/prod"` for `name: :"my-shop"`; a domain named `:my_shop` does not match, since
+EHOS never names an application with `_`, and the manifest generator refuses it too), and any other
+domain with contracts in the same application must declare no `publish`, since it would publish
+under a name that is not the application's. Otherwise `EhOsContract.Auth` refuses to start, naming
+what it found and how to fix it.
 
 **Rotation** is manual in v1 and happens on EHOS's side:
 

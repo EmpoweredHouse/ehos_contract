@@ -1,7 +1,8 @@
 defmodule EhOsContract.Auth.ApplicationNameTest do
   @moduledoc """
-  The application `audience` names in EHOS is the `name:` of one domain with contracts,
-  and every other domain with contracts publishes nothing, or the boot is refused (#180).
+  The application `audience` names in EHOS equals the `name:` of one domain with
+  contracts exactly, and every other domain with contracts publishes nothing, or the
+  boot is refused (#180).
 
   The domains and contracts below are invented for this test, a clinic and a shop,
   each in an OTP application loaded here so that the engine's scan finds it as it
@@ -48,6 +49,32 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
       command(:place_order, "Place an order", by: :till, emits: :order_placed)
       event(:order_placed, "Order placed")
     end
+  end
+
+  defmodule DashedShopDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"my-shop", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:orders, "Orders", subdomain: :core)
+    actor(:till, :system, "Till")
+  end
+
+  defmodule DashedShopOrders do
+    @moduledoc false
+    use EhOsContract.Contract, domain: DashedShopDomain, context: :orders, id: "my-shop.orders"
+
+    aggregate :order, "Order" do
+      identity(:order_id)
+      command(:place_order, "Place an order", by: :till, emits: :order_placed)
+      event(:order_placed, "Order placed")
+    end
+
+    publish(:order_placed,
+      as: "my-shop.order.placed.v1",
+      from: :order_placed,
+      fields: [:order_id]
+    )
   end
 
   defmodule ShopPayments do
@@ -108,8 +135,40 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
     assert %{start: _} = boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "clinic/prod")
   end
 
-  test "a domain named with _ starts under EHOS's spelling of it, with -" do
-    assert %{start: _} = boot(:auth_rig_shop, [ShopDomain, ShopOrders], "my-shop/prod")
+  test "a domain named with _ refuses EHOS's spelling of it, with -, advising the rename" do
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(:auth_rig_shop, [ShopDomain, ShopOrders], "my-shop/prod")
+      end
+
+    assert error.message =~
+             "the domain my_shop (#{inspect(ShopDomain)}) differs from it only in _ where EHOS has -"
+
+    assert error.message =~ ~s{Rename the domain, such as name: :"my-shop"}
+    refute error.message =~ "register"
+  end
+
+  test "of two domains spelled with _ and with -, only the one with - is the application's" do
+    # The one with `-` matches, so the other is held to publishing nothing, which it does.
+    assert %{start: _} =
+             boot(
+               :auth_rig_both,
+               [ShopDomain, ShopOrders, DashedShopDomain, DashedShopOrders],
+               "my-shop/prod"
+             )
+
+    # Were `_` the same as `-`, the one with `_` would match too and pass with its publish.
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(
+          :auth_rig_both,
+          [ShopDomain, ShopOrders, ShopPayments, DashedShopDomain, DashedShopOrders],
+          "my-shop/prod"
+        )
+      end
+
+    assert error.message =~ "whose domain is my-shop (#{inspect(DashedShopDomain)})"
+    assert error.message =~ "the domain my_shop (#{inspect(ShopDomain)}): "
   end
 
   test "another domain with contracts that publishes nothing does not stop the boot" do
@@ -144,7 +203,7 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
     assert %{start: _} =
              boot(
                :auth_rig_both,
-               [ClinicDomain, ClinicVisits, ShopDomain, ShopOrders, ShopPayments],
+               [ClinicDomain, ClinicVisits, DashedShopDomain, DashedShopOrders],
                "my-shop/prod"
              )
   end
@@ -154,25 +213,17 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
              boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits, ShopDomain], "clinic/prod")
   end
 
-  test "an audience without a / is all application" do
-    assert %{start: _} = boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "clinic")
+  test "an audience without both an application and an environment is refused as malformed" do
+    for audience <- ["clinic", "clinic/", "/prod", "/", ""] do
+      error =
+        assert_raise ArgumentError, fn ->
+          boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], audience)
+        end
 
-    error =
-      assert_raise ArgumentError, fn ->
-        boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "billing")
-      end
-
-    assert error.message =~ "names the application billing in EHOS"
-  end
-
-  test "an audience whose application is empty is refused as malformed, with no rename advised" do
-    error =
-      assert_raise ArgumentError, fn ->
-        boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "/prod")
-      end
-
-    assert error.message =~ ~s(audience: "/prod" is malformed)
-    refute error.message =~ "rename"
+      assert error.message =~ ~s(audience: #{inspect(audience)} is malformed)
+      assert error.message =~ "<application>/<environment>, both parts non-empty"
+      refute error.message =~ "rename"
+    end
   end
 
   test "an audience in the domain's spelling, with _, is refused as malformed: EHOS never issues it" do
@@ -206,7 +257,8 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
     assert error.message =~
              "rename the domain that publishes, my_shop (#{inspect(ShopDomain)}), to name: :billing"
 
-    assert error.message =~ "register the application in EHOS as my-shop"
+    # EHOS takes no name with `_`, so registering the application under it is no way out.
+    refute error.message =~ "register the application in EHOS as"
   end
 
   test "a contract whose domain is not loaded is refused, naming both" do
