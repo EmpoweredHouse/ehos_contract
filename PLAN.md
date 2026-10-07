@@ -584,14 +584,14 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
-| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |
+| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ◐ `dd/240-command-reads-entity` | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☐ | — |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ | — |
 | A1 | 3 | `actor_is` | T1 | ☐ | — |
 | A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
-| B2 | 3 | kubełek w `match:` | W2 | ☐ | — |
-| B3 | 3 | DCB z generowaną tożsamością | DD0 | ☐ | — |
-| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ☐ | — |
+| B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
+| B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
+| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☐ | — |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ | — |
 | O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
@@ -778,12 +778,15 @@ Kierunek i `separate_ways` awansują z L5 na L3; „brak relacji” zostaje ostr
 modułu procesu nie jest referencją. Kod: nowa grupa L3 obok `crossings/2` (`completeness.ex` 722-745 rozwiązuje
 kontekst siostry). Sandbox: poprawić relacje albo kontrakty i powiedzieć to w PR.
 
-**T2a — `reads: [service: :service_id]`**: opcja komendy; **A8** (L2): pole komendy typu `{:id, encja}`;
-behaviour `EhOsContract.Entities` (`fetch/3`, `impl/0`, `UnfitRowError`); dispatch czyta raz na komendę (retry
-używa tych samych wierszy), `:not_found` → `{f, :unknown}` (422, D9); **decyzja dostaje trzeci argument**
-`(command, state, reads)` — `callbacks.ex` `of/3`, I2, `decide/7`; kolumna `inputs :map` w `_commands`
-(migracja jak w P2h) — encje nie mają pól osobowych (D6). *Odrzucone (mechanika):* `Meta.inputs` (Meta znaczy kto/kiedy i
-wraca z logiem), wstrzyknięcie do stanu.
+**T2a — a command reads an entity before it is decided**: a command option
+`reads: [service: :service_id]` names a field of the command typed `{:id, entity}` (a new compile refusal, A8), and
+the decision gets a third argument, the rows read, `(command, state, reads)` (`Callbacks.of/3`, I2). A host
+behaviour, `EhOsContract.Entities` (`fetch/3`), gives the row; dispatch asks once per command, before the
+transaction, so a retry after a conflict decides on the same rows; a row that is not there refuses the command
+as `{field, :unknown}` (422; `:unknown` joins the reserved invariant names, D9), and a row that does not fit the
+entity's fields raises (`UnfitRowError`). What was read is kept in a new column `inputs` of `_commands`, added
+by a migration **V02** (decided 7 October); entities have no personal fields (D6), so it can be. Depends on N1.
+*Odrzucone (mechanika):* `Meta.inputs` (Meta znaczy kto/kiedy i wraca z logiem), wstrzyknięcie do stanu.
 **T2b — `given_entity`**: encja scenariusza, **S12** (L2), rozszerzenie X9; gałąź agregatu w `scenario_case.ex`
 (443-507) woła z arnością 3.
 **T2s — sandbox**: `book_visit` czyta `:service` i utrwala flagę P1 w `visit_booked` (AGG-15, w chwili rezerwacji).
@@ -799,13 +802,8 @@ przechodzą); odmowa jak bramka LC2 (wiersz `rejected`). Scenariusz `actor :spec
 rezerwacji (T2s): `close_visit_clinically` dostaje `actor_is`, a pole `p1_reported` znika z komendy. Zamknąć
 ustalenie z E9a.
 
-**B2 — kubełek w `match:`**: `consults :visit_booked, match: [:specialist_id, scheduled_at: :day], for:
-:book_visit`; `boundary/3` (1064-1075) liczy tag z pola komendy (`Key.day_tag/2`) — bez pola wyliczanego przez
-wołającego; A4/X6 rozszerzone.
-**B3 — DCB z generowaną tożsamością** (rozluźnić A6; `generate_identity/4` już czyta jednostkę).
-**B4 — Rehmed: rezerwacja jako DCB** `dcb :visit, identity :visit_id, generated: :uuid`, inwariant
-`:one_visit_at_a_time_per_specialist`, `ends_at` w rezerwacji; scenariusze: kolizja odrzucona, styk dozwolony,
-odwołany termin wolny, inny specjalista dozwolony; test wyścigu jak w EM1.
+**B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
+Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".
 
 **S2 — scenariusze obietnic** (w modułach procesu): wyzwalacz `promise :nazwa, at: "…"`, `given … at:`, `outage
 :p1, at:`, wynik `verdict:` (`:satisfied | :violated | :pending | :suspended`) i `via:`; S1/S2/S3 rozszerzone,
@@ -886,7 +884,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
 - Odbiory fal: (1) Plug odrzuca `p1_reported` (422), dwie reakcje między kontekstami mają jawne `delivery`;
   (2) `clinical_visit` jako moduł procesu, raport: kontrakty i procesy, zero `terminal:` w zdarzeniach;
-  (3) dziesięć rezerwacji tego samego terminu → jedna przyjęta; scenariusze obietnic bez bazy; rig z relacją ACL
+  (3) scenariusze obietnic bez bazy; rig z relacją ACL
   odrzuca read model na zdarzeniu dostawcy (sandbox nie ma ACL między kontekstami); `close_visit_clinically` bez
   pola `p1_reported`; (4) zmiana pól bez `schema_version` nie przechodzi
   `eh_os_contract.schema --check`; `PropertyCase` łapie defekt rigu.
@@ -895,7 +893,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 
 | Przed | Pytanie | Domyślnie |
 |---|---|---|
-| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 |
+| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 — **decided 7 October: V02** |
 | P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem — **decided 6 October: removed** |
 | P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak — **decided 7 October: yes** |
 | P2b | `deadline` bez `ends_on` | błąd L2 w module procesu — **decided 7 October: an L2 error** |
@@ -918,6 +916,29 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### Before wave 3's boundaries — the user's decision (7 October 2026)
+
+**B2, B3 and B4 are dropped from wave 3**, and with them the wave's acceptance check "ten bookings of the same
+slot, one accepted". The next stage is T2a, on a new migration V02.
+
+- **B2, a day bucket in `match:`** (`consults :visit_booked, match: [:specialist_id, scheduled_at: :day]`). The
+  rule the clinic states is "a specialist has no two visits at once"; "look for collisions among the visits of
+  the same day" is how an index finds candidates, and a contract describes the first. The bucket also leaks: a
+  visit from 23:30 to 00:30 lies in two days. Its one reader was one rule of one client, and every key of the DSL
+  costs every reader of a contract, whether it uses it or not. Dynamic consistency boundaries (dcb.events) allow
+  any tag; modelling tools do not describe how a command computes one, so the word would be ours alone.
+- **B3, a boundary with a generated identity.** Its only consumer was B4. Alone it is of no use: a boundary
+  whose identity is new has no events of its own to match, so it would also need `match:` on a command's field
+  outside its identity, and `for:` naming the commands that carry it — part of B2 again.
+- **B4, Rehmed's booking as a boundary.** Rehmed's `Scheduling` contract already leaves the resource rules out on
+  purpose: whether a slot is free is answered by the booking screen before a command exists. B4 would have
+  contradicted that decision of the distillation.
+
+Rejected: B2 as planned (a general mechanism with one bucket built in, and a leak at midnight); booking as an
+aggregate keyed by specialist and day on today's DSL (it works, but contradicts the same decision); a derived tag
+declared on an event, more general than `:day` (a larger design with no second reader yet). They come back with a
+second rule in the material that needs a calendar bucket or uniqueness at creation.
 
 ### Before P2b — the user's decisions (7 October 2026)
 
