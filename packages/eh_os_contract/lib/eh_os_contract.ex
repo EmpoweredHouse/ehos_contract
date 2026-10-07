@@ -28,6 +28,7 @@ defmodule EhOsContract do
       Clock,
       Codec,
       CommandRecord,
+      Config,
       Contract,
       {Contract.Dsl, []},
       Conformance,

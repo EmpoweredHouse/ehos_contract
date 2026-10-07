@@ -79,7 +79,7 @@ defmodule EhOsContract.TimerJob do
 
   defp fire(consumer, %{"process_manager" => key, "correlation" => correlation} = args) do
     %{"timer" => name, "token" => token} = args
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
 
     {:ok, :ok} =
       Runner.transaction(repo, fn ->

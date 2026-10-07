@@ -82,7 +82,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   # actually is: the contracts exist, the configuration points elsewhere.
   defp check_something_to_check(findings) do
     if EhOsContract.Check.no_contracts?() do
-      configured = Application.get_env(:eh_os_contract, :applications) || []
+      configured = EhOsContract.Config.get(:applications) || []
 
       [
         {"no-contracts",

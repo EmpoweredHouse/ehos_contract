@@ -12,22 +12,23 @@ defmodule EhOsContract.Supervisor do
   @impl Supervisor
   @spec init(term()) :: {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(_opts) do
+    EhOsContract.Config.validate!()
     EhOsContract.Registry.load!()
     models = Enum.map(EhOsContract.Registry.contracts(), &Model.fetch/1)
     EhOsContract.Vault.check!(models)
     EhOsContract.Supplier.check!(models)
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
     EhOsContract.UndeclaredTypes.warn(repo, models)
     # Every contract dispatch reaches, `exclude:` or not, and the siblings they consume.
     known = Map.values(Implementations.index(nil).contracts)
     EhOsContract.UndeclaredTypes.warn_contracts(repo, known)
 
     runners =
-      case Application.get_env(:eh_os_contract, :subscriptions) do
+      case EhOsContract.Config.get(:subscriptions) do
         :manual -> []
-        _run -> subscribe!(Application.fetch_env!(:eh_os_contract, :repo))
+        _run -> subscribe!(EhOsContract.Config.fetch!(:repo))
       end
 
     Supervisor.init(runners, strategy: :one_for_one)

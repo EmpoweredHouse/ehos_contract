@@ -429,5 +429,5 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   # row does not decrypt either.
   defp credential_column(resource), do: "credential " <> resource
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

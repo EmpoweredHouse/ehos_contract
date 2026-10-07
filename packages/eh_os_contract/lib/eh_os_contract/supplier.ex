@@ -73,7 +73,7 @@ defmodule EhOsContract.Supplier do
   `nil` when there is none.
   """
   @spec impl() :: module() | nil
-  def impl, do: Application.get_env(:eh_os_contract, :supplier)
+  def impl, do: EhOsContract.Config.get(:supplier)
 
   @doc """
   Refuses to go on when a contract of `models` declares a field `supplied_by: :host`

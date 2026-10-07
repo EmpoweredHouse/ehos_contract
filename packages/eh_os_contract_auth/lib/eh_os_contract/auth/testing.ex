@@ -133,7 +133,7 @@ defmodule EhOsContract.Auth.Testing do
       )
     end
 
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
 
     for capability <- declared do
       subject = "eh-os-contract-auth-test-#{System.unique_integer([:positive])}"

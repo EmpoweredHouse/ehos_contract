@@ -27,6 +27,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The configuration is declared in one schema and checked when the engine starts**
+  (#203). `EhOsContract.Config` lists every key of `config :eh_os_contract`, its type,
+  default and meaning; an unknown key, a value of the wrong shape or a missing
+  `applications:` or `repo:` stops the engine with a message naming the key, never the
+  value. `docs/configuration.md` is generated from it. Moves no verdict.
 - **A contract may describe no process** (plan DD, stage P1c, #190). R1 refuses a second `process`, and in a
   contract without one, a unit's `stage` group and a `terminal:` event, which only a run has. Such a contract
   dispatches with no run indexed, runs its scenarios, and gets a report with its steps, lifecycles and

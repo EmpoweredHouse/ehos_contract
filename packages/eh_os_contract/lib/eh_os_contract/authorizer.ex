@@ -122,7 +122,7 @@ defmodule EhOsContract.Authorizer do
   and `EhOsContract.Authorizer.Default` when nothing is configured.
   """
   @spec impl() :: module()
-  def impl, do: Application.get_env(:eh_os_contract, :authorizer, __MODULE__.Default)
+  def impl, do: EhOsContract.Config.get(:authorizer)
 
   # What the engine calls: the implementation's answer, held to `check/2`.
   @doc false

@@ -223,7 +223,7 @@ defmodule EhOsContract.Auth do
       reason: with({:error, reason} <- decision, do: Atom.to_string(reason), else: (_ -> nil))
     }
 
-    {1, _} = Application.fetch_env!(:eh_os_contract, :repo).insert_all(@decisions, [row])
+    {1, _} = EhOsContract.Config.fetch!(:repo).insert_all(@decisions, [row])
     decision
   end
 

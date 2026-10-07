@@ -50,7 +50,7 @@ defmodule EhOsContract.Vault do
 
   @doc "The configured implementation: `config :eh_os_contract, vault:`, `EhOsContract.Vault.Local` by default."
   @spec impl() :: module()
-  def impl, do: Application.get_env(:eh_os_contract, :vault, EhOsContract.Vault.Local)
+  def impl, do: EhOsContract.Config.get(:vault)
 
   @doc "Wraps `key` through the configured vault (`c:wrap/2`)."
   @spec wrap(binary(), binary()) :: {kek_id(), binary()}

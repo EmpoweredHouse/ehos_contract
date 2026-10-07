@@ -201,7 +201,7 @@ defmodule EhOsContract.EffectJob do
     end)
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end
 
 defmodule EhOsContract.EffectJob.Failure do
