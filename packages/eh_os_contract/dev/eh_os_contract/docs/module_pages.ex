@@ -128,17 +128,18 @@ defmodule EhOsContract.Docs.ModulePages do
     end)
   end
 
-  # A reference ExDoc resolves on the module's own page (`c:publish/2`, `check!/1`, a
-  # callback written without `c:`) names nothing on a page of its own, so it gets the
-  # module's name.
+  # A reference ExDoc resolves on the module's own page (`c:publish/2`, `t:entry/0`,
+  # `check!/1`, a callback written without `c:`) names nothing on a page of its own,
+  # so it gets the module's name.
   defp qualify(doc, module) do
     name = inspect(module)
 
-    Regex.replace(~r/`(c:)?([a-z_][a-zA-Z0-9_]*[!?]?)\/([0-9]+)`/u, doc, fn whole, c, fun, arity ->
+    Regex.replace(~r/`([ct]:)?([a-z_][a-zA-Z0-9_]*[!?]?)\/([0-9]+)`/u, doc, fn whole, kind, fun, arity ->
       arity = String.to_integer(arity)
 
       cond do
-        c != "" or callback?(module, fun, arity) -> "`c:#{name}.#{fun}/#{arity}`"
+        kind == "t:" -> "`t:#{name}.#{fun}/#{arity}`"
+        kind == "c:" or callback?(module, fun, arity) -> "`c:#{name}.#{fun}/#{arity}`"
         exported?(module, fun, arity) -> "`#{name}.#{fun}/#{arity}`"
         true -> whole
       end

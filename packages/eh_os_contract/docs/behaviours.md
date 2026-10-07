@@ -184,7 +184,7 @@ whatever else the caller wrote.
   not a stream of its own.
 - **`:none` appends without a condition**, and then no entry may carry a stream.
   A stream id with no check would be a version nobody verified.
-- **An event's runs are appended with it** (`t:entry/0`), so no event is in the log
+- **An event's runs are appended with it** (`t:EhOsContract.Store.entry/0`), so no event is in the log
   without the runs it belongs to.
 
 `EhOsContract.Store.Suite` checks all of this. Any implementation can run it.
@@ -210,7 +210,7 @@ Two things, both from the one global lock, and both new for a host that emitted 
 
 ### A query
 
-`t:query/0` is a list of items, **OR-ed**; an item matches an event of one of its
+`t:EhOsContract.Store.query/0` is a list of items, **OR-ed**; an item matches an event of one of its
 `types` carrying **every** one of its `tags`. An item with no tags matches every event
 of its types. `c:EhOsContract.Store.read_query/2` returns what matches with the log's head, and the
 head is what the condition checks against: every position up to it is committed,
