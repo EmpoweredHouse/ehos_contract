@@ -21,7 +21,11 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   reference.
 
   Only the reference is generated. `docs/contract.md` is prose a generator has no
-  business writing: how to start, what each layer of checks refuses, and why.
+  business writing: how to start, what each layer of checks refuses, and why. A
+  prose page (`EhOsContract.Docs.prose/0`) may still hold generated regions, which
+  this task rewrites, and say what it covers (`EhOsContract.Docs.Prose`); the task
+  prints how many top-level entities and rules no prose page covers, and
+  `--coverage` lists them.
 
   A page under `docs/` that starts with the generated marker and that the manifest no
   longer lists is deleted; a page written by hand is never touched.
@@ -35,15 +39,29 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   use Boundary, classify_to: EhOsContract
   use Mix.Task
 
+  alias EhOsContract.Docs.Prose
+
   @impl Mix.Task
   def run(args) do
     :io.setopts(:standard_io, encoding: :unicode)
-    {opts, _} = OptionParser.parse!(args, strict: [check: :boolean])
+    {opts, _} = OptionParser.parse!(args, strict: [check: :boolean, coverage: :boolean])
 
     Mix.Task.run("compile")
 
-    pages = EhOsContract.Docs.generated()
+    filled = for path <- EhOsContract.Docs.prose(), do: {path, Prose.fill(File.read!(path))}
+    pages = EhOsContract.Docs.generated() ++ filled
     stale = for {path, markdown} <- pages, current(path) != markdown, do: {path, markdown}
+
+    case EhOsContract.Docs.prose() |> Enum.map(&File.read!/1) |> Prose.uncovered() do
+      [] ->
+        :ok
+
+      gaps ->
+        Mix.shell().info(
+          "#{length(gaps)} top-level entities and rules are covered by no prose page" <>
+            if(opts[:coverage], do: ":\n  " <> Enum.join(gaps, "\n  "), else: " (--coverage lists them)")
+        )
+    end
     listed = MapSet.new(pages, &elem(&1, 0))
 
     left_over =
@@ -56,7 +74,7 @@ defmodule Mix.Tasks.EhOsContract.Docs do
 
     cond do
       paths == [] ->
-        Mix.shell().info("#{length(pages)} generated pages: current")
+        Mix.shell().info("#{length(pages)} pages with generated content: current")
 
       opts[:check] ->
         Mix.raise(

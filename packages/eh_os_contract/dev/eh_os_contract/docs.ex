@@ -15,6 +15,14 @@ defmodule EhOsContract.Docs do
   @typedoc "A generated page: where it goes and its Markdown."
   @type page() :: {path :: String.t(), markdown :: String.t()}
 
+  @doc """
+  The pages written by hand: they may say what they cover and hold generated regions
+  (`EhOsContract.Docs.Prose`). Every page ExDoc builds is either generated, listed
+  here, or the changelog, which `test/docs_test.exs` holds.
+  """
+  @spec prose() :: [String.t()]
+  def prose, do: ["README.md", "docs/contract.md", "docs/authorization.md"]
+
   @doc "Every generated page, in the order it is written."
   @spec generated() :: [page()]
   def generated do
