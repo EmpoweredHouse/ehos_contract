@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — the branch from `graph/e13a-document` and a draft PR on top of #217; next: the renderer prototype (step 1) |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C recommended in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md) (proposed); views and panels not approved yet ("E13b, step 1 — the renderer (7 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1545,6 +1545,34 @@ process's graph as `graph.v1`.
   request, which is large already, with no traffic to measure.
 - **Pull request [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217)**, "No issue: E13 is planned and
   tracked in PLAN.md" (decision C).
+
+### E13b, step 1 — the renderer (7 October)
+
+- **Who the graph is for, from the design record** (`docs/adr/architecture.md`, decision 2; `contract-v2.md` §3;
+  DD L4): the developer and the reviewer of a change (the contract as a picture, no log), the process owner
+  (rules, scenarios and promises in the client's words), whoever watches for drift (the overlay, later), and the
+  CTO in the Console (every process together). It is **for viewing only**.
+- **The views are not approved.** The six pictures inherited from Mermaid and panels 1–12 of the working plan
+  ("Szczegóły ekranu Graph") are a starting point, not the scope: the user has other needs voiced and wants
+  the views specified, and approved or edited, before they are built. Steps 2 (the views part) and 3 wait for
+  that specification, written on paper first, as E13a's catalogue was.
+- **The renderer, prototyped three ways** on the sandbox host under `default-src 'self'`, not committed: React
+  Flow (A), JointJS (B) and cards in HEEx with our own drawing layer (C), on the same 14 documents, the same
+  dagre layout, card CSS and HEEx panel. `@eventcatalog/visualiser`, named in the plan, turned out to be React
+  Flow with EventCatalog's kinds and Mermaid bundled, so it is A, not a fourth option. The record, with the
+  numbers and the candidates set aside: [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md).
+- **Recommended: C** (status proposed, for the user to confirm). The user ruled out zoom buttons, a minimap,
+  keyboard access and editing, and what is wanted beyond the basics was cheap in C: clickable arrows with HEEx
+  labels (about 50 lines) and animated arrows (five lines of CSS). *Rejected:* B, whose routes around cards
+  cost 1.2 to 2 s on the largest document and put labels on cards; A, whose ready interaction is not needed and
+  which puts the cards in JSX and the selection in React.
+- **Found by the prototype, for step 2:** LiveView resets a position kept in a `style` attribute, and its
+  `JS.ignore_attributes` restores it through `setAttribute`, which the CSP refuses, so positions live in a
+  constructed stylesheet, with a test; two styling defects (an arrow's click area cut by its dash, and drawn
+  black without `fill: none`) passed every numeric check and showed only on screen, so each change to the
+  drawing layer is looked at in a browser. JointJS's paper injects a `<style>`, which a scan of its bundle had
+  missed.
+
 ### Wobec programu DD
 
 DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
