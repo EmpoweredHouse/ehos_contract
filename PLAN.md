@@ -795,7 +795,7 @@ the state.
 **T2s — Rehmed's booking reads its service**: `book_visit` declares `reads: [service: :service_id]` and records the
 service's P1 flag on `visit_booked` as `p1_reported`, as it stood when the visit was booked (`AGG-15`). The sandbox
 gets `Rehmed.Entities`, a stand-in catalogue beside `Rehmed.Supplier`. `close_visit_clinically` keeps its supplied
-flag until A2. No `visit_booked` row is in any log (reset in wave 2), so the new required field breaks no history.
+flag until the specialist's close checks the flag recorded at booking (A2). No `visit_booked` row is in any log (reset in wave 2), so the new required field breaks no history.
 
 **A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
 `:id`, nieosobowe; inwariant w `rejects:`; nie na `creates:`; komenda z `by:`); X2: `by:` ma aktora `:human`.

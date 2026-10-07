@@ -50,6 +50,12 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   @visit %{visit_id: "visit-anna"}
+  @booking %{
+    patient_id: "patient-anna",
+    service_id: "service-physiotherapy",
+    specialist_id: "specialist-ewa",
+    scheduled_at: "2026-10-05T09:00:00Z"
+  }
   @payer_period %{payer_id: "payer-luxmed", period_id: "2026-09"}
   @close %{
     visit_id: "visit-anna",
@@ -65,12 +71,7 @@ defmodule Rehmed.AuthorizationTest do
   # door answers 404 for it (the last test).
   defp entries do
     commands = %{
-      "rehmed.book_visit" => %{
-        patient_id: "patient-anna",
-        service_id: "service-physiotherapy",
-        specialist_id: "specialist-ewa",
-        scheduled_at: "2026-10-05T09:00:00Z"
-      },
+      "rehmed.book_visit" => @booking,
       "rehmed.cancel_visit" => @visit,
       "rehmed.record_no_show" => @visit,
       "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
@@ -197,7 +198,6 @@ defmodule Rehmed.AuthorizationTest do
     # Plan DD, T2s (#245): whether the visit is reported to P1 is the catalogue's to say,
     # as it stood when the visit was booked (`AGG-15`).
     reception = credential("u-reception", ["rehmed.book_visit"])
-    booking = entries_body("rehmed.book_visit")
 
     # A booking creates the visit, so it carries an idempotency key.
     book = fn service ->
@@ -207,7 +207,7 @@ defmodule Rehmed.AuthorizationTest do
       |> put_req_header("idempotency-key", "booking-" <> service)
       |> post(
         "/api/rehmed/commands/rehmed.book_visit",
-        Jason.encode!(%{booking | service_id: service})
+        Jason.encode!(%{@booking | service_id: service})
       )
     end
 
@@ -234,15 +234,6 @@ defmodule Rehmed.AuthorizationTest do
              {422, %{"invalid" => %{"service_id" => "unknown"}}}
 
     assert Repo.aggregate(Event, :count) == written
-  end
-
-  defp entries_body("rehmed.book_visit") do
-    %{
-      patient_id: "patient-anna",
-      service_id: "service-physiotherapy",
-      specialist_id: "specialist-ewa",
-      scheduled_at: "2026-10-05T09:00:00Z"
-    }
   end
 
   test "a settlement's total is the host's too, by who pays" do

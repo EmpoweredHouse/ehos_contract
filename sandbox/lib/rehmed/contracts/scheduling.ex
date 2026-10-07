@@ -62,7 +62,7 @@ defmodule Rehmed.Contracts.Scheduling do
               "Odwołać wizytę albo odnotować nieobecność można tylko przed jej odbyciem",
               source: "AGG-01, stany: C-16 i C-17 tylko z Umówiona, Potwierdzona, BrakKontaktu"
 
-    # The service booked is read from the clinic's catalogue (plan DD, T2s, #245): whether
+    # The service booked is read from the clinic's catalogue (plan DD, T2s (#245)): whether
     # it is reported to P1 is the catalogue's to say, not the receptionist's.
     command :book_visit, "Umów wizytę",
       by: :reception,
@@ -91,7 +91,7 @@ defmodule Rehmed.Contracts.Scheduling do
     # `E-14`. The service decides what else happens to the visit: whether it is
     # reported to P1 is a flag on the service (`AGG-15`), kept here as it stood when the
     # visit was booked, so a later change to the catalogue does not move a visit already
-    # booked (plan DD, T2s, #245). No log held a `visit_booked` when it was added.
+    # booked (plan DD, T2s (#245)). No log held a `visit_booked` when it was added.
     event :visit_booked, "Pacjent umówił wizytę", source: "E-14" do
       field :patient_id, :id, subject: :patient
       field :service_id, {:id, :service}

@@ -1,7 +1,7 @@
 defmodule Rehmed.Entities do
   @moduledoc """
   **A stand-in for Rehmed's service catalogue**, as `Rehmed.Supplier` stands in for its
-  other systems (plan DD, T2s, #245): the sandbox builds no integration, so the catalogue
+  other systems (plan DD, T2s (#245)): the sandbox builds no integration, so the catalogue
   a booking reads is a table here.
 
   Whether a service is reported to P1 is a flag of the catalogue (`AGG-15`):
@@ -24,5 +24,13 @@ defmodule Rehmed.Entities do
       {:ok, service} -> {:ok, service}
       :error -> :not_found
     end
+  end
+
+  # An entity another contract of this host reads, and nobody wrote a clause for: said
+  # by name, rather than a FunctionClauseError whose log would print the actor.
+  def fetch(_actor, domain, entity, _id) do
+    raise ArgumentError,
+          "#{inspect(__MODULE__)} keeps no #{inspect(entity)} of #{inspect(domain)}: add it " <>
+            "here, beside the service catalogue"
   end
 end

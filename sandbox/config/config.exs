@@ -24,7 +24,7 @@ config :eh_os_contract,
   # for its systems answers them.
   supplier: Rehmed.Supplier,
   # Rehmed's booking reads the service it names from the clinic's catalogue (plan DD,
-  # T2s, #245); a stand-in catalogue answers it.
+  # T2s (#245)); a stand-in catalogue answers it.
   entities: Rehmed.Entities
 
 # EHOS's address and this application's audience. There is no EHOS beside the
