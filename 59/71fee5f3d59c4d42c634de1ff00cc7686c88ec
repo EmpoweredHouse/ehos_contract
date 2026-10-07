@@ -1,0 +1,22 @@
+**Review of P2c** (two reviews in parallel on `origin/main..bc841c7`; settled in the commit after it).
+
+**Correctness** found one bug and no change for contracts. The X7 messages and order for contracts are the same, the sibling checks are unchanged, and the index entries for contract processes are identical: the one caller of `included/2` turns the name into the same string as before.
+- **Bug, fixed:** X6 took a correlate field's key type from the first included event carrying it as an identifier. Events carrying `:visit_id` as plain `:id`, then as one domain value, then as another all passed, so runs would have been keyed by two identifiers. The type is now the one domain value the events carry, or `:id`, and a second value is refused in either order. Tests cover both orders and the control.
+- **X7 between a module's id and a contract process's name:** these cannot be equal, since D11 forces a dotted id and contract process names are snake_case atoms. A comment says so, with no unreachable test.
+- **Left:**
+  - a test of the key-length budget for a module's run. No rig can produce an over-long key without breaking the existing budget controls, and the budget runs through the same `included_runs/3` as contract processes;
+  - X7 is checked per application, so a same-named process in another configured application would fail the insert. This was already true for contract processes.
+- **Checked:**
+  - events inside stage groups, `as:` renames, inbox events, another domain's contract, a contract module given as `domain:`, and a missing `accountable`;
+  - nil correlate values give no row;
+  - duplicate includes collapse;
+  - no existing test's run counts change, since the one support process module touches only Ledger events nothing else counts.
+
+**Security and performance** found nothing blocking:
+- the dispatch cost is a `persistent_term` lookup and one row per including module;
+- the key budget holds;
+- no personal data can reach a run key: X6 refuses personal fields, and so does any domain value not resting on `:id`;
+- the L3 pass is linear.
+- **Fixed (low):** the run index trusted that the compile-time domain check ran. It now files an include only when the contract shares the process module's domain, so a dependency's process module listed in `:applications` cannot get rows for this application's events.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Check counts unchanged (sandbox 0, 36, 10; engine 0, 70, 6). Tests: engine 1474 (+25), web 57, sandbox 196, auth 287 + 1 property.
