@@ -1,0 +1,23 @@
+**Review of P2f's TaxVision part** (`0e5d5b1`, settled in the commit after it). One review covered correctness, and security and performance.
+
+**Faithful move: no finding.**
+- The correlation and the three stages in order are the same. Each event is included from the contract that declares it.
+- The promise moved word for word, and there is still no deadline.
+- Nothing was ever terminal, so there is no `ends_on`.
+- The dropped `consumes` of `data_completeness_confirmed` has no reader left in the accounting month's context. Its readers are registry watch's own.
+- The moduledocs' citations are carried over, with nothing invented.
+- The manifest test now asserts the two capabilities name no process. The trace test passes only if runs are filed under the module's id.
+
+**Fixed:**
+- `Taxvision.Processes` depended on `Taxvision.Contracts` for nothing. A process module names contracts and its domain without a compile dependency, so it depends on the library alone. Rehmed's equivalent in #225 has the same extra dependency, which is harmless.
+- The check count's comment suggested a stage of the contract's process counted as a reader. It never did.
+
+**Stated, not changed:** the accounting month's runs are now filed under `"taxvision.accounting_month"`, where they were under `"accounting_month"`. A development database seeded before this change loses its runs until it is reseeded. This issue's migration note says so.
+
+**Numbers unchanged.** On the 95 seeded events the report shows the same numbers under the module:
+- all time: 6 runs, the promise breached in 1 of 6, with 2 fallback endings;
+- September: 3 runs, 1 breach, 1 fallback ending.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. The sandbox's check went from 36 to 34 warnings: two matching events are now read by the module's include. 196 sandbox tests. Engine 0, 69, 6 and 1495 tests; web 57; auth 287 + 1 property. With #225 both PRs change the expected count in `e10_outputs_test.exs`; this one is opened after #225 merges, with the count settled at 30.
+
+After merging main (#225, Rehmed): the outputs test's check count settled at 30 (36 less Rehmed's 4 and TaxVision's 2); gate EXIT=0, sandbox 0/30/10 and 194 tests, engine 1513 tests.
