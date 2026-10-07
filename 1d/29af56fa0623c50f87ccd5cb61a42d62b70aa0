@@ -1,0 +1,1 @@
+pre-pr-review, #223 fix-up (CodeRabbit): fences read as CommonMark does (same character, at least as long, nothing after but spaces). One function; reviewed by hand; the new test fails on the previous reading. Gate: mix check in sandbox EXIT=0.
