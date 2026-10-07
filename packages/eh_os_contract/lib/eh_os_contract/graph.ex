@@ -1,8 +1,8 @@
 defmodule EhOsContract.Graph do
   @moduledoc """
-  The contracts' graphs as Mermaid diagrams (notes §5, §9): one process's declared
-  shape, a contract's steps, one unit, an aggregate's lifecycle, a domain's context
-  map and its contracts as one system.
+  The contracts' graphs as Mermaid diagrams: one process's declared shape, a
+  contract's steps, one unit, an aggregate's lifecycle, a domain's context map and
+  its contracts as one system.
 
   The picture of a contract and of a system can lay the log over the declarations:
   declared = possible (a superset), observed = actual (a weighted subset). **The
@@ -17,31 +17,29 @@ defmodule EhOsContract.Graph do
   alias EhOsContract.Model
   alias EhOsContract.Graph.Mermaid
 
+  # This is not the graph that was rejected (notes §5, §9). `PLAN.md` records a dated
+  # finding that a diagram was not worth building: eleven events gave three edges and
+  # it said nothing a sorted list did not. That was the **handler graph** — edges from
+  # handler registrations — drawn for the team's evidence screen. This is a different
+  # picture for a different reader: the process owner, the reader
+  # `docs/warsztat-rehmed.md` is written for.
+  #
+  # The distinction is the whole reason this can be worth drawing. A contract with no
+  # implementation has **no handler edges at all**, so the rejected picture of a
+  # contract written before its implementation is a row of unconnected boxes. The
+  # sequence in a contract does not live in its edges; it lives in `stages`,
+  # `terminal` and `promise`, and none of the three appeared on the handler graph.
   @doc """
   One process's **declared shape** as a mermaid diagram: stages as lanes, the
   events in them, how it can end, and each assertion as an arrow carrying its
   window.
 
-  ## This is not the graph that was rejected
-
-  `PLAN.md` records a dated finding that a diagram was not worth building: eleven
-  events gave three edges and it said nothing a sorted list did not. That was the
-  **handler graph** — edges from handler registrations — drawn for the team's
-  evidence screen. This is a different picture for a different reader.
-
-  The distinction is not a nicety, it is the whole reason this can be worth
-  drawing. A contract with no implementation has **no handler edges at all**, so
-  the rejected picture of a contract written before its implementation is a row of
-  unconnected boxes. The sequence in a contract does not live in its edges; it
-  lives in `stages`, `terminal` and `promise`, and none of the three appeared on the
-  handler graph.
-
   ## Who it is for
 
-  The process owner, before anything is built — the reader `docs/warsztat-rehmed.md`
-  is written for. So the nodes carry `label`, which is the one place in the whole
-  system written in the client's language, and the assertion arrows carry the
-  number, because a claim with a number is the only thing somebody can correct.
+  The process owner, before anything is built. So the nodes carry `label`, which is
+  the one place in the whole system written in the client's language, and the
+  assertion arrows carry the number, because a claim with a number is the only
+  thing somebody can correct.
 
   **A picture is easier to nod at than to correct**, which is why this is meant to
   sit above the assertion sentences rather than replace them. The measure of a
@@ -55,7 +53,7 @@ defmodule EhOsContract.Graph do
 
   ## What it shows
 
-  The process's stages as lanes (plan E7c), each titled by its label where it has
+  The process's stages as lanes, each titled by its label where it has
   one; the contract's own events in the stage group they sit in, and the events it
   includes where the `include` sits; each `promise` as an arrow; the externals from
   the domain.

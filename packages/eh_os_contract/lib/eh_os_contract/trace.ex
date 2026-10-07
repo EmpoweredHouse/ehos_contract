@@ -1,4 +1,8 @@
 defmodule EhOsContract.Trace do
+  # The union of the dependencies below was decided rather than assumed, 21 August
+  # 2026. A promise is declared in a contract's one `process` (v2 §13, plan E7c), and
+  # an included event counts in the including run (v2 D7). Notes §9 also foresee a
+  # single-run view, for debugging: "what happened to invoice 4712".
   @moduledoc """
   Evaluation of a process's `promise`s **per run**.
 
@@ -46,12 +50,12 @@ defmodule EhOsContract.Trace do
   run is whatever `eventually` or `or_else` depends on. Taking the union of the whole
   contract's dependencies would suspend a run because something unrelated was down.
 
-  **This union is `eventually`'s dependency `or` `or_else`'s, not their intersection —
-  decided rather than assumed, 21 August 2026.** A narrower reading was on the table: a
-  wanted route with no dependency at all can never be blocked by an outage, so suspend
-  only when every still-possible route was. Rejected, because the promise is the
-  disjunction itself — "X or Y" — and here Y was impossible, which stands as a reason
-  to withhold judgement on the run even when X depended on nothing.
+  **This union is `eventually`'s dependency `or` `or_else`'s, not their
+  intersection.** A narrower reading would suspend only when every still-possible
+  route was blocked, since a wanted route with no dependency at all can never be
+  blocked by an outage. It is not taken, because the promise is the disjunction
+  itself — "X or Y" — and here Y was impossible, which stands as a reason to withhold
+  judgement on the run even when X depended on nothing.
   `test/conformance/promise_edges_test.exs` pins this.
 
   ## Three decisions with teeth
@@ -103,8 +107,7 @@ defmodule EhOsContract.Trace do
   ## The boundary of the report
 
   `evaluate/3` returns verdicts **per run**, because that is the only way to count
-  them correctly and the only way to test them. Notes §9 also foresee a
-  single-run view — for debugging, "what happened to invoice 4712".
+  them correctly and the only way to test them.
 
   ## A pure core, and the log around it
 
@@ -116,9 +119,9 @@ defmodule EhOsContract.Trace do
 
   ## The runs
 
-  A contract declares `promise` in its one `process` (v2 §13, plan E7c). The runs
-  are the rows of `eh_os_contract_event_runs` for that process, so an event another
-  contract decided and this one includes counts in its run (D7), and the events are
+  A contract declares `promise` in its one `process`. The runs are the rows of
+  `eh_os_contract_event_runs` for that process, so an event another contract decided
+  and this one includes counts in its run, and the events are
   named by their stored types, `"<contract id>.<event>"`.
   `test/conformance/promise_test.exs` pins the verdicts.
 
@@ -198,11 +201,11 @@ defmodule EhOsContract.Trace do
   end
 
   @doc """
-  The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
+  The trace of a contract's `promise`: what `judge/3` needs from the
   contract, and nothing from the log.
 
   Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
-  for an event the contract includes (D7). Its `identity` is set when the unit of
+  for an event the contract includes. Its `identity` is set when the unit of
   `from`'s event is strictly finer than the process's correlation, which is when the
   promise is made per item inside a run.
 

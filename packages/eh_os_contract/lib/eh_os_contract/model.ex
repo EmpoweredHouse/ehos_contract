@@ -1,7 +1,8 @@
 defmodule EhOsContract.Model do
+  # The model as the one way every reader asks a contract anything (v2 §9).
   @moduledoc """
   A contract or a domain as plain data, and the one way every reader asks one
-  anything (v2 §9).
+  anything.
 
   A module compiled from the DSL — `use EhOsContract.Contract` or
   `use EhOsContract.Domain` — carries its model as `__eh_os_contract_model__/0`, and
@@ -61,9 +62,10 @@ defmodule EhOsContract.Model do
         )
   end
 
+  # The capability names (v2 §16), and the subscribe grant (eh-os D-41).
   @doc """
-  The capabilities a v2 contract declares, under the names EHOS grants them by (v2
-  §16, D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
+  The capabilities a v2 contract declares, under the names EHOS grants them by
+  (D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
   query and `<domain>.<event>` for each event a contract records (`recorded_by:`,
   D6), where `<domain>` is the domain's `name:`. Each says which roles may use it,
   `<domain>.<actor>` for every `:human` actor in its `by:` or `recorded_by:`, and a
@@ -78,9 +80,8 @@ defmodule EhOsContract.Model do
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
 
   **One more, which is the application's: `<name>.subscribe`** for each event it
-  subscribes to from another application and a policy handles (D11, `eh-os` D-41), under
-  the publisher's name
-  without its version — `subscribe "rehmed.visit.closed.v1"` asks for
+  subscribes to from another application and a policy handles (D11), under the
+  publisher's name without its version — `subscribe "rehmed.visit.closed.v1"` asks for
   `rehmed.visit.closed.subscribe` — with the event's name in the contract and no
   roles: EHOS grants it to the application per environment, never to a person, and
   the transport delivers by the grant. Nothing in this engine asks for it.
@@ -90,7 +91,7 @@ defmodule EhOsContract.Model do
 
   Derived from the declarations, never written down. The domain's name is read from
   the compiled domain at the call, since a contract records no compile dependency on
-  its domain (v2 §8); a domain that is not compiled is refused by name, and so is a
+  its domain; a domain that is not compiled is refused by name, and so is a
   domain.
   """
   @spec capabilities(contract() | module()) :: %{
@@ -247,11 +248,12 @@ defmodule EhOsContract.Model do
           | :domain_service
           | :value
 
+  # The generated modules (v2 §5, §7); a value's behaviour since plan EL2b.
   @doc """
-  The module a v2 contract generates for a declaration (v2 §5): the struct of a
-  command, an event or a query's parameters, or the behaviour of a unit, a policy,
-  an effect, a process manager or a read model. A domain generates one too, the
-  behaviour of a value that declares invariants (plan EL2b):
+  The module a v2 contract generates for a declaration: the struct of a command, an
+  event or a query's parameters, or the behaviour of a unit, a policy, an effect, a
+  process manager or a read model. A domain generates one too, the behaviour of a
+  value that declares invariants:
 
       Model.module_for(Rehmed.Domain, :value, :money)
       #=> Rehmed.Domain.Values.Money
@@ -261,7 +263,7 @@ defmodule EhOsContract.Model do
 
   An event is named as the contract knows it. A local one is `C.Events.X`. One
   consumed from a sibling contract is the sibling's own struct, under its name
-  there, so a change to it reaches every subscriber (v2 §7). One received from
+  there, so a change to it reaches every subscriber. One received from
   another application is `C.Received.X`, built from the fields this contract
   declares for it (D11). A unit's state is `Module.concat(unit, State)`, a read
   model's row `Module.concat(read_model, Row)`.
@@ -366,7 +368,7 @@ defmodule EhOsContract.Model do
   inbox and never stored in this log (D12), and for a name the contract does not know.
 
   A process module declares no event; for one, this is the contract that declares the
-  event it includes under `name` (plan DD, P2d, #213).
+  event it includes under `name`.
   """
   @spec declaring(contract() | map(), atom()) :: {module(), map()} | nil
   def declaring(contract, name) do
@@ -403,8 +405,8 @@ defmodule EhOsContract.Model do
   that `correlate` its runs, the `accountable` actor, its `stages`, the `includes`
   that place consumed events in it, its `deadline`, its `promises` and its `source`.
 
-  A process module's has the same keys (plan DD, P2d, #213). Its `name` is its `id:`,
-  a string, since its runs are filed under it; every event of its run is an include,
+  A process module's has the same keys. Its `name` is its `id:`, a string, since its
+  runs are filed under it; every event of its run is an include,
   `%{contract, event, stage, terminal}`, and `terminal` is whether `ends_on` names it.
   """
   @type process :: %{
@@ -442,12 +444,15 @@ defmodule EhOsContract.Model do
           declaration: map()
         }
 
+  # Process modules came in plan DD, P2d (#213); this function is the one way a reader
+  # asks for a process so that moving it out of the contract changes only this
+  # function (plan DD, P2a, #202).
   @doc """
   The process a contract declares, or `nil` when it declares none. A domain declares
-  none either. A process module is one, under its `id:` (plan DD, P2d, #213).
+  none either. A process module is one, under its `id:`.
 
   The one way a reader asks for it: what a process is may move out of the contract,
-  and only this function would then change (plan DD, P2a, #202).
+  and only this function would then change.
   """
   @spec process(contract() | map()) :: process() | nil
   def process(%{kind: :process} = model) do

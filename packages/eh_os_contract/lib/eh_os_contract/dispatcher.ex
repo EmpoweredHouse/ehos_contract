@@ -1,7 +1,7 @@
 defmodule EhOsContract.Dispatcher do
   @moduledoc """
-  A command to a contract, from the actor who issues it to the events in the log
-  (v2 §11). `EhOsContract.dispatch/3` is how a host calls it.
+  A command to a contract, from the actor who issues it to the events in the log.
+  `EhOsContract.dispatch/3` is how a host calls it.
 
       EhOsContract.dispatch(Rehmed.Contracts.VisitSettlement,
         %RecordPayment{visit_id: "w-1", method: :card, amount: 20_000},
@@ -22,8 +22,8 @@ defmodule EhOsContract.Dispatcher do
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key.
      An idempotency key, a caller's or a reaction's, is printable ASCII (`0x21`–`0x7E`)
-     of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
-     need, so a key never depends on what a text column, `jsonb` and an index entry
+     of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the
+     key's columns need, so a key never depends on what a text column, `jsonb` and an index entry
      happen to hold. An aggregate's stream id, its name and its identity escaped
      (`EhOsContract.Key`), is at most `EhOsContract.Key.budget/0` bytes, or
      `{:error, :key_too_long}`.
@@ -37,12 +37,12 @@ defmodule EhOsContract.Dispatcher do
   4. **Decide.** What the unit decides over is read and folded through `evolve/2`,
      and the implementation decides with the command, its `__meta__` set. An
      aggregate reads its stream. A dynamic consistency boundary reads a query over
-     the log (v2 §10.1): its own events carrying its identity, and every event it
+     the log: its own events carrying its identity, and every event it
      `consults` — on the fields it `match`es, or every one of that type when it
      consults by `where:` alone — each decoded by the contract that declares it, in
      the log's order. Only what `evolve/2` folds is decoded, when its one catch-all
      is `def evolve(state, _), do: state`, and a boundary reads, and conflicts on,
-     those types alone (plan E11f-5).
+     those types alone.
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit — their types, or the invariants of their values — raises: that is a
@@ -84,6 +84,9 @@ defmodule EhOsContract.Dispatcher do
   be written — the database is what failed — is logged, and the caller still gets
   the exception it would have recorded.
   """
+
+  # Dispatch as v2 §11 has it. A boundary's read is the query over the log of v2 §10.1;
+  # decoding, and conflicting on, only the types `evolve/2` folds is plan E11f-5.
 
   import Ecto.Query
 

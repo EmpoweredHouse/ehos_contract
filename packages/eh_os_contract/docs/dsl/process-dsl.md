@@ -2,7 +2,7 @@
 
 # EhOsContract.Process
 
-The Spark extension behind `use EhOsContract.Process` (plan DD, P2b, #205).
+The Spark extension behind `use EhOsContract.Process`.
 
 One top-level section, so every entity is written straight into the module body:
 what tells one run from another (`correlate`), the stages and the events of the
@@ -11,7 +11,7 @@ and the deadline. The vocabulary is closed: a process module cannot add
 extensions.
 
 A stage's `include:` names contract modules without a compile dependency, as
-`consumes` does (`no_depend_modules`, v2 §8): a change to a contract recompiles no
+`consumes` does (`no_depend_modules`): a change to a contract recompiles no
 process that names it. A promise is the contract's own entity, so it is written
 alike in both.
 

@@ -1,14 +1,14 @@
 defmodule EhOsContract.EffectJob do
   @moduledoc """
-  The Oban job that runs one effect delivered `:at_least_once` on one event (v2 §12).
+  The Oban job that runs one effect delivered `:at_least_once` on one event.
 
   Dispatch inserts it in the transaction that appends the event, so the job exists
   exactly when the event does. **Its arguments are the effect's key, the event's id
   and the dispatched contract's application, and nothing else**: the job reads the
   event from the log when it runs, so no payload ever lands in `oban_jobs`, where the
   queue would keep what erasure means to remove. The application is where dispatch
-  found the effect besides the configured ones, which the key's contract id cannot name
-  (plan DD, ID4, #178).
+  found the effect besides the configured ones, which the key's contract id cannot
+  name.
 
   Oban delivers at least once, so an effect **will** see an event a second time. The
   contract names what makes that harmless (`idempotency:`, rule P3), and the event's
@@ -29,6 +29,9 @@ defmodule EhOsContract.EffectJob do
   through, or the job would not commit with the event, and dispatch refuses to
   insert it otherwise.
   """
+
+  # An `:at_least_once` effect as v2 §12 has it. The application among the arguments:
+  # plan DD, ID4 (#178).
 
   @max_attempts 3
 

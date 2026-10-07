@@ -1,6 +1,6 @@
 defmodule EhOsContract.TimerJob do
   @moduledoc """
-  The Oban job that fires one timer of one process manager's run (v2 §12).
+  The Oban job that fires one timer of one process manager's run.
 
   **A fired timer does not call the process manager.** The job checks that its token
   is still the run's — a timer cancelled, set again, or already fired has another
@@ -19,6 +19,8 @@ defmodule EhOsContract.TimerJob do
   Its arguments are the process manager's key, the run's correlation, the timer's
   name, its token and its time: nothing of the run's data.
   """
+
+  # A process manager's timer, v2 §12.
 
   use Oban.Worker,
     queue: :events,

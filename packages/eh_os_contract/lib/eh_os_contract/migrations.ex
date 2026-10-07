@@ -1,14 +1,19 @@
 defmodule EhOsContract.Migrations do
+  # Until 2026-08-21 the tables lived in the host application's
+  # `priv/repo/migrations/`, interleaved with the client tree's own, which made the
+  # storage the host's to maintain. Before 0.3.0 is released, V01 is rewritten in
+  # place (the idempotency index in plan E11f, the append lock's key per schema).
+  # Until 2026-09-30 the version was read from and written to `public` by name,
+  # whatever the path said, and in any other schema the first `up/0` failed on a
+  # `public.eh_os_contract_events` that did not exist (issue #51).
   @moduledoc """
   The tables the engine owns, as a migration a consumer calls.
 
-  Until 2026-08-21 the tables lived in the host application's
-  `priv/repo/migrations/`, interleaved with the client tree's own. That made the
-  storage the host's to maintain, which is exactly backwards: the schemas are in
-  this package, the queries are in this package, and a host that fell a column
-  behind found out from a crash. A library that owns storage ships the migration
-  for it — the precedent is Oban, and this follows its shape deliberately rather
-  than inventing one.
+  The storage is the engine's to maintain, not the host's: the schemas are in this
+  package, the queries are in this package, and a host that had to keep the tables
+  itself would find out from a crash that it fell a column behind. A library that
+  owns storage ships the migration for it — the precedent is Oban, and this follows
+  its shape deliberately rather than inventing one.
 
   ## Usage
 
@@ -91,10 +96,6 @@ defmodule EhOsContract.Migrations do
   **Ecto's migration prefix is not supported** (`mix ecto.migrate --prefix`,
   `:migration_default_prefix`): `create table` would follow it while the functions,
   the triggers and the version follow the `search_path`. Set the path instead.
-
-  Until 2026-09-30 the version was read from and written to `public` by name,
-  whatever the path said, and in any other schema the first `up/0` failed on a
-  `public.eh_os_contract_events` that did not exist (issue #51).
   """
 
   use Ecto.Migration

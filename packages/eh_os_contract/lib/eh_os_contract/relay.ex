@@ -1,4 +1,7 @@
 defmodule EhOsContract.Relay do
+  # At least once, never zero times: the notes of 1 October 2026 in v2 §16. An event of
+  # newer code waits: plan W1. `publish/2` returns within seconds: a decision of
+  # 1 October 2026, recorded in `PLAN.md`.
   @moduledoc """
   What carries a `publish` out of the application: one ordered subscription over the
   log per publication, which hands what it reads to `EhOsContract.Bus`. The log is
@@ -14,15 +17,14 @@ defmodule EhOsContract.Relay do
     `EhOsContract.Bus.publish/1`; the position advances in the same transaction, on
     `:ok`. A relay that stops between the two publishes the batch again, under the
     same ids, so a message can arrive twice at a consumer subscribed when it was
-    published, never zero times, and never without its fact (the notes of 1 October
-    2026 in v2 §16).
+    published, never zero times, and never without its fact.
   - **An unreachable transport is not a failure of the event.** `{:error, reason}`
     leaves the position where it was, counts no attempt, and the runner tries again
     later: an outage of the broker must not stop a relay for a person to restart. A
     raise is a defect and is a failure like a policy's: three, and the relay is
     `failing` at that position until someone decides. Skipping the event is that
     decision, and it means the event never leaves.
-  - **An event written by newer code waits** (plan W1): one whose fields are of a
+  - **An event written by newer code waits**: one whose fields are of a
     newer version than this node declares is not published. The events before it in
     the batch go, one at a time, and the relay stops at it, counting no attempt, until
     the node runs the newer code.
@@ -40,7 +42,7 @@ defmodule EhOsContract.Relay do
 
   - **It holds a pooled connection while it publishes**, one per relay per node, for
     as long as `c:EhOsContract.Bus.publish/2` takes, which is why that callback has to
-    return within seconds (a decision of 1 October 2026, `PLAN.md`).
+    return within seconds.
   - **Its row is keyed by the `publish`'s name, not its `as:`.** Renaming the
     declaration makes a new relay at the head of the log, and what the old one had
     not yet published — behind an outage, or with no bus configured — never leaves;

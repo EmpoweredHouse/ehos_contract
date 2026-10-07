@@ -78,7 +78,8 @@ defmodule EhOsContract.Store do
   @typedoc "Events of any of `types` carrying all of `tags`; the items of a query are OR-ed."
   @type query_item :: %{types: [String.t(), ...], tags: [String.t()]}
 
-  @typedoc "What a consistency boundary reads: the items are OR-ed (v2 §10.1)."
+  # A consistency boundary's query, v2 §10.1.
+  @typedoc "What a consistency boundary reads: the items are OR-ed."
   @type query :: [query_item()]
 
   @typedoc "What must hold for an append to happen."

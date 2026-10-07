@@ -1156,11 +1156,12 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # A process manager's state in a scenario: plan EP4.
   @expected_state %Spark.Dsl.Entity{
     name: :state,
     describe:
       "What the process manager's run holds after the trigger: the givens and the " <>
-        "delivered event folded, compared on the fields named (plan EP4).",
+        "delivered event folded, compared on the fields named.",
     target: ExpectedState,
     args: [:data],
     schema: [data: [type: :map, required: true, doc: "Fields of the state it must hold."]]

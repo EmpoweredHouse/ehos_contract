@@ -1,12 +1,13 @@
 defmodule EhOsContract do
   @moduledoc """
-  The package's public surface.
-
-  What would be the `eh_os_contract` hex package — kept in `lib/eh_os_contract/` beside the client
-  application in `lib/taxvision/`, with the boundary enforced by `boundary` from
-  the first commit. The structure is the one notes §15 foresee for the first
-  client, so moving it out beside the client's repository is a `git mv`.
+  The package's public surface: the engine a host boots in its supervision tree
+  (`child_spec/1`), and the calls into it: `dispatch/3`, `record/3`, `query/3`,
+  `call/3` for what arrives from outside, and `erase/3`.
   """
+
+  # The package began inside the first client's application, behind `boundary`
+  # from the first commit, in the structure notes §15 foresee, so that moving it out
+  # was a `git mv`.
 
   use Boundary,
     deps: [],

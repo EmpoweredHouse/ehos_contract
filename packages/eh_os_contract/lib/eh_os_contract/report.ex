@@ -2,12 +2,9 @@ defmodule EhOsContract.Report do
   @moduledoc """
   The conformance report for a period — four questions, one page.
 
-  Rendered here rather than in the application, which reverses an earlier decision:
-  the sentences used to be built client-side, on the argument that the engine cannot
-  know what language its reader speaks. The engine now writes its own sentences in
-  English and passes the contract's `label` through untouched, so a declaration
-  written in the reader's language stays in it. The engine translates its own words
-  and never somebody else's.
+  The engine writes its own sentences in English and passes the contract's `label`
+  through untouched, so a declaration written in the reader's language stays in it.
+  The engine translates its own words and never somebody else's.
 
   **The scaffolding is English; the contract's own labels are not translated.**
   `from_label`, `to_label` and a process's `label` print exactly as the contract
@@ -15,18 +12,23 @@ defmodule EhOsContract.Report do
   engine writes its own sentences in one language; it still does not decide what
   language the client wrote their labels in.
 
-  What is **not** here, unchanged from before the move: declarations the process
-  owner has not confirmed. The filter lives in `EhOsContract.Conformance`, not here, because
+  What is **not** here: declarations the process owner has not confirmed. The filter lives in `EhOsContract.Conformance`, not here, because
   it is a rule about evidence rather than about formatting — the consequence is
   visible right here: an unconfirmed `deadline` never reaches `render/1`'s input.
   """
+
+  # Rendered here rather than in the application, which reversed an earlier decision:
+  # the sentences used to be built client-side, on the argument that the engine cannot
+  # know what language its reader speaks. What the report leaves out stayed as it was
+  # before the move.
 
   alias EhOsContract.Report.Sentence
 
   @doc """
   The report for one contract over a period, as text to print; or for one process
-  module, its deployment and its process section (plan DD, P2d, #213).
+  module, its deployment and its process section.
   """
+  # A process module's report: plan DD, P2d (#213).
   @spec render(map()) :: String.t()
   def render(%{process: _} = report) do
     [
