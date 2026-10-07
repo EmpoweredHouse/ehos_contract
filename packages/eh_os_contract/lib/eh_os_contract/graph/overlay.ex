@@ -37,24 +37,34 @@ defmodule EhOsContract.Graph.Overlay do
   A step of `EhOsContract.Paths` is one arrow or two in the facts; its numbers sit
   on the relation that ends it: a command's `emits`, a reaction's `issues` (a
   manager's with the step's event as its `on`), a timer's `fires`, and an effect's
-  `handled_by`. Every step the report has puts its numbers on a relation, in one of
-  three ways (plan E13a, the user's decisions of 6 October):
+  `handled_by`. A step's numbers are the report's reading of it: `untraversed` is
+  the report's "never" — the step listed as untraversed — and `pending` its "not
+  yet". They sit on a relation in one of two ways (plan E13a, the user's decisions
+  of 6 and 7 October):
 
   - **One step, one relation:** the step's numbers, flat — `runs`, `of_runs`,
     `waiting`, `failing`, `untraversed`, `pending`.
   - **Several steps, one relation** — a policy handling several events, which the
     facts draw as one `issues`: `%{by_trigger: %{event id => numbers}}`, each step's
-    numbers under the id of the event it starts from, and no total (a run that took
-    two of the steps would count twice). An entry is flat or `by_trigger`, never both.
-  - **One step, two relations** — a manager issuing one command on one event both as
-    the event starts a run and during it: the engine splits the step by phase
-    (`EhOsContract.Paths.observe/2` with `phases: true`), by the manager's own rule
-    over the log, and each phase's relation gets its runs and waiting events flat,
-    read for "never" and "not yet" by the report's predicate, with the step's
-    `failing`, which is the manager's and not a phase's. A run that issued the
-    command at its start and during it counts in both, so the phases need not add up
-    to the report's step, which stays as it is.
+    numbers under the id of the event it starts from, as the report has one line per
+    step, and no total (a run that took two of the steps would count twice). An entry
+    is flat or `by_trigger`, never both.
+
+  **One step, two relations get no numbers:** a manager issuing one command on one
+  event both as the event starts a run and during it has two `issues` (`phase` start
+  and run) and one step in the report. The log does not record which phase a command
+  was issued in, so no number of the step belongs to either relation alone. For the
+  same reason a manager whose `starts_on` and `on` of one event issue different
+  commands is read by its declarations: dispatch lets its callback issue either
+  command in either phase, and a command issued in the other phase still counts on
+  the relation that declares it.
+
+  A step the facts end at no relation, or at two that are not such a manager's
+  phases, is a shape of the DSL this module does not know: its relations get no
+  numbers and a warning is logged, and a test over every fixture fails on it.
   """
+
+  require Logger
 
   alias EhOsContract.{Conformance, Model, Paths}
   alias EhOsContract.Graph.{Document, System}
@@ -73,11 +83,7 @@ defmodule EhOsContract.Graph.Overlay do
     c = model.module
     id = &Document.id([&1, c, &2])
 
-    steps =
-      period
-      |> Keyword.put(:phases, true)
-      |> then(&Conformance.steps(model, &1))
-      |> Enum.uniq()
+    steps = model |> Conformance.steps(period) |> Enum.uniq()
 
     lifecycles = Conformance.lifecycles(model, period)
 
@@ -181,8 +187,7 @@ defmodule EhOsContract.Graph.Overlay do
   # Each step's numbers on the relation that ends it, found in the document by its
   # ends. A relation one step ends at carries that step's numbers; one several steps end
   # at — a policy handling several events — carries each step's under `by_trigger`, by
-  # the id of the event the step starts from. A manager's step that ends at its two
-  # phases' relations carries each phase's numbers on that phase's relation.
+  # the id of the event the step starts from.
   defp on_steps(document, c, steps) do
     find = fn type, from, to, on ->
       find(document, type, from, to, if(on, do: %{"on" => on}, else: %{}))
@@ -191,8 +196,8 @@ defmodule EhOsContract.Graph.Overlay do
     ref = fn %{kind: kind, name: name} -> Document.id([kind, c, name]) end
     phase = for r <- document["relations"]["issues"], into: %{}, do: {r["id"], r["phase"]}
 
-    for step <- steps, {rid, numbers} <- ended(step, ends(step, ref, find, c), phase) do
-      {rid, {ref.(step.from), numbers}}
+    for step <- steps, rid <- ended(step, ends(step, ref, find, c), phase) do
+      {rid, {trigger(step, ref, c), numbers(step)}}
     end
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Enum.map(fn
@@ -201,26 +206,24 @@ defmodule EhOsContract.Graph.Overlay do
     end)
   end
 
-  defp ended(%{phases: phases} = step, rids, phase) do
-    for rid <- rids,
-        do: {rid, numbers(Map.merge(step, Map.fetch!(phases, phase_of(phase, rid))))}
-  end
+  # The id of what a step starts from: a timer's carries its manager.
+  defp trigger(%{from: %{kind: :timer}} = s, _ref, c),
+    do: Document.id([:timer, c, s.via.name, s.from.name])
 
-  defp ended(step, [rid], _phase), do: [{rid, numbers(step)}]
+  defp trigger(s, ref, _c), do: ref.(s.from)
 
-  # Every shape the compiler accepts ends a step at one relation, or at a manager's two
-  # phases; anything else is a step the facts and the report disagree on.
-  defp ended(step, rids, _phase) do
-    raise ArgumentError,
-          "the step #{inspect(Map.take(step, [:from, :via, :to]))} ends at #{length(rids)} " <>
-            "relations of the graph document, where its numbers need one"
-  end
+  defp ended(_step, [rid], _phase), do: [rid]
 
-  defp phase_of(phase, rid) do
-    case Map.fetch!(phase, rid) do
-      "start" -> :start
-      "run" -> :run
+  # A manager's step at its two phases' relations: the log cannot tell them apart.
+  defp ended(step, rids, phase) do
+    unless Enum.sort(Enum.map(rids, &phase[&1])) == ["run", "start"] do
+      Logger.warning(
+        "the step #{inspect(Map.take(step, [:from, :via, :to]))} ends at #{length(rids)} " <>
+          "relations of the graph document, where its numbers need one; they get none"
+      )
     end
+
+    []
   end
 
   defp ends(%{via: nil} = s, ref, find, _c), do: find.("emits", ref.(s.from), ref.(s.to), nil)

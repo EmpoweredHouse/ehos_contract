@@ -105,8 +105,14 @@ defmodule EhOsContract.Pages do
     # person saved elsewhere under `graph/` is theirs.
     case Jason.decode(text) do
       {:ok,
-       %{"schema" => "eh_os_contract.graph.v1", "kind" => "contract", "domain" => ^name} = doc} ->
-        path == "graph/#{doc["contract"]}.json"
+       %{
+         "schema" => "eh_os_contract.graph.v1",
+         "kind" => "contract",
+         "domain" => ^name,
+         "contract" => contract
+       }}
+      when is_binary(contract) ->
+        path == "graph/#{contract}.json"
 
       _other ->
         false

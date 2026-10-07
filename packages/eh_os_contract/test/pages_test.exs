@@ -441,12 +441,23 @@ defmodule EhOsContract.PagesTest do
       File.write!(Path.join(dir, "graph/ValueRig.Till-before.json"), ours)
       File.write!(Path.join(dir, "graph/notes.json"), ~s({"mine": true}))
 
+      # Nor does the task fail on a file it cannot read, or one whose contract is no name.
+      odd = String.replace(ours, ~s("contract": "ValueRig.Till"), ~s("contract": {"a": 1}))
+      File.write!(Path.join(dir, "graph/odd.json"), odd)
+      locked = Path.join(dir, "graph/locked.json")
+      File.write!(locked, ours)
+      File.chmod!(locked, 0o000)
+      on_exit(fn -> File.chmod(locked, 0o600) end)
+
       run(["--output", dir])
       assert_received {:mix_shell, :info, [written]}
       assert written == "#{dir}: 16 pages written, 1 left over deleted"
       refute File.exists?(Path.join(dir, "graph/ValueRig.Gone.json"))
       assert File.read!(Path.join(dir, "graph/ValueRig.Till-before.json")) == ours
       assert File.exists?(Path.join(dir, "graph/notes.json"))
+      assert File.exists?(Path.join(dir, "graph/odd.json"))
+      assert File.exists?(locked)
+      File.chmod!(locked, 0o600)
 
       # A person's file at the path the task would write is in the way.
       File.write!(Path.join(dir, "graph/ValueRig.Till.json"), ~s({"mine": true}))

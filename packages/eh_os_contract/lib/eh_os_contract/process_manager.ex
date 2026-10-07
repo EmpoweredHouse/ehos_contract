@@ -96,92 +96,27 @@ defmodule EhOsContract.ProcessManager do
     {model, pm} = declaration(consumer)
     event = Consumer.decode!(row)
     name = Map.fetch!(consumer.callbacks, row.type)
+    values = Enum.map(pm.correlate, &Map.get(event, &1))
 
-    with correlation when correlation != nil <- correlation(pm, event) do
+    # An event that does not say which run it belongs to belongs to none.
+    if Enum.all?(values, &(&1 != nil)) do
+      correlation = Key.join(values)
       record = load(repo, consumer.key, correlation)
+      starts? = record == nil and Enum.any?(pm.starts_on, &(&1.event == name))
+      running? = record != nil and record.completed_at == nil
 
-      case take(pm, name, run(record)) do
-        {nil, _run} ->
-          :ok
+      # Only a run that starts writes a new key: an event no run takes is read for
+      # nothing, which Postgres answers whatever its length, and a running run's key
+      # is already stored.
+      if starts?, do: fits!(consumer, correlation, row)
 
-        {phase, after_it} ->
-          # Only a run that starts writes a new key: an event no run takes is read for
-          # nothing, which Postgres answers whatever its length, and a running run's key
-          # is already stored.
-          if phase == :start, do: fits!(consumer, correlation, row)
-          run = {record, correlation, after_it == :ended}
-          step!(repo, consumer, {model, pm}, run, event, row, chain, replay?)
+      if starts? or running? do
+        step!(repo, consumer, {model, pm}, record, correlation, event, row, chain, replay?)
       end
     end
 
     :ok
   end
-
-  @typedoc "Where a run of one correlation stands: none yet, running, or ended."
-  @type run :: :none | :running | :ended
-
-  @doc """
-  The run `event`, decoded, belongs to in `pm`: its correlation values joined by
-  `EhOsContract.Key`, or nil when one of them is missing — an event that does not say
-  which run it belongs to belongs to none.
-  """
-  @spec correlation(map(), struct()) :: String.t() | nil
-  def correlation(pm, event) do
-    values = Enum.map(pm.correlate, &Map.get(event, &1))
-    if Enum.all?(values, &(&1 != nil)), do: Key.join(values)
-  end
-
-  @doc """
-  The rule by which `pm` takes the event `name` into a run that stands at `run`, as
-  `handle!/5` applies it, and as `EhOsContract.Paths` replays it over the log to tell
-  which phase a command was issued in: `{phase, run after it}`. An event it starts on
-  starts a run that has none (`:start`); any event reaches a running run (`:run`);
-  nothing else is taken (`nil`), so a run that ended never starts again. A taken
-  event it ends on ends the run, after its reactions.
-  """
-  @spec take(map(), atom(), run()) :: {:start | :run | nil, run()}
-  def take(pm, name, run) do
-    phase =
-      case run do
-        :none -> if Enum.any?(pm.starts_on, &(&1.event == name)), do: :start
-        :running -> :run
-        :ended -> nil
-      end
-
-    cond do
-      phase == nil -> {nil, run}
-      name in pm.ends_on -> {phase, :ended}
-      true -> {phase, :running}
-    end
-  end
-
-  @doc """
-  Which phase each event of `events` — `{id, name, decoded}`, in the log's order —
-  reaches `pm` in, by `correlation/2` and `take/3` applied from the first event on, as
-  a replay takes them: `%{id => :start | :run}`, without the events no run takes.
-  """
-  @spec arrivals(map(), [{term(), atom(), struct()}]) :: %{term() => :start | :run}
-  def arrivals(pm, events) do
-    {phases, _runs} =
-      Enum.reduce(events, {%{}, %{}}, fn {id, name, event}, {phases, runs} ->
-        case correlation(pm, event) do
-          nil ->
-            {phases, runs}
-
-          correlation ->
-            case take(pm, name, Map.get(runs, correlation, :none)) do
-              {nil, _run} -> {phases, runs}
-              {phase, run} -> {Map.put(phases, id, phase), Map.put(runs, correlation, run)}
-            end
-        end
-      end)
-
-    phases
-  end
-
-  defp run(nil), do: :none
-  defp run(%ProcessManagerRecord{completed_at: nil}), do: :running
-  defp run(%ProcessManagerRecord{}), do: :ended
 
   # The run's timer stream, `"$pm:<key>:<correlation>"`, is the longest key a run
   # writes, longer than its row's `name` and `correlation`: within the budget, both fit.
@@ -198,16 +133,7 @@ defmodule EhOsContract.ProcessManager do
     end
   end
 
-  defp step!(
-         repo,
-         consumer,
-         {model, pm},
-         {record, correlation, ends?},
-         event,
-         row,
-         chain,
-         replay?
-       ) do
+  defp step!(repo, consumer, {model, pm}, record, correlation, event, row, chain, replay?) do
     name = Map.fetch!(consumer.callbacks, row.type)
 
     state =
@@ -243,7 +169,7 @@ defmodule EhOsContract.ProcessManager do
     schedule = unless replay?, do: {consumer.key, correlation}
 
     {timers, completed_at} =
-      if ends?,
+      if name in pm.ends_on,
         do: {%{}, row.occurred_at},
         else: {timers(record.timers || %{}, reactions, pm, state, row, schedule), nil}
 

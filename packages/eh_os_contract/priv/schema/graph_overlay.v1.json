@@ -75,7 +75,7 @@
         },
         "relations": {
           "type": "object",
-          "description": "Numbers by the id of a relation of the document, or of one defined under observed.",
+          "description": "Numbers by the id of a relation of the document, or of one defined under observed. A relation no step, transition or move ends at has no entry, and so have the two issues relations (phase start and run) of a process manager issuing one command on one event both as a run starts and during it: the report reads that as one step, and the log does not record which phase a command was issued in.",
           "additionalProperties": {
             "oneOf": [
               {
@@ -178,7 +178,8 @@
         },
         "relations": {
           "type": "object",
-          "description": "Numbers by the id of a relation of the document, or of one defined under observed.",
+          "description": "Numbers by the id of a consumed_by relation of the document: what crosses between two contracts.",
+
           "additionalProperties": {
             "oneOf": [
               {
@@ -258,7 +259,7 @@
     },
     "step_numbers": {
       "type": "object",
-      "description": "A step of the process, on the relation that ends it — or, for a manager issuing one command on one event as a run starts and during it, the step's phase, on that phase's relation: the runs that took it out of the process's (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
+      "description": "A step of the process, on the relation that ends it: the runs that took it out of the process's (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
       "required": [
         "runs",
         "of_runs",
@@ -353,10 +354,12 @@
           }
         },
         "untraversed": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "The conformance report's reading of the step: true exactly when the report lists it as never traversed in the period."
         },
         "pending": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "The report's not yet: the step was not taken because what it starts from is still on its way."
         }
       }
     },

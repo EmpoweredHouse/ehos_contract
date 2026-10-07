@@ -3,9 +3,10 @@ defmodule EhOsContract.GraphDocumentTest do
   Plan E13a: the `graph.v1` documents — a contract's and a domain's graph of facts
   (batch 3) — and the declared shape of a process as data (batch 2), which the
   dashboard still draws. Every document of every fixture holds to the schema that
-  ships in `priv/schema`, is JSON as it stands, says nothing from the log, joins on
-  ids that resolve, holds every fact today's pictures draw, and is written with every
-  object's keys in order, so its bytes depend on its content alone.
+  ships in `priv/schema`, is JSON as it stands, joins on ids that resolve, holds every
+  fact today's pictures draw, and is written with every object's keys in order, so its
+  bytes depend on its content alone. That it says nothing from the log is
+  `GraphOverlayTest`'s, which writes the log and builds the document again.
   """
 
   use EhOsContract.DslCase, async: false
@@ -272,14 +273,6 @@ defmodule EhOsContract.GraphDocumentTest do
 
       assert Enum.sort(props["relations"]["required"]) ==
                Enum.sort(Enum.map(relations, &to_string/1))
-    end
-  end
-
-  test "the log is not in a document, even where the contract has run" do
-    # The schema closes every object, so a key of the overlay would fail it; this says
-    # why, where it is read.
-    for {_module, document} <- documents(), item <- nodes(document) ++ relations(document) do
-      refute Enum.any?(~w(overlay counts runs), &Map.has_key?(item, &1))
     end
   end
 

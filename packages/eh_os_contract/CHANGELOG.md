@@ -73,16 +73,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the
   history of a contract removed on purpose. The log's distinct types are read one index step each, so a long log
   costs no more than a short one with as many types.
-- **E13a: the graphs as `graph.v1` documents.** `EhOsContract.Graph.Document.contract/1` gives a contract's
-  document — its full graph, its process's declared shape, each unit's graph and each lifecycle, keyed by the
-  unit's group id — and `Document.domain/2` a domain's: its context map and its contracts as one system. Both are
-  JSON-ready, say `"schema": "eh_os_contract.graph.v1"`, carry a `"digest"` of the rest (`Document.digest/1`), and
-  hold nothing from the log, so the same contract gives the same document. Their JSON Schema ships in
-  `priv/schema/graph.v1.json` (`Document.schema_path/0`), the one thing under `priv/` the package now carries.
-  The declared shape is data too (`EhOsContract.Graph.Declared.build/2`): stages as groups, `precedes` between
-  them, promises as `eventually` and `or_else` edges; `Graph.declared_to_mermaid/2` draws it byte for byte as
-  before. Every edge now has an `id` too — its relation, its ends and what tells it apart from another between
-  them — which the log's numbers will join on. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
 - **E13a: a contract and a domain as `graph.v1` documents — graphs of facts.**
   `EhOsContract.Graph.Document.contract/1` gives a contract's document and `Document.domain/2` a domain's: every
   declaration a relation can end at as a node, grouped by kind (`command`, `event`, `policy`, `timer`, `status`,
@@ -112,12 +102,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the report counts it never or not yet, a transition's count, traffic between contracts — and a move a lifecycle
   does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
   report's reading of it, and `EhOsContract.Paths.occurrences/2` an event's occurrences and runs. No verdict moves.
-  Every step the report has puts its numbers on a relation: flat where the relation has that one step; under
+  A step's `untraversed` is the report's reading of it: true exactly when the report lists the step as never
+  traversed. A step's numbers sit on the relation that ends it: flat where the relation has that one step; under
   `by_trigger`, by the triggering event's id, where several steps end at one relation (a policy handling several
-  events), with no total; and by phase where a process manager issues one command on one event both as it starts a
-  run and during it — `Paths.observe/2` with `phases: true` splits that step's runs and waiting events by the
-  phase `EhOsContract.ProcessManager.take/3`, the rule dispatch itself applies, gives each event over the log. The
-  phases need not add up to the report's step, and the report itself is unchanged.
+  events) — one entry per line of the report — with no total. **A process manager that issues one command on one
+  event both as the event starts a run and during it gets no numbers on those two relations** (`phase` start and
+  run): the report reads them as one step, and the log does not record which phase a command was issued in.
 - **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
   overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
   a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`) or a domain's (`--system`)
@@ -236,6 +226,16 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   user's decision; rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
   deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
   the application: they key their runs.
+- **E13a: a graph built as data says what each edge is, not how it looks.** `build/*` of `Graph.Contract`,
+  `Graph.Unit`, `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System` return `EhOsContract.Graph.Document.graph()`:
+  an edge has a `relation`, read in its direction (`:emits`, `:issues`, `:records`, `:calls`, `:consumed_by`, a
+  context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
+  over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the module
+  whose name it is and that name (`"event:Rehmed.Contracts.Scheduling:visit_booked"`), stable and opaque, not
+  Mermaid's — on a contract's graphs an event it consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
+  before, byte for byte. Nothing in the report moves. **A host that calls `build/*` itself** reads an edge's
+  `relation` where it read `line`, `head` and the label, and the overlay's numbers where it read words; the
+  dashboard does so already. E13b removes these builders, with Mermaid, in favour of the `graph.v1` document.
 - **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
   the refusal is **X10**). Left out, it
   runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the
@@ -332,17 +332,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   was with no cadence declared, so no other contract's version moves; one that declared it moves once, when the
   line goes. The exported model (`EhOsContract.Model.to_data/1`) loses the `"cadence"` key from `"process"`, where
   it was `null` unless declared, so that document's own `"digest"` moves for every contract with a process.
-
-### Changed
-
-- **E13a: a graph built as data says what each edge is, not how it looks.** `build/*` of `Graph.Contract`,
-  `Graph.Unit`, `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System` return `EhOsContract.Graph.Document.graph()`:
-  an edge has a `relation`, read in its direction (`:emits`, `:issues`, `:records`, `:calls`, `:consumed_by`, a
-  context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
-  over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the module
-  whose name it is and that name (`"event:Rehmed.Contracts.Scheduling:visit_booked"`), stable and opaque, not
-  Mermaid's — on a contract's graphs an event it consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
-  before, byte for byte. Nothing in the report moves.
 
 ## Unreleased — 0.3.0
 

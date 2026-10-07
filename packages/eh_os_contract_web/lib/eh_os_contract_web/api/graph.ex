@@ -13,7 +13,12 @@ defmodule EhOsContract.Web.Api.Graph do
   document is the same bytes for the same declarations — every object's keys in
   order (`EhOsContract.Graph.Document.encode/2`) — so its digest is a sound `ETag`,
   and a request that already holds it (`If-None-Match`) gets 304. An overlay has no
-  ETag: the log moves under it.
+  ETag: the log moves under it, and a period whose `since` is after its `until` is
+  400.
+
+  The index (`eh_os_contract.graph_index.v1`) has no JSON Schema file: it is a list
+  of contracts (`contract`, `version`, `digest`) and domains (`domain`, `name`,
+  `version`, `digest`), each digest the one its document carries.
 
   Authenticated through the same resolver as the model and AsyncAPI: the documents
   carry the client's domain language and authorization surface, the overlays volume
@@ -52,7 +57,7 @@ defmodule EhOsContract.Web.Api.Graph do
     contracts = Registry.contracts()
 
     %{
-      "schema" => "eh_os_contract.graph-index.v1",
+      "schema" => "eh_os_contract.graph_index.v1",
       "contracts" =>
         contracts
         |> Enum.map(fn c ->
@@ -115,7 +120,8 @@ defmodule EhOsContract.Web.Api.Graph do
 
   defp overlay(conn, build) do
     with {:ok, since} <- at(conn.params["since"], "since"),
-         {:ok, until} <- at(conn.params["until"], "until") do
+         {:ok, until} <- at(conn.params["until"], "until"),
+         :ok <- ordered(since, until) do
       json(conn, 200, Document.encode(build.(since: since, until: until)))
     else
       {:error, detail} ->
@@ -134,6 +140,14 @@ defmodule EhOsContract.Web.Api.Graph do
 
   # `?since[]=…` or `?since[a]=…` decodes to a list or a map: bad input, not a defect.
   defp at(_value, which), do: {:error, "#{which} is not an ISO 8601 timestamp"}
+
+  defp ordered(%DateTime{} = since, %DateTime{} = until) do
+    if DateTime.after?(since, until),
+      do: {:error, "since is after until"},
+      else: :ok
+  end
+
+  defp ordered(_since, _until), do: :ok
 
   defp not_found(conn, detail),
     do: json(conn, 404, Jason.encode!(%{"error" => "not_found", "detail" => detail}))

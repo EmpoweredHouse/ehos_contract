@@ -49,9 +49,7 @@ defmodule EhOsContract.Paths do
   import Ecto.Query
 
   alias EhOsContract.{
-    Codec,
     CommandRecord,
-    Consumer,
     Event,
     EventRun,
     InboxRecord,
@@ -88,17 +86,6 @@ defmodule EhOsContract.Paths do
   Every step `contract` declares, in declaration order: its commands' emits, then its
   policies, process managers and effects. `opts`: `:since` and `:until` bound the
   events counted as taken, as in `EhOsContract.Trace`.
-
-  `phases: true` also splits, by phase, the step of a process manager that issues one
-  command on one event both as the event starts a run (`starts_on`) and during it
-  (`on`) — one step to the report, two relations to the graph: such a step gets
-  `phases`, `%{start: %{runs, in_flight}, run: %{runs, in_flight}}`, each issued
-  command and each event still waiting counted in the phase
-  `EhOsContract.ProcessManager.take/3` gives its event over the log before it. Only
-  the runs and the events waiting are split; what fails is the manager's, and stays
-  whole. A run that issues the command at its start and again during it counts in
-  both, so the phases need not add up to the step. Without the option every step is
-  as the report reads it.
   """
   @spec observe(module() | map(), keyword()) :: [step()]
   def observe(contract, opts \\ []) do
@@ -112,7 +99,6 @@ defmodule EhOsContract.Paths do
     {waiting_effects, discarded_effects} = effect_jobs(keys)
     failed = failed_commands(model, opts)
     stopped = stopped_subscriptions(steps)
-    phased = if opts[:phases], do: phases(model, opts), else: %{}
 
     for step <- steps do
       key = step[:key]
@@ -131,32 +117,9 @@ defmodule EhOsContract.Paths do
           effects: Map.get(discarded_effects, {key, step.from_type}, 0)
         }
       })
-      |> phased(phased)
       |> Map.drop([:key, :from_type, :command_type, :issued_by, :inbox])
     end
   end
-
-  defp phased(%{via: %{kind: :process_manager, name: pm}, from: %{kind: :event}} = step, phased) do
-    case Map.fetch(phased, {pm, step.from.name, step.command_type}) do
-      {:ok, %{runs: runs, lag: lag}} ->
-        Map.put(
-          step,
-          :phases,
-          Map.new([:start, :run], fn phase ->
-            {phase,
-             %{
-               runs: Map.get(runs, phase, 0),
-               in_flight: %{step.in_flight | lag: Map.get(lag, phase, 0)}
-             }}
-          end)
-        )
-
-      :error ->
-        step
-    end
-  end
-
-  defp phased(step, _phased), do: step
 
   @doc """
   The steps `contract` declares, without the log: `from`, `via`, `to` and `mode`,
@@ -498,128 +461,6 @@ defmodule EhOsContract.Paths do
     |> then(fn q ->
       if at = opts[:until], do: where(q, [_c, i], i.received_at <= ^at), else: q
     end)
-  end
-
-  # --- phases -------------------------------------------------------------------------
-
-  # The steps a process manager takes both as a run starts and during it — one event
-  # in its `starts_on` and its `on`, the same command issued by both — each with its
-  # runs and waiting events by phase: `%{{manager, event, command} => %{runs: %{phase
-  # => runs}, lag: %{phase => events}}}`. The phase of an event is the one the manager's
-  # own rule gives it over every event it takes before it, whatever the period, since a
-  # run may have started before the period does.
-  defp phases(model, opts) do
-    for pm <- model.process_managers,
-        shared = shared(pm),
-        shared != [],
-        entry <- phases_of(model, pm, shared, opts),
-        into: %{},
-        do: entry
-  end
-
-  defp shared(pm) do
-    for start <- pm.starts_on,
-        during <- pm.on,
-        start.event == during.event,
-        command <- start.issues,
-        command in during.issues,
-        uniq: true,
-        do: {start.event, command}
-  end
-
-  defp phases_of(model, pm, shared, opts) do
-    names =
-      for name <- Enum.map(pm.starts_on ++ pm.on, & &1.event) ++ pm.ends_on,
-          type = type_of(model, name),
-          type != nil,
-          into: %{},
-          do: {type, name}
-
-    rows =
-      from(e in Event, where: e.type in ^Map.keys(names), order_by: e.position)
-      |> repo().all()
-
-    arrivals = ProcessManager.arrivals(pm, decoded(rows, names))
-    key = key(model, :process_manager, pm.name)
-    position = subscribed_at(key, pm.delivery)
-
-    for {event, command} <- shared, type = type_of(model, event), type != nil do
-      runs =
-        from(c in CommandRecord,
-          join: e in Event,
-          as: :event,
-          on: e.id == c.causation_event_id,
-          where: c.contract == ^inspect(model.module) and c.issued_by == ^"pm:#{pm.name}",
-          where: c.outcome in ["accepted", "rejected"],
-          where: c.type == ^Atom.to_string(command) and e.type == ^type,
-          select: {e.id, c.instance_id}
-        )
-        |> bounded(opts)
-        |> repo().all()
-        |> Enum.group_by(&Map.get(arrivals, elem(&1, 0)), &elem(&1, 1))
-        |> Map.new(fn {phase, instances} -> {phase, instances |> Enum.uniq() |> length()} end)
-
-      lag =
-        if position,
-          do:
-            for(
-              %{type: ^type, position: at, id: id} <- rows,
-              at > position,
-              phase = Map.get(arrivals, id),
-              phase != nil,
-              reduce: %{},
-              do: (acc -> Map.update(acc, phase, 1, &(&1 + 1)))
-            ),
-          else: %{}
-
-      {{pm.name, event, Atom.to_string(command)}, %{runs: runs, lag: lag}}
-    end
-  end
-
-  # The rows decoded as the manager's subscription decodes them, each contract's with
-  # its own declarations, back in the log's order — up to the first row that does not
-  # decode, where the subscription stops too: what comes after it has no phase yet, so
-  # a row the runtime cannot read never makes the overlay fail where the report says
-  # the subscription is failing.
-  defp decoded(rows, names) do
-    decoded =
-      rows
-      |> Enum.group_by(& &1.contract)
-      |> Enum.flat_map(fn {contract, rows} -> decode_each(contract, rows) end)
-      |> Enum.sort_by(fn {row, _event} -> row.position end)
-
-    decoded
-    |> Enum.take_while(fn {_row, event} -> event != :undecodable end)
-    |> Enum.map(fn {row, event} -> {row.id, Map.fetch!(names, row.type), event} end)
-  end
-
-  defp decode_each(contract, rows) do
-    model = Model.fetch(Module.safe_concat([contract]))
-    values = Codec.values(model.domain)
-
-    try do
-      Enum.zip(rows, Consumer.decode_all!(model, values, rows))
-    rescue
-      _one_does_not ->
-        for row <- rows do
-          try do
-            {row, hd(Consumer.decode_all!(model, values, [row]))}
-          rescue
-            _it_does_not -> {row, :undecodable}
-          end
-        end
-    end
-  end
-
-  # Where an ordered manager's subscription stands, as `lag/1` reads it; nil for one
-  # inside the dispatch transaction, or not deployed, for which nothing waits.
-  defp subscribed_at(_key, :in_transaction), do: nil
-
-  defp subscribed_at(key, _delivery) do
-    case repo().get_by(SubscriptionRecord, name: key) do
-      %SubscriptionRecord{position: position} -> position
-      nil -> nil
-    end
   end
 
   # --- waiting ------------------------------------------------------------------------

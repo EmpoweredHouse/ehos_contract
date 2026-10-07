@@ -161,4 +161,36 @@ defmodule EhOsContract.GraphTest do
       task.(~w(--json --contract DispatchRig.Ledger --unit account))
     end
   end
+
+  test "--json without --output writes the document alone to stdout, and what is logged to stderr" do
+    require Logger
+
+    stdout =
+      ExUnit.CaptureIO.capture_io(fn ->
+        Mix.Tasks.EhOsContract.Graph.run(~w(--json --contract DispatchRig.Ledger --overlay))
+      end)
+
+    assert %{"schema" => "eh_os_contract.graph_overlay.v1"} = Jason.decode!(stdout)
+
+    # A host's application logs as it starts (a relay with no bus): during the task that
+    # goes to stderr — also from the handler `app.start` adds when it restarts Logger,
+    # which reads `:default_handler` — and both are back as they were after it.
+    env = Application.fetch_env(:logger, :default_handler)
+
+    stderr =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        Mix.Tasks.EhOsContract.Graph.logs_to_stderr(fn ->
+          # What `app.start` does to Logger before it starts the host's applications.
+          :ok = Application.stop(:logger)
+          :ok = Application.start(:logger)
+          assert {:ok, %{config: %{type: :standard_error}}} = :logger.get_handler_config(:default)
+
+          Logger.warning("no bus is configured")
+        end)
+      end)
+
+    assert stderr =~ "no bus is configured"
+    assert {:ok, %{config: %{type: :standard_io}}} = :logger.get_handler_config(:default)
+    assert Application.fetch_env(:logger, :default_handler) == env
+  end
 end

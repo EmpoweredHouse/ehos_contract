@@ -152,11 +152,17 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
   # Only the marker's bytes are read: `--output` may be a large tree of documents. A
   # contract's graph document has no room for a marker, so it is read whole, and only
-  # where the pages put one (`EhOsContract.Pages.graph?/3`).
+  # where the pages put one (`EhOsContract.Pages.graph?/3`). One the task cannot read
+  # is not taken for its own, as a page whose marker it cannot read is not.
   defp page?(path, file, {marker, domain}) do
-    if String.starts_with?(path, "graph/") and String.ends_with?(path, ".json"),
-      do: Pages.graph?(path, File.read!(file), domain),
-      else: marked?(file, marker)
+    if String.starts_with?(path, "graph/") and String.ends_with?(path, ".json") do
+      case File.read(file) do
+        {:ok, text} -> Pages.graph?(path, text, domain)
+        {:error, _reason} -> false
+      end
+    else
+      marked?(file, marker)
+    end
   end
 
   defp marked?(file, marker) do

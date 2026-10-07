@@ -1669,7 +1669,7 @@
         },
         "unit": {
           "type": "string",
-          "description": "The unit's id; absent for an event consumed, included or received."
+          "description": "The unit's id; absent for an event consumed from a sibling or received from another application, whether or not the process includes it."
         },
         "stage": {
           "type": "string",

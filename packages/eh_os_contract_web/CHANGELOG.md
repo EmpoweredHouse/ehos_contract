@@ -27,7 +27,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   domains with their versions and digests), `<mount>/graph/My.Contract` (the contract's `graph.v1` document, its
   digest as the `ETag`, `304` on `If-None-Match`), `<mount>/graph/My.Contract/overlay?since=…&until=…` (what the log
   says over it), and `<mount>/graph/domain/My.Domain` with its overlay, behind the same resolver as `/model`; what
-  the registry does not hold is `404`. The dashboard's screens are unchanged.
+  the registry does not hold is `404`, and an overlay whose `since` is after its `until` is `400`. The dashboard's
+  screens are unchanged.
 
 - **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
   eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a

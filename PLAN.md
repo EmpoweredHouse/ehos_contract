@@ -635,7 +635,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy i poprawki z przeglądu końcowego na gałęzi; przed PR-em (rebase na `main`, `id` z `id:`, `pre-pr-review`) z użytkownikiem — „E13a — final review and the user's decisions” |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; przed PR-em (rebase na `main`, `id` z `id:`, `pre-pr-review`) z użytkownikiem — „E13a — fixes after the final review (7 October)” |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1212,7 +1212,9 @@ are refused — merging them per pair makes it not matter.
   numbers on its `handled_by` when the policy issues one command (a rule that depends on the counts of a
   declaration). **Open for the user:** whether these shapes need numbers — which would take a discriminator on a
   policy's `issues` (batch 3 decided a policy says nothing of which event yields which) or a refusal of the shape.
-  *Resolved 6 October:* "E13a — overlay numbers for one relation with several steps, and for a manager's phases".
+  *Resolved 6 October:* "E13a — overlay numbers for one relation with several steps, and for a manager's phases";
+  *corrected 7 October:* a policy's relation gets `by_trigger`, a manager's two phases stay without numbers —
+  "E13a — fixes after the final review (7 October)".
 - **A move the lifecycle does not allow** (decision 5) is defined under `observed.relations.undeclared` as `{id,
   from, to, event}`, from and to the status the aggregate stood in — the unit's id where it stood in none yet — and
   its `count` is in `relations` with the rest.
@@ -1269,7 +1271,7 @@ the fixtures; the same declarations give the same bytes (the digest moves only w
 sorts keys); the document from `/graph/:contract` is the function's byte for byte; the dashboard is unchanged; the
 gate is EXIT=0. Not done in E13a: plan step 8 (sandbox data, decision 6). **Open for the user:** numbers for the
 two step shapes the overlay leaves without them (batch 5; *resolved 6 October*, see "E13a — overlay numbers for one
-relation with several steps, and for a manager's phases"); the domain-service edge (in "Otwarte pytania" since
+relation with several steps, and for a manager's phases", *corrected 7 October*); the domain-service edge (in "Otwarte pytania" since
 batch 3). Remaining with the user (decision 7): merging `main`, `pre-pr-review`, the pull request.
 
 ### E13a — final review and the user's decisions (6 October)
@@ -1307,6 +1309,12 @@ check (`GraphCoverage`) is run by hand only.
 
 **The user's decisions:**
 
+*7 October:* asked about the decisions below and in the next section, recorded by another session as theirs, the
+user did not recognise them. Asked again, the user **confirmed** the three in this list — the model pages keep
+Mermaid until E13b; node ids switch to the contract's `id:` at the rebase onto `main`, in the same PR, before it is
+opened; the PR says `No issue: E13 is planned and tracked in PLAN.md` — and **rejected** the split of a manager's
+step by phase (next section). What was decided instead: "E13a — fixes after the final review (7 October)".
+
 - **The model pages keep their Mermaid diagrams until E13b**, which cuts Mermaid everywhere at once (E13b, steps
   4–5). Batch 2's "the pages lose their diagrams" is done there, not in E13a; the pages already carry the
   document beside them.
@@ -1328,6 +1336,13 @@ check (`GraphCoverage`) is run by hand only.
 - the pull request, with `No issue: E13 is planned and tracked in PLAN.md`.
 
 ### E13a — overlay numbers for one relation with several steps, and for a manager's phases (6 October)
+
+*7 October — not the user's decisions as written.* The user did not recognise the two decisions below as theirs.
+Asked again: **decision 1 (`by_trigger`) stands; decision 2 (the split by phase) is rejected and removed**, and with
+it everything "How it is built" describes — `phases:` in `Paths.observe/2`, the per-phase reading in
+`Conformance.steps/2`, `ProcessManager.take/3`, `arrivals/2` and `correlation/2`. A manager's two phase relations
+get no numbers, as batch 5 had them. Why, and what replaces it later: "E13a — fixes after the final review
+(7 October)". The text below is the record of what was built and removed.
 
 **The problem.** Batch 5 put a step's numbers on the relation that ends it only where step and relation match one
 to one, and left two shapes the compiler accepts without numbers: a policy handling several events (`handles: [:e1,
@@ -1381,6 +1396,86 @@ only for a manager with the shape, which no fixture but `PhaseRig` and no client
 dispatch transaction deployed onto history starts at the head without a replay, so until it is rebuilt the fold
 may read a run it never saw; a manager's callback may issue on start a command only its `on` declares (dispatch
 checks the union of both reactions), which then counts on the `on` relation — not split, as before.
+
+### E13a — fixes after the final review (7 October)
+
+**The user's decisions (7 October),** after not recognising those recorded on 6 October (notes above):
+
+- **A.** The model pages keep their Mermaid diagrams until E13b — confirmed.
+- **B.** Node ids switch to the contract's `id:` (ID3, in `main`) when the branch is rebased onto `main`, in the same
+  PR, before it is opened — confirmed; done with the user, not here.
+- **C.** The PR says `No issue: E13 is planned and tracked in PLAN.md` — confirmed.
+- **D. No split of a process manager's step by phase.** Kept: `by_trigger` for one relation several steps end at (a
+  policy handling several events) — one entry per step, as the report has one line per step. **The one shape where a
+  manager issues one command on one event both as the event starts a run and during it** (two `issues`, `phase`
+  start and run, one step in the report) **gets no numbers on either relation**; the overlay's moduledoc, its
+  schema and the CHANGELOG say so. *Why:* the log does not record the phase. Reconstructing it by replaying history
+  took a refactor of the running engine (`ProcessManager.take/3`, `arrivals/2`, `correlation/2`, which `handle!/5`
+  then used), decrypted personal data on every overlay request, and could be silently wrong after an operator's
+  skip of a row (`Subscription.skip/2`) or during a rolling deploy — for a shape no real contract has (only the
+  `PhaseRig` fixture). *Rejected:* the replay (above); a `phase` column on the commands table (null for most rows —
+  commands of people and policies).
+
+**A later stage, not built: record where a process manager's run started.** Agreed with the user: one field on the
+process managers' runs table (`eh_os_contract_process_managers`, one row per run, exactly one start each) — the log
+position of the event that started the run, written by the engine when it creates the run's row. A command whose
+cause is that event was issued at the start; any other cause of the same run, during it. The overlay can then split
+such a step by phase from the log alone: always known for runs started after the change, "unknown" for older ones;
+no replay, no decryption. It needs a library migration that hosts run (CHANGELOG, "a host has to act"). Done when the
+user decides — e.g. when a real contract has the shape.
+
+**What changed:**
+
+1. **The phase split removed** (D). `process_manager.ex`, `paths.ex` and `conformance.ex` are back to their state
+   before it, byte for byte (`git diff 6d5bcb9` on them is empty), so dispatch's process-manager path is as it was.
+   `Graph.Overlay` keeps `by_trigger`; a manager's two phase relations get nothing. `PhaseRig` stays, simplified (no
+   state, no phase in its note): it holds a policy with two triggers and the ambiguous manager step, and now a
+   manager that starts and ends a run on one event, for the runtime's test below. The report is unchanged:
+   checked by dumping every fixture's report and step list, after the same seeded log, on 564f2d5 and on this
+   change — equal, but for `PhaseRig`'s contract version, since the fixture changed. A test now holds the
+   overlay's `untraversed` to the report's untraversed lines for every fixture.
+2. **A step that ends at no relation, or at two that are not a manager's phases,** raised in the overlay (a 500 on
+   the HTTP route). It now gets no numbers and a warning is logged; the test over every fixture and a compiled
+   contract with both shapes fails on such a step, so a new DSL shape is noticed.
+3. **CHANGELOG:** the new return shape of the public `build/*` (`Graph.Contract`, `Unit`, `Lifecycle`,
+   `ContextMap`, `System`) moved under "a host has to act", with what a host calling them does; they stay public
+   until E13b removes them (chosen over `@doc false`: a host may call them today). The overlay's entry says what
+   `untraversed` is (the report's reading of the step) and that the ambiguous shape has no numbers; the schema's
+   `untraversed`, `pending` and `relations` say the same.
+4. **The graph index's schema name** is `eh_os_contract.graph_index.v1` (was `graph-index`, unlike the others); the
+   web module's doc says it has no schema file and what it holds.
+5. **Tests:** a test said the log is not in a document "even where the contract has run" without writing the log
+   (a `DslCase`), so it could not fail for its reason — removed; `GraphOverlayTest` writes the log and builds the
+   document again. Web: every graph route shape (five) is 403 without a resolver's grant, and the four with a name
+   404 outside the registry. A runtime test: an event in both `starts_on` and `ends_on` with no run yet starts the
+   run and ends it in one step, and a later start event starts none (`ProcessManagerTest`).
+6. **`node_event.unit`** in `graph.v1.json` is absent for an event consumed from a sibling or received from another
+   application — not "included" (an own event a process includes keeps its unit).
+7. **The overlay route refuses `since` after `until`** with 400. The task takes no `--until`, so it has nothing to
+   refuse.
+8. **`mix eh_os_contract.graph` without `--output`** puts only the diagram or the document on stdout: the default log
+   handler writes to stderr for the run — the one running and the one `app.start` adds when it restarts Logger
+   (from `config :logger, :default_handler`) — and is put back after it, so the application's start-up logs (a relay
+   without a bus, JWKS) no longer land inside the JSON (seen in the sandbox, checked there after the fix). Mix's own compile output still precedes the
+   task on a first run; the moduledoc says so, and `--output` remains the advice. `@usage` lists `--json --map`.
+9. **`mix eh_os_contract.pages`** no longer fails on a file under `graph/` it cannot read, or one whose `contract`
+   is not a string (`Pages.graph?/3`); such a file is not taken as its own.
+
+**Review of these fixes** (an agent, on the diff before commit). Taken: the domain overlay's `relations` description
+had been given the contract overlay's text (now: `consumed_by` traffic); the web CHANGELOG names the 400; the log
+juggling no longer turns on a console the host left out of `:backends`, keeps a legacy `:console` level, never
+hides what the task raised behind a failed restore, and says a `runtime.exs` that sets `:default_handler` still
+wins; a test restarts Logger inside the juggling, as `app.start` does, and fails without it; the overlay test fails
+if the manager's phases are logged as an unknown shape (checked by inverting the condition); a timer step's
+`by_trigger` key would have been a three-part id (unreachable today, fixed); the overlay's moduledoc says a manager
+whose `starts_on` and `on` of one event issue different commands is read by its declarations (a command issued in
+the other phase counts on the relation that declares it — known since batch 5). *Rejected:* a test for a step at no
+relation (no shape the compiler accepts gives one; the fixture-wide test fails on it); the unreadable-file test is
+vacuous as root, and kept for a non-root run.
+
+**Gone with D** (checked in the code): an unknown `contract` module raising inside the replay; phases differing from
+the runtime after `Subscription.skip/2` or an undecodable row; personal data decrypted on every overlay request; the
+new public runtime API (`take/3`, `arrivals/2`, `correlation/2`); per-phase "never" against the report's line.
 
 ### Wobec programu DD
 

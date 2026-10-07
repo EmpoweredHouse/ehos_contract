@@ -8,19 +8,9 @@ defmodule EhOsContract.GraphOverlayTest do
   use EhOsContract.DataCase, async: false
 
   import EhOsContract.DslCase, only: [compile_contract: 2]
+  import ExUnit.CaptureLog, only: [with_log: 1]
 
-  alias EhOsContract.{
-    Actor,
-    CommandRecord,
-    Conformance,
-    Consumer,
-    Event,
-    Model,
-    Paths,
-    ProcessManager,
-    Registry,
-    Testing
-  }
+  alias EhOsContract.{Actor, Conformance, Model, Paths, Registry, Testing}
 
   alias EhOsContract.Graph.{Document, Overlay}
   alias LifecycleRig.Visits
@@ -314,28 +304,49 @@ defmodule EhOsContract.GraphOverlayTest do
     assert entry["pending"] == step.pending, where
   end
 
+  defp key(step), do: {step.from, step.via, step.to}
+
   # Every step the report has puts its numbers on a relation — flat where it is the
-  # relation's one step, under `by_trigger` where several steps end there, by phase
-  # where one manager's step ends at its two phases' relations — and no other relation
-  # carries a step's numbers. Returns which of the three ways it met.
+  # relation's one step, under `by_trigger` where several steps end there — except a
+  # manager's step at its two phases' relations, which get none; no other relation
+  # carries a step's numbers, and a step that ends at no relation, or at two that are
+  # not such a manager's phases, fails here. Returns which of the three ways it met.
   defp every_step_numbered!(c) do
     d = Document.contract(c)
-    o = c |> Overlay.contract() |> valid!() |> joins!(d)
+
+    # A shape the overlay does not know is logged; the fixtures have none, and the
+    # manager's phases are a shape it knows.
+    {o, log} = with_log(fn -> Overlay.contract(c) end)
+    refute log =~ "where its numbers need one", log
+    o = o |> valid!() |> joins!(d)
     model = Model.fetch(c)
-    steps = Enum.uniq(Conformance.steps(model, phases: true))
+    steps = Enum.uniq(Conformance.steps(model))
     ref = &Document.id([&1.kind, model.module, &1.name])
 
-    ended =
-      for step <- steps do
-        rs = ends(d, model.module, step)
-        assert length(rs) == if(step[:phases], do: 2, else: 1), inspect(step)
-        {step, rs}
-      end
+    # The overlay's "never" is the report's, line for line.
+    if model.process do
+      [process] = Conformance.report(model).processes
+
+      assert MapSet.new(process.untraversed, &key/1) ==
+               MapSet.new(for(s <- steps, s.untraversed, do: key(s))),
+             inspect(c)
+    end
+
+    {phased, ended} =
+      steps
+      |> Enum.map(&{&1, ends(d, model.module, &1)})
+      |> Enum.split_with(fn {_step, rs} -> length(rs) == 2 end)
+
+    for {step, rs} <- phased do
+      assert Enum.sort(Enum.map(rs, & &1["phase"])) == ["run", "start"], inspect(step)
+      for r <- rs, do: refute(Map.has_key?(o["relations"], r["id"]), r["id"])
+    end
+
+    for {step, rs} <- ended, do: assert(length(rs) == 1, inspect(step))
 
     by_relation =
-      for {step, rs} <- ended, r <- rs do
-        {r, step}
-      end
+      ended
+      |> Enum.map(fn {step, [r]} -> {r, step} end)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
     ways =
@@ -345,10 +356,6 @@ defmodule EhOsContract.GraphOverlayTest do
         assert entry, where
 
         case relation_steps do
-          [%{phases: phases} = step] ->
-            same!(entry, Map.merge(step, phases[String.to_existing_atom(r["phase"])]), where)
-            :phases
-
           [step] ->
             same!(entry, step, where)
             :flat
@@ -367,10 +374,10 @@ defmodule EhOsContract.GraphOverlayTest do
           do: rid
 
     assert Enum.sort(numbered) == by_relation |> Map.keys() |> Enum.map(& &1["id"]) |> Enum.sort()
-    MapSet.new(ways)
+    MapSet.new(ways ++ if(phased == [], do: [], else: [:phases_without_numbers]))
   end
 
-  test "every step of every contract puts its numbers on a relation, in one of three ways" do
+  test "every step of every contract puts its numbers on a relation, but a manager's phases" do
     seed_ledger()
     seed_visits()
 
@@ -380,7 +387,7 @@ defmodule EhOsContract.GraphOverlayTest do
       end
 
     # PhaseRig holds both shapes; the rest of the fixtures, one step a relation.
-    assert ways == MapSet.new([:flat, :by_trigger, :phases])
+    assert ways == MapSet.new([:flat, :by_trigger, :phases_without_numbers])
   end
 
   test "both shapes compiled together, a policy issuing two commands on two events among them" do
@@ -415,7 +422,8 @@ defmodule EhOsContract.GraphOverlayTest do
         end
       """)
 
-    assert every_step_numbered!(model) == MapSet.new([:flat, :by_trigger, :phases])
+    assert every_step_numbered!(model) ==
+             MapSet.new([:flat, :by_trigger, :phases_without_numbers])
 
     d = Document.contract(model)
     o = Overlay.contract(model)
@@ -427,6 +435,15 @@ defmodule EhOsContract.GraphOverlayTest do
       assert %{"by_trigger" => by} = o["relations"][rid]
       assert Map.keys(by) |> Enum.sort() == Enum.sort([id.(:event, :booked), id.(:event, :moved)])
     end
+
+    # The manager's move, during a run only, is one step at one relation.
+    moved =
+      Enum.find(
+        d["relations"]["issues"],
+        &(&1["from"] == id.(:process_manager, :chase) and &1["on"] == id.(:event, :moved))
+      )
+
+    assert %{"runs" => 0, "of_runs" => 0} = o["relations"][moved["id"]]
   end
 
   test "a policy's relation carries each triggering event's numbers, and no total" do
@@ -449,42 +466,21 @@ defmodule EhOsContract.GraphOverlayTest do
   defp rekey(%{"by_trigger" => by}, names),
     do: %{"by_trigger" => Map.new(names, fn {name, id} -> {name, Map.fetch!(by, id)} end)}
 
-  test "a manager's step is split by the phase dispatch issued each command in" do
+  test "a manager's step at its start and during a run gets no numbers; the report reads it whole" do
     seed_visits()
     d = Document.contract(PhaseRig.Visits)
     o = Overlay.contract(PhaseRig.Visits)
     id = &Document.id([&1, PhaseRig.Visits, &2])
-    watch = id.(:process_manager, :watch)
-    booked = id.(:event, :booked)
 
-    phase =
+    phases =
       for r <- d["relations"]["issues"],
-          r["from"] == watch and r["on"] == booked,
-          into: %{},
-          do: {r["phase"], o["relations"][r["id"]]}
+          r["from"] == id.(:process_manager, :watch) and r["on"] == id.(:event, :booked),
+          do: r
 
-    # The manager's own state said which phase it was in when it noted the booking.
-    noted =
-      from(e in Event,
-        join: c in CommandRecord,
-        on: c.id == e.command_id,
-        join: cause in Event,
-        on: cause.id == c.causation_event_id,
-        where: e.type == ^type(:noted) and cause.type == ^type(:booked),
-        select: {e.payload["phase"], c.instance_id}
-      )
-      |> Repo.all()
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Map.new(fn {phase, runs} -> {phase, runs |> Enum.uniq() |> length()} end)
+    assert Enum.sort(Enum.map(phases, & &1["phase"])) == ["run", "start"]
+    for r <- phases, do: refute(Map.has_key?(o["relations"], r["id"]))
 
-    # v-1, v-2, v-4 started on a booking; v-1 and v-4 were booked again during the run.
-    assert noted == %{"start" => 3, "run" => 2}
-    assert phase["start"]["runs"] == noted["start"]
-    assert phase["run"]["runs"] == noted["run"]
-    assert %{"untraversed" => false, "pending" => false} = phase["run"]
-
-    # The report's step is the step whole: a run noted at its start and during it is
-    # one run there, so the phases do not add up to it.
+    # v-1, v-2 and v-4 noted a booking, at the start of the run or during it.
     [step] =
       PhaseRig.Visits
       |> Paths.observe()
@@ -492,156 +488,5 @@ defmodule EhOsContract.GraphOverlayTest do
       |> Enum.uniq()
 
     assert step.runs == 3
-  end
-
-  test "a manager's phases replay the runtime's rule over the log, event by event" do
-    seed_visits()
-    [pm] = Model.fetch(PhaseRig.Visits).process_managers
-    names = Map.new(~w(booked moved closed)a, &{type(&1), &1})
-
-    rows =
-      from(e in Event, where: e.type in ^Map.keys(names), order_by: e.position) |> Repo.all()
-
-    arrivals =
-      ProcessManager.arrivals(
-        pm,
-        for(row <- rows, do: {row.id, names[row.type], Consumer.decode!(row)})
-      )
-
-    # Each note the manager issued, caused by a booking or a move, against the phase the
-    # rule gives its cause; the events no run took have none.
-    issued =
-      from(e in Event,
-        join: c in CommandRecord,
-        on: c.id == e.command_id,
-        where: e.type == ^type(:noted),
-        select: {c.causation_event_id, e.payload["phase"]}
-      )
-      |> Repo.all()
-
-    assert length(issued) == 6
-
-    for {cause, phase} <- issued,
-        do: assert(Atom.to_string(Map.fetch!(arrivals, cause)) == phase)
-
-    taken = MapSet.new(issued, &elem(&1, 0))
-    closes = for row <- rows, row.type == type(:closed), do: row.id
-
-    untaken =
-      for row <- rows, row.id not in closes, not MapSet.member?(taken, row.id), do: row.id
-
-    # v-1 booked after its end, v-3 moved with no run.
-    assert length(untaken) == 2
-    for id <- untaken, do: refute(Map.has_key?(arrivals, id))
-  end
-
-  test "events still on their way to a manager wait in the phase they will arrive in" do
-    Testing.drain()
-    visit(Book, "v-9")
-    visit(Book, "v-9")
-    visit(Book, "v-10")
-
-    d = Document.contract(PhaseRig.Visits)
-    o = Overlay.contract(PhaseRig.Visits) |> valid!() |> joins!(d)
-    id = &Document.id([&1, PhaseRig.Visits, &2])
-
-    phase =
-      for r <- d["relations"]["issues"],
-          r["from"] == id.(:process_manager, :watch) and r["on"] == id.(:event, :booked),
-          into: %{},
-          do: {r["phase"], o["relations"][r["id"]]}
-
-    assert %{"runs" => 0, "waiting" => %{"lag" => 2}, "untraversed" => false} = phase["start"]
-    assert %{"runs" => 0, "waiting" => %{"lag" => 1}, "untraversed" => false} = phase["run"]
-  end
-
-  defp phases(o) do
-    d = Document.contract(PhaseRig.Visits)
-    id = &Document.id([&1, PhaseRig.Visits, &2])
-
-    for r <- d["relations"]["issues"],
-        r["from"] == id.(:process_manager, :watch) and r["on"] == id.(:event, :booked),
-        into: %{},
-        do: {r["phase"], o["relations"][r["id"]]}
-  end
-
-  test "a phase never taken is never, while the report's step was taken" do
-    Testing.drain()
-    visit(Book, "v-2")
-    %{failing: []} = Testing.drain()
-
-    phase = phases(Overlay.contract(PhaseRig.Visits))
-    assert %{"runs" => 1, "untraversed" => false} = phase["start"]
-    assert %{"runs" => 0, "untraversed" => true, "pending" => false} = phase["run"]
-
-    [process] = Conformance.report(PhaseRig.Visits).processes
-
-    refute Enum.any?(
-             process.untraversed,
-             &(match?(%{kind: :process_manager}, &1.via) and &1.from.name == :booked)
-           )
-  end
-
-  test "a period that starts during a run still reads its events as during it" do
-    Testing.drain()
-    visit(Book, "v-1")
-    %{failing: []} = Testing.drain()
-    since = DateTime.utc_now()
-    visit(Book, "v-1")
-    %{failing: []} = Testing.drain()
-
-    phase = phases(Overlay.contract(PhaseRig.Visits, since: since))
-    assert %{"runs" => 0} = phase["start"]
-    assert %{"runs" => 1} = phase["run"]
-  end
-
-  test "a row the manager cannot decode stops the phases there, and the overlay still answers" do
-    Testing.drain()
-    visit(Book, "v-1")
-    %{failing: []} = Testing.drain()
-
-    # The second booking written by newer code than this node runs: the subscription
-    # stops at it, and so does the fold.
-    entry = %{
-      type: type(:booked),
-      contract: inspect(PhaseRig.Visits),
-      contract_version: Model.fetch(PhaseRig.Visits).version,
-      schema_version: 99,
-      process: "visiting",
-      instance_id: "visiting|v-1",
-      correlation_id: Ecto.UUID.generate(),
-      actor: Event.system_actor(),
-      payload: %{"visit_id" => "v-1"},
-      occurred_at: DateTime.utc_now()
-    }
-
-    {:ok, {:ok, [_row]}} =
-      Repo.transaction(fn -> EhOsContract.Store.append(Repo, [entry], :none) end)
-
-    phase = phases(Overlay.contract(PhaseRig.Visits) |> valid!())
-    assert %{"runs" => 1} = phase["start"]
-    assert %{"runs" => 0, "waiting" => %{"lag" => 0}} = phase["run"]
-  end
-
-  test "the split by phase leaves the report and its steps as they are" do
-    seed_visits()
-
-    for c <- [PhaseRig.Visits | Registry.contracts()] do
-      plain = Paths.observe(c)
-      assert Enum.map(Paths.observe(c, phases: true), &Map.delete(&1, :phases)) == plain
-
-      assert Enum.map(Conformance.steps(c, phases: true), &Map.delete(&1, :phases)) ==
-               Conformance.steps(c)
-    end
-  end
-
-  test "the facts document of both shapes does not depend on the log" do
-    before = Document.contract(PhaseRig.Visits)
-    seed_visits()
-    assert Document.contract(PhaseRig.Visits) == before
-  end
-
-  defp type(name) do
-    Enum.find(Model.fetch(PhaseRig.Visits).events, &(&1.name == name)).type
   end
 end

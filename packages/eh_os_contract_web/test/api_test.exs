@@ -218,7 +218,7 @@ defmodule EhOsContract.Web.ApiTest do
       conn = get(conn, "/api/graph")
       assert conn.status == 200
 
-      assert %{"schema" => "eh_os_contract.graph-index.v1", "contracts" => cs, "domains" => ds} =
+      assert %{"schema" => "eh_os_contract.graph_index.v1", "contracts" => cs, "domains" => ds} =
                Jason.decode!(conn.resp_body)
 
       assert Enum.map(cs, & &1["contract"]) ==
@@ -276,6 +276,12 @@ defmodule EhOsContract.Web.ApiTest do
       assert get(conn, "/api/graph/#{contract}/overlay?since[]=x").status == 400
       assert get(conn, "/api/graph/#{contract}/overlay?until[a]=x").status == 400
 
+      backwards = "since=2026-02-01T00:00:00Z&until=2026-01-01T00:00:00Z"
+      assert get(conn, "/api/graph/#{contract}/overlay?#{backwards}").status == 400
+
+      domain = inspect(List.first(EhOsContract.Registry.domains()))
+      assert get(conn, "/api/graph/domain/#{domain}/overlay?#{backwards}").status == 400
+
       until = get(conn, "/api/graph/#{contract}/overlay?until=2026-02-01T00:00:00Z")
       assert %{"until" => "2026-02-01T00:00:00Z", "since" => nil} = Jason.decode!(until.resp_body)
     end
@@ -294,14 +300,24 @@ defmodule EhOsContract.Web.ApiTest do
 
     test "what the registry does not hold is 404, and an unauthenticated caller gets nothing",
          %{conn: conn} do
-      assert get(conn, "/api/graph/Not.A.Contract").status == 404
-      assert get(conn, "/api/graph/Not.A.Contract/overlay").status == 404
-      assert get(conn, "/api/graph/domain/Not.A.Domain").status == 404
+      for path <- [
+            "/api/graph/Not.A.Contract",
+            "/api/graph/Not.A.Contract/overlay",
+            "/api/graph/domain/Not.A.Domain",
+            "/api/graph/domain/Not.A.Domain/overlay"
+          ],
+          do: assert(get(conn, path).status == 404, path)
 
       public = build_conn() |> put_req_header("accept", "application/json")
-      assert get(public, "/api/graph").status == 403
-      assert get(public, "/api/graph/Anything").status == 403
-      assert get(public, "/api/graph/domain/Anything/overlay").status == 403
+
+      for path <- [
+            "/api/graph",
+            "/api/graph/Anything",
+            "/api/graph/Anything/overlay",
+            "/api/graph/domain/Anything",
+            "/api/graph/domain/Anything/overlay"
+          ],
+          do: assert(get(public, path).status == 403, path)
     end
   end
 

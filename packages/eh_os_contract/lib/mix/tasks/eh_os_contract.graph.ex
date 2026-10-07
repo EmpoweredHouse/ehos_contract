@@ -66,7 +66,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   take no `--json`, and `--map` and `--system` give the same domain document.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
-  every node of a diagram or a document is written in the client's language.
+  every node of a diagram or a document is written in the client's language. Without
+  it the diagram or the document is the only thing the task writes to stdout: what
+  the application logs as it starts (`--overlay` starts it) goes to stderr, so
+  `> graph.json` is the document alone — once the project is compiled, since Mix
+  prints its compilation to stdout before the task runs.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -80,6 +84,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       mix eh_os_contract.graph --map DOMAIN
       mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
       mix eh_os_contract.graph --json (--contract ID | --system DOMAIN) [--overlay [--since AT]]
+      mix eh_os_contract.graph --json --map DOMAIN
 
   and --output PATH to write it to a file.
   """
@@ -110,6 +115,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
     refuse_ignored!(opts)
 
+    if opts[:output], do: write(opts), else: logs_to_stderr(fn -> write(opts) end)
+  end
+
+  defp write(opts) do
     if opts[:overlay] do
       Mix.Task.run("app.start")
     else
@@ -125,6 +134,72 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
       opts[:contract] -> contract(opts)
       opts[:process] -> declared(opts)
+    end
+  end
+
+  @doc false
+  # Runs `fun` with the default log handler writing to stderr rather than stdout, and
+  # puts it back after: a host's application logs as it starts (a relay with no bus, a
+  # key set it cannot fetch), and on stdout that would land inside the document. Both
+  # the handler running now and the one `app.start` adds when it restarts Logger, from
+  # `config :logger, :default_handler`, are moved; a console the host turned off stays
+  # off. A `runtime.exs` that sets `:default_handler` itself still wins.
+  @spec logs_to_stderr((-> result)) :: result when result: term()
+  def logs_to_stderr(fun) do
+    env = Application.fetch_env(:logger, :default_handler)
+    handler = handler_env(env)
+    if handler, do: Application.put_env(:logger, :default_handler, handler)
+    moved? = move_handler(:standard_io, :standard_error) == :ok
+
+    try do
+      fun.()
+    after
+      case env do
+        {:ok, value} -> Application.put_env(:logger, :default_handler, value)
+        :error -> Application.delete_env(:logger, :default_handler)
+      end
+
+      # Putting it back never hides what `fun` raised.
+      if moved?, do: move_handler(:standard_error, :standard_io)
+    end
+  end
+
+  # The `:default_handler` Logger would start with, on stderr; nil where it starts
+  # none, or one that is not a console. Unset, Logger builds it from the legacy
+  # `:console` key, and starts none when `:backends` leaves the console out.
+  defp handler_env({:ok, false}), do: nil
+
+  defp handler_env({:ok, handler}), do: on_stderr(handler)
+
+  defp handler_env(:error) do
+    case Application.fetch_env(:logger, :backends) do
+      {:ok, backends} when is_list(backends) ->
+        if :console in backends, do: legacy_console()
+
+      _unset ->
+        legacy_console()
+    end
+  end
+
+  defp legacy_console do
+    :logger |> Application.get_env(:console, []) |> Keyword.take([:level]) |> on_stderr()
+  end
+
+  defp on_stderr(handler) do
+    config = handler |> Keyword.get(:config, []) |> Map.new()
+
+    if Keyword.get(handler, :module, :logger_std_h) == :logger_std_h and
+         Map.get(config, :type, :standard_io) == :standard_io and not Map.has_key?(config, :file),
+       do: Keyword.put(handler, :config, Map.put(config, :type, :standard_error))
+  end
+
+  # Moves the default handler from one device to the other, if it is on the first.
+  defp move_handler(from, to) do
+    with {:ok, %{module: :logger_std_h, config: %{type: ^from}} = handler} <-
+           :logger.get_handler_config(:default),
+         _synced <- :logger_std_h.filesync(:default),
+         :ok <- :logger.remove_handler(:default) do
+      :logger.add_handler(:default, :logger_std_h, put_in(handler.config.type, to))
     end
   end
 
