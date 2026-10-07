@@ -115,13 +115,13 @@ defmodule EhOsContract do
      vault has no master key to seal them with, when a field is declared
      `supplied_by: :host` and no supplier is configured, and when a read model
      projects personal data and defines no `forget/2`. Then
-     `EhOsContract.Deployment.record!/1` writes what that binary declared and since
-     when: without it the report could not tell history from drift. After the deployment is recorded, it logs a
-     warning, and goes on,
-     when the log holds event types no contract declares — a log written before event
-     types became `"<contract id>.<event>"`, which the rest of the engine would skip
-     silently — and when it files events under a name that is no contract's id, as a
-     log written before rows named a contract by its id does.
+     `EhOsContract.Deployment.record!/0` writes what that binary declared and since
+     when: without it the report could not tell history from drift. After the
+     deployment is recorded, it logs a warning, and goes on, when the log holds
+     event types no contract declares — a log written before event types became
+     `"<contract id>.<event>"`, which the rest of the engine would skip silently —
+     and when it files events under a name that is no contract's id, as a log
+     written before rows named a contract by its id does.
   2. It registers every consumer fed from the log, each with a row of its own in
      `eh_os_contract_subscriptions`, marks the read models whose declaration changed
      `stale`, and rebuilds those that define `reset/0`.
