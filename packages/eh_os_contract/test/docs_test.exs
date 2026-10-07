@@ -294,5 +294,13 @@ defmodule EhOsContract.DocsTest do
     known = generated ++ EhOsContract.Docs.prose() ++ ["docs/rules.md", "CHANGELOG.md"]
 
     assert extras() -- known == []
+    # And the other way: a page the manifest lists but `mix.exs` leaves out is never built.
+    assert known -- extras() == []
+  end
+
+  # A new top-level entity or rule needs a page that explains it, beside its reference
+  # row: name it in a page's `<!-- covers: -->`, or write the page.
+  test "every top-level entity and every rule is covered by a prose page" do
+    assert EhOsContract.Docs.Prose.uncovered(Enum.map(@pages, &read/1)) == []
   end
 end

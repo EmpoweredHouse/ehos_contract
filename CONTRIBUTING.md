@@ -15,6 +15,7 @@ stale, so each place links to the next instead.
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
 | A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
 | The code and its tests | What the library does | — |
+| `packages/eh_os_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
 
 `PLAN.md` is written for an assistant that needs the whole context in one file; it is long, and its history
 before 6 October 2026 is in Polish. A person starts from the issues: the labels `dd` and `wave-<n>` list the
