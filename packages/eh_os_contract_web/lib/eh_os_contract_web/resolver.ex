@@ -60,10 +60,10 @@ defmodule EhOsContract.Web.Resolver do
   @doc """
   Turns a resolved user into an access level, or a redirect.
 
-  `base_path` is the prefix `eh_os_contract_dashboard/2` was mounted at — passed
-  through so a `{:forbidden, path}` can point somewhere real — the host's
-  own login, typically — instead of a path this behaviour has no way to
-  construct on its own.
+  `base_path` is the path the asking macro was mounted at: the dashboard's for a page,
+  the API's for a JSON request. A host may use it to answer the two differently, or to
+  build the `{:forbidden, path}` it sends a person to, typically its own login; match
+  it with a clause that accepts any path, or a request to the other mount fails.
   """
   @callback resolve_access(user :: term(), base_path :: String.t()) ::
               :all | :read_only | {:forbidden, String.t()}

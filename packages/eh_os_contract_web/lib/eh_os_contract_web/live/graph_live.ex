@@ -1,5 +1,5 @@
 defmodule EhOsContract.Web.Live.Graph do
-  # Screen 3: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
+  # The second screen: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
   # dashboard instead of dev-only CLI output — the second half of a plan
   # `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
   # out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia

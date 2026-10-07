@@ -21,7 +21,9 @@ defmodule EhOsContract.Web.Router do
       end
 
   The screens are `path <> "/contract"` and `path <> "/graph"`; `path` itself redirects
-  to the first, keeping its query string.
+  to the first, keeping its query string. Mount it in a scope with no path of its own
+  (`scope "/"`): the redirect and the `base_path` the resolver is given are `path` as
+  written, without a scope's prefix.
 
   Options:
 
@@ -102,8 +104,9 @@ defmodule EhOsContract.Web.Router do
   A document carries its digest in `info["x-eh-os-contract-digest"]` (the model in
   `"digest"`) and as its `ETag`, so a consumer compares what an instance serves with
   what its build recorded with a `HEAD` and no body. A contract id not registered is
-  404 with `{"error": "not_found", "detail": ...}`; a conformance parameter that does
-  not parse is 400 with `{"error": "bad_request", "detail": ...}`.
+  404 with `{"error": "not_found", "detail": ...}` on the document routes. On
+  `conformance`, an unknown contract, like a parameter that does not parse, is 400 with
+  `{"error": "bad_request", "detail": ...}`.
 
   None of it is business data, but all of it is the client's business in its own
   words, and the conformance report carries event counts per version with timestamps,

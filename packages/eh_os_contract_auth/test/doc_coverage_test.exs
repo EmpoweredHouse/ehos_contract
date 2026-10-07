@@ -6,8 +6,7 @@ defmodule EhOsContract.Auth.DocCoverageTest do
 
   `CLAUDE.md` asked for this before anything held it. Left out:
 
-    * a callback implementation, which its behaviour documents (`@impl`), and the
-      ones Spark's transformers and verifiers inject;
+    * a callback implementation, which its behaviour documents (`@impl`);
     * a module with `@moduledoc false`, whose functions are the library's own and
       published nowhere;
     * the `@spec` of a function with `@doc false`, which is the `write-docs` skill's

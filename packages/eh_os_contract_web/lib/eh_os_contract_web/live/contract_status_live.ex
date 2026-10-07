@@ -1,5 +1,5 @@
 defmodule EhOsContract.Web.Live.ContractStatus do
-  # Screen 1 of 3: the four questions, per contract, as HTML instead of
+  # The first screen: the four questions, per contract, as HTML instead of
   # `EhOsContract.Report`'s text.
   #
   # **Every sentence comes from `EhOsContract.Report.Sentence`.** This screen decides what is a
