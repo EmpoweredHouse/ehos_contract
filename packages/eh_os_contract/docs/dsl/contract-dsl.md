@@ -85,7 +85,6 @@ At most one process, and everything born in the contract.
    * stage
      * include
    * include
-   * cadence
    * deadline
    * promise
  * [scenario](#contract-scenario)
@@ -1913,7 +1912,6 @@ The process the contract describes, if any, at most one: its runs, stages and pr
  * [stage](#contract-process-stage)
    * include
  * [include](#contract-process-include)
- * [cadence](#contract-process-cadence)
  * [deadline](#contract-process-deadline)
  * [promise](#contract-process-promise)
 
@@ -2012,34 +2010,6 @@ Places a consumed event in the process.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`terminal`](#contract-process-include-terminal){: #contract-process-include-terminal } | `boolean` | `false` | Whether it ends a run. |
-
-
-
-
-
-
-### contract.process.cadence
-```elixir
-cadence every
-```
-
-
-How often a run is due; calendar units allowed.
-
-
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`every`](#contract-process-cadence-every){: #contract-process-cadence-every .spark-required} | `any` |  | `{n, unit}`. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`unverified`](#contract-process-cadence-unverified){: #contract-process-cadence-unverified } | `boolean` | `false` | Not confirmed by the process owner. |
 
 
 

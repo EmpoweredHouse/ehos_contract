@@ -14,7 +14,6 @@ defmodule UniversalityGate.TreatmentEpisode do
   | An event arriving without a command | `referral_received`, `recorded_by: :referral_intake` (D6) |
   | The same event many times in one run | `session_completed`, many times in one episode's stream |
   | Run identity from a single field | `identity :episode_id`, `correlate :episode_id` |
-  | A process with no cadence | `process` declares a deadline and no `cadence` |
 
   **What the translation changed, and why.**
 

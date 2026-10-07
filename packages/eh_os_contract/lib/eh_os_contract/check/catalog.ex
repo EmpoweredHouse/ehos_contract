@@ -58,7 +58,7 @@ defmodule EhOsContract.Check.Catalog do
       id: "unverified-declaration",
       level: :warn,
       esdm: nil,
-      summary: "A `cadence`, a `deadline` or a promise is marked `unverified: true`.",
+      summary: "A `deadline` or a promise is marked `unverified: true`.",
       text: """
       The process owner has not confirmed the number. It is still evaluated, but it does not count
       towards the evidence report, because a metric nobody agreed to is worse than none. Remove

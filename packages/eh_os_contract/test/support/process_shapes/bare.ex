@@ -2,9 +2,9 @@ defmodule ProcessShapes.Bare do
   @moduledoc """
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
-  A periodic process that promises nothing, a run keyed by two fields, and a
-  `cadence` (v2 plan, E7c). Its two events come from two commands, since an event in
-  v2 is decided or recorded, never written around dispatch.
+  A process that promises nothing and a run keyed by two fields (v2 plan, E7c). Its two
+  events come from two commands, since an event in v2 is decided or recorded, never
+  written around dispatch.
   """
 
   use EhOsContract.Contract,
@@ -27,7 +27,6 @@ defmodule ProcessShapes.Bare do
   process :batching, "Batch run" do
     correlate [:tenant_id, :batch_id]
     stage :running
-    cadence {1, :week}
   end
 end
 

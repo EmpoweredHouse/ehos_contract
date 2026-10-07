@@ -41,7 +41,7 @@ defmodule EhOsContract.ReportTest do
       p = process(data())
 
       assert p.runs == 4
-      assert p.declarations == [%{key: :cadence, value: {1, :day}}]
+      assert p.declarations == []
       assert p.duration == nil
 
       assert [rule] = p.promises

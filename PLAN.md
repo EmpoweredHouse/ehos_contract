@@ -50,8 +50,8 @@ warning for undeclared types in the log) merged in #176. ID4 merged in #181 (iss
 contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
 merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
-assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e (issue #192) on
-`dd/192-tests-without-processes`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e merged in #194 (issue #192): test contracts
+declare a process only when the test is about one. P1d (issue #195) on `dd/195-no-cadence`, its first part. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -564,8 +564,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☑ #189 | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☑ #191 | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
-| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ☐ | — |
-| P1e | 2 | testy bez szablonowych procesów | P1c | ◐ `dd/192-tests-without-processes` | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
+| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ◐ `dd/195-no-cadence` | [#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195) |
+| P1e | 2 | testy bez szablonowych procesów | P1c | ☑ #194 | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ | — |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ | — |
@@ -707,10 +707,11 @@ starts on or moves on as consumed (the report's lifecycle section reads it). Dep
 a unit's `stage` group and a `terminal:` event. A real contract without a process in the engine's tests
 (`LifecycleRig.Rooms`) runs through dispatch, scenarios, the report and the graphs. A dated amendment to
 requirement 7 (v2 §3). Depends on P1b.
-**P1d — sandbox bez sztucznych procesów** (PR na domenę): Rehmed `scheduling`, `clinical_documentation`,
-`settlement`; TaxVision `document_intake`, `registry_watch`; AppUnite `computers`, `demands`. Zostają:
-`clinical_visit`, `accounting_month`, `assignments`, `payer_settlement` (do decyzji o `cadence`). Każde nowe
-`event-without-consumer` wyjaśnione w PR.
+**P1d — the sandbox keeps only the processes its clients described** (#195; tightened 7 October 2026). First the
+engine drops `cadence` (DSL, model, R6, report, pages, check; the user's decision of 6 October) with the sandbox's two
+declarations; then one PR per client takes out the invented processes: Rehmed `scheduling`, `clinical_documentation`,
+`settlement`; TaxVision `document_intake`, `registry_watch`; AppUnite `computers`, `demands`. Stay: `clinical_visit`,
+`accounting_month`, `assignments`, `payer_settlement`. Each new `event-without-consumer` explained in its PR.
 **P1e — test contracts declare a process only when the test is about one** (#192; tightened 6 October 2026).
 149 of the 210 `process` blocks in the packages' tests were templates the old R1 asked for; they go, with the
 `terminal:` and `stage` groups that came with them, in five commits: rigs, DSL tests, DSL tests whose expected lines

@@ -37,7 +37,7 @@ the role that answers for the process with `accountable`.
 
 **warning**
 
-A `cadence`, a `deadline` or a promise is marked `unverified: true`.
+A `deadline` or a promise is marked `unverified: true`.
 
 The process owner has not confirmed the number. It is still evaluated, but it does not count
 towards the evidence report, because a metric nobody agreed to is worse than none. Remove

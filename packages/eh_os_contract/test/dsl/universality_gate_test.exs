@@ -29,9 +29,8 @@ defmodule EhOsContract.UniversalityGateTest do
     assert Enum.map(events.session_completed.fields, & &1.name) ==
              [:episode_id, :session_no, :performed_at]
 
-    # Run identity from a single field, and no cadence.
+    # Run identity from a single field.
     assert model.process.correlate == [:episode_id]
-    assert model.process.cadence == nil
     assert model.process.deadline == %{amount: 30, unit: :day, unverified: true}
   end
 

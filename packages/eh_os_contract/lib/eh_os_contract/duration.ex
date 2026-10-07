@@ -19,10 +19,6 @@ defmodule EhOsContract.Duration do
   implementation detail — until it is taken, `within` accepts only fixed-length
   units, and a contract using `:month` **does not compile**.
 
-  `cadence: {1, :month}` is a different matter and stays legal: cadence says how
-  often an instance is due, and nothing computes it today. Once something does —
-  the stalled-process monitor — the same calendar question comes back here.
-
   **27 September 2026, plan EM3: the decision was taken, for timers only.** The user
   chose ESDM's calendar arithmetic for a process manager's timer: `wait: {1, :month}`
   fires on the same day of the next month, and on its last day when there is no such
@@ -58,7 +54,7 @@ defmodule EhOsContract.Duration do
   report's sentences and the declared-shape diagram's arrows.
 
   A count of one drops the numeral, because both callers put a word in front of it:
-  *Due: every month*, *within 2 days*.
+  *within 2 days*, *within hour*.
 
   It lives here rather than in either caller because this module is already the one
   source of truth about units, and the two were about to disagree. The version this
@@ -68,8 +64,8 @@ defmodule EhOsContract.Duration do
   shape of miss as `within: {1, :month}`, which also compiled until somebody wrote
   it.
 
-  `:month` is accepted here although `within` refuses it: `cadence` takes it, and
-  this function serves the reader rather than the evaluator.
+  `:month` is accepted here although `within` refuses it: a timer's `wait` takes it,
+  and this function serves the reader rather than the evaluator.
   """
   @spec humanize({pos_integer(), atom()}) :: String.t()
   def humanize({1, unit}), do: "#{unit}"

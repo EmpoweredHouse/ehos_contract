@@ -25,8 +25,6 @@ spark_locals_without_parens = [
   backed_by: 1,
   between: 1,
   by: 1,
-  cadence: 1,
-  cadence: 2,
   calls: 1,
   cancels: 1,
   cancels: 2,

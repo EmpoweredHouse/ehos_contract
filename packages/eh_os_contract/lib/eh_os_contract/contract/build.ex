@@ -316,7 +316,6 @@ defmodule EhOsContract.Contract.Build do
       accountable: process.accountable,
       stages: for(s <- process.stages, do: %{name: s.name, label: s.label}),
       includes: includes,
-      cadence: timed(process.cadence, :every),
       deadline: timed(process.deadline, :within),
       promises: for(p <- process.promises, do: p |> plain() |> Map.update!(:within, &duration/1)),
       source: process.source
@@ -436,12 +435,17 @@ defmodule EhOsContract.Contract.Build do
 
   defp unsourced(declaration), do: without_nil_source(declaration)
 
+  # Plan DD, P1d (#195): a process digests as it did before `cadence` was removed, with
+  # the `nil` every process that never declared one carried, so such a contract keeps
+  # its version. The model has no `cadence` key, so a reader never sees it.
+  defp digested_process(process), do: process |> unsourced() |> Map.put(:cadence, nil)
+
   defp without_nil_source(%{source: nil} = declaration), do: Map.delete(declaration, :source)
   defp without_nil_source(declaration), do: declaration
 
   defp version(own, process, collections) do
     Digest.hash_groups(
-      [contract: [own], process: List.wrap(process && digest_form(unsourced(process)))] ++
+      [contract: [own], process: List.wrap(process && digest_form(digested_process(process)))] ++
         for(
           {key, _} <- @collections,
           key not in @later or collections[key] != [],
@@ -467,7 +471,7 @@ defmodule EhOsContract.Contract.Build do
 
     process =
       if process,
-        do: [{"process:#{process.name}", Digest.hash(digest_form(unsourced(process)))}]
+        do: [{"process:#{process.name}", Digest.hash(digest_form(digested_process(process)))}]
 
     scenarios =
       if collections.scenarios != [],

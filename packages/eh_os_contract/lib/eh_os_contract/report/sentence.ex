@@ -107,8 +107,6 @@ defmodule EhOsContract.Report.Sentence do
 
   @doc "A confirmed process declaration, as a sentence."
   @spec declaration(map()) :: String.t()
-  def declaration(%{key: :cadence, value: value}), do: "Due: every #{amount(value)}."
-
   def declaration(%{key: :deadline, value: value}),
     do: "Deadline: #{amount(value)} from the start."
 

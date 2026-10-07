@@ -1,6 +1,6 @@
 ---
 name: contract-distillation
-description: Distill process-mapping workshop material (raw transcripts, board exports, or a reviewed process-extraction output) into what a domain and its contracts need — contexts and their glossary, actors, subjects of personal data, values, external systems; and per process the facts that something depends on (with the rejected candidates), who decides or records each, the invariants and their refused cases, the run and its stages, terminal states, reactions, what people read, promises, deadline, cadence and scenarios — each with its source or marked unverified. Produces a document, not code. Use any time after workshop material exists, independent of when the contract is written, which can be weeks later and by someone else.
+description: Distill process-mapping workshop material (raw transcripts, board exports, or a reviewed process-extraction output) into what a domain and its contracts need — contexts and their glossary, actors, subjects of personal data, values, external systems; and per process the facts that something depends on (with the rejected candidates), who decides or records each, the invariants and their refused cases, the run and its stages, terminal states, reactions, what people read, promises, deadline, whether it recurs on a schedule, and scenarios — each with its source or marked unverified. Produces a document, not code. Use any time after workshop material exists, independent of when the contract is written, which can be weeks later and by someone else.
 ---
 
 # Contract distillation
@@ -133,8 +133,9 @@ confidence of everything downstream depends on it.
     unstated: flag it. **Zero promises is a finding about the domain, not a verdict on the process.**
     A promise anchored backwards from a scheduled moment (a reminder before an appointment) is not a
     promise, which runs forward from an observed fact; it is a timer, or the client's own scheduling.
-11. **Deadline and cadence.** A bound on the whole case, and whether the process recurs on a
-    schedule or starts only when triggered. Do not force a cadence onto an event-driven process.
+11. **Deadline, and whether it recurs.** A bound on the whole case, and whether the process recurs on a
+    schedule or starts only when triggered. The contract has no key for a schedule since 7 October 2026
+    (#195), so the answer is a note for whoever writes the contract, not a declaration.
 12. **Who answers for it.** The role accountable when a promise breaks or a path is never taken.
 13. **Scenarios.** For each rule and each reaction, a case from the material: given what had
     happened, when this was asked (or this fact arrived), then what followed — or which rule refused

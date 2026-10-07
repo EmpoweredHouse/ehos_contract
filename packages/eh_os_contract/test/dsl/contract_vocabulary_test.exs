@@ -106,7 +106,6 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:process, :stage] => [:name, :label],
         [:process, :stage, :include] => [:event, :terminal],
         [:process, :include] => [:event, :terminal],
-        [:process, :cadence] => [:every, :unverified],
         [:process, :deadline] => [:within, :unverified],
         [:process, :promise] => [
           :name,
