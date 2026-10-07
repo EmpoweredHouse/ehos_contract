@@ -35,6 +35,25 @@ defmodule EhOsContract.Docs.ProseTest do
       assert Prose.covers(page) == %{entities: [], keys: [], rules: []}
     end
 
+    test "reads a fence as CommonMark does: a longer fence holds a shorter one, and ~~~ closes no backticks" do
+      page = """
+      ````markdown
+      ```
+      <!-- covers: entities contract.made_up -->
+      ```
+      ````
+
+      ```text
+      ~~~
+      <!-- covers: entities contract.also_made_up -->
+      ```
+
+      <!-- covers: entities contract.policy -->
+      """
+
+      assert Prose.covers(page).entities == ["contract.policy"]
+    end
+
     test "refuses a comment that is nearly a covers comment, rather than ignoring it" do
       for page <- ["<!-- Covers: entities contract.policy -->", "<!-- cover: rules x -->"] do
         assert_raise ArgumentError, ~r/is written `<!-- covers: ... -->`/, fn ->
