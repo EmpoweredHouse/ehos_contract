@@ -589,7 +589,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
-| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ | — |
+| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ◐ `dd/245-booking-reads-service` | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
 | A1 | 3 | `actor_is` | T1 | ☐ | — |
 | A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
@@ -792,7 +792,10 @@ by a migration **V02** (decided 7 October); entities have no personal fields (D6
 *Rejected (mechanics):* `Meta.inputs` (Meta says who and when, and comes back with the log); folding the rows into
 the state.
 **T2b — `given_entity`**: done inside T2a (#240); why is on the issue.
-**T2s — sandbox**: `book_visit` czyta `:service` i utrwala flagę P1 w `visit_booked` (AGG-15, w chwili rezerwacji).
+**T2s — Rehmed's booking reads its service**: `book_visit` declares `reads: [service: :service_id]` and records the
+service's P1 flag on `visit_booked` as `p1_reported`, as it stood when the visit was booked (`AGG-15`). The sandbox
+gets `Rehmed.Entities`, a stand-in catalogue beside `Rehmed.Supplier`. `close_visit_clinically` keeps its supplied
+flag until A2. No `visit_booked` row is in any log (reset in wave 2), so the new required field breaks no history.
 
 **A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
 `:id`, nieosobowe; inwariant w `rejects:`; nie na `creates:`; komenda z `by:`); X2: `by:` ma aktora `:human`.
