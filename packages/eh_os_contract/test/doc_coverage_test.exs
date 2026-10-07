@@ -39,12 +39,16 @@ defmodule EhOsContract.DocCoverageTest do
         do: callback
   end
 
+  # `__struct__/1`, `__eh_os_contract_model__/0`: written by a macro, documented by
+  # nobody. A name with a single leading underscore is a function someone wrote.
+  defp generated?(name), do: Regex.match?(~r/\A__.*__\z/u, Atom.to_string(name))
+
   defp public(entries, module) do
     implemented = callbacks(module)
 
     for {{kind, name, arity}, _anno, _signature, doc, _meta} <- entries,
         kind in [:function, :macro],
-        not String.starts_with?(Atom.to_string(name), "_"),
+        not generated?(name),
         {name, arity} not in implemented,
         do: {kind, name, arity, doc}
   end
