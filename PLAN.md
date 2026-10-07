@@ -806,7 +806,7 @@ understands that API", the CTO seeing every process "as in EventCatalog") asks f
    computes (a unit's: the `emits` to each expected event, or the `refused_on` to its rule; a reaction's: the relation
    that delivers the event to it, and each command issued and timer set; a timer's: its `fires`; a query's: its
    `reads` and the projections of its given events). "2 scenarios" on an arrow and the list behind it come from one
-   place. Its id is made from its description, which S1 keeps unique; a reworded description is a new scenario.
+   place. Its id is made from its description, unique in the contract (S1); a reworded description is a new scenario.
    Its data passes `Model.to_data/1`'s redaction. *Rejected:* scenarios on the node or on the edge — copied onto
    every arrow they cover.
 6. **A field has one shape everywhere** (command, event, state, read model, query parameter): name, label, type,

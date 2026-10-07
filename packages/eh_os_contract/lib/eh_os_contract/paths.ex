@@ -286,7 +286,7 @@ defmodule EhOsContract.Paths do
       as: :event,
       where: e.type in ^types,
       group_by: e.type,
-      # `position`, not `id`: the `(type, position)` index answers it alone.
+      # `position`, not `id`: without a period the `(type, position)` index answers it alone.
       select: {e.type, count(e.position)}
     )
     |> bounded(opts)
