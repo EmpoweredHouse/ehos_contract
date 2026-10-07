@@ -15,6 +15,8 @@ defmodule EhOsContract.Contract.Links do
   - `Links.Siblings` — X5, X6 and X10, what a contract consumes from a sibling contract.
   - `Links.System` — X7, X8 and D14's names, unique across the application.
   - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
+  - `Links.Processes` — X1, X2, X5, X6 and D11 for a process module (plan DD, P2c,
+    #210): its domain, its accountable actor, and the contracts' events it includes.
 
   A violation points at the declaration at fault. L3 reads the declarations Spark
   kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
@@ -42,12 +44,26 @@ defmodule EhOsContract.Contract.Links do
           domain: map() | nil
         }
 
-  @groups [Links.Domain, Links.Siblings, Links.System, Links.Scenarios]
+  @typedoc """
+  One process module (`EhOsContract.Process`) as the rules read it: its model, its
+  declarations with their locations (`EhOsContract.Process.Rules.declarations/1`),
+  the location of its `use`, and its domain's model — `nil` when `domain:` names no
+  compiled domain.
+  """
+  @type process :: %{
+          module: module(),
+          model: map(),
+          declarations: map(),
+          at: :erl_anno.anno() | nil,
+          domain: map() | nil
+        }
+
+  @groups [Links.Domain, Links.Siblings, Links.System, Links.Scenarios, Links.Processes]
 
   @doc """
   Every violation of an L3 rule among `modules`, the modules of one application.
-  Modules that are neither a v2 contract nor an implementation of one are ignored,
-  so the whole compile path can be passed as it is.
+  Modules that are neither a v2 contract, a process module nor an implementation of
+  one are ignored, so the whole compile path can be passed as it is.
   """
   @spec check([module()]) :: [violation()]
   def check(modules) do
@@ -59,11 +75,13 @@ defmodule EhOsContract.Contract.Links do
   @spec system([module()]) :: %{
           contracts: [contract()],
           by_module: %{module() => contract()},
+          processes: [process()],
           implementations: [map()]
         }
   def system(modules) do
     modules = Enum.sort_by(modules, &inspect/1)
     contracts = modules |> Enum.map(&contract/1) |> Enum.reject(&is_nil/1)
+    processes = modules |> Enum.map(&process/1) |> Enum.reject(&is_nil/1)
 
     # What `EhOsContract.Implementation` says about each, with the module it is.
     implementations =
@@ -75,6 +93,7 @@ defmodule EhOsContract.Contract.Links do
     %{
       contracts: contracts,
       by_module: Map.new(contracts, &{&1.module, &1}),
+      processes: processes,
       implementations: implementations
     }
   end
@@ -98,6 +117,24 @@ defmodule EhOsContract.Contract.Links do
         declarations: Rules.declarations(dsl),
         id: Rules.contract_id(dsl),
         at: use_at(dsl.persist),
+        domain: domain(model.domain)
+      }
+    else
+      _ -> nil
+    end
+  end
+
+  @doc "A process module as the rules read it, or `nil` when `module` is not one."
+  @spec process(module()) :: process() | nil
+  def process(module) do
+    with %{kind: :process} = model <- compiled(module) do
+      declarations = EhOsContract.Process.Rules.declarations(module.spark_dsl_config())
+
+      %{
+        module: module,
+        model: model,
+        declarations: declarations,
+        at: declarations.at,
         domain: domain(model.domain)
       }
     else
