@@ -1,0 +1,17 @@
+pre-pr-review, #203 (origin/main..HEAD, 2 commits)
+
+correctness (code-review high) and security-and-performance (own review; engineering:code-review not installed):
+- fixed: improper list under the vault's keys: leaked its tail in the stacktrace (walked by hand, any crash in the check becomes a value-free message)
+- fixed: a module key meant for the vault (EhOsContract.Vault.Local, misspellings) was skipped; now refused
+- fixed: :atom accepted nil and unloaded modules; module keys must be loaded, applications non-empty
+- fixed: nested errors lost their parent key, and the strip of ", got:" cut every reason after the first
+- fixed: a missing applications: lost its hint
+- fixed: stale boot docs and docs --check message
+- skipped: the read guard covers only the engine's lib (auth and sandbox are separate projects)
+- skipped: Bus.adapter keeps its own shape check beside Config's
+- skipped: mix tasks do not call validate!/0
+- no change needed: test fixtures read :repo directly, as a host may
+- no change: hot paths cost the same; no unbounded work
+Reverse checks: each fix reverted by mutation turned its own test red.
+Gate: mix check in sandbox EXIT=0 (check counts unchanged: no contract or rule touched).
+Dev config of the sandbox validates (MIX_ENV=dev).
