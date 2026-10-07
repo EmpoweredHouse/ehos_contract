@@ -54,7 +54,8 @@ assume a process. P1c merged in #191 (issue #190): a contract describes at most 
 declare a process only when the test is about one. P1d merged in #196 and #200 (issue #195): no
 `cadence`, and the sandbox keeps only the four processes its clients described. P2a merged in #204 (issue #202): readers ask
 `Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
-module of its own. P2c (issue #210) on `dd/210-process-links-runs`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+module of its own. P2c merged in #212 (issue #210): process modules
+are checked against their contracts and get runs. P2d (issue #213) on `dd/213-process-report`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -571,8 +572,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☑ #194 | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☑ #204 | [#202](https://github.com/EmpoweredHouse/eh-os-contract/issues/202) |
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☑ #207 | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
-| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ◐ `dd/210-process-links-runs` | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
-| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ | — |
+| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
+| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ◐ `dd/213-process-report` | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
 | P2e | 2 | grafy i strony procesu | P2d | ☐ | — |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☐ | — |
 | P2g | 2 | rigi i testy o procesach | P2d | ☐ | — |
@@ -736,8 +737,10 @@ codes (D11, N1, R2, F9, R3, R5, R6; `deadline` without `ends_on` under R6); a mo
 the domain (X5), correlate fields in every included event (X6, via `Links.Siblings.problems/4`), unique process names
 across contracts and modules (X7). `Implementations.build/1` indexes process modules by event type; dispatch files
 their runs under the module's id (`included_runs/3`). No reader shows them yet (P2d, P2e).
-**P2d — raporty, wdrożenia, `check` po procesach**: wiersz `Deployment` na proces (granice deklaracji obietnic),
-L5 po procesach (`deadline-without-terminal-event` = „bez `ends_on`”), zdarzenie czytane przez proces.
+**P2d — the report, the deployment record and the check show process modules** (#213; tightened 7 October 2026).
+The registry loads process modules; the report gives each its process section (runs, duration, promises) and the report
+task prints them; a deployment row per process module; L5 counts an event a module includes as read and applies the
+process rules to modules. Not the conformance wire or the dashboard (P2e or with EHOS). Sandbox outputs unchanged.
 **P2e — grafy i strony procesu**: `Graph.process_to_mermaid/2`, `graph --process <id>`, selektor w `graph_live`,
 `pages` `processes/<id>.md`, `View`.
 **P2f — procesy sandboxa jako moduły** (PR na domenę): `Rehmed.Processes.ClinicalVisit`,
