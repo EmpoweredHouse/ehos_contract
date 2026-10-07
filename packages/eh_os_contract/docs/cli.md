@@ -78,7 +78,7 @@ One picture of the contracts the registry finds — that is, of the binary that
 runs — as a Mermaid diagram. Which picture is a flag, and with none the task
 refuses, printing the forms it takes.
 
-#### `--process`: one process, for the process owner
+### `--process`: one process, for the process owner
 
     mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
 
@@ -87,7 +87,7 @@ end, each promise as an arrow carrying its window — for the process owner, bef
 anything is built. With `--overlay` it is drawn as its contract's full graph
 instead, with the log laid over it (below).
 
-#### `--contract`, `--unit` and `--lifecycle`: a contract, whole or one unit of it
+### `--contract`, `--unit` and `--lifecycle`: a contract, whole or one unit of it
 
     mix eh_os_contract.graph --contract rehmed.settlement --output settlement.mmd
     mix eh_os_contract.graph --contract rehmed.settlement --overlay --output settlement.mmd
@@ -105,7 +105,7 @@ aggregate's lifecycle (`EhOsContract.Graph.lifecycle_to_mermaid/3`): where it
 starts, its statuses and ends, the transitions between them; `--overlay` puts the
 report's counts on them. All are Mermaid, so `--mermaid` is not needed.
 
-#### `--map` and `--system`: a domain
+### `--map` and `--system`: a domain
 
     mix eh_os_contract.graph --map rehmed --output map.mmd
     mix eh_os_contract.graph --system rehmed --overlay --output system.mmd

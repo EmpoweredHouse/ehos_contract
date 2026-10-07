@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.EhOsContract.Docs do
-  @shortdoc "Regenerates the package's generated documentation (DSL reference, configuration)"
+  @shortdoc "Regenerates the package's generated documentation: DSL, configuration, CLI, behaviours"
 
   @moduledoc """
   Writes every page `EhOsContract.Docs` lists as generated:
@@ -10,7 +10,10 @@ defmodule Mix.Tasks.EhOsContract.Docs do
       EhOsContract.Process`) and a page for each top-level entity beside it
       (`docs/dsl/contract-aggregate.md`, …), with every entity nested in it, its
       arguments and options, which are required, their types, defaults and docs;
-    * `docs/configuration.md`, from the schema of `EhOsContract.Config`.
+    * `docs/configuration.md`, from the schema of `EhOsContract.Config`;
+    * `docs/cli.md`, the `mix` tasks of `lib/`, and `docs/behaviours.md`, the
+      behaviours a host may implement, from their docs and callback specs
+      (`EhOsContract.Docs.ModulePages`).
 
   The pages are named after their DSL (`contract-…`, `*-dsl.md`) so that none shares a
   basename with another page of the package: ExDoc names a page after its basename,

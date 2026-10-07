@@ -7,7 +7,7 @@ the [configuration](configuration.md) under the key after its name.
 
 ## EhOsContract.Authorizer
 
-Configured with `config :eh_os_contract, authorizer: MyModule`.
+Configured with `config :eh_os_contract, authorizer: ...`, a module.
 
 The question dispatch and query ask about a credential's actor: may it do this
 (v2 §11, D14)?
@@ -44,14 +44,15 @@ records it belongs to the implementation.
 ### Callbacks
 
 ```elixir
-@callback authorize(EhOsContract.Actor.t(), EhOsContract.Authorizer.Request.t()) :: :ok | {:error, reason()}
+@callback authorize(EhOsContract.Actor.t(), EhOsContract.Authorizer.Request.t()) ::
+  :ok | {:error, EhOsContract.Authorizer.reason()}
 ```
 
 Whether `actor` may make `request`.
 
 ## EhOsContract.Bus
 
-Configured with `config :eh_os_contract, bus: MyModule`.
+Configured with `config :eh_os_contract, bus: ...`, a module or `{module, opts}`.
 
 How an integration event leaves one application and reaches another (v2 §16, D11 and
 D12): the seam between the engine and a transport.
@@ -66,7 +67,7 @@ them.
 
     config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
 
-#### What an adapter promises
+### What an adapter promises
 
 `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
 it. It cannot see the absence of an order, nor how a relay treats an error, which is
@@ -100,7 +101,7 @@ Who may consume a name is not the engine's question either. The subscriber's
 and the transport adapter routes by the grant (`eh-os` D-41). An adapter that cannot
 refuse an ungranted consumer grants every one.
 
-#### A message
+### A message
 
 `EhOsContract.Bus.Message` carries five things: the id, the key that tells one fact
 from another, the versioned name, the correlation and the payload. **The payload is
@@ -134,7 +135,7 @@ broker's size limit, a subject it refuses — so that the relay stops at that ev
 `failing`, where a person sees it, instead of retrying it forever.
 
 ```elixir
-@callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
+@callback consumer(opts :: keyword(), EhOsContract.Bus.consumer()) :: Supervisor.child_spec()
 ```
 
 The child that runs `consumer`: started, it subscribes under the consumer's name, and
@@ -156,7 +157,7 @@ the state with `format_status/1`.
 
 ## EhOsContract.Store
 
-Configured with `config :eh_os_contract, store: MyModule`.
+Configured with `config :eh_os_contract, store: ...`, a module.
 
 Where events are appended and read back (v2 §10.1).
 
@@ -164,7 +165,7 @@ It isolates the SQL, not the transaction model. **Every call runs inside the
 caller's Ecto transaction**, so an append commits or rolls back together with
 whatever else the caller wrote.
 
-#### What an implementation promises
+### What an implementation promises
 
 - **Appends are serialised.** Positions become visible in commit order, with no gap
   a reader has to wait for. A reader that follows `position > checkpoint` therefore
@@ -188,7 +189,7 @@ whatever else the caller wrote.
 
 `EhOsContract.Store.Suite` checks all of this. Any implementation can run it.
 
-#### What it asks of the caller's transaction
+### What it asks of the caller's transaction
 
 Two things, both from the one global lock, and both new for a host that emitted on
 0.2.1:
@@ -203,11 +204,11 @@ Two things, both from the one global lock, and both new for a host that emitted 
   while transaction B appends and a reaction delivered in its transaction then
   locks R. A waits for the append lock and B waits for R, so Postgres aborts one of
   them as a deadlock. A transaction that locks rows and then appends should call
-  `EhOsContract.Store.lock/1` first. So should any transaction that appends and then locks rows
+  `c:EhOsContract.Store.lock/1` first. So should any transaction that appends and then locks rows
   another appender may hold. The lock is re-entrant,
   so taking it early costs nothing.
 
-#### A query
+### A query
 
 `t:query/0` is a list of items, **OR-ed**; an item matches an event of one of its
 `types` carrying **every** one of its `tags`. An item with no tags matches every event
@@ -225,8 +226,8 @@ matching at all, and the check under the lock reads only what came after it.
 Takes the append lock for the rest of the caller's transaction.
 
 ```elixir
-@callback append(repo :: module(), [entry()], condition()) ::
-  {:ok, [EhOsContract.Event.t()]} | {:error, conflict()}
+@callback append(repo :: module(), [EhOsContract.Store.entry()], EhOsContract.Store.condition()) ::
+  {:ok, [EhOsContract.Event.t()]} | {:error, EhOsContract.Store.conflict()}
 ```
 
 Appends `entries`, in order, if `condition` holds.
@@ -240,7 +241,8 @@ Appends `entries`, in order, if `condition` holds.
 One stream's events after `after_version`, in version order.
 
 ```elixir
-@callback read_query(repo :: module(), query()) :: {[EhOsContract.Event.t()], head :: non_neg_integer()}
+@callback read_query(repo :: module(), EhOsContract.Store.query()) ::
+  {[EhOsContract.Event.t()], head :: non_neg_integer()}
 ```
 
 The events matching `query`, in position order, and the head of the log they were
@@ -259,7 +261,7 @@ Up to `limit` events after `after_position`, in position order, of the given typ
 
 ## EhOsContract.Supplier
 
-Configured with `config :eh_os_contract, supplier: MyModule`.
+Configured with `config :eh_os_contract, supplier: ...`, a module.
 
 Where the values of the fields a contract declares `supplied_by: :host` come from
 (plan T1).
@@ -298,7 +300,7 @@ is bounded by the implementation.
 `dispatch/3` and `record/3` from the application's own code are not asked: the
 struct it builds is trusted, as everything else in it is. A node with a contract
 declaring a supplied field does not start without an implementation configured,
-one that is loaded and exports `supply/2` (`EhOsContract.Supplier.check!/1`, at the engine's boot); the
+one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (`EhOsContract.Supplier.check!/1`, at the engine's boot); the
 Mix tasks that only read contracts do not ask.
 
 ### Callbacks
@@ -312,7 +314,7 @@ The values of `request.fields`, or why the host cannot give them.
 
 ## EhOsContract.Vault
 
-Configured with `config :eh_os_contract, vault: MyModule`.
+Configured with `config :eh_os_contract, vault: ...`, a module.
 
 The master keys that wrap the subjects' data keys (v2 §14). A data key is 32
 random bytes per subject, stored in `eh_os_contract_subject_keys` only wrapped:
@@ -342,7 +344,7 @@ would fail rather than the deployment.
 ### Callbacks
 
 ```elixir
-@callback wrap(key :: binary(), context :: binary()) :: {kek_id(), wrapped :: binary()}
+@callback wrap(key :: binary(), context :: binary()) :: {EhOsContract.Vault.kek_id(), wrapped :: binary()}
 ```
 
 Wraps `key`, a data key, with the current master key. `context` is bound to the
@@ -350,16 +352,17 @@ result: unwrapping with another context fails, so a wrapped key cannot be moved 
 another subject's row.
 
 ```elixir
-@callback unwrap(kek_id(), wrapped :: binary(), context :: binary()) :: {:ok, binary()} | :error
+@callback unwrap(EhOsContract.Vault.kek_id(), wrapped :: binary(), context :: binary()) ::
+  {:ok, binary()} | :error
 ```
 
-Unwraps what `EhOsContract.Vault.wrap/2` returned, with the master key `kek_id` names.
+Unwraps what `c:EhOsContract.Vault.wrap/2` returned, with the master key `kek_id` names.
 
 ```elixir
-@callback current() :: kek_id()
+@callback current() :: EhOsContract.Vault.kek_id()
 ```
 
-The master key `EhOsContract.Vault.wrap/2` wraps with now.
+The master key `c:EhOsContract.Vault.wrap/2` wraps with now.
 
 ```elixir
 @callback check() :: :ok | {:error, String.t()}

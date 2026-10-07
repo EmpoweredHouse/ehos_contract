@@ -40,17 +40,19 @@ defmodule EhOsContract.Docs do
   def marker(source), do: "#{@marker} from #{source}. Do not edit. -->"
 
   @doc """
-  `text` with its own headings below a page's: `#` becomes `###`. Code blocks are left
-  as they are.
+  `text` with its own headings `levels` below where they were: with 2, `#` becomes
+  `###`. Code blocks are left as they are.
   """
-  @spec shift(String.t()) :: String.t()
-  def shift(text) do
+  @spec shift(String.t(), pos_integer()) :: String.t()
+  def shift(text, levels \\ 2) do
+    deeper = String.duplicate("#", levels)
+
     text
     |> String.trim()
     |> String.split(~r/(```.*?```)/su, include_captures: true)
     |> Enum.map_join(fn
       "```" <> _ = code -> code
-      prose -> Regex.replace(~r/^(#+)/mu, prose, "##\\1")
+      prose -> Regex.replace(~r/^(#+)/mu, prose, deeper <> "\\1")
     end)
   end
 
