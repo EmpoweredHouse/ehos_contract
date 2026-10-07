@@ -8,6 +8,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The dashboard and the API work mounted in a scope with a path of its own, or with an alias.** Mounted in
+  `scope "/admin"`, `/admin/dashboard` redirected to `/dashboard/contract`, a 404, and the screens linked outside
+  the prefix; in `scope "/admin", MyAppWeb`, every route named `MyAppWeb.EhOsContract.Web.…` and failed. The
+  redirect, the links and the `base_path` the resolver is given now carry every scope's prefix, and no trailing
+  slash. **What a resolver receives changes** for a host mounted under a prefix: `base_path` was `"/dashboard"`
+  and is `"/admin/dashboard"`, and the API's `"/admin/api"`; a resolver matching the old value refuses until it is
+  updated. Mounted in `scope "/"`, nothing changes. A router may now mount the dashboard more than once.
+
 - **The graph page selects a contract, by its id, whether or not it has a process** (plan DD, P1b,
   eh-os-contract#186). A contract without a process could not be opened there. The selector lists each contract's
   id, with its process's label where it has one; the declared shape of a process shows only when there is one; the

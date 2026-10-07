@@ -21,9 +21,12 @@ defmodule EhOsContract.Web.Router do
       end
 
   The screens are `path <> "/contract"` and `path <> "/graph"`; `path` itself redirects
-  to the first, keeping its query string. Mount it in a scope with no path of its own
-  (`scope "/"`): the redirect and the `base_path` the resolver is given are `path` as
-  written, without a scope's prefix.
+  to the first, keeping its query string. Mounted in a scope with a path of its own,
+  `scope "/admin"`, the dashboard is at `/admin/dashboard`, and its redirect, its links
+  and the `base_path` the resolver is given all carry the prefix. A scope's alias
+  (`scope "/admin", MyAppWeb do`) is not put in front of the package's modules. A
+  router may mount it more than once; the mounts share their route helpers' names, so
+  link to the second by its path.
 
   Options:
 
@@ -46,24 +49,42 @@ defmodule EhOsContract.Web.Router do
   defmacro eh_os_contract_dashboard(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
       resolver = Keyword.fetch!(opts, :resolver)
+      # The path a browser sees: `path` under every scope the host mounted it in. The
+      # redirect, the screens' links and the resolver's `base_path` all need it, and a
+      # route alone does not carry it.
+      mounted = EhOsContract.Web.Router.__mounted__(__MODULE__, path)
 
-      # Ahead of any access check — a bookmark to the bare mount path should
-      # not need to be a decision, just a pointer to whichever screen is
-      # first among equals.
-      get path, EhOsContract.Web.Router.RedirectToContract, path <> "/contract"
+      # `alias: false`: the modules below are named in full, and a host's scope alias
+      # (`scope "/admin", MyAppWeb do`) would otherwise be put in front of them.
+      scope "/", alias: false do
+        # Ahead of any access check — a bookmark to the bare mount path should
+        # not need to be a decision, just a pointer to whichever screen is
+        # first among equals.
+        get path, EhOsContract.Web.Router.RedirectToContract, mounted <> "/contract"
 
-      scope path do
-        import Phoenix.LiveView.Router
+        scope path do
+          import Phoenix.LiveView.Router
 
-        live_session :eh_os_contract_dashboard,
-          session: {EhOsContract.Web.Router, :__session__, [resolver, path]},
-          root_layout: {EhOsContract.Web.Layouts, :root},
-          on_mount: [EhOsContract.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
-          live "/contract", EhOsContract.Web.Live.ContractStatus, :index
-          live "/graph", EhOsContract.Web.Live.Graph, :index
+          # Named after where it is mounted, so a router may mount the dashboard twice.
+          live_session :"eh_os_contract_dashboard:#{mounted}",
+            session: {EhOsContract.Web.Router, :__session__, [resolver, mounted]},
+            root_layout: {EhOsContract.Web.Layouts, :root},
+            on_mount: [EhOsContract.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
+            live "/contract", EhOsContract.Web.Live.ContractStatus, :index
+            live "/graph", EhOsContract.Web.Live.Graph, :index
+          end
         end
       end
     end
+  end
+
+  # The path a browser sees, without a trailing slash: `path` under every scope it is
+  # mounted in, so `"/dashboard/"` and `"/dashboard"` give one `base_path`, and a
+  # dashboard mounted at `"/"` links to `/contract`, not `//contract`.
+  @doc false
+  @spec __mounted__(module(), String.t()) :: String.t()
+  def __mounted__(router, path) do
+    router |> Phoenix.Router.scoped_path(path) |> String.trim_trailing("/")
   end
 
   @doc false
@@ -118,33 +139,42 @@ defmodule EhOsContract.Web.Router do
   defmacro eh_os_contract_api(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
       resolver = Keyword.fetch!(opts, :resolver)
+      # As the dashboard's: the resolver is given the path a client sees.
+      mounted = EhOsContract.Web.Router.__mounted__(__MODULE__, path)
 
-      get path <> "/conformance",
-          EhOsContract.Web.Api.Conformance,
+      # As the dashboard's: a host's scope alias is not put in front of these modules.
+      scope "/", alias: false do
+        get path <> "/conformance",
+            EhOsContract.Web.Api.Conformance,
+            resolver: resolver,
+            base_path: mounted
+
+        # The index first: a bare `/asyncapi` must not be read as a contract named "".
+        get path <> "/asyncapi", EhOsContract.Web.Api.AsyncAPI,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
 
-      # The index first: a bare `/asyncapi` must not be read as a contract named "".
-      get path <> "/asyncapi", EhOsContract.Web.Api.AsyncAPI, resolver: resolver, base_path: path
+        get path <> "/asyncapi/:contract",
+            EhOsContract.Web.Api.AsyncAPI,
+            resolver: resolver,
+            base_path: mounted
 
-      get path <> "/asyncapi/:contract",
-          EhOsContract.Web.Api.AsyncAPI,
+        get path <> "/model", EhOsContract.Web.Api.Model, resolver: resolver, base_path: mounted
+
+        get path <> "/model/:contract",
+            EhOsContract.Web.Api.Model,
+            resolver: resolver,
+            base_path: mounted
+
+        get path <> "/openapi", EhOsContract.Web.Api.OpenAPI,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
 
-      get path <> "/model", EhOsContract.Web.Api.Model, resolver: resolver, base_path: path
-
-      get path <> "/model/:contract",
-          EhOsContract.Web.Api.Model,
-          resolver: resolver,
-          base_path: path
-
-      get path <> "/openapi", EhOsContract.Web.Api.OpenAPI, resolver: resolver, base_path: path
-
-      get path <> "/openapi/:contract",
-          EhOsContract.Web.Api.OpenAPI,
-          resolver: resolver,
-          base_path: path
+        get path <> "/openapi/:contract",
+            EhOsContract.Web.Api.OpenAPI,
+            resolver: resolver,
+            base_path: mounted
+      end
     end
   end
 
