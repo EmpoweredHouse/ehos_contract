@@ -1,0 +1,1 @@
+Correctness review of the design-code cleanup. Fixed: ADR decision codes left as if refusals (Model D14/D6/D10, Store D7), codes in docs generated into host modules, 'v2 contract', Trace test refs, Graph citation, rewrap; guard test in all three packages (reverse-checked). No change: Relay arities correct. Rebased onto #242; gate EXIT=0.
