@@ -1421,9 +1421,10 @@ użytkownika.
 ### After wave 2 — the user's decision and the migration note (7 October 2026)
 
 **Wave 2 is closed conditionally** (the user's decision of 7 October, option 1). 15 of its 17 stages are in `main`:
-ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **On hold** until the graph documents and renderer (E13; #217, #219) are in
-`main`, and continuing as a group of their own after it: a process module's picture and page (P2e, #220), and removing
-the contract's own `process` block with its columns in the log (P2h, #221). The wave's aim stands: a process is a module of its own spanning
+ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **On hold**, waiting for the graph documents and renderer (E13), and continuing
+as a group of their own after them: a process module's picture and page (P2e, #220), which starts once the graph
+documents (E13a, #217) are in `main`; and removing the contract's own `process` block with its columns in the log
+(P2h, #221), which waits for the whole of E13 (#217 and the renderer, #219) and for P2e. The wave's aim stands: a process is a module of its own spanning
 contracts, checked at compile time, with runs, a report, a deployment record and a check, and the test material
 and the library's tests use it. What is missing is its picture and the removal of the old way.
 *Rejected:* waiting for E13 to close the wave, which would hold back this note while AppUnite's application needs it now.
