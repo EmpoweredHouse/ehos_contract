@@ -10,11 +10,12 @@ defmodule Rehmed.Contracts.StatutoryReporting do
 
   ## The run crosses three contexts
 
-  `process :clinical_visit` is the distillation's finding 1 made legal: the visit is
-  one run, from the patient leaving (scheduling, `E-51`) through the clinical close
-  (documentation, `E-52`) to the report. v1 had to write it as one contract that
-  declared all of those events; here each context declares its own, and this one
-  includes the other two's.
+  The visit is one run, from the patient leaving (scheduling, `E-51`) through the
+  clinical close (documentation, `E-52`) to the report: the distillation's finding 1.
+  v1 had to write it as one contract that declared all of those events; since v2 each
+  context declares its own, and since plan DD, P2f (#222) the run is
+  `Rehmed.Processes.ClinicalVisit`, which includes them from all three, this
+  contract's report among them, and keeps the promise the next sections explain.
 
   ## Two days from what
 
@@ -50,7 +51,6 @@ defmodule Rehmed.Contracts.StatutoryReporting do
     context: :statutory_reporting,
     id: "rehmed.statutory_reporting"
 
-  consumes Rehmed.Contracts.Scheduling, :visit_completed
   consumes Rehmed.Contracts.ClinicalDocumentation, :visit_closed_clinically
 
   aggregate :p1_report, "Zgłoszenie P1" do
@@ -71,34 +71,29 @@ defmodule Rehmed.Contracts.StatutoryReporting do
       emits: :p1_reporting_not_required,
       source: "P-07, warunek: usługa raportowana (AGG-15)"
 
-    stage :reporting do
-      # `AGG-10`, state `Zakolejkowane`: the payload the registry will get.
-      event :p1_report_queued, "Zgłoszenie P1 zakolejkowane", source: "AGG-10" do
-        field :patient_id, :id, subject: :patient
-        field :pesel, :string, personal: :patient_id
-        field :icd10, :string, personal: :patient_id
-        field :icd9, :string, personal: :patient_id
-        field :practitioner_number, :id
-      end
-
-      # `E-54`, observed.
-      event :p1_report_sent, "Wysłano informację do systemu P1",
-        recorded_by: :p1_integration,
-        depends_on: :p1,
-        terminal: true,
-        source: "E-54"
-
-      # `AGG-10`'s error state: a rejection or no connection. Not an end: the
-      # report is retried.
-      event :p1_report_failed, "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
-        recorded_by: :p1_integration,
-        depends_on: :p1,
-        source: "AGG-10"
-
-      event :p1_reporting_not_required, "Usługa nie podlega zgłoszeniu do P1",
-        terminal: true,
-        source: "H21, DEC-20"
+    # `AGG-10`, state `Zakolejkowane`: the payload the registry will get.
+    event :p1_report_queued, "Zgłoszenie P1 zakolejkowane", source: "AGG-10" do
+      field :patient_id, :id, subject: :patient
+      field :pesel, :string, personal: :patient_id
+      field :icd10, :string, personal: :patient_id
+      field :icd9, :string, personal: :patient_id
+      field :practitioner_number, :id
     end
+
+    # `E-54`, observed.
+    event :p1_report_sent, "Wysłano informację do systemu P1",
+      recorded_by: :p1_integration,
+      depends_on: :p1,
+      source: "E-54"
+
+    # `AGG-10`'s error state: a rejection or no connection. Not an end: the
+    # report is retried.
+    event :p1_report_failed, "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
+      recorded_by: :p1_integration,
+      depends_on: :p1,
+      source: "AGG-10"
+
+    event :p1_reporting_not_required, "Usługa nie podlega zgłoszeniu do P1", source: "H21, DEC-20"
   end
 
   policy :report_on_clinical_close,
@@ -118,32 +113,6 @@ defmodule Rehmed.Contracts.StatutoryReporting do
     handles: :p1_report_queued,
     calls: {:p1, :submit_report},
     idempotency: [key: :event_id, owner: :downstream]
-
-  # The old watchdog "notified the manager at the moment the deadline had already
-  # passed" (distillation, process 3), and overdue work surfaces to the manager as a
-  # count (`P-25`): the manager is who a breach is addressed to.
-  process :clinical_visit, "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-    accountable: :manager do
-    correlate :visit_id
-
-    stage :departure do
-      include :visit_completed
-    end
-
-    stage :closing do
-      include :visit_closed_clinically
-    end
-
-    stage :reporting
-
-    promise :medical_event_reported_within_statutory_window do
-      from :visit_completed
-      eventually :p1_report_sent
-      within {2, :day}
-      or_else :p1_reporting_not_required
-      source "Dz.U. 2025 poz. 866"
-    end
-  end
 
   scenario "fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1",
     illustrates: :only_reported_services do
