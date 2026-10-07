@@ -5,8 +5,10 @@ defmodule EhOsContract.Web.Router do
   """
 
   # `live_session`'s `session: {module, function, args}` has Phoenix call `__session__/3`
-  # itself, with the real `conn`, on every mount and reconnect, so no separate plug stores
-  # anything in the session. The call shape is `oban_dashboard/2`'s.
+  # itself, with the real `conn`, so no separate plug stores anything in the session. It
+  # runs on the HTTP request only: a reconnect or a live navigation gets the session signed
+  # into the page back, so `resolve_user/1` is asked once per page load and
+  # `resolve_access/2` on every mount. The call shape is `oban_dashboard/2`'s.
 
   @doc """
   Mounts the dashboard at `path`, in a scope with the host's browser pipeline:
@@ -23,9 +25,10 @@ defmodule EhOsContract.Web.Router do
 
   Options:
 
-    * `:resolver` (required): a module implementing `EhOsContract.Web.Resolver`, asked
-      on every mount and reconnect who the caller is and what they may see. A permission
-      changed between the first render and a reconnect applies at once.
+    * `:resolver` (required): a module implementing `EhOsContract.Web.Resolver`. Who
+      the caller is (`resolve_user/1`) is asked on a full page load and kept in the page;
+      what they may see (`resolve_access/2`) is asked again on every mount, a reconnect
+      and a move between the screens included.
     * `:on_mount`: the host's own `on_mount` hooks, run after the access check, so no
       hook sees a socket the resolver refused.
 

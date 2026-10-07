@@ -1,9 +1,9 @@
 defmodule EhOsContract.Web.Authentication do
   # The `on_mount` hook `eh_os_contract_dashboard/2` always installs first. Recomputes
   # `resolve_access/2` on every mount *and* reconnect — the same shape as
-  # `Oban.Web.Authentication`, not a decision cached once in the session — so a
-  # permission change between the first render and a LiveView reconnect takes
-  # effect immediately rather than on the next full page load.
+  # `Oban.Web.Authentication`, not a decision cached once in the session. The user it is
+  # given is the one `resolve_user/1` returned on the page load, signed into the page, so
+  # a permission takes effect on reconnect only when `resolve_access/2` looks it up.
   @moduledoc false
 
   import Phoenix.Component, only: [assign: 3]
