@@ -136,6 +136,34 @@ defmodule EhOsContract.ProcessLinksTest do
     ])
   end
 
+  # `<prefix>C1`, `<prefix>C2`, … each deciding `:visit_step1`, `:visit_step2`, … with
+  # `:visit_id` as the type at its place in `types`, all included by `<prefix>Visit` in
+  # that order, checked together.
+  defp chain(prefix, types) do
+    contracts =
+      for {type, i} <- Enum.with_index(types, 1) do
+        name = "#{prefix}C#{i}"
+
+        source =
+          name
+          |> unit_contract("      field :visit_id, #{type}")
+          |> String.replace(":visit_completed", ":visit_step#{i}")
+          |> String.replace(":complete_visit", ":do_step#{i}")
+
+        {name, source, i}
+      end
+
+    include =
+      Enum.map_join(contracts, ", ", fn {name, _, i} ->
+        "{#{inspect(Module.concat(@fixtures, name))}, :visit_step#{i}}"
+      end)
+
+    links(
+      Enum.map(contracts, fn {name, source, _} -> {file(name), source} end) ++
+        [{file("#{prefix}Visit"), process("#{prefix}Visit", include)}]
+    )
+  end
+
   test "control: a process module including a declared event that carries its correlation passes" do
     assert pair("ProcRight", @visit_fields, accountable: :reception) == []
   end
@@ -317,6 +345,28 @@ defmodule EhOsContract.ProcessLinksTest do
 
     test "control: a domain value of :id and a plain :id are one identifier" do
       assert two("ProcValue", @visit_fields) == []
+    end
+
+    test "control: a plain :id before a domain value of :id is one identifier too" do
+      assert chain("ProcPlainFirst", [":id", ":visit_code"]) == []
+    end
+
+    test "a plain :id first does not let two different domain values through" do
+      violations = chain("ProcPlainThen", [":id", ":visit_code", ":other_code"])
+      assert length(violations) == 1
+
+      assert assert_linked(violations, "X6:", "proc_plain_then_visit.ex", 6) =~
+               "which event :visit_step3 of #{inspect(@fixtures)}.ProcPlainThenC3 " <>
+                 "(proc_plain_then_c3.ex:9) has as :other_code, not :visit_code"
+    end
+
+    test "two different domain values around a plain :id" do
+      violations = chain("ProcValueThen", [":visit_code", ":id", ":other_code"])
+      assert length(violations) == 1
+
+      assert assert_linked(violations, "X6:", "proc_value_then_visit.ex", 6) =~
+               "which event :visit_step3 of #{inspect(@fixtures)}.ProcValueThenC3 " <>
+                 "(proc_value_then_c3.ex:9) has as :other_code, not :visit_code"
     end
   end
 

@@ -45,6 +45,14 @@ defmodule EhOsContract.ProcessModuleRunsTest do
     refute review in Implementations.included(Ledger, "dispatch_rig.ledger.deposited")
   end
 
+  test "a process module of another domain gets no runs for this domain's events" do
+    review = DispatchRig.AccountReview.__eh_os_contract_model__()
+    run = %{name: "dispatch_rig.account_review", correlate: [:account_id]}
+
+    assert Implementations.runs_of([], [review])["dispatch_rig.ledger.withdrawn"] == [run]
+    assert Implementations.runs_of([], [%{review | domain: Elsewhere.Domain}]) == %{}
+  end
+
   test "an included event belongs to its home run and to the module's, under the module's id" do
     dispatch(%Withdraw{account_id: "a-1", amount: 50})
 

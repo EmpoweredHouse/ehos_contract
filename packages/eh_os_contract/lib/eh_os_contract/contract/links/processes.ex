@@ -20,9 +20,9 @@ defmodule EhOsContract.Contract.Links.Processes do
     non-personal, as a contract's `correlate` is checked for the sibling events it
     includes (`EhOsContract.Contract.Links.Siblings.problems/4`). A process module
     has no events of its own to type the field, so it is held to what a run's key may
-    be, an `:id` (F8), and every included event carries it as the same identifier:
-    the first event that carries it as an `:id`, a domain value resting on one or an
-    entity's identifier sets which.
+    be, an `:id` (F8), and every included event carries it as the same identifier: a
+    plain `:id` agrees with one domain value resting on `:id`, two different values do
+    not, whatever the order of the includes.
 
   X7, a process module's `id:` taken by another process, is `Links.System`'s. The
   error stands at the module's `use` for what names the whole module, and at the stage
@@ -167,18 +167,19 @@ defmodule EhOsContract.Contract.Links.Processes do
     end
   end
 
-  # The type every included event carries `field` as: the first one's that is an
-  # identifier, or `:id` when none carries it as one (F8).
+  # The type every included event carries `field` as: among those that carry it as an
+  # identifier, the first that is not a plain `:id`, so that a domain value sets it
+  # whatever the order of the includes, and a plain `:id` agrees with it while a
+  # second, different value does not (`Links.Siblings.problems/4`); `:id` when none
+  # carries it as more than that (F8).
   defp key_type(events, field, values) do
-    Enum.find_value(events, :id, fn {_include, consumed} ->
-      case Enum.find(consumed.event.fields, &(&1.name == field)) do
-        %{type: type} ->
-          if Links.Siblings.problems(consumed, field, :id, values) == [], do: type
+    identifiers =
+      for {_include, consumed} <- events,
+          %{type: type} <- [Enum.find(consumed.event.fields, &(&1.name == field))],
+          Links.Siblings.problems(consumed, field, :id, values) == [],
+          do: type
 
-        nil ->
-          nil
-      end
-    end)
+    Enum.find(identifiers, :id, &(&1 != :id))
   end
 
   defp suggest(name, names) do

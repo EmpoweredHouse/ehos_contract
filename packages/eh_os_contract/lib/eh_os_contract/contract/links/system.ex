@@ -30,6 +30,10 @@ defmodule EhOsContract.Contract.Links.System do
     do: processes(system) ++ ids(system) ++ capabilities(system) ++ implementations(system)
 
   defp processes(system) do
+    # A process module's id and a contract process's name are compared too, though they
+    # cannot be equal today: the id is dotted under the application's namespace (D11),
+    # and a contract process's name is a snake_case atom, which has no dot. Only two
+    # contract processes, or two process modules, can collide.
     named =
       for(
         c <- system.contracts,

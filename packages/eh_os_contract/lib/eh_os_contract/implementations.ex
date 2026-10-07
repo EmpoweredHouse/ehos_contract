@@ -358,9 +358,14 @@ defmodule EhOsContract.Implementations do
   #
   # A process module names each event by its contract, and its runs are filed under
   # its id. An include the node cannot resolve — a contract it cannot load, an event
-  # that contract does not declare — is left out, as the rules between modules refuse
-  # it at compile time (X5).
-  defp runs_of(contracts, processes) do
+  # that contract does not declare, a contract of another domain — is left out, as the
+  # rules between modules refuse it at compile time (X5). Those rules run per project,
+  # and a process module of a dependency listed in `:applications` is scanned here
+  # too, so the domain is checked again: another application's process gets no runs
+  # filed for this application's events.
+  @doc false
+  @spec runs_of([map()], [map()]) :: %{optional(String.t()) => [map()]}
+  def runs_of(contracts, processes) do
     of_contracts =
       for model <- contracts,
           %{} = process <- [EhOsContract.Model.process(model)],
@@ -371,7 +376,8 @@ defmodule EhOsContract.Implementations do
       for process <- processes,
           %{includes: includes} <- process.stages,
           %{contract: contract, event: name} <- includes,
-          %{events: events} <- [loaded(contract)],
+          %{events: events, domain: domain} <- [loaded(contract)],
+          domain == process.domain,
           %{type: type} <- [Enum.find(events, &(&1.name == name))],
           do: {type, %{name: process.id, correlate: process.correlate}}
 
