@@ -46,8 +46,7 @@ defmodule EhOsContract.Contract.Links do
 
   @typedoc """
   One process module (`EhOsContract.Process`) as the rules read it: its model, its
-  declarations with their locations (`EhOsContract.Process.Rules.declarations/1`),
-  the location of its `use`, and its domain's model — `nil` when `domain:` names no
+  declarations with their locations, the location of its `use`, and its domain's model — `nil` when `domain:` names no
   compiled domain.
   """
   @type process :: %{

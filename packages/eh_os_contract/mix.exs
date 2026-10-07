@@ -83,6 +83,9 @@ defmodule EhOsContract.MixProject do
         "eh_os_contract.check",
         "eh_os_contract.rules --check",
         "eh_os_contract.docs --check",
+        # A reference in a doc to a module, a function or a page that is not there,
+        # or is hidden, fails here rather than becoming a dead link on hexdocs.
+        "docs -f html --warnings-as-errors --output _build/test/doc",
         "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl," <>
           "EhOsContract.Process.Dsl --check",
         "test"
@@ -125,6 +128,9 @@ defmodule EhOsContract.MixProject do
       groups_for_extras: [
         "DSL reference": ~r{docs/dsl/}
       ],
+      # The changelog names what a release removed, and the names resolve nowhere
+      # after it, as they should.
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       source_ref: "v#{@version}"
     ]
   end
@@ -167,7 +173,7 @@ defmodule EhOsContract.MixProject do
       # host configures (plan W2); the package's own suite needs one, a host brings its
       # own, so the package does not choose it for them.
       {:tz, "~> 0.28", only: [:dev, :test]},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false}
     ]
   end
 end
