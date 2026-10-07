@@ -233,8 +233,9 @@ end
 contract and one of its events, or a list of them, and names the contract without a compile dependency, as
 `consumes` does. Everywhere else in the module an included event is named by its name alone, so two includes
 of one name are refused (`N1`). The module refuses what it can see is wrong in itself: no `correlate` or an
-empty one (`R2`) or one of more than six fields (`F9`), no stage or a stage that includes nothing (`R3`), a
-promise or `ends_on` naming an event it does not include (`R5`), a duration not in a fixed unit, `deadline`
+empty one, two, or a field named twice (`R2`) or one of more than six fields (`F9`), no stage, a stage that
+includes nothing, or an `include:` entry naming no event or no contract module (`R3`), a promise or
+`ends_on` naming an event it does not include, or `ends_on` twice (`R5`), a duration not in a fixed unit, `deadline`
 twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end (`R6`). It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. In this version nothing at run time reads it:
 a contract's own `process` is still the one dispatch, the report and the check read.
@@ -343,10 +344,10 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
 | `R1` | L2 | a contract declaring two `process`es, or nothing at all; with no process, a unit's `stage` group or a `terminal:` event |
-| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts); a process module without `correlate`, with an empty one, or with two |
-| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group; a process module with no stage, or a stage that includes no event |
+| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts); a process module without `correlate`, with an empty one, with two, or naming a field twice |
+| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group; a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
-| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one; in a process module, a promise's events or an `ends_on` event the module does not include |
+| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one; in a process module, a promise's events or an `ends_on` event the module does not include, or `ends_on` declared twice |
 | `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice; in a process module, `deadline` without `ends_on` |
 | `K1` | L2 | `consumes` given a published name, which is `subscribe`d to; a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |

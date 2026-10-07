@@ -16,14 +16,16 @@ defmodule EhOsContract.Process.Rules do
     in the process. An included event is named by its name alone in `ends_on` and in
     a promise, so two includes resolving to one name are refused, whichever
     contracts they come from. A label given is not blank.
-  - **R2.** The process correlates on at least one field, declared once: with none,
-    every event it includes would land in one run.
+  - **R2.** The process correlates on at least one field, declared once and naming
+    each field once: with none, every event it includes would land in one run.
   - **F9.** At most `EhOsContract.Key.max_fields/0` correlation fields: the run's key
     is one index entry.
   - **R3.** The process has stages, and each stage includes at least one event: a
-    stage is a step of the run, made of the contracts' events.
+    stage is a step of the run, made of the contracts' events. Each entry of a stage's
+    `include:` names a contract by its module and at least one of its events; whether
+    the contract exists is left to the rules between modules.
   - **R5.** A promise's `from`, `eventually` and `or_else`, and each event of
-    `ends_on`, is an event the process includes.
+    `ends_on`, is an event the process includes; `ends_on` is declared at most once.
   - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
     (`EhOsContract.Duration`); `deadline` is declared at most once, and only with
     `ends_on`, since it measures a run to its end (the user's decision of
@@ -180,7 +182,13 @@ defmodule EhOsContract.Process.Rules do
         {"R2: #{where(d)} declares correlate twice; name every field in one, in order", c}
       end
 
-    empty ++ long ++ twice
+    repeated =
+      for field <- correlate.fields |> DslRules.duplicates(& &1) |> Enum.uniq() do
+        {"R2: #{where(d)} correlates on #{inspect(field)} twice; a run's key names each " <>
+           "field once", correlate}
+      end
+
+    empty ++ long ++ twice ++ repeated
   end
 
   # --- R3 ----------------------------------------------------------------------------
@@ -193,11 +201,34 @@ defmodule EhOsContract.Process.Rules do
   end
 
   defp stages(d) do
-    for s <- d.stages, includes(s) == [] do
-      {"R3: #{where(d)}: stage #{inspect(s.name)} includes no event; a stage is a step of " <>
-         "the run, made of the contracts' events, `include: [{Contract, :event}]`", s}
-    end
+    empty =
+      for s <- d.stages, includes(s) == [] do
+        {"R3: #{where(d)}: stage #{inspect(s.name)} includes no event; a stage is a step of " <>
+           "the run, made of the contracts' events, `include: [{Contract, :event}]`", s}
+      end
+
+    # A stage with no event at all is refused above; an empty entry beside others that
+    # name events would otherwise be dropped without a word.
+    entries =
+      for s <- d.stages,
+          includes(s) != [],
+          {contract, events} <- s.include,
+          List.wrap(events) == [] do
+        {"R3: #{where(d)}: stage #{inspect(s.name)} includes #{inspect(contract)} with " <>
+           "no event; name the events it includes, `{Contract, :event}`", s}
+      end
+
+    contracts =
+      for s <- d.stages, {contract, _events} <- s.include, not module_alias?(contract) do
+        {"R3: #{where(d)}: stage #{inspect(s.name)} includes #{inspect(contract)}, which " <>
+           "names no contract; name the contract by its module, `{Contract, :event}`", s}
+      end
+
+    empty ++ entries ++ contracts
   end
+
+  defp module_alias?(contract),
+    do: is_atom(contract) and String.starts_with?(Atom.to_string(contract), "Elixir.")
 
   # --- R5 ----------------------------------------------------------------------------
 
@@ -223,7 +254,12 @@ defmodule EhOsContract.Process.Rules do
            "#{inspect(Enum.sort(run))}", e}
       end
 
-    promised ++ ending
+    twice =
+      for e <- Enum.drop(d.ends_on, 1) do
+        {"R5: #{where(d)} declares ends_on twice; one lists every event that ends a run", e}
+      end
+
+    promised ++ ending ++ twice
   end
 
   # --- R6 ----------------------------------------------------------------------------

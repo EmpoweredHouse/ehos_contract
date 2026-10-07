@@ -283,6 +283,24 @@ defmodule EhOsContract.ProcessModuleTest do
                  "field in one, in order (correlate_twice.ex:5)"
     end
 
+    test "a field named twice in correlate is refused, each field once compiles" do
+      assert %{correlate: [:visit_id, :patient_id]} =
+               compile_process(
+                 "TwoFields",
+                 replace(@body, "correlate :visit_id", "correlate [:visit_id, :patient_id]")
+               )
+
+      message =
+        refuse_process(
+          "FieldTwice",
+          replace(@body, "correlate :visit_id", "correlate [:visit_id, :visit_id]")
+        )
+
+      assert message =~
+               ~s|R2: process "clinic.field_twice" correlates on :visit_id twice; a run's key | <>
+                 "names each field once (field_twice.ex:4)"
+    end
+
     test "more than six fields are refused, six compile" do
       six = "correlate [:a, :b, :c, :d, :e, :f]"
 
@@ -334,6 +352,51 @@ defmodule EhOsContract.ProcessModuleTest do
       assert message =~ ~s|R3: process "clinic.empty_list": stage :closing includes no event|
     end
 
+    test "an entry naming no event is refused beside entries that do" do
+      message =
+        refuse_process(
+          "EmptyEntry",
+          replace(
+            @body,
+            "[{Clinic.Documentation, :visit_closed_clinically}]",
+            "[{Clinic.Documentation, :visit_closed_clinically}, {Clinic.Billing, []}]"
+          )
+        )
+
+      assert message =~
+               ~s|R3: process "clinic.empty_entry": stage :closing includes Clinic.Billing with | <>
+                 "no event; name the events it includes, `{Contract, :event}` (empty_entry.ex:7)"
+
+      refute message =~ "includes no event"
+    end
+
+    test "an entry whose contract is not a module is refused; a module that does not exist compiles" do
+      for {name, contract} <- [{"NilContract", "nil"}, {"AtomContract", ":documentation"}] do
+        message =
+          refuse_process(
+            name,
+            replace(
+              @body,
+              "{Clinic.Documentation, :visit_closed_clinically}",
+              "{#{contract}, :visit_closed_clinically}"
+            )
+          )
+
+        file = Macro.underscore(name)
+
+        assert message =~
+                 ~s|R3: process "clinic.#{file}": stage :closing includes #{contract}, which | <>
+                   "names no contract; name the contract by its module, " <>
+                   "`{Contract, :event}` (#{file}.ex:7)"
+      end
+
+      assert %{stages: [_, %{includes: [%{contract: Clinic.Nowhere}]}, _]} =
+               compile_process(
+                 "ModuleContract",
+                 replace(@body, "{Clinic.Documentation,", "{Clinic.Nowhere,")
+               )
+    end
+
     test "a process with no stage is refused at the use" do
       message = refuse_process("NoStage", "  correlate :visit_id\n")
 
@@ -376,6 +439,23 @@ defmodule EhOsContract.ProcessModuleTest do
                  "not include; it includes [:report_queued, :report_sent, " <>
                  ":reporting_not_required, :visit_closed_clinically, :visit_completed] " <>
                  "(ends_outside.ex:12)"
+    end
+
+    test "ends_on declared twice is refused at the second" do
+      message =
+        refuse_process(
+          "EndsOnTwice",
+          replace(
+            @body,
+            "ends_on [:report_sent, :reporting_not_required]",
+            "ends_on :report_sent"
+          ) <>
+            "\n  ends_on :reporting_not_required\n"
+        )
+
+      assert message =~
+               ~s|R5: process "clinic.ends_on_twice" declares ends_on twice; one lists every | <>
+                 "event that ends a run (ends_on_twice.ex:22)"
     end
   end
 

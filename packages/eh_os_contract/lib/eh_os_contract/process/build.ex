@@ -69,7 +69,7 @@ defmodule EhOsContract.Process.Build do
       accountable: d.accountable,
       source: d.source,
       correlate: Enum.flat_map(d.correlates, & &1.fields),
-      ends_on: d.ends_on |> Enum.flat_map(& &1.events) |> Enum.uniq(),
+      ends_on: ends_on(d.ends_on),
       deadline: deadline(d.deadlines)
     }
 
@@ -93,6 +93,10 @@ defmodule EhOsContract.Process.Build do
     |> Map.delete(:__spark_metadata__)
     |> Map.update!(:within, &duration/1)
   end
+
+  # Declared at most once; the rules have refused a second before this runs.
+  defp ends_on([]), do: []
+  defp ends_on([ends_on | _]), do: Enum.uniq(ends_on.events)
 
   defp deadline([]), do: nil
 
