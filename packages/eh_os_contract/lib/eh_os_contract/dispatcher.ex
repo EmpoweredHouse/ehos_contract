@@ -14,19 +14,19 @@ defmodule EhOsContract.Dispatcher do
      names in `by:`; a reaction's, one whose `issues:` names the command. A refusal
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
-  2. **What.** The command's fields against their types (`EhOsContract.Codec`), and
-     each value against the invariants of its domain value (plan EL2b):
+  2. **What.** The command's fields against their declared types, and each value
+     against the invariants of its domain value:
      `{:error, {:invalid, [{field, :required | :type | {:invariant, name}}]}}`,
      before anything is decided or written. A command that `creates:`
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
-     `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
+     `{:error, :idempotency_key_required}` without an idempotency key.
      An idempotency key, a caller's or a reaction's, is printable ASCII (`0x21`–`0x7E`)
      of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
      need, so a key never depends on what a text column, `jsonb` and an index entry
      happen to hold. An aggregate's stream id, its name and its identity escaped
      (`EhOsContract.Key`), is at most `EhOsContract.Key.budget/0` bytes, or
-     `{:error, :key_too_long}` (issue #98).
+     `{:error, :key_too_long}`.
   3. **Once.** A key belongs to the actor who sent it: another actor's command
      with the same key is its own, and never sees the first one's receipt. An
      idempotency key the actor already had accepted for the same command returns
@@ -57,9 +57,9 @@ defmodule EhOsContract.Dispatcher do
      `EhOsContract.Key.budget/0`, the process's name and the instance id an event
      belongs to, home or included: `{:error, :key_too_long}`, with no row, in place
      of Postgres refusing the entry.
-  7. **Inside the transaction** (v2 §12): every read model delivered
-     `:in_transaction` projects the appended events, in order, then every such
-     policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
+  7. **Inside the transaction**: every read model delivered `:in_transaction`
+     projects the appended events, in order, then every such policy reacts, then
+     every such effect acts. What a
      policy issues is dispatched at once, in the same transaction, as the policy's
      own actor, with the event as its cause and a key derived from it,
      `"policy:<contract id>:<name>:<event id>:<index>"` — the contract too, since the
@@ -116,11 +116,19 @@ defmodule EhOsContract.Dispatcher do
 
   @attempts 3
 
+  @typedoc """
+  What is wrong with one field of a command: missing, not of its type, breaking an
+  invariant of its domain value, or brought by the caller when the engine generates
+  it (`:generated`) or the host supplies it (`:supplied`).
+  """
+  @type problem ::
+          {field :: atom(), :required | :type | {:invariant, atom()} | :generated | :supplied}
+
   @typedoc "What dispatch refuses a command with, before or instead of deciding."
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem() | {atom(), :generated | :supplied}]}
+          | {:invalid, [problem()]}
           | :idempotency_key_reused
           | :idempotency_key_required
           | :idempotency_key_invalid

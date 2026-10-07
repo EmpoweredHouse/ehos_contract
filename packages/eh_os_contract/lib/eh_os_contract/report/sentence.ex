@@ -1,33 +1,32 @@
 defmodule EhOsContract.Report.Sentence do
-  @moduledoc """
-  The sentences a conformance report is made of, without any of its layout.
-
-  One question, one answer, one wording — whatever medium it is printed in.
-  `EhOsContract.Report` wraps these in indentation and line breaks; a dashboard wraps them in
-  HTML. Neither owns the words.
-
-  ## Why this module exists
-
-  The dashboard used to carry its own copy, with a comment saying the duplication
-  was deliberate and that "the surrounding sentence structure is presentation glue
-  small enough that duplicating it beats inventing a shared renderer". That was a
-  reasonable call when both copies said the same four things. By the time anybody
-  looked again, the text renderer had grown six answers the screen did not have:
-
-    * who a finding is addressed to (`accountable`),
-    * the measured process `deadline`,
-    * a run suspended by somebody else's outage,
-    * a run judged under a rule that has since changed,
-    * which met runs reached the fallback ending,
-    * work sitting in a queue at all.
-
-  A run suspended by an external outage therefore read on screen exactly like an
-  ordinary one. Two renderers of one fact, drifting silently, is the thing this
-  product detects for a living — so it does not get to live inside it.
-
-  Returned strings carry no leading whitespace and no bullet. Anything that is a
-  list stays a list, because a medium decides what a list looks like.
-  """
+  # The sentences a conformance report is made of, without any of its layout.
+  #
+  # One question, one answer, one wording — whatever medium it is printed in.
+  # `EhOsContract.Report` wraps these in indentation and line breaks; a dashboard wraps them in
+  # HTML. Neither owns the words.
+  #
+  # ## Why this module exists
+  #
+  # The dashboard used to carry its own copy, with a comment saying the duplication
+  # was deliberate and that "the surrounding sentence structure is presentation glue
+  # small enough that duplicating it beats inventing a shared renderer". That was a
+  # reasonable call when both copies said the same four things. By the time anybody
+  # looked again, the text renderer had grown six answers the screen did not have:
+  #
+  #   * who a finding is addressed to (`accountable`),
+  #   * the measured process `deadline`,
+  #   * a run suspended by somebody else's outage,
+  #   * a run judged under a rule that has since changed,
+  #   * which met runs reached the fallback ending,
+  #   * work sitting in a queue at all.
+  #
+  # A run suspended by an external outage therefore read on screen exactly like an
+  # ordinary one. Two renderers of one fact, drifting silently, is the thing this
+  # product detects for a living — so it does not get to live inside it.
+  #
+  # Returned strings carry no leading whitespace and no bullet. Anything that is a
+  # list stays a list, because a medium decides what a list looks like.
+  @moduledoc false
 
   @doc """
   What the promise says, as a sentence a process owner can be read.

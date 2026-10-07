@@ -1,18 +1,17 @@
 defmodule EhOsContract.Glossary do
-  @moduledoc """
-  A domain's ubiquitous language as Markdown, one section per context (ESDM's
-  `glossary`; plan EL2). `mix eh_os_contract.glossary` prints it.
-
-  A context's terms are written in its language: its own `language:`, or the
-  domain's. Asked for another language, a context written in it prints as it is,
-  and any other prints each term's translation into it — its text, its definition
-  and its own words to avoid — or says there is none. The
-  headings and the notes around the terms are the library's, in English; the terms,
-  definitions and words to avoid are the client's, printed as declared.
-
-  Contexts and terms come in the order the domain declares them, as every reader of
-  the model prints (v2 §9).
-  """
+  # A domain's ubiquitous language as Markdown, one section per context (ESDM's
+  # `glossary`; plan EL2). `mix eh_os_contract.glossary` prints it.
+  #
+  # A context's terms are written in its language: its own `language:`, or the
+  # domain's. Asked for another language, a context written in it prints as it is,
+  # and any other prints each term's translation into it — its text, its definition
+  # and its own words to avoid — or says there is none. The
+  # headings and the notes around the terms are the library's, in English; the terms,
+  # definitions and words to avoid are the client's, printed as declared.
+  #
+  # Contexts and terms come in the order the domain declares them, as every reader of
+  # the model prints (v2 §9).
+  @moduledoc false
 
   @doc """
   The glossary of `domain`, a domain module or its model. `language:` asks for the

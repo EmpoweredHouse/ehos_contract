@@ -1,39 +1,38 @@
 defmodule EhOsContract.Digest do
-  @moduledoc """
-  The canonical form of a declaration, and the hash taken over it.
-
-  Both identities of a deployment are hashes — the contract version is a hash of
-  the contract's declarations, the wiring version a hash of its steps and the modules
-  implementing them (`EhOsContract.Deployment`). They are compared against values written into the log
-  weeks earlier, which makes one property non-negotiable: **the same agreement must
-  hash the same way every time, on every machine, forever.**
-
-  `:erlang.term_to_binary/1` does not offer that, and using it was a real gap rather
-  than a theoretical one. It serialises a runtime representation, so the bytes may
-  differ for equal terms across OTP releases — and a changed hash reclassifies the
-  entire log as belonging to an older agreement. The evidence report would then say
-  the contract changed on a day when nothing changed but the runtime.
-
-  ## What is deliberately insignificant
-
-  **Declaration order in the file.** A contract is a set of declarations, not a
-  sequence, so moving an `event` block above another one must not move the version.
-  This was the more likely of the two defects: reordering a file is an ordinary
-  edit, whereas an OTP upgrade is an event somebody notices.
-
-  **Key order inside a map.** Not observable through map literals, since equal maps
-  are equal — but it is observable through the encoding, which is what made the old
-  hash depend on something the agreement has no opinion about.
-
-  ## What is deliberately significant
-
-  **The order of a list value stays.** `correlate [:company_id, :period]` and
-  `[:period, :company_id]` are different agreements: the run key is those values
-  joined in order, so sorting them would make two different keys hash alike.
-  Stages are the same case — stage order is what makes a backward edge backward
-  (`EhOsContract.Check.Contracts`). So collections *of declarations* are sorted and values *inside* a
-  declaration are not, which is the whole distinction this module exists to hold.
-  """
+  # The canonical form of a declaration, and the hash taken over it.
+  #
+  # Both identities of a deployment are hashes — the contract version is a hash of
+  # the contract's declarations, the wiring version a hash of its steps and the modules
+  # implementing them (`EhOsContract.Deployment`). They are compared against values written into the log
+  # weeks earlier, which makes one property non-negotiable: **the same agreement must
+  # hash the same way every time, on every machine, forever.**
+  #
+  # `:erlang.term_to_binary/1` does not offer that, and using it was a real gap rather
+  # than a theoretical one. It serialises a runtime representation, so the bytes may
+  # differ for equal terms across OTP releases — and a changed hash reclassifies the
+  # entire log as belonging to an older agreement. The evidence report would then say
+  # the contract changed on a day when nothing changed but the runtime.
+  #
+  # ## What is deliberately insignificant
+  #
+  # **Declaration order in the file.** A contract is a set of declarations, not a
+  # sequence, so moving an `event` block above another one must not move the version.
+  # This was the more likely of the two defects: reordering a file is an ordinary
+  # edit, whereas an OTP upgrade is an event somebody notices.
+  #
+  # **Key order inside a map.** Not observable through map literals, since equal maps
+  # are equal — but it is observable through the encoding, which is what made the old
+  # hash depend on something the agreement has no opinion about.
+  #
+  # ## What is deliberately significant
+  #
+  # **The order of a list value stays.** `correlate [:company_id, :period]` and
+  # `[:period, :company_id]` are different agreements: the run key is those values
+  # joined in order, so sorting them would make two different keys hash alike.
+  # Stages are the same case — stage order is what makes a backward edge backward
+  # (`EhOsContract.Check.Contracts`). So collections *of declarations* are sorted and values *inside* a
+  # declaration are not, which is the whole distinction this module exists to hold.
+  @moduledoc false
 
   @doc """
   A deterministic string for any declaration term.

@@ -1,19 +1,18 @@
 defmodule EhOsContract.Graph.Lifecycle do
-  @moduledoc """
-  An aggregate's lifecycle as a graph (plan LC4b, #99): where a new aggregate starts,
-  its statuses in the client's words, an end drawn heavier, and each declared
-  transition as an arrow named by the event that makes it.
-
-  A process's picture goes forward through stages; this one goes round, as the
-  aggregate does — a computer issued, returned, cleaned and issued again for years.
-  It is the reader's picture of what the contract says can happen to one thing.
-
-  **With the log over it** (`overlay: true`) each arrow says how often it was taken in
-  the period, or `never` / `not yet` as the report says it (`EhOsContract.Conformance`
-  `lifecycles`), and a move the lifecycle does not allow that happened anyway is a
-  dotted arrow from where the aggregate stood to the status it stayed in. The numbers
-  are the report's: this module counts nothing of its own.
-  """
+  # An aggregate's lifecycle as a graph (plan LC4b, #99): where a new aggregate starts,
+  # its statuses in the client's words, an end drawn heavier, and each declared
+  # transition as an arrow named by the event that makes it.
+  #
+  # A process's picture goes forward through stages; this one goes round, as the
+  # aggregate does — a computer issued, returned, cleaned and issued again for years.
+  # It is the reader's picture of what the contract says can happen to one thing.
+  #
+  # **With the log over it** (`overlay: true`) each arrow says how often it was taken in
+  # the period, or `never` / `not yet` as the report says it (`EhOsContract.Conformance`
+  # `lifecycles`), and a move the lifecycle does not allow that happened anyway is a
+  # dotted arrow from where the aggregate stood to the status it stayed in. The numbers
+  # are the report's: this module counts nothing of its own.
+  @moduledoc false
 
   alias EhOsContract.Graph.Mermaid
   alias EhOsContract.Model

@@ -1,20 +1,19 @@
 defmodule EhOsContract.DomainService do
-  @moduledoc """
-  A call to a domain service's function, held to its declaration (plan EM2).
-
-  A contract generates `C.DomainServices.<Name>`, and a decision calls the function
-  there, never the implementation: `C.DomainServices.Seating.free_seats(3, 1)`. The
-  call checks the arguments against the declared types, runs the implementation
-  bound with `use C, domain_service: :name`, and checks its result, as dispatch holds
-  a decision to the events its command emits. A mismatch is a defect in the code,
-  never a business outcome, so it raises.
-
-  The arguments and the result are held to the invariants of their domain values
-  too (plan EL2b), as a command's fields are.
-
-  The error names the function and which argument, or the result, did not fit, and
-  never the value: a domain service may be handed personal data.
-  """
+  # A call to a domain service's function, held to its declaration (plan EM2).
+  #
+  # A contract generates `C.DomainServices.<Name>`, and a decision calls the function
+  # there, never the implementation: `C.DomainServices.Seating.free_seats(3, 1)`. The
+  # call checks the arguments against the declared types, runs the implementation
+  # bound with `use C, domain_service: :name`, and checks its result, as dispatch holds
+  # a decision to the events its command emits. A mismatch is a defect in the code,
+  # never a business outcome, so it raises.
+  #
+  # The arguments and the result are held to the invariants of their domain values
+  # too (plan EL2b), as a command's fields are.
+  #
+  # The error names the function and which argument, or the result, did not fit, and
+  # never the value: a domain service may be handed personal data.
+  @moduledoc false
 
   alias EhOsContract.{Codec, Implementations, Model}
 

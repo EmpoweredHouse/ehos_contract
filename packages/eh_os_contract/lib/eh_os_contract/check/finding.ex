@@ -1,15 +1,14 @@
 defmodule EhOsContract.Check.Finding do
-  @moduledoc """
-  One thing `mix eh_os_contract.check` says: which rule, how loudly, the sentence,
-  and where the declaration it is about was written.
-
-  The rule is a stable name from `EhOsContract.Check.Catalog`; the sentence is for a
-  person and may change between versions, the name may not. Anything reading the
-  output — a CI step, `--format json` — selects on `rule`. The level is the rule's,
-  fixed in the catalog, so building a finding for a rule the catalog does not have
-  raises: a name printed without a documented rule behind it would be a name
-  nobody can look up.
-  """
+  # One thing `mix eh_os_contract.check` says: which rule, how loudly, the sentence,
+  # and where the declaration it is about was written.
+  #
+  # The rule is a stable name from `EhOsContract.Check.Catalog`; the sentence is for a
+  # person and may change between versions, the name may not. Anything reading the
+  # output — a CI step, `--format json` — selects on `rule`. The level is the rule's,
+  # fixed in the catalog, so building a finding for a rule the catalog does not have
+  # raises: a name printed without a documented rule behind it would be a name
+  # nobody can look up.
+  @moduledoc false
 
   alias EhOsContract.Check.Catalog
 

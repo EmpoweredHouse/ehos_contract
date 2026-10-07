@@ -1,21 +1,20 @@
 defmodule EhOsContract.Check.Contracts do
-  @moduledoc """
-  Rules of `mix eh_os_contract.check` over v2 contracts, the last of them one only
-  an implementation can answer (v2 §6, L5; plan EL1).
-
-  - `backward-edge` — a reaction that issues a command whose events sit in an
-    earlier stage than the event it reacts to.
-  - `competing-in-transaction-consumers` — an event two or more policies or effects
-    react to inside the emitting transaction.
-  - `in-transaction-across-contexts` — a reaction declared `:in_transaction` on an
-    event of a sibling contract of another context (plan DD, X1).
-  - `free-text-not-personal` — a `:string` field of an event not marked personal.
-  - `emits-never-produced` — an event a command `emits:` that no `emit/1` of its
-    implementation names.
-
-  No rule compares a promise's unit with its run: a run is keyed by its
-  `correlate`, and R2 puts those fields in every event of the run.
-  """
+  # Rules of `mix eh_os_contract.check` over v2 contracts, the last of them one only
+  # an implementation can answer (v2 §6, L5; plan EL1).
+  #
+  # - `backward-edge` — a reaction that issues a command whose events sit in an
+  #   earlier stage than the event it reacts to.
+  # - `competing-in-transaction-consumers` — an event two or more policies or effects
+  #   react to inside the emitting transaction.
+  # - `in-transaction-across-contexts` — a reaction declared `:in_transaction` on an
+  #   event of a sibling contract of another context (plan DD, X1).
+  # - `free-text-not-personal` — a `:string` field of an event not marked personal.
+  # - `emits-never-produced` — an event a command `emits:` that no `emit/1` of its
+  #   implementation names.
+  #
+  # No rule compares a promise's unit with its run: a run is keyed by its
+  # `correlate`, and R2 puts those fields in every event of the run.
+  @moduledoc false
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Model

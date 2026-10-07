@@ -1,33 +1,32 @@
 defmodule EhOsContract.Contract.Links.Processes do
-  @moduledoc """
-  The rules between modules for a process module, `use EhOsContract.Process` (plan DD,
-  P2c, #210): what it names in its domain and in the contracts it includes, which it
-  names without a compile dependency, so no rule inside the module (L2) can look them
-  up. The codes are the contract's for the same thing.
-
-  - **X1.** `domain:` names a compiled `EhOsContract.Domain`. When it does not, nothing
-    else here is checked, since there is nothing to check it against.
-  - **D11**, the part that needs the domain: `id:` is under the application's
-    namespace, the domain's `name:`.
-  - **X2.** `accountable` names an actor of the domain. A process module belongs to no
-    context, since it crosses them, so the actor may be of any context of the domain,
-    or of none.
-  - **X5.** Every `include:` names a compiled v2 contract of the same domain, and an
-    event that contract declares itself. An event a contract receives from another
-    application arrives in an inbox and never enters this log (D12), and one it
-    consumes from a sibling is that sibling's to include.
-  - **X6.** Every `correlate` field is in every included event, required and
-    non-personal, as a contract's `correlate` is checked for the sibling events it
-    includes (`EhOsContract.Contract.Links.Siblings.problems/4`). A process module
-    has no events of its own to type the field, so it is held to what a run's key may
-    be, an `:id` (F8), and every included event carries it as the same identifier: a
-    plain `:id` agrees with one domain value resting on `:id`, two different values do
-    not, whatever the order of the includes.
-
-  X7, a process module's `id:` taken by another process, is `Links.System`'s. The
-  error stands at the module's `use` for what names the whole module, and at the stage
-  for what one of its includes gets wrong.
-  """
+  # The rules between modules for a process module, `use EhOsContract.Process` (plan DD,
+  # P2c, #210): what it names in its domain and in the contracts it includes, which it
+  # names without a compile dependency, so no rule inside the module (L2) can look them
+  # up. The codes are the contract's for the same thing.
+  #
+  # - **X1.** `domain:` names a compiled `EhOsContract.Domain`. When it does not, nothing
+  #   else here is checked, since there is nothing to check it against.
+  # - **D11**, the part that needs the domain: `id:` is under the application's
+  #   namespace, the domain's `name:`.
+  # - **X2.** `accountable` names an actor of the domain. A process module belongs to no
+  #   context, since it crosses them, so the actor may be of any context of the domain,
+  #   or of none.
+  # - **X5.** Every `include:` names a compiled v2 contract of the same domain, and an
+  #   event that contract declares itself. An event a contract receives from another
+  #   application arrives in an inbox and never enters this log (D12), and one it
+  #   consumes from a sibling is that sibling's to include.
+  # - **X6.** Every `correlate` field is in every included event, required and
+  #   non-personal, as a contract's `correlate` is checked for the sibling events it
+  #   includes (`EhOsContract.Contract.Links.Siblings.problems/4`). A process module
+  #   has no events of its own to type the field, so it is held to what a run's key may
+  #   be, an `:id` (F8), and every included event carries it as the same identifier: a
+  #   plain `:id` agrees with one domain value resting on `:id`, two different values do
+  #   not, whatever the order of the includes.
+  #
+  # X7, a process module's `id:` taken by another process, is `Links.System`'s. The
+  # error stands at the module's `use` for what names the whole module, and at the stage
+  # for what one of its includes gets wrong.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.{Links, Rules}

@@ -1,19 +1,18 @@
 defmodule EhOsContract.View do
-  @moduledoc """
-  A domain as a tree, for a terminal (ESDM's `view`; plan EL2): the domain, its
-  contexts, the contracts in each, and in each contract its units with their
-  commands and events, its consumers, read models, queries and domain services.
-  `mix eh_os_contract.view` prints it.
-
-  ESDM's tree goes domain → context → unit; here a contract stands between the
-  context and its units, since a contract is what a context holds (v2 §4.1). Each
-  row is a kind, a name and what connects it: `→` what it produces or reads, `←`
-  what it is produced by or takes. `details: true` adds what a row declares
-  underneath it — identity, fields, invariants, constraints.
-
-  Everything comes in declaration order, as every reader of the model prints
-  (v2 §9); labels are the client's, printed as declared.
-  """
+  # A domain as a tree, for a terminal (ESDM's `view`; plan EL2): the domain, its
+  # contexts, the contracts in each, and in each contract its units with their
+  # commands and events, its consumers, read models, queries and domain services.
+  # `mix eh_os_contract.view` prints it.
+  #
+  # ESDM's tree goes domain → context → unit; here a contract stands between the
+  # context and its units, since a contract is what a context holds (v2 §4.1). Each
+  # row is a kind, a name and what connects it: `→` what it produces or reads, `←`
+  # what it is produced by or takes. `details: true` adds what a row declares
+  # underneath it — identity, fields, invariants, constraints.
+  #
+  # Everything comes in declaration order, as every reader of the model prints
+  # (v2 §9); labels are the client's, printed as declared.
+  @moduledoc false
 
   @typep tree :: {String.t(), [String.t()], [tree()]}
 

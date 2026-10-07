@@ -1,24 +1,23 @@
 defmodule EhOsContract.Check.Catalog do
-  @moduledoc """
-  Every rule `mix eh_os_contract.check` reports on, under a name that does not
-  change (layer L5 of v2 §6; plan EL1).
-
-  A rule's name is what a reader searches for, what `--format json` carries, and
-  what a test pins; its sentence may be reworded, its name may not. Where the rule
-  is one of ESDM's, the name is ESDM's, without ESDM's `esdm/<category>/` prefix:
-  the library takes ESDM's functionality, not its namespace, and a rule of ours
-  sometimes means more or less than ESDM's does — `esdm` says which of ESDM's it
-  follows and the text says where it differs. The level is fixed per rule, as in
-  ESDM, and nothing silences one: a finding goes away when the model changes.
-
-  `docs/rules.md` is generated from this list (by `eh_os_contract.rules`, a task of
-  the package's own `dev/`, not shipped), one
-  entry per rule, and each finding links to its entry.
-
-  The rules of the compiler — `N1`, `X2` and the rest of L2 and L3 — are not here.
-  They are errors a contract cannot compile with, they keep the codes they are
-  printed with, and v2 §6 is their reference.
-  """
+  # Every rule `mix eh_os_contract.check` reports on, under a name that does not
+  # change (layer L5 of v2 §6; plan EL1).
+  #
+  # A rule's name is what a reader searches for, what `--format json` carries, and
+  # what a test pins; its sentence may be reworded, its name may not. Where the rule
+  # is one of ESDM's, the name is ESDM's, without ESDM's `esdm/<category>/` prefix:
+  # the library takes ESDM's functionality, not its namespace, and a rule of ours
+  # sometimes means more or less than ESDM's does — `esdm` says which of ESDM's it
+  # follows and the text says where it differs. The level is fixed per rule, as in
+  # ESDM, and nothing silences one: a finding goes away when the model changes.
+  #
+  # `docs/rules.md` is generated from this list (by `eh_os_contract.rules`, a task of
+  # the package's own `dev/`, not shipped), one
+  # entry per rule, and each finding links to its entry.
+  #
+  # The rules of the compiler — `N1`, `X2` and the rest of L2 and L3 — are not here.
+  # They are errors a contract cannot compile with, they keep the codes they are
+  # printed with, and v2 §6 is their reference.
+  @moduledoc false
 
   @typedoc """
   One rule: its name, its level, the ESDM rule it follows

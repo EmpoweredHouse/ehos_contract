@@ -1,31 +1,30 @@
 defmodule EhOsContract.Contract.Build do
-  @moduledoc """
-  Builds a v2 contract's model and compiles it into the module as
-  `__eh_os_contract_model__/0` (v2 §9).
-
-  Runs last, after every rule, so the model is only built from a contract that is
-  well formed. It is plain data: maps, lists, atoms, strings, integers and booleans,
-  with durations as `%{amount: 24, unit: :hour}`. Spark's structs and source
-  annotations stay behind.
-
-  **Collections keep declaration order**, because readers print in it (E1's
-  correction to v2 §9). A unit's commands and events are lifted to the top level,
-  each naming its `unit`, so a reader asking for an event does not walk units; an
-  event declared in a stage group carries that `stage`. `grants` says, per actor,
-  which commands it may issue, queries it may ask and events it may record.
-
-  **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
-  first in its state, in each of its commands and in each of its events, as if they
-  had been declared there. A process manager's `correlate` fields come first in its
-  state the same way, unless the state declares them.
-
-  **The digest does not see declaration order.** Every collection of declarations
-  is a set to it, nested ones included, and so is every value with set meaning
-  (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
-  and `correlate`, the process's stages, and a scenario's givens and expectations.
-  Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
-  one, `"scenario:*"`, since nothing names them.
-  """
+  # Builds a v2 contract's model and compiles it into the module as
+  # `__eh_os_contract_model__/0` (v2 §9).
+  #
+  # Runs last, after every rule, so the model is only built from a contract that is
+  # well formed. It is plain data: maps, lists, atoms, strings, integers and booleans,
+  # with durations as `%{amount: 24, unit: :hour}`. Spark's structs and source
+  # annotations stay behind.
+  #
+  # **Collections keep declaration order**, because readers print in it (E1's
+  # correction to v2 §9). A unit's commands and events are lifted to the top level,
+  # each naming its `unit`, so a reader asking for an event does not walk units; an
+  # event declared in a stage group carries that `stage`. `grants` says, per actor,
+  # which commands it may issue, queries it may ask and events it may record.
+  #
+  # **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
+  # first in its state, in each of its commands and in each of its events, as if they
+  # had been declared there. A process manager's `correlate` fields come first in its
+  # state the same way, unless the state declares them.
+  #
+  # **The digest does not see declaration order.** Every collection of declarations
+  # is a set to it, nested ones included, and so is every value with set meaning
+  # (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
+  # and `correlate`, the process's stages, and a scenario's givens and expectations.
+  # Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
+  # one, `"scenario:*"`, since nothing names them.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 

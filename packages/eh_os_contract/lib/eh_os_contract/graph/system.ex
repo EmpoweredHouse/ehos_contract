@@ -1,25 +1,24 @@
 defmodule EhOsContract.Graph.System do
-  @moduledoc """
-  A domain's v2 contracts as one graph (plan EG2): each context a group of the
-  contracts in it, and between contracts what one consumes from another — an arrow
-  from the contract that declares the events to the one that consumes them, carrying
-  their names.
-
-  What crosses to another application goes through a publication, drawn as a node
-  of its own and named as it is on the wire: a contract's `publish` is an arrow to
-  it, and a `subscribe` to a published name an arrow from it. A contract that
-  publishes a name and one that subscribes to it meet on the same node.
-
-  `overlay: true` lays the log over it. On each contract with a process, the runs of
-  that process. On each edge between two contracts, how many of the consumed events
-  the log holds, and what waits or fails at the consumer's steps that start from
-  them (`EhOsContract.Paths`): an edge that carries events nobody has handled yet
-  says so. A publication carries no count: what another application did with it is
-  not in this log. `since:` and `until:` bound the log, as in the report.
-
-  Navigation inside a contract stays per process (ADR §9): this is the map between
-  contracts, and each contract's own picture is `EhOsContract.Graph.Contract`'s.
-  """
+  # A domain's v2 contracts as one graph (plan EG2): each context a group of the
+  # contracts in it, and between contracts what one consumes from another — an arrow
+  # from the contract that declares the events to the one that consumes them, carrying
+  # their names.
+  #
+  # What crosses to another application goes through a publication, drawn as a node
+  # of its own and named as it is on the wire: a contract's `publish` is an arrow to
+  # it, and a `subscribe` to a published name an arrow from it. A contract that
+  # publishes a name and one that subscribes to it meet on the same node.
+  #
+  # `overlay: true` lays the log over it. On each contract with a process, the runs of
+  # that process. On each edge between two contracts, how many of the consumed events
+  # the log holds, and what waits or fails at the consumer's steps that start from
+  # them (`EhOsContract.Paths`): an edge that carries events nobody has handled yet
+  # says so. A publication carries no count: what another application did with it is
+  # not in this log. `since:` and `until:` bound the log, as in the report.
+  #
+  # Navigation inside a contract stays per process (ADR §9): this is the map between
+  # contracts, and each contract's own picture is `EhOsContract.Graph.Contract`'s.
+  @moduledoc false
 
   import Ecto.Query
 

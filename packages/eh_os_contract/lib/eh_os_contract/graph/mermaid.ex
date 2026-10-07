@@ -1,18 +1,17 @@
 defmodule EhOsContract.Graph.Mermaid do
-  @moduledoc """
-  Draws a graph built as data — nodes, edges and groups — as a Mermaid flowchart
-  (plan EG). The v2 graphs are built first and drawn here, so a renderer other than
-  Mermaid needs only the data.
-
-  A node is `%{id, kind, label}` and may carry `counts`, its occurrences; its
-  kind gives its shape and its class, in the Event Storming colours. An edge is
-  `%{from, to, line, head, label}`: `line` is `:solid` or `:dotted`, and `head: false`
-  is a relation that is not a delivery, drawn without an arrowhead. A group is
-  `%{id, label, nodes}`, drawn as a subgraph holding those nodes.
-
-  Labels are the client's and may hold anything they wrote; what breaks a quoted
-  Mermaid label is a double quote and a line break (`escape/1`).
-  """
+  # Draws a graph built as data — nodes, edges and groups — as a Mermaid flowchart
+  # (plan EG). The v2 graphs are built first and drawn here, so a renderer other than
+  # Mermaid needs only the data.
+  #
+  # A node is `%{id, kind, label}` and may carry `counts`, its occurrences; its
+  # kind gives its shape and its class, in the Event Storming colours. An edge is
+  # `%{from, to, line, head, label}`: `line` is `:solid` or `:dotted`, and `head: false`
+  # is a relation that is not a delivery, drawn without an arrowhead. A group is
+  # `%{id, label, nodes}`, drawn as a subgraph holding those nodes.
+  #
+  # Labels are the client's and may hold anything they wrote; what breaks a quoted
+  # Mermaid label is a double quote and a line break (`escape/1`).
+  @moduledoc false
 
   @typedoc "A node of a graph built as data."
   @type graph_node :: %{

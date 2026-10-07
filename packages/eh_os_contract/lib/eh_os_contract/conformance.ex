@@ -34,13 +34,37 @@ defmodule EhOsContract.Conformance do
 
   ## The shape
 
-  A path is a step of `EhOsContract.Paths`, so the command is a node, and what
-  waits and what fails is split by source; the assertions are the process's
-  `promises` (v2 §13, plan E7c). An aggregate that declares its lifecycle adds the
-  first two questions for its transitions, under `lifecycles` (plan LC3). `as_data/2`
-  names the shape `eh_os_contract.conformance.v3`: from plan DD, P1a (#183), the steps
-  are the contract's (`activity`, `paths`) and `contract` is its `id:`, with `module`
-  beside it. v2 is not served.
+  A path is one step the contract declares, and the command is a node of its own:
+
+  | Step | from | via | to |
+  | --- | --- | --- | --- |
+  | a command emits | the command | — | the event |
+  | a reaction issues | the event | the policy or process manager | the command |
+  | a policy issues on a received event | another application's event | the policy | the command |
+  | a timer issues | the timer | the process manager | the command |
+  | an effect acts | the event | the effect | — |
+
+  Each end is `%{kind, name, label}`. A step says how often it was `taken`, counted
+  in occurrences whatever run, if any, each falls in. An effect leaves nothing in the
+  log when it acts, so its `taken` is `nil`: it is never untraversed, only waiting or
+  failing.
+
+  What waits (`in_flight`) and what fails (`failing`) are split by source, because
+  each goes to a different person. Waiting: events an ordered consumer has not reached
+  yet (`lag`), timers scheduled and not fired (`timers`), effect jobs not run yet
+  (`effects`). Failing: commands that failed where the step runs (`commands`), the
+  consumer's subscription stopped at an event it cannot apply (`subscription`), effect
+  jobs Oban discarded (`effects`). A command that failed in its decision, or in a read
+  model's projection, fails every step it emits. A step a policy takes on another
+  application's event is never waiting or failing: a delivery its policy fails on is
+  rolled back and delivered again by the transport, so a path that always fails there
+  reads as untraversed.
+
+  The assertions are the process's `promises`. An aggregate that declares its
+  lifecycle adds the first two questions for its transitions, under `lifecycles`.
+  `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
+  contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
+  it. v2 is not served.
 
   ## The boundary
 
@@ -116,10 +140,10 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report of the contract `model` (`EhOsContract.Model.fetch/1`), as `report/2`
-  gives it. The four questions: a path is a step of `EhOsContract.Paths` — from, via,
-  to, each `%{kind, name, label}` — with how often it was taken and each source of
-  waiting and failing apart, and the steps are the contract's whether or not it has a
-  process (plan DD, P1a, #183); the assertions are a process's promises, judged by
+  gives it. The four questions: a path is a step — from, via, to, each
+  `%{kind, name, label}` — with how often it was taken and each source of waiting and
+  failing apart (see "The shape" above), and the steps are the contract's whether or
+  not it has a process; the assertions are a process's promises, judged by
   `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
   left out: a declaration or a promise the owner has not confirmed, and every untaken
   step when nothing happened in the contract.

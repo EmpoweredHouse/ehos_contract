@@ -1,16 +1,15 @@
 defmodule EhOsContract.Inbox do
   @moduledoc """
-  Where another application's published event arrives (v2 §16, D12): one durable
-  consumer on `EhOsContract.Bus` per `subscribe "<name>"` that a policy handles
-  (`EhOsContract.Implementations.inboxes/0`). The event never enters this
-  application's log; what its policies decide does.
+  Where another application's published event arrives: one durable consumer on
+  `EhOsContract.Bus` per `subscribe "<name>"` that a policy handles. The event never
+  enters this application's log; what its policies decide does.
 
   **One transaction, then the acknowledgement.** A message is decoded into the
   contract's received struct, `C.Received.X`, and in one transaction the inbox
   writes its row in `eh_os_contract_inbox` and runs each policy that handles it,
   whose commands are dispatched as a policy's always are. Only once that commits does
-  it answer `:ack`, and wake the runners if those commands appended what one reads
-  (`EhOsContract.Subscription.Runner.transaction/2`). A consumer that stops in
+  it answer `:ack`, and wake the consumers fed from the log if those commands
+  appended what one reads. A consumer that stops in
   between gets the message again, and finds either nothing written or the row.
 
   **One fact, one reaction.** The row is keyed by the inbox and the message's key
@@ -50,8 +49,8 @@ defmodule EhOsContract.Inbox do
   taken.
 
   **When it subscribes.** The engine's tree starts every inbox before any relay
-  (`EhOsContract`, the child a host adds), each through an `EhOsContract.Inbox.Keeper` that
-  starts the adapter's consumer in its own `init`, and a consumer is subscribed once
+  (`EhOsContract`, the child a host adds), each through a keeper process that starts
+  the adapter's consumer while it starts itself, and a consumer is subscribed once
   its child has started, so in one node — two applications side by side on
   `EhOsContract.Bus.Local` — nothing a relay publishes is published before its
   subscriber is listening. A transport that refuses, at boot or later, stops neither
@@ -69,15 +68,17 @@ defmodule EhOsContract.Inbox do
 
   require Logger
 
-  @doc "The durable consumer of `inbox`, for `EhOsContract.Bus.consumer/1`."
+  # The durable consumer of `inbox`, for `EhOsContract.Bus.consumer/1`. Called by
+  # the inbox's keeper when it starts the adapter's consumer.
+  @doc false
   @spec consumer(Implementations.inbox()) :: Bus.consumer()
   def consumer(inbox), do: %{name: inbox.key, names: [inbox.from], handler: &take(inbox, &1)}
 
-  @doc """
-  Takes one delivery of `message` into `inbox`: `:ack` once its row and what its
-  policies dispatched are committed, or when the row was there already; `:nack` when
-  the message does not fit what the contract subscribes to, or a policy fails.
-  """
+  # Takes one delivery of `message` into `inbox`: `:ack` once its row and what its
+  # policies dispatched are committed, or when the row was there already; `:nack` when
+  # the message does not fit what the contract subscribes to, or a policy fails.
+  # Called as the handler `consumer/1` gives the bus, and by the inbox's tests.
+  @doc false
   @spec take(Implementations.inbox(), Bus.Message.t()) :: Bus.verdict()
   def take(inbox, %Bus.Message{} = message) do
     model = Model.fetch(inbox.contract)

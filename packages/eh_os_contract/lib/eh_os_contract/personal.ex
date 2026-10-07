@@ -345,11 +345,10 @@ defmodule EhOsContract.Personal do
     %Erased{subject: subject, id: id}
   end
 
-  @doc """
-  Raises when a read model that projects personal data defines no `forget/2`: it
-  would keep an erased subject's data in the host's tables. What the engine runs at
-  boot, on every consumer of the host's contracts.
-  """
+  # Raises when a read model that projects personal data defines no `forget/2`: it
+  # would keep an erased subject's data in the host's tables. Called by the engine's
+  # supervisor at boot, on every consumer of the host's contracts.
+  @doc false
   @spec check_forgetting!([Implementations.consumer()]) :: :ok
   def check_forgetting!(consumers) do
     missing =
@@ -445,10 +444,10 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  The function `EhOsContract.Codec.encode/4` seals the personal fields of an event
-  of `type` with, taking each subject's key from `keys`.
-  """
+  # The function `EhOsContract.Codec.encode/4` seals the personal fields of an event
+  # of `type` with, taking each subject's key from `keys`. Called by the dispatcher
+  # when it appends.
+  @doc false
   @spec sealer(current_keys(), String.t()) :: Codec.seal()
   def sealer(keys, type) do
     # Neither failure may say more than the field: `Map.fetch!/2` would print every
@@ -483,13 +482,13 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  The function `EhOsContract.Codec.decode/4` opens the sealed fields of an event of
-  `type` with. A subject `keys` has no key for opens as `:erased` when it is among
-  `erased` (`erased_among/2`), and raises otherwise: a key that is gone without an
-  erasure is a key store that is not the log's — a partial restore, another
-  database — and reading on would turn good data into erased data for good.
-  """
+  # The function `EhOsContract.Codec.decode/4` opens the sealed fields of an event of
+  # `type` with. A subject `keys` has no key for opens as `:erased` when it is among
+  # `erased` (`erased_among/2`), and raises otherwise: a key that is gone without an
+  # erasure is a key store that is not the log's — a partial restore, another
+  # database — and reading on would turn good data into erased data for good. Called
+  # by `EhOsContract.Consumer` when it decodes a row of the log.
+  @doc false
   @spec opener(keys(), String.t(), MapSet.t({String.t(), String.t()})) :: Codec.open()
   def opener(keys, type, erased \\ MapSet.new()) do
     fn

@@ -1,40 +1,39 @@
 defmodule EhOsContract.Process.Rules do
-  @moduledoc """
-  The rules a process module must satisfy to compile (plan DD, P2b, #205): layer L2,
-  under the codes the contract's rules use for the same thing.
-
-  A transformer, as the contract's rules are, and every violation is reported at
-  once, in one error that names each declaration's file and line
-  (`EhOsContract.DslRules`).
-
-  - **D11.** `id:` is the application's namespace, then dotted snake_case segments,
-    unversioned, at most 100 bytes: the contract's rule for its own id
-    (`EhOsContract.Contract.Rules.Boundaries`). Whether the namespace is the domain's
-    `name:` needs the domain, which is named without a compile dependency, so that
-    part is left to the rules between modules (L3).
-  - **N1.** Stages, promises and included events are named in snake_case, each once
-    in the process. An included event is named by its name alone in `ends_on` and in
-    a promise, so two includes resolving to one name are refused, whichever
-    contracts they come from. A label given is not blank.
-  - **R2.** The process correlates on at least one field, declared once and naming
-    each field once: with none, every event it includes would land in one run.
-  - **F9.** At most `EhOsContract.Key.max_fields/0` correlation fields: the run's key
-    is one index entry.
-  - **R3.** The process has stages, and each stage includes at least one event: a
-    stage is a step of the run, made of the contracts' events. Each entry of a stage's
-    `include:` names a contract by its module and at least one of its events; whether
-    the contract exists is left to the rules between modules.
-  - **R5.** A promise's `from`, `eventually` and `or_else`, and each event of
-    `ends_on`, is an event the process includes; `ends_on` is declared at most once.
-  - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
-    (`EhOsContract.Duration`); `deadline` is declared at most once, and only with
-    `ends_on`, since it measures a run to its end (the user's decision of
-    7 October 2026).
-
-  What one module cannot see — that each included event exists in its contract and
-  carries the `correlate` fields, that the accountable actor is the domain's — is
-  left to the rules between modules.
-  """
+  # The rules a process module must satisfy to compile (plan DD, P2b, #205): layer L2,
+  # under the codes the contract's rules use for the same thing.
+  #
+  # A transformer, as the contract's rules are, and every violation is reported at
+  # once, in one error that names each declaration's file and line
+  # (`EhOsContract.DslRules`).
+  #
+  # - **D11.** `id:` is the application's namespace, then dotted snake_case segments,
+  #   unversioned, at most 100 bytes: the contract's rule for its own id
+  #   (`EhOsContract.Contract.Rules.Boundaries`). Whether the namespace is the domain's
+  #   `name:` needs the domain, which is named without a compile dependency, so that
+  #   part is left to the rules between modules (L3).
+  # - **N1.** Stages, promises and included events are named in snake_case, each once
+  #   in the process. An included event is named by its name alone in `ends_on` and in
+  #   a promise, so two includes resolving to one name are refused, whichever
+  #   contracts they come from. A label given is not blank.
+  # - **R2.** The process correlates on at least one field, declared once and naming
+  #   each field once: with none, every event it includes would land in one run.
+  # - **F9.** At most `EhOsContract.Key.max_fields/0` correlation fields: the run's key
+  #   is one index entry.
+  # - **R3.** The process has stages, and each stage includes at least one event: a
+  #   stage is a step of the run, made of the contracts' events. Each entry of a stage's
+  #   `include:` names a contract by its module and at least one of its events; whether
+  #   the contract exists is left to the rules between modules.
+  # - **R5.** A promise's `from`, `eventually` and `or_else`, and each event of
+  #   `ends_on`, is an event the process includes; `ends_on` is declared at most once.
+  # - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
+  #   (`EhOsContract.Duration`); `deadline` is declared at most once, and only with
+  #   `ends_on`, since it measures a run to its end (the user's decision of
+  #   7 October 2026).
+  #
+  # What one module cannot see — that each included event exists in its contract and
+  # carries the `correlate` fields, that the accountable actor is the domain's — is
+  # left to the rules between modules.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 

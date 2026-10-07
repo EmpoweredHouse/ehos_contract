@@ -1,17 +1,16 @@
 defmodule EhOsContract.Check do
-  @moduledoc """
-  **Static** checks: the contract against the binary, without a single query
-  against the log.
-
-  The product plan separates the two halves of verification, and that separation
-  has a consequence for the code: this half belongs to CI, is cheap and immediate,
-  and **needs no interface**. The other half, the behavioural one, lives in
-  `EhOsContract.Conformance` and reads the log.
-
-  The logic lives here rather than in the mix task, where it would be a private
-  function — that is, **logic with no test**. A check nobody checks quietly stops
-  working.
-  """
+  # **Static** checks: the contract against the binary, without a single query
+  # against the log.
+  #
+  # The product plan separates the two halves of verification, and that separation
+  # has a consequence for the code: this half belongs to CI, is cheap and immediate,
+  # and **needs no interface**. The other half, the behavioural one, lives in
+  # `EhOsContract.Conformance` and reads the log.
+  #
+  # The logic lives here rather than in the mix task, where it would be a private
+  # function — that is, **logic with no test**. A check nobody checks quietly stops
+  # working.
+  @moduledoc false
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Contract.Links

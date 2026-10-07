@@ -1,17 +1,16 @@
 defmodule EhOsContract.Check.Completeness do
-  @moduledoc """
-  ESDM's completeness rules over v2 contracts and their domains (v2 §6, L5; plan
-  EL1): what a model may legally leave out and a reader should still hear about.
-
-  ESDM makes them warnings and so does this module; the structural rules ESDM has
-  are errors here, in L2 and L3. Each rule reads a whole domain at once — every
-  contract naming it — because what makes an actor an orphan or a context empty is
-  that *no* contract uses it, which no one contract can tell.
-
-  A domain's declarations are read with the file and line Spark kept, as L3 reads a
-  contract's, so a finding points at the actor, the context or the relation it is
-  about.
-  """
+  # ESDM's completeness rules over v2 contracts and their domains (v2 §6, L5; plan
+  # EL1): what a model may legally leave out and a reader should still hear about.
+  #
+  # ESDM makes them warnings and so does this module; the structural rules ESDM has
+  # are errors here, in L2 and L3. Each rule reads a whole domain at once — every
+  # contract naming it — because what makes an actor an orphan or a context empty is
+  # that *no* contract uses it, which no one contract can tell.
+  #
+  # A domain's declarations are read with the file and line Spark kept, as L3 reads a
+  # contract's, so a finding points at the actor, the context or the relation it is
+  # about.
+  @moduledoc false
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Domain

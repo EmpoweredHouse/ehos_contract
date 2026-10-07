@@ -1,26 +1,25 @@
 defmodule EhOsContract.Contract.Links.System do
-  @moduledoc """
-  X7, X8 and the part of D14 no single contract can check: names that have to be
-  unique across the application, and one implementation per declaration.
-
-  - **X7.** A process's name is unique across the application: it keys the process's
-    runs, so two processes of one name would share runs no reader could tell apart.
-    A process module's runs are keyed by its `id:` (plan DD, P2c, #210), so its id is
-    compared, as a string, with every other process module's id and every contract
-    process's name. It may equal a contract's `id:`: that one prefixes event types,
-    which are never a run's key.
-    So is a contract's `id:` (plan DD, ID1), which prefixes every event type the
-    contract records (`"<id>.<event>"`, from ID3).
-  - **X8.** A declaration that code implements — a unit, a policy, an effect, a
-    process manager, a read model, a query — has at most one implementation, since
-    dispatch and scenarios have to know which one runs.
-  - **D14.** A command's, a query's or a recorded event's name is unique across
-    the contracts of one domain: its capability is `<domain>.<name>`, which EHOS
-    grants by, so two declarations of one name would share it.
-
-  Of two declarations that collide, the error stands at the one in the module
-  that sorts later and names the other with its file and line.
-  """
+  # X7, X8 and the part of D14 no single contract can check: names that have to be
+  # unique across the application, and one implementation per declaration.
+  #
+  # - **X7.** A process's name is unique across the application: it keys the process's
+  #   runs, so two processes of one name would share runs no reader could tell apart.
+  #   A process module's runs are keyed by its `id:` (plan DD, P2c, #210), so its id is
+  #   compared, as a string, with every other process module's id and every contract
+  #   process's name. It may equal a contract's `id:`: that one prefixes event types,
+  #   which are never a run's key.
+  #   So is a contract's `id:` (plan DD, ID1), which prefixes every event type the
+  #   contract records (`"<id>.<event>"`, from ID3).
+  # - **X8.** A declaration that code implements — a unit, a policy, an effect, a
+  #   process manager, a read model, a query — has at most one implementation, since
+  #   dispatch and scenarios have to know which one runs.
+  # - **D14.** A command's, a query's or a recorded event's name is unique across
+  #   the contracts of one domain: its capability is `<domain>.<name>`, which EHOS
+  #   grants by, so two declarations of one name would share it.
+  #
+  # Of two declarations that collide, the error stands at the one in the module
+  # that sorts later and names the other with its file and line.
+  @moduledoc false
 
   alias EhOsContract.Contract.{Links, Rules}
 

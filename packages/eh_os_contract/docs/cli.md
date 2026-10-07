@@ -68,6 +68,15 @@ declaration it is about. What each rule means and how to clear it is in
 repeated here keeps the compiler's code instead. Nothing silences a rule: a
 finding goes away when the model changes.
 
+Findings come out errors first, then warnings, then notices, each group sorted by
+its text, so the same findings print the same output from one run to the next. In
+the human format a finding is a line with its level, rule and message, and a second
+line saying where the declaration it is about was written and where its rule is
+documented, when anything says either; a count closes the report. In JSON a finding
+is `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and
+`line` (`null` when nothing says where) and `documentation` (`null` for a repeated
+compiler rule, which the catalogue does not document).
+
 `--format json` prints the array and nothing else, but the compile this task runs
 first prints what it prints: compile beforehand when a program reads the output.
 `--warnings-as-errors` changes the exit status, and nothing that is printed.
@@ -154,7 +163,7 @@ contract's own steps are `--contract`'s.
 Writes the domain and its contracts as Markdown pages, one per element
 
 The application's domain and its contracts as linked Markdown pages, one per
-element (`EhOsContract.Pages`; ESDM's `documentation`).
+element.
 
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?

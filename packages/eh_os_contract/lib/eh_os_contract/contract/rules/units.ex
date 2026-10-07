@@ -1,30 +1,29 @@
 defmodule EhOsContract.Contract.Rules.Units do
-  @moduledoc """
-  A1–A5 and C1 of v2 §6: what a unit decides, and who can ask it to.
-
-  - **A1.** A command emits something, and only events of its own unit.
-  - **A2.** Every event is emitted by a command of its unit, or declares
-    `recorded_by:` (D6). Stricter than ESDM on purpose: in an event-sourced log,
-    an event nothing produces can never occur.
-  - **A3.** A command rejects only invariants of its own unit, and its own
-    constraints (plan EL2).
-  - **A4.** A dynamic consistency boundary consults at least one event; each one
-    is an event of this log — its own or a sibling contract's, not one received from
-    another application (D12) — and says which by `match:`
-    or `where:`; `match:` names fields of the boundary's identity, which a local
-    consulted event carries as required, non-personal `:id` fields — its unit's
-    identity, or fields of its own. Only such fields are tags of an appended event,
-    and a boundary finds what it consults by its tags. For an event consumed from a
-    sibling contract the same is X6's, where the sibling is known.
-  - **A5.** A unit, or a process manager, declares its state at most once.
-  - **A7** (plan EL2). A command's constraints are never named as an invariant of its
-    unit, and each is in the command's `rejects:`; N1 names each once.
-  - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
-    field, and at least one command that `creates:` it, since nothing else could make
-    a new one; `creates:` belongs only to such an aggregate's commands.
-  - **C1.** A command can be issued: it names actors in `by:`, or a policy or a
-    process manager of this contract issues it.
-  """
+  # A1–A5 and C1 of v2 §6: what a unit decides, and who can ask it to.
+  #
+  # - **A1.** A command emits something, and only events of its own unit.
+  # - **A2.** Every event is emitted by a command of its unit, or declares
+  #   `recorded_by:` (D6). Stricter than ESDM on purpose: in an event-sourced log,
+  #   an event nothing produces can never occur.
+  # - **A3.** A command rejects only invariants of its own unit, and its own
+  #   constraints (plan EL2).
+  # - **A4.** A dynamic consistency boundary consults at least one event; each one
+  #   is an event of this log — its own or a sibling contract's, not one received from
+  #   another application (D12) — and says which by `match:`
+  #   or `where:`; `match:` names fields of the boundary's identity, which a local
+  #   consulted event carries as required, non-personal `:id` fields — its unit's
+  #   identity, or fields of its own. Only such fields are tags of an appended event,
+  #   and a boundary finds what it consults by its tags. For an event consumed from a
+  #   sibling contract the same is X6's, where the sibling is known.
+  # - **A5.** A unit, or a process manager, declares its state at most once.
+  # - **A7** (plan EL2). A command's constraints are never named as an invariant of its
+  #   unit, and each is in the command's `rejects:`; N1 names each once.
+  # - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
+  #   field, and at least one command that `creates:` it, since nothing else could make
+  #   a new one; `creates:` belongs only to such an aggregate's commands.
+  # - **C1.** A command can be issued: it names actors in `by:`, or a policy or a
+  #   process manager of this contract issues it.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules

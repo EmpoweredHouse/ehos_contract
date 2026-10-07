@@ -37,11 +37,10 @@ defmodule EhOsContract.Deployment do
   those events resolve to, which is what the code decides and the declarations do not
   say — a contract renamed under the same module moves it.
 
-  Both hashes now come from `EhOsContract.Digest`, so neither depends on term encoding,
-  module load order or OTP release. That was originally true here and not of
-  `version/0`, which used `:erlang.term_to_binary/1` — an OTP upgrade could have
-  reclassified the whole log as belonging to an older agreement. Fixed by moving
-  both to one canonical form rather than by hardening one of them.
+  Both hashes are taken over one canonical form of the declarations, so neither
+  depends on term encoding, module load order or OTP release: the same agreement
+  hashes the same way on every machine, and an OTP upgrade does not reclassify the
+  log as belonging to an older agreement.
   """
 
   use Ecto.Schema
