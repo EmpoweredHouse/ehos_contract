@@ -62,7 +62,7 @@ entries in `process`. An event born in a sibling process is not declared again: 
 
 ## Fields
 
-Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contract-dsl.md`, `field`):
+Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contract-aggregate.md`, `aggregate.event.field`):
 
 - Built-in: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`.
   Anything else is a `value` of the domain (`X3`), and a thing the business recognises — money, a
