@@ -144,6 +144,7 @@ An intention an actor or a reaction issues to a unit.
 | `rejects` | `atom \| list(atom)` |  | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | `creates` | `boolean` |  | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | `scope` | `atom` |  |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| `reads` | `keyword` |  | `[]` | The entities the decision reads, `[service: :service_id]`: the name each row arrives under in the decision's third argument, and the command's field, typed `{:id, entity}`, that names it. |
 | `source` | `String.t` |  |  | Where the command comes from in the material. |
 
 Inside it: [`field`](#contract-dcb-command-field), [`constraint`](#contract-dcb-command-constraint).

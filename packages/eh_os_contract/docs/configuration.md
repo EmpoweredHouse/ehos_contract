@@ -26,6 +26,9 @@ message naming the key.
 * `:supplier` (a module) - The `EhOsContract.Supplier` giving the fields a contract declares `supplied_by:
   :host`. The engine does not start when such a field exists and this is not set.
 
+* `:entities` (a module) - The `EhOsContract.Entities` giving the rows of the entities a command `reads:`.
+  The engine does not start when such a command exists and this is not set.
+
 * `:vault` (a module) - The `EhOsContract.Vault` holding the master keys that wrap each subject's data
   key, for example a KMS. The default value is `EhOsContract.Vault.Local`.
 

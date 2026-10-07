@@ -22,6 +22,11 @@ defmodule EhOsContract.ContractLinksScenariosTest do
         value :money, :integer, unit: :grosze
         value :status, {:enum, [:active, :expired]}
 
+        entity :service, "Usługa", context: :settlement, identity: :service_id do
+          field :p1_reported, :boolean
+          field :fee, :money, optional: true
+        end
+
         value :address do
           field :street, :string
           field :city, :string
@@ -293,6 +298,53 @@ defmodule EhOsContract.ContractLinksScenariosTest do
 
       assert_linked(violations, "argument :address: :address needs :city", "rule_values_wrong.ex")
       assert_linked(violations, ~s|the result: "sto" is not an :integer|, "rule_values_wrong.ex")
+    end
+  end
+
+  describe "the row of an entity a command reads (plan DD, T2a, #240)" do
+    # The given_entity at line 18.
+    defp booking(name, row) do
+      {"#{Macro.underscore(name)}.ex",
+       """
+       defmodule #{inspect(Module.concat(@fixtures, name))} do
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
+
+         aggregate :visit, "Wizyta" do
+           identity :visit_id
+
+           command :book_visit, "Umów", by: :reception, emits: :visit_booked, reads: [service: :service_id] do
+             field :service_id, {:id, :service}
+           end
+
+           event :visit_booked, "Umówiono"
+         end
+
+         scenario "umówienie" do
+           given_entity :service, #{row}
+           command :book_visit, %{service_id: "s-1"}
+           expect :visit_booked
+         end
+       end
+       """}
+    end
+
+    test "control: a row of the entity's fields, its identity among them, passes" do
+      assert links([booking("ScnEntityRight", ~s|%{service_id: "s-1", p1_reported: true}|)]) ==
+               []
+    end
+
+    test "a field the entity lacks, one it requires, and a value of the wrong type" do
+      violations =
+        links([booking("ScnEntityWrong", ~s|%{p1_reported: "tak", fee: -1.5, colour: :red}|)])
+
+      for problem <- [
+            "given_entity :service, no field :colour",
+            "given_entity :service, needs :service_id",
+            ~s|given_entity :service, field :p1_reported: "tak" is not a :boolean|,
+            "given_entity :service, field :fee:"
+          ] do
+        assert_linked(violations, problem, "scn_entity_wrong.ex")
+      end
     end
   end
 end

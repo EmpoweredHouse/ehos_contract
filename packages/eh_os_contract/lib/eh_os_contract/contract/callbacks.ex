@@ -41,7 +41,10 @@ defmodule EhOsContract.Contract.Callbacks do
 
     commands =
       for c <- model.commands, c.unit == name do
-        callback(c.name, [t(Model.module_for(model, :command, c.name)), t(state)], decision(),
+        callback(
+          c.name,
+          [t(Model.module_for(model, :command, c.name)), t(state)] ++ reads(c),
+          decision(),
           emits: c.emits,
           rejects: c.rejects
         )
@@ -218,6 +221,15 @@ defmodule EhOsContract.Contract.Callbacks do
       # a value's check, which takes the value by its name.
       names: Keyword.get(produces, :names, [])
     }
+  end
+
+  # Plan DD, T2a (#240): a command that reads entities is decided with them, a third
+  # argument holding each row under the name `reads:` gives it.
+  defp reads(command) do
+    case Map.get(command, :reads, []) do
+      [] -> []
+      reads -> [{:%{}, [], for({name, _field} <- reads, do: {name, quote(do: map())})}]
+    end
   end
 
   defp event(model, name), do: t(Model.module_for(model, :event, name))

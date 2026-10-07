@@ -22,7 +22,10 @@ config :eh_os_contract,
   subscriptions: :manual,
   # Plan T1: `SupplyRig` declares fields the host supplies, and a node with such a field
   # and no supplier does not start.
-  supplier: SupplyRig.Supplier
+  supplier: SupplyRig.Supplier,
+  # Plan DD, T2a (#240): `ReadRig` reads an entity, and a node with such a command and no
+  # `EhOsContract.Entities` does not start.
+  entities: ReadRig.Entities
 
 # The master key of the invented fixtures' personal fields (`ShreddingRig`). A test
 # key, in a file only this package's suite reads; a host's comes from its runtime

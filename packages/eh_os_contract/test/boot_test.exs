@@ -44,6 +44,45 @@ defmodule EhOsContract.BootTest do
     assert message =~ ":autorizer"
   end
 
+  # Plan DD, T2a (#240). DDL is transactional, so the sandbox rolls the version back.
+  test "storage at an older version than the release needs stops the boot, saying what to run" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '1'")
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+
+    assert message =~
+             "storage is at version 1, and this release needs version 2: add a migration " <>
+               "calling EhOsContract.Migrations.up(version: 2)"
+
+    assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
+           "refused before anything is recorded"
+  end
+
+  test "storage missing stops the boot too, saying to migrate" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS NULL")
+    assert {:error, {{%ArgumentError{message: none}, _}, _}} = start_supervised(EhOsContract)
+    assert none =~ "has no eh_os_contract storage in its current schema"
+  end
+
+  # A node of this release restarting while a newer one rolls out, or code rolled back
+  # without its migration.
+  test "control: storage a newer release migrated lets the boot through" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '3'")
+    assert start_supervised!(EhOsContract)
+  end
+
+  defmodule UnreachableRepo do
+    @moduledoc false
+    def query!(_sql, _params, _opts),
+      do: raise(DBConnection.ConnectionError, "too many connections")
+  end
+
+  test "a database the boot cannot ask fails as itself, never as storage to migrate" do
+    assert_raise DBConnection.ConnectionError, "too many connections", fn ->
+      EhOsContract.Migrations.check!(UnreachableRepo)
+    end
+  end
+
   defmodule Unforgetting do
     @moduledoc false
   end

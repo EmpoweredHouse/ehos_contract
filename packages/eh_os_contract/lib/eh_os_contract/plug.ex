@@ -38,7 +38,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | accepted | 200 | `command_id`, `identity` (the unit's, the one the library gave when the command created it), `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "supplied" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; `supplied` for a field the host supplies (`supplied_by: :host`, plan T1), sent at all; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "supplied" \\| "unknown" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; `supplied` for a field the host supplies (`supplied_by: :host`, plan T1), sent at all; `unknown` for a field naming an entity the command `reads:` that the host does not have (`EhOsContract.Entities`); an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
     | a query string Plug cannot read: not UTF-8, nested too deep | 400 | `{"error": "invalid_query_string"}` |
     | a query string past Plug's length | 414 | `{"error": "invalid_query_string"}` |

@@ -33,7 +33,7 @@ defmodule EhOsContract.Implementation do
 
   | Kind | Callbacks |
   | --- | --- |
-  | aggregate, dcb | one per command, `(command, state) :: decision`; `evolve/2` when the unit declares a state |
+  | aggregate, dcb | one per command, `(command, state) :: decision`, or `(command, state, reads) :: decision` for a command that `reads:` entities; `evolve/2` when the unit declares a state |
   | policy | one per handled event, `(event) :: issued` |
   | effect | one per handled event, `(event) :: :ok \\| {:error, term}` |
   | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
@@ -41,6 +41,10 @@ defmodule EhOsContract.Implementation do
   | query | one, named after it, `(params, ctx) :: rows` |
   | domain service | one per function, `(arguments…) :: result`, typed as declared |
   | value, of a domain | one per invariant, `(value) :: boolean` |
+
+  `reads` holds each entity the command reads under the name its `reads:` gives it,
+  as the host's `EhOsContract.Entities` returned it: `%{service: %{service_id: "s-1",
+  p1_reported: true}}`.
 
   A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a

@@ -429,6 +429,55 @@ defmodule EhOsContract.ScenarioCase do
   defp run(model, scenario, impl, identity, givens, now, _found),
     do: run(model, scenario, impl, identity, givens, now)
 
+  # Plan DD, T2a (#240): a command that reads entities is decided with their rows, as
+  # dispatch decides it: each the scenario's `given_entity` of that entity whose identity
+  # is the value the command names, its fields cast as the host's row would be.
+  defp reads(model, %{reads: [_ | _] = reads} = declaration, command, scenario) do
+    domain = Model.fetch(model.domain)
+
+    rows =
+      Map.new(reads, fn {name, field} ->
+        %{refers_to: entity} = Enum.find(declaration.fields, &(&1.name == field))
+        declared = Enum.find(domain.entities, &(&1.name == entity))
+        id = Map.fetch!(command, field)
+
+        given =
+          Enum.find(
+            Map.get(scenario, :given_entities, []),
+            &(&1.entity == entity and Map.get(&1.data, declared.identity) == id)
+          ) ||
+            flunk(
+              "command #{inspect(declaration.name)} reads #{inspect(entity)} " <>
+                "#{inspect(id)}, and the scenario gives no given_entity #{inspect(entity)} " <>
+                "with #{inspect(declared.identity)}: #{inspect(id)}"
+            )
+
+        {name, row!(model, declared, given.data)}
+      end)
+
+    [rows]
+  end
+
+  defp reads(_model, _declaration, _command, _scenario), do: []
+
+  # The row as dispatch hands it over: every declared field, `nil` where the scenario
+  # leaves an optional one out, and each value held to its domain value's invariants.
+  defp row!(model, declared, data) do
+    cast = cast_data(declared.fields, data, domain(model))
+    row = Map.new(declared.fields, &{&1.name, Map.get(cast, &1.name)})
+
+    case EhOsContract.Codec.problems(declared.fields, row, domain(model), model.domain) do
+      [] ->
+        row
+
+      problems ->
+        flunk(
+          "given_entity #{inspect(declared.name)}: the row does not fit its declaration: " <>
+            inspect(problems)
+        )
+    end
+  end
+
   # Every expected row matches a different answered row, trying each pairing: a row
   # that names fewer fields may match several, and the first fit need not be the one
   # that lets the others fit.
@@ -468,7 +517,7 @@ defmodule EhOsContract.ScenarioCase do
             status
           )
 
-        apply(impl, command, [decided, state])
+        apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
       else
         {:refused_in, status, declaration.or_rejects}
       end

@@ -27,6 +27,20 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A command can read an entity the application keeps before it is decided** (plan DD, stage T2a, #240). A
+  command declares `reads: [service: :service_id]`, naming a required field of its own typed `{:id, entity}`
+  and issued only by an actor, never a policy or a process manager (a new compile refusal, A8); its decision
+  takes a third argument, the rows read by name. The host gives them through a new behaviour,
+  `EhOsContract.Entities` (`config :eh_os_contract, entities: MyApp.Entities`, `fetch(actor, domain, entity,
+  id)`), asked once per command before its transaction, as the actor who issued it; a row not found refuses the
+  command with `{:invalid, [{field, :unknown}]}`, a 422, and a row that does not fit its entity, or is another
+  one than asked for, raises `EhOsContract.Entities.UnfitRowError`. What was read is kept in a new column,
+  `inputs`, of `eh_os_contract_commands`. A scenario gives a row with `given_entity` (S12, and X9 for its
+  fields). A value invariant may no longer be named `:unknown` (D9). **A host has to act:** add a migration
+  calling `EhOsContract.Migrations.up(version: 2)` (and `down(version: 2)`), since the storage is now at
+  version 2 and **the engine no longer starts on storage missing or older** than the version it needs; and
+  configure `entities:` once a contract declares `reads:`, or the node does not start.
+
 - **The report, the deployment record and the check show a process module** (plan DD, stage P2d, #213).
   `EhOsContract.Registry` finds process modules beside contracts (`processes/0`, `process/1` by id).
   `EhOsContract.Conformance.report/2` of a process module gives the process section a contract's process gets

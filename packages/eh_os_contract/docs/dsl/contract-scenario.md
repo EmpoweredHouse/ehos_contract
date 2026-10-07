@@ -28,7 +28,7 @@ Given events, a trigger, and what follows: an example the process owner reads.
 | `illustrates` | `atom \| list(atom)` |  | `[]` | The rules this case shows: a constraint of the policy, process manager or query, or an invariant of the process manager. |
 | `ended` | `boolean` |  | `false` | Whether the process manager ends. |
 
-Inside it: [`given`](#contract-scenario-given), [`command`](#contract-scenario-command), [`on`](#contract-scenario-on), [`query`](#contract-scenario-query), [`expect`](#contract-scenario-expect), [`issues`](#contract-scenario-issues), [`sets`](#contract-scenario-sets), [`cancels`](#contract-scenario-cancels), [`answers`](#contract-scenario-answers), [`state`](#contract-scenario-state).
+Inside it: [`given`](#contract-scenario-given), [`given_entity`](#contract-scenario-given_entity), [`command`](#contract-scenario-command), [`on`](#contract-scenario-on), [`query`](#contract-scenario-query), [`expect`](#contract-scenario-expect), [`issues`](#contract-scenario-issues), [`sets`](#contract-scenario-sets), [`cancels`](#contract-scenario-cancels), [`answers`](#contract-scenario-answers), [`state`](#contract-scenario-state).
 
 <a id="contract-scenario-given"></a>
 
@@ -46,6 +46,24 @@ An event that already happened.
 |------|------|----------|---------|------|
 | `event` | `atom` | yes |  | The event. |
 | `data` | `map` |  | `%{}` | Its fields. |
+
+
+<a id="contract-scenario-given_entity"></a>
+
+## scenario.given_entity
+
+```elixir
+given_entity entity, data \\ %{}
+```
+
+The row of an entity the scenario's command reads, as the application keeps it.
+
+**Arguments**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `entity` | `atom` | yes |  | The entity of the domain. |
+| `data` | `map` |  | `%{}` | Its fields, its identity among them. |
 
 
 <a id="contract-scenario-command"></a>

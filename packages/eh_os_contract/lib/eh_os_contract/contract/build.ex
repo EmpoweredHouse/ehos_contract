@@ -197,6 +197,8 @@ defmodule EhOsContract.Contract.Build do
     |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
     # Kept only where it is set, for the same reason (plan E9c).
     |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
+    # And for what the decision reads (plan DD, T2a, #240), in the order written.
+    |> then(&if command.reads == [], do: Map.delete(&1, :reads), else: &1)
     # And for a lifecycle's precondition (plan LC1).
     |> then(fn built ->
       if command.from == [],
@@ -345,6 +347,12 @@ defmodule EhOsContract.Contract.Build do
     illustrates =
       if scenario.illustrates == [], do: %{}, else: %{illustrates: scenario.illustrates}
 
+    # Plan DD, T2a (#240): the entities' rows its command reads, kept only where given.
+    entities =
+      if scenario.given_entities == [],
+        do: %{},
+        else: %{given_entities: plain(scenario.given_entities)}
+
     # Plan EP4: a process manager's state after the trigger, where the scenario says it.
     state =
       case scenario.state do
@@ -353,6 +361,7 @@ defmodule EhOsContract.Contract.Build do
       end
 
     answers
+    |> Map.merge(entities)
     |> Map.merge(illustrates)
     |> Map.merge(state)
     |> Map.merge(%{
@@ -501,7 +510,7 @@ defmodule EhOsContract.Contract.Build do
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
            idempotent_on answers functions rules constraints illustrates operations statuses from
-           initial transitions)a
+           initial transitions reads)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

@@ -201,6 +201,20 @@ when it cannot. The application's own `dispatch/3` is trusted, as every other fi
 command's field, or a recorded event's, takes it ([`F10`](#refusals-f)), and a node with such a field and no supplier does not
 start.
 
+A decision may depend on an entity the application keeps outside the log — whether a member may borrow
+another copy depends on the membership card, which the library's own system keeps. The domain declares the
+entity (`entity :card, "Membership card", context: :loans, identity: :card_id`, with its fields), the command
+names it by a field typed `{:id, :card}`, and says it reads it: `reads: [card: :card_id]`. The field has to be the
+command's own, required and typed `{:id, entity}`, each name is given once, and only an actor in `by:` issues
+such a command, never a policy or a process manager ([`A8`](#refusals-a)). The decision then takes a third argument,
+`%{card: %{card_id: "c-1", suspended: false}}`: the row the configured `EhOsContract.Entities` gives (`config
+:eh_os_contract, entities: MyApp.Entities`), asked once per command before it is decided, as the actor who issued
+it, with the fields the domain declares for the entity. A row that is not there refuses the
+command as a field naming nothing, `{:invalid, [card_id: :unknown]}`, a 422; the row read is kept with the
+command's record. A scenario of such a command gives the row with `given_entity :card, %{card_id: "c-1",
+suspended: false}` ([`S12`](#refusals-s)), its fields held to the entity's ([`X9`](#refusals-x)), and a node with
+such a command and no `EhOsContract.Entities` does not start.
+
 ## A process
 
 <!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline -->
@@ -359,6 +373,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A5` | L2 | a unit or a process manager declaring `state` twice |
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
+| `A8` | L2 | a command's `reads:` naming a field it does not have, a field of its unit's identity, an optional field or one not typed `{:id, entity}`; a name given twice; a command that reads, issued by a policy or a process manager |
 
 <a id="refusals-t"></a>
 
@@ -428,6 +443,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
+| `S12` | L2 | a scenario of a command that `reads:` an entity without a `given_entity` of it; a `given_entity` of an entity the command does not read, or in a scenario of anything else |
 
 <a id="refusals-d"></a>
 
@@ -443,7 +459,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, an `identity` not in snake_case or declared again as a field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
 | `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
-| `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`/`:supplied`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
+| `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`/`:supplied`/`:unknown`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
 | `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields; a contract without an `id:`; a contract's or a process module's `id:` that is not the namespace and dotted snake_case segments, is versioned or is over 100 bytes; a contract's or a process module's outside the domain's `name:` |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
@@ -464,7 +480,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
 | `X7` | L3 | two processes of the system with one name, which keys their runs, a process module's being its `id:`; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
-| `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |
+| `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values; a `given_entity` row with a field its entity lacks, missing its identity or a required field, or with an ill-typed value |
 | `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
 
 <a id="refusals-i"></a>

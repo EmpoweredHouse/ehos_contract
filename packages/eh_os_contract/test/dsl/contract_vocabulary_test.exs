@@ -34,7 +34,7 @@ defmodule EhOsContract.ContractVocabularyTest do
     :supplied_by
   ]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
-  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :source]
+  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :reads, :source]
 
   defp unit(kind) do
     %{
@@ -118,6 +118,7 @@ defmodule EhOsContract.ContractVocabularyTest do
         ],
         [:scenario] => [:description, :target, :actor, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data],
+        [:scenario, :given_entity] => [:entity, :data],
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],
         [:scenario, :query] => [:name, :data],

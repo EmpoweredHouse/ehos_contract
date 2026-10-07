@@ -34,6 +34,8 @@ defmodule EhOsContract.CommandRecord do
     field(:last_position, :integer)
     field(:process, :string)
     field(:instance_id, :string)
+    # What the decision read besides the command, by name (plan DD, T2a, #240).
+    field(:inputs, :map)
     field(:recorded_at, :utc_datetime_usec, read_after_writes: true)
   end
 end

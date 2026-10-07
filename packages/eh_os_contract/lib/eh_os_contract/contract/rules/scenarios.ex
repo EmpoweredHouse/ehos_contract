@@ -39,6 +39,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   `nil` only where the declaration says optional — and none twice, since each
   #   names its test. A value of a domain type is the Mix compiler's (X9), as a
   #   scenario's is.
+  # - **S12** (plan DD, T2a, #240). `given_entity` gives the row of an entity the
+  #   scenario's command `reads:`, and a scenario of such a command gives at least one of
+  #   every entity it reads: the decision cannot be run without them. Whether the row's
+  #   fields are the entity's is X9's, where the domain is known.
   # - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
   #   shows (plan EP2), each once: a constraint of a policy, a process manager or a
   #   query, or an invariant of a process manager. A command's scenario names none: a
@@ -53,6 +57,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
     Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++
+      Enum.flat_map(declarations.scenarios, &entities(&1, declarations)) ++
       described_once(declarations) ++ covered(declarations) ++ rule_examples(declarations)
   end
 
@@ -130,6 +135,54 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp describe(%Dsl.Argument{name: name}), do: "argument #{inspect(name)}"
   defp describe(%Dsl.Returns{}), do: "the result"
+
+  defp entities(%Dsl.Scenario{} = scenario, d) do
+    where = ~s|scenario "#{scenario.description}"|
+    command = reading(scenario, d)
+
+    case {command, scenario.given_entities} do
+      {nil, []} ->
+        []
+
+      {nil, [first | _]} ->
+        [
+          {"S12: #{where}: given_entity gives a row only to a command that reads: entities",
+           first}
+        ]
+
+      {command, entities} ->
+        read = for {_name, field} <- command.reads, do: read_entity(command, field)
+        given = Enum.map(entities, & &1.entity)
+
+        stray =
+          for e <- entities, e.entity not in read do
+            {"S12: #{where}: given_entity #{inspect(e.entity)} is not an entity command " <>
+               "#{inspect(command.name)} reads (#{inspect(Enum.uniq(read))})", e}
+          end
+
+        missing =
+          for entity <- Enum.uniq(read), entity != nil, entity not in given do
+            {"S12: #{where}: command #{inspect(command.name)} reads #{inspect(entity)}, and the " <>
+               "scenario gives no given_entity #{inspect(entity)}", scenario}
+          end
+
+        stray ++ missing
+    end
+  end
+
+  # The command a scenario triggers, when it reads entities.
+  defp reading(%Dsl.Scenario{trigger: [%Dsl.Trigger{kind: :command, name: name}]}, d),
+    do: Enum.find(Rules.commands(d), &(&1.name == name and &1.reads != []))
+
+  defp reading(_scenario, _d), do: nil
+
+  # The entity a read names, by its field's type; `nil` for a field A8 refuses.
+  defp read_entity(command, field) do
+    case Enum.find(command.fields, &(&1.name == field)) do
+      %{type: {:id, entity}} -> entity
+      _ -> nil
+    end
+  end
 
   # A scenario is named by its description, in the test `EhOsContract.ScenarioCase`
   # generates for it too.
