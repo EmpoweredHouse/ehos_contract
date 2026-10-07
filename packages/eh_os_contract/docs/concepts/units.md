@@ -154,15 +154,15 @@ refused when it brings an identity of its own (`{field, :generated}`), and witho
 
 - **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
   rules they may refuse on (`rejects:`). A command with no `by:` must be issued by a policy or a
-  process manager of the contract, or nobody could issue it (`C1`).
+  process manager of the contract, or nobody could issue it ([`C1`](../contract.md#refusals-c)).
 - **Its events** are what it decided. An event no command emits is a fact recorded without a
   decision, and says who records it, `recorded_by: :front_desk`; it enters through
-  `EhOsContract.record/3`. An event that is neither is refused (`A2`).
+  `EhOsContract.record/3`. An event that is neither is refused ([`A2`](../contract.md#refusals-a)).
 - **Its state** is what it remembers between decisions, folded from its own events. It holds only
   what a decision reads.
 - **Its invariants** are the rules every command keeps, as the business states them. A command may
   also name a rule of its own, a `constraint`, for a rule about its data alone. Every invariant and
-  every constraint needs a scenario that refuses on it (`S8`).
+  every constraint needs a scenario that refuses on it ([`S8`](../contract.md#refusals-s)).
 - **Its lifecycle**, when it has one, names the statuses its decisions depend on, the status its
   first event starts it in, and the events that move it between them. The engine computes `status`
   from the stream and puts it into the state; a command's `from:` names the statuses it is issued in,
@@ -182,13 +182,13 @@ A `dcb` declares what it reads with `consults`:
 
 - `consults :seat_taken, match: :workshop_id` reads every `seat_taken` whose `workshop_id` is the
   boundary's. `match:` names fields of the boundary's identity, and every event of this contract
-  consulted that way has to carry them as a required, non-personal `:id` (`A4`).
+  consulted that way has to carry them as a required, non-personal `:id` ([`A4`](../contract.md#refusals-a)).
 - `consults :enrolment_closed, where: "enrolment closed for every course"` reads every event of that
   type, whoever it is about, with the criterion in prose. Use it only when no field can say it
   (`consults-without-match`, below).
 
 A consulted event may be one of another unit of the same contract, or one the contract `consumes`
-from a sibling; one received from another application is refused (`A4`). A boundary has no lifecycle
+from a sibling; one received from another application is refused ([`A4`](../contract.md#refusals-a)). A boundary has no lifecycle
 and no generated identity: it spans streams, and its identity is what the command names.
 
 At run time the boundary reads its own events carrying its identity and every event it consults, in
@@ -212,7 +212,7 @@ defect in the code, never a business outcome.
 
 Every example of a rule, `{[1, 3], 0}`, is a test: `use EhOsContract.ScenarioCase, contract:
 Concepts.Units.Contracts.Workshops` calls the function with the arguments and compares the result. A
-rule without examples does not compile (`S9`).
+rule without examples does not compile ([`S9`](../contract.md#refusals-s)).
 
 ## The code that decides
 
@@ -279,24 +279,24 @@ end
   appended.
 
 The engine finds implementations in the running binary of the applications it is configured with,
-and each declaration takes at most one (`X8`). A unit whose events are all `recorded_by:` and whose
+and each declaration takes at most one ([`X8`](../contract.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
 state is only its identity needs no module.
 
 ## What the compiler refuses
 
 The full table is in [the guide](../contract.md). The refusals a unit meets most:
 
-- a command whose `emits:` is empty or names another unit's event (`A1`), or an event nothing emits
-  and nobody records (`A2`): declare who decides or records it;
-- `rejects:` naming neither an invariant of the unit nor a constraint of the command (`A3`);
+- a command whose `emits:` is empty or names another unit's event ([`A1`](../contract.md#refusals-a)), or an event nothing emits
+  and nobody records ([`A2`](../contract.md#refusals-a)): declare who decides or records it;
+- `rejects:` naming neither an invariant of the unit nor a constraint of the command ([`A3`](../contract.md#refusals-a));
 - a boundary that consults nothing, consults an event it cannot read, or consults without `match:` or
-  `where:` (`A4`);
-- an invariant or constraint with no scenario that refuses on it (`S8`): the scenario is the case to
+  `where:` ([`A4`](../contract.md#refusals-a));
+- an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
   ask the process owner for;
-- a lifecycle whose graph does not hold (`T1`–`T4`);
-- in the module: a missing callback (`I2`), `evolve/2` without a clause for an event the state is
-  kept from (`I3`), `emit/1` of anything but the literal events the command emits (`I4`), `reject/1`
-  of a rule it does not reject on (`I5`).
+- a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t)–[`T4`](../contract.md#refusals-t));
+- in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
+  kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
+  of a rule it does not reject on ([`I5`](../contract.md#refusals-i)).
 
 ## What `mix eh_os_contract.check` reports
 

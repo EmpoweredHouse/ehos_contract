@@ -136,6 +136,37 @@ defmodule EhOsContract.DocsTest do
     assert Enum.sort(untested) == []
   end
 
+  # A reader meets a code in prose and needs its row: each links to its family's table,
+  # whose anchor the link test below holds. Examples, the table's own rows and headings
+  # are left as they are.
+  test "a refusal code in a prose page links to its family in the table" do
+    codes = codes_in_table()
+
+    bare =
+      for page <- @pages,
+          line <-
+            read(page)
+            |> String.replace(~r/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1[ \t]*$/msu, "")
+            |> String.split("\n"),
+          not String.starts_with?(line, ["#", "| `"]),
+          [code] <- Regex.scan(~r/(?<!\[)`([A-Z]+[0-9]+)`/u, line, capture: :all_but_first),
+          Map.has_key?(codes, code),
+          do: "#{page}: #{code}"
+
+    assert bare == []
+
+    misfiled =
+      for page <- @pages,
+          [code, family] <-
+            Regex.scan(~r/\[`([A-Z]+)[0-9]+`\]\([^)#]*#refusals-([a-z]+)\)/u, read(page),
+              capture: :all_but_first
+            ),
+          String.downcase(code) != family,
+          do: "#{page}: #{code} → #{family}"
+
+    assert misfiled == []
+  end
+
   # Every section and entity of an extension, with where it sits.
   defp declarations(extension) do
     Enum.flat_map(extension.sections(), &section([], &1))

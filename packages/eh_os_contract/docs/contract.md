@@ -34,11 +34,11 @@ end
 `name:` is the application's name towards EHOS: capabilities are `lending.<command>` and roles
 `lending.<actor>`, and every name its contracts publish begins with `lending.`. So it is one segment of a
 namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
-`:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels
+`:"my-shop"` — and a domain named otherwise does not compile ([`D11`](#refusals-d)). `language:` is the language the labels
 are written in — labels are the words of the people in the process, in their language, and the engine prints
 them as written. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
 an event's required timestamps are tagged with the day they fall on there, which the host's configured time zone
-database answers (`config :elixir, :time_zone_database`); a zone it does not know does not compile (`D13`).
+database answers (`config :elixir, :time_zone_database`); a zone it does not know does not compile ([`D13`](#refusals-d)).
 
 An actor may name what it answers for, `responsibility :overdue_reports, "…", source: "P-25"`, prose a page
 shows and nothing runs. A relation between contexts may pair the words each side uses for the same thing,
@@ -186,7 +186,7 @@ policy :release_hold, "Release the hold on a lent copy", handles: :copy_lent, is
 
 The event never enters the subscriber's log: it arrives in an inbox (`EhOsContract.Inbox`), which commits its
 row with what the policy dispatched and only then acknowledges. Since a read model, an effect and a process
-manager read the log, **only a policy takes it** (`D12`); they react to what the policy's command records
+manager read the log, **only a policy takes it** ([`D12`](#refusals-d)); they react to what the policy's command records
 instead. A second delivery finds the inbox row and is dropped, and so does the same fact published again
 under a new id when the publisher declares `idempotent_on:`, whose values make the message's key. The
 subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
@@ -198,7 +198,7 @@ which the desk's own system knows — is declared `supplied_by: :host`: `field :
 name, `{:invalid, [scanned: :supplied]}`; once the caller is authorized, the configured `EhOsContract.Supplier`
 gives its value (`config :eh_os_contract, supplier: MyApp.Supplier`), and `{:not_supplied, reason}` — a 503 —
 when it cannot. The application's own `dispatch/3` is trusted, as every other field of its struct is. Only a
-command's field, or a recorded event's, takes it (`F10`), and a node with such a field and no supplier does not
+command's field, or a recorded event's, takes it ([`F10`](#refusals-f)), and a node with such a field and no supplier does not
 start.
 
 ## A process
@@ -235,14 +235,14 @@ defmodule Lending.Processes.Loan do
 end
 ```
 
-`id:` and `label:` are required; `id:` is formed as a contract's is (`D11`). A stage's `include:` names a
+`id:` and `label:` are required; `id:` is formed as a contract's is ([`D11`](#refusals-d)). A stage's `include:` names a
 contract and one of its events, or a list of them, and names the contract without a compile dependency, as
 `consumes` does. Everywhere else in the module an included event is named by its name alone, so two includes
-of one name are refused (`N1`). The module refuses what it can see is wrong in itself: no `correlate` or an
-empty one, two, or a field named twice (`R2`) or one of more than six fields (`F9`), no stage, a stage that
-includes nothing, or an `include:` entry naming no event or no contract module (`R3`), a promise or
-`ends_on` naming an event it does not include, or `ends_on` twice (`R5`), a duration not in a fixed unit, `deadline`
-twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end (`R6`). It compiles to a
+of one name are refused ([`N1`](#refusals-n)). The module refuses what it can see is wrong in itself: no `correlate` or an
+empty one, two, or a field named twice ([`R2`](#refusals-r)) or one of more than six fields ([`F9`](#refusals-f)), no stage, a stage that
+includes nothing, or an `include:` entry naming no event or no contract module ([`R3`](#refusals-r)), a promise or
+`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit, `deadline`
+twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
 under a run of it, named by its `id:`, beside the run of the contract's own `process`; `mix eh_os_contract.report`
 prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
@@ -320,10 +320,21 @@ compilers: Mix.compilers() ++ [:eh_os_contract]
 
 Every refusal of L2–L4 starts with its code. The codes do not change between versions; the sentences may.
 
+<a id="refusals-n"></a>
+
+### `N`: names
+
 | Code | Layer | What is refused |
 | --- | --- | --- |
 | `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; the process's stages or promises; a process module's stages, promises or included events, an event included twice from one contract or two; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command or an event an actor records; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events; a label given and blank |
 | `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
+
+<a id="refusals-f"></a>
+
+### `F`: fields
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, repeats one, or labels one blank; a domain service function without `returns`, or with a malformed return type |
 | `F3` | L2 | `default:` on a field outside a `state`, including a domain value's field |
@@ -334,6 +345,13 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
 | `F9` | L2 | a unit's identity, a process's or a process module's `correlate` or a process manager's `correlate` of more than six fields |
 | `F10` | L2 | `supplied_by: :host` on a field no request fills — a state's, a read model's row, an event no actor records — or on a command's `scope` field |
+
+<a id="refusals-a"></a>
+
+### `A`: units, commands and events
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
@@ -341,23 +359,65 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A5` | L2 | a unit or a process manager declaring `state` twice |
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
+
+<a id="refusals-t"></a>
+
+### `T`: lifecycles
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `T1` | L2 | an aggregate declaring `lifecycle` twice; a lifecycle without a status or an `initial`; a status named twice or not snake_case |
 | `T2` | L2 | a `transition` leaving no status; `initial` or `transition` naming a status the lifecycle does not declare or an event not of the aggregate; one event starting the aggregate in two statuses; one status and one event moving it twice |
 | `T3` | L2 | a status no `initial` reaches; a `final:` status a transition leaves; a status that is not final with no transition out |
 | `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or final status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
+
+<a id="refusals-c"></a>
+
+### `C`: who may issue a command
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
+
+<a id="refusals-p"></a>
+
+### `P`: reactions, read models and queries
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
+
+<a id="refusals-r"></a>
+
+### `R`: the process
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `R1` | L2 | a contract declaring two `process`es, or nothing at all; with no process, a unit's `stage` group or a `terminal:` event |
 | `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts); a process module without `correlate`, with an empty one, with two, or naming a field twice |
 | `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group; a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
 | `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one; in a process module, a promise's events or an `ends_on` event the module does not include, or `ends_on` declared twice |
 | `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice; in a process module, `deadline` without `ends_on` |
+
+<a id="refusals-k"></a>
+
+### `K`: consumed contracts
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `K1` | L2 | `consumes` given a published name, which is `subscribe`d to; a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
+
+<a id="refusals-s"></a>
+
+### `S`: scenarios
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |
 | `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted) |
@@ -368,6 +428,13 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
+
+<a id="refusals-d"></a>
+
+### `D`: the domain
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; an external's operation or an actor's responsibility not snake_case or declared twice; a term defined twice in a context; a relation declared twice; a name that is both a context and an external; a label given and blank |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum, a member's blank label included; values in a cycle; a value's field not snake_case, or named twice |
@@ -382,6 +449,13 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
 | `D13` | L2 | a domain's `time_zone:` the time zone database Elixir is configured with does not know |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
+
+<a id="refusals-x"></a>
+
+### `X`: a contract against its domain and siblings
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them) |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
@@ -392,6 +466,13 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X7` | L3 | two processes of the system with one name, which keys their runs, a process module's being its `id:`; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |
+
+<a id="refusals-i"></a>
+
+### `I`: implementations
+
+| Code | Layer | What is refused |
+| --- | --- | --- |
 | `I1` | L4 | `use` with an unknown kind, no declaration or several, or naming one that does not exist, is of another kind, or is a value without invariants; a module binding a second declaration |
 | `I2` | L4 | a callback the declaration needs and the module does not define |
 | `I3` | L4 | `evolve` without a clause for an event its state is kept from, and no unguarded catch-all |
