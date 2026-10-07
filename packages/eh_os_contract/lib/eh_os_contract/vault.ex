@@ -64,7 +64,9 @@ defmodule EhOsContract.Vault do
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:vault)
 
-  @doc "Wraps `key` through the configured vault (`c:wrap/2`)."
+  # Wraps `key` through the configured vault (`c:wrap/2`).
+  # Called by personal.ex.
+  @doc false
   @spec wrap(binary(), binary()) :: {kek_id(), binary()}
   def wrap(key, context), do: impl().wrap(key, context)
 

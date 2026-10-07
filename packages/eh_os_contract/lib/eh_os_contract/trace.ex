@@ -197,17 +197,18 @@ defmodule EhOsContract.Trace do
     )
   end
 
-  # The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
-  # contract, and nothing from the log.
-  #
-  # Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
-  # for an event the contract includes (D7). Its `identity` is set when the unit of
-  # `from`'s event is strictly finer than the process's correlation, which is when the
-  # promise is made per item inside a run.
-  #
-  # Raises `ArgumentError` when the contract declares no such promise, and for a domain,
-  # which declares none.
-  @doc false
+  @doc """
+  The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
+  contract, and nothing from the log.
+
+  Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
+  for an event the contract includes (D7). Its `identity` is set when the unit of
+  `from`'s event is strictly finer than the process's correlation, which is when the
+  promise is made per item inside a run.
+
+  Raises `ArgumentError` when the contract declares no such promise, and for a domain,
+  which declares none.
+  """
   @spec trace(module() | map(), atom()) :: trace()
   def trace(contract, name) do
     model = Model.fetch(contract)
@@ -229,24 +230,25 @@ defmodule EhOsContract.Trace do
     )
   end
 
-  # Verdicts for every run in `occurrences` in which the trace's `from` occurred — the
-  # rules of this module, over events given rather than read. Pure: it reads neither
-  # the log nor the clock, so the same events judged at the same moment always give
-  # the same verdicts.
-  #
-  # - `now:` (required) — the moment of judgement, which tells `:pending` from
-  #   `:violated`.
-  # - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
-  #   unavailable; a window that closed empty with one inside it is `:suspended`.
-  #   Defaults to none.
-  #
-  # Occurrences of types other than the trace's three are ignored. For a trace with an
-  # `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
-  # it; one without a payload, or with an identity field under an atom key, raises
-  # `ArgumentError` naming the field — read as missing, it would pair every such event
-  # with every other and resolve items it is not about. An `eventually` or `or_else`
-  # without every identity field is about no item, and is left out.
-  @doc false
+  @doc """
+  Verdicts for every run in `occurrences` in which the trace's `from` occurred — the
+  rules of this module, over events given rather than read. Pure: it reads neither
+  the log nor the clock, so the same events judged at the same moment always give
+  the same verdicts.
+
+  - `now:` (required) — the moment of judgement, which tells `:pending` from
+    `:violated`.
+  - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
+    unavailable; a window that closed empty with one inside it is `:suspended`.
+    Defaults to none.
+
+  Occurrences of types other than the trace's three are ignored. For a trace with an
+  `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
+  it; one without a payload, or with an identity field under an atom key, raises
+  `ArgumentError` naming the field — read as missing, it would pair every such event
+  with every other and resolve items it is not about. An `eventually` or `or_else`
+  without every identity field is about no item, and is left out.
+  """
   @spec judge(trace(), [occurrence()], keyword()) :: [verdict()]
   def judge(trace, occurrences, opts) do
     now = Keyword.fetch!(opts, :now)

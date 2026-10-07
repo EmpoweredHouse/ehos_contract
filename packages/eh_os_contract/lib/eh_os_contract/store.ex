@@ -131,7 +131,9 @@ defmodule EhOsContract.Store do
   @spec append(module(), [entry()], condition()) :: {:ok, [Event.t()]} | {:error, conflict()}
   def append(repo, entries, condition), do: impl().append(repo, entries, condition)
 
-  @doc "`c:read_query/2` on the configured implementation."
+  # `c:read_query/2` on the configured implementation.
+  # Called by dispatcher.ex.
+  @doc false
   @spec read_query(module(), query()) :: {[Event.t()], non_neg_integer()}
   def read_query(repo, query), do: impl().read_query(repo, query)
 

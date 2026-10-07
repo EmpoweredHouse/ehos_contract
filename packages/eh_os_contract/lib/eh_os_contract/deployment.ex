@@ -229,7 +229,7 @@ defmodule EhOsContract.Deployment do
   # It is `:not_recorded` when either side predates the column. "Compared, nothing
   # moved" and "could not be compared" are different statements, and collapsing
   # them would put a false negative exactly where the mechanism is meant to speak.
-  # Called by v01.ex.
+  # Called by `report/2` in this module.
   @doc false
   @spec diff(t(), t()) :: change()
   def diff(%__MODULE__{} = old, %__MODULE__{} = new) do

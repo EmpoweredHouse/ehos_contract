@@ -1,17 +1,20 @@
 defmodule EhOsContract.Key do
   @moduledoc """
-  The one escaping every key the store builds goes through (v2 §10.4): stream ids,
-  tags and instance ids.
+  How the keys the log is indexed by are written, and how long one may be.
 
-      Key.stream(:visit_settlement, ["w-1"])   #=> "visit_settlement:w-1"
-      Key.tag(:visit_id, "w-1")                #=> "visit_id:w-1"
-      Key.join(["visit_settlement", "w-1"])    #=> "visit_settlement|w-1"
+  A unit's stream is its name and its identity's values, `visit_settlement:w-1`; a
+  tag is a field's name and value, `visit_id:w-1`; values of a key of several fields
+  are joined with `|`, `visit_settlement|w-1`. A `|` or `%` inside a value is
+  percent-escaped, so `a|b` + `c` and `a` + `b|c` are two keys, not one.
 
-  Values are joined with `|`, and a `|` or `%` inside a value is percent-escaped,
-  as `EhOsContract.Instance` has escaped since 21 August. Without it `a|b` + `c`
-  and `a` + `b|c` would be one key: two runs, or two streams, merged. One copy of
-  that rule, not one per kind of key.
+  A key's columns together fit in `budget/0` bytes. A command whose key would not
+  is refused `{:error, :key_too_long}`, and a declaration whose key could not
+  (more fields than a key holds) does not compile.
   """
+
+  # The one escaping every key the store builds goes through (v2 §10.4), as
+  # `EhOsContract.Instance` has escaped since 21 August: one copy of that rule, not
+  # one per kind of key.
 
   @separator "|"
 

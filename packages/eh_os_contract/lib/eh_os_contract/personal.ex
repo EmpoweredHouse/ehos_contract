@@ -1,15 +1,14 @@
 defmodule EhOsContract.Personal do
   @moduledoc """
-  Personal data in the log (v2 §14): each subject's data key, and the personal
+  Personal data in the log: each subject's data key, and the personal
   fields of events sealed with it.
 
   **A key per subject.** A subject — a person whose data may be erased, `subject
   :patient` in the domain — gets a data key, 32 random bytes, the first time an
   event carries its personal data. The key is stored in
   `eh_os_contract_subject_keys` only wrapped by `EhOsContract.Vault`. It is made
-  and wrapped before the append lock and stored under it (`prepare/2`,
-  `for_writing/2`), so two dispatches never create two and no writer waits on the
-  vault. Deleting a
+  and wrapped before the append lock and stored under it, so two dispatches never
+  create two and no writer waits on the vault. Deleting a
   subject's keys is what erases it: every personal field sealed with them reads
   back as `EhOsContract.Erased`.
 
@@ -85,7 +84,7 @@ defmodule EhOsContract.Personal do
   def erased_contract, do: "eh_os_contract"
 
   @typedoc """
-  What `prepare/2` read and wrapped before the append lock: the subjects' newest
+  What dispatch read and wrapped before the append lock: the subjects' newest
   keys, and a new key, already wrapped, for each subject that has none.
   """
   @type prepared :: %{

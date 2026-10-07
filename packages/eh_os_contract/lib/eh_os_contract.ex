@@ -109,13 +109,14 @@ defmodule EhOsContract do
 
   0. `EhOsContract.Config.validate!/0` refuses to go on when `config :eh_os_contract`
      has an unknown key, a value of the wrong shape or a required key missing.
-  1. It scans the running binary for contracts and domains, refusing to go on when a domain's `time_zone:` is one the time zone
-     database this node runs with does not know, and `EhOsContract.Deployment.record!/1` writes what that binary
-     declared and since when. Forgetting the first leaves an empty graph;
-     forgetting the second leaves the report unable to tell history from drift.
-     Between the two, it refuses to go on when a v2 contract declares personal fields and the vault has no master key to seal
-     them with, and the engine refuses as well when a read model projects personal
-     data and defines no `forget/2`. After the deployment is recorded, it logs a
+  1. It scans the running binary for contracts and domains, refusing to go on when
+     a domain's `time_zone:` is one the time zone database this node runs with does
+     not know. It refuses as well when a v2 contract declares personal fields and the
+     vault has no master key to seal them with, when a field is declared
+     `supplied_by: :host` and no supplier is configured, and when a read model
+     projects personal data and defines no `forget/2`. Then
+     `EhOsContract.Deployment.record!/1` writes what that binary declared and since
+     when: without it the report could not tell history from drift. After the deployment is recorded, it logs a
      warning, and goes on,
      when the log holds event types no contract declares — a log written before event
      types became `"<contract id>.<event>"`, which the rest of the engine would skip
@@ -254,8 +255,11 @@ defmodule EhOsContract do
   defdelegate query(contract, params, opts), to: EhOsContract.Dispatcher
 
   @doc """
-  Erases `subject` `id` (how, in `EhOsContract.Personal`), and says what it found:
-  `{:ok, :erased}` when it deleted the subject's data key, `{:ok, :no_data}` when no
+  Erases `subject` `id` (how, in `EhOsContract.Personal`):
+
+      EhOsContract.erase(:patient, "p-17", actor: actor)
+
+  It says what it found: `{:ok, :erased}` when it deleted the subject's data key, `{:ok, :no_data}` when no
   key was there for that id — nothing personal was written for it, or its keys went
   some other way; recorded all the same, so none is written later, but perhaps a
   mistyped id, which the host can report — and `{:ok, :already_erased}` when it was
