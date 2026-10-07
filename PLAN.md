@@ -51,7 +51,9 @@ contract by its id. Follow-up #179 (a start-up warning for rows filed under a co
 merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
 assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e merged in #194 (issue #192): test contracts
-declare a process only when the test is about one. P1d (issue #195) on `dd/195-no-cadence`, its first part. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+declare a process only when the test is about one. P1d merged in #196 and #200 (issue #195): no
+`cadence`, and the sandbox keeps only the four processes its clients described. P2a (issue #202) on
+`dd/202-one-process-model`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -564,9 +566,9 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ☑ #189 | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☑ #191 | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
-| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ◐ `dd/195-no-cadence` | [#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195) |
+| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ☑ #196, #200 | [#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195) |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☑ #194 | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
-| P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
+| P2a | 2 | jeden model procesu dla czytelników | P1d | ◐ `dd/202-one-process-model` | [#202](https://github.com/EmpoweredHouse/eh-os-contract/issues/202) |
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ | — |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ | — |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ | — |
@@ -718,10 +720,11 @@ declarations; then one PR per client takes out the invented processes: Rehmed `s
 move, check and conformance, auth (the web fixtures keep theirs). The 61 that tests assert on stay for P2g. Not
 `sources_test`. Depends on P1c.
 
-**P2a — jeden model procesu dla czytelników** (refaktor): `Model.process/1`, `Model.process_events/1`; przepiąć
-`Run.runs_of/1`, `Trace`, `Paths.runs_of/3`, `Conformance.process/2`, `Graph.declared/2`, `Check.process_findings/1`,
-`Check.Contracts.backward/1`, `events_without_consumer`, `Deployment.row/2`, `Implementations.included/1`, `Pages`.
-Odbiór: raport i `graph --overlay` sandboxa bajt w bajt.
+**P2a — one place answers what a contract's process is and which events make its run** (#202; tightened 7 October
+2026; a refactor). `Model.process/1` and `Model.process_events/1`; every reader that reaches into the process moves to
+them: run, trace, paths, conformance, the graphs, check, deployment, implementations, pages, view, the graph task, the
+manifest and the graph page. Not the model's builders. Accepted when the sandbox's report, check and graphs on one
+seeded database are byte for byte the same before and after.
 **P2b — DSL `EhOsContract.Process`** (kompilacja): `lib/eh_os_contract/process.ex`, `process/{dsl,rules,build}.ex`;
 `use … id:, domain:, label:, accountable:, source:`; `correlate`, `stage name, label, include: [{Kontrakt, ev |
 [ev]}]` (`no_depend_modules` jak `consumes`), `ends_on [..]`, `promise`, `deadline`. L2: R2/R3/R5/R6/F9/D11/N1.
