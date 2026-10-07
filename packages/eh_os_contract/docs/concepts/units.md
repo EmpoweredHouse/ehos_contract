@@ -148,7 +148,9 @@ An aggregate is one thing with an identity that lasts (a workshop, a loan, a vis
 that hold for it alone. `identity` names the fields that tell one from another, and the library
 injects them into its state, its commands and its events, so `workshop_id` is in every one of them
 without being declared there. `identity :booking_id, generated: :uuid` lets the library give a new one
-its identity, a UUIDv7, when a command declared `creates: true` arrives without it.
+its identity, a UUIDv7, when a command declared `creates: true` arrives without it. Such a command is
+refused when it brings an identity of its own (`{field, :generated}`), and without an idempotency key
+(`{:error, :idempotency_key_required}`), since a retry would otherwise create a second unit.
 
 - **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
   rules they may refuse on (`rejects:`). A command with no `by:` must be issued by a policy or a

@@ -154,7 +154,8 @@ instead.
 
 **Rebuilding.** A read model's version is a digest of its declaration and of every event it takes.
 When it changes, its subscription is marked `stale` at the next boot, and one that defines `reset/0`
-is rebuilt there: `reset/0` deletes everything it wrote, and the log is replayed into it. Without
+is rebuilt there, unless the subscriptions are `:manual` (`config :eh_os_contract, subscriptions:`), as
+in tests: `reset/0` deletes everything it wrote, and the log is replayed into it. Without
 `reset/0` it stays `stale` and goes on taking new events over the old rows. `mix
 eh_os_contract.subscriptions --reset <contract id>:read_model:<name>` rebuilds one by hand.
 

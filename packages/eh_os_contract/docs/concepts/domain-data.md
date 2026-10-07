@@ -78,8 +78,9 @@ EhOsContract.erase(:customer, "c-17", actor: actor)
 ```
 
 It answers `{:ok, :erased}`, `{:ok, :no_data}` when no key was there for that id (a mistyped id, or nothing
-personal was ever written for it), or `{:ok, :already_erased}`, and appends `eh_os_contract.subject_erased`,
-with the subject's type and id and nothing personal. From then on:
+personal was ever written for it), or `{:ok, :already_erased}`. The first two append
+`eh_os_contract.subject_erased`, with the subject's type and id and nothing personal; an erasure repeated
+appends nothing. From then on:
 
 - a personal field of that subject reads back as `%EhOsContract.Erased{subject: :customer, id: "c-17"}`, so
   `evolve/2` and every reaction have to accept one in place of the value;

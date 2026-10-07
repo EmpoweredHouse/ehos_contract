@@ -35,7 +35,8 @@ neither optional nor personal (`X6`).
 
 A sibling may be in the same context or in another one, and that changes what the reaction has to say.
 
-A reaction left without `delivery` runs `:in_transaction`, inside the dispatch that records the event. For a
+A policy or a read model left without `delivery` runs `:in_transaction`, inside the dispatch that records the
+event. For a
 sibling of the same context that is usually right: one step of the business, committed once. For a sibling
 of **another context** it means the two contexts commit together, and the reaction's failure rolls the other
 context's fact back: a person's command in one context fails because something in another one did. So a

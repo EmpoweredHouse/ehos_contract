@@ -44,6 +44,10 @@ defmodule GettingStarted.Contracts.Loans do
   aggregate :loan, "Loan" do
     identity :copy_id
 
+    state do
+      field :lent, :boolean, default: false
+    end
+
     command :lend_copy, "Lend a copy",
       by: :librarian,
       emits: :copy_lent,
@@ -83,18 +87,20 @@ defmodule GettingStarted.Loan do
   use GettingStarted.Contracts.Loans, aggregate: :loan
 
   @impl true
-  def lend_copy(%LendCopy{}, %{lent?: true}), do: reject(:lent_once)
+  def lend_copy(%LendCopy{}, %State{lent: true}), do: reject(:lent_once)
 
   def lend_copy(%LendCopy{copy_id: id, member_id: member}, _state),
     do: emit(%CopyLent{copy_id: id, member_id: member})
 
-  def evolve(state, %CopyLent{}), do: Map.put(state, :lent?, true)
+  @impl true
+  def evolve(state, %CopyLent{}), do: %{state | lent: true}
 end
 ```
 
-The implementation points at its contract and gets the command and event structs the contract
-generates. It decides with `emit/1` and `reject/1`, and `evolve/2` folds the unit's events into its
-state; a callback left out, or an event the command does not declare, does not compile.
+The implementation points at its contract and gets the command, event and `State` structs the
+contract generates. It decides with `emit/1` and `reject/1`; because the unit keeps a state beyond its
+identity, `evolve/2` folds its events into it. A callback left out, or an event the command does not
+declare, does not compile.
 [Units that decide](concepts/units.md) says more.
 
 ## 4. Run the scenarios as tests

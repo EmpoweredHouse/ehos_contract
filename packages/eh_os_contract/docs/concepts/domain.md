@@ -39,7 +39,7 @@ subdomain :cataloguing, "Cataloguing", type: :supporting
 
 A subdomain holds nothing itself. Contexts name the subdomain they belong to, and a context naming a
 subdomain the domain does not declare does not compile (`D7`). The context map,
-`mix eh_os_contract.graph --map`, draws each subdomain as a group of its contexts, with its kind; nothing at
+`mix eh_os_contract.graph --map <domain>`, draws each subdomain as a group of its contexts, with its kind; nothing at
 run time reads the kind.
 
 ## Contexts and their glossary
@@ -120,8 +120,8 @@ A contract reaches into another context in two ways, and each is a dependency be
 - it **names an entity another context owns**, a field `{:id, :copy}` where `:copy` belongs to the
   catalogue.
 
-A reaction to another context's event runs, unless it says otherwise, inside the transaction of the context
-that decided the event. So a policy or a read model taking an event of a sibling of another context has to
+A policy or a read model left without `delivery` runs inside the transaction of the context that decided the
+event it takes (an effect and a process manager run after it). So one taking an event of a sibling of another context has to
 declare its `delivery` (`X10`): `:at_least_once` decouples the two, `:in_transaction` couples them on purpose.
 
 The relations are where these dependencies are written down, and `mix eh_os_contract.check` holds the two
