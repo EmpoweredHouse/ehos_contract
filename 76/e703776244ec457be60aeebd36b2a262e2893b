@@ -1,0 +1,12 @@
+pre-pr-review, #141 prose coverage (origin/main..HEAD, 2 commits)
+correctness (code-review high) and security-and-performance (own review):
+- fixed: regions paired by counting, so a stray closer and an unclosed opener could replace prose on plain mix eh_os_contract.docs; now read line by line, in order, refused with line numbers
+- fixed: an opener with trailing spaces or CRLF was skipped silently, so --check passed stale regions
+- fixed: covers comments and regions inside fenced code blocks were live
+- fixed: <!-- Covers: --> / <!-- cover: --> ignored silently; refused
+- fixed: DSL list duplicated (EhOsContract.Docs.extensions/0); docs_test @pages from the manifest; task counts and reads
+- fixed: dev/ outside the formatter's inputs (pre-existing); added, module_pages.ex formatted
+- skipped: File.write! not atomic (git recovers a truncated page; the same held for generated pages)
+- no change needed: fill idempotent and byte-for-byte outside regions; no backtracking risk; no write when unchanged; String.to_existing_atom on a guarded set (now a map)
+Reverse check: the five new prose tests fail on the first commit's implementation.
+Gate: mix check in sandbox EXIT=0; check counts unchanged.
