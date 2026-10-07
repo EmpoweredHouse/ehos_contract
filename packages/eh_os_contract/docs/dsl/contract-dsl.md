@@ -22,6 +22,8 @@ extension: readers get plain data from `EhOsContract.Model`, never these structs
 
 At most one process, and everything born in the contract.
 
+
+
 | Entity | What it declares |
 |--------|------------------|
 | [`aggregate`](contract-aggregate.md) | A unit that decides over one stream, identified by its identity. |

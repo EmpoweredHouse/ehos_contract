@@ -22,6 +22,8 @@ extension: readers get plain data from `EhOsContract.Model`, never these structs
 
 A process across contracts: its runs, stages, end, promises and deadline.
 
+
+
 | Entity | What it declares |
 |--------|------------------|
 | [`correlate`](process-correlate.md) | The fields that tell which run an event belongs to, in order. |

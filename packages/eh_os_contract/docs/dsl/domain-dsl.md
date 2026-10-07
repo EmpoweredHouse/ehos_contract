@@ -17,6 +17,8 @@ extension's own data and stay inside it: readers get plain data from
 
 The vocabulary contracts share.
 
+
+
 | Entity | What it declares |
 |--------|------------------|
 | [`subdomain`](domain-subdomain.md) | A part of the business the domain covers, named, with its kind. |

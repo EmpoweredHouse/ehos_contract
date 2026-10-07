@@ -208,9 +208,9 @@ defmodule EhOsContract.DocsTest do
     assert broken == []
   end
 
-  test "every anchor a page of the DSL reference links to is on its page" do
+  test "every anchor a page links to is on its page" do
     broken =
-      for page <- Path.wildcard("docs/dsl/*.md"),
+      for page <- extras(),
           [file, anchor] <-
             Regex.scan(~r/\]\(([^)#:]*)#([^)]+)\)/u, read(page), capture: :all_but_first),
           target = if(file == "", do: page, else: Path.expand(file, Path.dirname(page))),
@@ -218,5 +218,17 @@ defmodule EhOsContract.DocsTest do
           do: "#{page} → #{file}##{anchor}"
 
     assert broken == []
+  end
+
+  # A link to an entity of the old single page needs only its file changed.
+  test "the page of a DSL entity carries the entity's anchor" do
+    missing =
+      for page <- Path.wildcard("docs/dsl/*-*.md"),
+          not String.ends_with?(page, "-dsl.md"),
+          id = Path.basename(page, ".md"),
+          not (read(page) =~ ~s(<a id="#{id}"></a>)),
+          do: page
+
+    assert missing == []
   end
 end
