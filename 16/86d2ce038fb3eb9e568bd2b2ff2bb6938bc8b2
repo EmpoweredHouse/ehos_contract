@@ -1,0 +1,5 @@
+pre-pr-review, #141 write-docs (origin/main..HEAD, 3 commits, rebuilt on main after #214 and #215)
+- skill and CLAUDE.md/review-pr/pre-pr-review: documentation the gate does not read; claims checked against the code (the @doc false examples exist; ExDoc ignores a missing module; mix task references autolink).
+- docs of the tasks and behaviours: an accuracy review checked every sentence against the code; 11 inaccuracies fixed (overlay counts occurrences not runs; no promise-keeping rule; compiler checks listed as 'among'; report times need an offset; process managers in subscriptions; Latin-1 claim; first paragraphs), weak spots tightened.
+- conflict with #216's report change resolved: the report doc names the process modules' sections, without the plan code.
+Gate: mix check in sandbox EXIT=0; engine check 69 warnings (70 before, the change came with main).
