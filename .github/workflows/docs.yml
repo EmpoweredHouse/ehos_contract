@@ -18,9 +18,6 @@ on:
         default: main
   release:
     types: [published]
-  # TEMPORARY: lets the workflow run from its branch before it is on main.
-  push:
-    branches: [237-docs-artifact]
 
 # The build reads; only the job that attaches the archive to a release writes.
 permissions:
