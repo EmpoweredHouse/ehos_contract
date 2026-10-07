@@ -24,8 +24,7 @@ defmodule EhOsContractHost.E10OutputsTest do
     # Rehmed's three invented processes went with their missing `accountable`, and five
     # events only a `terminal:` or an `include` read, and a relation of the context map
     # only that `include` crossed, came out. P2f (#222): two of TaxVision's matching
-    # events, which only a stage of the contract's process held, have a reader in the
-    # process module that includes them.
+    # events had no reader until the process module included them.
     assert output =~ "eh_os_contract.check: 0 errors, 34 warnings, 10 notices"
   end
 

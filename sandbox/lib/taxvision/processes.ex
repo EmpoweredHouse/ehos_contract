@@ -6,5 +6,5 @@ defmodule Taxvision.Processes do
   the running binary.
   """
 
-  use Boundary, deps: [EhOsContract, Taxvision.Contracts], exports: []
+  use Boundary, deps: [EhOsContract], exports: []
 end
