@@ -1,0 +1,16 @@
+pre-pr-review, #141 part 2 (origin/main..HEAD, 2 commits)
+
+correctness (code-review high) and security-and-performance (own review):
+- fixed: moduledoc headings skipped a level (shift/2, one level on module pages)
+- fixed: callbacks referred to without c: stayed bare
+- fixed: only the first spec clause shown; optional callbacks unmarked; @doc false callbacks listed
+- fixed: specs named the module's own types bare
+- fixed: "Configured with" wrong for bus ({module, opts}); type taken from the schema, exact key check
+- fixed: from-lib detection by substring; now the package's own lib/; nil source refused by name
+- fixed: missing @moduledoc crashed with MatchError; protocols counted as behaviours
+- fixed: String.to_atom on docs text; docs task's own docs stale
+- skipped: spec layout depends on the Elixir version (CI pins 1.18.4; said in the moduledoc)
+- skipped: a spec without a docs entry would be dropped (Elixir writes an entry for every callback)
+- no change needed: nothing machine-specific or secret reaches the shipped pages; no unbounded work
+Gate: mix check in sandbox EXIT=0; check counts unchanged.
+ExDoc: no warning from the new pages (32 in all, all from module docs, 2 arrived with #207).
