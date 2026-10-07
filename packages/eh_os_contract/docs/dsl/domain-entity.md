@@ -38,7 +38,7 @@ Inside it: [`field`](#domain-entity-field).
 field name, type
 ```
 
-One field of a value with fields.
+One field of a value with fields, or of an entity.
 
 **Arguments**
 

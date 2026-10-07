@@ -264,7 +264,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   @field %Spark.Dsl.Entity{
     name: :field,
-    describe: "One field of a value with fields.",
+    describe: "One field of a value with fields, or of an entity.",
     target: Field,
     args: [:name, :type],
     schema: [

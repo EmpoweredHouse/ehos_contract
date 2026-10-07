@@ -17,7 +17,7 @@ A sibling contract's events, read from this log.
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `from` | `atom \| String.t` | yes |  | The sibling contract; a published name is `subscribe`d to. |
-| `events` | `atom \| list(atom) \| keyword` |  | `[]` | The sibling contract's events. |
+| `events` | `atom \| list(atom)` |  | `[]` | The sibling contract's events. |
 
 **Options**
 

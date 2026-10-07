@@ -220,6 +220,18 @@ defmodule EhOsContract.DocsTest do
     assert broken == []
   end
 
+  # `EhOsContract.DslWrappers` widens an optional argument with a keyword list no
+  # declaration may pass; the reference shows the type as declared.
+  test "an optional argument's type is shown as declared, not as the wrappers widen it" do
+    widened =
+      for {page, key} <- [{"contract-consumes", "events"}, {"domain-value", "type"}],
+          [row] <- Regex.scan(~r/^\| `#{key}` \|.*$/mu, read("docs/dsl/#{page}.md")),
+          row =~ "keyword",
+          do: row
+
+    assert widened == []
+  end
+
   # A link to an entity of the old single page needs only its file changed.
   test "the page of a DSL entity carries the entity's anchor" do
     missing =

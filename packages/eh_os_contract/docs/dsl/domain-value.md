@@ -17,7 +17,7 @@ A value type: one built-in type with an optional unit, or a set of fields.
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `name` | `atom` | yes |  | The value's name, used as a field type. |
-| `type` | `any \| keyword` |  |  | The built-in type, when the value is not a set of fields. |
+| `type` | `any` |  |  | The built-in type, when the value is not a set of fields. |
 
 **Options**
 
@@ -38,7 +38,7 @@ Inside it: [`field`](#domain-value-field), [`invariant`](#domain-value-invariant
 field name, type
 ```
 
-One field of a value with fields.
+One field of a value with fields, or of an entity.
 
 **Arguments**
 

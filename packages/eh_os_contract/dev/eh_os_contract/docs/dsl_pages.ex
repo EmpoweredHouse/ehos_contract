@@ -90,6 +90,7 @@ defmodule EhOsContract.Docs.DslPages do
       entity.schema
       |> Keyword.drop(List.wrap(entity.hide) ++ Keyword.keys(entity.auto_set_fields))
       |> Enum.reject(fn {_key, opts} -> opts[:hide] end)
+      |> Enum.map(&declared(&1, optional_keys(entity)))
 
     {positional, named} = Enum.split_with(options, fn {key, _} -> key in args end)
     positional = Enum.sort_by(positional, fn {key, _} -> Enum.find_index(args, &(&1 == key)) end)
@@ -150,6 +151,20 @@ defmodule EhOsContract.Docs.DslPages do
         {:optional, key, default} -> "#{key} \\\\ #{inspect(default)}"
         key -> to_string(key)
       end)
+  end
+
+  # `EhOsContract.DslWrappers` widens an optional argument's type with a keyword list,
+  # which only its transform reads and which is never a legal value: the page shows
+  # the type as declared.
+  defp declared({key, opts}, optional) do
+    case {key in optional, opts[:type]} do
+      {true, {:or, [type, :keyword_list]}} -> {key, Keyword.put(opts, :type, type)}
+      _declared -> {key, opts}
+    end
+  end
+
+  defp optional_keys(entity) do
+    for arg <- entity.args, is_tuple(arg), do: elem(arg, 1)
   end
 
   defp arg_keys(entity) do
