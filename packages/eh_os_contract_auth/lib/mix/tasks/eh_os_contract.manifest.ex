@@ -1,9 +1,10 @@
 defmodule Mix.Tasks.EhOsContract.Manifest do
+  # The manifest's format: `eh-os` D-52.
   @shortdoc "Writes the EHOS application manifest from ehos.yaml and the contracts"
 
   @moduledoc """
   Writes `ehos.manifest/v2`, the application's `ehos.yaml` extended with what its
-  contracts offer (`eh-os` D-52), for EHOS to deploy with the image.
+  contracts offer, for EHOS to deploy with the image.
 
       mix eh_os_contract.manifest --output ehos.manifest.json
       mix eh_os_contract.manifest --ehos-yaml deploy/ehos.yaml --output ehos.manifest.json

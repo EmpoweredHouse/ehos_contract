@@ -1,12 +1,14 @@
 defmodule EhOsContract.Auth.Manifest do
+  # In `eh-os`: the manifest is D-52; `sign_in` D-69; a capability naming its declaration's kind
+  # D-73; scope values on a binding D-40; `contracts` left out for the authority digest, issue #92.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v2` (`eh-os` D-52).
+  `ehos.manifest/v2`.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
   becomes `ehos_yaml`, the version the file is written in. From `ehos.yaml/v2`, that
-  includes `sign_in`, empty or not (`eh-os` D-69), whose `applications` must not name
+  includes `sign_in`, empty or not, whose `applications` must not name
   the application the generator finds below. The generator adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
@@ -15,18 +17,18 @@ defmodule EhOsContract.Auth.Manifest do
       be one of their names, in EHOS's spelling.
     * `offers`, the capabilities of the commands, queries and recordings a human actor
       may make, and, as roles, the human actors that hold at least one of them. A
-      capability names its declaration as `command`, `query` or `record` (`eh-os`
-      D-73), which EHOS accepts from the release that decided it on; an earlier EHOS
-      refuses a manifest that offers a query or a recording. Scopes and publications are
-      absent: EHOS's manifest has no field for them yet, so a scoped command or query is
-      offered, and every call to it through EHOS is refused `:unscoped_grant` until a
-      binding can carry scope values (`eh-os` D-40).
+      capability names its declaration as `command`, `query` or `record`, which only
+      an EHOS recent enough to know these kinds accepts; an earlier EHOS refuses a
+      manifest that offers a query or a recording. Scopes and publications are absent:
+      EHOS's manifest has no field for them yet, so a scoped command or query is offered,
+      and every call to it through EHOS is refused `:unscoped_grant` until a binding can
+      carry scope values.
     * `engine`, the `eh_os_contract` version that wrote it.
 
   `contracts` is not written. EHOS counts it in the manifest's authority digest, and
   a contract's `version` moves with any edit, a label or a scenario included. Every
   such edit would then ask for `ehos.application.register` at deploy though no
-  one's authority changed (`eh-os` issue #92). `engine` is in the manifest digest
+  one's authority changed. `engine` is in the manifest digest
   only.
   """
 
