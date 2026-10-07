@@ -92,7 +92,7 @@ defmodule EhOsContract.Inbox do
   end
 
   defp commit(inbox, model, message, fields) do
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
 
     {:ok, _} =
       Runner.transaction(repo, fn ->

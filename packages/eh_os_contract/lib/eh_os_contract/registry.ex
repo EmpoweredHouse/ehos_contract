@@ -41,7 +41,7 @@ defmodule EhOsContract.Registry do
   @spec load!(atom() | [atom()] | nil) :: %{contracts: [module()], domains: [module()]}
   def load!(app \\ nil) do
     apps =
-      case app || Application.get_env(:eh_os_contract, :applications) do
+      case app || EhOsContract.Config.get(:applications) do
         nil ->
           raise ArgumentError,
                 "EhOsContract does not know which applications hold your contracts. " <>
@@ -167,7 +167,7 @@ defmodule EhOsContract.Registry do
 
   @spec excluded?(module()) :: boolean()
   defp excluded?(module) do
-    prefixes = Application.get_env(:eh_os_contract, :exclude, [])
+    prefixes = EhOsContract.Config.get(:exclude)
     name = inspect(module)
     Enum.any?(prefixes, &String.starts_with?(name, &1))
   end

@@ -323,8 +323,7 @@ defmodule EhOsContract.Auth.Keys do
     state = %{
       name: name,
       url: Keyword.fetch!(opts, :url),
-      repo:
-        Keyword.get_lazy(opts, :repo, fn -> Application.fetch_env!(:eh_os_contract, :repo) end),
+      repo: Keyword.get_lazy(opts, :repo, fn -> EhOsContract.Config.fetch!(:repo) end),
       request_options: request_options(opts),
       refresh_every: Keyword.get(opts, :refresh_every, @refresh_every),
       refetch_at_most_every: Keyword.get(opts, :refetch_at_most_every, @refetch_at_most_every),

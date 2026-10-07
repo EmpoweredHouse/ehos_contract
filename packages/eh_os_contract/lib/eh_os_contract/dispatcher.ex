@@ -1522,5 +1522,5 @@ defmodule EhOsContract.Dispatcher do
       raise ArgumentError, "#{inspect(module)} is not a query of #{inspect(model.module)}"
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

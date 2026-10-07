@@ -123,7 +123,7 @@ defmodule EhOsContract.Bus do
   """
   @spec adapter() :: {module(), keyword()} | nil
   def adapter do
-    case Application.get_env(:eh_os_contract, :bus) do
+    case EhOsContract.Config.get(:bus) do
       nil ->
         nil
 

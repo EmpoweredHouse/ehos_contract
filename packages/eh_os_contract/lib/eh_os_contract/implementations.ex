@@ -214,7 +214,7 @@ defmodule EhOsContract.Implementations do
   def index(contract), do: index_of(List.wrap(contract && Application.get_application(contract)))
 
   defp index_of(also) do
-    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)) ++ also)
+    apps = Enum.uniq(List.wrap(EhOsContract.Config.get(:applications)) ++ also)
 
     key = {__MODULE__, apps}
 

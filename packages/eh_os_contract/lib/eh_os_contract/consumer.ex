@@ -173,7 +173,7 @@ defmodule EhOsContract.Consumer do
           uniq: true,
           do: subject
 
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
     keys = Personal.for_reading(repo, subjects)
 
     # Only a subject without any key can have been erased, and only then is it asked.

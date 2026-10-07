@@ -224,5 +224,5 @@ defmodule EhOsContract.Subscription.Runner do
     %{state | timer: Process.send_after(self(), :run, after_ms)}
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

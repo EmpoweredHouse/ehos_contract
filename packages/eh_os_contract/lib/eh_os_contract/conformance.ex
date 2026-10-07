@@ -306,7 +306,7 @@ defmodule EhOsContract.Conformance do
     |> then(fn q -> if at = opts[:until], do: where(q, [e], e.occurred_at <= ^at), else: q end)
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 
   # --- an aggregate's lifecycle (plan LC3, #99) -------------------------------------------
   #
