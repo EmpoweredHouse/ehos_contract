@@ -9,10 +9,11 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 | `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md` |
 | `packages/eh_os_contract_web/` | the mountable dashboard |
 | `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
+| `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
 | `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment |
 | `docs/` | the design record (`docs/adr/`), distillations and workshop material |
 
-Each of the four is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
+Each of the five is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
 is a property we keep: `sandbox/` is the library's first consumer, not part of it.
 
 **`sandbox/` is not a product.** The library is. TaxVision (`sandbox/lib/taxvision/`), Rehmed
@@ -121,8 +122,8 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 `eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
 DSL reference in `docs/dsl/` and the rule catalogue in `docs/rules.md` to the code, and `test/docs_test.exs`,
-which holds the examples and the refusal table of `docs/contract.md` to it), `packages/eh_os_contract_web` and
-`packages/eh_os_contract_auth`. **It has to pass.** Separate invocations, not an umbrella, so that each package
+which holds the examples and the refusal table of `docs/contract.md` to it), `packages/eh_os_contract_web`,
+`packages/eh_os_contract_auth` and `packages/eh_os_contract_graph`. **It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
 listens on **5433**.

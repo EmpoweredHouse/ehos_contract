@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) in progress; views and panels not approved yet ("E13b — C accepted, and the batches (7 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1593,6 +1593,50 @@ batches on the one branch and pull request (#219), in order:
 5. **Mermaid cut**, the model pages as decided (b), the check in a browser, the records.
 
 Batch 1 needs no views: it is what every view is drawn with.
+
+### E13b, batch 1 — what came out (7 October)
+
+- **`packages/eh_os_contract_graph`**, a fifth Mix project, depending on `phoenix_live_view` (and `phoenix`, for
+  its test endpoint) and on no package of this repository. Modules under `EhOsContract.GraphRenderer`, since
+  the engine owns `EhOsContract.Graph`: `Canvas`, the LiveComponent a host renders (document and overlay in;
+  cards, relation labels and a raw panel in HEEx; selection as `is-selected`, `is-near`, `is-far`); `View`,
+  with one view, `all/1`, every node and relation, plus `with_observed/2` for the moves an overlay saw and the
+  document does not declare; `Marks`, what an overlay entry says as a count and states, recounting nothing. An
+  overlay whose `document_digest` is not the document's is not drawn, and the page says so.
+- **The hook** (`assets/js/eh_os_contract_graph.js`, about 240 lines): measures the cards and labels, lays them
+  out with dagre, draws each arrow as a visible line and a wide invisible one for the click, copies a label's
+  `is-*` classes onto its arrow, fits the graph on the first layout and keeps the reader's zoom after. Positions,
+  sizes and the zoom are in two constructed stylesheets; it writes no `style` and no markup. A plain wheel
+  scrolls the page, Ctrl or ⌘ with the wheel (and a trackpad's pinch) zooms, a drag pans, and a press that moves
+  more than 4 px is not a click.
+- **dagre and d3-zoom are vendored**, so the build stays esbuild alone: dagre's published `dist/dagre.esm.js`
+  unmodified, and d3-zoom with the eight modules it imports bundled once into one ES module from their
+  unmodified sources, with the command that rebuilds it at its top. `NOTICE` carries every licence. The
+  package's script is an ES module the host bundles (156 KB, not minified); the dashboard's `app.js` grows from
+  150 to 251 KB minified, 46 to 80 KB gzip — the prototype's +33 KB.
+- **The dashboard** depends on the package (a path beside it, git elsewhere, as for the engine), bundles its script
+  and stylesheet into its own, and has a temporary screen, `<mount>/graph/preview`, not in the nav, that draws one
+  document of the registry with its overlay. The existing screens are unchanged and Mermaid stays.
+- **Tests:** the package's own suite (23) on three documents taken from the sandbox on 7 October and a hand-made
+  one with ids of quotes, backslashes and Polish letters, a `<script>` label, a self-loop and a dangling
+  relation: the cards and labels the hook reads, no `style` attribute, text escaped, the overlay's marks, a stale
+  overlay, selection through a LiveView; the hook's source, the bundle and the stylesheet read for what the
+  policy refuses. The sandbox draws every document of the three client trees and holds the one decoded from the
+  API's JSON to draw the same as the function's. The dashboard's preview has its test, and the design-system test
+  reads the renderer's stylesheet for tokens the build does not define. Gate EXIT=0 on CI's Elixir 1.18.4 and
+  OTP 27.2: sandbox 204, engine 1530, dashboard 64, auth 287, renderer 23.
+- **In a browser**, headless Chrome on the sandbox host under `default-src 'self'`, all 14 documents: no
+  violation, no `style` attribute, no card over a card, no label over a card or a label, no broken path. A click
+  on a card or an arrow opens its panel and moves nothing; the wheel, Ctrl with the wheel and a drag behave as
+  above; a drag that starts on a card selects nothing; both themes. **Found there, fixed:** a card placed
+  absolutely took its width from what was left of the viewport, which has no size until the layout, so it was
+  measured narrow and drawn wide, over its neighbours (up to 18 labels on cards in AppUnite `computers`); cards
+  and labels are now as wide as their content, up to their `max-width`. And the dashboard's `h4` style turned the
+  panel's heading, a client's label, into capitals.
+- **Not done, known:** AppUnite `computers` fitted to the screen is unreadable, as the ADR said: a matter of views.
+  The panel is raw (the node's facts, nested values as JSON) until batch 4. Locally, mise's Elixir 1.20.4 fails
+  the engine's gate on new type warnings in code this batch does not touch (`EhOsContract.Trace`,
+  `EhOsContract.Bus.Local.Consumer`, `test/support/shredding_rig`); CI runs 1.18.4, which passes.
 
 ### Wobec programu DD
 
