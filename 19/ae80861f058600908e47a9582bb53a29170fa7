@@ -1,0 +1,15 @@
+pre-pr-review, #141 docs gate (origin/main..HEAD, 2 commits)
+
+correctness (code-review high) and security-and-performance (own review):
+- fixed: docs built in :test documented test/support and dev, so a lib doc citing a fixture would pass; filter_modules keeps lib only (found 2 references to dev tasks, reworded)
+- fixed: coverage tests passed on an empty module list; a test requires EhOsContract
+- fixed: CLAUDE.md gate description; CI cache leaves out _build/*/doc; a typedoc wrap
+- skipped: callback exclusion matches name/arity without @impl (Spark injects its transformers' callbacks without @impl)
+- skipped: macro callbacks (`MACRO-` names) never match (none in lib)
+- skipped: @spec on @doc false functions (180, mostly generated or @impl; for the write-docs skill)
+- skipped: CHANGELOG skip covers every reference, not only removed names (listing each removed name would need an edit every release)
+- skipped: authorization.md links to tree/main, not the release tag (a static page cannot name the version)
+- skipped: CI cache key does not change, so ex_doc compiles in each run until a lock changes (adding mix.exs to the key would miss the cache on every alias edit)
+- no change needed: ex_doc in :test reaches neither the package nor a host; the docs build adds ~2 s
+Reverse checks: a probe module with an undocumented and an unspecified function failed both coverage tests; a reference to a missing function of a real module failed the docs build.
+Gate: mix check in sandbox EXIT=0; check counts unchanged.
