@@ -3,8 +3,9 @@ defmodule KeyRig.Bins do
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
   A bin stocked, in three keys over its identity: its stream, `"bin:"` in front; its
-  run, whose process's name is in the entry twice; and its watch, a process manager
-  whose key starts with this module's name, the longest of the three (issue #98).
+  run, `KeyRig.Restocking`'s, whose id is in the entry twice; and its watch, a process
+  manager whose key starts with this module's name, the longest of the three (issue
+  #98). The run was `:replenishment` inside this contract until plan DD, P2g (#228).
   """
 
   use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock, id: "key_rig.bins"
@@ -23,10 +24,6 @@ defmodule KeyRig.Bins do
     command :count_bin, "Count a bin", by: :stocker, emits: :counted
 
     event :counted, "Bin counted"
-  end
-
-  process :replenishment, "Replenishment", accountable: :stocker do
-    correlate [:site_id, :aisle_id, :bin_id]
   end
 
   process_manager :watch, "Watch a stocked bin" do

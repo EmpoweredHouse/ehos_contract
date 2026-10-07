@@ -2,8 +2,9 @@ defmodule EhOsContract.ProcessModuleRunsTest do
   @moduledoc """
   Plan DD, P2c (#210): **dispatch files an event into the runs of every process module
   that includes it**, under the module's `id:` and keyed by its `correlate`, beside the
-  event's home run. On the invented `DispatchRig.AccountReview`, which includes the
-  ledger's withdrawals and balance confirmations.
+  event's other runs. On the invented `DispatchRig.AccountReview`, which includes the
+  ledger's withdrawals and balance confirmations, beside `DispatchRig.LedgerRun` and
+  `DispatchRig.BranchRun`, the ledger's other runs since plan DD, P2g (#228).
   """
 
   use EhOsContract.DataCase, async: false
@@ -53,12 +54,12 @@ defmodule EhOsContract.ProcessModuleRunsTest do
     assert Implementations.runs_of([], [%{review | domain: Elsewhere.Domain}]) == %{}
   end
 
-  test "an included event belongs to its home run and to the module's, under the module's id" do
+  test "an included event belongs to the run of every module that includes it, under its id" do
     dispatch(%Withdraw{account_id: "a-1", amount: 50})
 
     assert runs("dispatch_rig.ledger.withdrawn") == [
              {"dispatch_rig.account_review", "dispatch_rig.account_review|a-1"},
-             {"ledger", "ledger|a-1"}
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
            ]
   end
 
@@ -68,17 +69,19 @@ defmodule EhOsContract.ProcessModuleRunsTest do
 
     assert runs("dispatch_rig.ledger.balance_confirmed") == [
              {"dispatch_rig.account_review", "dispatch_rig.account_review|a-1"},
-             {"ledger", "ledger|a-1"}
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
            ]
   end
 
-  test "control: an event no module includes keeps the runs it had" do
-    assert runs("dispatch_rig.ledger.deposited") == [{"ledger", "ledger|a-1"}]
+  test "control: an event the review does not include is in no review's run" do
+    assert runs("dispatch_rig.ledger.deposited") == [
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
+           ]
 
-    # The branch's run, a contract's process including the opening, is unchanged.
+    # The branch's run, another module including the opening, is its own.
     assert runs("dispatch_rig.ledger.account_opened") == [
-             {"branch", "branch|b-7"},
-             {"ledger", "ledger|a-1"}
+             {"dispatch_rig.branch_run", "dispatch_rig.branch_run|b-7"},
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
            ]
   end
 end

@@ -5,8 +5,9 @@ defmodule EhOsContract.PromiseTest do
   each ran on v1's shape too, with the same assertions: that was the acceptance
   criterion "the same scenarios give the same numbers of verdicts".
 
-  The runs come from `eh_os_contract_event_runs` and the types are
-  `"handling.<event>"`; the arithmetic is `EhOsContract.Trace`'s.
+  The runs come from `eh_os_contract_event_runs`, filed under the id of
+  `ProcessShapes.Handling`, the process module that keeps the promise since plan DD,
+  P2g (#228); the arithmetic is `EhOsContract.Trace`'s.
   """
 
   use EhOsContract.DataCase, async: false
@@ -18,7 +19,7 @@ defmodule EhOsContract.PromiseTest do
   @start ~U[2026-07-01 09:00:00.000000Z]
 
   defp evaluate(opts \\ []),
-    do: EhOsContract.Trace.evaluate(ProcessShapes.Promised, @promise, opts)
+    do: EhOsContract.Trace.evaluate(ProcessShapes.Handling, @promise, opts)
 
   describe "the promise" do
     setup do: Seed.deploy()
@@ -30,7 +31,7 @@ defmodule EhOsContract.PromiseTest do
       assert [verdict] = evaluate()
       assert verdict.verdict == :satisfied
       assert verdict.via == :or_else
-      assert verdict.instance_id == "handling|r-1"
+      assert verdict.instance_id == "process_shapes.handling|r-1"
     end
 
     test "a completed request is satisfied through eventually" do
@@ -45,8 +46,8 @@ defmodule EhOsContract.PromiseTest do
       Seed.run_queue()
 
       by_instance = Map.new(evaluate(), &{&1.instance_id, &1})
-      assert by_instance["handling|r-1"].via == :eventually
-      assert by_instance["handling|r-2"].via == :or_else
+      assert by_instance["process_shapes.handling|r-1"].via == :eventually
+      assert by_instance["process_shapes.handling|r-2"].via == :or_else
 
       assert EhOsContract.Trace.summary(evaluate()) == %{
                satisfied: 2,
@@ -113,21 +114,21 @@ defmodule EhOsContract.PromiseTest do
       Seed.fact(:request_received, "r-2", DateTime.add(@start, 10, :day))
       now = DateTime.add(@start, 20, :day)
 
-      assert [%{instance_id: "handling|r-2"}] =
+      assert [%{instance_id: "process_shapes.handling|r-2"}] =
                evaluate(now: now, since: DateTime.add(@start, 5, :day))
 
-      assert [%{instance_id: "handling|r-1"}] =
+      assert [%{instance_id: "process_shapes.handling|r-1"}] =
                evaluate(now: now, until: DateTime.add(@start, 5, :day))
 
-      assert [%{instance_id: "handling|r-2"}] =
-               evaluate(now: now, instance: "handling|r-2")
+      assert [%{instance_id: "process_shapes.handling|r-2"}] =
+               evaluate(now: now, instance: "process_shapes.handling|r-2")
     end
   end
 
-  describe "a v2 contract" do
+  describe "a process module" do
     test "names its promise, and refuses one it does not declare" do
       assert_raise ArgumentError, ~r/does not declare promise :nothing/, fn ->
-        EhOsContract.Trace.evaluate(ProcessShapes.Promised, :nothing)
+        EhOsContract.Trace.evaluate(ProcessShapes.Handling, :nothing)
       end
     end
   end

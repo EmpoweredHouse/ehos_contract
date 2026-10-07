@@ -5,8 +5,9 @@ defmodule ProcessShapes.Promised do
   **The shape of a promise with two endings, one of which crosses the queue**
   (v2 plan, E7c). A request arrives and is logged, is approved or refused, and then
   completes or has its refusal notified — the notice through the log after the
-  transaction, so that "not yet" has somewhere to wait. The promise: after it
-  arrives, within two days it completes, or else the refusal has gone out.
+  transaction, so that "not yet" has somewhere to wait. The promise, which
+  `ProcessShapes.Handling` keeps since plan DD, P2g (#228): after it arrives, within
+  two days it completes, or else the refusal has gone out.
 
   The request is submitted, then decided: two commands. Three policies follow, and
   each of their paths is two steps, since a command is a node of the graph: the
@@ -33,20 +34,12 @@ defmodule ProcessShapes.Promised do
     command :complete_request, "Complete a request", emits: :request_completed
     command :notify_refusal, "Notify a refusal", emits: :refusal_notified
 
-    stage :intake do
-      event :request_received, "Request received"
-      event :request_logged, "Request logged"
-    end
-
-    stage :decision do
-      event :request_approved, "Request approved"
-      event :request_refused, "Request refused"
-    end
-
-    stage :closing do
-      event :request_completed, "Request completed", terminal: true
-      event :refusal_notified, "Refusal notified", terminal: true
-    end
+    event :request_received, "Request received"
+    event :request_logged, "Request logged"
+    event :request_approved, "Request approved"
+    event :request_refused, "Request refused"
+    event :request_completed, "Request completed"
+    event :refusal_notified, "Refusal notified"
   end
 
   policy :log_arrival, "Log a request on its arrival",
@@ -64,27 +57,6 @@ defmodule ProcessShapes.Promised do
     issues: :notify_refusal,
     delivery: :at_least_once,
     idempotency: [key: :event_id, owner: :infrastructure]
-
-  process :handling, "Request handling" do
-    correlate :request_id
-
-    stage :intake
-    stage :decision
-    stage :closing
-
-    # Not confirmed, in the fiction of this fixture, and three days where the promise
-    # is two. Two numbers, so that a test can tell whether a value in the report came
-    # from the promise or from the deadline; unconfirmed, so that the evidence report
-    # has a declaration to leave out.
-    deadline {3, :day}, unverified: true
-
-    promise :completed_or_refusal_notified do
-      from :request_received
-      eventually :request_completed
-      within {2, :day}
-      or_else :refusal_notified
-    end
-  end
 end
 
 defmodule ProcessShapes.Request do

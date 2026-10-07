@@ -124,15 +124,19 @@ defmodule EhOsContract.ModelProcessTest do
       assert received.declaration.name == :request_received
       assert received.declaration.label == "Request received"
 
-      # `request_completed` ends a run in `Promised` and none here, since its include
-      # does not say so; `refusal_notified` ends one here because its include does.
+      # `request_completed` ends a run in `ProcessShapes.Handling` and none here, since
+      # its include does not say so; `refusal_notified` ends one here because its include
+      # does.
       assert [
                %{name: :request_refused, stage: nil, terminal: false, contract: Promised},
                %{name: :refusal_notified, stage: nil, terminal: true, contract: Promised},
                %{name: :request_completed, stage: nil, terminal: false, contract: Promised}
              ] = Model.process_events(Flat)
 
-      assert Enum.find(Model.process_events(Promised), &(&1.name == :request_completed)).terminal
+      assert Enum.find(
+               Model.process_events(ProcessShapes.Handling),
+               &(&1.name == :request_completed)
+             ).terminal
     end
 
     test "are the same from a module or its model" do

@@ -1,7 +1,8 @@
 defmodule EhOsContract.ScaleTest do
   @moduledoc """
   **Volume, and the two instants a report's period is bounded by** — on a v2 promise,
-  whose runs come from `eh_os_contract_event_runs` rather than from the event row.
+  whose runs come from `eh_os_contract_event_runs` rather than from the event row: a
+  process module's, `ProcessShapes.Handling`, since plan DD, P2g (#228).
 
   Everything else is exercised at the scale of a handful of runs, which is the scale at
   which an accidental `Enum.map` over a query result is invisible. These are the shapes
@@ -17,7 +18,7 @@ defmodule EhOsContract.ScaleTest do
 
   use EhOsContract.DataCase, async: false
 
-  alias ProcessShapes.Promised
+  alias ProcessShapes.{Handling, Promised}
 
   @promise :completed_or_refusal_notified
   @received ~U[2026-07-01 09:00:00.000000Z]
@@ -27,7 +28,7 @@ defmodule EhOsContract.ScaleTest do
   # exercise authorization, the deciders and the policies ten thousand times, and none
   # of those is under test here. What is under test is the evaluator on a log of that
   # size. `record_events!/1` appends through `EhOsContract.Store`, so every row comes
-  # with its home run, as a dispatched one does.
+  # with its run, `ProcessShapes.Handling`'s, as a dispatched one does.
   #
   # Then `ANALYZE`, because the rows are the test transaction's and the planner's
   # statistics are not: they describe whatever the tables held when autovacuum last
@@ -47,14 +48,13 @@ defmodule EhOsContract.ScaleTest do
       type: "process_shapes.promised.#{name}",
       contract: EhOsContract.Model.fetch(Promised).id,
       contract_version: EhOsContract.Model.fetch(Promised).version,
-      process: "handling",
-      instance_id: "handling|#{request_id}",
+      runs: [{"process_shapes.handling", "process_shapes.handling|#{request_id}"}],
       payload: %{"request_id" => request_id},
       occurred_at: at
     }
   end
 
-  defp evaluate(opts), do: EhOsContract.Trace.evaluate(Promised, @promise, opts)
+  defp evaluate(opts), do: EhOsContract.Trace.evaluate(Handling, @promise, opts)
 
   describe "one run holding ten thousand facts" do
     test "still produces exactly one verdict, anchored on the earliest occurrence" do
@@ -116,10 +116,10 @@ defmodule EhOsContract.ScaleTest do
         |> evaluate()
         |> Enum.map(& &1.instance_id)
 
-      assert "handling|at-since" in judged
-      assert "handling|at-until" in judged
-      refute "handling|before" in judged
-      refute "handling|after" in judged
+      assert "process_shapes.handling|at-since" in judged
+      assert "process_shapes.handling|at-until" in judged
+      refute "process_shapes.handling|before" in judged
+      refute "process_shapes.handling|after" in judged
     end
 
     test "two periods sharing a boundary instant both count the event on it" do
@@ -135,8 +135,8 @@ defmodule EhOsContract.ScaleTest do
       second =
         evaluate(since: boundary, until: ~U[2026-08-31 23:59:59.999999Z], now: @long_after)
 
-      assert "handling|at-until" in Enum.map(first, & &1.instance_id)
-      assert "handling|at-until" in Enum.map(second, & &1.instance_id)
+      assert "process_shapes.handling|at-until" in Enum.map(first, & &1.instance_id)
+      assert "process_shapes.handling|at-until" in Enum.map(second, & &1.instance_id)
     end
   end
 end

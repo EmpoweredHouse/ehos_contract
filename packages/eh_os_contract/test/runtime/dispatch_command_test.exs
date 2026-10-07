@@ -13,7 +13,7 @@ defmodule EhOsContract.DispatchCommandTest do
   alias DispatchRig.Ledger
   alias DispatchRig.Ledger.Commands.{Deposit, Misbehave, OpenAccount, Withdraw}
   alias DispatchRig.Ledger.Events.{Deposited, Withdrawn}
-  alias EhOsContract.{Actor, CommandRecord, Event, Receipt, Rejection}
+  alias EhOsContract.{Actor, CommandRecord, Event, EventRun, Receipt, Rejection}
 
   @all ~w(open_account deposit withdraw misbehave) |> Enum.map(&"dispatch_rig.#{&1}")
 
@@ -45,8 +45,21 @@ defmodule EhOsContract.DispatchCommandTest do
       assert event.stream_id == "account:a-1"
       assert event.stream_version == 1
       assert event.tags == ["account_id:a-1", "branch_id:b-7"]
-      assert event.process == "ledger"
-      assert event.instance_id == "ledger|a-1"
+      # Plan DD, P2g (#228): the account's run is a process module's, filed in the index
+      # of runs under its id; the row's own columns hold only a contract's process.
+      assert {event.process, event.instance_id} == {nil, nil}
+
+      assert Repo.all(
+               from(r in EventRun,
+                 where: r.position == ^event.position,
+                 order_by: r.process,
+                 select: {r.process, r.instance_id}
+               )
+             ) == [
+               {"dispatch_rig.branch_run", "dispatch_rig.branch_run|b-7"},
+               {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
+             ]
+
       assert event.actor == "actor:u-1"
       assert event.payload == %{"account_id" => "a-1", "branch_id" => "b-7"}
       assert event.contract_version == EhOsContract.Model.fetch(Ledger).version
@@ -62,7 +75,7 @@ defmodule EhOsContract.DispatchCommandTest do
       assert row.issued_by == "actor:u-1"
       assert row.emitted_types == ["dispatch_rig.ledger.account_opened"]
       assert {row.first_position, row.last_position} == {position, position}
-      assert row.instance_id == "ledger|a-1"
+      assert row.instance_id == nil
     end
 
     test "the decision sees the stream folded through evolve/2" do

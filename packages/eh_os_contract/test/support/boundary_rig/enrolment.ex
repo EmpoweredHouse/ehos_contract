@@ -6,7 +6,8 @@ defmodule BoundaryRig.Enrolment do
   subscription to that course, the seats the timetable released, and whether the
   calendar has closed enrolment. The last is consulted by prose: it names no
   course, so every one of those events is read. How many seats are free is a
-  domain service's, which the decision calls.
+  domain service's, which the decision calls. A course's run over its seats is
+  `BoundaryRig.EnrolmentRun`'s, a process module since plan DD, P2g (#228).
   """
 
   use EhOsContract.Contract,
@@ -68,10 +69,6 @@ defmodule BoundaryRig.Enrolment do
       argument :taken, :integer
       returns :integer, optional: true
     end
-  end
-
-  process :enrolment, "Enrolment" do
-    correlate :course_id
   end
 
   scenario "a seat is free: the student is subscribed" do

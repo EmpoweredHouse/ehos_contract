@@ -11,20 +11,27 @@ defmodule EhOsContract.ReportTest do
   its own, so the refusal branch v1 reported as one path is three steps here. The
   acceptance criterion's point survives the change: the steps nobody took are
   reported once each, whatever the number of runs.
+
+  Since plan DD, P2g (#228) the process is a module's, `ProcessShapes.Handling`, and
+  its runs, promise and deadline are in the module's report; the steps and the drift
+  stay in the contract's, `ProcessShapes.Promised`.
   """
 
   use EhOsContract.DataCase, async: false
   use Oban.Testing, repo: EhOsContract.TestRepo
 
   alias EhOsContract.{Conformance, Report}
-  alias ProcessShapes.{Promised, Timed}
-  alias ProcessShapes.Seed
+  alias ProcessShapes.{Handling, Promised, Seed, Timing}
 
   @noon ~U[2026-09-01 12:00:00.000000Z]
 
   defp data(opts \\ []), do: Conformance.report(Promised, opts)
   defp text(opts \\ []), do: opts |> data() |> Report.render()
-  defp process(report), do: report.processes |> Enum.find(&(&1.process == :handling))
+  defp handling(opts \\ []), do: Conformance.report(Handling, opts)
+
+  defp process(report),
+    do: report.processes |> Enum.find(&(&1.process == "process_shapes.handling"))
+
   defp paths(report), do: report.paths
 
   defp names(steps),
@@ -38,7 +45,7 @@ defmodule EhOsContract.ReportTest do
       Seed.request("r-4", :request_refused)
       Seed.run_queue()
 
-      p = process(data())
+      p = process(handling())
 
       assert p.runs == 4
       assert p.declarations == []
@@ -49,20 +56,22 @@ defmodule EhOsContract.ReportTest do
       assert Map.take(rule, [:instances, :satisfied, :satisfied_via_or_else, :violated]) ==
                %{instances: 4, satisfied: 4, satisfied_via_or_else: 1, violated: 0}
 
-      assert text() =~
+      t = Report.render(handling())
+
+      assert t =~
                ~s(Rule: after "Request received" within 2 days, "Request completed" follows, or else "Refusal notified".)
 
-      assert text() =~ "Met in all 4 runs."
+      assert t =~ "Met in all 4 runs."
       # The refusal is a correct ending, and says so: a report that called it a
       # problem would be switched off after the first period.
-      assert text() =~ "conforms to the rule"
+      assert t =~ "conforms to the rule"
     end
 
     test "a confirmed deadline, measured, and its role" do
       Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
       Seed.finish_run("r-1", ~U[2026-09-01 10:30:00.000000Z])
 
-      [p] = Conformance.report(Timed, now: @noon).processes
+      [p] = Conformance.report(Timing, now: @noon).processes
 
       assert p.duration == %{
                runs: 1,
@@ -83,9 +92,8 @@ defmodule EhOsContract.ReportTest do
     test "50 runs, none refused: the refusal branch's three steps, each reported once" do
       for n <- 1..50, do: Seed.request("r-#{n}", :request_approved)
 
-      report = data()
-      assert process(report).runs == 50
-      p = paths(report)
+      assert process(handling()).runs == 50
+      p = paths(data())
 
       assert names(p.untraversed) == [
                {:decide_request, nil, :request_refused},
@@ -138,23 +146,27 @@ defmodule EhOsContract.ReportTest do
       assert p.in_flight == [] and p.untraversed == []
     end
 
-    # Plan DD, P1a (#183): the steps are the contract's, in a block of their own before
-    # the process, which keeps its runs and promises and no list of steps.
-    test "the steps are the contract's block, with its activity, before the process" do
+    # Plan DD, P1a (#183): the steps are the contract's, in a block of their own, and
+    # the process keeps its runs and promises and no list of steps. Since plan DD, P2g
+    # (#228) the process is a module's, with a report of its own.
+    test "the steps are the contract's block, with its activity, and the process has none" do
       Seed.request("r-1", :request_approved)
 
       report = data()
       assert %{events: events, commands: commands} = report.activity
       assert events > 0 and commands > 0
-      refute Map.has_key?(process(report), :untraversed)
+      refute Map.has_key?(process(handling()), :untraversed)
 
       t = text()
-      [steps, process] = String.split(t, "PROCESS: ", parts: 2)
 
-      assert steps =~
+      assert t =~
                "STEPS\n  Activity in this period: #{events} events, #{commands} commands.\n" <>
                  "  Agreed steps that were never carried out:"
 
+      refute t =~ "PROCESS: "
+
+      process = Report.render(handling())
+      assert process =~ "PROCESS: "
       refute process =~ "Agreed steps"
     end
 
@@ -300,8 +312,7 @@ defmodule EhOsContract.ReportTest do
       type: "process_shapes.promised.#{name}",
       contract: EhOsContract.Model.fetch(ProcessShapes.Promised).id,
       contract_version: "gone",
-      process: "handling",
-      instance_id: "handling|#{request_id}",
+      runs: [{"process_shapes.handling", "process_shapes.handling|#{request_id}"}],
       correlation_id: Ecto.UUID.generate(),
       actor: EhOsContract.Event.system_actor(),
       payload: %{"request_id" => request_id},
@@ -325,7 +336,6 @@ defmodule EhOsContract.ReportTest do
 
       assert {:ok, _json} = Jason.encode(wire)
 
-      [p] = wire["report"]["processes"]
       [step] = wire["report"]["paths"]["in_flight"]
 
       assert step["from"] == %{
@@ -339,6 +349,10 @@ defmodule EhOsContract.ReportTest do
       assert step["mode"] == "async"
       assert step["in_flight"] == %{"effects" => 0, "timers" => 0, "lag" => 1}
       assert step["failing"] == %{"commands" => 0, "subscription" => nil, "effects" => 0}
+
+      # The process is a module's since plan DD, P2g (#228), which the wire does not
+      # carry yet (#213); the projection that will carry it takes its report.
+      [p] = handling() |> EhOsContract.Conformance.Wire.encode() |> Map.fetch!("processes")
       assert [%{"promise" => "completed_or_refusal_notified"}] = p["promises"]
     end
   end

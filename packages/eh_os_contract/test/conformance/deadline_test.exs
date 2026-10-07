@@ -5,20 +5,22 @@ defmodule EhOsContract.DeadlineTest do
   (plan E11a) each ran on v1's shape too.
 
   A run's start and end come from `eh_os_contract_event_runs`; the four outcomes and
-  the period rule are `EhOsContract.Run`'s.
+  the period rule are `EhOsContract.Run`'s. Since plan DD, P2g (#228) the processes
+  measured are modules, `ProcessShapes.Timing` above all, and a run is named by the
+  module's id.
   """
 
   use EhOsContract.DataCase, async: false
 
-  alias ProcessShapes.Timed
-  alias ProcessShapes.Seed
+  alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
+  alias ProcessShapes.{Seed, Timing}
 
   @nine ~U[2026-09-01 09:00:00.000000Z]
   @noon ~U[2026-09-01 12:00:00.000000Z]
 
   defp outcomes(opts \\ []) do
-    Timed
-    |> EhOsContract.Run.evaluate(:timed_run, Keyword.put_new(opts, :now, @noon))
+    Timing
+    |> EhOsContract.Run.evaluate("process_shapes.timing", Keyword.put_new(opts, :now, @noon))
     |> Map.new(&{&1.instance_id, &1.outcome})
   end
 
@@ -34,14 +36,14 @@ defmodule EhOsContract.DeadlineTest do
       Seed.start_run("r-open", ~U[2026-09-01 11:50:00.000000Z])
 
       assert outcomes() == %{
-               "timed_run|r-within" => :within,
-               "timed_run|r-exceeded" => :exceeded,
-               "timed_run|r-overdue" => :overdue,
-               "timed_run|r-open" => :open
+               "process_shapes.timing|r-within" => :within,
+               "process_shapes.timing|r-exceeded" => :exceeded,
+               "process_shapes.timing|r-overdue" => :overdue,
+               "process_shapes.timing|r-open" => :open
              }
 
-      assert Timed
-             |> EhOsContract.Run.evaluate(:timed_run, now: @noon)
+      assert Timing
+             |> EhOsContract.Run.evaluate("process_shapes.timing", now: @noon)
              |> EhOsContract.Run.summary() ==
                %{runs: 4, within: 1, exceeded: 1, overdue: 1, open: 1}
     end
@@ -53,51 +55,77 @@ defmodule EhOsContract.DeadlineTest do
       assert outcomes(since: @nine) == %{}
 
       assert outcomes(since: ~U[2026-08-31 00:00:00.000000Z]) ==
-               %{"timed_run|r-1" => :exceeded}
+               %{"process_shapes.timing|r-1" => :exceeded}
     end
 
     test "instance narrows to one run" do
       Seed.start_run("r-1", @nine)
       Seed.start_run("r-2", @nine)
 
-      assert outcomes(instance: "timed_run|r-2") == %{"timed_run|r-2" => :overdue}
+      assert outcomes(instance: "process_shapes.timing|r-2") ==
+               %{"process_shapes.timing|r-2" => :overdue}
     end
 
     test "an unconfirmed deadline is still measured; only the report leaves it out" do
       Seed.request("r-1", :request_approved)
 
-      assert [%{instance_id: "handling|r-1", outcome: :within}] =
-               EhOsContract.Run.evaluate(ProcessShapes.Promised, :handling)
+      assert [%{instance_id: "process_shapes.handling|r-1", outcome: :within}] =
+               EhOsContract.Run.evaluate(ProcessShapes.Handling, "process_shapes.handling")
     end
   end
 
-  describe "a v2 contract" do
+  describe "a process module" do
+    # Until plan DD, P2g (#228) this was `DispatchRig.Branch`'s run of openings, which
+    # nothing ended. A process module cannot declare a deadline without `ends_on` (R6),
+    # so the run made of another contract's events is the account review's, which
+    # includes the ledger's withdrawals and is not ended without a confirmation.
     test "measures a run made of another contract's events, which it includes (D7)" do
-      clerk = EhOsContract.Actor.credential("u-1", ["dispatch_rig.open_account"])
+      clerk =
+        EhOsContract.Actor.credential("u-1", [
+          "dispatch_rig.open_account",
+          "dispatch_rig.deposit",
+          "dispatch_rig.withdraw"
+        ])
 
-      for {account, at} <- [{"a-1", @nine}, {"a-2", ~U[2026-09-01 10:00:00.000000Z]}] do
-        EhOsContract.Clock.at(at, fn ->
-          {:ok, _} =
-            EhOsContract.dispatch(
-              DispatchRig.Ledger,
-              %DispatchRig.Ledger.Commands.OpenAccount{account_id: account, branch_id: "b-7"},
-              actor: clerk
-            )
-        end)
-      end
+      EhOsContract.Clock.at(@nine, fn ->
+        for command <- [
+              %OpenAccount{account_id: "a-1", branch_id: "b-7"},
+              %Deposit{account_id: "a-1", amount: 100},
+              %Withdraw{account_id: "a-1", amount: 50}
+            ],
+            do: {:ok, _} = EhOsContract.dispatch(DispatchRig.Ledger, command, actor: clerk)
+      end)
+
+      # A second withdrawal joins the same run an hour later: the run starts at the
+      # earliest of its events, not the latest.
+      EhOsContract.Clock.at(~U[2026-09-01 10:00:00.000000Z], fn ->
+        {:ok, _} =
+          EhOsContract.dispatch(DispatchRig.Ledger, %Withdraw{account_id: "a-1", amount: 20},
+            actor: clerk
+          )
+      end)
 
       assert [run] =
-               EhOsContract.Run.evaluate(DispatchRig.Branch, :branch,
-                 now: ~U[2026-09-03 09:00:00.000000Z]
+               EhOsContract.Run.evaluate(
+                 DispatchRig.AccountReview,
+                 "dispatch_rig.account_review",
+                 now: ~U[2026-09-04 09:00:00.000000Z]
                )
 
-      assert %{instance_id: "branch|b-7", started_at: @nine, ended_at: nil, outcome: :overdue} =
-               run
+      assert %{
+               instance_id: "dispatch_rig.account_review|a-1",
+               started_at: @nine,
+               ended_at: nil,
+               outcome: :overdue
+             } = run
     end
 
     test "a process that declares no deadline, and a name it does not have, have no outcomes" do
-      assert EhOsContract.Run.evaluate(DispatchRig.Ledger, :ledger, now: @noon) == []
-      assert EhOsContract.Run.evaluate(Timed, :no_such, now: @noon) == []
+      assert EhOsContract.Run.evaluate(DispatchRig.LedgerRun, "dispatch_rig.ledger_run",
+               now: @noon
+             ) == []
+
+      assert EhOsContract.Run.evaluate(Timing, "no_such", now: @noon) == []
     end
   end
 end

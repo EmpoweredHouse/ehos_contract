@@ -222,8 +222,10 @@ defmodule EhOsContract.GraphDomainTest do
           overlay: true
         )
 
-      assert diagram =~ ~s|contract_dispatch_rig_ledger["Ledger · Ledger (2 runs)"]:::contract|
-      assert diagram =~ ~s|contract_dispatch_rig_branch["Branch · Branch (1 run)"]:::contract|
+      # The rigs' runs are process modules' since plan DD, P2g (#228), and a contract
+      # without a process of its own carries no count of runs.
+      assert diagram =~ ~s|contract_dispatch_rig_ledger["Ledger"]:::contract|
+      assert diagram =~ ~s|contract_dispatch_rig_branch["Branch"]:::contract|
 
       assert diagram =~
                "contract_dispatch_rig_ledger -->|account_opened · 2 events| contract_dispatch_rig_branch"
@@ -231,6 +233,32 @@ defmodule EhOsContract.GraphDomainTest do
       # Without the overlay, the edge names what flows and nothing counts it.
       assert Graph.system_to_mermaid(DispatchRig.Domain, EhOsContract.Registry.contracts()) =~
                "contract_dispatch_rig_ledger -->|account_opened| contract_dispatch_rig_branch"
+
+      # A contract's own process, this file's scheduling's: its runs, filed as dispatch
+      # files them, are on its node.
+      model = EhOsContract.Model.fetch(@scheduling)
+      [booked] = model.events
+
+      record_events!(
+        for visit <- ["v-1", "v-2"] do
+          %{
+            type: booked.type,
+            contract: model.id,
+            contract_version: model.version,
+            process: "slot",
+            instance_id: "slot|#{visit}",
+            payload: %{"visit_id" => visit}
+          }
+        end
+      )
+
+      clinic = Graph.system_to_mermaid(@domain, [@scheduling, @settlement], overlay: true)
+
+      assert clinic =~
+               ~s|contract_eh_os_contract_graph_domain_test_scheduling["Scheduling · Termin wizyty (2 runs)"]:::contract|
+
+      assert clinic =~
+               ~s|contract_eh_os_contract_graph_domain_test_settlement["Settlement"]:::contract|
     end
   end
 
@@ -258,8 +286,10 @@ defmodule EhOsContract.GraphDomainTest do
     contracts = EhOsContract.Registry.contracts()
     ours = Enum.filter(contracts, &(EhOsContract.Model.fetch(&1).domain == DispatchRig.Domain))
 
-    # DispatchRig.Branch is the one consumer: its steps, each process's runs (Branch has no
-    # steps of its own to carry them), and one count for every edge. Before, every
+    # DispatchRig.Branch is the one consumer: its steps, one read of runs for each
+    # contract with a process of its own, and one count for every edge. Since plan DD,
+    # P2g (#228) none of DispatchRig's contracts has a process, so the second term is
+    # zero here; it stays so the budget holds if one gains a process. Before, every
     # contract's steps were read and every edge counted apart: 28 queries here.
     with_process = Enum.count(ours, &(EhOsContract.Model.fetch(&1).process != nil))
     budget = queries(fn -> EhOsContract.Paths.observe(DispatchRig.Branch) end) + with_process + 1
