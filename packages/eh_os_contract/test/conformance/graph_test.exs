@@ -160,6 +160,10 @@ defmodule EhOsContract.GraphTest do
     assert_raise Mix.Error, ~r/--json gives a contract's or a domain's whole document/, fn ->
       task.(~w(--json --contract dispatch_rig.ledger --unit account))
     end
+
+    assert_raise Mix.Error, ~r/--since applies to --overlay/, fn ->
+      task.(~w(--json --contract dispatch_rig.ledger --since 2026-01-01T00:00:00Z))
+    end
   end
 
   test "--json without --output writes the document alone to stdout, and what is logged to stderr" do

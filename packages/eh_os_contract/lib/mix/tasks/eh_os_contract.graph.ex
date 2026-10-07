@@ -254,6 +254,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
             "without --unit, --lifecycle, --process or --mermaid"
         )
 
+      opts[:json] && opts[:since] && !opts[:overlay] ->
+        Mix.raise("--json gives the declarations unless --overlay; --since applies to --overlay")
+
       opts[:unit] && !opts[:contract] ->
         Mix.raise("--unit names a unit of a contract; pass --contract too")
 
