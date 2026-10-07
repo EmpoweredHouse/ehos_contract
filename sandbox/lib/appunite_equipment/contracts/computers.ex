@@ -16,8 +16,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   is, whether it is for sale — so every decision is this aggregate's, over one
   stream. The process owner chose to verify the run **per assignment**, from the
   issue to the return (distillation, "Zanim przeczytasz", shape B). That run is a
-  sibling contract, `AppuniteEquipment.Contracts.Assignments`, which consumes the
-  events of an assignment.
+  process module, `AppuniteEquipment.Processes.Assignment`, which includes the
+  events of an assignment from here.
 
   A computer's own life — from the invoice, round the same loop for years, to one
   of its four ends — is not a run here but the aggregate's lifecycle: the engine
@@ -41,7 +41,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   - **A replacement the employee keeps** needs no fact: it is an assignment that is
     never returned.
   - **A stolen computer** ends here; it carries its assignment, which it ends too
-    (`Assignments`), and its employee, who needs another computer (`Demands`).
+    (`AppuniteEquipment.Processes.Assignment`), and its employee, who needs another
+    computer (`Demands`).
   """
 
   use EhOsContract.Contract,
@@ -288,7 +289,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
     end
 
     # The loop: issued, returned, cleaned, set up, issued again — for years. Its
-    # order is the lifecycle's, and the assignment's own run (`Assignments`) claims
+    # order is the lifecycle's, and the assignment's own run (`Processes.Assignment`) claims
     # the order of one issue and its return.
     event :set_up, "Komputer ustawiony (MDM, szyfrowanie dysku)", source: "E"
 
