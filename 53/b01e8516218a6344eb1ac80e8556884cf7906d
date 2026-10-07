@@ -1,0 +1,25 @@
+**Review of P2b** (two reviews in parallel on `origin/main..71fc9ba`; settled in the commit after it).
+
+**Correctness** found no bug, and no change for contracts from the helpers now shared with them (the id's form, durations, blank labels, the promise entity). It compiled 17 edge-case process modules to probe the rules.
+- **Four modules compiled that should not have. Fixed**, each refused with a test beside a control:
+  - a stage entry `{Contract, []}` beside entries that name events (R3);
+  - an entry whose contract is not a module (R3);
+  - `ends_on` declared twice, which was silently merged (R5);
+  - `correlate` naming one field twice (R2).
+- **The id's domain prefix is checked nowhere yet. Recorded** as a decision on this issue: it moves to P2c with the other cross-module checks.
+- **Version and digests depend only on the orders that should matter.** Stages and `correlate` count; promises, `ends_on` and includes do not.
+- **Nothing that reads models crashes on a third kind.** The registry and the links keep only contracts and domains, and functions that need a contract say "is a process, not a contract".
+- **The no-compile-dependency test tells the difference.** Removing `no_depend_modules` makes it fail.
+- **Left:**
+  - an `include` listing one event twice gets a clumsy message;
+  - a promise whose `from` equals `eventually` compiles, as it does in a contract;
+  - a contract's `correlate` can name a field twice, as before. That is the contract DSL, outside this stage.
+
+**Security and performance** found nothing that blocks:
+- No atoms come from strings.
+- The rules are linear.
+- `no_depend_modules` covers the nested tuples.
+- No runtime path takes a process module for a contract. The registry, every web API route, dispatch and the manifest select contracts only.
+- **Left** (low): two places would raise a `KeyError` rather than a clear error if a process module were passed where a contract is expected. A compile-time check already prevents both.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Check counts unchanged (sandbox 0, 36, 10; engine 0, 70, 6). Tests: engine 1434 (+29), web 57, sandbox 196, auth 287 + 1 property.
