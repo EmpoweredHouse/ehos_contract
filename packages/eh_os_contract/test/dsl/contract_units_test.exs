@@ -489,6 +489,10 @@ defmodule EhOsContract.ContractUnitsTest do
                  "so no person issues it"
 
       assert message =~ "A9: command :close_f names who must issue it twice"
+
+      assert message =~
+               "A9: command :close_f, actor_is :visit_id: is the unit's identity, which the " <>
+                 "caller fills in the command, so anyone could name themselves"
     end
 
     test "a command that creates its aggregate names nobody yet" do

@@ -217,7 +217,7 @@ The person who must issue the command: the one a field of the unit's state names
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `field` | `atom` | yes |  | The field of the unit's state, a required, non-personal `:id`, that names the person. |
+| `field` | `atom` | yes |  | The field of the unit's state, a non-personal `:id` an earlier event fills, that names the person. |
 
 **Options**
 

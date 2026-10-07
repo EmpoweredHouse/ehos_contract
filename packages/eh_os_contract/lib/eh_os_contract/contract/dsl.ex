@@ -407,7 +407,7 @@ defmodule EhOsContract.Contract.Dsl do
         type: :atom,
         required: true,
         doc:
-          "The field of the unit's state, a required, non-personal `:id`, that names the person."
+          "The field of the unit's state, a non-personal `:id` an earlier event fills, that names the person."
       ],
       or_rejects: [
         type: :atom,

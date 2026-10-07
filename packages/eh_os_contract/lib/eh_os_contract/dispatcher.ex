@@ -848,11 +848,11 @@ defmodule EhOsContract.Dispatcher do
   # refused on its invariant before the decision otherwise, as a lifecycle's
   # precondition is. A `:system` actor and a reaction act for the application, and pass.
   # A field still empty names nobody, so every person is refused.
-  defp person_named(%{actor_is: %{field: field, or_rejects: invariant}}, state, %Actor{
-         kind: :credential,
-         subject: subject
-       }) do
-    if Map.get(state, field) == subject, do: :ok, else: {:refused, invariant}
+  defp person_named(declaration, state, %Actor{kind: :credential, subject: subject}) do
+    case Decision.not_the_person(declaration, state, subject) do
+      nil -> :ok
+      invariant -> {:refused, invariant}
+    end
   end
 
   defp person_named(_declaration, _state, _actor), do: :ok

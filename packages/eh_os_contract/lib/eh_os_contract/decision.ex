@@ -133,4 +133,19 @@ defmodule EhOsContract.Decision do
 
   defp describe(%module{}), do: "%#{inspect(module)}{}"
   defp describe(other), do: inspect(other)
+
+  @doc """
+  The invariant `command` is refused on when `person`, the subject of whoever issues it,
+  is not the one its `actor_is` field of `state` holds (plan DD, A1, #247); `nil` when
+  they are, or when the command names nobody who must issue it. A field still empty, or
+  an empty subject, names nobody, so it is refused. Dispatch asks it for a credential;
+  a scenario, for the person it names with `as`.
+  """
+  @spec not_the_person(map(), map(), String.t() | nil) :: atom() | nil
+  def not_the_person(%{actor_is: %{field: field, or_rejects: invariant}}, state, person) do
+    value = Map.get(state, field)
+    if is_binary(person) and value == person, do: nil, else: invariant
+  end
+
+  def not_the_person(_command, _state, _person), do: nil
 end

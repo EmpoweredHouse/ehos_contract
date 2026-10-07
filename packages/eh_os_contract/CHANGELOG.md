@@ -29,11 +29,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - **A command can name the person who must issue it** (plan DD, stage A1, #247). Inside a command, `actor_is
   :specialist_id, or_rejects: :invariant` says a credential's subject must be the one that field of the unit's
-  state holds (a new compile refusal, A9, for a field outside the state, not an `:id` or personal, an invariant
-  outside `rejects:`, a command that `creates:` or has no `by:`). Dispatch checks it after folding the state and
+  state holds (a new compile refusal, A9, for the unit's identity, which the caller fills, a field outside the
+  state, not an `:id` or personal, an invariant outside `rejects:`, a command that `creates:` or has no `by:`;
+  and X2, for a `by:` without a person). Dispatch checks it after folding the state and
   before the decision, and refuses anyone else on the invariant with a `rejected` row, which the report counts as
   any rejection; a `:system` actor and a reaction pass. A scenario names the person with `as "…"` beside its
-  `actor` (S7). Nothing changes for a contract that does not declare it.
+  `actor`, and must when the actor is a person (S7, X2). Nothing changes for a contract that does not declare it.
 
 - **A command can read an entity the application keeps before it is decided** (plan DD, stage T2a, #240). A
   command declares `reads: [service: :service_id]`, naming a required field of its own typed `{:id, entity}`

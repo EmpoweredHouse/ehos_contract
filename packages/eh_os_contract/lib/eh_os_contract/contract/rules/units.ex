@@ -93,7 +93,8 @@ defmodule EhOsContract.Contract.Rules.Units do
   # comparison's refusal. A state field may be empty until an event fills it: then
   # nobody is named yet, and the command is refused. The invariant is the unit's and the
   # command may refuse on it; a command that creates its aggregate has no state to name
-  # anyone; and only a command people issue, `by:`, has a person to compare.
+  # anyone; and only a command people issue, `by:`, has a person to compare. Never the
+  # identity: the caller fills it in the command, so anyone could name themselves.
   defp actor_is(unit) do
     state = Enum.flat_map(unit.state, & &1.fields)
     invariants = MapSet.new(unit.invariants, & &1.name)
@@ -116,7 +117,10 @@ defmodule EhOsContract.Contract.Rules.Units do
     Enum.concat([
       cond do
         field in List.wrap(unit.identity) ->
-          []
+          [
+            "is the unit's identity, which the caller fills in the command, so anyone could " <>
+              "name themselves; the person is one an earlier event recorded in the state"
+          ]
 
         declared == nil ->
           ["is not a field of the unit's state; the person is one the unit already knows"]

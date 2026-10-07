@@ -53,6 +53,32 @@ defmodule EhOsContract.ActorIsTest do
              resolve("ticket-1", clerk("clerk-ada"))
   end
 
+  test "an empty subject names nobody, even beside a field still empty" do
+    command = Enum.find(EhOsContract.Model.fetch(Desk).commands, &(&1.name == :resolve_ticket))
+
+    assert EhOsContract.Decision.not_the_person(command, %{assignee_id: nil}, nil) ==
+             :only_its_assignee_resolves
+
+    assert EhOsContract.Decision.not_the_person(command, %{assignee_id: "clerk-bo"}, "clerk-bo") ==
+             nil
+  end
+
+  test "the decider's doc says the engine refuses on the invariant, not the callback" do
+    doc =
+      EhOsContract.Contract.Doc.callback(
+        EhOsContract.Model.fetch(Desk),
+        :aggregate,
+        :ticket,
+        :resolve_ticket
+      )
+
+    assert doc =~
+             "Issued only by the person `state.assignee_id` names: anyone else is refused on " <>
+               "`only_its_assignee_resolves` by the engine before this callback runs."
+
+    refute doc =~ "Refuses with `reject/1` on"
+  end
+
   test "the application's own :system actor passes, whoever the ticket is assigned to" do
     assign!("ticket-1", "clerk-bo")
 

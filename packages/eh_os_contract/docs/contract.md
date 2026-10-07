@@ -383,7 +383,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `A8` | L2 | a command's `reads:` naming a field it does not have, a field of its unit's identity, an optional field or one not typed `{:id, entity}`; a name given twice; a command that reads, issued by a policy or a process manager |
-| `A9` | L2 | a command's `actor_is` naming a field outside its unit's state and identity, not an `:id`, or personal; an `or_rejects:` that is not an invariant of the unit in the command's `rejects:`; on a command that `creates:` its aggregate or names nobody in `by:`; given twice |
+| `A9` | L2 | a command's `actor_is` naming its unit's identity, which the caller fills, or a field outside its unit's state, not an `:id`, or personal; an `or_rejects:` that is not an invariant of the unit in the command's `rejects:`; on a command that `creates:` its aggregate or names nobody in `by:`; given twice |
 
 <a id="refusals-t"></a>
 
@@ -483,7 +483,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | Code | Layer | What is refused |
 | --- | --- | --- |
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
-| `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them) |
+| `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |

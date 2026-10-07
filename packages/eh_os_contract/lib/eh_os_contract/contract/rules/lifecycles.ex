@@ -320,8 +320,11 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
         end
 
       # A status none of the events leaves is where the decision refuses, so it needs
-      # a rule to refuse on besides `or_rejects:`, which the engine has already applied.
-      finer? = Enum.any?(command.rejects, &(&1 != command.or_rejects))
+      # a rule to refuse on besides `or_rejects:`, which the engine has already applied,
+      # and besides an `actor_is` invariant, which the engine applies as well (plan DD,
+      # A1, #247).
+      applied = [command.or_rejects | Enum.map(command.actor_is, & &1.or_rejects)]
+      finer? = Enum.any?(command.rejects, &(&1 not in applied))
 
       stuck =
         for status <- command.from,

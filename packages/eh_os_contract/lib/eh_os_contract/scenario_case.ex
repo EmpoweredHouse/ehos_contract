@@ -464,14 +464,15 @@ defmodule EhOsContract.ScenarioCase do
 
   defp reads(_model, _declaration, _command, _scenario), do: []
 
-  # The invariant a command is refused on when the person a scenario names with `as:` is
-  # not the one its `actor_is` field of the state holds; `nil` when they are, or when the
-  # scenario names nobody, as dispatch passes a `:system` actor (plan DD, A1, #247).
-  defp not_the_person(%{actor_is: %{field: field, or_rejects: invariant}}, state, person)
-       when is_binary(person),
-       do: if(Map.get(state, field) == person, do: nil, else: invariant)
+  # The invariant a command is refused on when the person a scenario names with `as` is
+  # not the one its `actor_is` field of the state holds, by the rule dispatch applies to a
+  # credential (`Decision.not_the_person/3`). A scenario that names nobody is one of a
+  # `:system` actor, which dispatch does not compare; a person's actor must name someone
+  # (X2) (plan DD, A1, #247).
+  defp not_the_person(declaration, state, person) when is_binary(person),
+    do: EhOsContract.Decision.not_the_person(declaration, state, person)
 
-  defp not_the_person(_declaration, _state, _person), do: nil
+  defp not_the_person(_declaration, _state, nil), do: nil
 
   # The row as dispatch hands it over: every declared field, `nil` where the scenario
   # leaves an optional one out, and each value held to its domain value's invariants.
