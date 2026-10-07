@@ -2,8 +2,9 @@ defmodule KeyRig.Shelves do
   @moduledoc """
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
-  A shelf stocked, in a run of its site alone: the run's key is at most a field long
-  and the stream's three, so a refusal of a shelf is its stream's (issue #98).
+  A shelf stocked, in a run of its site alone, `KeyRig.Shelving`'s: the run's key is
+  at most a field long and the stream's three, so a refusal of a shelf is its stream's
+  (issue #98). The run was `:shelving` inside this contract until plan DD, P2g (#228).
   """
 
   use EhOsContract.Contract, domain: KeyRig.Domain, context: :stock, id: "key_rig.shelves"
@@ -14,10 +15,6 @@ defmodule KeyRig.Shelves do
     command :stock_shelf, "Stock a shelf", by: :stocker, emits: :loaded
 
     event :loaded, "Shelf loaded"
-  end
-
-  process :shelving, "Shelving", accountable: :stocker do
-    correlate :site_id
   end
 
   scenario "a shelf is stocked" do

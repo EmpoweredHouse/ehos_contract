@@ -2,14 +2,16 @@ defmodule EhOsContract.DeploymentTest do
   @moduledoc """
   The deployment of a v2 contract (v2 §13, plan E7c-2): which version is deployed,
   since when, and what its wiring is — the steps the contract declares, and which
-  module implements each declaration.
+  module implements each declaration. The promise is a process module's since plan DD,
+  P2g (#228), `ProcessShapes.Handling`, recorded in a row of its own under its id.
   """
 
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Report}
-  alias ProcessShapes.Promised
-  alias ProcessShapes.Seed
+  alias ProcessShapes.{Handling, Promised, Seed}
+
+  @handling "process:process_shapes.handling"
 
   defp row(contract),
     do:
@@ -31,7 +33,9 @@ defmodule EhOsContract.DeploymentTest do
     # The wiring is the steps and which module implements each declaration: the
     # same steps under other modules are another wiring.
     refute row.wiring_version == EhOsContract.Digest.hash(row.edges)
-    assert Map.has_key?(row.declaration_digests, "promise:completed_or_refusal_notified")
+
+    process = Repo.one!(from(d in Deployment, where: d.contract == @handling))
+    assert Map.has_key?(process.declaration_digests, "promise:completed_or_refusal_notified")
   end
 
   test "the wiring holds which module checks each value of the contract's domain" do
@@ -61,7 +65,7 @@ defmodule EhOsContract.DeploymentTest do
   end
 
   test "a promise's digest is its rule: confirming it or citing it anew is no change" do
-    [promise] = Promised.__eh_os_contract_model__().process.promises
+    [promise] = EhOsContract.Model.process(Handling).promises
     digest = Deployment.promise_digest(promise)
 
     assert Deployment.promise_digest(%{promise | unverified: true, source: "W1 00:01:02"}) ==
@@ -100,8 +104,8 @@ defmodule EhOsContract.DeploymentTest do
           {"bbbbbbbbbbbb", ~U[2026-08-05 09:00:00.000000Z]}
         ] do
       Repo.insert!(%Deployment{
-        contract: EhOsContract.Model.fetch(Promised).id,
-        contract_version: Promised.__eh_os_contract_model__().version,
+        contract: @handling,
+        contract_version: Handling.__eh_os_contract_model__().version,
         wiring_version: "wiring-#{digest}",
         events: [],
         edges: [],
@@ -110,7 +114,7 @@ defmodule EhOsContract.DeploymentTest do
       })
     end
 
-    [process] = Conformance.report(Promised).processes
+    [process] = Conformance.report(Handling).processes
     [promise] = process.promises
 
     assert promise.declaration_changed_at == ~U[2026-08-05 09:00:00.000000Z]

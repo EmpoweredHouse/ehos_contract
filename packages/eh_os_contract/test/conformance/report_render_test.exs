@@ -19,18 +19,26 @@ defmodule EhOsContract.ReportRenderTest do
   so a branch is exercised with the shape it is contracted to accept rather than by
   bending the fixture until it produces that shape — `ProcessShapes.Promised`
   declares no external dependency, so it cannot suspend a run at all.
+
+  Since plan DD, P2g (#228) the promise and the deadlines are process modules',
+  `ProcessShapes.Handling` and `ProcessShapes.Timing`, each with a report of its own
+  beside its contract's, and `mix eh_os_contract.report` prints them one after the
+  other as one artifact.
   """
 
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Report}
-  alias ProcessShapes.Promised
-  alias ProcessShapes.Seed
+  alias ProcessShapes.{Handling, Promised, Seed, Timing}
 
   setup do: Seed.deploy()
 
   defp data(opts \\ []), do: Conformance.report(Promised, opts)
   defp text(opts \\ []), do: opts |> data() |> Report.render()
+
+  # The process: its runs, its promise and its deadline.
+  defp handling(opts \\ []), do: Conformance.report(Handling, opts)
+  defp handling_text(opts \\ []), do: opts |> handling() |> Report.render()
 
   # The report with its one promise replaced, rendered.
   defp render_with(report, fun) do
@@ -59,15 +67,16 @@ defmodule EhOsContract.ReportRenderTest do
     setup do: run_at("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
     test "a deadline marked unverified does not reach the rendered text" do
-      assert Promised.__eh_os_contract_model__().process.deadline.unverified
+      assert EhOsContract.Model.process(Handling).deadline.unverified
 
+      refute handling_text() =~ "Deadline"
       refute text() =~ "Deadline"
 
       # The control: a confirmed deadline does print, so the filter acts on
       # `unverified` rather than the renderer being unable to print a deadline.
       Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
-      assert ProcessShapes.Timed |> Conformance.report() |> Report.render() =~ "Deadline:"
+      assert Timing |> Conformance.report() |> Report.render() =~ "Deadline:"
     end
 
     test "nor anywhere else in the report data, whatever key a later stage adds" do
@@ -75,7 +84,7 @@ defmodule EhOsContract.ReportRenderTest do
       # because a narrower one checked `declarations` only and a later stage added
       # `duration:`, a second route by which the same unconfirmed `{3, :day}` could
       # have reached the report. v2 has more keys still.
-      [process] = data().processes
+      [process] = handling().processes
 
       refute {3, :day} in values(process),
              "the unconfirmed deadline reached the report through some key other than " <>
@@ -83,7 +92,7 @@ defmodule EhOsContract.ReportRenderTest do
 
       # A confirmed deadline is a tuple of the same kind and does reach it, so the walk
       # can see such a value at all.
-      [timed] = Conformance.report(ProcessShapes.Timed).processes
+      [timed] = Conformance.report(Timing).processes
       assert {1, :hour} in values(timed)
     end
   end
@@ -92,7 +101,8 @@ defmodule EhOsContract.ReportRenderTest do
     setup do: run_at("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
     test "the screen's four questions are in one artifact" do
-      t = text()
+      # The contract and its process, one after the other, as the task prints them.
+      t = text() <> "\n" <> handling_text()
 
       assert t =~ "CONTRACT"
       assert t =~ "Version"
@@ -116,7 +126,7 @@ defmodule EhOsContract.ReportRenderTest do
       run_at("r-2", ~U[2026-08-10 09:00:00.000000Z])
       run_at("r-3", ~U[2026-08-10 10:00:00.000000Z])
 
-      runs = fn opts -> hd(data(opts).processes).runs end
+      runs = fn opts -> hd(handling(opts).processes).runs end
 
       assert runs.([]) == 3
       assert runs.(since: ~U[2026-08-05 00:00:00.000000Z]) == 2
@@ -142,7 +152,7 @@ defmodule EhOsContract.ReportRenderTest do
       # to the rule)" — where "including" reads as qualifying the breaches and in fact
       # qualifies the runs that were met.
       text =
-        render_with(data(), fn promise ->
+        render_with(handling(), fn promise ->
           %{
             promise
             | instances: 5,
@@ -162,7 +172,7 @@ defmodule EhOsContract.ReportRenderTest do
     test "and says nothing about a fallback when nothing was met at all" do
       # There would be no count for the clause to qualify.
       text =
-        render_with(data(), fn promise ->
+        render_with(handling(), fn promise ->
           %{
             promise
             | instances: 2,
@@ -184,8 +194,8 @@ defmodule EhOsContract.ReportRenderTest do
             {"bbbbbbbbbbbb", at}
           ] do
         Repo.insert!(%Deployment{
-          contract: EhOsContract.Model.fetch(Promised).id,
-          contract_version: Promised.__eh_os_contract_model__().version,
+          contract: "process:process_shapes.handling",
+          contract_version: Handling.__eh_os_contract_model__().version,
           wiring_version: "wiring-#{digest}",
           events: [],
           edges: [],
@@ -196,7 +206,7 @@ defmodule EhOsContract.ReportRenderTest do
     end
 
     defp promise do
-      [process] = data().processes
+      [process] = handling().processes
       [promise] = process.promises
       promise
     end
@@ -211,7 +221,7 @@ defmodule EhOsContract.ReportRenderTest do
       assert p.under_earlier_declaration == 0
       assert p.declaration_changed_at == nil
       assert p.instances == 1
-      refute text() =~ "judged under a different promise"
+      refute handling_text() =~ "judged under a different promise"
     end
 
     test "the report says how many fell outside and on what date" do
@@ -219,7 +229,7 @@ defmodule EhOsContract.ReportRenderTest do
       run_at("r-new", ~U[2026-08-09 09:00:00.000000Z])
       rule_changed_on(~U[2026-08-05 09:00:00.000000Z])
 
-      t = text()
+      t = handling_text()
 
       assert t =~ "1 run began before this rule was last changed (2026-08-05)"
       assert t =~ "judged under a different promise"
@@ -233,7 +243,7 @@ defmodule EhOsContract.ReportRenderTest do
       assert p.instances == 0
       assert p.under_earlier_declaration == 1
 
-      t = text()
+      t = handling_text()
       assert t =~ "No run in this period was judged under the rule as it now stands."
       refute t =~ "There was no run in this period on which this could be judged."
     end
@@ -244,7 +254,7 @@ defmodule EhOsContract.ReportRenderTest do
 
     test "it is named as a suspension and kept out of the breaches" do
       text =
-        render_with(data(), fn promise ->
+        render_with(handling(), fn promise ->
           %{promise | instances: 3, satisfied: 1, violated: 0, suspended: 2}
         end)
 
@@ -260,12 +270,12 @@ defmodule EhOsContract.ReportRenderTest do
     test "no suspensions means no sentence at all" do
       # The control. A report that mentions suspensions when there are none teaches a
       # reader to skip the line.
-      refute text() =~ "Suspended"
+      refute handling_text() =~ "Suspended"
     end
   end
 
   describe "the agreed duration, measured" do
-    # `ProcessShapes.Timed` confirms `deadline {1, :hour}`. These sentences are
+    # `ProcessShapes.Timing` confirms `deadline {1, :hour}`. These sentences are
     # the only place the report turns that declaration into a finding, and each
     # counts only what can be known: a finished run's duration, or an open run's
     # lower bound, never the two in one count.
@@ -273,7 +283,7 @@ defmodule EhOsContract.ReportRenderTest do
     @noon ~U[2026-09-01 12:00:00.000000Z]
 
     defp timed_text do
-      ProcessShapes.Timed |> Conformance.report(now: @noon) |> Report.render()
+      Timing |> Conformance.report(now: @noon) |> Report.render()
     end
 
     test "the sentence counts only the runs that finished" do

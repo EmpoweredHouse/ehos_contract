@@ -3,8 +3,9 @@ defmodule ProcessShapes.Timed do
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
   A timed run (v2 plan, E7c). A run starts, is acknowledged, and ends, and the
-  process promises it takes an hour: the confirmed `deadline`, and the terminal
-  event it is measured to.
+  process promises it takes an hour: the confirmed `deadline`, and the event that
+  ends a run, which it is measured to. The process is `ProcessShapes.Timing`'s since
+  plan DD, P2g (#228).
 
   The acknowledgement is a policy inside the transaction and does not end the run: a
   run that ended as it started could never be open past its hour.
@@ -22,29 +23,14 @@ defmodule ProcessShapes.Timed do
     command :acknowledge_run, "Acknowledge a run", emits: :run_acknowledged
     command :finish_run, "Finish a run", by: :run_owner, emits: :run_finished
 
-    stage :opening do
-      event :run_started, "Run started"
-      event :run_acknowledged, "Run acknowledged"
-    end
-
-    stage :closing do
-      event :run_finished, "Run finished", terminal: true
-    end
+    event :run_started, "Run started"
+    event :run_acknowledged, "Run acknowledged"
+    event :run_finished, "Run finished"
   end
 
   policy :acknowledge_start, "Acknowledge a run as it starts",
     handles: :run_started,
     issues: :acknowledge_run
-
-  process :timed_run, "Timed run" do
-    correlate :run_id
-    accountable :run_owner
-
-    stage :opening
-    stage :closing
-
-    deadline {1, :hour}
-  end
 end
 
 defmodule ProcessShapes.TimedRun do

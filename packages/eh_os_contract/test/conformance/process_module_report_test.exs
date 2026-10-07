@@ -118,8 +118,10 @@ defmodule EhOsContract.ProcessModuleReportTest do
     test "leaves a contract's report as it was" do
       report = Conformance.report(Ledger, now: later())
 
+      # The ledger declares no process of its own since plan DD, P2g (#228), and the
+      # modules that include its events are not drawn into its report.
       assert %{contract: "dispatch_rig.ledger"} = report
-      assert [%{process: :ledger}] = report.processes
+      assert report.processes == []
     end
 
     test "is not on the conformance wire" do

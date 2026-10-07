@@ -8,6 +8,9 @@ defmodule DispatchRig.Ledger do
   run inside the dispatch transaction; one policy flags an account on a deposit of
   1000 or more, through a command no actor may issue, and the other repeats a
   deposit of 777, a cycle for dispatch's guard to stop.
+
+  An account's run through all of it is `DispatchRig.LedgerRun`'s, a process module
+  of its own since plan DD, P2g (#228).
   """
 
   use EhOsContract.Contract,
@@ -152,10 +155,6 @@ defmodule DispatchRig.Ledger do
     idempotency: [key: :event_id, owner: :self]
 
   effect :audit_withdrawal, "Audit a withdrawal", handles: :withdrawn, delivery: :in_transaction
-
-  process :ledger, "Ledger" do
-    correlate :account_id
-  end
 
   scenario "a withdrawal beyond the balance is refused" do
     given :deposited, %{amount: 100}

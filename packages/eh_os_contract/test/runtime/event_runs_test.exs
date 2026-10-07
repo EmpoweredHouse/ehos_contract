@@ -1,7 +1,9 @@
 defmodule EhOsContract.EventRunsTest do
   @moduledoc """
-  Every run an event belongs to (v2 §13, D7, plan E7c): its home run, and the run of
-  each contract that includes it, written in the same append as the event.
+  Every run an event belongs to (v2 §13, D7, plan E7c): the run of each process that
+  includes it, written in the same append as the event. Since plan DD, P2g (#228) the
+  ledger's runs are process modules', `DispatchRig.LedgerRun` and
+  `DispatchRig.BranchRun`, filed under their ids.
   """
 
   use EhOsContract.DataCase, async: false
@@ -26,28 +28,32 @@ defmodule EhOsContract.EventRunsTest do
     )
   end
 
-  test "an event another contract includes belongs to its home run and to that contract's" do
+  test "an event two processes include belongs to the run of each" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
 
     assert runs("dispatch_rig.ledger.account_opened") == [
-             {"branch", "branch|b-7"},
-             {"ledger", "ledger|a-1"}
+             {"dispatch_rig.branch_run", "dispatch_rig.branch_run|b-7"},
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
            ]
   end
 
-  test "control: an event nobody includes belongs to its home run alone" do
+  test "control: an event one process includes belongs to its run alone" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
     dispatch(%Deposit{account_id: "a-1", amount: 10})
 
-    assert runs("dispatch_rig.ledger.deposited") == [{"ledger", "ledger|a-1"}]
+    assert runs("dispatch_rig.ledger.deposited") == [
+             {"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|a-1"}
+           ]
   end
 
-  test "two accounts of one branch are two home runs and one branch run" do
+  test "two accounts of one branch are two account runs and one branch run" do
     dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
     dispatch(%OpenAccount{account_id: "a-2", branch_id: "b-7"})
 
-    branch = for {"branch", id} <- runs("dispatch_rig.ledger.account_opened"), do: id
-    assert branch == ["branch|b-7", "branch|b-7"]
+    branch =
+      for {"dispatch_rig.branch_run", id} <- runs("dispatch_rig.ledger.account_opened"), do: id
+
+    assert branch == ["dispatch_rig.branch_run|b-7", "dispatch_rig.branch_run|b-7"]
   end
 
   describe "a run keyed by two fields" do
@@ -56,7 +62,7 @@ defmodule EhOsContract.EventRunsTest do
     @operator Actor.credential("u-1", ["process_shapes.open_batch"])
 
     test "is one run per pair of values, and a value shared with another pair merges nothing" do
-      # `ProcessShapes.Bare` correlates on `[:tenant_id, :batch_id]`. Each pair
+      # `ProcessShapes.Batching` correlates on `[:tenant_id, :batch_id]`. Each pair
       # below shares one value with another, so a key built from either field alone
       # would merge two of them into one run.
       for {tenant, batch} <- [{"t-1", "b-1"}, {"t-1", "b-2"}, {"t-2", "b-1"}] do
@@ -68,11 +74,11 @@ defmodule EhOsContract.EventRunsTest do
           )
       end
 
-      # The values in the order `correlate` declares them, after the process's name.
+      # The values in the order `correlate` declares them, after the process's id.
       assert runs("process_shapes.bare.batch_opened") == [
-               {"batching", "batching|t-1|b-1"},
-               {"batching", "batching|t-1|b-2"},
-               {"batching", "batching|t-2|b-1"}
+               {"process_shapes.batching", "process_shapes.batching|t-1|b-1"},
+               {"process_shapes.batching", "process_shapes.batching|t-1|b-2"},
+               {"process_shapes.batching", "process_shapes.batching|t-2|b-1"}
              ]
     end
   end

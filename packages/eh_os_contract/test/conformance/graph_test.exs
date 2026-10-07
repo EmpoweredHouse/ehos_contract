@@ -82,9 +82,11 @@ defmodule EhOsContract.GraphTest do
     assert diagram =~ "command_deposit -->|2 taken| event_deposited"
   end
 
+  # Since plan DD, P2g (#228) the rigs' processes are modules, which
+  # `declared_to_mermaid/2` draws by their id as it draws a contract's by its name.
   describe "the declared shape of a v2 process" do
     test "its stages are lanes, its promise an arrow with its window, its endings marked" do
-      shape = Graph.declared_to_mermaid(ProcessShapes.Promised, :handling)
+      shape = Graph.declared_to_mermaid(ProcessShapes.Handling, "process_shapes.handling")
 
       assert shape =~ "flowchart TB"
       assert shape =~ ~s(subgraph stage_intake["intake · no order claimed inside"])
@@ -96,11 +98,14 @@ defmodule EhOsContract.GraphTest do
     end
 
     test "an included event is in its run's picture, and an external comes from the domain" do
-      assert Graph.declared_to_mermaid(DispatchRig.Branch, :branch) =~
+      assert Graph.declared_to_mermaid(DispatchRig.BranchRun, "dispatch_rig.branch_run") =~
                ~s(    account_opened["Account opened"])
 
       shape =
-        Graph.declared_to_mermaid(UniversalityGate.TreatmentEpisode, :treatment_episode)
+        Graph.declared_to_mermaid(
+          UniversalityGate.TreatmentEpisodeRun,
+          "universality_gate.treatment_episode_run"
+        )
 
       assert shape =~
                ~s|payer_registry[("Payer registry: confirmation of eligibility for treatment")]|
@@ -109,26 +114,66 @@ defmodule EhOsContract.GraphTest do
     end
   end
 
+  # `--process` finds a process by the name a contract gives it, among the contracts of
+  # the configured applications. No rig's contract declares one since plan DD, P2g
+  # (#228), so until the contract's `process` goes (#221) the task is handed this one,
+  # in an application of its own. Invented, like the ledger it includes from.
+  defmodule Openings do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.graph_openings"
+
+    consumes DispatchRig.Ledger, :account_opened
+
+    aggregate :branch_note, "Branch note" do
+      identity :branch_id
+      command :note_branch, "Note a branch", by: :auditor, emits: :branch_noted
+      event :branch_noted, "Branch noted"
+    end
+
+    process :openings, "Openings" do
+      correlate :branch_id
+      include :account_opened
+    end
+  end
+
+  defp with_openings_registered do
+    app = :eh_os_contract_graph_openings
+    spec = [description: ~c"graph task test", vsn: ~c"0", modules: [Openings], applications: []]
+    :ok = :application.load({:application, app, spec})
+    apps = Application.get_env(:eh_os_contract, :applications)
+    Application.put_env(:eh_os_contract, :applications, List.wrap(apps) ++ [app])
+
+    on_exit(fn ->
+      Application.put_env(:eh_os_contract, :applications, apps)
+      :application.unload(app)
+      EhOsContract.Registry.load!()
+    end)
+  end
+
   @tag :tmp_dir
   test "mix eh_os_contract.graph --process draws a v2 process's shape, and with --overlay its graph",
        %{tmp_dir: dir} do
-    path = Path.join(dir, "handling.mmd")
+    with_openings_registered()
+    path = Path.join(dir, "openings.mmd")
     Mix.shell(Mix.Shell.Process)
     on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
 
-    Mix.Tasks.EhOsContract.Graph.run(["--process", "ledger", "--mermaid", "--output", path])
+    Mix.Tasks.EhOsContract.Graph.run(["--process", "openings", "--mermaid", "--output", path])
     assert File.read!(path) =~ ~s(    account_opened["Account opened"])
-    refute File.read!(path) =~ "command_open_account"
+    refute File.read!(path) =~ "command_note_branch"
 
     Mix.Tasks.EhOsContract.Graph.run([
       "--process",
-      "ledger",
+      "openings",
       "--mermaid",
       "--overlay",
       "--output",
       path
     ])
 
-    assert File.read!(path) =~ "command_open_account -->|0 taken| event_account_opened"
+    assert File.read!(path) =~ "command_note_branch -->|0 taken| event_branch_noted"
   end
 end

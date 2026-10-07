@@ -29,29 +29,56 @@ defmodule EhOsContract.CheckTest do
     end
   end
 
+  # Plan DD, P2g (#228): the process shapes' processes are modules, which the check reads
+  # through `process_module_findings/1`, named by their ids.
+  defp process_findings(module),
+    do: for(f <- Check.process_module_findings([module]), do: {f.level, f.rule, f.message})
+
   test "a process with no addressee, and a deadline its owner has not confirmed" do
     assert {:warn, "process-without-accountable",
-            "process :handling names no `accountable` role" <> _} =
-             List.keyfind(findings(ProcessShapes.Promised), :warn, 0)
+            ~s(process "process_shapes.handling" names no `accountable` role) <> _} =
+             List.keyfind(process_findings(ProcessShapes.Handling), :warn, 0)
 
     assert Enum.any?(
-             findings(ProcessShapes.Promised),
+             process_findings(ProcessShapes.Handling),
              &match?(
                {:warn, "unverified-declaration",
-                "process :handling: `deadline` = {3, :day} is not confirmed" <> _},
+                ~s(process "process_shapes.handling": `deadline` = {3, :day} is not confirmed) <>
+                  _},
                &1
              )
            )
   end
 
+  # Only a contract's process can declare a deadline without an event that ends a run; a
+  # process module refuses it at compile time (R6). Until #221 removes the contract's
+  # process, its rule is checked on one written here, since no rig declares one any more.
   test "a deadline no run can be seen to end" do
+    Code.compile_string("""
+    defmodule EhOsContract.CheckTest.Unended do
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.unended"
+
+      aggregate :stack, "Stack" do
+        identity :stack_id
+        event :stack_started, "Stack started", recorded_by: :batch_operator
+      end
+
+      process :stacking, "Stacking" do
+        correlate :stack_id
+        accountable :batch_operator
+        deadline {1, :day}
+      end
+    end
+    """)
+
     assert {:info, "deadline-without-terminal-event",
-            "process :branch declares `deadline` = {1, :day} and no event of it is" <> _} =
-             List.keyfind(findings(DispatchRig.Branch), :info, 0)
+            "process :stacking declares `deadline` = {1, :day} and no event of it is" <> _} =
+             List.keyfind(findings(EhOsContract.CheckTest.Unended), :info, 0)
   end
 
   test "control: a confirmed, addressed, implemented process has nothing to say" do
     assert findings(ProcessShapes.Timed) == []
+    assert process_findings(ProcessShapes.Timing) == []
   end
 
   test "a contract implemented in part names what dispatch will refuse, its query too" do

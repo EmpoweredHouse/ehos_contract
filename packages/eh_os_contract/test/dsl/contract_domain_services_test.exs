@@ -314,7 +314,9 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # 2d4f6e4d01fe with plan N3: its timers have labels; and from ccaadcbebb04 with plan
     # W2: it records a day's close, the event its day tags are tested on, its date of a
     # business day the domain declares; and from b50c8a8121d7 with plan DD, ID3 (#173): its
-    # events are typed by its id, `dispatch_rig.ledger`, not its process.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "256523735770"
+    # events are typed by its id, `dispatch_rig.ledger`, not its process; and from
+    # 256523735770 with plan DD, P2g (#228): its process moved to a module,
+    # `DispatchRig.LedgerRun`, and the contract's version no longer hashes it.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "3e660c247065"
   end
 end

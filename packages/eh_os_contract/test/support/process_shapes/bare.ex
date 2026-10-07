@@ -2,9 +2,10 @@ defmodule ProcessShapes.Bare do
   @moduledoc """
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
-  A process that promises nothing and a run keyed by two fields (v2 plan, E7c). Its two
-  events come from two commands, since an event in v2 is decided or recorded, never
-  written around dispatch.
+  The batch whose run promises nothing and is keyed by two fields (v2 plan, E7c),
+  `ProcessShapes.Batching`'s since plan DD, P2g (#228). Its two events come from two
+  commands, since an event in v2 is decided or recorded, never written around
+  dispatch.
   """
 
   use EhOsContract.Contract,
@@ -18,15 +19,8 @@ defmodule ProcessShapes.Bare do
     command :open_batch, "Open a batch", by: :batch_operator, emits: :batch_opened
     command :close_batch, "Close a batch", by: :batch_operator, emits: :batch_closed
 
-    stage :running do
-      event :batch_opened, "Batch opened"
-      event :batch_closed, "Batch closed", terminal: true
-    end
-  end
-
-  process :batching, "Batch run" do
-    correlate [:tenant_id, :batch_id]
-    stage :running
+    event :batch_opened, "Batch opened"
+    event :batch_closed, "Batch closed"
   end
 end
 

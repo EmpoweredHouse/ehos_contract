@@ -8,6 +8,11 @@ defmodule EhOsContract.KeyBudgetTest do
 
   The values are `|`, which escapes to three bytes, so three fields of 255 bytes come
   to 2297, past the budget: the reason a key is counted after escaping.
+
+  Since plan DD, P2g (#228) the runs are process modules', filed under their ids:
+  `KeyRig.Restocking`'s keyed by the bin, `KeyRig.AuditTrail`'s by its lot. An id is
+  longer than the contract process's name it replaced, and it is in a run's entry
+  twice, so the values that bring each run to exactly the budget are shorter.
   """
 
   use EhOsContract.DataCase, async: false
@@ -91,37 +96,39 @@ defmodule EhOsContract.KeyBudgetTest do
   end
 
   describe "a run's key" do
-    # `replenishment` twice, as the process column and the instance id's prefix.
-    defp home(bin_id), do: ["replenishment", Key.join([:replenishment, @site, @aisle, bin_id])]
+    # The module's id twice, as the process column and the instance id's prefix.
+    @restocking "key_rig.restocking"
+    defp bin_run(bin_id), do: [@restocking, Key.join([@restocking, @site, @aisle, bin_id])]
 
-    test "of the home run, of exactly the budget, is accepted" do
-      assert home(id(489)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget()
-      assert {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(489)), actor: @stocker)
+    test "of the bin's run, of exactly the budget, is accepted" do
+      assert bin_run(id(479)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget()
+      assert {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(479)), actor: @stocker)
     end
 
-    test "of the home run, a byte over, is :key_too_long while the stream fits" do
-      assert home(id(490)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget() + 1
-      assert Key.fits?([Key.stream(:bin, [@site, @aisle, id(490)])])
+    test "of the bin's run, a byte over, is :key_too_long while the stream fits" do
+      assert bin_run(id(480)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget() + 1
+      assert Key.fits?([Key.stream(:bin, [@site, @aisle, id(480)])])
 
-      assert EhOsContract.dispatch(KeyRig.Bins, bin(id(490)), actor: @stocker) ==
+      assert EhOsContract.dispatch(KeyRig.Bins, bin(id(480)), actor: @stocker) ==
                {:error, :key_too_long}
 
       assert written() == {0, 0}
     end
 
-    # `KeyRig.Audit` includes the event in a run correlated by its lot, not its bin.
-    defp audit(lot_id), do: ["audit_trail", Key.join([:audit_trail, @site, @aisle, lot_id])]
+    # `KeyRig.AuditTrail` includes the event in a run correlated by its lot, not its bin.
+    @audit "key_rig.audit_trail"
+    defp audit(lot_id), do: [@audit, Key.join([@audit, @site, @aisle, lot_id])]
 
-    test "of an included run, of exactly the budget, is accepted" do
-      assert audit(id(493)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget()
-      assert {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin("x", id(493)), actor: @stocker)
+    test "of a run keyed by another field, of exactly the budget, is accepted" do
+      assert audit(id(477)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget()
+      assert {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin("x", id(477)), actor: @stocker)
     end
 
-    test "of an included run, a byte over, is :key_too_long while the home run fits" do
-      assert audit(id(494)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget() + 1
-      assert Key.fits?(home("x"))
+    test "of a run keyed by another field, a byte over, is :key_too_long while the bin's fits" do
+      assert audit(id(478)) |> Enum.map(&byte_size/1) |> Enum.sum() == Key.budget() + 1
+      assert Key.fits?(bin_run("x"))
 
-      assert EhOsContract.dispatch(KeyRig.Bins, bin("x", id(494)), actor: @stocker) ==
+      assert EhOsContract.dispatch(KeyRig.Bins, bin("x", id(478)), actor: @stocker) ==
                {:error, :key_too_long}
 
       assert written() == {0, 0}
@@ -142,7 +149,9 @@ defmodule EhOsContract.KeyBudgetTest do
 
     test "a byte over stops its subscription with Key.TooLongError until it is skipped" do
       assert byte_size(watch(id(478))) == Key.budget() + 1
-      # The dispatch's own keys fit: only the manager's does not.
+      # The dispatch's own keys fit: only the manager's does not. The bin's run is two
+      # bytes short of the watch's, `KeyRig.Restocking`'s id chosen for it.
+      assert Key.fits?(bin_run(id(478)))
       {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, bin(id(478)), actor: @stocker)
 
       assert %{failing: [@watch]} = Testing.drain(only: @watch)

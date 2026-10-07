@@ -146,8 +146,7 @@ defmodule EhOsContract.PathsTest do
             type: "dispatch_rig.ledger.deposited",
             contract: "dispatch_rig.ledger",
             contract_version: "v",
-            process: "ledger",
-            instance_id: "ledger|#{account}",
+            runs: [{"dispatch_rig.ledger_run", "dispatch_rig.ledger_run|#{account}"}],
             payload: %{"account_id" => account, "amount" => 1500, "timer" => timer}
           })
 
@@ -158,9 +157,7 @@ defmodule EhOsContract.PathsTest do
           issued_by: "policy:flag_large_deposit",
           causation_event_id: event.id,
           correlation_id: Ecto.UUID.generate(),
-          outcome: "accepted",
-          process: "ledger",
-          instance_id: "ledger|#{account}"
+          outcome: "accepted"
         })
       end
 
