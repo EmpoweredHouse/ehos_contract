@@ -117,17 +117,33 @@ defmodule EhOsContract.MixProject do
       extras:
         [
           "README.md",
-          "docs/contract.md",
-          "docs/authorization.md",
-          "docs/configuration.md",
-          "docs/cli.md",
-          "docs/behaviours.md",
-          "docs/rules.md"
+          "docs/introduction.md",
+          "docs/getting-started.md",
+          "docs/contract.md"
         ] ++
+          Enum.map(
+            ~w(domain domain-data units reactions reading between-contracts process scenarios),
+            &"docs/concepts/#{&1}.md"
+          ) ++
+          [
+            "docs/authorization.md",
+            "docs/configuration.md",
+            "docs/cli.md",
+            "docs/behaviours.md",
+            "docs/rules.md"
+          ] ++
           dsl_reference("domain") ++
           dsl_reference("contract") ++
           dsl_reference("process") ++ ["CHANGELOG.md"],
       groups_for_extras: [
+        Introduction: ["README.md", "docs/introduction.md", "docs/getting-started.md"],
+        Concepts: [~r{docs/concepts/}, "docs/contract.md", "docs/authorization.md"],
+        Reference: [
+          "docs/configuration.md",
+          "docs/cli.md",
+          "docs/behaviours.md",
+          "docs/rules.md"
+        ],
         "DSL reference": ~r{docs/dsl/}
       ],
       # The changelog names what a release removed, and the names resolve nowhere
