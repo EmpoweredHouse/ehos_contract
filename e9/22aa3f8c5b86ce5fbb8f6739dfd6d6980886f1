@@ -1,0 +1,1 @@
+Correctness review (code-review high). Fixed: Registry.load! and Trace.judge/trace restored (callers/doc), Vault.wrap and Store.read_query hidden, Key/Personal moduledocs, erase example, boot steps, diff caller note. No change: missing caller notes, redundant @doc false with @impl. Gate EXIT=0.
