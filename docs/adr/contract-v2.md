@@ -707,9 +707,11 @@ within `rejects:`, routing a stored type to its struct, and encryption.
 > the service booked, and the clinic keeps its services. The caller sending the flag makes the decision trust a
 > claim; the decision reading the database itself leaves no record of what it read, and a scenario cannot supply
 > it. So **a command may declare `reads: [service: :service_id]`**, naming a required field of its own typed
-> `{:id, entity}` (A8), and **its callback is then `(command, state, reads) :: decision`**, `reads` holding each
-> row under its name, with the fields the domain declares for the entity. The rows come from the host
-> (`EhOsContract.Entities`), are read once per command before its transaction, so a conflict's retry decides on
+> `{:id, entity}`, and is then issued only by an actor, never by a reaction, whose lookup would run inside the
+> transaction that reacted (A8); **its callback is then `(command, state, reads) :: decision`**, `reads` holding
+> each row under its name, with the fields the domain declares for the entity. The rows come from the host
+> (`EhOsContract.Entities`, asked as the actor who issued the command, so a host with several tenants answers
+> with that tenant's rows), are read once per command before its transaction, so a conflict's retry decides on
 > the same rows, and are kept with the command's record (`inputs` of `eh_os_contract_commands`, migration V02);
 > entities hold no personal data (D6), so the record needs no sealing. A row not found is the caller's error, a
 > field naming nothing (`{field, :unknown}`), not a rejection. A scenario gives the row with `given_entity` (S12,

@@ -337,6 +337,37 @@ defmodule EhOsContract.ContractUnitsTest do
       refute message =~ "reads :service by"
     end
 
+    test "a command that reads, issued by a policy or a process manager, is refused" do
+      message =
+        refuse_contract("ReadsByReaction", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id] do
+              field :service_id, {:id, :service}
+            end
+
+            event :visit_booked, "Umówiono"
+          end
+
+          policy :rebook, "Umów ponownie", handles: :visit_booked, issues: :book_visit,
+            delivery: :in_transaction
+
+          process_manager :follow_up, "Wizyta kontrolna" do
+            correlate :visit_id
+            starts_on :visit_booked, issues: :book_visit
+          end
+        """)
+
+      assert message =~
+               "A8: command :book_visit reads entities and is issued by policy :rebook; a " <>
+                 "command that reads is issued only by an actor in by:, since a reaction's would " <>
+                 "be looked up inside the transaction that reacted"
+    end
+
     test "control: a required field typed {:id, entity} compiles, and the model keeps it" do
       model =
         compile_contract("ReadsRight", """

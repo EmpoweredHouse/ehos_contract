@@ -205,10 +205,11 @@ A decision may depend on an entity the application keeps outside the log — whe
 another copy depends on the membership card, which the library's own system keeps. The domain declares the
 entity (`entity :card, "Membership card", context: :loans, identity: :card_id`, with its fields), the command
 names it by a field typed `{:id, :card}`, and says it reads it: `reads: [card: :card_id]`. The field has to be the
-command's own, required and typed `{:id, entity}`, and each name is given once ([`A8`](#refusals-a)). The decision
-then takes a third argument, `%{card: %{card_id: "c-1", suspended: false}}`: the row the configured
-`EhOsContract.Entities` gives (`config :eh_os_contract, entities: MyApp.Entities`), asked once per command
-before it is decided, with the fields the domain declares for the entity. A row that is not there refuses the
+command's own, required and typed `{:id, entity}`, each name is given once, and only an actor in `by:` issues
+such a command, never a policy or a process manager ([`A8`](#refusals-a)). The decision then takes a third argument,
+`%{card: %{card_id: "c-1", suspended: false}}`: the row the configured `EhOsContract.Entities` gives (`config
+:eh_os_contract, entities: MyApp.Entities`), asked once per command before it is decided, as the actor who issued
+it, with the fields the domain declares for the entity. A row that is not there refuses the
 command as a field naming nothing, `{:invalid, [card_id: :unknown]}`, a 422; the row read is kept with the
 command's record. A scenario of such a command gives the row with `given_entity :card, %{card_id: "c-1",
 suspended: false}` ([`S12`](#refusals-s)), its fields held to the entity's ([`X9`](#refusals-x)), and a node with
@@ -372,7 +373,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A5` | L2 | a unit or a process manager declaring `state` twice |
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
-| `A8` | L2 | a command's `reads:` naming a field it does not have, a field of its unit's identity, an optional field or one not typed `{:id, entity}`; a name given twice |
+| `A8` | L2 | a command's `reads:` naming a field it does not have, a field of its unit's identity, an optional field or one not typed `{:id, entity}`; a name given twice; a command that reads, issued by a policy or a process manager |
 
 <a id="refusals-t"></a>
 

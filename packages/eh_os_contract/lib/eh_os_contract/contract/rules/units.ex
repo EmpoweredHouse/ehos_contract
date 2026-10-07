@@ -18,7 +18,8 @@ defmodule EhOsContract.Contract.Rules.Units do
   # - **A5.** A unit, or a process manager, declares its state at most once.
   # - **A8** (plan DD, T2a, #240). What a command `reads:` is named by a field of the
   #   command typed `{:id, entity}` and required: the decision gets the row, and a
-  #   command without the identifier could read nothing. Each name is given once.
+  #   command without the identifier could read nothing. Each name is given once, and
+  #   no policy or process manager issues such a command: only an actor does.
   #   Whether the entity exists is D6's, where the domain is known.
   # - **A7** (plan EL2). A command's constraints are never named as an invariant of its
   #   unit, and each is in the command's `rejects:`; N1 names each once.
@@ -83,14 +84,45 @@ defmodule EhOsContract.Contract.Rules.Units do
       unemitted ++
       rejects ++
       constraints(unit, invariants) ++
-      reads(unit) ++ consults(unit, d) ++ generated(unit, where)
+      reads(unit, d) ++ consults(unit, d) ++ generated(unit, where)
   end
 
-  defp reads(unit) do
+  defp reads(unit, d) do
+    issuers = issuers(d)
+
     for command <- unit.commands,
-        {problem, at} <- read_problems(command, unit) do
+        {problem, at} <-
+          read_problems(command, unit) ++ read_by_reaction(command, issuers[command.name]) do
       {"A8: command #{inspect(command.name)} #{problem}", at}
     end
+  end
+
+  # The user's decision on the review of #242: a reaction's command is dispatched inside
+  # the transaction that reacted, after the append lock, where the host's lookup would
+  # hold up every writer, and a row not found would fail the reaction rather than answer
+  # it. Only an actor issues a command that reads.
+  defp read_by_reaction(%{reads: []}, _issuers), do: []
+  defp read_by_reaction(_command, nil), do: []
+
+  defp read_by_reaction(command, [first | _]) do
+    [
+      {"reads entities and is issued by #{first}; a command that reads is issued only by an " <>
+         "actor in by:, since a reaction's would be looked up inside the transaction that " <>
+         "reacted", command}
+    ]
+  end
+
+  # For each command a reaction of this contract issues, who issues it, in words.
+  defp issuers(d) do
+    policies = for p <- d.policies, c <- p.issues, do: {c, "policy #{inspect(p.name)}"}
+
+    managers =
+      for pm <- d.process_managers,
+          reaction <- pm.starts_on ++ pm.on ++ pm.timers,
+          c <- reaction.issues,
+          do: {c, "process manager #{inspect(pm.name)}"}
+
+    Enum.group_by(policies ++ managers, &elem(&1, 0), &elem(&1, 1))
   end
 
   defp read_problems(command, unit) do

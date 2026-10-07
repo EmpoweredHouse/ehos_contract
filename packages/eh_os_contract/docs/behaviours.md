@@ -202,10 +202,11 @@ caller cannot have a decision read, and its record keep, another tenant's row.
 Once per command, after the caller is authorized and what it sent is found sound,
 and before the decision's transaction: when the decision meets a conflict and runs
 again, it decides on the same rows. A retry of a command already accepted under its
-idempotency key gets its receipt without asking. A command dispatched inside a
-transaction of the caller's, or issued by a policy that reacts inside dispatch's, is
-asked inside that transaction, and while another append waits on it: keep `c:EhOsContract.Entities.fetch/4`
-a local read. The call has no time limit of the engine's.
+idempotency key gets its receipt without asking. Only an actor issues a command that
+reads, never a policy or a process manager (the contract does not compile otherwise),
+so a reaction never waits on the host. A command the host dispatches inside a
+transaction of its own is asked inside that one: keep `c:EhOsContract.Entities.fetch/4` a local read. The
+call has no time limit of the engine's.
 
 What was read is kept with the command's record, accepted or rejected, the row's
 declared fields whole: an entity with a long text or a long list makes every command

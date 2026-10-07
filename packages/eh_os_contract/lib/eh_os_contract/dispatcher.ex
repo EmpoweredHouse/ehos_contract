@@ -708,9 +708,9 @@ defmodule EhOsContract.Dispatcher do
 
   # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
   # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
-  # host's lookup does not hold the transaction open. A command dispatched inside a
-  # caller's transaction, or issued by a policy inside dispatch's, is asked inside that
-  # one, and after the append lock when one is already held. As for supplied fields, a
+  # host's lookup does not hold the transaction open. No reaction issues such a command
+  # (A8), so none is asked inside dispatch's own transaction, after its append lock; one
+  # the host dispatches inside a transaction of its own is asked inside that. As for supplied fields, a
   # retry of a command already accepted under its key gets its receipt without asking: a
   # row deleted since would turn the receipt into a refusal.
   defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
