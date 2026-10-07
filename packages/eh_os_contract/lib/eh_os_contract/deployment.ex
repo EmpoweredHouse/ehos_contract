@@ -28,20 +28,23 @@ defmodule EhOsContract.Deployment do
 
   ## A process module
 
-  A process module (`use EhOsContract.Process`) gets a row of its own too (plan DD,
-  P2d, #213), so a promise's verdict can be read against the version it was made
-  under. Its `contract` column is `"process:<id>"`: X7 lets a process module share its
-  `id:` with a contract, and the two must not share rows, while a colon is in no
-  contract's id. Its version is the module's; its events are the ones it includes, by
-  their names in it; it has no steps, so no edges; and its wiring is the stored types
-  those events resolve to, which is what the code decides and the declarations do not
-  say — a contract renamed under the same module moves it.
+  A process module (`use EhOsContract.Process`) gets a row of its own too, so a
+  promise's verdict can be read against the version it was made under. Its `contract`
+  column is `"process:<id>"`: a process module may share its `id:` with a contract
+  (X7 refuses only two processes, or two contracts, with one), and the two must not
+  share rows, while a colon is in no contract's id. Its version is the module's; its
+  events are the ones it includes, by their names in it; it has no steps, so no edges;
+  and its wiring is the stored types those events resolve to, which is what the code
+  decides and the declarations do not say — a contract renamed under the same module
+  moves it.
 
   Both hashes are taken over one canonical form of the declarations, so neither
   depends on term encoding, module load order or OTP release: the same agreement
   hashes the same way on every machine, and an OTP upgrade does not reclassify the
   log as belonging to an older agreement.
   """
+
+  # A process module's own row: plan DD, P2d (#213).
 
   use Ecto.Schema
 

@@ -1,6 +1,6 @@
 defmodule EhOsContract.Erased do
   @moduledoc """
-  What a personal field holds once its subject's data key is gone (v2 §14):
+  What a personal field holds once its subject's data key is gone:
   `%EhOsContract.Erased{subject: :patient, id: "p-17"}`, in place of the value.
 
   An event read back from the log keeps every other field. The log still says that
@@ -8,6 +8,8 @@ defmodule EhOsContract.Erased do
   personal fields held. The structs a contract generates admit `t()` on every
   personal field, so `evolve/2` and every consumer have to tolerate it.
   """
+
+  # Crypto-shredding, v2 §14.
 
   @enforce_keys [:subject, :id]
   defstruct [:subject, :id]

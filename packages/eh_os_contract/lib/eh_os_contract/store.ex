@@ -69,7 +69,7 @@ defmodule EhOsContract.Store do
   `recorded_at`, which the store assigns. `id` is generated when missing.
 
   `runs` lists the runs the event belongs to besides its home run, as
-  `{process, instance_id}`: the processes of the contracts that `include` it (D7).
+  `{process, instance_id}`: the processes of the contracts that `include` it.
   The store writes every run as an `EhOsContract.EventRun` in the same append, the
   home run from the entry's `process` and `instance_id` when it has both.
   """
@@ -78,7 +78,8 @@ defmodule EhOsContract.Store do
   @typedoc "Events of any of `types` carrying all of `tags`; the items of a query are OR-ed."
   @type query_item :: %{types: [String.t(), ...], tags: [String.t()]}
 
-  @typedoc "What a consistency boundary reads: the items are OR-ed (v2 §10.1)."
+  # A consistency boundary's query, v2 §10.1.
+  @typedoc "What a consistency boundary reads: the items are OR-ed."
   @type query :: [query_item()]
 
   @typedoc "What must hold for an append to happen."

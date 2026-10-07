@@ -56,7 +56,7 @@ defmodule EhOsContract.Domain.Build do
            @moduledoc """
            One type per value of `#{inspect(unquote(model.module))}`, generated from its
            declarations. Contracts refer to them as remote types, which records no
-           compile dependency (v2 §5).
+           compile dependency.
            """
 
            unquote_splicing(types)

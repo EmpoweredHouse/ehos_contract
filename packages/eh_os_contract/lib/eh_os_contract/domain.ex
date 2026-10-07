@@ -1,7 +1,6 @@
 defmodule EhOsContract.Domain do
   @moduledoc """
-  The vocabulary an application's contracts share (v2 §4.1): one module per
-  application.
+  The vocabulary an application's contracts share: one module per application.
 
       defmodule Rehmed.Domain do
         use EhOsContract.Domain, name: :rehmed, language: :pl
@@ -63,12 +62,13 @@ defmodule EhOsContract.Domain do
         required: true,
         doc: "The language labels and terms are written in."
       ],
+      # A timestamp's business day (plan W2).
       time_zone: [
         type: :string,
         default: "Etc/UTC",
         doc:
           "The zone the business's days are in, like `\"Europe/Warsaw\"`: a `:timestamp` " <>
-            "is tagged with its day there (plan W2). Read with the time zone database the " <>
+            "is tagged with its day there. Read with the time zone database the " <>
             "host configures."
       ]
     ]

@@ -1,7 +1,7 @@
 defmodule EhOsContract.Process do
   @moduledoc """
-  A process written as a module of its own (plan DD, P2b, #205): one run that crosses
-  the contracts of several parts of a business.
+  A process written as a module of its own: one run that crosses the contracts of
+  several parts of a business.
 
       defmodule Rehmed.Processes.ClinicalVisit do
         use EhOsContract.Process,
@@ -41,7 +41,7 @@ defmodule EhOsContract.Process do
   name is unique in it.
 
   `domain:` names the application's `EhOsContract.Domain`, and a stage's `include:`
-  names contract modules; neither records a compile dependency (v2 §8). `id:` is
+  names contract modules; neither records a compile dependency. `id:` is
   `"<domain name>.<segment>…"` (D11).
 
   What one module can get wrong does not compile. It compiles to plain data,

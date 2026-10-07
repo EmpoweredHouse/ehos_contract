@@ -1,7 +1,8 @@
 defmodule EhOsContract.Implementation do
+  # The implementation layer, L4 (v2 §5, §6); a domain's value bound as plan EL2b has it.
   @moduledoc """
-  How code binds to a v2 contract, and what the contract checks in it while it
-  compiles (v2 §5, layer L4).
+  How code binds to a contract, and what the contract checks in it while it
+  compiles.
 
       defmodule Rehmed.Settlement.VisitSettlement do
         use Rehmed.Contracts.VisitSettlement, aggregate: :visit_settlement
@@ -50,8 +51,8 @@ defmodule EhOsContract.Implementation do
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
   unit's own, a boundary's consulted ones too, and a process manager's triggers.
 
-  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`
-  (plan EL2b): the behaviour is `Rehmed.Domain.Values.Money`, with one function per
+  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`:
+  the behaviour is `Rehmed.Domain.Values.Money`, with one function per
   invariant the value declares, and I1 and I2 hold as they do for a contract. There
   is nothing to alias and nothing to emit.
 
@@ -62,7 +63,7 @@ defmodule EhOsContract.Implementation do
         def not_negative(amount), do: amount >= 0
       end
 
-  **The rules** (v2 §6, L4), each a `CompileError` at the call site, or at the
+  **The rules**, each a `CompileError` at the call site, or at the
   `use` line for the ones checked before the module compiles:
 
   - **I1.** `use C, …` names one declaration that exists; a misspelling gets a
@@ -83,7 +84,7 @@ defmodule EhOsContract.Implementation do
     only in a policy or a process manager, and none of them in an effect, a read
     model or a query.
 
-  What stays at run time (v2 §5): field values against their types, capabilities,
+  What stays at run time: field values against their types, capabilities,
   and the backstop that what a decision returns is within its declaration.
   """
 
@@ -350,7 +351,7 @@ defmodule EhOsContract.Implementation do
   end
 
   @doc """
-  A command refused on an invariant, or on one of its constraints (plan EL2):
+  A command refused on an invariant, or on one of its constraints:
   `{:error, %EhOsContract.Rejection{}}`. Takes an atom literal among what the command
   rejects on (I5, I7).
   """

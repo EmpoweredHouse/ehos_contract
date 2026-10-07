@@ -1,4 +1,6 @@
 defmodule EhOsContract.Conformance do
+  # A step counts occurrences since plan DD, P1a (#183); until then the rule for no
+  # activity read "zero runs". Process modules: plan DD, P2d (#213).
   @moduledoc """
   The answers to the screen's four questions, computed from the contract and the log.
 
@@ -7,18 +9,17 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  A step counts its **occurrences**, since plan DD, P1a (#183): a step is the
-  contract's, and a contract may have no process to count runs of. A process's
-  promises and durations are judged per **run**. And the report has to avoid lying in
-  the three situations where lying is easy:
+  A step counts its **occurrences**: a step is the contract's, and a contract may have
+  no process to count runs of. A process's promises and durations are judged per
+  **run**. And the report has to avoid lying in the three situations where lying is
+  easy:
 
   **Nothing happening is no basis for a verdict, not three untraversed paths.** A
   contract nobody used has every step untraversed — and listing them as findings
   turns "no data" into "we have three problems". This is the same rule promise
   evaluation rests on: with no `from` there is nothing to judge. So with no activity
   — no event recorded in the period — the list of untraversed steps is **empty**, while
-  what waits and what fails is still listed. Until plan DD, P1a (#183), the rule read
-  "zero runs".
+  what waits and what fails is still listed.
 
   **Work waiting in a queue is "not yet", not "never".** A step whose event will be
   produced by queued work is listed as in flight rather than as untraversed, and so
@@ -100,15 +101,15 @@ defmodule EhOsContract.Conformance do
   ## A process module
 
   A process module (`use EhOsContract.Process`) gets the process section of a contract's
-  report, and only that, under `processes` (plan DD, P2d, #213): its runs, its confirmed
-  declarations, its duration against its `deadline` and its promises' verdicts, and its
-  deployment. It has no steps, lifecycles or scenarios of its own; those are its
-  contracts'. Its report is keyed `process:`, its `id:`, where a contract's is keyed
-  `contract:`.
+  report, and only that, under `processes`: its runs, its confirmed declarations, its
+  duration against its `deadline` and its promises' verdicts, and its deployment. It has
+  no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
+  keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
   """
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
 
+  # A process module stays off the wire by the decision on #213.
   @doc """
   The same report, projected onto values that survive JSON.
 
@@ -117,7 +118,7 @@ defmodule EhOsContract.Conformance do
   one. See `EhOsContract.Conformance.Wire` for what each mapping is and why.
 
   A process module is not on the wire, which `eh_os_contract.conformance.v3` names
-  for a contract (the decision on #213), and is refused by name.
+  for a contract, and is refused by name.
   """
   @spec as_data(module(), keyword()) :: map()
   def as_data(contract, opts \\ []) do
@@ -213,10 +214,9 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report of `model`'s process: its runs, confirmed declarations, durations and
-  promises. Its steps are the contract's, in `from_model/2`'s `paths` (plan DD, P1a,
-  #183). `model` has a process; for one without, there is no process to report and
-  this raises. A process module is one, and its runs are filed under its `id:` (plan
-  DD, P2d, #213).
+  promises. Its steps are the contract's, in `from_model/2`'s `paths`. `model` has a
+  process; for one without, there is no process to report and this raises. A process
+  module is one, and its runs are filed under its `id:`.
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do
@@ -383,8 +383,8 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report's `lifecycles` alone, for `contract` over a period (`:since`, `:until`):
-  what a lifecycle's diagram lays over its transitions (plan LC4b) without computing
-  the rest of the report.
+  what a lifecycle's diagram lays over its transitions without computing the rest of
+  the report.
   """
   @spec lifecycles(module() | map(), keyword()) :: [map()]
   def lifecycles(contract, opts) when is_atom(contract),

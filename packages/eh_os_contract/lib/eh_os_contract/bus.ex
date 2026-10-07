@@ -67,12 +67,13 @@ defmodule EhOsContract.Bus do
   @typedoc """
   A durable consumer: its `name`, unique on the transport and kept across restarts; the
   message names it takes; and the handler each delivery goes to. The engine names an
-  inbox's consumer `"<contract id>:inbox:<name>"`, with the dots of the id in it (plan
-  DD, ID4, #178); an adapter whose transport takes fewer characters in a consumer's name
-  (JetStream's durable names take no `.`) maps it, the same way every time and never two
-  names to one: `shop.stock` and `shop_stock` sharing a durable consumer would each get
-  only part of the messages.
+  inbox's consumer `"<contract id>:inbox:<name>"`, with the dots of the id in it; an
+  adapter whose transport takes fewer characters in a consumer's name (JetStream's
+  durable names take no `.`) maps it, the same way every time and never two names to
+  one: `shop.stock` and `shop_stock` sharing a durable consumer would each get only part
+  of the messages.
   """
+  # A consumer's name carries the contract's id, dots and all (plan DD, ID4, #178).
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
   @doc """

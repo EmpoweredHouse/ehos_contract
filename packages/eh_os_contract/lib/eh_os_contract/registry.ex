@@ -1,6 +1,7 @@
 defmodule EhOsContract.Registry do
+  # The registry (notes §2).
   @moduledoc """
-  The registry of contracts, process modules and domains (notes §2).
+  The registry of contracts, process modules and domains.
 
   Not a generated module holding the whole graph — a per-module macro cannot
   arrange that, because it would require every contract to be compiled already.
@@ -13,14 +14,15 @@ defmodule EhOsContract.Registry do
 
   @key {__MODULE__, :graph}
 
+  # Until the engine was extracted (2026-08-20) this defaulted to the one application
+  # there was; the first time it compiled as a package it scanned itself and reported
+  # an empty graph.
   @doc """
   Scans the configured applications and caches the result in `:persistent_term`.
 
-  **Which applications is configuration, and it has to be.** Until the engine was
-  extracted (2026-08-20) this defaulted to the one application there was, so the
-  question never came up; a library that defaults to its own name scans itself,
-  finds no contracts, and reports a perfectly healthy empty graph — which is what
-  happened the first time this compiled as a package.
+  **Which applications is configuration, and it has to be.** A library that defaulted
+  to its own name would scan itself, find no contracts, and report a perfectly
+  healthy empty graph.
 
       config :eh_os_contract, applications: [:my_app]
 
@@ -29,14 +31,14 @@ defmodule EhOsContract.Registry do
 
   **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
   `inspect/1`, to drop from the scan before anything downstream ever sees them.**
-  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and `EhOsContract.Trace` all read
-  contracts through this one registry, so one config key keeps a
-  namespace out of every one of them at once — the alternative would be an
-  exception written into each report by hand. Not a DSL word: which binary is
-  running is an operational fact a deployer states in configuration, never a
-  claim the contract itself makes. Empty by default, so the existing property —
-  the graph comes from the binary that actually runs, in full — is unchanged
-  unless a deployer opts into narrowing it.
+  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and
+  `EhOsContract.Trace` all read contracts through this one registry, so one config key
+  keeps a namespace out of every one of them at once — the alternative would be an
+  exception written into each report by hand. Not a DSL word: which binary is running is
+  an operational fact a deployer states in configuration, never a claim the contract
+  itself makes. Empty by default, so the existing property — the graph comes from the
+  binary that actually runs, in full — is unchanged unless a deployer opts into
+  narrowing it.
   """
   @spec load!(atom() | [atom()] | nil) :: %{
           contracts: [module()],
@@ -153,7 +155,7 @@ defmodule EhOsContract.Registry do
 
   @doc """
   The registered contract whose `id:` is `id`, or `nil`: what a caller outside the
-  code names a contract by (plan DD, P1a, #183). The whole id, never a prefix, and
+  code names a contract by. The whole id, never a prefix, and
   never a module's name.
   """
   @spec contract(String.t()) :: module() | nil
@@ -161,8 +163,8 @@ defmodule EhOsContract.Registry do
     do: Enum.find(contracts(), &(EhOsContract.Model.fetch(&1).id == id))
 
   @doc """
-  The registered process module whose `id:` is `id`, or `nil` (plan DD, P2d, #213):
-  the whole id, as `contract/1` takes a contract's.
+  The registered process module whose `id:` is `id`, or `nil`: the whole id, as
+  `contract/1` takes a contract's.
   """
   @spec process(String.t()) :: module() | nil
   def process(id) when is_binary(id),
@@ -183,8 +185,7 @@ defmodule EhOsContract.Registry do
   def contracts, do: Map.get(graph(), :contracts, [])
 
   @doc """
-  Every process module, `use EhOsContract.Process`, found in the running binary
-  (plan DD, P2d, #213).
+  Every process module, `use EhOsContract.Process`, found in the running binary.
   """
   @spec processes() :: [module()]
   def processes, do: Map.get(graph(), :processes, [])

@@ -36,12 +36,13 @@ defmodule EhOsContract.Authorizer do
   alias EhOsContract.Actor
 
   defmodule Request do
+    # A scoped command: plan E9c. Rows keyed by the contract's `id:`: plan DD, ID4 (#178).
     @moduledoc """
     What an actor asks to do: the capability, under the name EHOS grants it by
-    (`EhOsContract.Model.capabilities/1`), and for a scoped query or command (plan E9c) the dimension and the
-    value asked for, both as strings, in the form a credential's `scp` carries them.
-    `contract` is the contract's module and `contract_id` its `id:`, the name a record of
-    the decision stores, as every row of the engine does (plan DD, ID4, #178).
+    (`EhOsContract.Model.capabilities/1`), and for a scoped query or command the
+    dimension and the value asked for, both as strings, in the form a credential's
+    `scp` carries them. `contract` is the contract's module and `contract_id` its
+    `id:`, the name a record of the decision stores, as every row of the engine does.
     """
 
     @enforce_keys [:kind, :capability, :contract, :contract_id, :version]

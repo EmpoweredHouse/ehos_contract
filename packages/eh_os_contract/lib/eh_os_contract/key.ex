@@ -49,8 +49,9 @@ defmodule EhOsContract.Key do
   stream id, a run's process and instance id, a process manager's name and correlation,
   counted after escaping and without compression. Dispatch refuses a command whose key
   is over it with `:key_too_long`, and a process manager raises
-  `EhOsContract.Key.TooLongError`, both in place of Postgres's refusal (issue #98).
+  `EhOsContract.Key.TooLongError`, both in place of Postgres's refusal.
   """
+  # Both refusals since issue #98.
   @spec budget() :: pos_integer()
   def budget, do: @budget
 
@@ -170,9 +171,11 @@ defmodule EhOsContract.Key do
     @moduledoc """
     Raised when a process manager is delivered an event whose run's key is over
     `EhOsContract.Key.budget/0`, in place of Postgres's refusal of the entry. Its
-    subscription stops at that event, as at any other failure, until someone skips it
-    (issue #98). The message names the manager and the bytes, never a value.
+    subscription stops at that event, as at any other failure, until someone skips it.
+    The message names the manager and the bytes, never a value.
     """
+
+    # Raised since issue #98.
 
     defexception [:message]
   end

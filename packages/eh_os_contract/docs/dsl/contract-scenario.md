@@ -215,7 +215,7 @@ What the query answers: the rows, or for a query that returns one, the row or ni
 state data
 ```
 
-What the process manager's run holds after the trigger: the givens and the delivered event folded, compared on the fields named (plan EP4).
+What the process manager's run holds after the trigger: the givens and the delivered event folded, compared on the fields named.
 
 **Arguments**
 

@@ -1,4 +1,7 @@
 defmodule EhOsContract.Inbox do
+  # The same fact published again under a new id is EHOS's failure modes FM-04 and
+  # FM-08; rows are kept for good by #64; the grant to publish and the
+  # `<name>.subscribe` capability are `eh-os` D-41.
   @moduledoc """
   Where another application's published event arrives: one durable consumer on
   `EhOsContract.Bus` per `subscribe "<name>"` that a policy handles. The event never
@@ -14,13 +17,13 @@ defmodule EhOsContract.Inbox do
 
   **One fact, one reaction.** The row is keyed by the inbox and the message's key
   (`EhOsContract.Bus.Message`), so a second delivery of a message, and the same fact
-  published again under a new id (`eh-os` FM-04, FM-08), find the row: the inbox
-  acknowledges and writes nothing.
+  published again under a new id, find the row: the inbox acknowledges and writes
+  nothing.
 
-  **What it keeps, and for how long: every row, for good** (#64). The row is what
-  drops a second delivery and the same fact published again under a new id, so a row
-  removed is a fact that can be taken twice: a window would bound `eh-os` FM-08 by
-  its length. Until the transport says how long it can deliver a message again
+  **What it keeps, and for how long: every row, for good.** The row is what drops a
+  second delivery and the same fact published again under a new id, so a row removed
+  is a fact that can be taken twice: a window would hold a republished fact off only
+  for as long as it lasts. Until the transport says how long it can deliver a message again
   (JetStream's stream retention, EHOS's), nothing is pruned. A row is about 250 bytes
   with its key's index for a short key, one per fact per inbox; what the table holds is the host's to
   watch with its database's own measures:
@@ -32,7 +35,7 @@ defmodule EhOsContract.Inbox do
 
   **Who may publish is the transport's to enforce.** The inbox takes what its
   consumer is delivered, key and correlation as they come: that only the publisher
-  publishes under its name is the grant's, on the transport (`eh-os` D-41).
+  publishes under its name is the grant's, on the transport.
 
   **What the policy is told.** The received struct's `__meta__` holds the
   correlation the message carried, so the subscriber's facts join the publisher's
@@ -58,7 +61,7 @@ defmodule EhOsContract.Inbox do
   broker of `EhOsContract.Bus.Local` that restarts knows no consumer until the keeper
   has started its own again, at once, and what a relay publishes in between is lost,
   as everything that broker held is. Between nodes the durable consumer is the transport's,
-  created when EHOS grants the capability `<name>.subscribe` (`eh-os` D-41), and
+  created when EHOS grants the capability `<name>.subscribe`, and
   what was published before that is the publisher's history, which a subscriber
   asks its owner for, not the bus.
   """

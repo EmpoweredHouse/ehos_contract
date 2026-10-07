@@ -5,9 +5,8 @@ defmodule EhOsContract.OpenAPI do
   Paths are relative to the mount of `EhOsContract.Plug`: a human command is
   `POST /commands/<capability>` and a query is
   `GET /queries/<capability>`. Commands that only application code may issue have
-  no capability and therefore no path. Recorded events are intentionally absent:
-  this E10 projection is the D10 command-and-query API, not a description of every
-  route the plug can serve.
+  no capability and therefore no path. Recorded events are intentionally absent: the
+  document describes the command-and-query API, not every route the plug can serve.
 
   The document uses OpenAPI 3.1.2 so its schemas are JSON Schema and can share the
   exact field projection used by `EhOsContract.AsyncAPI`. It describes a bearer
@@ -18,6 +17,8 @@ defmodule EhOsContract.OpenAPI do
   document without the digest key, so a consumer can compare a build artifact with
   the description served by an instance.
   """
+
+  # Plan E10's projection of the D10 command-and-query API.
 
   alias EhOsContract.{JsonSchema, Model}
 

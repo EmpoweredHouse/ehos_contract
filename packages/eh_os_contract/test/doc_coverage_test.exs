@@ -68,6 +68,27 @@ defmodule EhOsContract.DocCoverageTest do
     assert undocumented == []
   end
 
+  # The design record's codes mean nothing on hexdocs: a plan stage, an ADR section, an
+  # issue number. They belong in a comment beside the doc (the write-docs skill). A
+  # refusal code a host meets in a compile error, `(D4)`, is not one of these.
+  @record ~r/\bplan [A-Z]{1,2}[0-9A-Z]|\(plan\b|v2 §|notes §|§ ?[0-9]|\(#[0-9]+\)|issue #[0-9]+|PLAN\.md|\bD-[0-9]+/u
+
+  test "no published doc of lib/ cites the design record" do
+    cited =
+      for {module, entries} <- modules(),
+          {:docs_v1, _, _, _, moduledoc, _, _} = Code.fetch_docs(module),
+          {where, %{"en" => text}} <-
+            [{"moduledoc", moduledoc}] ++
+              for(
+                {{kind, name, arity}, _, _, doc, _} <- entries,
+                do: {"#{kind} #{name}/#{arity}", doc}
+              ),
+          [code | _] <- [Regex.run(@record, text)],
+          do: "#{inspect(module)} #{where}: #{code}"
+
+    assert cited == []
+  end
+
   test "every documented public function of lib/ has a @spec" do
     unspecified =
       for {module, entries} <- modules(),

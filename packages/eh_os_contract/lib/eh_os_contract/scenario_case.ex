@@ -1,13 +1,17 @@
 defmodule EhOsContract.ScenarioCase do
+  # Scenarios as tests (v2 §4.5). The successor of `EhOsContract.ContractExample`, and
+  # in `lib/` for the reason that one was; its assertions keep that one's semantics.
+  # A process manager's `state` is plan EP4's; a domain's examples and a domain
+  # service's rules are plan EL2b's. A contract without code is legal (v2 D3).
   @moduledoc """
-  One test per scenario of a v2 contract, run against its implementation (v2 §4.5):
+  One test per scenario of a contract, run against its implementation:
 
       defmodule Rehmed.VisitSettlementScenariosTest do
         use EhOsContract.ScenarioCase, contract: Rehmed.Contracts.VisitSettlement
       end
 
-  The successor of `EhOsContract.ContractExample`, and in `lib/` for the reason that
-  one is: a consumer's suite has to be able to call it.
+  It is in `lib/`, not in a test support directory, because a consumer's suite has
+  to be able to call it.
 
   **What a scenario runs.** For a command to a unit, the unit's state starts from
   its defaults and folds every `given` through `evolve/2`; the command's callback
@@ -15,22 +19,22 @@ defmodule EhOsContract.ScenarioCase do
   event; to a process manager, its state folds the givens and the reaction's
   callback, or the timer's, is called with it. `sets`, `cancels` and `ended` are the
   declaration's, which S6 has already compared with the scenario when the contract
-  compiled; what runs is what the code decides. A process manager's `state` (plan
-  EP4) is the run after the step, as the engine keeps it: the delivered event folded
-  through `evolve/2` after the reaction decided, and after a timer the state as it
-  was. It holds the fields the scenario names, and any others. Only a step the engine
+  compiled; what runs is what the code decides. A process manager's `state` is the
+  run after the step, as the engine keeps it: the delivered event folded through
+  `evolve/2` after the reaction decided, and after a timer the state as it was. It
+  holds the fields the scenario names, and any others. Only a step the engine
   would take holds a state: a run starts on a `starts_on` event and takes nothing
   after an `ends_on` one, so a given before the start, or a trigger after the end,
   fails the scenario. Any process manager's scenario whose events name two runs in
   their correlation fails too, before anything is folded.
 
-  **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
-  expects, and the commands it says are issued, **appear among those produced, in
-  that order — a subsequence, not equality**; each with the fields its data names,
-  and any others. Pinning every event made an example of one rule break whenever
-  the flow grew by one event. `rejected` asserts the rejection on exactly that
-  invariant. Whatever a decision returns is also held to its declaration: an event
-  the command does not emit fails the scenario, whatever it expects.
+  **What it asserts.** The events a scenario expects, and the commands it says are
+  issued, **appear among those produced, in that order — a subsequence, not equality**;
+  each with the fields its data names, and any others. Pinning every event would break a
+  scenario of one rule whenever the flow grew by one event. `rejected` asserts the
+  rejection on exactly that invariant. Whatever a decision returns is also held to its
+  declaration: an event the command does not emit fails the scenario, whatever it
+  expects.
 
   **A query's scenario** (ESDM's read model scenario) projects every `given`
   through the implementation of the read model the query reads, asks the query with
@@ -56,7 +60,7 @@ defmodule EhOsContract.ScenarioCase do
   `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
   log has.
 
-  **A domain's examples** (plan EL2b). `use EhOsContract.ScenarioCase, domain:
+  **A domain's examples.** `use EhOsContract.ScenarioCase, domain:
   Rehmed.Domain` writes one test per example of every value's invariant, against the
   module bound with `use Rehmed.Domain, value: :name`: the invariant's function
   answers `false` for each of its `violated_by:`, and every invariant of the value
@@ -64,7 +68,7 @@ defmodule EhOsContract.ScenarioCase do
   as dispatch asks them — since a value that keeps one invariant and breaks another
   is no example of a value. An example is plain data, cast as a scenario's is.
 
-  **A domain service's rules** (plan EL2b). Every example of a rule,
+  **A domain service's rules.** Every example of a rule,
   `examples: [{[1, 3], 0}]`, is a test too: the function, called through the module
   the contract generates, returns the example's result — compared as values, so a
   decimal `2.50` is `2.5`.
@@ -72,7 +76,7 @@ defmodule EhOsContract.ScenarioCase do
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
-  one fails its scenario with that reason: a contract without code is legal (D3), and
+  one fails its scenario with that reason: a contract without code is legal, and
   a scenario test of one is not.
   """
 

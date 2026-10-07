@@ -1,11 +1,10 @@
 defmodule EhOsContract.Clock do
   @moduledoc """
-  The time an event is stamped with, and the one way to choose it (v2 §10.3: "dispatcher
-  clock, injectable").
+  The time an event is stamped with, and the one way to choose it.
 
-  From v2 plan stage E2 the log is append-only. A test can no longer write an event
-  and then move its `occurred_at` with an `UPDATE`. A test that needs a run in the
-  past asks for the past up front:
+  The log is append-only, so a test cannot write an event and then move its
+  `occurred_at` with an `UPDATE`. A test that needs a run in the past asks for the past
+  up front:
 
       EhOsContract.Clock.at(~U[2026-07-01 09:00:00Z], fn ->
         EhOsContract.dispatch(Contract, %Receive{request_id: "r-1"}, actor: actor)
@@ -21,6 +20,9 @@ defmodule EhOsContract.Clock do
 
   Outside `at/2` this is `DateTime.utc_now/0`, so a host has nothing to configure.
   """
+
+  # "Dispatcher clock, injectable" (v2 §10.3). It became the only way to a past time
+  # when the log turned append-only (plan E2).
 
   @key {__MODULE__, :now}
 

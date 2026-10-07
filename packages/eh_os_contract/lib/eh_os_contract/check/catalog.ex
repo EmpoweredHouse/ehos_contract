@@ -338,13 +338,14 @@ defmodule EhOsContract.Check.Catalog do
       no effect `calls:` it and no event `depends_on:` it.
       """
     },
+    # An external's operations: plan EP5a.
     %{
       id: "operation-never-called",
       level: :warn,
       esdm: nil,
       summary: "An operation of an external system is called by no effect.",
       text: """
-      The external declares what it does (plan EP5a, ESDM's `capabilities`), and no effect of the
+      The external declares what it does (ESDM's `capabilities`), and no effect of the
       domain's contracts `calls:` this operation. Either the operation is left over, or the effect
       that asks for it is not written yet. Asked only of a system some effect calls: one no effect
       calls says nothing of its operations, and `orphan-external-system` says it when nothing else

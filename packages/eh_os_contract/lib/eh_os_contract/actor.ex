@@ -1,9 +1,8 @@
 defmodule EhOsContract.Actor do
   @moduledoc """
-  Who issues a command, asks a query or records an event (v2 §11, D14).
+  Who issues a command, asks a query or records an event.
 
-  **What an actor may do is decided by where the call comes from** (v2 §11, the note
-  of 26 September 2026):
+  **What an actor may do is decided by where the call comes from**:
 
     * **A credential's actor** comes through the application's door. Whoever verified
       the credential builds it, `eh_os_contract_auth` for EHOS's, with `subject`,
@@ -20,6 +19,9 @@ defmodule EhOsContract.Actor do
   An actor never carries personal data beyond the credential's subject, an opaque
   identifier: it is written to the log with every event.
   """
+
+  # Who acts, and what decides what they may (v2 §11, D14; the note of 26 September
+  # 2026 on where the call comes from).
 
   defstruct [:kind, :subject, :name, capabilities: MapSet.new(), scopes: %{}]
 
