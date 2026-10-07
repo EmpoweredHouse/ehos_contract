@@ -3,8 +3,8 @@
 # parentheses and every contract in every consuming project reads like a function
 # call rather than like a declaration — which is the whole point of the DSL's shape.
 #
-# The v2 DSLs' entities, maintained by Spark rather than by hand:
-# `mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl`
+# The DSLs' entities, maintained by Spark rather than by hand:
+# `mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl,EhOsContract.Process.Dsl`
 # rewrites this list, and the package's `mix check` runs it with `--check`, so it cannot
 # fall behind the DSLs.
 spark_locals_without_parens = [
@@ -42,6 +42,7 @@ spark_locals_without_parens = [
   context: 2,
   context: 3,
   correlate: 1,
+  correlate: 2,
   creates: 1,
   data: 1,
   dcb: 2,

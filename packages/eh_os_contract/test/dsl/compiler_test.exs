@@ -168,6 +168,38 @@ defmodule EhOsContract.CompilerTest do
     assert output =~ "lib/billing.ex:14"
   end
 
+  # Plan DD, P2b (#205): a process module names its contracts as `consumes` does.
+  @clinical_visit """
+  defmodule Fx.ClinicalVisit do
+    use EhOsContract.Process, id: "fx.clinical_visit", domain: Fx.Domain, label: "Wizyta"
+
+    correlate :visit_id
+    stage :closing, include: [{Fx.Visit, :visit_closed}]
+    ends_on :visit_closed
+  end
+  """
+
+  test "a change to a contract recompiles no process module that includes its events",
+       %{tmp_dir: dir} do
+    project(dir, %{
+      "lib/domain.ex" => @domain,
+      "lib/visit.ex" => @visit,
+      "lib/clinical_visit.ex" => @clinical_visit
+    })
+
+    assert {_, 0} = compile(dir)
+
+    edit(dir, "lib/visit.ex", @visit, [
+      {~s|event :visit_closed, "Wizyta zamknięta"|,
+       ~s|event :visit_closed, "Wizyta zamknięta" do\n        field :note, :string, optional: true\n      end|}
+    ])
+
+    {output, status} = compile(dir)
+
+    assert status == 0, output
+    assert output =~ "Compiling 1 file (.ex)"
+  end
+
   defp edit(dir, path, source, replacements) do
     edited =
       Enum.reduce(replacements, source, fn {from, to}, acc ->

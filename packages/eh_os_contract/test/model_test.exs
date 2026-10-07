@@ -120,7 +120,9 @@ defmodule EhOsContract.ModelTest do
 
   test "a module that is not a contract is refused by name, not by a missing function" do
     error = assert_raise ArgumentError, fn -> Model.fetch(Enum) end
-    assert error.message =~ "Enum is not a contract or a domain compiled from EhOsContract's DSL"
+
+    assert error.message =~
+             "Enum is not a contract, a domain or a process compiled from EhOsContract's DSL"
   end
 
   test "to_data names and digests the JSON-ready v2 model, domain and capabilities" do

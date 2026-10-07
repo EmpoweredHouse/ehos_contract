@@ -23,7 +23,9 @@ defmodule EhOsContract.Model do
   belongs.
 
   A domain's model is plain data with its own keys (`contexts`, `actors`, `values`,
-  …), read directly until a reader needs more.
+  …), read directly until a reader needs more. So is a process module's
+  (`use EhOsContract.Process`, plan DD, P2b, #205), of kind `:process`
+  (`EhOsContract.Process.Build`), which nothing at run time reads yet.
   """
 
   @typedoc "A contract module, or the model already built from one."
@@ -40,13 +42,14 @@ defmodule EhOsContract.Model do
         }
 
   @doc """
-  The model of a contract, or of a domain. Passing a model returns it unchanged, so a
-  reader that asks many questions can build it once.
+  The model of a contract, of a domain or of a process module. Passing a model
+  returns it unchanged, so a reader that asks many questions can build it once.
 
   A module that carries no compiled model is refused by name.
   """
   @spec fetch(contract() | module()) :: t() | map()
-  def fetch(%{format: 1, kind: kind} = model) when kind in [:contract, :domain], do: model
+  def fetch(%{format: 1, kind: kind} = model) when kind in [:contract, :domain, :process],
+    do: model
 
   def fetch(module) when is_atom(module) do
     if Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0),
@@ -54,7 +57,8 @@ defmodule EhOsContract.Model do
       else:
         raise(
           ArgumentError,
-          "#{inspect(module)} is not a contract or a domain compiled from EhOsContract's DSL"
+          "#{inspect(module)} is not a contract, a domain or a process compiled from " <>
+            "EhOsContract's DSL"
         )
   end
 

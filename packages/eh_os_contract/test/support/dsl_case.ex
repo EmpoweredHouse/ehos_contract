@@ -84,6 +84,47 @@ defmodule EhOsContract.DslCase do
   end
 
   @doc """
+  The source of a process module `EhOsContract.Fixtures.<name>` (plan DD, P2b, #205)
+  whose `body` starts at line 4 of the file. Its domain and the contracts it includes
+  are named and do not exist, which a process module may do (v2 §8). `opts` are the
+  `use` options, `id:` and `label:` given unless they say otherwise.
+  """
+  @spec process_module(String.t(), String.t(), keyword()) :: String.t()
+  def process_module(name, body, opts \\ []) do
+    opts =
+      [id: "clinic.#{contract_name(name)}", domain: Clinic, label: "Wizyta"]
+      |> Keyword.merge(opts)
+      |> Enum.reject(fn {_key, value} -> value == :omit end)
+
+    """
+    defmodule EhOsContract.Fixtures.#{name} do
+      use EhOsContract.Process, #{opts |> inspect() |> String.slice(1..-2//1)}
+
+    #{body}
+    end
+    """
+  end
+
+  @doc """
+  Compiles the process module `process_module/3` writes, as the file `<name, underscored>.ex`,
+  and returns the message of the error it raises.
+  """
+  @spec refuse_process(String.t(), String.t(), keyword()) :: String.t()
+  def refuse_process(name, body, opts \\ []) do
+    name
+    |> process_module(body, opts)
+    |> compile_error("#{Macro.underscore(name)}.ex")
+    |> Exception.message()
+  end
+
+  @doc "Compiles the process module `process_module/3` writes and returns its model."
+  @spec compile_process(String.t(), String.t(), keyword()) :: map()
+  def compile_process(name, body, opts \\ []) do
+    compile(process_module(name, body, opts), "#{Macro.underscore(name)}.ex")
+    EhOsContract.Model.fetch(Module.concat(EhOsContract.Fixtures, name))
+  end
+
+  @doc """
   Compiles `source` as the file `file` and returns why it did not compile:
   `%{message:, file:, line:}`. Fails the test when it compiles.
 
