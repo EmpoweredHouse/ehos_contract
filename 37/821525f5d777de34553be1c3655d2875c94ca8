@@ -1,0 +1,20 @@
+pre-pr-review, #141 part 1 (origin/main..HEAD, 2 commits, rebased onto #207)
+
+correctness (code-review high) and security-and-performance (own review):
+- fixed: per-key <a id> printed as text by ExDoc (found by building the docs); keys have no anchor
+- fixed: a top-level entity's page had no anchor of its own; test added
+- fixed: anchor test covered only docs/dsl; now every extra
+- fixed: optional args showed \\ nil despite a schema default
+- fixed: second/nested section crashed with MatchError, section options left out
+- fixed: marker in three copies; one function
+- fixed: default not escaped for tables; regex without u flag
+- fixed: add-event pointed at the index for field keys
+- skipped: per-key deep links (ExDoc limitation)
+- skipped: ExDoc extras by wildcard, not manifest (--check in the gate catches a left-over first)
+- skipped: Spark.Options.Docs.dsl_docs_type/1 is @moduledoc false (Spark's own cheat sheet uses it; Spark pinned ~> 2.7.3; a break fails the gate loudly)
+- skipped: shift/1 and first_sentence/1 edge cases (latent: no describe starts a line with #, none starts with "e.g.")
+- skipped: left-over scan follows symlinked dirs; case-only rename on macOS (none exist; entity names are snake_case)
+- no change needed: dev/ not shipped nor compiled in :prod
+Reverse checks: anchor test and entity-anchor test each went red on a broken page.
+Gate: mix check in sandbox EXIT=0; check counts unchanged (no contract or rule touched).
+ExDoc built (MIX_ENV=dev mix docs): no escaped anchors; 30 pre-existing warnings, none from docs/dsl.
