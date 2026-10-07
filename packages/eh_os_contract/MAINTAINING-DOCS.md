@@ -77,3 +77,18 @@ behaviour, not in shape. A behaviour change is the moment to search the prose pa
 `README.md`. Their `mix check` builds their docs with `--warnings-as-errors` and runs their own
 `test/doc_coverage_test.exs`. They publish only what a host calls or implements; a module the host never names
 is `@moduledoc false`, and why it is built the way it is goes in a comment.
+
+## Reading the built documentation
+
+The Markdown pages read as they are in the repository. The HTML, with the API reference and search, is built
+by the `docs` workflow (`.github/workflows/docs.yml`) into one archive: the three packages' ExDoc HTML, the
+Markdown it is made from, and an `index.html` linking them.
+
+- **By hand**, for any branch, tag or commit: Actions → docs → Run workflow, or
+  `gh workflow run docs.yml -f ref=main`. The archive is the run's artifact, kept 30 days
+  (`gh run download <run id>`).
+- **With a release**: publishing one attaches the archive to it.
+- **Locally**: `.github/scripts/build-docs.sh <directory> <ref>` from the repository's root, after `mix deps.get`
+  in each package (`--only test` for the dashboard).
+
+Nothing is published to a site: a GitHub Pages site of this private repository would be public (#201).
