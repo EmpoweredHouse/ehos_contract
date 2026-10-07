@@ -13,7 +13,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
 
-  The structs below are what Spark builds from each declaration. They stay inside the
+  The structs this module defines are what Spark builds from each declaration. They stay inside the
   extension: readers get plain data from `EhOsContract.Model`, never these structs.
   """
 

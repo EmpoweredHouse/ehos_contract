@@ -7,7 +7,7 @@ defmodule EhOsContract.Domain.Dsl do
   entities, external systems and the relations between contexts. The vocabulary is closed:
   a domain module cannot add extensions.
 
-  The structs below are what Spark builds from each declaration. They are the
+  The structs this module defines are what Spark builds from each declaration. They are the
   extension's own data and stay inside it: readers get plain data from
   `EhOsContract.Model`, never these structs.
   """

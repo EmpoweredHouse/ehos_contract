@@ -207,4 +207,16 @@ defmodule EhOsContract.DocsTest do
 
     assert broken == []
   end
+
+  test "every anchor a page of the DSL reference links to is on its page" do
+    broken =
+      for page <- Path.wildcard("docs/dsl/*.md"),
+          [file, anchor] <-
+            Regex.scan(~r/\]\(([^)#:]*)#([^)]+)\)/u, read(page), capture: :all_but_first),
+          target = if(file == "", do: page, else: Path.expand(file, Path.dirname(page))),
+          not (File.exists?(target) and read(target) =~ ~s(id="#{anchor}")),
+          do: "#{page} → #{file}##{anchor}"
+
+    assert broken == []
+  end
 end
