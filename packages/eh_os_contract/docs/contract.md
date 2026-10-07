@@ -17,6 +17,8 @@ What `mix eh_os_contract.check` reports about a model that compiles is in [its r
 
 ## A domain
 
+<!-- covers: entities domain.subdomain, domain.context, domain.actor -->
+
 ```elixir
 defmodule Lending.Domain do
   use EhOsContract.Domain, name: :lending, language: :en
@@ -50,6 +52,8 @@ and the library injects `copy_id` into its fields as a required, non-personal `:
 identity; `issued_by: :catalogue` names the external that gives it, when one does.
 
 ## A contract
+
+<!-- covers: entities contract.aggregate, contract.policy, contract.subscribe, contract.scenario -->
 
 A contract belongs to one context of one domain, and holds at most one process. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
@@ -198,6 +202,8 @@ command's field, or a recorded event's, takes it (`F10`), and a node with such a
 start.
 
 ## A process
+
+<!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline -->
 
 A process whose run crosses several contracts — a loan lent at one desk and returned at another, a visit
 booked, documented and reported by three parts of a practice — is written as a module of its own. It names

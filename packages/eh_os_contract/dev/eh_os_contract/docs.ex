@@ -15,12 +15,32 @@ defmodule EhOsContract.Docs do
   @typedoc "A generated page: where it goes and its Markdown."
   @type page() :: {path :: String.t(), markdown :: String.t()}
 
+  @doc """
+  The pages written by hand: they may say what they cover and hold generated regions
+  (`EhOsContract.Docs.Prose`). Every page ExDoc builds is generated (here, or
+  `docs/rules.md` by `eh_os_contract.rules`), listed here, or the changelog, which
+  `test/docs_test.exs` holds.
+  """
+  @spec prose() :: [String.t()]
+  def prose, do: ["README.md", "docs/contract.md", "docs/authorization.md"]
+
+  # Each DSL with the prefix of its reference pages.
+  @dsls [
+    domain: EhOsContract.Domain.Dsl,
+    contract: EhOsContract.Contract.Dsl,
+    process: EhOsContract.Process.Dsl
+  ]
+
+  @doc "The DSLs whose reference is generated and whose entities a prose page may cover."
+  @spec extensions() :: [module()]
+  def extensions, do: Keyword.values(@dsls)
+
   @doc "Every generated page, in the order it is written."
   @spec generated() :: [page()]
   def generated do
-    DslPages.pages(EhOsContract.Domain.Dsl, "docs/dsl/domain-dsl.md", "domain") ++
-      DslPages.pages(EhOsContract.Contract.Dsl, "docs/dsl/contract-dsl.md", "contract") ++
-      DslPages.pages(EhOsContract.Process.Dsl, "docs/dsl/process-dsl.md", "process") ++
+    Enum.flat_map(@dsls, fn {name, dsl} ->
+      DslPages.pages(dsl, "docs/dsl/#{name}-dsl.md", "#{name}")
+    end) ++
       [
         {"docs/configuration.md", configuration()},
         {"docs/cli.md", ModulePages.cli()},
