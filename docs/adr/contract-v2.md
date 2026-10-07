@@ -1756,6 +1756,18 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
   v1 relay, JetStream through `gnat`) are EHOS's, and one shared test suite runs against every adapter. The
   library does not depend on NATS.
 
+> **7 October 2026, #180 — where the namespace comes from.** D11 puts every published name, and since ID1–ID4
+> every contract's `id:`, under "the application's own namespace", which the code takes from the domain's `name:`,
+> a literal the developer writes. Nothing tied it to the application EHOS registered, so two applications naming
+> their domains alike would publish on each other's names. The namespace is the EHOS application's name: the domain's
+> `name:` must equal it, with `-` for `_`. EHOS enforces it, by a bus credential that allows publishing only under the
+> registered name and by refusing such a manifest at registration (EmpoweredHouse/eh-os#201). The library checks it
+> early: `eh_os_contract_auth` refuses to start when the application of its configured `audience` is the name of
+> no domain with contracts, or when another domain in the same application publishes, since it would publish under a
+> name that is not the application's; it checks nothing without an `audience`. A release may hold several domains,
+> as the sandbox does, as long as only the application's own publishes.
+> ([#180](https://github.com/EmpoweredHouse/eh-os-contract/issues/180))
+
 > **1 October 2026, before E12 — what the relay guarantees, and what `Bus` does not.**
 >
 > - **Why the log can be the outbox.** With event sourcing the state change and the fact are one append: a
