@@ -1,0 +1,11 @@
+pre-pr-review, #141 concept pages (origin/main..HEAD, 2 commits)
+Documentation (prose pages the gate reads: examples compiled, covers checked, links and anchors). Written by four authors checking each claim against lib/; then an accuracy review sampled ~120 claims across the ten pages against the code and found 7 issues:
+- fixed: delivery default stated for every reaction (domain.md, between-contracts.md); only policies and read models
+- fixed: erase/3 already_erased appends nothing
+- fixed: getting-started kept an undeclared state key; declares state now; scenarios run and pass
+- fixed: graph --map takes a domain
+- fixed: generated identity refusals (units.md)
+- fixed: rebuild at boot not with :manual subscriptions (reading.md)
+- skipped: rules.md's free-text-not-personal understates (lists and values); the catalogue entry, not these pages, and a separate fix
+Edited with the no-ai-slop skill (dashes, contrasts, filler). contract.md's stale sentence about process modules corrected.
+Gate: mix check in sandbox EXIT=0; check counts unchanged; ExDoc --warnings-as-errors clean; no coverage gap left.
