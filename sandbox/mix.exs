@@ -55,6 +55,10 @@ defmodule EhOsContractHost.MixProject do
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
+      # The graph renderer (plan E13b), which the dashboard draws with. Direct, the same
+      # reasoning as `:telemetry` above: test/graph_renderer_test.exs draws every client
+      # tree's document with it.
+      {:eh_os_contract_graph, path: "../packages/eh_os_contract_graph"},
       # The credential verifier (v2 stage EA): the `EhOsContract.Authorizer` this host
       # configures, and the bearer plug in front of the commands it serves over HTTP.
       {:eh_os_contract_auth, path: "../packages/eh_os_contract_auth"},
@@ -108,7 +112,8 @@ defmodule EhOsContractHost.MixProject do
         "test",
         &package_test/1,
         &package_test_web/1,
-        &package_test_auth/1
+        &package_test_auth/1,
+        &package_test_graph/1
       ]
     ]
   end
@@ -161,5 +166,19 @@ defmodule EhOsContractHost.MixProject do
 
     if status != 0,
       do: Mix.raise("the credential verifier's own gate failed (packages/eh_os_contract_auth)")
+  end
+
+  # The graph renderer (plan E13b), the same shape again: it depends on no other package of
+  # this repository, and its gate is its own `mix check` in a separate Mix project.
+  defp package_test_graph(_args) do
+    {_output, status} =
+      System.cmd("mix", ["check"],
+        cd: "../packages/eh_os_contract_graph",
+        env: [{"MIX_ENV", "test"}],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0,
+      do: Mix.raise("the graph renderer's own gate failed (packages/eh_os_contract_graph)")
   end
 end
