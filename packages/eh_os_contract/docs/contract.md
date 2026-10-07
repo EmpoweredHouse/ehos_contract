@@ -243,8 +243,10 @@ empty one, two, or a field named twice (`R2`) or one of more than six fields (`F
 includes nothing, or an `include:` entry naming no event or no contract module (`R3`), a promise or
 `ends_on` naming an event it does not include, or `ends_on` twice (`R5`), a duration not in a fixed unit, `deadline`
 twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end (`R6`). It compiles to a
-model `EhOsContract.Model.fetch/1` returns, of kind `:process`. In this version nothing at run time reads it:
-a contract's own `process` is still the one dispatch, the report and the check read.
+model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
+under a run of it, named by its `id:`, beside the run of the contract's own `process`; `mix eh_os_contract.report`
+prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
+judged is in [processes](concepts/process.md).
 
 ## The code that decides
 

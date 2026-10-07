@@ -22,7 +22,16 @@ defmodule EhOsContract.Docs do
   `test/docs_test.exs` holds.
   """
   @spec prose() :: [String.t()]
-  def prose, do: ["README.md", "docs/contract.md", "docs/authorization.md"]
+  def prose do
+    ["README.md", "docs/introduction.md", "docs/getting-started.md", "docs/contract.md"] ++
+      Enum.map(concepts(), &"docs/concepts/#{&1}.md") ++ ["docs/authorization.md"]
+  end
+
+  @doc "The concept pages, in the order a reader takes them."
+  @spec concepts() :: [String.t()]
+  def concepts do
+    ~w(domain domain-data units reactions reading between-contracts process scenarios)
+  end
 
   # Each DSL with the prefix of its reference pages.
   @dsls [
