@@ -14,19 +14,19 @@ message naming the key.
   scans them at boot and every task scans them: a library cannot tell whose binary
   it runs in, and one that scanned itself would report a healthy empty graph.
 
-* `:repo` (`t:atom/0`) - Required. The Ecto repo of the engine's tables (the log, subscriptions, the inbox, the
+* `:repo` (a module) - Required. The Ecto repo of the engine's tables (the log, subscriptions, the inbox, the
   vault's data keys) and of the read models. Every dispatch runs in its transaction.
 
 * `:subscriptions` (`:run` or `:manual`) - `:manual` registers no subscription and starts no runner at boot, so a test
   drains them itself (`EhOsContract.Testing.drain/1`). The default value is `:run`.
 
-* `:authorizer` (`t:atom/0`) - The `EhOsContract.Authorizer` deciding whether an actor may issue a command.
+* `:authorizer` (a module) - The `EhOsContract.Authorizer` deciding whether an actor may issue a command.
   `EhOsContract.Auth`, of `eh_os_contract_auth`, verifies EHOS's credentials. The default value is `EhOsContract.Authorizer.Default`.
 
-* `:supplier` (`t:atom/0`) - The `EhOsContract.Supplier` giving the fields a contract declares `supplied_by:
+* `:supplier` (a module) - The `EhOsContract.Supplier` giving the fields a contract declares `supplied_by:
   :host`. The engine does not start when such a field exists and this is not set.
 
-* `:vault` (`t:atom/0`) - The `EhOsContract.Vault` holding the master keys that wrap each subject's data
+* `:vault` (a module) - The `EhOsContract.Vault` holding the master keys that wrap each subject's data
   key, for example a KMS. The default value is `EhOsContract.Vault.Local`.
 
 * `EhOsContract.Vault` (`t:keyword/0`) - The settings of `EhOsContract.Vault.Local`, the default vault, written
@@ -43,5 +43,5 @@ message naming the key.
   `applications` leaves out: of dispatch, `check`, `report` and every other
   reader of the registry at once. The default value is `[]`.
 
-* `:store` (`t:atom/0`) - The `EhOsContract.Store` the log is appended to and read from. The default value is `EhOsContract.Store.Postgres`.
+* `:store` (a module) - The `EhOsContract.Store` the log is appended to and read from. The default value is `EhOsContract.Store.Postgres`.
 

@@ -51,7 +51,7 @@ defmodule Mix.Tasks.EhOsContract.Docs do
         Mix.shell().info("docs/dsl, docs/configuration.md: current")
 
       opts[:check] ->
-        Mix.raise("#{paths} out of date with the DSL extensions. Run `mix eh_os_contract.docs`.")
+        Mix.raise("#{paths} out of date with the code. Run `mix eh_os_contract.docs`.")
 
       true ->
         for {path, generated} <- stale do

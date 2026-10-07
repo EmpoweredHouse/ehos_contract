@@ -8,7 +8,7 @@ defmodule EhOsContract.ConfigTest do
 
   alias EhOsContract.Config
 
-  @valid [applications: [:my_app], repo: MyApp.Repo]
+  @valid [applications: [:my_app], repo: EhOsContract.TestRepo]
 
   test "a configuration with the required keys is valid" do
     assert Config.validate!(@valid) == :ok
@@ -24,8 +24,30 @@ defmodule EhOsContract.ConfigTest do
     assert message =~ ":autorizer"
   end
 
-  test "a missing required key is named" do
+  test "a missing required key is named, with what to write" do
     assert refused(applications: [:my_app]) =~ ":repo"
+    assert refused(repo: EhOsContract.TestRepo) =~ "applications: [:my_app]"
+  end
+
+  test "a required key set to nil is refused, not taken as set" do
+    assert refused(applications: [:my_app], repo: nil) =~ ":repo"
+    assert refused(applications: nil, repo: EhOsContract.TestRepo) =~ ":applications"
+  end
+
+  test "a module that is not loaded is named" do
+    assert refused(@valid ++ [authorizer: MyApp.Authorizr]) =~ "MyApp.Authorizr"
+    assert refused(@valid ++ [store: true]) =~ ":store"
+  end
+
+  test "a module key meant for the vault is refused; another module's is left alone" do
+    assert refused(@valid ++ [{EhOsContract.Vault.Local, keys: []}]) =~ "EhOsContract.Vault.Local"
+    assert refused(@valid ++ [{:"Elixir.EhOsContract.Vualt", keys: []}]) =~ "EhOsContract.Vualt"
+    assert Config.validate!(@valid ++ [{EhOsContract.TestRepo, pool_size: 10}]) == :ok
+  end
+
+  test "an error under EhOsContract.Vault says it is the vault's" do
+    assert refused(@valid ++ [{EhOsContract.Vault, key: []}]) =~ "EhOsContract.Vault"
+    assert refused(@valid ++ [{EhOsContract.Vault, keys: :none}]) =~ "EhOsContract.Vault"
   end
 
   test "a value of the wrong shape is named by its key" do
@@ -41,6 +63,7 @@ defmodule EhOsContract.ConfigTest do
     refute refused(@valid ++ [{EhOsContract.Vault, keys: secret}]) =~ secret
     refute refused(@valid ++ [{EhOsContract.Vault, secret}]) =~ secret
     refute refused(@valid ++ [store: secret]) =~ secret
+    refute refused(@valid ++ [{EhOsContract.Vault, keys: [{"k1", "a2V5"} | secret]}]) =~ secret
   end
 
   test "the vault's keys and the bus are checked in their shape" do
@@ -53,7 +76,7 @@ defmodule EhOsContract.ConfigTest do
     env =
       @valid ++
         [
-          ecto_repos: [MyApp.Repo],
+          ecto_repos: [EhOsContract.TestRepo],
           "Elixir.Oban": [testing: :manual],
           "Elixir.MyApp.Repo": [pool_size: 10]
         ]
@@ -72,7 +95,7 @@ defmodule EhOsContract.ConfigTest do
       for path <- Path.wildcard("lib/**/*.ex"),
           path != "lib/eh_os_contract/config.ex",
           source = File.read!(path),
-          source =~ ~r/(get|fetch|get_all)_env!?\(:eh_os_contract\b/ or
+          source =~ ~r/(get|fetch|get_all)_env!?\(\s*:eh_os_contract\b/ or
             source =~ ~r/:eh_os_contract\s*\|>\s*Application\./,
           do: path
 

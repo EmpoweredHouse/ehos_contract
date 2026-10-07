@@ -105,6 +105,8 @@ defmodule EhOsContract do
 
   The child is a supervisor. While it starts it does, in this order:
 
+  0. `EhOsContract.Config.validate!/0` refuses to go on when `config :eh_os_contract`
+     has an unknown key, a value of the wrong shape or a required key missing.
   1. `EhOsContract.Registry.load!/1` scans the running binary for contracts and
      domains, refusing to go on when a domain's `time_zone:` is one the time zone
      database this node runs with does not know, and `EhOsContract.Deployment.record!/1` writes what that binary

@@ -1,7 +1,7 @@
 defmodule EhOsContract.Config do
   @schema [
     applications: [
-      type: {:or, [:atom, {:list, :atom}]},
+      type: {:custom, __MODULE__, :shape, [:applications]},
       type_doc: "an application or a list of them",
       required: true,
       doc: """
@@ -11,7 +11,8 @@ defmodule EhOsContract.Config do
       """
     ],
     repo: [
-      type: :atom,
+      type: {:custom, __MODULE__, :shape, [:module]},
+      type_doc: "a module",
       required: true,
       doc: """
       The Ecto repo of the engine's tables (the log, subscriptions, the inbox, the
@@ -28,7 +29,8 @@ defmodule EhOsContract.Config do
       """
     ],
     authorizer: [
-      type: :atom,
+      type: {:custom, __MODULE__, :shape, [:module]},
+      type_doc: "a module",
       default: EhOsContract.Authorizer.Default,
       doc: """
       The `EhOsContract.Authorizer` deciding whether an actor may issue a command.
@@ -36,14 +38,16 @@ defmodule EhOsContract.Config do
       """
     ],
     supplier: [
-      type: :atom,
+      type: {:custom, __MODULE__, :shape, [:module_or_nil]},
+      type_doc: "a module",
       doc: """
       The `EhOsContract.Supplier` giving the fields a contract declares `supplied_by:
       :host`. The engine does not start when such a field exists and this is not set.
       """
     ],
     vault: [
-      type: :atom,
+      type: {:custom, __MODULE__, :shape, [:module]},
+      type_doc: "a module",
       default: EhOsContract.Vault.Local,
       doc: """
       The `EhOsContract.Vault` holding the master keys that wrap each subject's data
@@ -88,7 +92,8 @@ defmodule EhOsContract.Config do
       """
     ],
     store: [
-      type: :atom,
+      type: {:custom, __MODULE__, :shape, [:module]},
+      type_doc: "a module",
       default: EhOsContract.Store.Postgres,
       doc: "The `EhOsContract.Store` the log is appended to and read from."
     ]
@@ -105,13 +110,15 @@ defmodule EhOsContract.Config do
 
   **An unknown key stops the engine.** `config :eh_os_contract, autorizer: ...` would
   otherwise run with the default authorizer, and nothing would say so. The same goes
-  for a value of the wrong shape and for a required key that is missing.
+  for a value of the wrong shape, a module that is not loaded (`authorizer:
+  MyApp.Authorizr`) and a required key that is missing or `nil`.
 
-  **What is not checked.** A key named after a module other than
-  `EhOsContract.Vault` configures that module (an Ecto repo, Oban), and `:ecto_repos`
-  is Ecto's; both are left alone. Whether a configured module exists and implements
-  its behaviour is checked where it is used: `EhOsContract.Supplier.check!/1` and
-  `EhOsContract.Vault.check!/1` at boot.
+  **What is not checked.** A key named after a module configures that module (an
+  Ecto repo, Oban), and `:ecto_repos` is Ecto's; both are left alone, except a module
+  key that looks like a misspelling of `EhOsContract.Vault` or names one of its
+  modules (`EhOsContract.Vault.Local`), which is refused. Whether a configured module
+  implements its behaviour is checked where it is used: `EhOsContract.Supplier.check!/1`
+  and `EhOsContract.Vault.check!/1` at boot.
 
   **No error repeats a value.** The vault's keys and the bus's options may hold
   secrets, so a message names the key and what was expected, never what was given.
@@ -145,8 +152,8 @@ defmodule EhOsContract.Config do
   @spec fetch!(key()) :: term()
   def fetch!(key) do
     case Application.fetch_env(@app, key) do
-      {:ok, value} -> value
-      :error -> raise ArgumentError, "config :eh_os_contract, #{key}: is not set. #{hint(key)}"
+      {:ok, value} when value != nil -> value
+      _unset -> raise ArgumentError, "config :eh_os_contract, #{key}: is not set. #{hint(key)}"
     end
   end
 
@@ -160,14 +167,29 @@ defmodule EhOsContract.Config do
   @doc false
   @spec validate!(keyword()) :: :ok
   def validate!(env) do
-    case Spark.Options.validate(Enum.filter(env, &checked?/1), @schema) do
+    Enum.each(env, &misplaced!/1)
+
+    result =
+      try do
+        Spark.Options.validate(Enum.filter(env, &checked?/1), @schema)
+      rescue
+        # A crash inside the check would print the value in its stacktrace.
+        _ -> {:error, :crashed}
+      end
+
+    case result do
       {:ok, _} ->
         :ok
 
-      {:error, %{message: message}} ->
-        # Spark ends a message with `, got: <the value>`, which could be a secret.
+      {:error, :crashed} ->
         raise ArgumentError,
-              "config :eh_os_contract: " <> String.replace(message, ~r/, got: .*\z/s, "")
+              "config :eh_os_contract: a value has a shape that cannot be checked, " <>
+                "such as an improper list (the value is not shown)"
+
+      {:error, error} ->
+        # Spark ends each reason with `, got: <the value>`, which could be a secret.
+        message = String.replace(Exception.message(error), ~r/, got: [^\n]*/, "")
+        raise ArgumentError, "config :eh_os_contract: " <> message <> hint(error.key, message)
     end
   end
 
@@ -176,16 +198,36 @@ defmodule EhOsContract.Config do
   def docs, do: Spark.Options.docs(@schema)
 
   @doc false
-  @spec shape(term(), :subscriptions | :master_keys | :bus) ::
+  @spec shape(
+          term(),
+          :applications | :module | :module_or_nil | :subscriptions | :master_keys | :bus
+        ) ::
           {:ok, term()} | {:error, String.t()}
   def shape(mode, :subscriptions) when mode in [:run, :manual], do: {:ok, mode}
   def shape(_mode, :subscriptions), do: {:error, "expected :run or :manual"}
 
+  def shape(apps, :applications) do
+    if Enum.all?(List.wrap(apps), &(is_atom(&1) and &1 not in [nil, true, false])) and
+         List.wrap(apps) != [],
+       do: {:ok, apps},
+       else: {:error, "expected an application or a non-empty list of them"}
+  end
+
+  def shape(module, :module_or_nil) when is_nil(module), do: {:ok, nil}
+  def shape(module, :module_or_nil), do: shape(module, :module)
+
+  def shape(module, :module) when is_atom(module) and module not in [nil, true, false] do
+    if Code.ensure_loaded?(module),
+      do: {:ok, module},
+      else: {:error, "#{inspect(module)} is not a module that is loaded"}
+  end
+
+  def shape(_module, :module), do: {:error, "expected a module"}
+
   def shape(keys, :master_keys) do
-    if is_list(keys) and
-         Enum.all?(keys, &match?({id, k} when is_binary(id) and is_binary(k), &1)),
-       do: {:ok, keys},
-       else: {:error, "expected a list of {id, base64} strings"}
+    if master_keys?(keys),
+      do: {:ok, keys},
+      else: {:error, "expected a list of {id, base64} strings"}
   end
 
   def shape(bus, :bus) do
@@ -196,9 +238,41 @@ defmodule EhOsContract.Config do
     end
   end
 
+  # Walked by hand: `Enum` raises on an improper list, and the stacktrace shows its tail.
+  defp master_keys?([]), do: true
+
+  defp master_keys?([{id, key} | rest]) when is_binary(id) and is_binary(key),
+    do: master_keys?(rest)
+
+  defp master_keys?(_other), do: false
+
+  # A module key is left alone, but one that is nearly `EhOsContract.Vault`, or one of
+  # its modules, is where a host meant to configure the vault. Compared without
+  # `Elixir.`, a prefix every module shares: a misspelling scores 0.98, the package's
+  # own `EhOsContract.TestRepo` 0.82.
+  defp misplaced!({key, _}) when is_atom(key) and key != EhOsContract.Vault do
+    with "Elixir." <> name <- Atom.to_string(key),
+         true <-
+           String.starts_with?(name, "EhOsContract.Vault.") or
+             String.jaro_distance(name, "EhOsContract.Vault") >= 0.9 do
+      raise ArgumentError,
+            "config :eh_os_contract, #{name}: is not a key of the library. The vault's " <>
+              "settings go under EhOsContract.Vault: " <>
+              "`config :eh_os_contract, EhOsContract.Vault, keys: [...]`."
+    end
+
+    :ok
+  end
+
+  defp misplaced!(_entry), do: :ok
+
   defp checked?({:ecto_repos, _}), do: false
   defp checked?({EhOsContract.Vault, _}), do: true
   defp checked?({key, _}), do: not String.starts_with?(Atom.to_string(key), "Elixir.")
+
+  defp hint(key, message) do
+    if message =~ "required", do: " " <> hint(key), else: ""
+  end
 
   defp hint(:repo), do: "Name the Ecto repo of the engine's tables: `repo: MyApp.Repo`."
 
