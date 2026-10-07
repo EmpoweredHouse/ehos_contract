@@ -1,0 +1,25 @@
+**Review of P2d** (two reviews in parallel on `7c10acf`; settled in `d08acc2`).
+
+**Correctness** found no bug:
+- **Nothing that reads by contract name meets the new `"process:<id>"` rows.** The start-up warning about unknown contracts reads the event log, and deployments are keyed through one function.
+- **No contract-only path receives a process model.** Graph, pages, view, dispatch, the manifest and every web route enumerate contracts only.
+- **`Run.evaluate` on a domain** now returns `[]` where it raised. That is harmless.
+
+Its findings:
+- **Inconsistent includes.** A process module's includes counted another domain's events in the check and the deployment row, while the run index left them out. **Fixed:** the index reads `Model.process_events/1`, so all three agree.
+- **Stale deployment row.** The deployment shown for a version was its oldest row, so after a wiring change under the same version the report showed stale wiring and date. **Fixed**, for contracts too: the row recorded last is shown. The changelog says so.
+- **A wiring-only change** printed "events added 0, removed 0". **Fixed.**
+- **Missing tests**, for a version change and its promise boundary, `since: nil`, the report task's order, and a contract and a module sharing an id. **Added.**
+- **Left:** after a revert (A, then B, then A), `since` is still A's first date, because a repeated boot of code already recorded adds no row. Dating a revert needs a schema change, which is not this stage's.
+
+**Security and performance** found nothing that blocks:
+- **No web path reaches a process module.** The dashboard and API enumerate contracts only, and `as_data/2` refuses one.
+- **No personal data** is in the report or the deployment rows.
+- **Report queries.** One query per run count, one per promise, both indexed. The boot cost is one row per module.
+- **For P2e:** the first web view of a process module must decide who may see it, since it spans contracts the resolver decides one by one.
+
+**Proof that contracts are unchanged:** the sandbox's report, check, graphs, pages and views on a seeded database are byte for byte the same on `main` and on the branch, after the review fixes too (412 files).
+
+Gate: `mix check` in `sandbox/`, EXIT=0, run once with the database free. Sandbox 0, 36, 10 and 196 tests. Engine 0, 69, 6: one warning fewer, since the invented `AccountReview` module reads `DispatchRig.Ledger`'s `balance_confirmed`. Engine 1489 tests (+15), web 57, auth 287 + 1 property.
+
+After merging main (#211, the DSL reference split per entity): no conflicts; gate EXIT=0, counts as above, engine tests 1492.
