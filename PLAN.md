@@ -61,7 +61,10 @@ and check show process modules. **Wave 2 closed conditionally** (7 October; migr
 #193 (an upper bound for durations, R6) is open. A follow-up outside the stages, merged in #234 (#180, the user's
 decision of 7 October): `eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`,
 the application equals one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus
-(EmpoweredHouse/eh-os#201).
+(EmpoweredHouse/eh-os#201). **Wave 3:** B2, B3 and B4 dropped (the user's decision of 7 October, "Before wave 3's
+boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entity the application keeps, through
+`EhOsContract.Entities`, and the storage is at migration V02, which the engine requires at boot. Next without E13:
+T2s, A1, S2, O1.
 
 ### Stan repozytorium
 
@@ -584,8 +587,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
-| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ◐ `dd/240-command-reads-entity` | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
-| T2b | 3 | `given_entity` | T2a | ◐ folded into T2a, `dd/240-command-reads-entity` | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
+| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
+| T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ | — |
 | A1 | 3 | `actor_is` | T1 | ☐ | — |
 | A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
