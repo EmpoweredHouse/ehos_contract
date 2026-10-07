@@ -39,10 +39,13 @@ Given a green gate, three things are closed:
   right thing is not (below).
 - **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
   `packages/eh_os_contract/docs/contract.md`'s examples and refusal table against the code (`test/docs_test.exs`).
-- **The docs are complete and their references resolve**: every public function of the engine's `lib/` has a
-  `@doc` (or `@doc false`) and a `@spec` (`test/doc_coverage_test.exs`), and no doc references a module,
-  function or page that is missing or hidden (`docs --warnings-as-errors`). Whether a doc is *true* is not
-  closed (below).
+- **The docs are complete and most of their references resolve**: every public function of the engine's
+  `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
+  a `@doc false` function is not held to a `@spec`, though `CLAUDE.md` still asks for one); and no doc
+  references a missing or hidden function of an existing module, a hidden module, a module outside `lib/`
+  or a missing page (`docs --warnings-as-errors`). Two things stay open (below): whether a doc is *true*,
+  and a reference to a module that does not exist at all, which ExDoc renders as plain code without a
+  word.
 
 ## 2 — Where attention earns its cost
 
@@ -129,11 +132,13 @@ request why it cannot move a verdict. That answer is often right; it should be w
 
 ### A doc that no longer describes its function
 
-The gate holds that every public function has a `@doc` and a `@spec` and that every reference in a doc
-resolves; it cannot hold that the doc is still true. When a pull request changes what a public
-function returns, refuses or writes, read its `@doc` (and the generated page it feeds, `docs/cli.md`,
-`docs/behaviours.md`, `docs/dsl/`) against the new code, and send back a doc that describes the old
-behaviour or carries a stage or `§` code a host cannot read (`.claude/skills/write-docs/SKILL.md`).
+The gate holds that every documented public function has a `@spec` and that a doc's references to
+existing modules resolve; it cannot hold that the doc is still true. When a pull request changes what a
+public function returns, refuses or writes, read its `@doc` (and the generated page it feeds,
+`docs/cli.md`, `docs/behaviours.md`, `docs/dsl/`) against the new code, and send back a doc that
+describes the old behaviour or carries a stage or `§` code a host cannot read
+(`.claude/skills/write-docs/SKILL.md`). A new reference to a module is followed on the built page
+(`MIX_ENV=dev mix docs`): a misspelt module name passes the gate as plain code.
 
 ### Diff size
 

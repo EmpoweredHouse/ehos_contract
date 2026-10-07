@@ -15,9 +15,10 @@ need its domain, the contracts it consumes, or the rest of the application.
 Among them: a contract's domain declares the contexts, terms, values and actors it
 uses; a sibling contract declares every event and field this one consumes; a
 reaction to another context's event says how it is delivered; personal data stays
-out of what is published; every declaration has one implementation; names are
+out of what is published; no declaration has two implementations; names are
 unique across the application; and a process module agrees with the contracts
-whose events it includes.
+whose events it includes. A declaration with no implementation at all is not a
+compile error: `mix eh_os_contract.check` reports it.
 
 Add it to the project's compilers, after Elixir's:
 
