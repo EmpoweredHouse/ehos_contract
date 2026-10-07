@@ -1,0 +1,1 @@
+CodeRabbit fix-up: ex_doc ~> 0.34 allowed versions without --warnings-as-errors (added in 0.36.0, per ex_doc CHANGELOG); raised to ~> 0.36 in all three packages, the engine included. Locks unchanged (0.40.4).
