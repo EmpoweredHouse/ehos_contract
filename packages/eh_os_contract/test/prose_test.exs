@@ -54,6 +54,18 @@ defmodule EhOsContract.Docs.ProseTest do
       assert Prose.covers(page).entities == ["contract.policy"]
     end
 
+    test "a line of backticks with a backtick after them is inline code, not a fence" do
+      page = """
+      ```inline``` is not a fence
+      <!-- covers: entities contract.policy -->
+      ~~~ a tilde fence may hold ` in its info
+      <!-- covers: entities contract.made_up -->
+      ~~~
+      """
+
+      assert Prose.covers(page).entities == ["contract.policy"]
+    end
+
     test "refuses a comment that is nearly a covers comment, rather than ignoring it" do
       for page <- ["<!-- Covers: entities contract.policy -->", "<!-- cover: rules x -->"] do
         assert_raise ArgumentError, ~r/is written `<!-- covers: ... -->`/, fn ->

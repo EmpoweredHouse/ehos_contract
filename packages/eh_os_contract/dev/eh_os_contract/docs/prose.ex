@@ -207,17 +207,23 @@ defmodule EhOsContract.Docs.Prose do
   end
 
   # Each line with its newline, and whether it is inside a fenced code block (the
-  # fences themselves count as inside).
-  # As CommonMark reads a fence: it opens with three or more backticks or tildes,
-  # indented at most three spaces, and closes only on a line of the same character,
-  # at least as long, with nothing after it but spaces. So a block of four backticks
-  # can show a block of three, and `~~~` inside backticks closes nothing.
+  # fences themselves count as inside), as CommonMark reads a fence: it opens with
+  # three or more backticks or tildes, indented at most three spaces, and a backtick
+  # fence whose info string holds a backtick opens nothing (it is inline code). It
+  # closes only on a line of the same character, at least as long, with nothing
+  # after it but spaces. So a block of four backticks can show a block of three, and
+  # `~~~` inside backticks closes nothing.
   defp lines(markdown) do
     markdown
     |> String.split(~r/(?<=\n)/u)
     |> Enum.reject(&(&1 == ""))
     |> Enum.map_reduce(nil, fn line, open ->
       case {open, Regex.run(~r/\A {0,3}(`{3,}|~{3,})(.*?)\r?\n?\z/su, line)} do
+        {nil, [_, "`" <> _ = fence, info]} ->
+          if String.contains?(info, "`"),
+            do: {{line, false}, nil},
+            else: {{line, true}, fence}
+
         {nil, [_, fence, _info]} ->
           {{line, true}, fence}
 
