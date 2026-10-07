@@ -61,4 +61,36 @@ defmodule EhOsContract.Web.RouterTest do
   test "an unknown caller cannot open the live socket", %{conn: conn} do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/dashboard/contract")
   end
+
+  describe "mounted in a scope with a path of its own" do
+    test "the bare mount path redirects under the scope's prefix", %{conn: conn} do
+      assert conn |> get("/admin/dashboard") |> redirected_to() == "/admin/dashboard/contract"
+
+      assert conn |> get("/admin/dashboard?since=2026-01-01") |> redirected_to() ==
+               "/admin/dashboard/contract?since=2026-01-01"
+    end
+
+    test "the screens link to each other under the prefix", %{conn: conn} do
+      conn =
+        conn
+        |> Access.put_actor("admin", ["eh_os_contract_admin"])
+        |> get("/admin/dashboard/contract")
+
+      html = html_response(conn, 200)
+      assert html =~ ~s(href="/admin/dashboard/graph")
+      refute html =~ ~s(href="/dashboard/graph")
+    end
+
+    test "the resolver is given the path with its prefix, on a page and over the API",
+         %{conn: conn} do
+      conn = Access.put_actor(conn, "auditor", ["admin_area"])
+
+      assert html_response(get(conn, "/admin/dashboard/contract"), 200) =~ "Access: read only"
+      assert redirected_to(get(conn, "/dashboard/contract")) == "/"
+
+      api = Plug.Conn.put_req_header(conn, "accept", "application/json")
+      assert get(api, "/admin/api/model").status == 200
+      assert get(api, "/api/model").status == 403
+    end
+  end
 end

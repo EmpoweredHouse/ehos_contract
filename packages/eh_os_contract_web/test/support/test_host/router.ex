@@ -35,4 +35,20 @@ defmodule EhOsContract.Web.TestHost.Router do
 
     eh_os_contract_api("/api", resolver: EhOsContract.Web.TestHost.Resolver)
   end
+
+  # Both again under a scope with a path of its own, as a host with an admin area
+  # mounts them: what a browser follows has to carry the prefix.
+  scope "/admin" do
+    pipe_through :browser
+    import EhOsContract.Web.Router
+
+    eh_os_contract_dashboard("/dashboard", resolver: EhOsContract.Web.TestHost.Resolver)
+  end
+
+  scope "/admin" do
+    pipe_through :eh_os_contract_api
+    import EhOsContract.Web.Router
+
+    eh_os_contract_api("/api", resolver: EhOsContract.Web.TestHost.Resolver)
+  end
 end

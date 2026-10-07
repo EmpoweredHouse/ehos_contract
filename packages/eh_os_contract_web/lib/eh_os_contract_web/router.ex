@@ -21,9 +21,10 @@ defmodule EhOsContract.Web.Router do
       end
 
   The screens are `path <> "/contract"` and `path <> "/graph"`; `path` itself redirects
-  to the first, keeping its query string. Mount it in a scope with no path of its own
-  (`scope "/"`): the redirect and the `base_path` the resolver is given are `path` as
-  written, without a scope's prefix.
+  to the first, keeping its query string. Mounted in a scope with a path of its own,
+  `scope "/admin"`, the dashboard is at `/admin/dashboard`, and its redirect, its links
+  and the `base_path` the resolver is given all carry the prefix. A router may mount it
+  more than once.
 
   Options:
 
@@ -46,17 +47,22 @@ defmodule EhOsContract.Web.Router do
   defmacro eh_os_contract_dashboard(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
       resolver = Keyword.fetch!(opts, :resolver)
+      # The path a browser sees: `path` under every scope the host mounted it in. The
+      # redirect, the screens' links and the resolver's `base_path` all need it, and a
+      # route alone does not carry it.
+      mounted = Phoenix.Router.scoped_path(__MODULE__, path)
 
       # Ahead of any access check — a bookmark to the bare mount path should
       # not need to be a decision, just a pointer to whichever screen is
       # first among equals.
-      get path, EhOsContract.Web.Router.RedirectToContract, path <> "/contract"
+      get path, EhOsContract.Web.Router.RedirectToContract, mounted <> "/contract"
 
       scope path do
         import Phoenix.LiveView.Router
 
-        live_session :eh_os_contract_dashboard,
-          session: {EhOsContract.Web.Router, :__session__, [resolver, path]},
+        # Named after where it is mounted, so a router may mount the dashboard twice.
+        live_session :"eh_os_contract_dashboard:#{mounted}",
+          session: {EhOsContract.Web.Router, :__session__, [resolver, mounted]},
           root_layout: {EhOsContract.Web.Layouts, :root},
           on_mount: [EhOsContract.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
           live "/contract", EhOsContract.Web.Live.ContractStatus, :index
@@ -118,33 +124,37 @@ defmodule EhOsContract.Web.Router do
   defmacro eh_os_contract_api(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
       resolver = Keyword.fetch!(opts, :resolver)
+      # As the dashboard's: the resolver is given the path a client sees.
+      mounted = Phoenix.Router.scoped_path(__MODULE__, path)
 
       get path <> "/conformance",
           EhOsContract.Web.Api.Conformance,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
 
       # The index first: a bare `/asyncapi` must not be read as a contract named "".
-      get path <> "/asyncapi", EhOsContract.Web.Api.AsyncAPI, resolver: resolver, base_path: path
+      get path <> "/asyncapi", EhOsContract.Web.Api.AsyncAPI,
+        resolver: resolver,
+        base_path: mounted
 
       get path <> "/asyncapi/:contract",
           EhOsContract.Web.Api.AsyncAPI,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
 
-      get path <> "/model", EhOsContract.Web.Api.Model, resolver: resolver, base_path: path
+      get path <> "/model", EhOsContract.Web.Api.Model, resolver: resolver, base_path: mounted
 
       get path <> "/model/:contract",
           EhOsContract.Web.Api.Model,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
 
-      get path <> "/openapi", EhOsContract.Web.Api.OpenAPI, resolver: resolver, base_path: path
+      get path <> "/openapi", EhOsContract.Web.Api.OpenAPI, resolver: resolver, base_path: mounted
 
       get path <> "/openapi/:contract",
           EhOsContract.Web.Api.OpenAPI,
           resolver: resolver,
-          base_path: path
+          base_path: mounted
     end
   end
 
