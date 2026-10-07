@@ -635,7 +635,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); przed PR-em `pre-pr-review` z użytkownikiem |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
@@ -1528,6 +1528,23 @@ joining on them needs.
 *Left as it is:* a process module (P2b) is in no document: no reader shows one before P2e, which builds the
 process's graph as `graph.v1`.
 
+
+### E13a — pre-PR review and the pull request (7 October)
+
+- **The rebase checked by a second agent:** every E13a change of the pre-rebase branch is present or adapted as the
+  section above says; nothing of `main` is undone (no line of `main`'s PLAN.md, CHANGELOGs or READMEs removed); the
+  coverage check by hand over the sandbox's 11 contracts and 3 domains finds nothing missing; the dashboard's 68
+  pictures are byte for byte `main`'s.
+- **`pre-pr-review`** fixed: a graph JSON path built from an unchecked contract id could leave `--output`, and the
+  pages task accepted any `contract` value when deciding what is its own (the id is held to D11's form in both);
+  `graph --json --since` without `--overlay` ignored `--since` (refused now); wording. Gate EXIT=0.
+- **Known, left by the user's choice (7 October), to optimise when Console calls these routes or in E13b:** a `304`
+  still builds the whole document before comparing the ETag (the digest could be cached per contract and version);
+  the domain overlay reads the log once per consuming contract on every request. Of the same kind as the known
+  "the index builds every document" and "the overlay walks the log". *Rejected for now:* doing it in this pull
+  request, which is large already, with no traffic to measure.
+- **Pull request [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217)**, "No issue: E13 is planned and
+  tracked in PLAN.md" (decision C).
 ### Wobec programu DD
 
 DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
