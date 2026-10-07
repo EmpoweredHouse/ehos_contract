@@ -1,0 +1,28 @@
+**Review of P2f's Rehmed part** (`ac77cd7`, settled in `d81bd67`). One review covered correctness, and security and performance, since the change is the sandbox's contracts and two new process modules.
+
+**Faithful move: no finding.** Compared line by line with the removed blocks:
+- **`ClinicalVisit`:** the same three stages in order, each event included from the contract that declares it. The correlation, label, accountable role and promise are the same, and it still has no deadline.
+- **`PayerSettlement`:** the same three stages and its two-field correlation.
+- **`ends_on`:** exactly the events that ended a run before: `p1_report_sent`, `p1_reporting_not_required`, `payer_invoice_issued`. `p1_report_failed` was never one.
+- **The removed `consumes`** of `visit_completed` in statutory reporting is read by nothing else.
+- **Security:** the correlation fields are non-personal identifiers.
+
+**Fixed:**
+- the visit's moduledoc said a refused report is retried. The retry (`S-46`) is not written yet;
+- `Rehmed.Contracts` still said each contract has its one process;
+- the declared-shape test claimed the library tests what only the old picture showed. Part of it is not tested anywhere now, for the clinic, until process modules are drawn (#220). It says so.
+
+**Stated here, not fixed:**
+- **The sandbox dashboard no longer shows these two processes.** It lists contracts, and a process module joins it with #220. The text report shows them.
+- **Nothing exercises `PayerSettlement` at run time.** That was already true before the move.
+- **A process module crossing contexts is not checked against the context map** the way a contract's `consumes` is. It belongs with the context map rules (M1, wave 3).
+
+**Numbers unchanged.** On the 95 seeded events the report shows the same numbers under the modules: 3 visit runs, the promise breached in 1 of 3 with 1 fallback ending, and 2 payer settlement runs.
+
+Gate: `mix check` in `sandbox/`, EXIT=0, with the database free. The sandbox's check went from 36 to 32 warnings:
+- three events are now read by a module's include;
+- one relation warning went with the `consumes`.
+
+Sandbox tests went from 196 to 194, since two tests drew the contract's process. Engine 0, 69, 6 and 1492 tests; web 57; auth 287 + 1 property.
+
+After merging main (#214, #215, #218, the docs for a host and its gate): no conflicts; gate EXIT=0, sandbox 0/32/10 and 194 tests, engine 1495 tests.
