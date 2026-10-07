@@ -96,6 +96,15 @@ defmodule EhOsContract.DeadlineTest do
             do: {:ok, _} = EhOsContract.dispatch(DispatchRig.Ledger, command, actor: clerk)
       end)
 
+      # A second withdrawal joins the same run an hour later: the run starts at the
+      # earliest of its events, not the latest.
+      EhOsContract.Clock.at(~U[2026-09-01 10:00:00.000000Z], fn ->
+        {:ok, _} =
+          EhOsContract.dispatch(DispatchRig.Ledger, %Withdraw{account_id: "a-1", amount: 20},
+            actor: clerk
+          )
+      end)
+
       assert [run] =
                EhOsContract.Run.evaluate(
                  DispatchRig.AccountReview,

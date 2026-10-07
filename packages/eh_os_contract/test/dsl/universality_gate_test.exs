@@ -34,7 +34,7 @@ defmodule EhOsContract.UniversalityGateTest do
     # Run identity from a single field.
     run = Model.process(@run)
     assert run.correlate == [:episode_id]
-    assert %{amount: 30, unit: :day, unverified: true} = run.deadline
+    assert run.deadline == %{amount: 30, unit: :day, unverified: true}
   end
 
   test "the stages keep v1's order, and every event sits in one" do

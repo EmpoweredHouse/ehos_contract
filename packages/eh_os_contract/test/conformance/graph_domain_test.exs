@@ -286,8 +286,10 @@ defmodule EhOsContract.GraphDomainTest do
     contracts = EhOsContract.Registry.contracts()
     ours = Enum.filter(contracts, &(EhOsContract.Model.fetch(&1).domain == DispatchRig.Domain))
 
-    # DispatchRig.Branch is the one consumer: its steps, each process's runs (Branch has no
-    # steps of its own to carry them), and one count for every edge. Before, every
+    # DispatchRig.Branch is the one consumer: its steps, one read of runs for each
+    # contract with a process of its own, and one count for every edge. Since plan DD,
+    # P2g (#228) none of DispatchRig's contracts has a process, so the second term is
+    # zero here; it stays so the budget holds if one gains a process. Before, every
     # contract's steps were read and every edge counted apart: 28 queries here.
     with_process = Enum.count(ours, &(EhOsContract.Model.fetch(&1).process != nil))
     budget = queries(fn -> EhOsContract.Paths.observe(DispatchRig.Branch) end) + with_process + 1
