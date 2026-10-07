@@ -24,6 +24,7 @@ Given events, a trigger, and what follows: an example the process owner reads.
 |------|------|----------|---------|------|
 | `target` | `atom` |  |  | The unit or reaction the case is about, when the trigger does not say which. |
 | `actor` | `atom` |  |  | The actor who issues the command. |
+| `as` | `String.t` |  |  | The person issuing the command, as their credential's subject; beside `actor:`, for a command whose `actor_is` names who must issue it. |
 | `rejected` | `atom` |  |  | The invariant the command is refused on. |
 | `illustrates` | `atom \| list(atom)` |  | `[]` | The rules this case shows: a constraint of the policy, process manager or query, or an invariant of the process manager. |
 | `ended` | `boolean` |  | `false` | Whether the process manager ends. |

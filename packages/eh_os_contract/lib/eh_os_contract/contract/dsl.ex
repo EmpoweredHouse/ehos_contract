@@ -48,7 +48,12 @@ defmodule EhOsContract.Contract.Dsl do
     @moduledoc false
     defstruct [:name, :label, :source, :scope, :or_rejects, by: [], emits: [], rejects: []] ++
                 [fields: [], constraints: [], creates: false, from: [], reads: []] ++
-                [__spark_metadata__: nil]
+                [actor_is: [], __spark_metadata__: nil]
+  end
+
+  defmodule ActorIs do
+    @moduledoc false
+    defstruct [:field, :or_rejects, __spark_metadata__: nil]
   end
 
   defmodule Generated do
@@ -278,7 +283,16 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Scenario do
     @moduledoc false
-    defstruct [:description, :target, :actor, :rejected, ended: false, given: [], trigger: []] ++
+    defstruct [
+                :description,
+                :target,
+                :actor,
+                :as,
+                :rejected,
+                ended: false,
+                given: [],
+                trigger: []
+              ] ++
                 [given_entities: []] ++
                 [illustrates: []] ++
                 [
@@ -379,12 +393,36 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan DD, A1 (#247): the person who must issue the command, as a field of the unit's
+  # state names them.
+  @actor_is %Spark.Dsl.Entity{
+    name: :actor_is,
+    describe:
+      "The person who must issue the command: the one a field of the unit's state names. " <>
+        "Anyone else with the credential is refused on the invariant.",
+    target: ActorIs,
+    args: [:field],
+    schema: [
+      field: [
+        type: :atom,
+        required: true,
+        doc:
+          "The field of the unit's state, a required, non-personal `:id`, that names the person."
+      ],
+      or_rejects: [
+        type: :atom,
+        required: true,
+        doc: "The invariant of the unit, in the command's `rejects:`, it is refused on otherwise."
+      ]
+    ]
+  }
+
   @command %Spark.Dsl.Entity{
     name: :command,
     describe: "An intention an actor or a reaction issues to a unit.",
     target: Command,
     args: [:name, :label],
-    entities: [fields: [@field], constraints: [@constraint]],
+    entities: [fields: [@field], constraints: [@constraint], actor_is: [@actor_is]],
     schema: [
       name: [type: :atom, required: true, doc: "The command's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
@@ -1190,6 +1228,12 @@ defmodule EhOsContract.Contract.Dsl do
         doc: "The unit or reaction the case is about, when the trigger does not say which."
       ],
       actor: [type: :atom, doc: "The actor who issues the command."],
+      as: [
+        type: :string,
+        doc:
+          "The person issuing the command, as their credential's subject; beside `actor:`, for a " <>
+            "command whose `actor_is` names who must issue it."
+      ],
       rejected: [type: :atom, doc: "The invariant the command is refused on."],
       illustrates: [
         type: {:wrap_list, :atom},

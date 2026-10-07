@@ -42,7 +42,9 @@ defmodule EhOsContract.Dispatcher do
      consults by `where:` alone — each decoded by the contract that declares it, in
      the log's order. Only what `evolve/2` folds is decoded, when its one catch-all
      is `def evolve(state, _), do: state`, and a boundary reads, and conflicts on,
-     those types alone.
+     those types alone. A command whose `actor_is` names a field of the state is
+     refused on its invariant before the decision when a credential's subject is not
+     the one that field holds; a `:system` actor and a reaction pass.
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit — their types, or the invariants of their values — raises: that is a
@@ -823,7 +825,15 @@ defmodule EhOsContract.Dispatcher do
 
       if Lifecycle.admits?(declaration, status) do
         state = fold(job, unit, impl, folded_only(recorded, model, unit, folded), before, status)
-        decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
+
+        case person_named(declaration, state, ctx.actor) do
+          :ok ->
+            decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
+
+          {:refused, invariant} ->
+            write_row!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
+            {:error, %Rejection{invariant: invariant}}
+        end
       else
         # Plan LC2: outside the statuses its `from:` names, the command is refused on
         # its `or_rejects:` before the decision, as the decision would have refused it.
@@ -832,6 +842,20 @@ defmodule EhOsContract.Dispatcher do
       end
     end
   end
+
+  # Plan DD, A1 (#247): a command whose `actor_is` names a field of the state is issued
+  # only by the person that field holds, compared with the credential's subject, and is
+  # refused on its invariant before the decision otherwise, as a lifecycle's
+  # precondition is. A `:system` actor and a reaction act for the application, and pass.
+  # A field still empty names nobody, so every person is refused.
+  defp person_named(%{actor_is: %{field: field, or_rejects: invariant}}, state, %Actor{
+         kind: :credential,
+         subject: subject
+       }) do
+    if Map.get(state, field) == subject, do: :ok, else: {:refused, invariant}
+  end
+
+  defp person_named(_declaration, _state, _actor), do: :ok
 
   defp decide(job, unit, impl, state, status, command, repo) do
     %{model: model, declaration: declaration} = job

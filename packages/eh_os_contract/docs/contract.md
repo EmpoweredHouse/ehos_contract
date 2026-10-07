@@ -215,6 +215,15 @@ command's record. A scenario of such a command gives the row with `given_entity 
 suspended: false}` ([`S12`](#refusals-s)), its fields held to the entity's ([`X9`](#refusals-x)), and a node with
 such a command and no `EhOsContract.Entities` does not start.
 
+Some rules name a person, not a role: a loan is returned by the librarian who lent it, not by any librarian. Inside
+the command, `actor_is :librarian_id, or_rejects: :returned_where_lent` says who must issue it: the person a field of
+the unit's state holds, a non-personal `:id` that an earlier event filled ([`A9`](#refusals-a)). Dispatch compares
+it with the credential's subject after folding the state and before the decision; anyone else is refused on the
+invariant, with a `rejected` row, as a lifecycle's `from:` refuses. A field still empty names nobody, so every
+person is refused. A `:system` actor and a reaction act for the application, and pass. There is no exception for a
+role: a person who must act on another's unit does so through a command declared for it. A scenario names the
+person with `as "librarian-ola"` beside its `actor` ([`S7`](#refusals-s)), and is refused for anyone else.
+
 ## A process
 
 <!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline -->
@@ -374,6 +383,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `A8` | L2 | a command's `reads:` naming a field it does not have, a field of its unit's identity, an optional field or one not typed `{:id, entity}`; a name given twice; a command that reads, issued by a policy or a process manager |
+| `A9` | L2 | a command's `actor_is` naming a field outside its unit's state and identity, not an `:id`, or personal; an `or_rejects:` that is not an invariant of the unit in the command's `rejects:`; on a command that `creates:` its aggregate or names nobody in `by:`; given twice |
 
 <a id="refusals-t"></a>
 
@@ -439,7 +449,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S4` | L2 | `rejected` naming what the command does not `rejects:` |
 | `S5` | L2 | `expect` naming an event outside the command's `emits:` |
 | `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a `state` said twice, or of anything but a process manager; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
-| `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
+| `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command; an `as` without an `actor`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |

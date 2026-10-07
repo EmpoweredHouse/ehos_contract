@@ -464,6 +464,15 @@ defmodule EhOsContract.ScenarioCase do
 
   defp reads(_model, _declaration, _command, _scenario), do: []
 
+  # The invariant a command is refused on when the person a scenario names with `as:` is
+  # not the one its `actor_is` field of the state holds; `nil` when they are, or when the
+  # scenario names nobody, as dispatch passes a `:system` actor (plan DD, A1, #247).
+  defp not_the_person(%{actor_is: %{field: field, or_rejects: invariant}}, state, person)
+       when is_binary(person),
+       do: if(Map.get(state, field) == person, do: nil, else: invariant)
+
+  defp not_the_person(_declaration, _state, _person), do: nil
+
   # The row as dispatch hands it over: every declared field, `nil` where the scenario
   # leaves an optional one out, and each value held to its domain value's invariants.
   defp row!(model, declared, data) do
@@ -521,7 +530,15 @@ defmodule EhOsContract.ScenarioCase do
             status
           )
 
-        apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
+        # As dispatch does (plan DD, A1, #247): the person the scenario names with `as:`
+        # issues it only when the state names them; without `as:`, nobody is compared.
+        case not_the_person(declaration, state, Map.get(scenario, :as)) do
+          nil ->
+            apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
+
+          invariant ->
+            {:error, %Rejection{invariant: invariant}}
+        end
       else
         {:refused_in, status, declaration.or_rejects}
       end

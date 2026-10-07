@@ -12,6 +12,8 @@ spark_locals_without_parens = [
   actor: 1,
   actor: 3,
   actor: 4,
+  actor_is: 1,
+  actor_is: 2,
   aggregate: 2,
   aggregate: 3,
   answers: 1,

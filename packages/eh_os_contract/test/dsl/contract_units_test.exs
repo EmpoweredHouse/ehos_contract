@@ -422,6 +422,137 @@ defmodule EhOsContract.ContractUnitsTest do
     end
   end
 
+  describe "A9: the person who must issue a command is named by the unit's state (plan DD, A1, #247)" do
+    test "a field outside the state, of another type or personal; an invariant outside rejects:; a creating or by-less command; twice" do
+      message =
+        refuse_contract("ActorIsWrong", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            state do
+              field :specialist_id, :id, optional: true
+              field :room, :string, optional: true
+              field :patient_id, :id, personal: :patient, subject: :patient, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :close_a, "A", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :nurse_id, or_rejects: :own_visit
+            end
+
+            command :close_b, "B", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :room, or_rejects: :own_visit
+            end
+
+            command :close_c, "C", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :patient_id, or_rejects: :own_visit
+            end
+
+            command :close_d, "D", by: :reception, emits: :closed do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :close_e, "E", emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :close_f, "F", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+              actor_is :visit_id, or_rejects: :own_visit
+            end
+
+            event :closed, "Zamknięto"
+          end
+
+          policy :close_on_close, "Zamknij", handles: :closed, issues: :close_e,
+            delivery: :in_transaction
+        """)
+
+      assert message =~
+               "A9: command :close_a, actor_is :nurse_id: is not a field of the unit's state; " <>
+                 "the person is one the unit already knows"
+
+      assert message =~
+               "A9: command :close_b, actor_is :room: is typed :string; a person is named by an :id"
+
+      assert message =~
+               "A9: command :close_c, actor_is :patient_id: is personal; the subject compared " <>
+                 "with it would be a person's data in a refusal"
+
+      assert message =~
+               "A9: command :close_d, actor_is :specialist_id: or_rejects: :own_visit is not an " <>
+                 "invariant of the unit in the command's rejects:"
+
+      assert message =~
+               "A9: command :close_e, actor_is :specialist_id: the command names nobody in by:, " <>
+                 "so no person issues it"
+
+      assert message =~ "A9: command :close_f names who must issue it twice"
+    end
+
+    test "a command that creates its aggregate names nobody yet" do
+      message =
+        refuse_contract("ActorIsCreates", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id, generated: :uuid
+
+            state do
+              field :specialist_id, :id, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :open_visit, "Otwórz", by: :reception, emits: :opened, creates: true,
+              rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            event :opened, "Otwarto"
+          end
+        """)
+
+      assert message =~
+               "A9: command :open_visit, actor_is :specialist_id: the command creates: its " <>
+                 "aggregate, which has no state yet to name anyone"
+    end
+
+    test "control: a field of the state or the identity compiles, and the model keeps it" do
+      model =
+        compile_contract("ActorIsRight", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            state do
+              field :specialist_id, {:id, :specialist}, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :close_visit, "Zamknij", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :reopen_visit, "Otwórz ponownie", by: :reception, emits: :reopened
+
+            event :closed, "Zamknięto"
+            event :reopened, "Otwarto ponownie"
+          end
+
+          scenario "zamyka ktoś inny" do
+            actor :reception
+            as "specialist-ola"
+            command :close_visit
+            rejected :own_visit
+          end
+        """)
+
+      commands = Map.new(model.commands, &{&1.name, &1})
+      assert commands.close_visit.actor_is == %{field: :specialist_id, or_rejects: :own_visit}
+      refute Map.has_key?(commands.reopen_visit, :actor_is)
+    end
+  end
+
   describe "C1: a command can be issued" do
     test "a command without by:, which no reaction issues, is refused" do
       message =

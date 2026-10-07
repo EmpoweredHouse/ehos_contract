@@ -720,6 +720,19 @@ within `rejects:`, routing a stored type to its struct, and encryption.
 > unit's history and would then depend on when it was read.
 > ([#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240))
 
+> **7 October 2026, plan DD, A1 — a command may name the person who must issue it.** `by:` names roles, so any
+> specialist could close a colleague's visit, and a rule of the business — "the visit's own specialist closes it"
+> — had nowhere to stand but the decider, which never sees the credential. **A command may declare `actor_is
+> :specialist_id, or_rejects: :invariant`**: the credential's subject must be the one that field of the unit's
+> state holds (A9: a non-personal `:id` of the state or the identity, an invariant in `rejects:`, not on a command
+> that creates its aggregate, and only on a command people issue). Dispatch checks it after folding the state and
+> before the decision, and refuses as a lifecycle's precondition does, on the invariant with a `rejected` row, so
+> the report counts it as any business refusal. A `:system` actor and a reaction act for the application and are
+> not compared. **No exception for a role** (the user's decision): an override is a command of its own, so the
+> report can tell it from an ordinary close. Rejected: comparing in the decider through `__meta__`, which would
+> leave the rule invisible to the contract and to the report; a field of the command, which the caller fills
+> and so would name themselves. ([#247](https://github.com/EmpoweredHouse/eh-os-contract/issues/247))
+
 ## 6. Checks, in five layers
 
 **No rule depends on a Spark verifier.** Verifiers run in `@after_verify`, Spark turns their errors into
