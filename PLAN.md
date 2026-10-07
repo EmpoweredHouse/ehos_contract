@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C recommended in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md) (proposed); views and panels not approved yet ("E13b, step 1 — the renderer (7 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) in progress; views and panels not approved yet ("E13b — C accepted, and the batches (7 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1572,6 +1572,27 @@ process's graph as `graph.v1`.
   black without `fill: none`) passed every numeric check and showed only on screen, so each change to the
   drawing layer is looked at in a browser. JointJS's paper injects a `<style>`, which a scan of its bundle had
   missed.
+
+### E13b — C accepted, and the batches (7 October)
+
+The user accepted C (`docs/adr/graph-renderer.md` is *accepted*) and the split of the rest of E13b into five
+batches on the one branch and pull request (#219), in order:
+
+1. **The package and its drawing layer**: `packages/eh_os_contract_graph`, depending on `phoenix_live_view`
+   only, with a component that turns a document and its overlay into cards and arrow labels in HEEx; the hook
+   (measuring, dagre, arrows in SVG, `d3-zoom`); positions in a constructed stylesheet, with a test that
+   nothing sets a `style` attribute; a click on a card or an arrow as an event to the server; the palette of
+   kinds in one table; the bundle built by esbuild and committed; tests on fixture documents, without the
+   engine; its `mix check` in the gate. It draws one **temporary view, everything in the document**, as a
+   test bed, and a raw panel. The dashboard's screens stay as they are; Mermaid stays.
+2. **The views, specified on paper** for the user's review, from the needs the user has not yet written
+   down (step 1 above). Can run beside batch 1.
+3. **The views in the package**, on fixtures.
+4. **The Graph screen** on the component: panels, the lifecycle, the overlay, the table of events and the
+   promises in sentences; on Contract status, what one run is (point 4).
+5. **Mermaid cut**, the model pages as decided (b), the check in a browser, the records.
+
+Batch 1 needs no views: it is what every view is drawn with.
 
 ### Wobec programu DD
 

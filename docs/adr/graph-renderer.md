@@ -1,9 +1,8 @@
 # The graph renderer — what draws a `graph.v1` document
 
-> **Status: proposed**, 7 October 2026. The options and their costs come first, then the decision
-> recommended for them ("Decision", at the end). It becomes *accepted* when the user confirms it. Stage: E13b,
-> step 1 (`PLAN.md`, "E13b — renderer i ekran"), pull request
-> [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
+> **Status: accepted**, 7 October 2026: C, as recommended under "Decision". Proposed the same day; the options
+> and their costs come first, then the decision. Stage: E13b, step 1 (`PLAN.md`, "E13b — renderer i ekran"),
+> pull request [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
 
 ## The problem
 
@@ -259,6 +258,10 @@ cards, editing one day. The more of it, the more A and B save. Viewing alone is 
 
 **C: cards and labels in HEEx, our own thin drawing layer**, with dagre for the layout and `d3-zoom` for pan
 and zoom. Recommended on 7 October 2026, for the user to confirm.
+
+> **7 October 2026: accepted by the user.** One correction, found when the libraries were fetched for the
+> package: `d3-zoom` and seven of the eight d3 modules it pulls in are ISC, and `d3-ease` is BSD-3-Clause, not
+> MIT. Both are as permissive and ask for the same notice, so nothing above changes.
 
 **Why, given what the graph is for.** The graph is for viewing only, and the user ruled out what A and B
 mostly save: zoom buttons, a minimap and keyboard access are not needed, and nothing is dragged, connected or
