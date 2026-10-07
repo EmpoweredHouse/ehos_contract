@@ -1,0 +1,25 @@
+**Review of P2g** (two reviews in parallel on `e395fa7`; settled in the commit after it).
+
+**Correctness** found no bug. Each rig's module matches the process removed from its contract: stages and order, events, correlation, promises word for word, deadlines, and `ends_on` equal to the old run-ending events. The changed expectations are derived honestly:
+- **Key budgets.** Recomputed: an 18-byte id makes the bin's run fit at 479 and not 480, and a 19-byte id makes the audit run fit at 477 and not 478. A new `Key.fits?` guard holds the bin's run under the watch's key.
+- **Other values.** The Ledger's pinned version, the empty process columns, the run rows and the module's report and wire all agree with the code.
+- **Inline contracts.** Tests about a contract's own `process` now compile their own contract, and those are sound. The graph task's temporary application is restored and unloaded after its synchronous test.
+- **The check's delta is confirmed:** 69 warnings and 6 notices became 60 and 5. Nine events are now read by the module that includes them, under the rule from #216: an event a process module includes counts as read. The branch's deadline notice went with the deadline.
+
+Fixed:
+- BranchRun has no deadline, since a module refuses one without `ends_on` and nothing ends a branch's run. Its deadline test moved to another rig with one event per run, so it no longer proved a run starts at the earliest of several. It has two events in one run again.
+- The treatment episode's deadline was matched loosely after the move. It is compared exactly again.
+- A graph test's budget comment and KeyRig's restocking label say what is now true.
+
+Left: two `refute`s in the report tests are now trivially true. They document that a contract's report lost its process section, and the module-side assertions beside them carry the point.
+
+**Security and performance** found nothing:
+- only tests and test support changed;
+- every database test runs in the Ecto sandbox;
+- no async test shares the temporary application;
+- the one contract compiled at run time in a test is never registered;
+- no per-test index rebuild was added.
+
+The readers that still work only for a contract's process are recorded on #220 (the graph task's `--process`, the system graph's run counts) and #221 (a command's run).
+
+Gate: `mix check` in `sandbox/`, EXIT=0, after merging `main` (#229). Sandbox 0, 30, 10 and 194 tests. Engine 0, 60, 5 and 1523 tests. No test was deleted. Web 57; auth 287 + 1 property.
