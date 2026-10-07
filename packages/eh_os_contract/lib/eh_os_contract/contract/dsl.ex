@@ -47,7 +47,8 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Command do
     @moduledoc false
     defstruct [:name, :label, :source, :scope, :or_rejects, by: [], emits: [], rejects: []] ++
-                [fields: [], constraints: [], creates: false, from: [], __spark_metadata__: nil]
+                [fields: [], constraints: [], creates: false, from: [], reads: []] ++
+                [__spark_metadata__: nil]
   end
 
   defmodule Generated do
@@ -240,6 +241,11 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:event, data: %{}, __spark_metadata__: nil]
   end
 
+  defmodule GivenEntity do
+    @moduledoc false
+    defstruct [:entity, data: %{}, __spark_metadata__: nil]
+  end
+
   defmodule Trigger do
     @moduledoc false
     defstruct [:kind, :name, data: %{}, __spark_metadata__: nil]
@@ -273,6 +279,7 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Scenario do
     @moduledoc false
     defstruct [:description, :target, :actor, :rejected, ended: false, given: [], trigger: []] ++
+                [given_entities: []] ++
                 [illustrates: []] ++
                 [
                   expect: [],
@@ -402,6 +409,16 @@ defmodule EhOsContract.Contract.Dsl do
         type: :atom,
         doc:
           "The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`."
+      ],
+      # Plan DD, T2a (#240): what the decision reads besides the command and the
+      # unit's history, an entity the application keeps, asked of the host.
+      reads: [
+        type: :keyword_list,
+        default: [],
+        doc:
+          "The entities the decision reads, `[service: :service_id]`: the name each row arrives " <>
+            "under in the decision's third argument, and the command's field, typed " <>
+            "`{:id, entity}`, that names it."
       ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]
@@ -1038,6 +1055,19 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan DD, T2a (#240): the row of an entity a command reads, as the application keeps it
+  # when the command arrives.
+  @given_entity %Spark.Dsl.Entity{
+    name: :given_entity,
+    describe: "The row of an entity the scenario's command reads, as the application keeps it.",
+    target: GivenEntity,
+    args: [:entity, {:optional, :data}],
+    schema: [
+      entity: [type: :atom, required: true, doc: "The entity of the domain."],
+      data: [type: :map, default: %{}, doc: "Its fields, its identity among them."]
+    ]
+  }
+
   @trigger_schema [
     name: [type: :atom, required: true, doc: "What is triggered."],
     data: [type: :map, default: %{}, doc: "Its fields."]
@@ -1143,6 +1173,7 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:description],
     entities: [
       given: [@given],
+      given_entities: [@given_entity],
       trigger: [@scenario_command, @scenario_on, @scenario_query],
       expect: [@expect],
       issues: [@issues],

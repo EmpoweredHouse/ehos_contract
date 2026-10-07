@@ -87,7 +87,25 @@ defmodule EhOsContract.Contract.Links.Scenarios do
       for {issues, at} <- Enum.zip(model.issues, declaration.issues),
           do: command(c, issues.command, issues.data, at, false)
 
-    Enum.reject(givens ++ trigger ++ expected ++ issued ++ answered, &is_nil/1)
+    entities =
+      for {given, at} <-
+            Enum.zip(Map.get(model, :given_entities, []), declaration.given_entities),
+          do: entity(c, given.entity, given.data, at)
+
+    Enum.reject(givens ++ entities ++ trigger ++ expected ++ issued ++ answered, &is_nil/1)
+  end
+
+  # Plan DD, T2a (#240): an entity's row, against the fields its domain declares, its
+  # identity among them, every one given: the scenario's command finds the row by it.
+  defp entity(c, name, data, at) do
+    case c.domain && Enum.find(c.domain.entities, &(&1.name == name)) do
+      %{fields: fields} ->
+        {"given_entity #{inspect(name)}, ", {:sibling, fields, []}, data, Links.at(at), true}
+
+      # D6 names an entity the domain does not declare, on the command's field.
+      _ ->
+        nil
+    end
   end
 
   defp params(c, name, data, at) do

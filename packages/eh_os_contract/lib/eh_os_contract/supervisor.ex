@@ -17,6 +17,7 @@ defmodule EhOsContract.Supervisor do
     models = Enum.map(EhOsContract.Registry.contracts(), &Model.fetch/1)
     EhOsContract.Vault.check!(models)
     EhOsContract.Supplier.check!(models)
+    EhOsContract.Entities.check!(models)
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
     repo = EhOsContract.Config.fetch!(:repo)

@@ -98,6 +98,7 @@ defmodule EhOsContract.Dispatcher do
     Consumer,
     Decision,
     EffectJob,
+    Entities,
     Event,
     Implementations,
     Key,
@@ -160,8 +161,9 @@ defmodule EhOsContract.Dispatcher do
          job = job(:command, model, declaration, command, ctx, values),
          {:ok, command} <- supplied(job),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
-         :ok <- stream_fits(model, declaration, command) do
-      run(%{job | command: command}, repo())
+         :ok <- stream_fits(model, declaration, command),
+         {:ok, reads} <- read_entities(%{job | command: command}) do
+      run(Map.merge(job, %{command: command, reads: reads}), repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
       refused -> refused
@@ -702,6 +704,22 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
+  # the transaction, so a conflict's retry decides on the same rows and the host's lookup
+  # never runs with the transaction open. As for supplied fields, a retry of a command
+  # already accepted under its key gets its receipt without asking: a row deleted since
+  # would turn the receipt into a refusal.
+  defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
+    with :new <- idempotent(repo(), job) do
+      Entities.read(job.model, job.declaration, job.command)
+    else
+      {:ok, receipt} -> {:replayed, receipt}
+      refused -> refused
+    end
+  end
+
+  defp read_entities(_job), do: {:ok, %{}}
+
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do
       [] -> :ok
@@ -810,7 +828,13 @@ defmodule EhOsContract.Dispatcher do
 
   defp decide(job, unit, impl, state, status, command, repo) do
     %{model: model, declaration: declaration} = job
-    decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
+    # A command that reads entities is decided with them (plan DD, T2a, #240).
+    args =
+      if Map.has_key?(declaration, :reads),
+        do: [command, state, job.reads],
+        else: [command, state]
+
+    decision = stage("decider", fn -> apply(impl, declaration.name, args) end)
 
     case decision do
       {:ok, events} when is_list(events) ->
@@ -1321,7 +1345,8 @@ defmodule EhOsContract.Dispatcher do
             # whole history of a type, and coverage asks only which types were there.
             given_types: job |> Map.get(:given, []) |> Enum.map(& &1.type) |> Enum.uniq(),
             process: process_name(model),
-            instance_id: instance(model, job.command)
+            instance_id: instance(model, job.command),
+            inputs: Entities.recorded(model, job.declaration, Map.get(job, :reads, %{}))
           },
           fields
         )

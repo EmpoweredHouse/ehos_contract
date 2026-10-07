@@ -296,6 +296,74 @@ defmodule EhOsContract.ContractUnitsTest do
     end
   end
 
+  describe "A8: a command reads an entity by a field that names one (plan DD, T2a, #240)" do
+    test "a field that is missing, optional, an identity or not an entity's is refused" do
+      message =
+        refuse_contract("ReadsWrong", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id, room: :room_id, card: :card_id, visit: :visit_id,
+                      code: :code, again: :service_id, again: :service_id] do
+              field :service_id, {:id, :service}
+              field :card_id, {:id, :card}, optional: true
+              field :code, :id
+            end
+
+            event :visit_booked, "Umówiono"
+          end
+        """)
+
+      assert message =~
+               "A8: command :book_visit reads :room by :room_id, which is not one of its fields " <>
+                 "(reads_wrong.ex:7)"
+
+      assert message =~
+               "A8: command :book_visit reads :card by :card_id, which it declares optional; " <>
+                 "without it there is nothing to read"
+
+      assert message =~
+               "A8: command :book_visit reads :visit by :visit_id, a field of the unit's " <>
+                 "identity, an :id; an entity is named by a field typed {:id, entity}"
+
+      assert message =~
+               "A8: command :book_visit reads :code by :code, typed :id; an entity is named by a " <>
+                 "field typed {:id, entity}"
+
+      assert message =~ "A8: command :book_visit reads :again twice; give each row its own name"
+      refute message =~ "reads :service by"
+    end
+
+    test "control: a required field typed {:id, entity} compiles, and the model keeps it" do
+      model =
+        compile_contract("ReadsRight", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id] do
+              field :service_id, {:id, :service}
+            end
+
+            command :cancel_visit, "Odwołaj", by: :reception, emits: :visit_cancelled
+
+            event :visit_booked, "Umówiono"
+            event :visit_cancelled, "Odwołano"
+          end
+        """)
+
+      commands = Map.new(model.commands, &{&1.name, &1})
+      assert commands.book_visit.reads == [service: :service_id]
+      # Kept only where it is set, so no other command's digest moves.
+      refute Map.has_key?(commands.cancel_visit, :reads)
+    end
+  end
+
   describe "C1: a command can be issued" do
     test "a command without by:, which no reaction issues, is refused" do
       message =

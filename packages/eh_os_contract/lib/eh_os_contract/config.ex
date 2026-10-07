@@ -45,6 +45,14 @@ defmodule EhOsContract.Config do
       :host`. The engine does not start when such a field exists and this is not set.
       """
     ],
+    entities: [
+      type: {:custom, __MODULE__, :shape, [:module_or_nil]},
+      type_doc: "a module",
+      doc: """
+      The `EhOsContract.Entities` giving the rows of the entities a command `reads:`.
+      The engine does not start when such a command exists and this is not set.
+      """
+    ],
     vault: [
       type: {:custom, __MODULE__, :shape, [:module]},
       type_doc: "a module",
@@ -118,7 +126,8 @@ defmodule EhOsContract.Config do
   key that looks like a misspelling of `EhOsContract.Vault` or names one of its
   modules (`EhOsContract.Vault.Local`), which is refused. Whether a configured module
   implements its behaviour is checked at boot, where it is used: the supplier when a
-  contract declares a field `supplied_by: :host`, the vault when one declares a
+  contract declares a field `supplied_by: :host`, the entities when a command
+  `reads:` one, the vault when one declares a
   personal field.
 
   **No error repeats a value.** The vault's keys and the bus's options may hold

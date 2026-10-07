@@ -701,6 +701,22 @@ within `rejects:`, routing a stored type to its struct, and encryption.
 > (§17). `emit/1`, `reject/1` and `issue/1` are imported in every implementation, so a macro in the wrong
 > kind is refused by I7 with a reason, not by the compiler as an undefined function.
 
+> **7 October 2026, plan DD, T2a ([#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240)) — a
+> decision may read an entity.** "A decision is a function of the command and the unit's state" left no place for
+> what the application keeps outside the log: whether a booked visit is reported to the state register depends on
+> the service booked, and the clinic keeps its services. The caller sending the flag makes the decision trust a
+> claim; the decision reading the database itself leaves no record of what it read, and a scenario cannot supply
+> it. So **a command may declare `reads: [service: :service_id]`**, naming a required field of its own typed
+> `{:id, entity}` (A8), and **its callback is then `(command, state, reads) :: decision`**, `reads` holding each
+> row under its name, with the fields the domain declares for the entity. The rows come from the host
+> (`EhOsContract.Entities`), are read once per command before its transaction, so a conflict's retry decides on
+> the same rows, and are kept with the command's record (`inputs` of `eh_os_contract_commands`, migration V02);
+> entities hold no personal data (D6), so the record needs no sealing. A row not found is the caller's error, a
+> field naming nothing (`{field, :unknown}`), not a rejection. A scenario gives the row with `given_entity` (S12,
+> X9). A decision is still a pure function of its arguments; it has three of them. Rejected: putting the rows in
+> `__meta__`, which says who and when and comes back with the log; folding them into the state, which is the
+> unit's history and would then depend on when it was read.
+
 ## 6. Checks, in five layers
 
 **No rule depends on a Spark verifier.** Verifiers run in `@after_verify`, Spark turns their errors into

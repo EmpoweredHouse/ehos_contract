@@ -16,6 +16,10 @@ defmodule EhOsContract.Contract.Rules.Units do
   #   and a boundary finds what it consults by its tags. For an event consumed from a
   #   sibling contract the same is X6's, where the sibling is known.
   # - **A5.** A unit, or a process manager, declares its state at most once.
+  # - **A8** (plan DD, T2a, #240). What a command `reads:` is named by a field of the
+  #   command typed `{:id, entity}` and required: the decision gets the row, and a
+  #   command without the identifier could read nothing. Each name is given once.
+  #   Whether the entity exists is D6's, where the domain is known.
   # - **A7** (plan EL2). A command's constraints are never named as an invariant of its
   #   unit, and each is in the command's `rejects:`; N1 names each once.
   # - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
@@ -77,7 +81,54 @@ defmodule EhOsContract.Contract.Rules.Units do
 
     emits ++
       unemitted ++
-      rejects ++ constraints(unit, invariants) ++ consults(unit, d) ++ generated(unit, where)
+      rejects ++
+      constraints(unit, invariants) ++
+      reads(unit) ++ consults(unit, d) ++ generated(unit, where)
+  end
+
+  defp reads(unit) do
+    for command <- unit.commands,
+        {problem, at} <- read_problems(command, unit) do
+      {"A8: command #{inspect(command.name)} #{problem}", at}
+    end
+  end
+
+  defp read_problems(command, unit) do
+    names = Keyword.keys(command.reads)
+
+    twice =
+      for name <- Enum.uniq(names -- Enum.uniq(names)) do
+        {"reads #{inspect(name)} twice; give each row its own name", command}
+      end
+
+    twice ++
+      for {name, field} <- Enum.uniq(command.reads),
+          problem <- read_field(command, unit, field) do
+        {"reads #{inspect(name)} by #{inspect(field)}, #{problem}", command}
+      end
+  end
+
+  defp read_field(command, unit, field) do
+    declared = Enum.find(command.fields, &(&1.name == field))
+
+    cond do
+      declared == nil and field in List.wrap(unit.identity) ->
+        [
+          "a field of the unit's identity, an :id; an entity is named by a field typed {:id, entity}"
+        ]
+
+      declared == nil ->
+        ["which is not one of its fields"]
+
+      not match?({:id, entity} when is_atom(entity), declared.type) ->
+        ["typed #{inspect(declared.type)}; an entity is named by a field typed {:id, entity}"]
+
+      declared.optional ->
+        ["which it declares optional; without it there is nothing to read"]
+
+      true ->
+        []
+    end
   end
 
   # A7 (plan EL2): a command's constraints are never named as an invariant of its unit,

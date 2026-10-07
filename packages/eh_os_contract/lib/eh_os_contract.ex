@@ -38,6 +38,8 @@ defmodule EhOsContract do
       Domain,
       {Domain.Dsl, []},
       Duration,
+      Entities,
+      Entities.UnfitRowError,
       Erased,
       Event,
       Graph,
@@ -113,7 +115,8 @@ defmodule EhOsContract do
      a domain's `time_zone:` is one the time zone database this node runs with does
      not know. It refuses as well when a v2 contract declares personal fields and the
      vault has no master key to seal them with, when a field is declared
-     `supplied_by: :host` and no supplier is configured, and when a read model
+     `supplied_by: :host` and no supplier is configured, when a command `reads:` an
+     entity and no `EhOsContract.Entities` is configured, and when a read model
      projects personal data and defines no `forget/2`. Then
      `EhOsContract.Deployment.record!/0` writes what that binary declared and since
      when: without it the report could not tell history from drift. After the

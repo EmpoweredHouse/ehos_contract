@@ -24,9 +24,7 @@ defmodule EhOsContract.Migrations do
       end
 
   When a later release raises `current_version/0`, the upgrade is another
-  generated migration and not a rewrite of the one above. Until 0.3.0 is first
-  released, V01 itself is still rewritten in place (the idempotency index in plan
-  E11f, the append lock's key per schema): there is no database it has to upgrade.
+  generated migration and not a rewrite of the one above:
 
       defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV2 do
         use Ecto.Migration
@@ -34,6 +32,9 @@ defmodule EhOsContract.Migrations do
         def up, do: EhOsContract.Migrations.up(version: 2)
         def down, do: EhOsContract.Migrations.down(version: 2)
       end
+
+  Version 2 adds the column that keeps what a command's decision read
+  (`EhOsContract.Entities`).
 
   **The mechanism exists at version 1, when there is nothing to upgrade from.**
   That is the point of building it now: the first schema change is the moment it
@@ -99,7 +100,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 1
+  @current_version 2
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
@@ -118,7 +119,7 @@ defmodule EhOsContract.Migrations do
 
   Raises on a target this release does not have, and on a database that records a
   version it does not know: one migrated by a newer release, or before 0.3.0, whose
-  versions 2–5 are gone (plan E11c). Left alone, such a database would pass as
+  versions 3–5 are gone. Left alone, such a database would pass as
   current, and a later version of this module would skip what it adds.
   """
   @spec up(keyword()) :: :ok
@@ -184,8 +185,8 @@ defmodule EhOsContract.Migrations do
           "eh_os_contract_events records version #{recorded}, and this release of " <>
             "eh_os_contract knows versions up to #{@current_version}. If a newer release " <>
             "migrated it, use that release. If it was migrated before 0.3.0, it cannot be " <>
-            "upgraded, since 0.3.0 has a single version 1: drop the database and create it " <>
-            "again, or keep it on 0.2."
+            "upgraded, since 0.3.0 starts again from version 1: drop the database and create " <>
+            "it again, or keep it on 0.2."
   end
 
   defp known!(recorded), do: recorded
@@ -196,7 +197,7 @@ defmodule EhOsContract.Migrations do
     raise ArgumentError,
           "eh_os_contract has migration versions #{@initial_version} to #{@current_version}, " <>
             "and #{inspect(version)} is not one of them. A host migration calling " <>
-            "`up(version: 2..5)` is from before 0.3.0: delete it."
+            "`up(version: 3..5)` is from before 0.3.0: delete it."
   end
 
   defp change(range, direction) do

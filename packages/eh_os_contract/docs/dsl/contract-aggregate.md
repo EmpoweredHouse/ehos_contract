@@ -55,6 +55,7 @@ An intention an actor or a reaction issues to a unit.
 | `rejects` | `atom \| list(atom)` |  | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | `creates` | `boolean` |  | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | `scope` | `atom` |  |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| `reads` | `keyword` |  | `[]` | The entities the decision reads, `[service: :service_id]`: the name each row arrives under in the decision's third argument, and the command's field, typed `{:id, entity}`, that names it. |
 | `source` | `String.t` |  |  | Where the command comes from in the material. |
 | `from` | `atom \| list(atom)` |  | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
 | `or_rejects` | `atom` |  |  | The invariant of the unit it is refused on outside the statuses in `from:`. |

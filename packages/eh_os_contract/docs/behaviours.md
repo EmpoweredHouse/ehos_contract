@@ -154,6 +154,64 @@ process that stops — its last state and its reason, in the log — is the adap
 out of the engine's reach: keep a connection's secrets out of the reason, and out of
 the state with `format_status/1`.
 
+## EhOsContract.Entities
+
+Configured with `config :eh_os_contract, entities: ...`, a module.
+
+Where the rows of the entities a command `reads:` come from.
+
+    config :eh_os_contract, entities: MyApp.Entities
+
+A decision often depends on something the application keeps outside the log: whether
+a booked visit is reported to the state register depends on the service booked, and
+the clinic's application keeps its services. A command that declares
+`reads: [service: :service_id]` gets the service as the third argument of its
+decision, and the row is asked of the configured implementation:
+
+    defmodule MyApp.Entities do
+      @behaviour EhOsContract.Entities
+
+      @impl true
+      def fetch(Clinic.Domain, :service, id) do
+        case MyApp.Repo.get(MyApp.Service, id) do
+          nil -> :not_found
+          service -> {:ok, service}
+        end
+      end
+    end
+
+### What the engine does with the answer
+
+- **`{:ok, row}`**, a map or a struct with atom keys, an Ecto schema included. The
+  engine keeps the fields the domain declares for the entity, its identity among
+  them, and drops the rest; the decision gets `%{service: %{service_id: "s-1",
+  p1_reported: true}}`. A declared field missing from the row, or of the wrong type,
+  raises `EhOsContract.Entities.UnfitRowError`, naming the field and never its value:
+  the host's code and the domain disagree.
+- **`:not_found`** refuses the command as a field naming nothing:
+  `{:error, {:invalid, [{:service_id, :unknown}]}}`, 422 through
+  `EhOsContract.call/3`, and nothing is written.
+- Anything else raises `ArgumentError`.
+
+### When it is asked
+
+Once per command, after the caller is authorized and what it sent is found sound,
+and before the decision's transaction: when the decision meets a conflict and runs
+again, it decides on the same rows. A retry of a command already accepted under its
+idempotency key gets its receipt without asking. What was read is kept with the
+command's record. The call has no time limit of the engine's.
+
+A node with a contract whose command `reads:` does not start without an
+implementation configured, one that is loaded and exports `c:EhOsContract.Entities.fetch/3`.
+
+### Callbacks
+
+```elixir
+@callback fetch(domain :: module(), entity :: atom(), id :: String.t()) :: {:ok, map()} | :not_found
+```
+
+The row of the entity `entity` of `domain` identified by `id`, or `:not_found`.
+
 ## EhOsContract.Store
 
 Configured with `config :eh_os_contract, store: ...`, a module.
