@@ -314,7 +314,7 @@ defmodule EhOsContract.Deployment do
 
   defp process_report(model) do
     recorded = all(model.module)
-    current = Enum.find(recorded, &(&1.contract_version == model.version))
+    current = current(recorded, model.version)
 
     %{
       process: model.id,
@@ -323,13 +323,33 @@ defmodule EhOsContract.Deployment do
         wiring_version: current && current.wiring_version,
         since: current && current.first_seen_at
       },
-      changed: last_change(recorded)
+      changed: version_change(recorded)
     }
+  end
+
+  # The row of the deployed version that was recorded last. A version runs under one
+  # wiring at a time, and a new wiring under the same version is a new row: the oldest
+  # row would name a wiring no longer deployed, and date the version by it. A version
+  # deployed again after another (A, B, A) finds its first row again, since a row is
+  # unique by version and wiring and booting the same code adds none; when it returned
+  # is not recorded, so its `since` is still when it was first seen.
+  defp current(recorded, version) do
+    recorded |> Enum.filter(&(&1.contract_version == version)) |> List.last()
+  end
+
+  # A process module's last change of version. A new wiring under the same version —
+  # a contract it includes moved its events' types — changes no declaration of the
+  # module, so it is no change of version to report.
+  defp version_change(recorded) do
+    case Enum.take(recorded, -2) do
+      [%{contract_version: same}, %{contract_version: same}] -> nil
+      _other -> last_change(recorded)
+    end
   end
 
   defp contract_report(contract, opts) do
     recorded = all(contract)
-    current = Enum.find(recorded, &(&1.contract_version == Model.version(contract)))
+    current = current(recorded, Model.version(contract))
     in_log = versions_in_log(contract, opts)
 
     %{

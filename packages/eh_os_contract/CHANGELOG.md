@@ -39,7 +39,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `promise-without-within` to process modules. `EhOsContract.Model.process/1`, `process_events/1` and
   `declaring/2` answer for a process module. The conformance wire (`eh_os_contract.conformance.v3`) and the
   dashboard do not list process modules yet, and `Conformance.as_data/2` refuses one. No verdict of a contract
-  moves.
+  moves. One correction for contracts too: the deployment the report shows for a version is the row recorded
+  last, so after the wiring changes under the same version the report shows the new wiring and its date, where
+  it showed the first row's, and no "since the previous version" line for a wiring-only change.
 - **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
   #210). The rules between modules refuse a process module whose `domain:` is not a compiled domain (X1), whose
   `id:` is outside the domain's `name:` (D11), whose `accountable` is no actor of the domain (X2), whose

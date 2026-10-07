@@ -193,4 +193,130 @@ defmodule EhOsContract.ProcessModuleReportTest do
              ]
     end
   end
+
+  describe "what a module includes" do
+    test "is one rule: an include of another domain's contract counts nowhere" do
+      review = AccountReview.__eh_os_contract_model__()
+      elsewhere = %{review | domain: Elsewhere.Domain}
+
+      assert [_, _] = Model.process_events(review)
+      assert Model.process_events(elsewhere) == []
+      assert EhOsContract.Implementations.runs_of([], [elsewhere]) == %{}
+
+      types = review |> Model.process_events() |> Enum.map(& &1.type) |> Enum.sort()
+
+      assert EhOsContract.Implementations.runs_of([], [review]) |> Map.keys() |> Enum.sort() ==
+               types
+    end
+  end
+
+  describe "the deployment of a module's version" do
+    @key "process:dispatch_rig.account_review"
+
+    defp insert(version, wiring, at, digests \\ %{}, events \\ []) do
+      Repo.insert!(%Deployment{
+        contract: @key,
+        contract_version: version,
+        wiring_version: wiring,
+        events: events,
+        edges: [],
+        declaration_digests: digests,
+        first_seen_at: at
+      })
+    end
+
+    test "is not recorded: the report says so" do
+      report = Conformance.report(AccountReview, now: later())
+
+      assert report.deployment.deployed.since == nil
+      assert Report.render(report) =~ "not recorded as deployed"
+    end
+
+    test "is dated by the row recorded last for it, so a new wiring is the one shown" do
+      version = Model.fetch(AccountReview).version
+      insert(version, "wiring-old", ~U[2026-09-01 00:00:00.000000Z])
+      insert("an-earlier-version", "wiring-b", ~U[2026-09-03 00:00:00.000000Z])
+      insert(version, "wiring-new", ~U[2026-09-05 00:00:00.000000Z])
+
+      assert %{wiring_version: "wiring-new", since: ~U[2026-09-05 00:00:00.000000Z]} =
+               Deployment.report(AccountReview).deployed
+    end
+
+    test "a new wiring under the same version is no change of version" do
+      version = Model.fetch(AccountReview).version
+      insert(version, "wiring-old", ~U[2026-09-01 00:00:00.000000Z])
+      insert(version, "wiring-new", ~U[2026-09-05 00:00:00.000000Z])
+
+      report = Conformance.report(AccountReview, now: later())
+
+      assert report.deployment.changed == nil
+      refute Report.render(report) =~ "Since the previous version"
+    end
+
+    test "a new version shows what changed, and its promise's boundary" do
+      :ok = Deployment.record!(~U[2026-10-01 00:00:00.000000Z])
+      [current] = Deployment.all(AccountReview)
+      promise = "promise:balance_confirmed_after_withdrawal"
+
+      insert(
+        "an-earlier-version",
+        "wiring-old",
+        ~U[2026-09-01 00:00:00.000000Z],
+        Map.put(current.declaration_digests, promise, "aaaaaaaaaaaa"),
+        ["withdrawn"]
+      )
+
+      assert Deployment.declaration_boundaries(AccountReview) == %{
+               promise => ~U[2026-10-01 00:00:00.000000Z]
+             }
+
+      report = Conformance.report(AccountReview, now: later())
+
+      assert %{events_added: ["balance_confirmed"], events_removed: []} =
+               report.deployment.changed
+
+      text = Report.render(report)
+      assert text =~ "Since the previous version: events added 1, removed 0."
+      assert text =~ "Declarations changed: 1 (#{promise})."
+    end
+
+    test "keeps its rows apart from a contract's that shares its id" do
+      version = Model.fetch(AccountReview).version
+
+      Repo.insert!(%Deployment{
+        contract: "dispatch_rig.account_review",
+        contract_version: version,
+        wiring_version: "a-contract's-wiring",
+        events: ["something"],
+        edges: [],
+        declaration_digests: %{},
+        first_seen_at: ~U[2026-09-01 00:00:00.000000Z]
+      })
+
+      :ok = Deployment.record!(~U[2026-10-01 00:00:00.000000Z])
+
+      assert [%{contract: @key, events: ["balance_confirmed", "withdrawn"]}] =
+               Deployment.all(AccountReview)
+
+      assert %{since: ~U[2026-10-01 00:00:00.000000Z]} =
+               Deployment.report(AccountReview).deployed
+    end
+  end
+
+  describe "mix eh_os_contract.report" do
+    setup do
+      Mix.shell(Mix.Shell.Process)
+      on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
+    end
+
+    test "lists the process module after the contracts" do
+      ExUnit.CaptureIO.capture_io(fn -> Mix.Tasks.EhOsContract.Report.run([]) end)
+      assert_received {:mix_shell, :info, [text]}
+
+      {module_at, _} = :binary.match(text, "PROCESS MODULE: dispatch_rig.account_review")
+      {last_contract_at, _} = text |> :binary.matches("CONTRACT: ") |> List.last()
+
+      assert last_contract_at < module_at
+    end
+  end
 end

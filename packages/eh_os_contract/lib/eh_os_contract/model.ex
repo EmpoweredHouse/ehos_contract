@@ -485,9 +485,12 @@ defmodule EhOsContract.Model do
 
   A process module's run is every event its stages include, in their order, each
   resolved to the contract that declares it; `terminal` is whether `ends_on` names it
-  (plan DD, P2d, #213). An include of a contract this node cannot load, or of an event
-  that contract does not declare, is left out: the rules between modules refuse both
-  (X5).
+  (plan DD, P2d, #213). An include of a contract this node cannot load, of an event
+  that contract does not declare, or of a contract of another domain is left out: the
+  rules between modules refuse all three (X5). Those rules run per project, and a
+  process module of a dependency is read here too, so the domain is checked again: this
+  is the one rule for what a module includes, which the check, the deployment record and
+  the index of runs (`EhOsContract.Implementations`) all read.
   """
   @spec process_events(contract() | map()) :: [process_event()]
   def process_events(contract) do
@@ -499,7 +502,8 @@ defmodule EhOsContract.Model do
 
       {%{kind: :process}, process} ->
         for include <- process.includes,
-            %{events: events} <- [compiled(include.contract)],
+            %{events: events, domain: domain} <- [compiled(include.contract)],
+            domain == model.domain,
             %{} = event <- [Enum.find(events, &(&1.name == include.event))] do
           %{
             type: event.type,
