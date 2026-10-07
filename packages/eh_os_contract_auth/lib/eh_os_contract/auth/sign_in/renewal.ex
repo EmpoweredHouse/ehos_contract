@@ -47,8 +47,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   @paused "paused after a failed renewal"
   @verify_opts [:keys, :audience, :issuer]
 
-  @typedoc "Why there is no credential."
-  @type refusal :: :signed_out | :ehos_unavailable | :renewal_busy | :refused
+  @type refusal :: EhOsContract.Auth.Session.credential_refusal()
 
   @doc false
   # The credential for `resource`, an application's address, in the session `browser_token`

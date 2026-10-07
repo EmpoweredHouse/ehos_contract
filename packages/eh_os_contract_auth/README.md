@@ -1,7 +1,7 @@
 # EhOsContract.Auth
 
 Verifies the credentials EHOS issues, for an application built on
-[EhOsContract](../eh_os_contract). It checks the signature locally, against keys it keeps in the
+[EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract). It checks the signature locally, against keys it keeps in the
 application's own database, so the application goes on accepting credentials while EHOS is
 down, and after a restart while EHOS is down.
 
@@ -308,7 +308,7 @@ or a page would hand it to the browser, which the session otherwise keeps EHOS's
   again on every page. The refresh token is kept, and the session goes on for this application and every other.
 - **The other refusals** are `actor/2`'s: `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
 
-What the package decides beside D-64 is in [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
+What the package decides beside D-64 is in [`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/browser-session.md).
 
 ## Deciding, and recording every decision
 
