@@ -56,11 +56,12 @@ declare a process only when the test is about one. P1d merged in #196 and #200 (
 `Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
 module of its own. P2c merged in #212 (issue #210): process modules
 are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
-and check show process modules. **On hold: P2e (#220) and P2h (#221)**, until E13 (#217, #219, another contributor) is in `main`. P2f merged in #225–#227
+and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold until the graph documents and renderer (E13; #217, #219, another contributor) are in `main`: a process module's picture and page (P2e, #220), and removing the contract's own `process` (P2h, #221).** P2f merged in #225–#227
 (issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228).
-#193 (an upper bound for durations, R6) is open. A follow-up outside the stages (#180, the user's decision of 7 October):
-`eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`, the application equals
-one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus (EmpoweredHouse/eh-os#201).
+#193 (an upper bound for durations, R6) is open. A follow-up outside the stages, merged in #234 (#180, the user's
+decision of 7 October): `eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`,
+the application equals one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus
+(EmpoweredHouse/eh-os#201).
 
 ### Stan repozytorium
 
@@ -1416,6 +1417,41 @@ Plug odrzuca `p1_reported` (T1s, 422), dwie reakcje między kontekstami mają ja
 `ehos-ledger` — tego repozytorium tu nie czytamy; host tej samej klasy: te same wiersze, a manifest bez zmian kształtu
 od #134 (żaden etap fali 1 nie rusza generatora). Bump przypięcia robi się w tamtych repozytoriach, na polecenie
 użytkownika.
+
+### After wave 2 — the user's decision and the migration note (7 October 2026)
+
+**Wave 2 is closed conditionally** (the user's decision of 7 October, option 1). 15 of its 17 stages are in `main`:
+ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **On hold**, waiting for the graph documents and renderer (E13), and continuing
+as a group of their own after them: a process module's picture and page (P2e, #220), which starts once the graph
+documents (E13a, #217) are in `main`; and removing the contract's own `process` block with its columns in the log
+(P2h, #221), which waits for the whole of E13 (#217 and the renderer, #219) and for P2e. The wave's aim stands: a process is a module of its own spanning
+contracts, checked at compile time, with runs, a report, a deployment record and a check, and the test material
+and the library's tests use it. What is missing is its picture and the removal of the old way.
+*Rejected:* waiting for E13 to close the wave, which would hold back this note while AppUnite's application needs it now.
+**Version tag:** not yet, on the user's word only, as after wave 1.
+
+**Migration note.** A host upgrading from wave 1's `32d7137` to `main` after wave 2 does the following. "A host has to
+act" entries of the three changelogs carry the detail.
+
+| Change (stage, issue) | What to do | AppUnite's equipment application |
+|---|---|---|
+| Every contract names its `id:`; an event's type is `"<id>.<event>"` (ID1–ID3, #165, #171, #173) | add `id: "<domain>.<contract>"` to every contract; **reset the engine's schema** before upgrading (`EhOsContract.Migrations.down/up` or a fresh database) | an `id:` on each contract under the domain's new name (see the last row): `appunite-equipment.computers`, `…demands`, `…assignments` in the sandbox's copy; rename the domain and reset in one step |
+| Rows and keys name a contract by its `id:` (ID4, #178) | the same reset covers it; **also clear the tables the host's read models project into**; drain an inbox's old durable consumer and delete it | one reset for ID3 and ID4; clear the read models' tables (inventory, waiting list) |
+| Start-up warnings for undeclared types (#175) and unknown contract names (#179) in the log | none; they name a log written before the reset | none after the reset |
+| The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served (P1a, #183) | a reader of the JSON reads v3 (EHOS: EmpoweredHouse/eh-os#202) | whatever reads the conformance JSON |
+| The dashboard's APIs and graph page name a contract by its id (P1a, P1b; #183, #186) | links and API calls by id; the graph page's LiveView event is `select_contract` | dashboard links, if any |
+| `mix eh_os_contract.graph --contract <id>` (P1a) | call it by id | scripts, if any |
+| A step counts occurrences; a contract's steps are their own block, judged when it recorded an event (P1a) | none; verdicts move, read the report again | none |
+| A capability names a process only when its contract has one (P1b, #186) | a contract that loses its process changes the manifest, which EHOS counts as an authority change: the first deploy needs `ehos.application.register` until EmpoweredHouse/eh-os#92 | applies once its contracts lose their processes (below) |
+| A contract may describe no process; without one, no `stage` groups and no `terminal:` events (P1c, #190) | none required; a contract whose process was invented to satisfy R1 may drop it | `computers` and `demands` had invented processes (the sandbox dropped them in P1d) |
+| `cadence` is removed (P1d, #195) | delete the line; a contract that declared it gets a new version | none |
+| A process may be a module of its own, `use EhOsContract.Process` (P2b–P2d; #205, #210, #213) | optional now, required once P2h lands: move each contract's `process` into a module; its runs are filed under the module's id, so runs before the move are not continued; the manifest change above applies | `assignment` as a module, as the sandbox did (#227); the `Assignments` contract goes |
+| The configuration is one schema, checked at boot (#206) | an unknown key or a wrong shape in `config :eh_os_contract` stops the engine, naming the key | check the config boots |
+| `eh_os_contract_commands` indexed by contract (#185) | none for a reset database; otherwise `CREATE INDEX CONCURRENTLY` as the changelog gives | none after the reset |
+| The domain's `name:` must be the EHOS application's name (#180, #234) | the application in `audience` (`"<application>/<environment>"`) must equal one domain's `name:` exactly, and no other domain may publish; the auth child refuses to start otherwise. A domain named with `_` cannot match, since EHOS never issues `_`: rename it with `-` | **the domain must be renamed**: in the sandbox's copy it is `:appunite_equipment`, which no EHOS name can equal; rename it to the application's name in EHOS (presumably `:"appunite-equipment"`, to be checked in EHOS). The rename changes every contract id and event type, so do it with the ID3 and ID4 reset above, not after it |
+
+`ehos-ledger` takes the same rows; its manifest changes only where a capability loses its process. The bump of
+either pin is done in those repositories, on the user's word.
 
 ### ID1 — co wyszło (6 października)
 
