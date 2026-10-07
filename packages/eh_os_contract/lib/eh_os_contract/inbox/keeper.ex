@@ -1,25 +1,24 @@
 defmodule EhOsContract.Inbox.Keeper do
-  @moduledoc """
-  Keeps one inbox's consumer running, as the engine's child for it
-  (`EhOsContract.Inbox`, "When it subscribes").
-
-  It starts the adapter's child, `EhOsContract.Bus.consumer/1`, in its own `init`, so
-  a reachable transport is subscribed before the engine starts any relay. A child that
-  stops is started again at once, as a supervisor would; one that does not start, or
-  stops again within the pause, is logged and started again five seconds later. So a
-  transport that refuses neither stops the boot nor, by a supervisor's restart
-  intensity, takes every runner and relay down with it, as a relay with no bus waits
-  rather than refusing. A child that answers `:ignore` declines to run, and is left
-  alone.
-
-  Stopped, it stops its child first and waits for it as long as the child's own
-  `shutdown` says, as a supervisor would, so a delivery in hand finishes before the
-  host's repo goes.
-
-  Its own warnings name the kind of failure, never the reason, which may carry a
-  connection's options. What OTP reports of the adapter's child itself is the
-  adapter's (`EhOsContract.Bus`, `c:EhOsContract.Bus.consumer/2`).
-  """
+  # Keeps one inbox's consumer running, as the engine's child for it
+  # (`EhOsContract.Inbox`, "When it subscribes").
+  #
+  # It starts the adapter's child, `EhOsContract.Bus.consumer/1`, in its own `init`, so
+  # a reachable transport is subscribed before the engine starts any relay. A child that
+  # stops is started again at once, as a supervisor would; one that does not start, or
+  # stops again within the pause, is logged and started again five seconds later. So a
+  # transport that refuses neither stops the boot nor, by a supervisor's restart
+  # intensity, takes every runner and relay down with it, as a relay with no bus waits
+  # rather than refusing. A child that answers `:ignore` declines to run, and is left
+  # alone.
+  #
+  # Stopped, it stops its child first and waits for it as long as the child's own
+  # `shutdown` says, as a supervisor would, so a delivery in hand finishes before the
+  # host's repo goes.
+  #
+  # Its own warnings name the kind of failure, never the reason, which may carry a
+  # connection's options. What OTP reports of the adapter's child itself is the
+  # adapter's (`EhOsContract.Bus`, `c:EhOsContract.Bus.consumer/2`).
+  @moduledoc false
 
   use GenServer
 

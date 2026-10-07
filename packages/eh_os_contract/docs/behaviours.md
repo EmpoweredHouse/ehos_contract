@@ -147,7 +147,7 @@ in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
 **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
 one inbox after another, so a start that waits on a transport that does not answer
 holds the host's boot for as long. A transport that is down is an error at once; the
-engine starts the child again later (`EhOsContract.Inbox.Keeper`).
+engine starts the child again later.
 
 **Its state and its exit reasons carry no credentials.** What OTP reports of a
 process that stops — its last state and its reason, in the log — is the adapter's,
@@ -298,7 +298,7 @@ is bounded by the implementation.
 `dispatch/3` and `record/3` from the application's own code are not asked: the
 struct it builds is trusted, as everything else in it is. A node with a contract
 declaring a supplied field does not start without an implementation configured,
-one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (`EhOsContract.Supplier.check!/1`, at the engine's boot); the
+one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (checked at the engine's boot); the
 Mix tasks that only read contracts do not ask.
 
 ### Callbacks

@@ -107,7 +107,7 @@ defmodule EhOsContract.Bus do
   **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
   one inbox after another, so a start that waits on a transport that does not answer
   holds the host's boot for as long. A transport that is down is an error at once; the
-  engine starts the child again later (`EhOsContract.Inbox.Keeper`).
+  engine starts the child again later.
 
   **Its state and its exit reasons carry no credentials.** What OTP reports of a
   process that stops — its last state and its reason, in the log — is the adapter's,
@@ -116,10 +116,10 @@ defmodule EhOsContract.Bus do
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 
-  @doc """
-  The configured adapter and its options, from `config :eh_os_contract, bus:` — a
-  module or `{module, opts}` — or `nil` when there is none.
-  """
+  # The configured adapter and its options, from `config :eh_os_contract, bus:` — a
+  # module or `{module, opts}` — or `nil` when there is none.
+  # Called by subscription.ex, supervisor.ex.
+  @doc false
   @spec adapter() :: {module(), keyword()} | nil
   def adapter do
     case EhOsContract.Config.get(:bus) do

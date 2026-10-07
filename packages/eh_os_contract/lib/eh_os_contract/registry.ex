@@ -168,7 +168,8 @@ defmodule EhOsContract.Registry do
   def process(id) when is_binary(id),
     do: Enum.find(processes(), &(EhOsContract.Model.fetch(&1).id == id))
 
-  @doc "The cached scan, loading it on first use."
+  # The cached scan, loading it on first use.
+  @doc false
   @spec graph() :: %{contracts: [module()], processes: [module()], domains: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do

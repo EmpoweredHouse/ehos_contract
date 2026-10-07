@@ -115,10 +115,9 @@ defmodule EhOsContract.Store do
               types :: [String.t()] | :all
             ) :: [Event.t()]
 
-  @doc """
-  The configured implementation: `config :eh_os_contract, store: MyStore`, and
-  `EhOsContract.Store.Postgres` when nothing is configured.
-  """
+  # The configured implementation: `config :eh_os_contract, store: MyStore`, and
+  # `EhOsContract.Store.Postgres` when nothing is configured.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:store)
 
@@ -126,20 +125,28 @@ defmodule EhOsContract.Store do
   @spec lock(module()) :: :ok
   def lock(repo), do: impl().lock(repo)
 
-  @doc "`c:append/3` on the configured implementation."
+  # `c:append/3` on the configured implementation.
+  # Called by dispatcher.ex, personal.ex, timer_job.ex.
+  @doc false
   @spec append(module(), [entry()], condition()) :: {:ok, [Event.t()]} | {:error, conflict()}
   def append(repo, entries, condition), do: impl().append(repo, entries, condition)
 
-  @doc "`c:read_query/2` on the configured implementation."
+  # `c:read_query/2` on the configured implementation.
+  # Called by dispatcher.ex.
+  @doc false
   @spec read_query(module(), query()) :: {[Event.t()], non_neg_integer()}
   def read_query(repo, query), do: impl().read_query(repo, query)
 
-  @doc "`c:read_stream/3` on the configured implementation."
+  # `c:read_stream/3` on the configured implementation.
+  # Called by dispatcher.ex, timer_job.ex.
+  @doc false
   @spec read_stream(module(), String.t(), non_neg_integer()) :: [Event.t()]
   def read_stream(repo, stream_id, after_version \\ 0),
     do: impl().read_stream(repo, stream_id, after_version)
 
-  @doc "`c:read_all/4` on the configured implementation."
+  # `c:read_all/4` on the configured implementation.
+  # Called by subscription.ex.
+  @doc false
   @spec read_all(module(), non_neg_integer(), pos_integer(), [String.t()] | :all) :: [Event.t()]
   def read_all(repo, after_position, limit, types \\ :all),
     do: impl().read_all(repo, after_position, limit, types)

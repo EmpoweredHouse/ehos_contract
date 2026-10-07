@@ -1,7 +1,6 @@
 defmodule EhOsContract.Testing do
   @moduledoc """
-  Helpers for a host's tests of what runs after the dispatch transaction (v2 §12,
-  §17).
+  Helpers for a host's tests of what runs after the dispatch transaction.
 
   A test runs inside the Ecto SQL sandbox, where a runner in another process would
   not see its rows and a notification would never fire. So a test configures
@@ -13,9 +12,10 @@ defmodule EhOsContract.Testing do
   sandbox transaction.
 
   **The first `drain/1` is the deploy.** It registers the subscriptions, and what is
-  in the log by then is history, which a new policy or process manager does not
-  react to (`EhOsContract.Subscription`). A test of a policy's reaction drains once
-  before it dispatches what the policy reacts to.
+  in the log by then is history: a new policy starts at the head of the log and
+  reacts to none of it, a new process manager replays it without reacting, and a new
+  read model takes all of it. A test of a policy's reaction drains once before it
+  dispatches what the policy reacts to.
   """
 
   alias EhOsContract.{Implementations, Subscription, SubscriptionRecord}

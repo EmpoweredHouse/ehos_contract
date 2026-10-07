@@ -1,26 +1,25 @@
 defmodule EhOsContract.Decision do
-  @moduledoc """
-  What a decision has to be for the engine to append it (plan W4): the rules dispatch
-  holds a decision to, in one place, so that the code that checks a decision outside
-  dispatch — a scenario, later a property test — calls them rather than a copy.
-
-  Dispatch holds a decision to `held!/6`. `EhOsContract.ScenarioCase` holds it to
-  `admitted/4` and `lifecycle!/4` only: a scenario does not yet check that an event is
-  about the unit that decided it, or that its fields fit, so a decision can pass its
-  scenario and still be refused by dispatch.
-
-  A decision is code, and code can build a struct the contract's macros never saw
-  (v2 §5). So after it returns, everything it produced is held to its declaration:
-
-  - `admitted/4` — each struct produced is one the declaration allows: an event among
-    the command's `emits`, a command among a reaction's `issues`;
-  - `held!/6` — everything dispatch requires of a command's events before it appends
-    them: admitted, about the unit that decided them, with fields that fit, and allowed
-    by the unit's lifecycle from where it stood.
-
-  None of these is a business outcome. A decision that breaks one is a defect, and
-  nothing is appended.
-  """
+  # What a decision has to be for the engine to append it (plan W4): the rules dispatch
+  # holds a decision to, in one place, so that the code that checks a decision outside
+  # dispatch — a scenario, later a property test — calls them rather than a copy.
+  #
+  # Dispatch holds a decision to `held!/6`. `EhOsContract.ScenarioCase` holds it to
+  # `admitted/4` and `lifecycle!/4` only: a scenario does not yet check that an event is
+  # about the unit that decided it, or that its fields fit, so a decision can pass its
+  # scenario and still be refused by dispatch.
+  #
+  # A decision is code, and code can build a struct the contract's macros never saw
+  # (v2 §5). So after it returns, everything it produced is held to its declaration:
+  #
+  # - `admitted/4` — each struct produced is one the declaration allows: an event among
+  #   the command's `emits`, a command among a reaction's `issues`;
+  # - `held!/6` — everything dispatch requires of a command's events before it appends
+  #   them: admitted, about the unit that decided them, with fields that fit, and allowed
+  #   by the unit's lifecycle from where it stood.
+  #
+  # None of these is a business outcome. A decision that breaks one is a defect, and
+  # nothing is appended.
+  @moduledoc false
 
   alias EhOsContract.{Codec, Lifecycle, Model}
 

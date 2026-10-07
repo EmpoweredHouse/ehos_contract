@@ -8,10 +8,10 @@ defmodule EhOsContract.AsyncAPI do
 
   ## What maps cleanly, and what is forced
 
-  Only a `publish` crosses the application's boundary (D11), so every
-  declaration becomes one channel, one message and one `send` operation. Internal
-  domain events do not leak into the document. Payload fields map to JSON Schema
-  through `EhOsContract.JsonSchema`, the same projection OpenAPI uses.
+  Only a `publish` crosses the application's boundary, so every declaration
+  becomes one channel, one message and one `send` operation. Internal domain events
+  do not leak into the document. Payload fields map to JSON Schema the same way they
+  do in `EhOsContract.OpenAPI`.
 
   **`external` is deliberately absent.** The obvious mapping is to `servers`, and it
   is wrong: an `external` is named after the business fact it supplies and never
@@ -51,9 +51,9 @@ defmodule EhOsContract.AsyncAPI do
   The digest of a document.
 
   Computed over the document **without** its digest key, because the digest lives
-  inside the thing it hashes. Through `EhOsContract.Digest`, which sorts map keys, so the
-  value does not depend on the order JSON happens to be written in — the property
-  that module exists for.
+  inside the thing it hashes. Map keys are sorted before hashing, so the value does
+  not depend on the order JSON happens to be written in. It is the first twelve hex
+  characters of a SHA-256.
 
   It hashes the *generated* document rather than the contract, deliberately: a
   change to this generator changes what an instance claims about itself, and a

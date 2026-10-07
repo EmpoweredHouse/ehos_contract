@@ -1,19 +1,18 @@
 defmodule EhOsContract.Graph.ContextMap do
-  @moduledoc """
-  A domain's context map as a graph (plan EG2): its subdomains, each a group of the
-  contexts in it, its external systems, and the relations between them.
-
-  A relation with a direction — `customer_supplier`, `conformist`,
-  `anticorruption_layer`, `open_host_service`, `published_language` — is an arrow
-  from its upstream to its downstream, either end of which may be an external
-  system. A symmetric one — `partnership`, `shared_kernel` — is a line without an
-  arrowhead, and `separate_ways`, which says the two do not integrate, a dashed one.
-  Every external of the domain is on the map, one no relation reaches included: that
-  is a finding, and a map that hides it is the wrong tool to find it with.
-
-  It reads the domain alone. Which contract sits where, and what flows between them,
-  is `EhOsContract.Graph.System`'s picture.
-  """
+  # A domain's context map as a graph (plan EG2): its subdomains, each a group of the
+  # contexts in it, its external systems, and the relations between them.
+  #
+  # A relation with a direction — `customer_supplier`, `conformist`,
+  # `anticorruption_layer`, `open_host_service`, `published_language` — is an arrow
+  # from its upstream to its downstream, either end of which may be an external
+  # system. A symmetric one — `partnership`, `shared_kernel` — is a line without an
+  # arrowhead, and `separate_ways`, which says the two do not integrate, a dashed one.
+  # Every external of the domain is on the map, one no relation reaches included: that
+  # is a finding, and a map that hides it is the wrong tool to find it with.
+  #
+  # It reads the domain alone. Which contract sits where, and what flows between them,
+  # is `EhOsContract.Graph.System`'s picture.
+  @moduledoc false
 
   alias EhOsContract.Graph.Mermaid
   alias EhOsContract.Model

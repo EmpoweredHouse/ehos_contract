@@ -1,19 +1,18 @@
 defmodule EhOsContract.Contract.Rules do
-  @moduledoc """
-  The rules a v2 contract must satisfy to compile: v2 §6, layer L2.
-
-  A transformer, not a verifier, and every violation is reported at once, in one
-  error that names each declaration's file and line (`EhOsContract.DslRules`). The
-  rules come in groups, one module each, named after v2 §6's letters. Each group
-  reads the contract through `declarations/1`, so none of them walks Spark's
-  structure on its own.
-
-  What L2 cannot see is left to L3, the Mix compiler `compile.eh_os_contract`
-  (`EhOsContract.Contract.Links`): whether an actor, a value type, a subject or
-  an external exists in the domain, and whether a consumed contract has the events
-  and fields this one reads. The domain and the consumed contracts are named without
-  a compile dependency (v2 §8), so a transformer has nothing to look them up in.
-  """
+  # The rules a v2 contract must satisfy to compile: v2 §6, layer L2.
+  #
+  # A transformer, not a verifier, and every violation is reported at once, in one
+  # error that names each declaration's file and line (`EhOsContract.DslRules`). The
+  # rules come in groups, one module each, named after v2 §6's letters. Each group
+  # reads the contract through `declarations/1`, so none of them walks Spark's
+  # structure on its own.
+  #
+  # What L2 cannot see is left to L3, the Mix compiler `compile.eh_os_contract`
+  # (`EhOsContract.Contract.Links`): whether an actor, a value type, a subject or
+  # an external exists in the domain, and whether a consumed contract has the events
+  # and fields this one reads. The domain and the consumed contracts are named without
+  # a compile dependency (v2 §8), so a transformer has nothing to look them up in.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 

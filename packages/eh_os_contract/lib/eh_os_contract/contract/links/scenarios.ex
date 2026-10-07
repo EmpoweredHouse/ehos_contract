@@ -1,23 +1,22 @@
 defmodule EhOsContract.Contract.Links.Scenarios do
-  @moduledoc """
-  X9 of v2 §6: scenario values fit their types, where L2 could not tell.
-
-  S3 checks a scenario's data against the fields this contract declares, and a
-  value of a built-in type against its type. Two things are left here:
-
-  - **a value of a domain type**, anywhere a scenario gives one: one member of an
-    enum, a value of the type a value names, a map of the fields a value with
-    fields declares — in lists too (`EhOsContract.Contract.Data.problems/3`);
-  - **a query's parameters and the rows its scenario answers**, whose fields are
-    this contract's, for the values of domain types among them;
-  - **the examples of a domain service's rule** (plan EL2b), for the arguments and
-    results of domain types, whose shape S9 has checked;
-  - **the data of an event consumed from a sibling contract**, whose fields are the
-    sibling's: every key a field of the sibling's event, every required field given
-    where S3 requires one (a `given` and the trigger, not what is expected or
-    issued), each value of its type. The sibling's identity is filled in by
-    `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
-  """
+  # X9 of v2 §6: scenario values fit their types, where L2 could not tell.
+  #
+  # S3 checks a scenario's data against the fields this contract declares, and a
+  # value of a built-in type against its type. Two things are left here:
+  #
+  # - **a value of a domain type**, anywhere a scenario gives one: one member of an
+  #   enum, a value of the type a value names, a map of the fields a value with
+  #   fields declares — in lists too (`EhOsContract.Contract.Data.problems/3`);
+  # - **a query's parameters and the rows its scenario answers**, whose fields are
+  #   this contract's, for the values of domain types among them;
+  # - **the examples of a domain service's rule** (plan EL2b), for the arguments and
+  #   results of domain types, whose shape S9 has checked;
+  # - **the data of an event consumed from a sibling contract**, whose fields are the
+  #   sibling's: every key a field of the sibling's event, every required field given
+  #   where S3 requires one (a `given` and the trigger, not what is expected or
+  #   issued), each value of its type. The sibling's identity is filled in by
+  #   `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
+  @moduledoc false
 
   alias EhOsContract.Model
   alias EhOsContract.Contract.{Data, Links, Rules}

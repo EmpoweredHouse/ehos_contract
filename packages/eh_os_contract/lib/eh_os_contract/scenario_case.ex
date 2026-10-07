@@ -43,8 +43,11 @@ defmodule EhOsContract.ScenarioCase do
   test module with a query's scenario checks out an Ecto sandbox connection when the
   repo's pool is the sandbox.
 
-  **Data.** Scenario data is plain data (`EhOsContract.Contract.Data`): an ISO
-  8601 string becomes the `DateTime` or `Date` of a `:timestamp` or `:date` field
+  **Data.** Scenario data is plain data, as everything a contract compiles to is:
+  a timestamp is written as an ISO 8601 string with an offset,
+  `"2026-09-01T09:00:00Z"`, a date as an ISO 8601 date, `"2026-09-01"`, and a decimal
+  as an integer or a string of digits, never as a struct. An ISO 8601 string becomes
+  the `DateTime` or `Date` of a `:timestamp` or `:date` field
   here, and a digit string or an integer the `Decimal` of a `:decimal`, including
   inside a domain value. The unit's identity is the scenario's own: the value a
   scenario gives it anywhere, or `"scenario"`. Every given, and then the trigger,
@@ -159,7 +162,8 @@ defmodule EhOsContract.ScenarioCase do
           result: term()
         }
 
-  @doc "Every example of every rule of `contract`'s domain services, in declaration order."
+  # Every example of every rule of `contract`'s domain services, in declaration order.
+  @doc false
   @spec rule_examples(module()) :: [rule_example()]
   def rule_examples(contract) do
     for service <- Model.fetch(contract).domain_services,
@@ -176,12 +180,11 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  @doc """
-  Runs one example of a domain service's rule of `contract`: calls the function
-  through the module the contract generates — so its arguments and result are held
-  to their types and invariants, as a decision's call is — with the implementation
-  found as a scenario's is, and asserts it returns the example's result.
-  """
+  # Runs one example of a domain service's rule of `contract`: calls the function
+  # through the module the contract generates — so its arguments and result are held
+  # to their types and invariants, as a decision's call is — with the implementation
+  # found as a scenario's is, and asserts it returns the example's result.
+  @doc false
   @spec run_rule_example(module(), rule_example(), [module()] | nil) :: true
   def run_rule_example(contract, example, implementations \\ nil) do
     model = Model.fetch(contract)
@@ -240,7 +243,8 @@ defmodule EhOsContract.ScenarioCase do
           data: term()
         }
 
-  @doc "Every example of every invariant of `domain`'s values, in declaration order."
+  # Every example of every invariant of `domain`'s values, in declaration order.
+  @doc false
   @spec examples(module()) :: [example()]
   def examples(domain) do
     for value <- Model.fetch(domain).values,
@@ -250,7 +254,8 @@ defmodule EhOsContract.ScenarioCase do
         do: %{value: value.name, invariant: invariant.name, kind: kind, data: data}
   end
 
-  @doc "The name of an example's test: a value's invariant's, or a rule's."
+  # The name of an example's test: a value's invariant's, or a rule's.
+  @doc false
   @spec describe(example() | rule_example()) :: String.t()
   def describe(%{rule: rule} = example) do
     "rule #{inspect(rule)} of #{example.service}.#{example.function}: #{call(example)} returns " <>
@@ -264,11 +269,10 @@ defmodule EhOsContract.ScenarioCase do
       "#{shown(example.data)} #{verb} it"
   end
 
-  @doc """
-  Runs one example of a value's invariant of `domain` against the value's
-  implementation. `implementations`, when given, is where it is looked for instead
-  of the domain's application.
-  """
+  # Runs one example of a value's invariant of `domain` against the value's
+  # implementation. `implementations`, when given, is where it is looked for instead
+  # of the domain's application.
+  @doc false
   @spec run_example(module(), example(), [module()] | nil) :: true
   def run_example(domain, example, implementations \\ nil) do
     model = Model.fetch(domain)
@@ -331,11 +335,10 @@ defmodule EhOsContract.ScenarioCase do
     {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
   end
 
-  @doc """
-  Checks out an Ecto sandbox connection of `config :eh_os_contract, :repo` for the
-  test, when that repo's pool is the sandbox: a query's scenario projects into the
-  host's tables.
-  """
+  # Checks out an Ecto sandbox connection of `config :eh_os_contract, :repo` for the
+  # test, when that repo's pool is the sandbox: a query's scenario projects into the
+  # host's tables.
+  @doc false
   @spec checkout() :: :ok
   def checkout do
     with repo when repo != nil <- EhOsContract.Config.get(:repo),

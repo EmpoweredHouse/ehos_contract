@@ -1,35 +1,34 @@
 defmodule EhOsContract.Contract.Links.Siblings do
-  @moduledoc """
-  X5, X6 and X10 of v2 §6: what a contract consumes from a sibling contract of the same
-  application, `consumes Sibling, events`, checked against the sibling as it is
-  compiled now — which is how a change to an event reaches every subscriber (v2 §7).
-
-  - **X5.** The sibling is a compiled v2 contract of the same domain, and it
-    declares every event named. A contract of another domain is another
-    application's, whose events arrive only through a `publish` (D11).
-  - **X6.** The fields a subscriber's declarations use exist in the sibling's event
-    with the type the subscriber gives them, and are neither `optional:` nor
-    `personal:`, since each tells which run or which boundary an event belongs to
-    (F4): the process's `correlate` for every event it `include`s, a process
-    manager's `correlate` for every event it handles, and a boundary's `match:` for
-    every event it `consults`. A `correlate` field no local event carries is an `:id`
-    there, as a run's key has to be (F8). The error stands at the subscriber's declaration and
-    names the sibling's event, with its file and line.
-
-  - **X10** (plan DD, X1). A policy or a read model that takes an event of a sibling
-    of another context declares its `delivery`. Left out, it runs `:in_transaction`,
-    inside the transaction that records the other context's event, so a failure of
-    the reaction rolls that event back, and the two contexts commit together without
-    the contract saying so. The error stands at the reaction. A declared
-    `:in_transaction` compiles, and `mix eh_os_contract.check` warns about it
-    (`in-transaction-across-contexts`). An effect and a process manager are left
-    alone: undeclared, they run `:at_least_once`.
-
-  `projects` names an event and no field of it: which fields a projection reads is
-  in its implementation, which matches on the sibling's own struct, so the compiler
-  refuses a field that is gone there (v2 §7, the third mechanism). For `projects`
-  X6 is therefore X5.
-  """
+  # X5, X6 and X10 of v2 §6: what a contract consumes from a sibling contract of the same
+  # application, `consumes Sibling, events`, checked against the sibling as it is
+  # compiled now — which is how a change to an event reaches every subscriber (v2 §7).
+  #
+  # - **X5.** The sibling is a compiled v2 contract of the same domain, and it
+  #   declares every event named. A contract of another domain is another
+  #   application's, whose events arrive only through a `publish` (D11).
+  # - **X6.** The fields a subscriber's declarations use exist in the sibling's event
+  #   with the type the subscriber gives them, and are neither `optional:` nor
+  #   `personal:`, since each tells which run or which boundary an event belongs to
+  #   (F4): the process's `correlate` for every event it `include`s, a process
+  #   manager's `correlate` for every event it handles, and a boundary's `match:` for
+  #   every event it `consults`. A `correlate` field no local event carries is an `:id`
+  #   there, as a run's key has to be (F8). The error stands at the subscriber's declaration and
+  #   names the sibling's event, with its file and line.
+  #
+  # - **X10** (plan DD, X1). A policy or a read model that takes an event of a sibling
+  #   of another context declares its `delivery`. Left out, it runs `:in_transaction`,
+  #   inside the transaction that records the other context's event, so a failure of
+  #   the reaction rolls that event back, and the two contexts commit together without
+  #   the contract saying so. The error stands at the reaction. A declared
+  #   `:in_transaction` compiles, and `mix eh_os_contract.check` warns about it
+  #   (`in-transaction-across-contexts`). An effect and a process manager are left
+  #   alone: undeclared, they run `:at_least_once`.
+  #
+  # `projects` names an event and no field of it: which fields a projection reads is
+  # in its implementation, which matches on the sibling's own struct, so the compiler
+  # refuses a field that is gone there (v2 §7, the third mechanism). For `projects`
+  # X6 is therefore X5.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Key

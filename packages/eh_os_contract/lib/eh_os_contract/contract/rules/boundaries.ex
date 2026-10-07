@@ -3,53 +3,52 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   # of its rows, so it is held well under what a key may be (plan #98).
   @id_bytes 100
 
-  @moduledoc """
-  The layer-L2 rules of D10 and D11 (v2 §16): who may read what, and what crosses
-  to another application. v2 §6 gives them no letter, so they carry the decision's.
-
-  **D10, a query is a capability.**
-  - A query names `by:`; nobody could be granted one that does not.
-  - Its `scope` is a field of the read model it reads and a parameter of the query,
-    of the same type.
-  - A command's `scope` (plan E9c) is one of its fields, its unit's identity or
-    declared, and required; and the command names `by:`, since no grant to a
-    reaction could carry it. A generated identity is no scope: a command that
-    creates its aggregate arrives without it.
-  - A scope, a query's or a command's, is one value: not a list, whose elements
-    would be compared with a grant as one string. A value made of fields is the
-    domain's to see (L3).
-
-  **D11, an event leaves only through `publish`.**
-  - `from:` is an event of this contract, and `fields:` are some of its fields,
-    none of them personal: a copy on a broker cannot be crypto-shredded (v2 §14).
-  - `idempotent_on:` names fields among `fields:`.
-  - `as:` is a versioned name, dotted lowercase segments ending in `.v<n>`, and two
-    publications do not share one. The first segment is the application's namespace,
-    the domain's `name:`, and may also hold a dash, not at either end: EHOS names an
-    application with a DNS label, so `my_shop`'s domain is `:"my-shop"` there
-    (`"my-shop.entry.recorded.v1"`). The other segments are snake_case. The namespace
-    keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
-    still publishes. The domain's `name:` is held to the same segment by the domain
-    (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
-  - A contract has an `id:` (plan DD, ID1; required from ID3), the application's namespace, then one or more
-    dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
-    most #{@id_bytes} bytes: it names the contract to readers outside the code, prefixes
-    its event types (`"<id>.<event>"`), and will prefix its rows' keys, where neither `:`
-    nor `|` may stand.
-  - `subscribe "<name>"` names such a versioned name, gives it a local name with
-    `as:`, and lists the fields it reads.
-
-  **D12, another application's event is a policy's.** An event received through
-  `subscribe "<name>"` arrives in an inbox and never enters this log
-  (`EhOsContract.Inbox`), so only a policy takes it: a read model is rebuilt from the
-  log, an effect's job and a process manager read theirs from it, and none of them
-  would ever see it. One that reacts to such an event takes what a policy's command
-  records instead.
-
-  Three checks of the same decisions need the domain, and a Mix compiler has it (L3):
-  that every actor in a scoped query's or command's `by:` declares its scope, and that a publication's
-  name and the contract's `id:` are under the application's own namespace.
-  """
+  # The layer-L2 rules of D10 and D11 (v2 §16): who may read what, and what crosses
+  # to another application. v2 §6 gives them no letter, so they carry the decision's.
+  #
+  # **D10, a query is a capability.**
+  # - A query names `by:`; nobody could be granted one that does not.
+  # - Its `scope` is a field of the read model it reads and a parameter of the query,
+  #   of the same type.
+  # - A command's `scope` (plan E9c) is one of its fields, its unit's identity or
+  #   declared, and required; and the command names `by:`, since no grant to a
+  #   reaction could carry it. A generated identity is no scope: a command that
+  #   creates its aggregate arrives without it.
+  # - A scope, a query's or a command's, is one value: not a list, whose elements
+  #   would be compared with a grant as one string. A value made of fields is the
+  #   domain's to see (L3).
+  #
+  # **D11, an event leaves only through `publish`.**
+  # - `from:` is an event of this contract, and `fields:` are some of its fields,
+  #   none of them personal: a copy on a broker cannot be crypto-shredded (v2 §14).
+  # - `idempotent_on:` names fields among `fields:`.
+  # - `as:` is a versioned name, dotted lowercase segments ending in `.v<n>`, and two
+  #   publications do not share one. The first segment is the application's namespace,
+  #   the domain's `name:`, and may also hold a dash, not at either end: EHOS names an
+  #   application with a DNS label, so `my_shop`'s domain is `:"my-shop"` there
+  #   (`"my-shop.entry.recorded.v1"`). The other segments are snake_case. The namespace
+  #   keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
+  #   still publishes. The domain's `name:` is held to the same segment by the domain
+  #   (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
+  # - A contract has an `id:` (plan DD, ID1; required from ID3), the application's namespace, then one or more
+  #   dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
+  #   most #{@id_bytes} bytes: it names the contract to readers outside the code, prefixes
+  #   its event types (`"<id>.<event>"`), and will prefix its rows' keys, where neither `:`
+  #   nor `|` may stand.
+  # - `subscribe "<name>"` names such a versioned name, gives it a local name with
+  #   `as:`, and lists the fields it reads.
+  #
+  # **D12, another application's event is a policy's.** An event received through
+  # `subscribe "<name>"` arrives in an inbox and never enters this log
+  # (`EhOsContract.Inbox`), so only a policy takes it: a read model is rebuilt from the
+  # log, an effect's job and a process manager read theirs from it, and none of them
+  # would ever see it. One that reacts to such an event takes what a policy's command
+  # records instead.
+  #
+  # Three checks of the same decisions need the domain, and a Mix compiler has it (L3):
+  # that every actor in a scoped query's or command's `by:` declares its scope, and that a publication's
+  # name and the contract's `id:` are under the application's own namespace.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules

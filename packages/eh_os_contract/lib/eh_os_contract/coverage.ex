@@ -1,24 +1,23 @@
 defmodule EhOsContract.Coverage do
-  @moduledoc """
-  Which of a v2 contract's scenarios the log has seen happen, and which decisions it
-  has seen that no scenario declares (v2 §13, plan E7c-2).
-
-  **A scenario is observed** when a command of its trigger was decided with the
-  scenario's `given` types among the stream's (`given_types` of the command's row in
-  `eh_os_contract_commands`) and either was accepted with the scenario's `expect`
-  types as a subsequence of what it emitted, or was rejected on the scenario's
-  invariant — the semantics `ScenarioCase` gives a scenario. **By type only**: matching on data would mean
-  storing command payloads, and those are personal data.
-
-  Only a scenario whose trigger is a command can be observed: a query leaves no row,
-  and a scenario of a reaction is its own command's when the reaction issues one. The
-  others are not counted either way.
-
-  **An outcome no scenario declares** is a decision of a command — accepted with the
-  types it emitted, or rejected on an invariant — that no scenario of that command
-  would match. It is a question for the process owner: the code decided something
-  the agreed cases do not say.
-  """
+  # Which of a v2 contract's scenarios the log has seen happen, and which decisions it
+  # has seen that no scenario declares (v2 §13, plan E7c-2).
+  #
+  # **A scenario is observed** when a command of its trigger was decided with the
+  # scenario's `given` types among the stream's (`given_types` of the command's row in
+  # `eh_os_contract_commands`) and either was accepted with the scenario's `expect`
+  # types as a subsequence of what it emitted, or was rejected on the scenario's
+  # invariant — the semantics `ScenarioCase` gives a scenario. **By type only**: matching on data would mean
+  # storing command payloads, and those are personal data.
+  #
+  # Only a scenario whose trigger is a command can be observed: a query leaves no row,
+  # and a scenario of a reaction is its own command's when the reaction issues one. The
+  # others are not counted either way.
+  #
+  # **An outcome no scenario declares** is a decision of a command — accepted with the
+  # types it emitted, or rejected on an invariant — that no scenario of that command
+  # would match. It is a question for the process owner: the code decided something
+  # the agreed cases do not say.
+  @moduledoc false
 
   import Ecto.Query
 

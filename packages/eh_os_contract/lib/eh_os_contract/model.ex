@@ -15,19 +15,16 @@ defmodule EhOsContract.Model do
         scenarios: [...], ...,
         version: "3f9c…", digests: %{"event:month_opened" => "…"}}
 
-  **Collections are lists in declaration order**, not the maps keyed by name that
-  v2 §9 sketches. Readers print in declaration order — the graph lists its nodes
-  that way, the report its processes — so a map would change their output. Order
-  does not reach the version: `EhOsContract.Digest` makes declaration order
-  insignificant, and that is where v2 §9's "declaration order does not matter"
-  belongs.
+  **Collections are lists in declaration order**, not maps keyed by name. Readers
+  print in declaration order — the graph lists its nodes that way, the report its
+  processes — so a map would change their output. Order does not reach the version:
+  it is hashed over a canonical form in which declaration order is insignificant.
 
   A domain's model is plain data with its own keys (`contexts`, `actors`, `values`,
   …), read directly until a reader needs more. So is a process module's
-  (`use EhOsContract.Process`, plan DD, P2b, #205), of kind `:process`
-  (`EhOsContract.Process.Build`); `process/1`, `process_events/1` and `declaring/2`
-  answer for it as for a contract's process, so the readers of a run — `EhOsContract.Run`,
-  `EhOsContract.Trace`, `EhOsContract.Paths.runs_of/3` — read either (plan DD, P2d, #213).
+  (`use EhOsContract.Process`), of kind `:process`; `process/1`, `process_events/1`
+  and `declaring/2` answer for it as for a contract's process, so whatever reads a
+  run — `EhOsContract.Trace`, the conformance report — reads either.
   """
 
   @typedoc "A contract module, or the model already built from one."
@@ -484,13 +481,13 @@ defmodule EhOsContract.Model do
   is left out, since it is stored under no type of this log.
 
   A process module's run is every event its stages include, in their order, each
-  resolved to the contract that declares it; `terminal` is whether `ends_on` names it
-  (plan DD, P2d, #213). An include of a contract this node cannot load, of an event
-  that contract does not declare, or of a contract of another domain is left out: the
-  rules between modules refuse all three (X5). Those rules run per project, and a
-  process module of a dependency is read here too, so the domain is checked again: this
-  is the one rule for what a module includes, which the check, the deployment record and
-  the index of runs (`EhOsContract.Implementations`) all read.
+  resolved to the contract that declares it; `terminal` is whether `ends_on` names it.
+  An include of a contract this node cannot load, of an event that contract does not
+  declare, or of a contract of another domain is left out: the rules between modules
+  refuse all three (X5). Those rules run per project, and a process module of a
+  dependency is read here too, so the domain is checked again: this is the one rule
+  for what a module includes, which the check, the deployment record and dispatch,
+  filing events into runs, all read.
   """
   @spec process_events(contract() | map()) :: [process_event()]
   def process_events(contract) do
@@ -574,10 +571,10 @@ defmodule EhOsContract.Model do
   @spec version(contract()) :: String.t()
   def version(contract), do: contract!(contract).version
 
-  @doc """
-  One digest per declaration, keyed `"<kind>:<name>"`. What
-  `EhOsContract.Deployment` records to say which declaration moved.
-  """
+  # One digest per declaration, keyed `"<kind>:<name>"`. What
+  # `EhOsContract.Deployment` records to say which declaration moved.
+  # Called by deployment.ex.
+  @doc false
   @spec digests(contract()) :: %{String.t() => String.t()}
   def digests(contract), do: contract!(contract).digests
 end

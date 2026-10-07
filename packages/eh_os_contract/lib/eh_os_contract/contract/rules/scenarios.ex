@@ -1,51 +1,50 @@
 defmodule EhOsContract.Contract.Rules.Scenarios do
-  @moduledoc """
-  S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
-
-  - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
-    it resolves to the declaration that answers it. No two scenarios have the same
-    description, which is what names each one. A command belongs to one unit;
-    an event may be handled by several reactions, and then `target` names the one.
-  - **S2.** `given` events are ones the target keeps its state from: a unit's own
-    events, and for a boundary also the events it consults; a process manager's
-    triggers; for a query, the events the read model it reads projects. A policy
-    keeps no state, so it takes no `given`.
-  - **S3.** Data names declared fields only. `given` and the trigger supply every
-    required field, except the target's identity, which a scenario fills in itself:
-    it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
-    one of a domain value is the Mix compiler's (X9). An event consumed from a
-    sibling contract has its fields in the sibling, so its data is X9's as well.
-  - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
-  - **S5.** `expect` names events in the command's `emits:`.
-  - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
-    `expect` or by `rejected`, not both. An event delivered to a policy is followed
-    by what it `issues`; to a process manager, by what it `issues`, `sets`,
-    `cancels`, whether it has `ended`, or the `state` its run holds after it (plan
-    EP4), and each of those is one its declaration allows — `state` once, naming
-    fields of the state or the correlation; `on` may also name one of its timers,
-    which then fires. Only a process manager's scenario says a `state`. A query is
-    followed by one `answers`, ESDM's `result`: a list of rows when it returns
-    many, one row or `nil` when it returns one, each row naming fields of the read
-    model it reads. An effect's outcome is outside the log, so an effect is no
-    scenario's target; neither is a read model on its own, which a scenario reaches
-    through a query, as ESDM's read model scenario does.
-  - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
-  - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
-    successor of architecture §18's gate, kept an error although ESDM makes it a
-    warning — and so is every constraint of a command, by a scenario of that command
-    (plan EL2).
-  - **S9.** **A domain service's rule gives at least one example** (plan EL2b), and
-    each is `{[argument, …], result}`: as many arguments as the function takes, each
-    of its argument's type and the result of the one it returns, as plain data —
-    `nil` only where the declaration says optional — and none twice, since each
-    names its test. A value of a domain type is the Mix compiler's (X9), as a
-    scenario's is.
-  - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
-    shows (plan EP2), each once: a constraint of a policy, a process manager or a
-    query, or an invariant of a process manager. A command's scenario names none: a
-    unit's invariants and a command's constraints are shown by `rejected` (S8). An
-    effect is no scenario's target.
-  """
+  # S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
+  #
+  # - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
+  #   it resolves to the declaration that answers it. No two scenarios have the same
+  #   description, which is what names each one. A command belongs to one unit;
+  #   an event may be handled by several reactions, and then `target` names the one.
+  # - **S2.** `given` events are ones the target keeps its state from: a unit's own
+  #   events, and for a boundary also the events it consults; a process manager's
+  #   triggers; for a query, the events the read model it reads projects. A policy
+  #   keeps no state, so it takes no `given`.
+  # - **S3.** Data names declared fields only. `given` and the trigger supply every
+  #   required field, except the target's identity, which a scenario fills in itself:
+  #   it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
+  #   one of a domain value is the Mix compiler's (X9). An event consumed from a
+  #   sibling contract has its fields in the sibling, so its data is X9's as well.
+  # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
+  # - **S5.** `expect` names events in the command's `emits:`.
+  # - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
+  #   `expect` or by `rejected`, not both. An event delivered to a policy is followed
+  #   by what it `issues`; to a process manager, by what it `issues`, `sets`,
+  #   `cancels`, whether it has `ended`, or the `state` its run holds after it (plan
+  #   EP4), and each of those is one its declaration allows — `state` once, naming
+  #   fields of the state or the correlation; `on` may also name one of its timers,
+  #   which then fires. Only a process manager's scenario says a `state`. A query is
+  #   followed by one `answers`, ESDM's `result`: a list of rows when it returns
+  #   many, one row or `nil` when it returns one, each row naming fields of the read
+  #   model it reads. An effect's outcome is outside the log, so an effect is no
+  #   scenario's target; neither is a read model on its own, which a scenario reaches
+  #   through a query, as ESDM's read model scenario does.
+  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
+  # - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
+  #   successor of architecture §18's gate, kept an error although ESDM makes it a
+  #   warning — and so is every constraint of a command, by a scenario of that command
+  #   (plan EL2).
+  # - **S9.** **A domain service's rule gives at least one example** (plan EL2b), and
+  #   each is `{[argument, …], result}`: as many arguments as the function takes, each
+  #   of its argument's type and the result of the one it returns, as plain data —
+  #   `nil` only where the declaration says optional — and none twice, since each
+  #   names its test. A value of a domain type is the Mix compiler's (X9), as a
+  #   scenario's is.
+  # - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
+  #   shows (plan EP2), each once: a constraint of a policy, a process manager or a
+  #   query, or an invariant of a process manager. A command's scenario names none: a
+  #   unit's invariants and a command's constraints are shown by `rejected` (S8). An
+  #   effect is no scenario's target.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.{Data, Dsl, Rules}

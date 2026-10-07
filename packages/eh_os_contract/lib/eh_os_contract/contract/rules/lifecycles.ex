@@ -1,32 +1,31 @@
 defmodule EhOsContract.Contract.Rules.Lifecycles do
-  @moduledoc """
-  T1–T4 (plan LC1, #99): an aggregate's lifecycle, and the commands it lets in.
-
-  - **T1.** An aggregate declares `lifecycle` at most once; one has a status and an
-    `initial`, and names each status once, in snake_case. Its state and identity have
-    no field `:status`, which the engine fills with the status (plan LC2).
-  - **T2.** `initial` and `transition` name statuses of the lifecycle and events of
-    the aggregate; a transition leaves at least one status. The status an event moves the aggregate to is one: one `initial`
-    per event, and one transition per status and event.
-  - **T3.** Every status is reached from an `initial`; a `final:` status has no
-    transition out, and every other status has one, since an aggregate stuck in a
-    status nobody called final is a lifecycle missing a transition.
-  - **T4.** A command's `from:` names statuses of its aggregate's lifecycle and comes
-    with `or_rejects:`, an invariant of the unit in the command's `rejects:`, and the
-    other way round; no command is issued from a final status. A command that
-    `creates:` its aggregate emits one of its initial events and has no `from:`, since
-    a new aggregate has no status yet. An event the command emits that a transition
-    names leaves at least one status in `from:`, or emitting it could only ever be a
-    defect. A status in `from:` that no event of the command leaves is where the
-    decision refuses, on a rule finer than the status, so `rejects:` names one besides
-    `or_rejects:`.
-    A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
-
-  An event no transition names moves nothing: it is allowed in every status that is
-  not final, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
-  checked here: `terminal:` on an event ends a run, and a run may be correlated by
-  other fields than the aggregate's identity.
-  """
+  # T1–T4 (plan LC1, #99): an aggregate's lifecycle, and the commands it lets in.
+  #
+  # - **T1.** An aggregate declares `lifecycle` at most once; one has a status and an
+  #   `initial`, and names each status once, in snake_case. Its state and identity have
+  #   no field `:status`, which the engine fills with the status (plan LC2).
+  # - **T2.** `initial` and `transition` name statuses of the lifecycle and events of
+  #   the aggregate; a transition leaves at least one status. The status an event moves the aggregate to is one: one `initial`
+  #   per event, and one transition per status and event.
+  # - **T3.** Every status is reached from an `initial`; a `final:` status has no
+  #   transition out, and every other status has one, since an aggregate stuck in a
+  #   status nobody called final is a lifecycle missing a transition.
+  # - **T4.** A command's `from:` names statuses of its aggregate's lifecycle and comes
+  #   with `or_rejects:`, an invariant of the unit in the command's `rejects:`, and the
+  #   other way round; no command is issued from a final status. A command that
+  #   `creates:` its aggregate emits one of its initial events and has no `from:`, since
+  #   a new aggregate has no status yet. An event the command emits that a transition
+  #   names leaves at least one status in `from:`, or emitting it could only ever be a
+  #   defect. A status in `from:` that no event of the command leaves is where the
+  #   decision refuses, on a rule finer than the status, so `rejects:` names one besides
+  #   `or_rejects:`.
+  #   A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
+  #
+  # An event no transition names moves nothing: it is allowed in every status that is
+  # not final, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
+  # checked here: `terminal:` on an event ends a run, and a run may be correlated by
+  # other fields than the aggregate's identity.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules

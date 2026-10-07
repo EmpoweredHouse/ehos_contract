@@ -1,50 +1,49 @@
 defmodule EhOsContract.Contract.Rules.Fields do
-  @moduledoc """
-  F1–F9 of v2 §6: the fields of every struct a contract declares — a unit's or a
-  process manager's state, a command, an event, a read model's row, a query's
-  parameters, and a published event this contract consumes.
-
-  - **F1.** Field names are unique within a struct, and none starts with `__`,
-    which the generated structs keep for themselves (`__meta__`). Since the review
-    of the domain's names, a field's name is snake_case, as every other name is
-    (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
-    a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
-    edge it named. A unit's `identity` is held to the same, named once, since it is
-    a field of the unit's state, commands and events.
-  - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
-    `{:enum, members}` with no member twice, the name of a domain value, or
-    `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
-    exists is the domain's to say, and a Mix compiler checks it (L3, X3).
-  - **F3.** Only a state gives a field a `default:`.
-  - **F4.** A field that tells which run an event belongs to — named in the
-    process's `correlate`, or in the `correlate` of a process manager handling the
-    event — is neither `optional:` nor `personal:`. Identity fields are injected
-    required and not personal, so they satisfy this by construction.
-  - **F5.** `personal: f` names `f`, a required, non-personal `:id` field of the
-    same struct that declares `subject:`. Whether the subject exists is X3's.
-  - **F6.** A unit's identity is injected into its state, commands and events;
-    declaring one of those fields there again is an error.
-  - **F7.** A field whose value the library keeps outside the log is not personal,
-    since erasure reaches only what the log encrypts (v2 §14): a process manager's
-    state, stored in `eh_os_contract_process_managers`, and a query's or a command's
-    `scope` field, whose value goes into every authorization decision. A parameter
-    takes no `personal:` at all, so here F7 refuses only a manager's state; a
-    domain value holding personal data in either place is the domain's to see (L3).
-  - **F8** (issue #96). A field a run or a process manager's record is told by — an
-    event's field F4 names, and a process manager's state field its `correlate` names —
-    is an `:id`, `{:id, entity}` or a domain value resting on `:id`. Its value goes into
-    an index (`eh_os_contract_event_runs`, the process managers' primary key), and only
-    an `:id` has a length bound, 255 bytes. Here a built-in type or a list is refused;
-    a domain value is checked between modules, where the domain is known (L3).
-  - **F9** (issue #96). A unit's identity, a process's `correlate` and a process
-    manager's `correlate` each have at most `EhOsContract.Key.max_fields/0` fields: the
-    key they make is one btree entry, and seven `:id` fields at their bound overflow it.
-  - **F10** (plan T1). `supplied_by: :host` is taken only by a field a request would
-    otherwise fill: a command's, or an event's that an actor records (`recorded_by:`).
-    Anywhere else no request fills it, so there is nothing to keep the caller from.
-    Not on a command's `scope` field either: the authorization decision reads that
-    value before the host supplies anything.
-  """
+  # F1–F9 of v2 §6: the fields of every struct a contract declares — a unit's or a
+  # process manager's state, a command, an event, a read model's row, a query's
+  # parameters, and a published event this contract consumes.
+  #
+  # - **F1.** Field names are unique within a struct, and none starts with `__`,
+  #   which the generated structs keep for themselves (`__meta__`). Since the review
+  #   of the domain's names, a field's name is snake_case, as every other name is
+  #   (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
+  #   a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
+  #   edge it named. A unit's `identity` is held to the same, named once, since it is
+  #   a field of the unit's state, commands and events.
+  # - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
+  #   `{:enum, members}` with no member twice, the name of a domain value, or
+  #   `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
+  #   exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+  # - **F3.** Only a state gives a field a `default:`.
+  # - **F4.** A field that tells which run an event belongs to — named in the
+  #   process's `correlate`, or in the `correlate` of a process manager handling the
+  #   event — is neither `optional:` nor `personal:`. Identity fields are injected
+  #   required and not personal, so they satisfy this by construction.
+  # - **F5.** `personal: f` names `f`, a required, non-personal `:id` field of the
+  #   same struct that declares `subject:`. Whether the subject exists is X3's.
+  # - **F6.** A unit's identity is injected into its state, commands and events;
+  #   declaring one of those fields there again is an error.
+  # - **F7.** A field whose value the library keeps outside the log is not personal,
+  #   since erasure reaches only what the log encrypts (v2 §14): a process manager's
+  #   state, stored in `eh_os_contract_process_managers`, and a query's or a command's
+  #   `scope` field, whose value goes into every authorization decision. A parameter
+  #   takes no `personal:` at all, so here F7 refuses only a manager's state; a
+  #   domain value holding personal data in either place is the domain's to see (L3).
+  # - **F8** (issue #96). A field a run or a process manager's record is told by — an
+  #   event's field F4 names, and a process manager's state field its `correlate` names —
+  #   is an `:id`, `{:id, entity}` or a domain value resting on `:id`. Its value goes into
+  #   an index (`eh_os_contract_event_runs`, the process managers' primary key), and only
+  #   an `:id` has a length bound, 255 bytes. Here a built-in type or a list is refused;
+  #   a domain value is checked between modules, where the domain is known (L3).
+  # - **F9** (issue #96). A unit's identity, a process's `correlate` and a process
+  #   manager's `correlate` each have at most `EhOsContract.Key.max_fields/0` fields: the
+  #   key they make is one btree entry, and seven `:id` fields at their bound overflow it.
+  # - **F10** (plan T1). `supplied_by: :host` is taken only by a field a request would
+  #   otherwise fill: a command's, or an event's that an actor records (`recorded_by:`).
+  #   Anywhere else no request fills it, so there is nothing to keep the caller from.
+  #   Not on a command's `scope` field either: the authorization decision reads that
+  #   value before the host supplies anything.
+  @moduledoc false
 
   alias EhOsContract.Domain
   alias EhOsContract.DslRules

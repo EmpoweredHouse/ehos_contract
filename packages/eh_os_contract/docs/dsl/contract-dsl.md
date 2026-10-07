@@ -13,7 +13,8 @@ application) and what leaves the application (`publish`);
 the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
 extensions.
 
-Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
+Options may stand beside a `do` block, as in `command :record_payment, "…", by:
+:reception do … end`.
 
 The structs this module defines are what Spark builds from each declaration. They stay inside the
 extension: readers get plain data from `EhOsContract.Model`, never these structs.

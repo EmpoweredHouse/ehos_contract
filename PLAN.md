@@ -57,8 +57,11 @@ declare a process only when the test is about one. P1d merged in #196 and #200 (
 module of its own. P2c merged in #212 (issue #210): process modules
 are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
 and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold until the graph documents and renderer (E13; #217, #219, another contributor) are in `main`: a process module's picture and page (P2e, #220), and removing the contract's own `process` (P2h, #221).** P2f merged in #225–#227
-(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228). #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
-EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
+(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228).
+#193 (an upper bound for durations, R6) is open. A follow-up outside the stages, merged in #234 (#180, the user's
+decision of 7 October): `eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`,
+the application equals one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus
+(EmpoweredHouse/eh-os#201).
 
 ### Stan repozytorium
 

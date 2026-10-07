@@ -1,45 +1,44 @@
 defmodule EhOsContract.Contract.Generate do
-  @moduledoc """
-  Generates the modules a v2 contract names (v2 §5), structs and behaviours, after
-  `Build` has made its model.
-
-  **Structs.** For a contract `C`:
-
-  | Module | From |
-  | --- | --- |
-  | `C.Commands.RecordPayment` | a command |
-  | `C.Events.PaymentRecorded` | an event of a unit |
-  | `C.Received.VisitClosed` | `subscribe "<name>", as: :visit_closed`, with the fields declared there |
-  | `C.Aggregates.VisitSettlement.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
-  | `C.ReadModels.DailyTotals.Row` | a read model's fields |
-  | `C.Queries.DailyTotalsFor` | a query's parameters |
-
-  A unit's identity comes first in its state, commands and events, as the model
-  injects it. A command, an event and a received event enforce their required
-  fields and carry `__meta__`, an `EhOsContract.Meta` that dispatch and the store
-  set. A state starts from its defaults, and a row and a query's parameters are
-  plain structs.
-
-  Each module's `@type t` uses a domain value as a remote type of the domain's
-  generated `Values` module, which records no compile dependency (v2 §8). Each is
-  created at the file and line of its declaration, so going to its definition
-  lands on the DSL. `EhOsContract.Model.module_for/3` names them.
-
-  An event consumed from a sibling contract gets no struct here: the sibling's own
-  is the only one (v2 §7, mechanism 1).
-
-  **Behaviours.** `C.Aggregates.*`, `C.Dcbs.*`, `C.Policies.*`, `C.Effects.*`,
-  `C.ProcessManagers.*`, `C.ReadModels.*` and `C.DomainServices.*` each declare the
-  callbacks an implementation of that declaration defines; a query's one callback
-  sits in `C.Queries.*`, beside its parameters. A domain service's module also
-  defines each of its functions, which a decision calls: it checks the arguments,
-  calls the implementation, and checks the result (`EhOsContract.DomainService`). Which callbacks, with which types, is
-  `EhOsContract.Contract.Callbacks`: the same list the implementation macros
-  check against.
-
-  Each behaviour's `@moduledoc` and each callback's `@doc` say what the contract says
-  of it, rules and scenarios included (plan EP3): `EhOsContract.Contract.Doc`.
-  """
+  # Generates the modules a v2 contract names (v2 §5), structs and behaviours, after
+  # `Build` has made its model.
+  #
+  # **Structs.** For a contract `C`:
+  #
+  # | Module | From |
+  # | --- | --- |
+  # | `C.Commands.RecordPayment` | a command |
+  # | `C.Events.PaymentRecorded` | an event of a unit |
+  # | `C.Received.VisitClosed` | `subscribe "<name>", as: :visit_closed`, with the fields declared there |
+  # | `C.Aggregates.VisitSettlement.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
+  # | `C.ReadModels.DailyTotals.Row` | a read model's fields |
+  # | `C.Queries.DailyTotalsFor` | a query's parameters |
+  #
+  # A unit's identity comes first in its state, commands and events, as the model
+  # injects it. A command, an event and a received event enforce their required
+  # fields and carry `__meta__`, an `EhOsContract.Meta` that dispatch and the store
+  # set. A state starts from its defaults, and a row and a query's parameters are
+  # plain structs.
+  #
+  # Each module's `@type t` uses a domain value as a remote type of the domain's
+  # generated `Values` module, which records no compile dependency (v2 §8). Each is
+  # created at the file and line of its declaration, so going to its definition
+  # lands on the DSL. `EhOsContract.Model.module_for/3` names them.
+  #
+  # An event consumed from a sibling contract gets no struct here: the sibling's own
+  # is the only one (v2 §7, mechanism 1).
+  #
+  # **Behaviours.** `C.Aggregates.*`, `C.Dcbs.*`, `C.Policies.*`, `C.Effects.*`,
+  # `C.ProcessManagers.*`, `C.ReadModels.*` and `C.DomainServices.*` each declare the
+  # callbacks an implementation of that declaration defines; a query's one callback
+  # sits in `C.Queries.*`, beside its parameters. A domain service's module also
+  # defines each of its functions, which a decision calls: it checks the arguments,
+  # calls the implementation, and checks the result (`EhOsContract.DomainService`). Which callbacks, with which types, is
+  # `EhOsContract.Contract.Callbacks`: the same list the implementation macros
+  # check against.
+  #
+  # Each behaviour's `@moduledoc` and each callback's `@doc` say what the contract says
+  # of it, rules and scenarios included (plan EP3): `EhOsContract.Contract.Doc`.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 

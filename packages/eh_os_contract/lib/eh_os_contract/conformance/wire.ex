@@ -34,10 +34,10 @@ defmodule EhOsContract.Conformance.Wire do
   meaning nobody can reconstruct.
   """
 
-  @doc """
-  The report, projected onto strings, numbers, booleans, `nil`, lists and
-  string-keyed maps.
-  """
+  # The report, projected onto strings, numbers, booleans, `nil`, lists and
+  # string-keyed maps.
+  # Called by conformance.ex.
+  @doc false
   @spec encode(term()) :: term()
   def encode(%DateTime{} = at), do: DateTime.to_iso8601(at)
 

@@ -91,7 +91,7 @@ defmodule EhOsContract.Auth do
   @behaviour EhOsContract.Authorizer
 
   alias EhOsContract.{Actor, Authorizer}
-  alias EhOsContract.Auth.{Address, Keys}
+  alias EhOsContract.Auth.{Address, Keys, Manifest}
 
   @decisions "eh_os_contract_auth_decisions"
   @max_scope_value 256
@@ -117,6 +117,20 @@ defmodule EhOsContract.Auth do
   address is the configuration's, and `url:` among them is refused. `:audience` and
   `:issuer` are read by `verify/2` on every credential, and are checked here too, so
   a missing one fails the boot rather than every request.
+
+  It also raises when `audience` is not `"<application>/<environment>"` with both
+  parts non-empty (`"clinic"`, `"clinic/"`, `"/prod"`), or its application is not a
+  name EHOS gives one; when that application does not equal, exactly, the `name:` of
+  one of the domains that have contracts in the applications of
+  `config :eh_os_contract, applications:`; and when another of those domains declares
+  a `publish` in any of its contracts. Every name the application publishes begins
+  with its domain's name, and EHOS lets an application publish only under the name it
+  registered; a domain that publishes nothing sends no name to anyone, so a release
+  may hold several. A domain named `:my_shop` does not match `"my-shop/prod"`: EHOS
+  never names an application with `_`, so the message advises renaming the domain to
+  `:"my-shop"`, as the manifest generator does. It raises as well when a contract's
+  domain is not loaded, so its name cannot be compared. Each message names what it
+  found and how to fix it.
   """
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
@@ -127,6 +141,8 @@ defmodule EhOsContract.Auth do
             "config :eh_os_contract_auth, audience: \"<application>/<environment>\" is missing; " <>
               "it is the only audience a credential for this application may carry"
     end
+
+    check_application!(config[:audience], EhOsContract.Registry.load!().contracts)
 
     unless config[:issuer] do
       raise ArgumentError,
@@ -162,6 +178,174 @@ defmodule EhOsContract.Auth do
       start: {Keys, :start_link, [opts]},
       type: :worker
     }
+  end
+
+  @doc false
+  # #180: the namespace an application publishes under is its domain's `name:` (D11), and EHOS
+  # binds the application to the name it registered it under (eh-os#201). Checked whenever the
+  # child starts, which needs an audience, so a mismatch shows before the bus refuses the first
+  # publish. Only domains with contracts count, as in the manifest: the `name:` of one of them must
+  # equal the application's exactly, since a domain whose name EHOS would not take (`:my_shop`)
+  # cannot have its manifest generated either. Only a `publish` sends a name to other
+  # applications, so every other domain must publish nothing. An application without contracts
+  # publishes nothing, and passes.
+  @spec check_application!(String.t(), [module() | map()]) :: :ok
+  def check_application!(audience, contracts) when is_binary(audience) do
+    application = audience_application!(audience)
+
+    by_domain =
+      contracts
+      |> Enum.map(&EhOsContract.Model.fetch/1)
+      |> Enum.group_by(& &1.domain)
+      |> Enum.map(fn {domain, models} -> {domain!(domain, models), models} end)
+      |> Enum.sort_by(fn {domain, _models} -> to_string(domain.name) end)
+
+    {own, others} =
+      Enum.split_with(by_domain, fn {domain, _} ->
+        to_string(domain.name) == application
+      end)
+
+    publishing =
+      Enum.filter(others, fn {_, models} -> Enum.any?(models, &(&1.publishes != [])) end)
+
+    case {own, publishing} do
+      # No contracts, so no name to publish under, and nothing to hold the audience to.
+      {[], _} when by_domain == [] ->
+        :ok
+
+      {[], _} ->
+        raise ArgumentError,
+              unmatched_message(audience, application, by_domain)
+
+      {_own, []} ->
+        :ok
+
+      {[{domain, _} | _], publishing} ->
+        raise ArgumentError, publishing_message(audience, application, domain, publishing)
+    end
+  end
+
+  # An audience EHOS never issues: no domain should be renamed after it.
+  defp audience_application!(audience) do
+    case String.split(audience, "/", parts: 2) do
+      [application, environment] when application != "" and environment != "" ->
+        unless Manifest.application?(application) do
+          raise ArgumentError,
+                "config :eh_os_contract_auth, audience: #{inspect(audience)} is malformed: its " <>
+                  "application, the part before the /, is #{inspect(application)}, and EHOS " <>
+                  "names an application with lowercase letters, digits and dashes, starting " <>
+                  "with a letter, not ending with a dash, at most 63 characters, and not ehos. " <>
+                  "Copy the audience EHOS issues for this application, " <>
+                  "<application>/<environment>"
+        end
+
+        application
+
+      _otherwise ->
+        raise ArgumentError,
+              "config :eh_os_contract_auth, audience: #{inspect(audience)} is malformed: EHOS " <>
+                "issues <application>/<environment>, both parts non-empty. Copy the audience " <>
+                "EHOS issues for this application"
+    end
+  end
+
+  # The engine runs a contract whose domain is not loaded, with its days in UTC (v2 §8); the name
+  # compared here has no such default, and skipping the domain would leave its contracts to
+  # publish under a name nobody checked.
+  defp domain!(domain, models) do
+    if is_atom(domain) and Code.ensure_loaded?(domain) and
+         function_exported?(domain, :__eh_os_contract_model__, 0) do
+      domain.__eh_os_contract_model__()
+    else
+      raise ArgumentError,
+            "#{Enum.map_join(models, ", ", &inspect(&1.module))} names the domain " <>
+              "#{inspect(domain)}, which is not loaded on this node, so its name: cannot be " <>
+              "compared with the application's in EHOS: include the domain's application in " <>
+              "the release, or in config :eh_os_contract, applications:"
+    end
+  end
+
+  defp unmatched_message(audience, application, by_domain) do
+    domains = Enum.map(by_domain, &elem(&1, 0))
+    named = Enum.map_join(domains, ", ", &domain_name/1)
+    found = if length(domains) == 1, do: "the domain", else: "the domains"
+
+    "config :eh_os_contract_auth, audience: #{inspect(audience)} names the application " <>
+      "#{application} in EHOS, and none of the domains with contracts in this application " <>
+      "has that name: it has #{found} #{named}. Every name the application publishes, and " <>
+      "every contract id it stores, begins with its domain's name:, and EHOS lets an " <>
+      "application publish only under its own name, so one domain's name: must equal the " <>
+      "application's exactly: " <> advice(application, by_domain)
+  end
+
+  @renames "(it renames every event and every stored contract id, so the event log starts again)"
+
+  # A domain spelled with `_` where EHOS has `-` is the one meant, and only renaming it helps:
+  # EHOS never names an application with `_`. Otherwise the domain to rename, or to register the
+  # application under when EHOS takes its name: the one, else the one that publishes, since only
+  # its name reaches other applications.
+  defp advice(application, by_domain) do
+    domains = Enum.map(by_domain, &elem(&1, 0))
+
+    publishing =
+      for {domain, models} <- by_domain, Enum.any?(models, &(&1.publishes != [])), do: domain
+
+    case {Enum.filter(domains, &(dashed(&1.name) == application)), domains, publishing} do
+      {[domain | _], _domains, _publishing} ->
+        "the domain #{domain_name(domain)} differs from it only in _ where EHOS has -, and " <>
+          "EHOS never names an application with _. Rename the domain, such as name: " <>
+          "#{atom_literal(application)} #{@renames}."
+
+      {[], [domain], _publishing} ->
+        "rename the domain #{domain_name(domain)} to name: #{atom_literal(application)} " <>
+          "#{@renames}" <> register(domain) <> "."
+
+      {[], _several, [domain]} ->
+        "rename the domain that publishes, #{domain_name(domain)}, to name: " <>
+          "#{atom_literal(application)} #{@renames}" <> register(domain) <> "."
+
+      {[], _several, _publishing} ->
+        "rename one of them to name: #{atom_literal(application)} #{@renames}, or register " <>
+          "the application in EHOS under the name of one of them that EHOS takes."
+    end
+  end
+
+  # EHOS registers an application only under a name it takes: `:my_shop` offers no such way out.
+  defp register(domain) do
+    name = to_string(domain.name)
+
+    if Manifest.application?(name),
+      do: ", or register the application in EHOS as #{name}",
+      else: ""
+  end
+
+  defp publishing_message(audience, application, own, publishing) do
+    listed =
+      Enum.map_join(publishing, "; ", fn {domain, models} ->
+        publications =
+          for model <- models, publication <- model.publishes do
+            "#{inspect(model.module)} publishes #{publication.as}"
+          end
+
+        "the domain #{domain_name(domain)}: " <> Enum.join(publications, ", ")
+      end)
+
+    "config :eh_os_contract_auth, audience: #{inspect(audience)} names the application " <>
+      "#{application} in EHOS, whose domain is #{domain_name(own)}, and another domain with " <>
+      "contracts in this application declares a publish: #{listed}. A publication's name " <>
+      "begins with its domain's name:, and EHOS lets an application publish only under its " <>
+      "own name, so this one would publish under a name that is not the application's. " <>
+      "Move that domain's contracts to an application of its own, registered in EHOS under " <>
+      "the domain's name, or remove its publish."
+  end
+
+  defp domain_name(domain), do: "#{domain.name} (#{inspect(domain.module)})"
+
+  defp dashed(name), do: String.replace(to_string(name), "_", "-")
+
+  # How the name is written as an atom in a domain's `use`: `:clinic`, `:"billing-app"`.
+  defp atom_literal(name) do
+    if Regex.match?(~r/\A[a-z][a-z0-9_]*\z/, name), do: ":#{name}", else: ":#{inspect(name)}"
   end
 
   # For the host's health check, as `eh-os` D-34 asks of an application.

@@ -1,35 +1,34 @@
 defmodule EhOsContract.UndeclaredTypes do
-  @moduledoc """
-  The event types the log holds that no contract of the application declares, and a
-  warning about them at start-up (plan DD, #175).
-
-  From plan DD's ID3 an event's type is `"<contract id>.<event>"`, and a log written
-  before it is not read: an upgrading application resets the engine's schema. One
-  that does not is told nothing by the rest of the engine. An aggregate whose stream
-  holds such a row raises, but a boundary, a subscription, a read model and the
-  conformance report read by declared types and skip the rest silently — a boundary
-  allowing one booking per seat would accept a second for a seat booked before.
-  The same warning covers an event of a contract the application no longer has.
-
-  It warns and goes on: refusing to start would make removing a contract on purpose
-  impossible without rewriting the log.
-
-  The log's distinct types are read by walking the `(type, position)` index once per
-  type, not by reading every row, so the check costs the number of types, not the
-  length of the log.
-
-  **The contract names the events are filed under** get a warning of their own (#179).
-  From plan DD's ID4 (#178) every row names its contract by its `id:`, where it
-  named the module before; a log written between ID3 and ID4 and not reset holds
-  types every contract still declares, so the warning above stays silent, while the
-  report and the commands' counts skip those events. The names are read the same
-  way, one step down the `(contract, contract_version)` index each, and compared with
-  every contract the engine dispatches to — `exclude:` keeps a contract out of the
-  report, not out of the log. The commands' names are not read: they have no such
-  index, and a command that changed anything left an event. Nor are the other tables
-  that name a contract (subscriptions, process managers, deployments): the reset that
-  clears a log written before ID4 clears them with it.
-  """
+  # The event types the log holds that no contract of the application declares, and a
+  # warning about them at start-up (plan DD, #175).
+  #
+  # From plan DD's ID3 an event's type is `"<contract id>.<event>"`, and a log written
+  # before it is not read: an upgrading application resets the engine's schema. One
+  # that does not is told nothing by the rest of the engine. An aggregate whose stream
+  # holds such a row raises, but a boundary, a subscription, a read model and the
+  # conformance report read by declared types and skip the rest silently — a boundary
+  # allowing one booking per seat would accept a second for a seat booked before.
+  # The same warning covers an event of a contract the application no longer has.
+  #
+  # It warns and goes on: refusing to start would make removing a contract on purpose
+  # impossible without rewriting the log.
+  #
+  # The log's distinct types are read by walking the `(type, position)` index once per
+  # type, not by reading every row, so the check costs the number of types, not the
+  # length of the log.
+  #
+  # **The contract names the events are filed under** get a warning of their own (#179).
+  # From plan DD's ID4 (#178) every row names its contract by its `id:`, where it
+  # named the module before; a log written between ID3 and ID4 and not reset holds
+  # types every contract still declares, so the warning above stays silent, while the
+  # report and the commands' counts skip those events. The names are read the same
+  # way, one step down the `(contract, contract_version)` index each, and compared with
+  # every contract the engine dispatches to — `exclude:` keeps a contract out of the
+  # report, not out of the log. The commands' names are not read: they have no such
+  # index, and a command that changed anything left an event. Nor are the other tables
+  # that name a contract (subscriptions, process managers, deployments): the reset that
+  # clears a log written before ID4 clears them with it.
+  @moduledoc false
 
   require Logger
 

@@ -18,14 +18,14 @@ defmodule EhOsContract.DocCoverageTest do
 
   @lib Path.join(File.cwd!(), "lib") <> "/"
 
-  defp modules do
+  defp modules(which \\ :published) do
     {:ok, modules} = :application.get_key(:eh_os_contract, :modules)
 
     for module <- modules,
         Code.ensure_loaded?(module),
         String.starts_with?(to_string(module.module_info(:compile)[:source]), @lib),
         {:docs_v1, _, _, _, moduledoc, _, entries} <- [Code.fetch_docs(module)],
-        moduledoc != :hidden,
+        moduledoc == :hidden == (which == :hidden),
         do: {module, entries}
   end
 
@@ -74,6 +74,24 @@ defmodule EhOsContract.DocCoverageTest do
           specs = specs(module),
           {:function, name, arity, doc} <- public(entries, module),
           doc not in [:none, :hidden],
+          {name, arity} not in specs,
+          do: "#{inspect(module)}.#{name}/#{arity}"
+
+    assert unspecified == []
+  end
+
+  # A module with `@moduledoc false` publishes nothing, but its functions are called
+  # across the library, and `dialyzer` checks those calls only against a `@spec`. A
+  # function there without a `@doc` is public for the library; one with `@doc false`
+  # is as hidden as anywhere and keeps the same exemption.
+  test "every public function of a hidden module of lib/ has a @spec" do
+    unspecified =
+      for {module, entries} <- modules(:hidden),
+          specs = specs(module),
+          {:function, name, arity, doc} <- public(entries, module),
+          doc != :hidden,
+          # `use GenServer` and `use Supervisor` write it, with no spec to give.
+          {name, arity} != {:child_spec, 1},
           {name, arity} not in specs,
           do: "#{inspect(module)}.#{name}/#{arity}"
 

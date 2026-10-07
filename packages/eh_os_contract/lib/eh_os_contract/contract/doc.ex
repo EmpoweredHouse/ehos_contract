@@ -1,20 +1,19 @@
 defmodule EhOsContract.Contract.Doc do
-  @moduledoc """
-  The documentation a generated behaviour carries (plan EP3): what the contract says of
-  each callback, where whoever writes the implementation reads it — `h`, the editor,
-  and a model generating the code.
-
-  A callback's `@doc` gives its declaration's label and source, what it may produce
-  (the events a command emits, the commands a reaction issues), the rules that hold
-  there and the scenarios it runs. Each rule says which rung of the contract's ladder
-  it stands on: a scenario shows it (it refuses on it, or it `illustrates:` it), or it
-  is prose alone. A behaviour's `@moduledoc` adds the declaration's label, source and
-  rules to the sentence that says how it is bound.
-
-  The text is built from the contract's model, and only from it, so the contract stays
-  the one place each sentence is written. Labels are quoted as declared, in the
-  client's language; the sentences around them are the engine's, in English.
-  """
+  # The documentation a generated behaviour carries (plan EP3): what the contract says of
+  # each callback, where whoever writes the implementation reads it — `h`, the editor,
+  # and a model generating the code.
+  #
+  # A callback's `@doc` gives its declaration's label and source, what it may produce
+  # (the events a command emits, the commands a reaction issues), the rules that hold
+  # there and the scenarios it runs. Each rule says which rung of the contract's ladder
+  # it stands on: a scenario shows it (it refuses on it, or it `illustrates:` it), or it
+  # is prose alone. A behaviour's `@moduledoc` adds the declaration's label, source and
+  # rules to the sentence that says how it is bound.
+  #
+  # The text is built from the contract's model, and only from it, so the contract stays
+  # the one place each sentence is written. Labels are quoted as declared, in the
+  # client's language; the sentences around them are the engine's, in English.
+  @moduledoc false
 
   @doc """
   The `@moduledoc` of the behaviour of the declaration `name` of `kind`: `intro`,

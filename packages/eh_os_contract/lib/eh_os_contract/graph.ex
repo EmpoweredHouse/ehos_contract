@@ -209,57 +209,74 @@ defmodule EhOsContract.Graph do
   end
 
   @doc """
-  A v2 contract's full graph as a Mermaid diagram (plan EG1): the steps of
-  `EhOsContract.Paths` — commands, events, the policies, process managers and effects
-  that react, and timers, each kind in its Event Storming colour — and around them
-  the actors, read models, queries and external systems the contract names, each
-  unit's commands and events in a group of their own. `overlay: true` lays the log
-  over the steps, `since:` and `until:` bound it. See `EhOsContract.Graph.Contract`.
+  A contract's full graph as a Mermaid diagram: its steps — commands, events, the
+  policies, process managers and effects that react, and timers, each kind in its
+  Event Storming colour — and around them the actors, read models, queries and
+  external systems the contract names, each unit's commands and events in a group of
+  their own.
+
+  `overlay: true` lays the log over the steps: on each event how often it occurred,
+  on each step how often it was taken, and what waits or fails there, counted in
+  occurrences, as in the report. The counts sit on the edge that is the step's own.
+  Actors, read models, queries and external systems carry no counts. `since:` and
+  `until:` bound the log.
   """
   @spec contract_to_mermaid(module(), keyword()) :: String.t()
   def contract_to_mermaid(contract, opts \\ []),
     do: EhOsContract.Graph.Contract.to_mermaid(contract, opts)
 
   @doc """
-  Unit `unit` of a v2 contract as a Mermaid diagram (plan EG1): its state, commands,
-  events and invariants, with how many scenarios pin each path. See
-  `EhOsContract.Graph.Unit`.
+  Unit `unit` of a contract as a Mermaid diagram: its state, commands, events and
+  invariants, with how many scenarios pin each path. A scenario that expects a
+  command to emit an event counts on that edge, one refused on an invariant on the
+  command's edge to it, so a path no scenario pins is an edge with no count. Raises
+  when the contract has no such unit.
   """
   @spec unit_to_mermaid(module(), atom()) :: String.t()
   def unit_to_mermaid(contract, unit), do: EhOsContract.Graph.Unit.to_mermaid(contract, unit)
 
   @doc """
-  An aggregate's lifecycle as a Mermaid diagram (plan LC4b): where it starts, its
-  statuses, its ends and the transitions between them; with `overlay: true` (and
-  `:since`, `:until`) the report's counts on each transition, and the moves it does
-  not allow as dotted arrows. See `EhOsContract.Graph.Lifecycle`.
+  An aggregate's lifecycle as a Mermaid diagram: where it starts, its statuses, its
+  ends drawn heavier, and each transition as an arrow named by the event that makes
+  it. With `overlay: true` (and `:since`, `:until`) each arrow carries the report's
+  count for it, or `never` / `not yet` as the report says, and a move the lifecycle
+  does not allow that happened anyway is a dotted arrow. Raises when the contract has
+  no such aggregate, or it declares no lifecycle.
   """
   @spec lifecycle_to_mermaid(module(), atom(), keyword()) :: String.t()
   def lifecycle_to_mermaid(contract, unit, opts \\ []),
     do: EhOsContract.Graph.Lifecycle.to_mermaid(contract, unit, opts)
 
   @doc """
-  A domain's context map as a Mermaid diagram (plan EG2): its subdomains as groups of
-  their contexts, its external systems, and the relations between them. See
-  `EhOsContract.Graph.ContextMap`.
+  A domain's context map as a Mermaid diagram: its subdomains as groups of their
+  contexts, its external systems, and the relations between them. A relation with a
+  direction is an arrow from upstream to downstream; `partnership` and
+  `shared_kernel` are lines without an arrowhead, `separate_ways` a dashed line.
+  Every external system is drawn, one no relation reaches included.
   """
   @spec context_map_to_mermaid(module()) :: String.t()
   def context_map_to_mermaid(domain), do: EhOsContract.Graph.ContextMap.to_mermaid(domain)
 
   @doc """
-  A domain's v2 contracts as one Mermaid diagram (plan EG2): each context a group of
-  its contracts, and what one consumes from another, or through a publication, as
-  the edges between them. `overlay: true` lays the log over it, `since:` and
-  `until:` bound it. See `EhOsContract.Graph.System`.
+  A domain's contracts as one Mermaid diagram: each context a group of its
+  contracts, and what one consumes from another as an arrow carrying the events'
+  names. What crosses to another application is a publication node, named as on the
+  wire, which a `publish` points to and a `subscribe` points from. Contracts of
+  another domain are left out.
+
+  `overlay: true` lays the log over it: on each contract with a process, its runs;
+  on each edge, how many of the consumed events the log holds and what waits or fails
+  at the consumer's steps that start from them. A publication carries no count.
+  `since:` and `until:` bound the log.
   """
   @spec system_to_mermaid(module(), [module()], keyword()) :: String.t()
   def system_to_mermaid(domain, contracts, opts \\ []),
     do: EhOsContract.Graph.System.to_mermaid(domain, contracts, opts)
 
-  @doc """
-  `query`, over events bound as `:event`, narrowed to the period `opts` names with
-  `:since` and `:until`, as every reader of the log narrows it.
-  """
+  # `query`, over events bound as `:event`, narrowed to the period `opts` names with
+  # `:since` and `:until`, as every reader of the log narrows it.
+  # Called by contract.ex, system.ex.
+  @doc false
   @spec bounded(Ecto.Query.t(), keyword()) :: Ecto.Query.t()
   def bounded(query, opts),
     do: query |> maybe_since(opts[:since]) |> maybe_until(opts[:until])
