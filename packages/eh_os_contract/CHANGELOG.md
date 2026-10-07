@@ -69,8 +69,8 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   run): the report reads them as one step, and the log does not record which phase a command was issued in.
 - **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
   overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
-  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`, by its id) or a domain's (`--system`)
-  document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
+  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`, by its id) or a domain's (`--system` or
+  `--map`) document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
   eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
   the contract's page, and treats those files as its own when it overwrites, checks or deletes
   (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.

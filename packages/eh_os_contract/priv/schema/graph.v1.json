@@ -1266,7 +1266,7 @@
               },
               "contract": {
                 "type": "string",
-                "description": "The contract's id."
+                "description": "The id of the contract's node in this document."
               },
               "declaration": {
                 "type": "string",
