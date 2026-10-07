@@ -1,0 +1,121 @@
+name: docs
+
+# The documentation of the three packages, as a file to download: ExDoc's HTML, the
+# Markdown it is made from, and an index (.github/scripts/build-docs.sh). Nothing is
+# published: a GitHub Pages site of this private repository would be public on its
+# plan, so the docs stay where the code is (#201, #237).
+#
+# By hand, for any branch, tag or commit: Actions → docs → Run workflow; or
+# `gh workflow run docs.yml -f ref=<ref>`. The archive is the run's artifact, kept
+# 30 days. On a published release it is also attached to the release, and kept with it.
+# The build script is the checked-out ref's, so a ref from before #237 cannot be built.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to build the documentation of
+        required: true
+        default: main
+  release:
+    types: [published]
+
+# The build reads; only the job that attaches the archive to a release writes.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.name.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref || github.ref_name }}
+
+      # Passed through the environment, never written into a script: a ref is text a
+      # person typed.
+      - name: Name the archive
+        id: name
+        env:
+          REF: ${{ github.event.release.tag_name || inputs.ref || github.ref_name }}
+        run: |
+          if [[ ! "$REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "'$REF' is not a branch, tag or commit name" >&2
+            exit 1
+          fi
+          echo "name=eh-os-contract-docs-${REF//\//-}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      # The same keys as ci.yml's, so a run restores what the gate saved on `main`.
+      - name: Cache engine deps
+        uses: actions/cache@v4
+        with:
+          path: packages/eh_os_contract/deps
+          key: eh-os-contract-core-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+
+      - name: Cache dashboard foundation deps
+        uses: actions/cache@v4
+        with:
+          path: packages/eh_os_contract_web/deps
+          key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+
+      - name: Cache credential verifier deps
+        uses: actions/cache@v4
+        with:
+          path: packages/eh_os_contract_auth/deps
+          key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+
+      - name: Install engine deps
+        working-directory: packages/eh_os_contract
+        run: mix deps.get
+
+      # `--only test`, as in ci.yml: the dashboard's `:dev` dependency is in a private
+      # repository this job has no credentials for, and the docs build under MIX_ENV=test.
+      - name: Install dashboard foundation deps
+        working-directory: packages/eh_os_contract_web
+        run: mix deps.get --only test
+
+      - name: Install credential verifier deps
+        working-directory: packages/eh_os_contract_auth
+        run: mix deps.get
+
+      - name: Build the documentation
+        env:
+          REF: ${{ github.event.release.tag_name || inputs.ref || github.ref_name }}
+        run: .github/scripts/build-docs.sh "$RUNNER_TEMP/docs" "$REF"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: ${{ runner.temp }}/docs
+          retention-days: 30
+          if-no-files-found: error
+
+  attach:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.name }}
+          path: docs
+
+      - name: Attach the archive to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ needs.build.outputs.name }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          (cd docs && zip -qr "../$NAME.zip" .)
+          gh release upload "$TAG" "$NAME.zip" --clobber --repo "$GITHUB_REPOSITORY"
