@@ -23,8 +23,10 @@ defmodule EhOsContractHost.E10OutputsTest do
     # Plan DD, S4: four of them are AppUnite's transitions no scenario takes. P1d (#195):
     # Rehmed's three invented processes went with their missing `accountable`, and five
     # events only a `terminal:` or an `include` read, and a relation of the context map
-    # only that `include` crossed, came out.
-    assert output =~ "eh_os_contract.check: 0 errors, 36 warnings, 10 notices"
+    # only that `include` crossed, came out. P2f (#222): three of Rehmed's events a
+    # process module now includes have a reader, and statutory reporting no longer
+    # consumes scheduling's event across an undeclared relation.
+    assert output =~ "eh_os_contract.check: 0 errors, 32 warnings, 10 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,

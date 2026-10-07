@@ -2,8 +2,9 @@ defmodule Rehmed.ClinicalVisitTest do
   @moduledoc """
   The clinical visit across three contracts, dispatched in the host (v2 plan, E9a):
   booked in scheduling, closed in documentation, reported in statutory reporting,
-  and judged by `:clinical_visit`'s promise — P1 within two days of the patient
-  leaving (Dz.U. 2025 poz. 866).
+  and judged by the promise of `Rehmed.Processes.ClinicalVisit` — P1 within two days
+  of the patient leaving (Dz.U. 2025 poz. 866). Its runs are filed under the module's
+  id, `"rehmed.clinical_visit"` (plan DD, P2f, #222).
 
   E9's acceptance asks for the promise kept through `or_else` on a seeded run; the
   run here is seeded the way a clinic would make it, by people with credentials and
@@ -13,7 +14,7 @@ defmodule Rehmed.ClinicalVisitTest do
   use Taxvision.DataCase, async: false
 
   alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
-  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling, StatutoryReporting}
+  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling}
   alias Rehmed.Contracts.ClinicalDocumentation.Commands.CloseVisitClinically
   alias Rehmed.Contracts.Scheduling.Commands.BookVisit
   alias Rehmed.Contracts.Scheduling.Events.{PatientArrived, VisitCompleted}
@@ -82,7 +83,7 @@ defmodule Rehmed.ClinicalVisitTest do
     end)
   end
 
-  defp verdicts(opts \\ []), do: Trace.evaluate(StatutoryReporting, @promise, opts)
+  defp verdicts(opts \\ []), do: Trace.evaluate(Rehmed.Processes.ClinicalVisit, @promise, opts)
 
   # An event's type is its contract's id and its own name (D1, amended by plan DD, ID3,
   # #173): statutory reporting's events are `rehmed.statutory_reporting.*`.

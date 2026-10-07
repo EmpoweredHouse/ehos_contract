@@ -202,11 +202,11 @@ one wraps, so that an old master key can be retired.
 
     mix eh_os_contract.rewrap
 
-How a master key is rotated (`EhOsContract.Vault`): put the new key first in the
-vault's list, keep the old one after it, deploy, run this, and only then drop the
-old key. No event is rewritten; each data key is unwrapped with the key that
-wrapped it and wrapped again. It runs in batches of 500, each its own transaction,
-so it can be stopped and run again.
+It is the third of a rotation's three deploys (`EhOsContract.Vault`): the new key
+was added after the current one and deployed, then moved first and deployed; run
+this, and only then drop the old key. No event is rewritten; each data key is
+unwrapped with the key that wrapped it and wrapped again. It runs in batches of
+500, each its own transaction, so it can be stopped and run again.
 
 ## mix eh_os_contract.subscriptions
 

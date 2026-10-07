@@ -84,8 +84,44 @@ defmodule EhOsContract.Docs.DslPages do
     """
   end
 
-  defp entity_body(entity, path) do
-    path = path ++ [entity.name]
+  @doc """
+  Every entity of `extension`, as `{path, entity}`: `["contract", "policy"]`,
+  `["contract", "aggregate", "command"]` and so on, nested ones included.
+  """
+  @spec entities(module()) :: [{[String.t()], Spark.Dsl.Entity.t()}]
+  def entities(extension) do
+    section = only_section!(extension)
+    walk(section.entities, [to_string(section.name)])
+  end
+
+  defp walk(entities, path) do
+    Enum.flat_map(entities, fn entity ->
+      here = path ++ [to_string(entity.name)]
+      [{here, entity} | walk(nested(entity), here)]
+    end)
+  end
+
+  @doc """
+  The tables of an entity's arguments and options, as its reference page prints them,
+  for a region of a prose page.
+  """
+  @spec keys_table(Spark.Dsl.Entity.t()) :: String.t()
+  def keys_table(entity) do
+    {positional, named} = keys(entity)
+
+    [table("Arguments", positional), table("Options", named)]
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join("\n\n")
+  end
+
+  @doc "The names of an entity's arguments and options, as its reference page lists them."
+  @spec key_names(Spark.Dsl.Entity.t()) :: [atom()]
+  def key_names(entity) do
+    {positional, named} = keys(entity)
+    Keyword.keys(positional ++ named)
+  end
+
+  defp keys(entity) do
     args = arg_keys(entity)
 
     options =
@@ -96,7 +132,12 @@ defmodule EhOsContract.Docs.DslPages do
 
     {positional, named} = Enum.split_with(options, fn {key, _} -> key in args end)
     positional = Enum.sort_by(positional, fn {key, _} -> Enum.find_index(args, &(&1 == key)) end)
-    named = Enum.sort_by(named, fn {_key, opts} -> !opts[:required] end)
+    {positional, Enum.sort_by(named, fn {_key, opts} -> !opts[:required] end)}
+  end
+
+  defp entity_body(entity, path) do
+    path = path ++ [entity.name]
+    {positional, named} = keys(entity)
 
     children =
       case nested(entity) do

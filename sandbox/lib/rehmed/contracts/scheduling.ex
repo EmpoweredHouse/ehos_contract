@@ -38,7 +38,7 @@ defmodule Rehmed.Contracts.Scheduling do
   run per visit across booking, documentation and settlement (finding 1). Today it
   could be written only inside one of the three contracts, consuming the others'
   events just for the run, and it belongs to none of them; its place is the process
-  module (plan DD, P2b). Statutory reporting's `clinical_visit` covers part of it and includes
+  module (plan DD, P2b). `Rehmed.Processes.ClinicalVisit` covers part of it and includes
   `visit_completed` from here. Which of the three ends a visit reached is in its
   events: the state records only that it ended.
 
@@ -104,7 +104,7 @@ defmodule Rehmed.Contracts.Scheduling do
       source: "E-27"
 
     # `E-51`, the good end, `AGG-01`'s delivered state. The statutory two days to P1 count from
-    # here (Dz.U. 2025 poz. 866), which is why `StatutoryReporting` includes it.
+    # here (Dz.U. 2025 poz. 866), which is why `Rehmed.Processes.ClinicalVisit` includes it.
     event :visit_completed, "Pacjent wyszedł z gabinetu",
       recorded_by: :specialist,
       source: "E-51"

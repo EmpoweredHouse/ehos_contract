@@ -332,9 +332,19 @@ configuration:
 **Another implementation** — a KMS — is named in `config :eh_os_contract, vault:
 MyApp.KmsVault` and implements this behaviour.
 
-**Rotation.** The first key wraps every new data key; the others only unwrap.
-`mix eh_os_contract.rewrap` rewraps every data key a retired master key still
-wraps, after which that key can leave the list. No event is rewritten.
+**Rotation.** The first key wraps every new data key; the others only unwrap. A
+node whose list does not hold a key cannot unwrap what it wrapped, so a key is
+rotated in three deploys:
+
+1. add the new key **after** the current one, and deploy, so that every node can
+   unwrap what the new key will wrap;
+2. move it first, and deploy;
+3. run `mix eh_os_contract.rewrap`, which rewraps every data key the old master
+   key still wraps, then drop the old key and deploy.
+
+Putting the new key first in one step leaves the nodes still on the old list
+unable to read what the new ones write, until the rollout ends. No event is
+rewritten.
 
 **At boot** the engine refuses to start when a contract it runs declares personal
 fields and the vault is not ready: without a master key, the first such command

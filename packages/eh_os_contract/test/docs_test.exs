@@ -19,7 +19,7 @@ defmodule EhOsContract.DocsTest do
 
   use EhOsContract.DslCase, async: false
 
-  @pages ["README.md", "docs/contract.md", "docs/authorization.md"]
+  @pages EhOsContract.Docs.prose()
 
   defp read(path), do: File.read!(path)
 
@@ -242,5 +242,26 @@ defmodule EhOsContract.DocsTest do
           do: page
 
     assert missing == []
+  end
+
+  # A page about something renamed or removed is found the day it happens (#141).
+  test "what a prose page says it covers exists" do
+    names = EhOsContract.Docs.Prose.names()
+
+    unknown =
+      for page <- EhOsContract.Docs.prose(),
+          name <- EhOsContract.Docs.Prose.unknown(read(page), names),
+          do: "#{page}: #{name}"
+
+    assert unknown == []
+  end
+
+  # Otherwise a new hand-written page would be held to nothing.
+  test "every page ExDoc builds is generated, prose, or the changelog" do
+    generated = Enum.map(EhOsContract.Docs.generated(), &elem(&1, 0))
+    # `docs/rules.md` is the rules task's, `mix eh_os_contract.rules`.
+    known = generated ++ EhOsContract.Docs.prose() ++ ["docs/rules.md", "CHANGELOG.md"]
+
+    assert extras() -- known == []
   end
 end
