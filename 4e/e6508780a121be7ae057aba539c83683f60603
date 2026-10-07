@@ -1,0 +1,1 @@
+Correctness and security review. Fixed: alias false around generated routes, trailing slash trimmed, resolver doc and CHANGELOG mark the base_path change, connected live test. Documented: shared route helper names. No change: repeated route options. Reverse-checked. Gate EXIT=0.
