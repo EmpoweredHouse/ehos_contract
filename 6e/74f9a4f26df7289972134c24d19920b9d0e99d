@@ -1,0 +1,1 @@
+CodeRabbit fix-up: record!/1 -> record!/0 in child_spec's boot steps (supervisor.ex calls it with no argument); rewrap. Docs build clean.
