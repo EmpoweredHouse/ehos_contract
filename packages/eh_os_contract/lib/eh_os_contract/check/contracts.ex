@@ -72,17 +72,17 @@ defmodule EhOsContract.Check.Contracts do
   # The stage an event sits in for this contract's process: its own, or the one the
   # process gives a consumed event it includes. `nil` when it has none.
   defp stage_of(model, event) do
-    case Enum.find(model.events, &(&1.name == event)) do
-      %{stage: stage} ->
-        stage
+    Enum.find_value(Model.process_events(model), &(&1.name == event && &1.stage))
+  end
 
-      nil ->
-        model.process &&
-          Enum.find_value(model.process.includes, &(&1.event == event && &1.stage))
+  defp backward(%{model: model} = c) do
+    case Model.process(model) do
+      %{stages: [_, _ | _] = stages} -> backward(c, model, stages)
+      _none -> []
     end
   end
 
-  defp backward(%{model: %{process: %{stages: [_, _ | _] = stages}} = model} = c) do
+  defp backward(c, model, stages) do
     order = stages |> Enum.map(& &1.name) |> Enum.with_index() |> Map.new()
 
     for {kind, name, event, issues} <- reactions(model),
@@ -106,8 +106,6 @@ defmodule EhOsContract.Check.Contracts do
       )
     end
   end
-
-  defp backward(_contract), do: []
 
   # Several reactions in one transaction, to one
   # event, in an order the contract does not state. A read model is not counted: it

@@ -381,6 +381,107 @@ defmodule EhOsContract.Model do
     end
   end
 
+  @typedoc """
+  A contract's process as the model holds it: its `name` and `label`, the fields
+  that `correlate` its runs, the `accountable` actor, its `stages`, the `includes`
+  that place consumed events in it, its `deadline`, its `promises` and its `source`.
+  """
+  @type process :: %{
+          required(:name) => atom(),
+          required(:correlate) => [atom()],
+          required(:includes) => [map()],
+          required(:stages) => [map()],
+          required(:promises) => [map()],
+          optional(atom()) => term()
+        }
+
+  @typedoc """
+  One event of a process's run:
+
+    * `type` — the type it is stored under, `"<contract id>.<event>"` of the contract
+      that declares it;
+    * `name` — its name in this contract, which for an included event is the name it
+      is consumed under (`as:`), not the sibling's;
+    * `contract` — the module that declares it: this contract, or the sibling;
+    * `stage` — the stage group a local event sits in, or the stage its `include`
+      sits in; `nil` outside one;
+    * `terminal` — whether it ends a run: a local event's own `terminal:`, an
+      included one's `include`'s, never the sibling's declaration;
+    * `included` — `false` for this contract's own event, `true` for one its process
+      includes;
+    * `declaration` — the event's declaration in the contract that declares it.
+  """
+  @type process_event :: %{
+          type: String.t(),
+          name: atom(),
+          contract: module(),
+          stage: atom() | nil,
+          terminal: boolean(),
+          included: boolean(),
+          declaration: map()
+        }
+
+  @doc """
+  The process a contract declares, or `nil` when it declares none. A domain declares
+  none either.
+
+  The one way a reader asks for it: what a process is may move out of the contract,
+  and only this function would then change (plan DD, P2a, #202).
+  """
+  @spec process(contract() | map()) :: process() | nil
+  def process(%{} = model), do: Map.get(model, :process)
+  def process(module) when is_atom(module), do: module |> fetch() |> process()
+
+  @doc """
+  The events of a contract's process's run, in this order: every event the contract
+  declares, in declaration order, then every consumed event its process includes, in
+  the order of its `include`s — those at the process's level first, then each stage's
+  in turn (see `t:process_event/0`). `[]` when the contract declares no process.
+
+  An include whose event cannot be resolved to a declaration — one another
+  application publishes, which `R4` refuses, or one its sibling does not declare —
+  is left out, since it is stored under no type of this log.
+  """
+  @spec process_events(contract() | map()) :: [process_event()]
+  def process_events(contract) do
+    model = if is_atom(contract), do: fetch(contract), else: contract
+
+    case process(model) do
+      nil ->
+        []
+
+      process ->
+        own =
+          for e <- model.events do
+            %{
+              type: e.type,
+              name: e.name,
+              contract: model.module,
+              stage: e.stage,
+              terminal: e.terminal,
+              included: false,
+              declaration: e
+            }
+          end
+
+        included =
+          for include <- process.includes,
+              {contract, %{} = event} <- [declaring(model, include.event)] do
+            %{
+              type: event.type,
+              name: include.event,
+              contract: contract,
+              stage: include.stage,
+              terminal: include.terminal,
+              included: true,
+              declaration: event
+            }
+          end
+
+        own ++ included
+    end
+  end
+
   defp contract!(contract) do
     case fetch(contract) do
       %{kind: :contract} = model ->

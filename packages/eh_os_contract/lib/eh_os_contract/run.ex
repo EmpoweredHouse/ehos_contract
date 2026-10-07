@@ -93,11 +93,13 @@ defmodule EhOsContract.Run do
   """
   @spec evaluate(module(), atom(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
-    case Model.fetch(contract) do
-      %{units: _, process: %{name: ^process_name, deadline: %{} = deadline}} = model ->
+    model = Model.fetch(contract)
+
+    case {model, Model.process(model)} do
+      {%{units: _}, %{name: ^process_name, deadline: %{} = deadline}} ->
         measure(runs_of(model), {deadline.amount, deadline.unit}, opts)
 
-      %{units: _} ->
+      {%{units: _}, _none} ->
         []
     end
   end
@@ -169,19 +171,10 @@ defmodule EhOsContract.Run do
 
   @spec runs_of(map()) :: source()
   defp runs_of(model) do
-    process = model.process
+    events = Model.process_events(model)
 
-    own = for e <- model.events, do: {e.type, e.terminal}
-
-    included =
-      for include <- process.includes,
-          {_contract, event} = Model.declaring(model, include.event),
-          do: {event.type, include.terminal}
-
-    types = own ++ included
-
-    {:runs, Atom.to_string(process.name), Enum.map(types, &elem(&1, 0)),
-     for({type, true} <- types, do: type)}
+    {:runs, Atom.to_string(Model.process(model).name), Enum.map(events, & &1.type),
+     for(%{type: type, terminal: true} <- events, do: type)}
   end
 
   @spec spans(source(), keyword()) :: [{String.t(), DateTime.t(), DateTime.t() | nil}]

@@ -49,7 +49,7 @@ defmodule EhOsContract.Web.Live.Graph do
       for(
         contract <- EhOsContract.Registry.contracts(),
         model = EhOsContract.Model.fetch(contract),
-        do: %{contract: contract, id: model.id, process: model.process}
+        do: %{contract: contract, id: model.id, process: EhOsContract.Model.process(model)}
       )
       |> Enum.sort_by(& &1.id)
 

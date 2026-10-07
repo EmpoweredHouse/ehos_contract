@@ -269,7 +269,7 @@ defmodule EhOsContract.Auth.Manifest do
               "label" => declaration.label,
               "principals" => principals
             },
-            model.process
+            Model.process(model)
           ),
         roles: access.roles
       }

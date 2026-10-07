@@ -61,35 +61,33 @@ defmodule EhOsContract.Graph do
   the domain.
   """
   @spec declared_to_mermaid(module(), atom()) :: String.t()
-  def declared_to_mermaid(contract, process_name),
-    do: contract |> Model.fetch() |> declared(process_name)
+  def declared_to_mermaid(contract, process_name) do
+    model = Model.fetch(contract)
+
+    case Model.process(model) do
+      %{name: ^process_name} = process ->
+        declared(model, process)
+
+      _none ->
+        raise ArgumentError,
+              "#{inspect(model.module)} declares no process #{inspect(process_name)}"
+    end
+  end
 
   # **A contract's process** (plan E7c): its stages as lanes, titled by their label
   # where they have one; its own events in the stage group they
   # sit in, and the events it includes in the stage the `include` sits in; each
   # `promise` as an arrow with its window; the externals from the domain. The steps
   # between them are `contract_to_mermaid/2`'s picture, not this one.
-  defp declared(%{process: %{name: process_name} = process} = model, process_name) do
-    own =
-      for e <- model.events do
+  defp declared(model, process) do
+    events =
+      for e <- Model.process_events(model) do
         %{
           name: e.name,
-          label: e.label,
+          label: e.declaration.label,
           stage: e.stage,
           terminal: e.terminal,
-          depends_on: e.depends_on
-        }
-      end
-
-    included =
-      for include <- process.includes,
-          {_contract, e} <- [Model.declaring(model, include.event)] do
-        %{
-          name: include.event,
-          label: e.label,
-          stage: include.stage,
-          terminal: include.terminal,
-          depends_on: e.depends_on
+          depends_on: e.declaration.depends_on
         }
       end
 
@@ -105,17 +103,13 @@ defmodule EhOsContract.Graph do
       ["flowchart TB"] ++
         declared_lanes(
           for(s <- process.stages, do: {s.name, s.label || "#{s.name}"}),
-          own ++ included
+          events
         ) ++
         declared_assertions(traces) ++
-        declared_dependencies(externals, own ++ included) ++
-        declared_classes(own ++ included),
+        declared_dependencies(externals, events) ++
+        declared_classes(events),
       "\n"
     )
-  end
-
-  defp declared(model, process_name) do
-    raise ArgumentError, "#{inspect(model.module)} declares no process #{inspect(process_name)}"
   end
 
   defp declared_lanes([], events) do

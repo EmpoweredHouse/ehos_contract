@@ -1273,7 +1273,7 @@ defmodule EhOsContract.Dispatcher do
       contract: model.id,
       contract_version: model.version,
       tags: tags(declaration, event, values, time_zone(model)),
-      process: model.process && Atom.to_string(model.process.name),
+      process: process_name(model),
       instance_id: instance(model, event),
       # The runs of the processes that include it (D7), written with it.
       runs: included_runs(model, declaration.type, event),
@@ -1322,8 +1322,19 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # The run a struct belongs to: the process's name, then its correlation values.
-  defp instance(%{process: nil}, _struct), do: nil
-  defp instance(%{process: process}, struct), do: run_key(process, struct)
+  defp instance(model, struct) do
+    case Model.process(model) do
+      nil -> nil
+      process -> run_key(process, struct)
+    end
+  end
+
+  defp process_name(model) do
+    case Model.process(model) do
+      nil -> nil
+      process -> Atom.to_string(process.name)
+    end
+  end
 
   defp run_key(process, struct) do
     values = Enum.map(process.correlate, &Map.get(struct, &1))
@@ -1338,7 +1349,7 @@ defmodule EhOsContract.Dispatcher do
         home =
           case instance(model, event) do
             nil -> []
-            key -> [{Atom.to_string(model.process.name), key}]
+            key -> [{process_name(model), key}]
           end
 
         home ++ included_runs(model, declaration.type, event)
@@ -1377,7 +1388,7 @@ defmodule EhOsContract.Dispatcher do
             # Each type once, in the order first read: a boundary reads what may be the
             # whole history of a type, and coverage asks only which types were there.
             given_types: job |> Map.get(:given, []) |> Enum.map(& &1.type) |> Enum.uniq(),
-            process: model.process && Atom.to_string(model.process.name),
+            process: process_name(model),
             instance_id: instance(model, job.command)
           },
           fields

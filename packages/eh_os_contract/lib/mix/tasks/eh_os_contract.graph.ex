@@ -119,7 +119,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
     contract =
       Enum.find(EhOsContract.Registry.contracts(), fn c ->
-        match?(%{process: %{name: ^name}}, EhOsContract.Model.fetch(c))
+        match?(%{name: ^name}, EhOsContract.Model.process(c))
       end)
 
     cond do
@@ -139,7 +139,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         known =
           for(
             c <- EhOsContract.Registry.contracts(),
-            %{process: %{name: n}} <- [EhOsContract.Model.fetch(c)],
+            %{name: n} <- [EhOsContract.Model.process(c)],
             do: n
           )
           |> Enum.sort()

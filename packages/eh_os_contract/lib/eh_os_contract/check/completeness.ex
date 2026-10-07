@@ -16,6 +16,7 @@ defmodule EhOsContract.Check.Completeness do
   alias EhOsContract.Check.Finding
   alias EhOsContract.Domain
   alias EhOsContract.Lifecycle
+  alias EhOsContract.Model
   alias EhOsContract.Contract.{Links, Rules}
 
   @doc """
@@ -89,7 +90,7 @@ defmodule EhOsContract.Check.Completeness do
   # it, process or not. The unit's own `evolve` does not count; ESDM's aggregate folds
   # its events too.
   defp events_without_consumer(%{model: model} = c, all) do
-    process = model.process
+    process = Model.process(model)
 
     local =
       Enum.flat_map(model.policies, &List.wrap(&1.handles)) ++
@@ -463,7 +464,7 @@ defmodule EhOsContract.Check.Completeness do
               Enum.flat_map(m.commands, & &1.by) ++
                 Enum.flat_map(m.queries, & &1.by) ++
                 Enum.flat_map(m.events, & &1.recorded_by) ++
-                List.wrap(m.process && m.process.accountable),
+                List.wrap(Model.process(m)[:accountable]),
             do: actor
       )
 
@@ -826,7 +827,7 @@ defmodule EhOsContract.Check.Completeness do
       Enum.flat_map(contract.commands, & &1.by) ++
         Enum.flat_map(contract.queries, & &1.by) ++
         Enum.flat_map(contract.events, & &1.recorded_by) ++
-        List.wrap(contract.process && contract.process.accountable)
+        List.wrap(Model.process(contract)[:accountable])
 
     Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
       Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++

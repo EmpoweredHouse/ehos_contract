@@ -15,6 +15,7 @@ defmodule EhOsContract.Check do
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Contract.Links
+  alias EhOsContract.Model
 
   @doc """
   What `mix eh_os_contract.check` says about contracts (plan E7c-2), each finding
@@ -38,9 +39,14 @@ defmodule EhOsContract.Check do
     end
   end
 
-  defp process_findings(%{model: %{process: nil}}), do: []
+  defp process_findings(%{model: model} = linked) do
+    case Model.process(model) do
+      nil -> []
+      process -> process_findings(linked, process)
+    end
+  end
 
-  defp process_findings(%{model: %{process: process} = model, declarations: declarations}) do
+  defp process_findings(%{model: model, declarations: declarations}, process) do
     name = inspect(model.module)
     declared = Enum.find(declarations.processes, &(&1.name == process.name))
     at = declared && Links.at(declared)
@@ -89,8 +95,7 @@ defmodule EhOsContract.Check do
         )
       end
 
-    ends? =
-      Enum.any?(model.events, & &1.terminal) or Enum.any?(process.includes, & &1.terminal)
+    ends? = Enum.any?(Model.process_events(model), & &1.terminal)
 
     unobservable =
       if process.deadline && not ends?,

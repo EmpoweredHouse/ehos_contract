@@ -51,9 +51,8 @@ defmodule EhOsContract.Graph.Contract do
       for step <- steps, ref <- [step.from, step.via, step.to], ref != nil, do: graph_node(ref)
 
     included =
-      for include <- (model.process && model.process.includes) || [],
-          {_contract, e} <- [Model.declaring(model, include.event)],
-          do: graph_node(:event, %{e | name: include.event})
+      for %{included: true} = e <- Model.process_events(model),
+          do: graph_node(:event, %{e.declaration | name: e.name})
 
     {read_nodes, read_edges} = read_side(model)
     {actor_nodes, actor_edges} = actors(model, actors)
@@ -309,15 +308,13 @@ defmodule EhOsContract.Graph.Contract do
   # Occurrences of each event the contract records, and of each its process includes:
   # counted in the log, whatever run, if any, they fall in (plan DD, P1a, #183).
   defp event_counts(model, opts) do
-    includes = (model.process && model.process.includes) || []
-    names = Enum.map(model.events, & &1.name) ++ Enum.map(includes, & &1.event)
-
-    # A sibling this node cannot load declares nothing here, and is left out.
+    # A contract with no process still counts its own events; an included event a
+    # sibling does not declare is left out.
     by_type =
-      for name <- names,
-          {_contract, e} <- [Model.declaring(model, name)],
-          into: %{},
-          do: {e.type, name}
+      Map.new(model.events, &{&1.type, &1.name})
+      |> Map.merge(
+        for(%{included: true} = e <- Model.process_events(model), into: %{}, do: {e.type, e.name})
+      )
 
     types = Map.keys(by_type)
 

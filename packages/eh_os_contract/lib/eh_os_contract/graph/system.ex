@@ -98,8 +98,12 @@ defmodule EhOsContract.Graph.System do
 
   # --- nodes ---------------------------------------------------------------------------
 
-  defp contract_label(%{module: module, process: nil}), do: short(module)
-  defp contract_label(%{module: module, process: p}), do: "#{short(module)} · #{p.label}"
+  defp contract_label(%{module: module} = model) do
+    case Model.process(model) do
+      nil -> short(module)
+      process -> "#{short(module)} · #{process.label}"
+    end
+  end
 
   defp short(module), do: module |> Module.split() |> List.last()
 
@@ -169,10 +173,12 @@ defmodule EhOsContract.Graph.System do
 
   # A process's runs: a step counts occurrences (plan DD, P1a, #183), so the process
   # is asked for its own.
-  defp runs(%{process: nil}, _opts), do: nil
-
-  defp runs(model, opts),
-    do: Paths.runs_of(model, Atom.to_string(model.process.name), opts)
+  defp runs(model, opts) do
+    case Model.process(model) do
+      nil -> nil
+      process -> Paths.runs_of(model, Atom.to_string(process.name), opts)
+    end
+  end
 
   # How many events of each type the log holds, in the period. `count(position)`
   # rather than of the id, so the `(type, position)` index answers it alone.
