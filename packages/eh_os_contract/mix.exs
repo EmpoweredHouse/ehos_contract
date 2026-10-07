@@ -153,9 +153,16 @@ defmodule EhOsContract.MixProject do
       # compiles `test/support/` and `dev/`; documenting them would let a doc in `lib/`
       # cite a fixture and pass here, then be a dead link once published.
       filter_modules: &lib_module?/2,
-      source_ref: "v#{@version}"
+      # The package is a directory of its repository, so a source link names it. A build
+      # of the docs for a commit (.github/scripts/build-docs.sh) links there; a release,
+      # to its version tag.
+      source_ref: source_ref(),
+      source_url_pattern:
+        "#{@source_url}/blob/#{source_ref()}/packages/eh_os_contract/%{path}#L%{line}"
     ]
   end
+
+  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "v#{@version}")
 
   @lib Path.join(__DIR__, "lib") <> "/"
 

@@ -84,11 +84,17 @@ The Markdown pages read as they are in the repository. The HTML, with the API re
 by the `docs` workflow (`.github/workflows/docs.yml`) into one archive: the three packages' ExDoc HTML, the
 Markdown it is made from, and an `index.html` linking them.
 
-- **By hand**, for any branch, tag or commit: Actions → docs → Run workflow, or
-  `gh workflow run docs.yml -f ref=main`. The archive is the run's artifact, kept 30 days
-  (`gh run download <run id>`).
-- **With a release**: publishing one attaches the archive to it.
-- **Locally**: `.github/scripts/build-docs.sh <directory> <ref>` from the repository's root, after `mix deps.get`
-  in each package (`--only test` for the dashboard).
+- **By hand**, for any branch, tag or full 40-character commit SHA (a short one is read as a branch): Actions →
+  docs → Run workflow, or `gh workflow run docs.yml -f ref=main`. The archive is the run's artifact, kept 30
+  days (`gh run download <run id>`). A ref from before the workflow existed (#237) cannot be built: the build
+  script is the ref's own.
+- **With a release**: publishing one attaches the archive to it. A draft does not; a release created by
+  another workflow with its own token does not either.
+- **Locally**: `.github/scripts/build-docs.sh <directory> <ref>`, after `mix deps.get` in each package
+  (`--only test` for the dashboard). The directory is replaced, so the script refuses one that exists and is
+  not an earlier build of its own.
+
+"View source" links to the commit built: `EH_OS_CONTRACT_DOCS_SOURCE_REF`, which the script sets, overrides
+each package's `source_ref`, the version tag otherwise.
 
 Nothing is published to a site: a GitHub Pages site of this private repository would be public (#201).
