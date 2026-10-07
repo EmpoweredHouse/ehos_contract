@@ -207,4 +207,40 @@ defmodule EhOsContract.DocsTest do
 
     assert broken == []
   end
+
+  test "every anchor a page links to is on its page" do
+    broken =
+      for page <- extras(),
+          [file, anchor] <-
+            Regex.scan(~r/\]\(([^)#:]*)#([^)]+)\)/u, read(page), capture: :all_but_first),
+          target = if(file == "", do: page, else: Path.expand(file, Path.dirname(page))),
+          not (File.exists?(target) and read(target) =~ ~s(id="#{anchor}")),
+          do: "#{page} → #{file}##{anchor}"
+
+    assert broken == []
+  end
+
+  # `EhOsContract.DslWrappers` widens an optional argument with a keyword list no
+  # declaration may pass; the reference shows the type as declared.
+  test "an optional argument's type is shown as declared, not as the wrappers widen it" do
+    widened =
+      for {page, key} <- [{"contract-consumes", "events"}, {"domain-value", "type"}],
+          [row] <- Regex.scan(~r/^\| `#{key}` \|.*$/mu, read("docs/dsl/#{page}.md")),
+          row =~ "keyword",
+          do: row
+
+    assert widened == []
+  end
+
+  # A link to an entity of the old single page needs only its file changed.
+  test "the page of a DSL entity carries the entity's anchor" do
+    missing =
+      for page <- Path.wildcard("docs/dsl/*-*.md"),
+          not String.ends_with?(page, "-dsl.md"),
+          id = Path.basename(page, ".md"),
+          not (read(page) =~ ~s(<a id="#{id}"></a>)),
+          do: page
+
+    assert missing == []
+  end
 end
