@@ -38,6 +38,7 @@ means today's `EhOsContract.X`.
 | **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
 | Every rule of `mix eh_os_contract.check` (generated) | [`packages/eh_os_contract/docs/rules.md`](packages/eh_os_contract/docs/rules.md) |
+| What to write and run when you add something, so the docs stay true | [`packages/eh_os_contract/MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
 | The initial assumptions and decisions, the `§N` code comments cite | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | The contract language v2, its rules and shapes | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
 | Code shapes, schemas, pitfalls, libraries: the `notes §N` comments cite | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |

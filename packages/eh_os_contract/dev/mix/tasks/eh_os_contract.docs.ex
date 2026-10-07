@@ -87,7 +87,7 @@ defmodule Mix.Tasks.EhOsContract.Docs do
     end
   end
 
-  # Not a failure: the concept pages that will cover them are not written yet.
+  # Printed here, failed in `test/docs_test.exs`, which `mix check` runs.
   defp report_coverage(prose, list?) do
     case Prose.uncovered(prose) do
       [] ->

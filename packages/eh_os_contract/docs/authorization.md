@@ -1,8 +1,7 @@
 # Authorization
 
 How an application built on `eh_os_contract` decides who may issue a command, ask a query or
-record an event. The design is recorded in `docs/adr/contract-v2.md` (§11, §16 D10 and D14, and the
-dated note of 26 September 2026); this page explains how the pieces fit, and what is built today.
+record an event. This page explains how the pieces fit, and what is built today.
 
 ## The approach in one sentence
 
@@ -39,7 +38,7 @@ no credential can be granted it, even by mistake; the application's own `:system
 without a credential.
 
 Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
-whole application, which the compiler checks (D14).
+whole application, which the compiler checks ([`D14`](contract.md#refusals-d)).
 
 ## The flow, end to end
 
@@ -174,7 +173,7 @@ end
 
 ## Scope: narrowing a query to rows
 
-A query may be scoped by one field of its read model (D10):
+A query may be scoped by one field of its read model ([`D10`](contract.md#refusals-d)):
 
 ```elixir
 # in the domain
@@ -213,7 +212,7 @@ stays in the application's code.
 ## Recording an event
 
 `EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
-observation or an integration's answer (D6). Its capability is `<domain>.<event>`, with the roles of
+observation or an integration's answer. Its capability is `<domain>.<event>`, with the roles of
 the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command —
 reception marking that the patient arrived needs `rehmed.patient_arrived`. A `:system` actor the
 event names records it without a credential. `EhOsContract.Plug` serves it as

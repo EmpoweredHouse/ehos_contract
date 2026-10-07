@@ -27,8 +27,8 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 - **A system actor is the application's own code**, a job or an import, acting as itself:
   `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential, and may do what the declarations
   naming it allow. `backed_by:` names the external system it stands for; a human actor with `backed_by:` does
-  not compile (`D4`).
-- **`context:`** places the actor in one context. A contract of another context may not name it (`X2`). An
+  not compile ([`D4`](../contract.md#refusals-d)).
+- **`context:`** places the actor in one context. A contract of another context may not name it ([`X2`](../contract.md#refusals-x)). An
   actor without `context:` may act in any.
 - **`responsibility`** inside the actor's block names what it answers for, as the material says it: prose a
   page shows and nothing runs.
@@ -39,7 +39,7 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 or a command declared with `scope: :shop_id` is then asked of the `EhOsContract.Authorizer` with the value of
 that field, and a credential whose grant holds other shops is refused; a scoped capability granted with no
 values is refused too, since empty is not "all". Every actor in a scoped declaration's `by:` has to carry the
-dimension (`D10`). What the checks do, before and after a query runs, is in
+dimension ([`D10`](../contract.md#refusals-d)). What the checks do, before and after a query runs, is in
 [authorization](../authorization.md).
 
 ## Subjects and personal data
@@ -60,7 +60,7 @@ field :customer_phone, :string, personal: :customer_id
 ```
 
 The identifier must be a required, non-personal `:id` field of the same struct, with `subject:`, and the
-subject must be declared in the domain (`F5`, `X3`).
+subject must be declared in the domain ([`F5`](../contract.md#refusals-f), [`X3`](../contract.md#refusals-x)).
 
 **What the engine does with it.** Each subject gets a data key, 32 random bytes, the first time an event
 carries its personal data. Every personal field of an event is encrypted with that key before it is
@@ -91,8 +91,8 @@ appends nothing. From then on:
 Who may erase is the host's to decide: `erase/3` asks no `Authorizer`.
 
 Personal data stays where it can be erased. A field a run is told by (a `correlate` field) may not be
-personal (`F4`), nor a process manager's state field or a scope field (`F7`), and a publication carries none
-(`D11`): a copy on a broker cannot be erased.
+personal ([`F4`](../contract.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../contract.md#refusals-f)), and a publication carries none
+([`D11`](../contract.md#refusals-d)): a copy on a broker cannot be erased.
 
 ## Values
 
@@ -110,7 +110,7 @@ value :address, label: "Address" do
 end
 ```
 
-A value has a type or fields, never both and never neither (`D3`), and a `unit` only on an `:integer` or a
+A value has a type or fields, never both and never neither ([`D3`](../contract.md#refusals-d)), and a `unit` only on an `:integer` or a
 `:decimal`. A field of a value made of fields may be `personal:`, naming an identifier field of the value with
 its `subject:`; a field of such a value then holds personal data wherever it is used.
 
@@ -147,7 +147,7 @@ entity :shop, "Shop", context: :workshop, identity: :shop_id
 
 It belongs to one context (required), and its `identity` is injected into its fields as a required,
 non-personal `:id`. `issued_by:` names the external system that gives the identity, when one does. An
-entity's fields may not be personal (`D6`). A contract naming an entity of another context depends on that
+entity's fields may not be personal ([`D6`](../contract.md#refusals-d)). A contract naming an entity of another context depends on that
 context, which [the domain](domain.md) says how to declare.
 
 When a thing's lifecycle is decided by commands of this application, it is not an entity of the domain but a
@@ -174,14 +174,14 @@ outage looks like to the business and how long an answer usually takes; pages pr
 A contract uses an external in four ways:
 
 - an **effect** `calls:` it, `calls: {:sms_gateway, :send_text}`. Once an external declares an `operation`,
-  every call to it names one (`X4`);
+  every call to it names one ([`X4`](../contract.md#refusals-x));
 - an **event** `depends_on:` it, when the fact needs the system's answer;
 - a **field** is `issued_by:` it, when the system gives its value, such as an invoice number or a parcel's
   tracking number;
 - a **system actor** is `backed_by:` it, when the system acts in the application.
 
 An external may also be an end of a directed relation, its other end a context. A name that is both a context
-and an external does not compile (`D1`).
+and an external does not compile ([`D1`](../contract.md#refusals-d)).
 
 ## An example
 
@@ -290,21 +290,21 @@ end
 
 The full table is in [Writing a domain and a contract](../contract.md). For what this page covers:
 
-- **`D1`**: a name not snake_case, declared twice, or both a context and an external; an operation or a
+- **[`D1`](../contract.md#refusals-d)**: a name not snake_case, declared twice, or both a context and an external; an operation or a
   responsibility not snake_case or declared twice.
-- **`D3`**: a value with both or neither of a type and fields, a `unit` on a value that is not numeric, an
+- **[`D3`](../contract.md#refusals-d)**: a value with both or neither of a type and fields, a `unit` on a value that is not numeric, an
   undeclared `context:`, values in a cycle.
-- **`D4`**: an actor's name not snake_case, a human actor with `backed_by`, `backed_by` naming no external,
+- **[`D4`](../contract.md#refusals-d)**: an actor's name not snake_case, a human actor with `backed_by`, `backed_by` naming no external,
   an undeclared `context:`.
-- **`D6`**: `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, or a field
+- **[`D6`](../contract.md#refusals-d)**: `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, or a field
   that is personal or holds personal data.
-- **`D8`**: `issued_by:` naming what is not an external of the domain.
-- **`D9`**: a value invariant without examples of both kinds, an example not of the value's type, or one
+- **[`D8`](../contract.md#refusals-d)**: `issued_by:` naming what is not an external of the domain.
+- **[`D9`](../contract.md#refusals-d)**: a value invariant without examples of both kinds, an example not of the value's type, or one
   that keeps an invariant and that another invariant lists as breaking.
-- **`D10`**: a scoped query or command whose `by:` names an actor that does not carry the scope.
-- **`F5`**: `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same
+- **[`D10`](../contract.md#refusals-d)**: a scoped query or command whose `by:` names an actor that does not carry the scope.
+- **[`F5`](../contract.md#refusals-f)**: `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same
   struct; a personal field whose type holds personal data of its own.
-- **`X2`**, **`X3`**, **`X4`**: `by:` or `recorded_by:` naming no actor of the domain or one of another
+- **[`X2`](../contract.md#refusals-x)**, **[`X3`](../contract.md#refusals-x)**, **[`X4`](../contract.md#refusals-x)**: `by:` or `recorded_by:` naming no actor of the domain or one of another
   context; a type, an entity or a `subject:` the domain does not declare; `calls:`, `depends_on:` or
   `issued_by:` naming no external, or an operation the external does not declare.
 
