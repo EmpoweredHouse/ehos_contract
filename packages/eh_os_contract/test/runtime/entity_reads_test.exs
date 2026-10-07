@@ -32,7 +32,12 @@ defmodule EhOsContract.EntityReadsTest do
 
     # `shelf`, which the host's row has and the domain does not declare, is not kept.
     assert row!("place_order").inputs == %{
-             "product" => %{"product_id" => "product-tea", "price" => 4, "on_sale" => true}
+             "product" => %{
+               "product_id" => "product-tea",
+               "price" => 4,
+               "on_sale" => true,
+               "discount" => nil
+             }
            }
   end
 

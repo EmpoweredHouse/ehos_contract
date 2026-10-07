@@ -452,13 +452,31 @@ defmodule EhOsContract.ScenarioCase do
                 "with #{inspect(declared.identity)}: #{inspect(id)}"
             )
 
-        {name, cast_data(declared.fields, given.data, domain(model))}
+        {name, row!(model, declared, given.data)}
       end)
 
     [rows]
   end
 
   defp reads(_model, _declaration, _command, _scenario), do: []
+
+  # The row as dispatch hands it over: every declared field, `nil` where the scenario
+  # leaves an optional one out, and each value held to its domain value's invariants.
+  defp row!(model, declared, data) do
+    cast = cast_data(declared.fields, data, domain(model))
+    row = Map.new(declared.fields, &{&1.name, Map.get(cast, &1.name)})
+
+    case EhOsContract.Codec.problems(declared.fields, row, domain(model), model.domain) do
+      [] ->
+        row
+
+      problems ->
+        flunk(
+          "given_entity #{inspect(declared.name)}: the row does not fit its declaration: " <>
+            inspect(problems)
+        )
+    end
+  end
 
   # Every expected row matches a different answered row, trying each pairing: a row
   # that names fewer fields may match several, and the first fit need not be the one

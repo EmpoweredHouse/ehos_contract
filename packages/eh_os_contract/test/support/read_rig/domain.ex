@@ -15,5 +15,6 @@ defmodule ReadRig.Domain do
   entity :product, "Product", context: :shop, identity: :product_id do
     field :price, :integer, label: "Price"
     field :on_sale, :boolean, label: "On sale"
+    field :discount, :integer, label: "Discount per item", optional: true
   end
 end

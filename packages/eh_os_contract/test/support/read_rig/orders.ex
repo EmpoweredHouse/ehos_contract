@@ -53,6 +53,12 @@ defmodule ReadRig.Orders do
     expect :placed, %{product_id: "product-tea", total: 12}
   end
 
+  scenario "a discount on the product lowers the total" do
+    given_entity :product, %{product_id: "product-tea", price: 4, on_sale: true, discount: 1}
+    command :place_order, %{product_id: "product-tea", quantity: 3}
+    expect :placed, %{total: 9}
+  end
+
   scenario "a product no longer on sale is not ordered" do
     given_entity(:product, %{product_id: "product-tea", price: 4, on_sale: false})
     command :place_order, %{product_id: "product-tea", quantity: 3}
@@ -95,7 +101,7 @@ defmodule ReadRig.Order do
       emit(%Placed{
         order_id: c.order_id,
         product_id: c.product_id,
-        total: product.price * c.quantity
+        total: (product.price - (product.discount || 0)) * c.quantity
       })
     else
       reject(:product_on_sale)
