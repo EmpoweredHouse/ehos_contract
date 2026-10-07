@@ -25,12 +25,13 @@ when one differs from what the task would write now:
 `docs/contract.md`, `docs/concepts/*.md` and `docs/authorization.md`. The list is
 `EhOsContract.Docs.prose/0` (in `dev/`). Each of them:
 
-- has at least one example that defines a module, and every example compiles, with the modules the page defines
-  before it, and passes the rules between modules (`test/docs_test.exs`);
+- has at least one example that defines a module, and every `elixir` block that defines one compiles, with the
+  modules the page defines before it, and passes the rules between modules (`test/docs_test.exs`); a snippet
+  that defines nothing is not compiled, so read it against the code;
 - says what it explains in a `<!-- covers: entities …; keys …; rules … -->` comment, and every name there has to
   exist (`EhOsContract.Docs.Prose`);
 - links each refusal code it names, `` [`D4`](contract.md#refusals-d) ``, to its family's table in
-  `docs/contract.md`;
+  `docs/contract.md`, with or without backticks around the code;
 - may hold a generated region, `<!-- generated: config -->` … `<!-- /generated -->`, which
   `mix eh_os_contract.docs` rewrites and you do not edit.
 
@@ -50,8 +51,8 @@ Run the tasks in this package with `MIX_ENV=dev`, and commit the pages they rewr
 | A mix task or a behaviour callback | its `@moduledoc` and `@shortdoc`, or its `@doc` | `mix eh_os_contract.docs` | `eh_os_contract.docs --check` |
 | A rule of `mix eh_os_contract.check` | its entry in `EhOsContract.Check.Catalog`, and its name in a prose page's `covers:` | `mix eh_os_contract.rules` | `eh_os_contract.rules --check`; `docs_test`: covered by no prose page |
 | A compile refusal code | its row in its family's table in `docs/contract.md`, and a test in `test/dsl/` asserting it | nothing | `docs_test`: the table names exactly the codes the library raises, each tested |
-| A new family of refusal codes (a new letter) | a table of its own in `docs/contract.md`, after `<a id="refusals-<letter>"></a>` and a heading | nothing | `docs_test`: a link to an anchor that is not there |
-| A sentence in a prose page that names a code | the code as a link to its family | nothing | `docs_test`: a bare code, or one linked to another family |
+| A new family of refusal codes (a new letter) | a table of its own in `docs/contract.md`, after `<a id="refusals-<letter>"></a>` and a heading | nothing | `docs_test`: a family without its anchor |
+| A sentence in a prose page that names a code | the code as a link to its family | nothing | `docs_test`: a bare code, a link to another family, or a link to a code no row has |
 | A guide or concept page | see below | `mix eh_os_contract.docs` | `docs_test`, the link and anchor tests |
 
 What the gate cannot see, a reviewer reads for: whether a page still says what the code does after a change in

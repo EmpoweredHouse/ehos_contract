@@ -139,9 +139,9 @@ end
   when it has stages, and a `promise` is what the process owner agreed happens — from one event, eventually
   another, within a time, or else a third. `deadline` bounds the whole run. A contract whose
   units only decide and record — a register of equipment, of rooms — declares no process, and then nothing
-  that belongs to a run: no `stage` group and no `terminal:` event (R1).
+  that belongs to a run: no `stage` group and no `terminal:` event ([`R1`](#refusals-r)).
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
-  rejection. Every invariant needs a `rejected` scenario (S8). `EhOsContract.ScenarioCase` turns each into
+  rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
 
   ```elixir
@@ -166,7 +166,7 @@ say the `state` its run holds after the trigger — `state %{check_at: "2026-02-
 :event_id, owner: :downstream]`: its own code (`:self`), the system an effect calls, given the key
 (`:downstream`), or the engine (`:infrastructure`), which keys the commands a policy issues. A policy or a
 read model left without `delivery` runs `:in_transaction`, inside the transaction that records the event — so
-one that takes an event of a sibling of another context has to declare it (**X10**), and
+one that takes an event of a sibling of another context has to declare it (**[`X10`](#refusals-x)**), and
 `mix eh_os_contract.check` warns of a declared `:in_transaction` there. `consumes` takes a sibling contract's events, and
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
@@ -431,7 +431,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 <a id="refusals-d"></a>
 
-### `D`: the domain
+### `D`: the domain, and the names and scopes a contract builds on it
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
@@ -462,10 +462,10 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
-| `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
 | `X7` | L3 | two processes of the system with one name, which keys their runs, a process module's being its `id:`; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |
+| `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
 
 <a id="refusals-i"></a>
 

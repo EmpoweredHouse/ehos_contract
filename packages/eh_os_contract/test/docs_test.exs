@@ -13,8 +13,14 @@ defmodule EhOsContract.DocsTest do
       library refuses with, each of which a test in `test/dsl/` asserts;
     * every section, entity, argument and option of both DSLs says what it is, since
       the generated reference prints nothing else;
-    * every relative link between the pages leads to a page, and no two pages share
-      the basename ExDoc names a page after.
+    * every relative link between the pages leads to a page, and every anchor it
+      names is there; no two pages share the basename ExDoc names a page after;
+    * a refusal code in a prose page links to its family's table, and each family
+      has one;
+    * every page ExDoc builds is generated or prose, and every such page is built;
+    * every top-level entity and rule is covered by some prose page.
+
+  `MAINTAINING-DOCS.md` says what each failure asks of whoever changes the library.
   """
 
   use EhOsContract.DslCase, async: false
@@ -136,35 +142,54 @@ defmodule EhOsContract.DocsTest do
     assert Enum.sort(untested) == []
   end
 
-  # A reader meets a code in prose and needs its row: each links to its family's table,
-  # whose anchor the link test below holds. Examples, the table's own rows and headings
-  # are left as they are.
+  # A reader meets a code in prose and needs its row: each links to its family's table.
+  # Examples, headings and the refusal rows themselves are left as they are; a code is
+  # found with or without backticks, since `**X10**` reads as one too.
   test "a refusal code in a prose page links to its family in the table" do
     codes = codes_in_table()
 
+    problems =
+      for page <- @pages,
+          line <- page |> read() |> EhOsContract.Docs.Prose.outside_fences(),
+          not String.starts_with?(line, "#"),
+          not Regex.match?(~r/^\| `[A-Z]+[0-9]+` \|/u, line),
+          problem <- code_problems(line, codes),
+          do: "#{page}: #{problem}"
+
+    assert problems == []
+  end
+
+  # A link whose text is a code goes to that code's family, in contract.md or on it; any
+  # other mention of a code, a link's text taken out, is bare.
+  defp code_problems(line, codes) do
+    links =
+      for [code, family, target] <-
+            Regex.scan(~r/\[`?(([A-Z]+)[0-9]+)`?\]\(([^)]*)\)/u, line, capture: :all_but_first),
+          Map.has_key?(codes, code) or target =~ "#refusals-",
+          not Map.has_key?(codes, code) or
+            not Regex.match?(~r/(\A|contract\.md)#refusals-#{String.downcase(family)}\z/u, target),
+          do: "#{code} links to #{target}"
+
     bare =
-      for page <- @pages,
-          line <-
-            read(page)
-            |> String.replace(~r/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1[ \t]*$/msu, "")
-            |> String.split("\n"),
-          not String.starts_with?(line, ["#", "| `"]),
-          [code] <- Regex.scan(~r/(?<!\[)`([A-Z]+[0-9]+)`/u, line, capture: :all_but_first),
-          Map.has_key?(codes, code),
-          do: "#{page}: #{code}"
-
-    assert bare == []
-
-    misfiled =
-      for page <- @pages,
-          [code, family] <-
-            Regex.scan(~r/\[`([A-Z]+)[0-9]+`\]\([^)#]*#refusals-([a-z]+)\)/u, read(page),
+      for [code] <-
+            Regex.scan(~r/\b([A-Z]+[0-9]+)\b/u, Regex.replace(~r/\[[^\]]*\]\([^)]*\)/u, line, ""),
               capture: :all_but_first
             ),
-          String.downcase(code) != family,
-          do: "#{page}: #{code} → #{family}"
+          Map.has_key?(codes, code),
+          do: "#{code} is not a link"
 
-    assert misfiled == []
+    links ++ bare
+  end
+
+  test "every family of refusal codes has its table's anchor" do
+    families = codes_in_table() |> Map.keys() |> Enum.map(&String.replace(&1, ~r/[0-9]+/u, ""))
+
+    missing =
+      for family <- Enum.uniq(families),
+          not (read("docs/contract.md") =~ ~s(<a id="refusals-#{String.downcase(family)}"></a>)),
+          do: family
+
+    assert missing == []
   end
 
   # Every section and entity of an extension, with where it sits.
