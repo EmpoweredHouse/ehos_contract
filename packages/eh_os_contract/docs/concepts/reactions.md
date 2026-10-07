@@ -7,7 +7,8 @@ runs, what a failure leaves in the log, and how a second delivery is made harmle
 
 A unit decides; a reaction follows. Every reaction is declared in the contract beside the units, takes events
 of this contract or of a sibling it `consumes`, and is bound by a module of its own, `use <Contract>, policy:
-:name`, as a unit is. The fourth kind of consumer, a read model with the query that reads it, keeps rows for
+:name`, as a unit is. A policy may also take an event this contract `subscribe`s to from another
+application, from its inbox ([between contracts](between-contracts.md)). The fourth kind of consumer, a read model with the query that reads it, keeps rows for
 someone to read and decides nothing; it has [its own page](reading.md).
 
 ## Which kind

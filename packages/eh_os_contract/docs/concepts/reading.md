@@ -143,7 +143,9 @@ end
   dispatch returns, and a projection that raises rolls the command back with it. A read model of an
   event of a sibling contract in another context has to say which it is (`X10`).
 - `:at_least_once`: a subscription reads the log in order after the commit, in batches, and moves its
-  position in the same transaction as the rows it wrote, so each batch is applied once. An event that
+  position in the same transaction as the rows it wrote, so each batch's rows are committed once. A
+  callback may still run more than once (a batch that raises is run again), so keep it to writes in that
+  transaction, or make what it does outside it idempotent. An event that
   raises is retried, and after three attempts the subscription stops at it as `failing` rather than
   skip it; `mix eh_os_contract.subscriptions` shows where each one stands, and moving past the event
   is a person's decision.
