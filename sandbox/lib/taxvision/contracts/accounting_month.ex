@@ -43,12 +43,14 @@ defmodule Taxvision.Contracts.AccountingMonth do
   leaves as `taxvision.accounting_month.opened.v1`. The relay is E12's, so nothing
   leaves yet.
 
-  ## The promise
+  ## The run
 
-  Two days from the confirmed data to an open month, or a discrepancy that blocks
-  it — v1's assertion, now on the facts of two contexts. `accounting_month_opened`
-  keeps the workshop's name, and `check` says it starts with the unit's
-  (`event-name-with-aggregate-prefix`, kept by decision before E9).
+  The month's run — the registries' verdict, the opening and the matching, and the
+  promise of two days from the confirmed data to an open month or a discrepancy
+  that blocks it — is `Taxvision.Processes.AccountingMonth` since plan DD, P2f
+  (#222). `accounting_month_opened` keeps the workshop's name, and `check` says it
+  starts with the unit's (`event-name-with-aggregate-prefix`, kept by decision
+  before E9).
   """
 
   use EhOsContract.Contract,
@@ -57,7 +59,6 @@ defmodule Taxvision.Contracts.AccountingMonth do
     id: "taxvision.accounting_month"
 
   consumes Taxvision.Contracts.RegistryWatch, [
-    :data_completeness_confirmed,
     :registry_data_consistent,
     :registry_discrepancy_detected
   ]
@@ -89,10 +90,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
       rejects: [:opens_once, :opens_only_on_consistent_registry],
       source: "03 §4.4 OpenMonth; ręcznie przez księgową tej firmy (decyzja przed E9c)"
 
-    stage :opening do
-      event :accounting_month_opened, "Otwarto miesiąc księgowy",
-        source: "02 §3.1 AccountingMonthOpened"
-    end
+    event :accounting_month_opened, "Otwarto miesiąc księgowy",
+      source: "02 §3.1 AccountingMonthOpened"
   end
 
   # 03 §4.4: TurnoverInvoiceMatch, "tabela ciągła" of one company's month.
@@ -128,22 +127,20 @@ defmodule Taxvision.Contracts.AccountingMonth do
       field :turnover, :turnover
     end
 
-    stage :matching do
-      event :bank_turnover_list_created, "Utworzono listę obrotów z wyciągu",
-        source: "02 §3.3 BankTurnoverListCreated; WF 01:05:01" do
-        field :turnovers, {:list, :turnover}
-      end
+    event :bank_turnover_list_created, "Utworzono listę obrotów z wyciągu",
+      source: "02 §3.3 BankTurnoverListCreated; WF 01:05:01" do
+      field :turnovers, {:list, :turnover}
+    end
 
-      event :turnover_matched_with_invoice, "Połączono obrót z fakturą",
-        source: "02 §3.3 TurnoverMatchedWithInvoice; WF 01:07:12" do
-        field :turnover_id, :id
-        field :ksef_number, :ksef_number
-      end
+    event :turnover_matched_with_invoice, "Połączono obrót z fakturą",
+      source: "02 §3.3 TurnoverMatchedWithInvoice; WF 01:07:12" do
+      field :turnover_id, :id
+      field :ksef_number, :ksef_number
+    end
 
-      event :turnover_without_invoice_flagged, "Obrót bez faktury",
-        source: "02 §3.3 TurnoverWithoutInvoiceFlagged; WF 01:19:25" do
-        field :turnover_id, :id
-      end
+    event :turnover_without_invoice_flagged, "Obrót bez faktury",
+      source: "02 §3.3 TurnoverWithoutInvoiceFlagged; WF 01:19:25" do
+      field :turnover_id, :id
     end
   end
 
@@ -188,34 +185,6 @@ defmodule Taxvision.Contracts.AccountingMonth do
     from: :accounting_month_opened,
     fields: [:company_id, :period_id],
     idempotent_on: [:company_id, :period_id]
-
-  process :accounting_month, "Cykl miesięczny księgowy", accountable: :accountant do
-    correlate [:company_id, :period_id]
-
-    stage :verification do
-      include :data_completeness_confirmed
-      include :registry_data_consistent
-      include :registry_discrepancy_detected
-    end
-
-    stage :opening
-    stage :matching
-
-    # A month is settled a month behind and checked on the first [WF 00:34:40]; the
-    # contract declares no schedule for it, since nothing would read one.
-
-    # v1's `deadline {25, :day}` is not here: nothing ends a run until the month
-    # closes, which is past E9c, so there is nothing for it to measure; and nobody
-    # from TaxVision gave the 25th for the office's work.
-
-    promise :month_opens_or_is_blocked do
-      from :data_completeness_confirmed
-      eventually :accounting_month_opened
-      within {2, :day}
-      or_else :registry_discrepancy_detected
-      source "WF 00:34:17-00:36:07 (P1)"
-    end
-  end
 
   scenario "dane zgodne — miesiąc się otwiera" do
     given :registry_data_consistent, %{company_id: "c-1", period_id: "2026-08"}

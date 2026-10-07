@@ -45,7 +45,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
   The monthly check belongs to the accounting month's run: its verification stage
   includes the confirmed data and the registries' verdict from here
-  (`Taxvision.Contracts.AccountingMonth`), and its promise starts on the
+  (`Taxvision.Processes.AccountingMonth`), and its promise starts on the
   confirmation. The company's profile is onboarding's and has no run here. So the
   contract declares no process; the `client` it had, with a `profile` and a
   `verification` stage, was there until plan DD, P1d (#195) only because every
