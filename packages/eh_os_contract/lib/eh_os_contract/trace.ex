@@ -226,7 +226,7 @@ defmodule EhOsContract.Trace do
     Map.put(
       trace,
       :identity,
-      if(finer?(identity, model.process.correlate), do: Enum.map(identity, &to_string/1))
+      if(finer?(identity, Model.process(model).correlate), do: Enum.map(identity, &to_string/1))
     )
   end
 
@@ -264,9 +264,9 @@ defmodule EhOsContract.Trace do
 
   @spec promise!(map(), atom()) :: map()
   defp promise!(model, name) do
-    # `Map.get/2`, not `.process`: a domain's model has no process to ask, and is refused
-    # by name like a contract that declares no such promise.
-    process = Map.get(model, :process)
+    # A domain's model has no process to ask, and is refused by name like a contract
+    # that declares no such promise.
+    process = Model.process(model)
 
     (process && Enum.find(process.promises, &(&1.name == name))) ||
       raise ArgumentError, "#{inspect(model.module)} does not declare promise #{inspect(name)}"
@@ -582,7 +582,7 @@ defmodule EhOsContract.Trace do
   # overwhelming majority — fetch a column it never reads.
   @spec occurrences(map(), trace(), keyword()) :: [occurrence()]
   defp occurrences(model, trace, opts) do
-    process = Atom.to_string(model.process.name)
+    process = Atom.to_string(Model.process(model).name)
     types = types(trace)
 
     query =

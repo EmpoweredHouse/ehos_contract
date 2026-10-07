@@ -68,7 +68,11 @@ defmodule EhOsContract.View do
   end
 
   defp contract(model, unit_filter, details?) do
-    process = if model.process, do: "  process #{model.process.name}", else: ""
+    process =
+      case EhOsContract.Model.process(model) do
+        nil -> ""
+        p -> "  process #{p.name}"
+      end
 
     children =
       for {name, node} <- declarations(model, details?), unit_filter in [nil, name], do: node

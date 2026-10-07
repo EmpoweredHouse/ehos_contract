@@ -253,11 +253,7 @@ defmodule EhOsContract.Paths do
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
-    types =
-      Enum.map(model.events, & &1.type) ++
-        for include <- model.process.includes,
-            {_contract, event} <- [Model.declaring(model, include.event)],
-            do: event.type
+    types = Enum.map(Model.process_events(model), & &1.type)
 
     from(r in EventRun,
       join: e in Event,

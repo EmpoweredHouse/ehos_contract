@@ -342,10 +342,9 @@ defmodule EhOsContract.Implementations do
   # event is stored under the sibling's type. Another application's event is received
   # into an inbox, never this log (D12), so its runs are not written here.
   defp included(contracts) do
-    for %{process: %{includes: [_ | _]} = process} = model <- contracts,
-        include <- process.includes,
-        {:contract, from, original} <- [EhOsContract.Model.consumed(model, include.event)],
-        %{name: ^original, type: type} <- EhOsContract.Model.fetch(from).events,
+    for model <- contracts,
+        %{} = process <- [EhOsContract.Model.process(model)],
+        %{included: true, type: type} <- EhOsContract.Model.process_events(model),
         uniq: true do
       {type, %{name: process.name, correlate: process.correlate}}
     end

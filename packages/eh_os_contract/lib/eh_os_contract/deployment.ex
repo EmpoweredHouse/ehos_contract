@@ -123,8 +123,10 @@ defmodule EhOsContract.Deployment do
           module <- modules,
           do: "#{kind}:#{name}=#{inspect(module)}"
 
+    process = Model.process(model)
+
     promises =
-      for promise <- (model.process && model.process.promises) || [],
+      for promise <- (process && process.promises) || [],
           into: %{},
           do: {"promise:#{promise.name}", promise_digest(promise)}
 

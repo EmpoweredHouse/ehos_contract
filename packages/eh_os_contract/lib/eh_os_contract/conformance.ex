@@ -125,7 +125,7 @@ defmodule EhOsContract.Conformance do
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
       activity: activity,
       paths: paths(model, activity, opts),
-      processes: List.wrap(model.process && process(model, opts)),
+      processes: List.wrap(Model.process(model) && process(model, opts)),
       lifecycles: lifecycles(model, opts),
       scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift(model, opts)
@@ -162,7 +162,9 @@ defmodule EhOsContract.Conformance do
   this raises.
   """
   @spec process(map(), keyword()) :: map()
-  def process(%{process: %{} = process} = model, opts \\ []) do
+  def process(model, opts \\ []) do
+    %{} = process = Model.process(model)
+
     runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
 
     %{
@@ -216,14 +218,18 @@ defmodule EhOsContract.Conformance do
   # The process `deadline`, measured. `nil` — not a map of zeroes — when the process
   # declares none or has not confirmed the one it declares. A number the client never
   # agreed to, printed next to numbers they did, reads as measured.
-  defp duration(%{process: %{deadline: %{unverified: false} = deadline}} = model, opts) do
-    model.module
-    |> EhOsContract.Run.evaluate(model.process.name, opts)
-    |> EhOsContract.Run.summary()
-    |> Map.put(:deadline, {deadline.amount, deadline.unit})
-  end
+  defp duration(model, opts) do
+    case Model.process(model) do
+      %{name: name, deadline: %{unverified: false} = deadline} ->
+        model.module
+        |> EhOsContract.Run.evaluate(name, opts)
+        |> EhOsContract.Run.summary()
+        |> Map.put(:deadline, {deadline.amount, deadline.unit})
 
-  defp duration(_model, _opts), do: nil
+      _none ->
+        nil
+    end
+  end
 
   defp promises(model, opts) do
     label = fn name ->
@@ -235,7 +241,7 @@ defmodule EhOsContract.Conformance do
 
     boundaries = Deployment.declaration_boundaries(model.module)
 
-    for promise <- model.process.promises, not promise.unverified do
+    for promise <- Model.process(model).promises, not promise.unverified do
       verdicts = Trace.evaluate(model.module, promise.name, opts)
       boundary = Map.get(boundaries, "promise:#{promise.name}")
       {current, earlier} = split_by_declaration(verdicts, boundary)

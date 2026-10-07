@@ -555,8 +555,12 @@ defmodule EhOsContract.Pages do
     ]
   end
 
-  defp process_label(%{process: %{label: label}}), do: " — #{label}"
-  defp process_label(_model), do: ""
+  defp process_label(model) do
+    case Model.process(model) do
+      %{label: label} -> " — #{label}"
+      _none -> ""
+    end
+  end
 
   defp glossary(%{terms: []}, _domain), do: ["", "## Glossary", "", "_No terms._"]
 
@@ -637,10 +641,16 @@ defmodule EhOsContract.Pages do
   defp declaration_bullet(model, key, d),
     do: bullet([link(code(d.name), holder_path(model, key, d)), label(d)])
 
-  defp process_section(_site, %{process: nil}), do: []
+  defp process_section(site, model) do
+    case Model.process(model) do
+      nil -> []
+      p -> process_section(site, model, p)
+    end
+  end
 
-  defp process_section(site, %{process: p} = model) do
-    elsewhere = for i <- p.includes, i.stage == nil, do: include(site, model, i)
+  defp process_section(site, model, p) do
+    included = for %{included: true} = e <- Model.process_events(model), do: e
+    elsewhere = for i <- included, i.stage == nil, do: include(site, model, i)
 
     [
       "",
@@ -652,25 +662,25 @@ defmodule EhOsContract.Pages do
         if(p.deadline, do: "Deadline: #{duration(p.deadline)}."),
         if(Map.get(p, :source), do: "_Source: #{p.source}_")
       ]),
-      stages(site, model, p),
+      stages(site, model, p, included),
       section("Included from other contracts", elsewhere, & &1),
       section("Promises", p.promises, &promise(site, model, &1))
     ]
   end
 
   # A stage's events: the unit's own in it, then those `include` places there.
-  defp stages(site, model, p) do
+  defp stages(site, model, p, included) do
     section("Stages", p.stages, fn stage ->
       events =
         for(e <- model.events, e.stage == stage.name, do: event_link(site, model, e.name)) ++
-          for i <- p.includes, i.stage == stage.name, do: include(site, model, i)
+          for i <- included, i.stage == stage.name, do: include(site, model, i)
 
       bullet(["#{code(stage.name)}#{label(stage)}: " | joined(events)])
     end)
   end
 
   defp include(site, model, i),
-    do: [event_link(site, model, i.event), if(i.terminal, do: " (ends a run)")]
+    do: [event_link(site, model, i.name), if(i.terminal, do: " (ends a run)")]
 
   defp promise(site, model, p) do
     events = &joined(Enum.map(List.wrap(&1), fn e -> event_link(site, model, e) end))
