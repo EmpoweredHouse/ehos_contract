@@ -1,7 +1,9 @@
 defmodule EhOsContract.Auth do
+  # The design: v2 §16 and D14 in docs/adr/; the credential's form is `eh-os` D-33, the keys and
+  # the decision rows D-34 (with FM-21), the claims `cap` and `scp` D-40.
   @moduledoc """
   Verifies the credentials EHOS issues, against keys this application keeps in its
-  own database (v2 §16, D14; `eh-os` D-33, D-34).
+  own database.
 
       # config/config.exs
       config :eh_os_contract, authorizer: EhOsContract.Auth
@@ -32,7 +34,7 @@ defmodule EhOsContract.Auth do
   That, or `cacerts:`, is all the package takes about the fetch
   (`EhOsContract.Auth.Keys.start_link/1`).
 
-  **A credential** is a JWT signed with Ed25519 (`eh-os` D-33). `verify/2` accepts
+  **A credential** is a JWT signed with Ed25519. `verify/2` accepts
   one when all of these hold, and answers the first that does not:
 
     * the header says `alg: "Ed25519"` and nothing else — not `EdDSA`, not an
@@ -55,14 +57,14 @@ defmodule EhOsContract.Auth do
 
   An accepted credential becomes an `EhOsContract.Actor` of kind `:credential`,
   with `subject`, `capabilities` and `scopes` exactly as it carries them in `sub`,
-  `cap` and `scp` (`eh-os` D-40). Over HTTP, `EhOsContract.Auth.Plug` does this for
+  `cap` and `scp`. Over HTTP, `EhOsContract.Auth.Plug` does this for
   a bearer token in front of `EhOsContract.Plug`.
 
   **This module is also the `EhOsContract.Authorizer`** the engine asks what that
   actor may do. `authorize/2` decides with `EhOsContract.Authorizer.check/2` alone —
   no rule of its own, so it narrows nothing — and writes one row to
   `eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an
-  acceptance (`eh-os` D-34, FM-21): who, which capability, which contract and
+  acceptance: who, which capability, which contract and
   version, the scope value asked for, the outcome and the reason.
 
   A scope value a text column cannot hold (invalid UTF-8, a NUL), one past 256 bytes,
@@ -162,9 +164,10 @@ defmodule EhOsContract.Auth do
     }
   end
 
+  # For the host's health check, as `eh-os` D-34 asks of an application.
   @doc """
   Whether this application holds at least one key to verify with, for the host's
-  health check (`eh-os` D-34).
+  health check.
 
   `false` is the one state in which EHOS being down means nobody gets in: the key
   process has never seen a key set, neither in its table nor from EHOS, and every

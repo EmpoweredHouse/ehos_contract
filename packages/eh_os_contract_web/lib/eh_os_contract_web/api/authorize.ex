@@ -1,28 +1,27 @@
 defmodule EhOsContract.Web.Api.Authorize do
-  @moduledoc """
-  The dashboard's access decision, applied to a request that is not a page.
-
-  Not `EhOsContract.Web.Authentication`: that is an `on_mount/4` hook keyed on a LiveView
-  session map, and there is no socket here. What is shared is the thing that
-  matters — the same `EhOsContract.Web.Resolver` callbacks, so a host writes its access rule
-  once and both transports obey it.
-
-  ## `{:forbidden, path}` becomes 403, and the path is dropped
-
-  `resolve_access/2` answers with a redirect target because the transport it was
-  written for is HTML. A redirect is a datum only a browser can use; an API client
-  following it would fetch a login page and try to parse it as JSON, which is the
-  most confusing failure available here. So the meaning is kept — *this actor may
-  not see this* — and the representation is the transport's to choose.
-
-  A second callback was the alternative and is worse: every host would implement
-  two, `@optional_callbacks` would make it one that may silently not exist, and the
-  two would drift the first time somebody changed one.
-
-  `:read_only` and `:all` both pass, identically. Redacting for `:read_only` would
-  reinterpret a level that today means "may look, may not act", and would be this
-  package forming an opinion about how sensitive a client's own data is.
-  """
+  # The dashboard's access decision, applied to a request that is not a page.
+  #
+  # Not `EhOsContract.Web.Authentication`: that is an `on_mount/4` hook keyed on a LiveView
+  # session map, and there is no socket here. What is shared is the thing that
+  # matters — the same `EhOsContract.Web.Resolver` callbacks, so a host writes its access rule
+  # once and both transports obey it.
+  #
+  # ## `{:forbidden, path}` becomes 403, and the path is dropped
+  #
+  # `resolve_access/2` answers with a redirect target because the transport it was
+  # written for is HTML. A redirect is a datum only a browser can use; an API client
+  # following it would fetch a login page and try to parse it as JSON, which is the
+  # most confusing failure available here. So the meaning is kept — *this actor may
+  # not see this* — and the representation is the transport's to choose.
+  #
+  # A second callback was the alternative and is worse: every host would implement
+  # two, `@optional_callbacks` would make it one that may silently not exist, and the
+  # two would drift the first time somebody changed one.
+  #
+  # `:read_only` and `:all` both pass, identically. Redacting for `:read_only` would
+  # reinterpret a level that today means "may look, may not act", and would be this
+  # package forming an opinion about how sensitive a client's own data is.
+  @moduledoc false
 
   @behaviour Plug
 

@@ -128,7 +128,8 @@ table of `docs/contract.md` to it, and what a prose page says it covers (`<!-- c
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
 `test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`),
 `packages/eh_os_contract_web` and
-`packages/eh_os_contract_auth`. **It has to pass.** Separate invocations, not an umbrella, so that each package
+`packages/eh_os_contract_auth` (each with its own `docs --warnings-as-errors` and `test/doc_coverage_test.exs`).
+**It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
 listens on **5433**.
@@ -202,8 +203,8 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
 - **Public functions in `packages/*/lib/` have `@doc` and `@spec`**, and a doc is written for a host reading it
   on hexdocs, not for the team: its meaning, an example, what it refuses, and no stage or `§` codes. Without
   them the package has no documentation and `dialyzer` nothing to check. How: the
-  [`write-docs`](.claude/skills/write-docs/SKILL.md) skill. The engine's gate holds the mechanics
-  (`test/doc_coverage_test.exs`, `docs --warnings-as-errors`); the other two packages publish no docs yet.
+  [`write-docs`](.claude/skills/write-docs/SKILL.md) skill. Each package's gate holds the mechanics
+  (`test/doc_coverage_test.exs`, `docs --warnings-as-errors`).
 - **A code never stands alone in prose.** In `PLAN.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
   (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule

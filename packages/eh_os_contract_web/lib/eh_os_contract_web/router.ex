@@ -1,37 +1,47 @@
 defmodule EhOsContract.Web.Router do
   @moduledoc """
-  `eh_os_contract_dashboard/2`, mountable in a host's own router — call-shape identical
-  to `oban_dashboard/2`. No separate plug stores a token in the session:
-  `live_session`'s `session: {module, function, args}` has Phoenix call
-  `__session__/2` itself, with the real `conn`, on every mount and reconnect.
+  The two macros a host's router imports: `eh_os_contract_dashboard/2` for the screens,
+  `eh_os_contract_api/2` for the JSON API. Each needs a pipeline of its own.
   """
 
-  @doc """
-  Mounts the dashboard at `path`: `path <> "/contract"` and
-  `path <> "/graph"` for the two screens, `path` itself redirecting to
-  the first — both are named siblings, so neither reads as more canonical
-  than the other by virtue of owning the bare mount path. `opts[:resolver]`
-  is required — see `EhOsContract.Web.Resolver`; `opts[:on_mount]` is appended
-  after `EhOsContract.Web.Authentication`, which always runs first so access is
-  decided before any host-supplied hook sees the socket.
+  # `live_session`'s `session: {module, function, args}` has Phoenix call `__session__/3`
+  # itself, with the real `conn`, so no separate plug stores anything in the session. It
+  # runs on the HTTP request only: a reconnect or a live navigation gets the session signed
+  # into the page back, so `resolve_user/1` is asked once per page load and
+  # `resolve_access/2` on every mount. The call shape is `oban_dashboard/2`'s.
 
-  The compiled JS bundle (`mix assets.build`, shipped under `priv/static/`)
-  is **not** served through this macro. It was, briefly — as a `forward`
-  nested in whatever pipeline the caller's scope already carries — until
-  that turned out to route it through `protect_from_forgery`, and `Plug`'s
-  own cross-origin-script guard refuses to serve JavaScript through a
-  CSRF-protected route on principle (`Plug.CSRFProtection.InvalidCrossOriginRequestError`).
-  Real Phoenix apps serve static files at the **endpoint**, before the
-  router runs at all, for exactly this reason. A host adds one line to its
-  own endpoint:
+  @doc """
+  Mounts the dashboard at `path`, in a scope with the host's browser pipeline:
+
+      scope "/" do
+        pipe_through :browser
+        import EhOsContract.Web.Router
+
+        eh_os_contract_dashboard "/dashboard", resolver: MyApp.EhOsContractResolver
+      end
+
+  The screens are `path <> "/contract"` and `path <> "/graph"`; `path` itself redirects
+  to the first, keeping its query string. Mount it in a scope with no path of its own
+  (`scope "/"`): the redirect and the `base_path` the resolver is given are `path` as
+  written, without a scope's prefix.
+
+  Options:
+
+    * `:resolver` (required): a module implementing `EhOsContract.Web.Resolver`. Who
+      the caller is (`resolve_user/1`) is asked on a full page load and kept in the page;
+      what they may see (`resolve_access/2`) is asked again on every mount, a reconnect
+      and a move between the screens included.
+    * `:on_mount`: the host's own `on_mount` hooks, run after the access check, so no
+      hook sees a socket the resolver refused.
+
+  The dashboard's script and stylesheet are not served through this macro: a route
+  behind `protect_from_forgery` refuses to serve JavaScript. The host serves them at
+  its endpoint, before the router:
 
       plug Plug.Static,
         at: "/eh_os_contract_web/assets",
         from: {:eh_os_contract_web, "priv/static/assets"},
         gzip: false
-
-  (`test/support/test_host/endpoint.ex` carries the same line, so this
-  package's own suite proves the instruction rather than assuming it.)
   """
   defmacro eh_os_contract_dashboard(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
@@ -63,14 +73,9 @@ defmodule EhOsContract.Web.Router do
   end
 
   @doc """
-  Mounts the read-only conformance and generated-document API at `path`:
-  `conformance`, `model`, `asyncapi` and `openapi` live below that mount.
-
-  Separate from `eh_os_contract_dashboard/2` and mounted in its own scope on purpose, because
-  the two need opposite pipelines. A dashboard route wants a session and CSRF
-  protection; a JSON route wants neither, and `plug :accepts, ["html"]` — which any
-  ordinary `:browser` pipeline carries — answers 406 to an API client before the
-  route is even reached.
+  Mounts the read-only JSON API at `path`, in a scope of its own whose pipeline accepts
+  JSON. A browser pipeline would not do: `plug :accepts, ["html"]` answers 406 to an API
+  client before the route is reached.
 
       pipeline :eh_os_contract_api do
         plug :accepts, ["json"]
@@ -83,9 +88,32 @@ defmodule EhOsContract.Web.Router do
         eh_os_contract_api "/api", resolver: MyApp.EhOsContractResolver
       end
 
-  This macro adds no `Plug.Parsers` of its own, for the reason the dashboard adds no
-  `Plug.Static`: a mountable package reaching into the host's pipeline is
-  presumptuous, and these are GET routes with no body to parse anyway.
+  `:resolver` (required) is the dashboard's: every route asks it first, and a caller it
+  refuses gets 403 with `{"error": "forbidden"}`. The routes, all `GET`:
+
+  | Route | Answers |
+  | --- | --- |
+  | `<path>/conformance?contract=<id>&since=<ISO 8601>&until=<ISO 8601>` | the contract's conformance report as data (`EhOsContract.Conformance.as_data/2`); `contract` may be left out when one contract is registered; `since` and `until` are optional |
+  | `<path>/model` | every contract, with its version and its model document's digest |
+  | `<path>/model/<id>` | the contract's model document (`EhOsContract.Model.to_data/1`) |
+  | `<path>/openapi` | every contract, with its version and its OpenAPI document's digest |
+  | `<path>/openapi/<id>` | the contract's OpenAPI document |
+  | `<path>/asyncapi` | every contract, with its version and its AsyncAPI document's digest |
+  | `<path>/asyncapi/<id>` | the contract's AsyncAPI document |
+
+  A document carries its digest in `info["x-eh-os-contract-digest"]` (the model in
+  `"digest"`) and as its `ETag`, so a consumer compares what an instance serves with
+  what its build recorded with a `HEAD` and no body. A contract id not registered is
+  404 with `{"error": "not_found", "detail": ...}` on the document routes. On
+  `conformance`, an unknown contract, like a parameter that does not parse, is 400 with
+  `{"error": "bad_request", "detail": ...}`.
+
+  None of it is business data, but all of it is the client's business in its own
+  words, and the conformance report carries event counts per version with timestamps,
+  the volume of the business. The resolver decides who sees it; nothing is redacted.
+
+  This macro adds no `Plug.Parsers`, as the dashboard adds no `Plug.Static`: the host's
+  pipeline is the host's, and these routes have no body to parse.
   """
   defmacro eh_os_contract_api(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do

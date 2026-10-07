@@ -1,9 +1,14 @@
 defmodule EhOsContract.Auth.SignIn do
+  # Sign-in through EHOS is `eh-os` D-64; what this package decides beside it is
+  # docs/adr/browser-session.md, S1-S11. In the moduledoc: the addresses' form and the
+  # post-logout address are D-68, the redirect URI D-64, `applications` naming only the others
+  # D-69, the issuer's and the document's endpoints' form #89, starting while EHOS is down FM-19,
+  # the limits on every call to EHOS S6. In the typedoc of `t`: the cipher key S3, the random
+  # client secret S6.
   @moduledoc """
-  Signing a person in to the application's pages through EHOS, with OpenID Connect
-  (`eh-os` D-64): the application's client, and the process that keeps EHOS's
-  discovery document and keys. What the package decides beside D-64 is
-  `docs/adr/browser-session.md` in this repository; S1–S11 below are its sections.
+  Signing a person in to the application's pages through EHOS, with OpenID Connect:
+  the application's client, and the process that keeps EHOS's discovery document and
+  keys.
 
       # config/runtime.exs
       config :eh_os_contract_auth,
@@ -30,33 +35,33 @@ defmodule EhOsContract.Auth.SignIn do
     * `config :eh_os_contract_auth, :sign_in` is missing or not a keyword list, or has a
       key it does not take;
     * the top-level `:issuer` is not `https://<host>[:port]` alone, as every parser
-      reads it: a lowercase host, and no user, path, query or fragment (#89);
+      reads it: a lowercase host, and no user, path, query or fragment;
     * `client_id` is not a non-empty string;
     * `address`, or an address in `applications`, is not exactly `https://<host>`, in
-      lower case: no port, no path, no trailing slash, no query (`eh-os` D-68);
+      lower case: no port, no path, no trailing slash, no query;
     * an address in `applications` is `address` itself: they are the other
-      applications (`eh-os` D-69);
+      applications;
     * `secret_key_base` is shorter than 64 bytes, Phoenix's own minimum;
     * the file at `client_key_file` is not one private Ed25519 JWK with exactly
       `kty`, `crv`, `x`, `d`, `use: "sig"`, `alg: "Ed25519"` and a `kid` that is the
-      RFC 7638 thumbprint of its public half (`eh-os` D-68). A PEM is refused.
+      RFC 7638 thumbprint of its public half. A PEM is refused.
 
   Nothing secret appears in what it raises.
 
   **What the process does.** It fetches `<issuer>/.well-known/openid-configuration` and
   the key set the document names, and keeps both, refetching every five minutes. It
-  starts while EHOS is down (FM-19): a failed fetch is logged and retried after one
+  starts while EHOS is down: a failed fetch is logged and retried after one
   second, doubling to thirty, and a failed refetch keeps what was held. Every call to
   EHOS goes over https, follows no redirect, reads at most 64 KiB and ends after ten
-  seconds (S6); EHOS's certificate is checked against the system's authorities, or
+  seconds; EHOS's certificate is checked against the system's authorities, or
   `cacertfile:` / `cacerts:` when given. A document is not held unless its `issuer` is
   the configured one and its endpoints are at the issuer's own origin, held to the rule
-  the configured addresses are (#89): https, read back as written, with a lowercase
+  the configured addresses are: https, read back as written, with a lowercase
   host, and no user, query or fragment.
 
   **What is held.** The client and the addresses derived from `address`, for the
   sign-in itself (`config/1`): the redirect URI is `address <> "/auth/ehos/callback"`
-  (D-64) and the post-logout address `address <> "/"` (D-68), never configured.
+  and the post-logout address `address <> "/"`, never configured.
   """
 
   use GenServer
@@ -103,10 +108,10 @@ defmodule EhOsContract.Auth.SignIn do
 
   @typedoc """
   The application's client, as `config/1` returns it. `client_key`, `client_secret`,
-  `secret_key_base` and `cipher_key`, the key the session's tokens are encrypted with
-  (S3), are left out of its inspection.
+  `secret_key_base` and `cipher_key`, the key the session's tokens are encrypted with,
+  are left out of its inspection.
 
-  `client_secret` is random, made at each start and never written down (S6). EHOS
+  `client_secret` is random, made at each start and never written down. EHOS
   takes `private_key_jwt` alone, so it authenticates nothing; it is there because
   `oidcc` refuses every other method without one, and it is random because `oidcc`
   turns it into a key for any `HS*` algorithm a document names.
@@ -126,7 +131,8 @@ defmodule EhOsContract.Auth.SignIn do
           request_opts: map()
         }
 
-  @typedoc "Why a document is not one a person can be signed in with (S6)."
+  # What the document must say: S6 in docs/adr/browser-session.md.
+  @typedoc "Why a document is not one a person can be signed in with."
   @type unsupported ::
           :no_iss_parameter
           | :no_s256
@@ -179,8 +185,9 @@ defmodule EhOsContract.Auth.SignIn do
     end
   end
 
+  # The checks are S6 in docs/adr/browser-session.md.
   @doc """
-  EHOS's discovery document, when a person can be signed in with it (S6).
+  EHOS's discovery document, when a person can be signed in with it.
 
   `oidcc` checks the authorization response's `iss`, sends PKCE and authenticates the
   client with `private_key_jwt` only when the document says the provider supports
@@ -209,10 +216,11 @@ defmodule EhOsContract.Auth.SignIn do
     end
   end
 
+  # Built per call from the process's name: S1 as amended, docs/adr/browser-session.md.
   @doc """
   The client context `oidcc` calls EHOS with: the document and keys held, when a
   person can be signed in with them (`provider/1`), the client's id, its random
-  secret and its private key (`Oidcc.ClientContext.from_manual/5`, S1 as amended).
+  secret and its private key (`Oidcc.ClientContext.from_manual/5`).
 
   It holds the private key, and neither `oidcc`'s struct nor `JOSE.JWK` leaves it
   out of an inspection. So it is built for the call that needs it, from the process's

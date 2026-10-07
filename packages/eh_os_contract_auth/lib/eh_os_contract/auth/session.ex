@@ -1,8 +1,11 @@
 defmodule EhOsContract.Auth.Session do
+  # The design is docs/adr/browser-session.md: this module is S7; the actor verified as a bearer
+  # credential is S8; one renewal per session S4, its timing S10; the browser kept from EHOS's
+  # tokens S2. Another application's credential, with its address as `resource`: `eh-os` D-64, D-68.
   @moduledoc """
   A person signed in through EHOS (`EhOsContract.Auth.SignIn.Router`), for the pages
   that need one: a plug, `actor/2` for a controller or a LiveView, and `credential/3`
-  for calling another application as the person (S7 in docs/adr/browser-session.md).
+  for calling another application as the person.
 
       # in the host's router
       pipeline :signed_in do
@@ -32,17 +35,17 @@ defmodule EhOsContract.Auth.Session do
   request of the session is renewing past 15 seconds, the request answers 503.
 
   **The actor.** `actor/2` is the actor of the person's credential for this
-  application, verified by `EhOsContract.Auth.verify/2` against its own audience
-  (S8), as a bearer credential is: the person is never read from the session's row's
+  application, verified by `EhOsContract.Auth.verify/2` against its own audience,
+  as a bearer credential is: the person is never read from the session's row's
   plain columns. A credential about to expire is renewed first, through EHOS, with
-  the session's refresh token (S4, S10); renewing is the only thing these two
+  the session's refresh token; renewing is the only thing these two
   functions do beyond reading, and nothing renews without a request asking.
 
   **Another application's credential.** `credential/3` is the credential EHOS issues
   the person for an application named in `sign_in: [applications: ...]`, renewed the
-  same way, with that application's address as `resource` (`eh-os` D-64, D-68). It is
+  same way, with that application's address as `resource`. It is
   handed out as EHOS issued it, to be sent to that application as a bearer token, which
-  verifies it (S8): its `aud` is that application's, not this one's.
+  verifies it: its `aud` is that application's, not this one's.
 
   Both take `sign_in:`, the name of the `EhOsContract.Auth.SignIn` child; `actor/2`
   also `verify/2`'s `:keys`, `:audience` and `:issuer`.
@@ -61,8 +64,11 @@ defmodule EhOsContract.Auth.Session do
   @session_key "eh_os_contract_auth_session"
   @verify_opts [:keys, :audience, :issuer]
 
+  @typedoc "Why there is no credential: `credential/3`'s refusals."
+  @type credential_refusal :: :signed_out | :ehos_unavailable | :renewal_busy | :refused
+
   @typedoc "Why there is no actor."
-  @type refusal :: Renewal.refusal() | EhOsContract.Auth.reason()
+  @type refusal :: credential_refusal() | EhOsContract.Auth.reason()
 
   @doc "The key under which the Plug session holds the token naming the person's session."
   @spec session_key() :: String.t()
@@ -112,7 +118,7 @@ defmodule EhOsContract.Auth.Session do
   The actor of the person `session` names: a `Plug.Conn` with its session fetched, or
   the session map a LiveView's `mount/3` is given. A credential good for less than 30
   seconds is renewed first, once for the session however many requests ask at
-  once (S4). `{:error, :signed_out}` when the session names nobody or ended at
+  once. `{:error, :signed_out}` when the session names nobody or ended at
   renewal, `{:error, :ehos_unavailable}` when EHOS cannot renew an expired one,
   `{:error, :renewal_busy}` when another request's renewal did not finish within
   15 seconds, and `verify/2`'s refusal otherwise. On a connection the plug has already given an actor
@@ -135,11 +141,11 @@ defmodule EhOsContract.Auth.Session do
   @doc """
   The credential for `application`, a name in `sign_in: [applications: ...]`, of the
   person `session` names: a `Plug.Conn` with its session fetched, or the session map a
-  LiveView's `mount/3` is given. It is EHOS's token as issued, not verified here (S8),
+  LiveView's `mount/3` is given. It is EHOS's token as issued, not verified here,
   for the application to verify; renewed first when it is good for less than 30
   seconds, as `actor/2`'s is. Send it from the server and keep it there: in a
   LiveView's assigns or a page, it reaches the browser, which the session keeps
-  EHOS's tokens from (S2).
+  EHOS's tokens from.
 
   `{:error, :refused}` when EHOS refused the person a credential there (`invalid_target`:
   no role, or the application is outside the sign-in's granted set). The refusal is
@@ -151,7 +157,7 @@ defmodule EhOsContract.Auth.Session do
   code, not something a person can change by signing in again.
   """
   @spec credential(Plug.Conn.t() | map(), String.t(), keyword()) ::
-          {:ok, String.t()} | {:error, Renewal.refusal()}
+          {:ok, String.t()} | {:error, credential_refusal()}
   def credential(session, application, opts \\ [])
 
   def credential(%Plug.Conn{} = conn, application, opts),

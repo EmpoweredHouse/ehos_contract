@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.Keys do
+  # Keys kept in the application's own table: `eh-os` D-34. The thumbprint as `kid`: D-33.
   @moduledoc """
-  The public keys EHOS signs credentials with, as this application last saw them
-  (`eh-os` D-34).
+  The public keys EHOS signs credentials with, as this application last saw them.
 
   **The table is the source, memory is a copy.** At start the process loads the
   last good key set from `eh_os_contract_auth_keys`, then fetches the JWKS. A
@@ -23,8 +23,8 @@ defmodule EhOsContract.Auth.Keys do
       failed, and the next fetch writes it again.
 
   A key is known by its RFC 7638 thumbprint, computed here, never by the `kid` the
-  JWKS writes beside it: the thumbprint is what EHOS puts in a credential's header
-  (`eh-os` D-33), so nobody configures it and nothing can claim another key's name.
+  JWKS writes beside it: the thumbprint is what EHOS puts in a credential's header,
+  so nobody configures it and nothing can claim another key's name.
 
   Memory is an ETS table owned by this process and read by `verify` without a call,
   so checking a credential costs no message. It holds each key ready to verify with,
@@ -44,6 +44,10 @@ defmodule EhOsContract.Auth.Keys do
   use GenServer
 
   require Logger
+
+  # `EhOsContract.Auth.child_spec/1` is the one a host lists; this is `use GenServer`'s.
+  @doc false
+  def child_spec(opts), do: super(opts)
 
   alias EhOsContract.Auth.Address
 

@@ -1,8 +1,11 @@
 defmodule EhOsContract.Auth.SignIn.Router do
+  # Sign-in through EHOS is `eh-os` D-64, and these routes S7 in docs/adr/browser-session.md.
+  # The encrypted cookie session is S2, the callback's checks and what the document must say S6,
+  # the exact post-logout address `eh-os` D-68.
   @moduledoc """
-  The routes that sign a browser in to the application's pages through EHOS, and out
-  (`eh-os` D-64, S7 in docs/adr/browser-session.md). Forward to it at `/auth/ehos`,
-  behind the host's session, since EHOS returns to `address <> "/auth/ehos/callback"`:
+  The routes that sign a browser in to the application's pages through EHOS, and
+  out. Forward to it at `/auth/ehos`, behind the host's session, since EHOS returns to
+  `address <> "/auth/ehos/callback"`:
 
       # in the host's router, in a scope whose pipeline fetches the session
       forward "/auth/ehos", EhOsContract.Auth.SignIn.Router
@@ -15,20 +18,20 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
   **Signing in.** `oidcc_plug` keeps the request's `state`, nonce and PKCE verifier
   in the host's cookie session between the redirect and the callback, so the host
-  encrypts it (`encryption_salt:`, S2). The callback is refused unless EHOS's `iss`
-  is the issuer, and the code is exchanged with `private_key_jwt` alone (S6). A
+  encrypts it (`encryption_salt:`). The callback is refused unless EHOS's `iss`
+  is the issuer, and the code is exchanged with `private_key_jwt` alone. A
   person signed in gets a new session token, and the Plug session is renewed, so a
   token planted before sign-in names nothing after it. `return_to` is followed only
   as a path of this application: anything else returns to `/`.
 
   **When it cannot.** `GET /sign-in` answers 503 while EHOS's document and keys are
-  not held, or do not say what S6 needs (`EhOsContract.Auth.SignIn.provider/1`).
+  not held, or do not say what signing in needs (`EhOsContract.Auth.SignIn.provider/1`).
   A callback that does not sign anyone in answers 401, and is logged with its
   reason's name only.
 
   **Signing out.** The session's row goes, the Plug session is dropped, and the
   browser is sent to EHOS's end-session endpoint with the ID token as
-  `id_token_hint` and `post_logout_redirect_uri` exactly `address <> "/"` (D-68). A
+  `id_token_hint` and `post_logout_redirect_uri` exactly `address <> "/"`. A
   request without a valid CSRF token raises `Plug.CSRFProtection.InvalidCSRFTokenError`,
   a 403.
 

@@ -201,7 +201,7 @@ defmodule EhOsContract.MixProject do
       # host configures (plan W2); the package's own suite needs one, a host brings its
       # own, so the package does not choose it for them.
       {:tz, "~> 0.28", only: [:dev, :test]},
-      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false}
     ]
   end
 end
