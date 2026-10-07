@@ -169,7 +169,7 @@ defmodule EhOsContract.Web.MixProject do
       {:phoenix_pubsub, "~> 2.1"},
       {:boundary, "~> 0.10", runtime: false},
       # `mix docs`, which `mix check` runs to hold the references in the docs.
-      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
       # Endpoint adapter for the test host. `only: :test` because nothing in
       # this package ever starts a real listening socket outside its own
       # suite — see PLAN.md's dopisek on why it might still turn out to be

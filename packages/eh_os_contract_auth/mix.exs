@@ -127,7 +127,7 @@ defmodule EhOsContract.Auth.MixProject do
       {:req, "~> 0.7"},
       {:boundary, "~> 0.10", runtime: false},
       # `mix docs`, which `mix check` runs to hold the references in the docs.
-      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
       {:plug, "~> 1.16"},
