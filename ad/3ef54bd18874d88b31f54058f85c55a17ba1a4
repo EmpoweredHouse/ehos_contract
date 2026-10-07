@@ -1,0 +1,36 @@
+**Review of P2a** (two reviews in parallel on `origin/main..98ccbc4`; settled in the commit after it).
+
+**The proof.** A script seeds a private development database through the library's public API: 95 events across all 11 sandbox contracts. They include kept, waived and broken promises, refused commands, open and finished runs, and a blocked month. The script then writes:
+- the report as text, for all time and for September, and as the dashboard's JSON;
+- the check as text and JSON;
+- every contract's and every process's graph, with and without the overlay;
+- the system and context maps;
+- the pages and the views.
+
+Two runs on `main` gave identical output, so the script is deterministic. The branch, run again after the review fixes, gives the same 412 files byte for byte. Only the task logs differ, by the path a file was written to.
+
+**Correctness** found no output change for any contract that compiles. It checked these cases:
+- the run's types and their order;
+- run-ending events taken from the include;
+- `as:` renames;
+- the same event included twice;
+- the stage lookup for backward edges;
+- the graph's counts and included nodes;
+- the pages' include list;
+- a domain model, and a contract with no process.
+
+Its findings:
+- The system graph's contract label still read `model.process` directly. **Fixed.**
+- The test of an include's `terminal:` had no case where the include and the sibling's declaration disagree. **Fixed:** it includes a sibling's run-ending event without `terminal:` and asserts it ends no run.
+- An include its sibling does not declare is now skipped by every reader. Before, `Run` raised, two readers failed on `nil`, and the pages listed it. **Left:** the sibling links refuse such an include at compile time, so no compiled contract reaches it.
+- `Model.process(nil)` would try to fetch `nil`. **Left:** no caller passes it.
+- `Conformance.process/2` without a process now raises `MatchError` where it raised `FunctionClauseError`. **Left:** nothing calls it so or rescues either error.
+
+**Security and performance** found nothing that blocks:
+- `Model.fetch/1` reads a literal compiled into the module.
+- Dispatch never calls `process_events/1`: the index of which runs an event is filed under is still built once and kept in `:persistent_term`.
+- Every query keeps its filters.
+- The include resolution moved to `Model.declaring/2`. It skips exactly what the old code skipped, and nothing can file an event under fewer runs.
+- **Left:** the check's backward-edge lookup recomputes the run's events per reaction. It is offline and small.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. Check counts unchanged (sandbox 0, 36, 10; engine 0, 70, 6). Tests: engine 1405 (+6 for the two functions), web 57, sandbox 196, auth 287 + 1 property.
