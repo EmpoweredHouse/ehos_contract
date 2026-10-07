@@ -51,6 +51,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     # catalog's.
     findings = for {rule, message} <- findings, do: Finding.new(rule, message)
     contracts = EhOsContract.Registry.contracts()
+    processes = EhOsContract.Registry.processes()
 
     # An umbrella's root compiles no module of its own, and has no compile path to read.
     compiler =
@@ -66,7 +67,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
     report(
       compiler ++
         EhOsContract.Check.findings(contracts) ++
-        EhOsContract.Check.Completeness.findings(contracts) ++
+        EhOsContract.Check.process_module_findings(processes) ++
+        EhOsContract.Check.Completeness.findings(contracts, processes) ++
         EhOsContract.Check.Contracts.findings(contracts) ++ findings,
       opts
     )

@@ -10,7 +10,8 @@ defmodule Mix.Tasks.EhOsContract.Report do
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 
-  Every contract the registry finds (plan E7c), one section each.
+  Every contract the registry finds (plan E7c), one section each, then every process
+  module (plan DD, P2d, #213); with none, nothing is printed for them.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -32,7 +33,7 @@ defmodule Mix.Tasks.EhOsContract.Report do
     period = [since: at(opts[:since]), until: at(opts[:until])]
 
     text =
-      EhOsContract.Registry.contracts()
+      (EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes())
       |> Enum.map(
         &(&1
           |> EhOsContract.Conformance.report(period)

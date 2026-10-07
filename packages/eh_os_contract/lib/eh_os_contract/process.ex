@@ -50,8 +50,10 @@ defmodule EhOsContract.Process do
   modules — its domain, the contracts and their events — is checked by the rules
   between modules (`EhOsContract.Contract.Links.Processes`, plan DD, P2c, #210), and
   dispatch files each event it includes into its run, under its `id:` and keyed by
-  its `correlate` (`EhOsContract.Implementations.included/2`). No reader shows those
-  runs yet.
+  its `correlate` (`EhOsContract.Implementations.included/2`). The conformance report
+  shows those runs, its deployment record its version, and the check reads what it
+  includes (plan DD, P2d, #213); the conformance wire and the dashboard do not list it
+  yet.
 
   Inside the library this module is always written in full, never aliased: `Process`
   is Elixir's.

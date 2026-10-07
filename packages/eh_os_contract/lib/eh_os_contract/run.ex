@@ -88,18 +88,21 @@ defmodule EhOsContract.Run do
   Returns `[]` when the process declares no `deadline`, which is the ordinary case
   — most processes promise nothing about how long they take.
 
+  `contract` is a contract, and `process_name` its process's name; or a process
+  module, and `process_name` its `id:` (plan DD, P2d, #213).
+
   `opts`: `:since`, `:until`, `:instance`, and `:now` for the comparison, which is
   what makes `:overdue` testable without waiting.
   """
-  @spec evaluate(module(), atom(), keyword()) :: [outcome()]
+  @spec evaluate(module(), atom() | String.t(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
     model = Model.fetch(contract)
 
-    case {model, Model.process(model)} do
-      {%{units: _}, %{name: ^process_name, deadline: %{} = deadline}} ->
+    case Model.process(model) do
+      %{name: ^process_name, deadline: %{} = deadline} ->
         measure(runs_of(model), {deadline.amount, deadline.unit}, opts)
 
-      {%{units: _}, _none} ->
+      _none ->
         []
     end
   end
@@ -173,7 +176,7 @@ defmodule EhOsContract.Run do
   defp runs_of(model) do
     events = Model.process_events(model)
 
-    {:runs, Atom.to_string(Model.process(model).name), Enum.map(events, & &1.type),
+    {:runs, to_string(Model.process(model).name), Enum.map(events, & &1.type),
      for(%{type: type, terminal: true} <- events, do: type)}
   end
 

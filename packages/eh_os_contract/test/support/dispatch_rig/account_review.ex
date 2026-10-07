@@ -7,6 +7,10 @@ defmodule DispatchRig.AccountReview do
   decided by `DispatchRig.Ledger`. Dispatch files each of them into this module's run
   as well, under its id and keyed by the account; the ledger's own runs stay as they
   are.
+
+  A review is agreed to take two days, and the auditor promises to confirm the balance
+  within a day of a withdrawal (plan DD, P2d, #213): what the report judges a process
+  module's runs by.
   """
 
   use EhOsContract.Process,
@@ -21,4 +25,12 @@ defmodule DispatchRig.AccountReview do
   stage :confirmation, include: [{DispatchRig.Ledger, :balance_confirmed}]
 
   ends_on :balance_confirmed
+
+  deadline {2, :day}
+
+  promise :balance_confirmed_after_withdrawal do
+    from :withdrawn
+    eventually :balance_confirmed
+    within {1, :day}
+  end
 end

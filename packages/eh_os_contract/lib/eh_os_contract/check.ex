@@ -46,12 +46,56 @@ defmodule EhOsContract.Check do
     end
   end
 
+  @doc """
+  What `mix eh_os_contract.check` says about process modules, `use EhOsContract.Process`
+  (plan DD, P2d, #213): the rules about a contract's process, at the module's `use` and
+  its promises. A process with no `accountable`, a `deadline` or a promise not
+  confirmed, a promise with no `within`. Not a `deadline` with no event that ends a
+  run: a process module cannot declare one without `ends_on` (R6).
+  """
+  @spec process_module_findings([module()] | nil) :: [Finding.t()]
+  def process_module_findings(processes \\ nil) do
+    for module <- processes || EhOsContract.Registry.processes(),
+        %{model: model, declarations: declarations, at: at} <- [Links.process(module)],
+        finding <-
+          process_rules(
+            Model.process(model),
+            inspect(module),
+            at,
+            fn promise -> located(declarations.promises, promise.name) || at end
+          ) do
+      finding
+    end
+  end
+
   defp process_findings(%{model: model, declarations: declarations}, process) do
     name = inspect(model.module)
     declared = Enum.find(declarations.processes, &(&1.name == process.name))
     at = declared && Links.at(declared)
     promise_at = fn promise -> located(declared && declared.promises, promise.name) || at end
 
+    ends? = Enum.any?(Model.process_events(model), & &1.terminal)
+
+    unobservable =
+      if process.deadline && not ends?,
+        do: [
+          Finding.new(
+            "deadline-without-terminal-event",
+            "process #{inspect(process.name)} declares `deadline` = " <>
+              "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
+              "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
+              "measured (#{name})",
+            at
+          )
+        ],
+        else: []
+
+    process_rules(process, name, at, promise_at) ++ unobservable
+  end
+
+  # The rules about a process, a contract's or a module's: `name` is the module's, as a
+  # message names it.
+  defp process_rules(process, name, at, promise_at) do
     accountable =
       if process.accountable == nil,
         do: [
@@ -95,23 +139,7 @@ defmodule EhOsContract.Check do
         )
       end
 
-    ends? = Enum.any?(Model.process_events(model), & &1.terminal)
-
-    unobservable =
-      if process.deadline && not ends?,
-        do: [
-          Finding.new(
-            "deadline-without-terminal-event",
-            "process #{inspect(process.name)} declares `deadline` = " <>
-              "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
-              "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
-              "measured (#{name})",
-            at
-          )
-        ],
-        else: []
-
-    accountable ++ unverified ++ unfalsifiable ++ unobservable
+    accountable ++ unverified ++ unfalsifiable
   end
 
   defp located(nil, _name), do: nil

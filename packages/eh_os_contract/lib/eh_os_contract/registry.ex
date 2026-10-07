@@ -1,6 +1,6 @@
 defmodule EhOsContract.Registry do
   @moduledoc """
-  The registry of contracts and domains (notes §2).
+  The registry of contracts, process modules and domains (notes §2).
 
   Not a generated module holding the whole graph — a per-module macro cannot
   arrange that, because it would require every contract to be compiled already.
@@ -38,7 +38,11 @@ defmodule EhOsContract.Registry do
   the graph comes from the binary that actually runs, in full — is unchanged
   unless a deployer opts into narrowing it.
   """
-  @spec load!(atom() | [atom()] | nil) :: %{contracts: [module()], domains: [module()]}
+  @spec load!(atom() | [atom()] | nil) :: %{
+          contracts: [module()],
+          processes: [module()],
+          domains: [module()]
+        }
   def load!(app \\ nil) do
     apps =
       case app || EhOsContract.Config.get(:applications) do
@@ -78,6 +82,14 @@ defmodule EhOsContract.Registry do
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__())
       end)
 
+    # A process written as a module of its own (plan DD, P2d, #213): what the report,
+    # the deployment record and the check show beside the contracts.
+    processes =
+      Enum.filter(loaded, fn module ->
+        function_exported?(module, :__eh_os_contract_model__, 0) and
+          match?(%{kind: :process}, module.__eh_os_contract_model__())
+      end)
+
     # The domains the contracts share (plan EL2): what `glossary` and `view` start from.
     domains =
       Enum.filter(loaded, fn module ->
@@ -108,7 +120,7 @@ defmodule EhOsContract.Registry do
 
     :ok = unique_ids!(Enum.map(contracts, & &1.__eh_os_contract_model__()))
 
-    graph = %{contracts: contracts, domains: domains}
+    graph = %{contracts: contracts, processes: processes, domains: domains}
 
     :persistent_term.put(@key, graph)
     graph
@@ -148,8 +160,16 @@ defmodule EhOsContract.Registry do
   def contract(id) when is_binary(id),
     do: Enum.find(contracts(), &(EhOsContract.Model.fetch(&1).id == id))
 
+  @doc """
+  The registered process module whose `id:` is `id`, or `nil` (plan DD, P2d, #213):
+  the whole id, as `contract/1` takes a contract's.
+  """
+  @spec process(String.t()) :: module() | nil
+  def process(id) when is_binary(id),
+    do: Enum.find(processes(), &(EhOsContract.Model.fetch(&1).id == id))
+
   @doc "The cached scan, loading it on first use."
-  @spec graph() :: %{contracts: [module()], domains: [module()]}
+  @spec graph() :: %{contracts: [module()], processes: [module()], domains: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do
       nil -> load!()
@@ -160,6 +180,13 @@ defmodule EhOsContract.Registry do
   @doc "Every contract found in the running binary."
   @spec contracts() :: [module()]
   def contracts, do: Map.get(graph(), :contracts, [])
+
+  @doc """
+  Every process module, `use EhOsContract.Process`, found in the running binary
+  (plan DD, P2d, #213).
+  """
+  @spec processes() :: [module()]
+  def processes, do: Map.get(graph(), :processes, [])
 
   @doc "Every `EhOsContract.Domain` found in the running binary."
   @spec domains() :: [module()]
