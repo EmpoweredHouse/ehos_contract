@@ -1,0 +1,1 @@
+CodeRabbit fix-up (2 doc comments): both checked against the code (D12, the subscription's batch transaction) and fixed. Docs-only: docs --check, docs --warnings-as-errors, docs_test pass.
