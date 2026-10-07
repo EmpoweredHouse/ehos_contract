@@ -2,8 +2,8 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   @shortdoc "Rewraps the subjects' data keys with the vault's current master key"
 
   @moduledoc """
-  Rewraps every data key in `eh_os_contract_subject_keys` that a master key other
-  than the vault's current one wraps (v2 §14, `EhOsContract.Vault`):
+  Rewraps every subject's data key that a master key other than the vault's current
+  one wraps, so that an old master key can be retired (`EhOsContract.Vault`):
 
       mix eh_os_contract.rewrap
 

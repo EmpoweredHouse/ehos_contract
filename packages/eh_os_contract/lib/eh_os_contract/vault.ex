@@ -1,6 +1,6 @@
 defmodule EhOsContract.Vault do
   @moduledoc """
-  The master keys that wrap the subjects' data keys (v2 §14). A data key is 32
+  The master keys that wrap the subjects' data keys. A data key is 32
   random bytes per subject, stored in `eh_os_contract_subject_keys` only wrapped:
   the database alone cannot decrypt a personal field.
 

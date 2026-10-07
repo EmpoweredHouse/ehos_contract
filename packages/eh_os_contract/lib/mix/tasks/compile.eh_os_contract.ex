@@ -1,27 +1,32 @@
 defmodule Mix.Tasks.Compile.EhOsContract do
-  @shortdoc "Checks contracts against their domain and each other (L3)"
+  @shortdoc "Checks that contracts agree with their domain and with each other"
 
   @moduledoc """
-  The rules between modules, layer L3 of v2 §6, as a Mix compiler. It runs on every
-  `mix compile`, after the Elixir compiler, over every module the project compiled:
+  Checks, on every compile, what a contract says about modules other than itself:
+  that its domain exists and declares the terms, values and actors it uses; that the
+  sibling contracts it consumes publish the events and fields it reads; that names
+  are unique across the application; and that a process module agrees with the
+  contracts whose events it includes.
+
+  Add it to the project's compilers, after Elixir's:
 
       def project do
         [compilers: Mix.compilers() ++ [:eh_os_contract], ...]
       end
 
-  A contract names its domain and the sibling contracts it consumes without a
-  compile dependency (v2 §8), so an incremental compile that changes a domain or a
-  sibling recompiles none of the contracts that name it. That is why this runs every
-  time and over the whole project, not only when a contract changed. What it costs
-  is reading each `.beam`'s table of exports; only the modules that carry a model,
-  or implement a contract, are loaded.
+  A contract names its domain and its siblings without depending on them at compile
+  time, so changing a domain recompiles none of the contracts that name it. That is
+  why this runs on every compile and over the whole project, not only when a
+  contract changed. It reads each `.beam` file's exports, and loads only the modules
+  that carry a contract, a domain or an implementation.
 
-  A violation is an error diagnostic at the file and line of the declaration at
-  fault, and it fails the compile (`EhOsContract.Contract.Links`).
+  A violation is an error at the file and line of the declaration at fault, and
+  fails the compile. In a project without this compiler, `mix eh_os_contract.check`
+  reports the same violations, as errors.
 
-  The modules are the project's own, the `.beam` files in its compile path, and no
-  configuration names them. A domain or a sibling that a contract names is looked
-  up by name, so one in a dependency is found too.
+  The modules checked are the project's own, the `.beam` files in its compile path;
+  no configuration names them. A domain or a sibling contract in a dependency is
+  found by its name.
   """
 
   use Boundary, classify_to: EhOsContract

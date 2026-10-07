@@ -2,8 +2,8 @@ defmodule Mix.Tasks.EhOsContract.View do
   @shortdoc "Prints the domain as a tree: contexts, contracts, units and consumers"
 
   @moduledoc """
-  The application's domain as a tree for a terminal (`EhOsContract.View`; ESDM's
-  `view`).
+  Prints the application's domain as a tree for a terminal: its contexts, and in
+  each its contracts, their units, consumers and queries.
 
       mix eh_os_contract.view                                   # the whole domain
       mix eh_os_contract.view settlement                        # one context
@@ -12,9 +12,9 @@ defmodule Mix.Tasks.EhOsContract.View do
       mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
 
   The domain and its contracts are found among the modules of
-  `config :eh_os_contract, applications:`. Use `--output` to write a file: Erlang
-  keeps stdout in latin1 when it is not a terminal, and labels are in the client's
-  language.
+  `config :eh_os_contract, applications:`. Use `--output` to write a file: when the
+  output is not a terminal, Erlang writes it in Latin-1, and the labels are in the
+  client's language.
   """
 
   use Boundary, classify_to: EhOsContract
