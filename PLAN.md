@@ -56,8 +56,8 @@ declare a process only when the test is about one. P1d merged in #196 and #200 (
 `Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
 module of its own. P2c merged in #212 (issue #210): process modules
 are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
-and check show process modules. **On hold: P2e (#220) and P2h (#221)**, until E13 (#217, #219, another contributor) is in `main`. P2f
-(issue #222) on `dd/222-*`, a PR per client. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+and check show process modules. **On hold: P2e (#220) and P2h (#221)**, until E13 (#217, #219, another contributor) is in `main`. P2f merged in #225–#227
+(issue #222): the sandbox's processes are process modules. P2g (issue #228) on `dd/228-test-rigs-process-modules`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -577,8 +577,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
 | P2e | 2 | grafy i strony procesu | P2d, **E13a** | ⏸ **on hold until E13a (#217) is in `main`** | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
-| P2f | 2 | procesy sandboxa jako moduły | P2d | ◐ `dd/222-…` (PR na klienta) | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
-| P2g | 2 | rigi i testy o procesach | P2d | ☐ | — |
+| P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
+| P2g | 2 | rigi i testy o procesach | P2d | ◐ `dd/228-test-rigs-process-modules` | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |
@@ -750,8 +750,10 @@ user's decision of 7 October, after seeing the overlap). No dashboard access rul
 based on `main`). Rehmed `clinical_visit` and `payer_settlement`, TaxVision `accounting_month`, AppUnite `assignment`
 (the `Assignments` contract goes). The text report's numbers per process unchanged on seeded events; dashboard and
 graphs lose them until P2e.
-**P2g — rigi i testy o procesach** (`ProcessShapes`, `DispatchRig.Branch`, `KeyRig.Audit`, `UniversalityGate`,
-`LifecycleRig`, fikstury web/auth).
+**P2g — the library's own test material uses process modules** (#228; tightened 7 October 2026). The engine's
+runtime rigs (`DispatchRig.Ledger`/`Branch`, `KeyRig`, `ProcessShapes`, `UniversalityGate`, `BoundaryRig.Enrolment`)
+move their processes into modules; the tests of runs, promises, deadlines and key budgets hold against them. DSL
+tests of the contract's `process` block and the manifest's process field stay for #221, dashboard fixtures for #220.
 **P2h — a contract can no longer declare a process** (#221). **Waits for E13** and P2e, since E13's contract graph
 still draws a contract's process. Formerly — **P2h — stare słowa i kolumny znikają**: z DSL kontraktu `@process`, `@include`, etapy w jednostkach, `terminal:`
 zdarzenia; reguły R1/R4 i procesowe części R2–R6, `Rules.Fields.correlated/1`; **migracja** (V02 albo V01 w
