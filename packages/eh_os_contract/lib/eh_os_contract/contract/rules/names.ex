@@ -1,47 +1,46 @@
 defmodule EhOsContract.Contract.Rules.Names do
-  @moduledoc """
-  N1 and N2 of v2 §6: names.
-
-  **N1.** Every name is snake_case, and unique within its namespace. Commands,
-  events, timers and consumed events share one namespace, because each becomes a
-  callback of the same implementation: an aggregate has one per command, a process
-  manager one per event and timer (v2 §5). Units are one namespace, whether
-  aggregate or boundary; so is each other kind of declaration. A query does not
-  take a command's name, nor that of an event an actor records, since each becomes a
-  capability `<domain>.<name>` (D14). Invariants and stage
-  groups are unique within their unit, and the process's stages and promises within
-  the process. A domain service's functions are unique within it, and a function's
-  rules within the function. A command's, a query's and a reaction's constraints are
-  unique within it, and a process manager's constraints and invariants together, since
-  a scenario `illustrates:` either by its name (plan EP2). Since the review of the domain's names, two names of one
-  namespace that `Macro.camelize` alike — `:visit_closed` and `:visit_closed_`, `:x2`
-  and `:x_2` — are refused as two of one name where the name becomes a module or an
-  alias: a unit, a reaction, a read model, a query or a domain service is a module
-  `<Contract>.<Kind>.<Camelized>`, and an implementation aliases a command's, an
-  event's or a consumed event's struct as `<Camelized>`. `:visit_closed` beside
-  `:visit_closed_` compiled with a warning that one struct redefined the other.
-
-  Since the review of #139, N1 also refuses a label given and blank, empty or only
-  whitespace, on every declaration that has one, a field's included
-  (`EhOsContract.DslRules.blank_labels/2`): the label is the name the business reads,
-  and the schema of one is a string, which `""` is. A timer's alone had been refused,
-  under P4.
-
-  **N2.** No name is a word Elixir reserves, and none becomes a callback that
-  clashes with a `Kernel` function or special form of the same arity (v2 §4.4): a
-  command called `:send` would define `send/2`. Commands and queries are called
-  with two arguments; events, timers and consumed events are handled with one or
-  with two, depending on who handles them, so both arities are checked. `evolve` is
-  the callback every unit has already, so no command or event may take it. Nor may
-  a command, an event, a consumed event or a query be called `state` or `row`: an
-  implementation aliases its struct by its name, and `State` and `Row` are taken.
-  A domain service's function is defined, with its arguments' arity, both by the
-  implementation and by the module the contract generates to call it, which is also
-  a behaviour, and `evolve` is not taken there. Every module defines
-  `behaviour_info/1`, `module_info/0,1` and `__info__/1`, so no callback takes one
-  of those at its arity: an event handled with one argument may not be called
-  `module_info` (the EL2b review).
-  """
+  # N1 and N2 of v2 §6: names.
+  #
+  # **N1.** Every name is snake_case, and unique within its namespace. Commands,
+  # events, timers and consumed events share one namespace, because each becomes a
+  # callback of the same implementation: an aggregate has one per command, a process
+  # manager one per event and timer (v2 §5). Units are one namespace, whether
+  # aggregate or boundary; so is each other kind of declaration. A query does not
+  # take a command's name, nor that of an event an actor records, since each becomes a
+  # capability `<domain>.<name>` (D14). Invariants and stage
+  # groups are unique within their unit, and the process's stages and promises within
+  # the process. A domain service's functions are unique within it, and a function's
+  # rules within the function. A command's, a query's and a reaction's constraints are
+  # unique within it, and a process manager's constraints and invariants together, since
+  # a scenario `illustrates:` either by its name (plan EP2). Since the review of the domain's names, two names of one
+  # namespace that `Macro.camelize` alike — `:visit_closed` and `:visit_closed_`, `:x2`
+  # and `:x_2` — are refused as two of one name where the name becomes a module or an
+  # alias: a unit, a reaction, a read model, a query or a domain service is a module
+  # `<Contract>.<Kind>.<Camelized>`, and an implementation aliases a command's, an
+  # event's or a consumed event's struct as `<Camelized>`. `:visit_closed` beside
+  # `:visit_closed_` compiled with a warning that one struct redefined the other.
+  #
+  # Since the review of #139, N1 also refuses a label given and blank, empty or only
+  # whitespace, on every declaration that has one, a field's included
+  # (`EhOsContract.DslRules.blank_labels/2`): the label is the name the business reads,
+  # and the schema of one is a string, which `""` is. A timer's alone had been refused,
+  # under P4.
+  #
+  # **N2.** No name is a word Elixir reserves, and none becomes a callback that
+  # clashes with a `Kernel` function or special form of the same arity (v2 §4.4): a
+  # command called `:send` would define `send/2`. Commands and queries are called
+  # with two arguments; events, timers and consumed events are handled with one or
+  # with two, depending on who handles them, so both arities are checked. `evolve` is
+  # the callback every unit has already, so no command or event may take it. Nor may
+  # a command, an event, a consumed event or a query be called `state` or `row`: an
+  # implementation aliases its struct by its name, and `State` and `Row` are taken.
+  # A domain service's function is defined, with its arguments' arity, both by the
+  # implementation and by the module the contract generates to call it, which is also
+  # a behaviour, and `evolve` is not taken there. Every module defines
+  # `behaviour_info/1`, `module_info/0,1` and `__info__/1`, so no callback takes one
+  # of those at its arity: an event handled with one argument may not be called
+  # `module_info` (the EL2b review).
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules

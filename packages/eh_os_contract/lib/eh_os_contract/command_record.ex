@@ -1,16 +1,15 @@
 defmodule EhOsContract.CommandRecord do
-  @moduledoc """
-  One row of `eh_os_contract_commands` (v2 §10.3): what became of a command.
-
-  `outcome` is `"accepted"`, `"rejected"` or `"failed"`. An accepted row binds its
-  idempotency key and names the positions it appended; a rejected one names the
-  invariant; a failed one names where it failed and the exception's module, never
-  its message, which may quote a value (v2 §17). The exception itself is re-raised
-  to the caller, whose logger sees all of it.
-
-  A command refused by the `EhOsContract.Authorizer` has no row: the row that
-  records a refusal belongs to the implementation (D14).
-  """
+  # One row of `eh_os_contract_commands` (v2 §10.3): what became of a command.
+  #
+  # `outcome` is `"accepted"`, `"rejected"` or `"failed"`. An accepted row binds its
+  # idempotency key and names the positions it appended; a rejected one names the
+  # invariant; a failed one names where it failed and the exception's module, never
+  # its message, which may quote a value (v2 §17). The exception itself is re-raised
+  # to the caller, whose logger sees all of it.
+  #
+  # A command refused by the `EhOsContract.Authorizer` has no row: the row that
+  # records a refusal belongs to the implementation (D14).
+  @moduledoc false
 
   use Ecto.Schema
 

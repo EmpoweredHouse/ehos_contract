@@ -14,7 +14,7 @@ defmodule EhOsContract.Testing do
 
   **The first `drain/1` is the deploy.** It registers the subscriptions, and what is
   in the log by then is history, which a new policy or process manager does not
-  react to (`EhOsContract.Subscription`). A test of a policy's reaction drains once
+  react to: a consumer fed from the log starts at its head. A test of a policy's reaction drains once
   before it dispatches what the policy reacts to.
   """
 

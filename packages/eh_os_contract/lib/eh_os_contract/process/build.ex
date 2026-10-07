@@ -1,29 +1,28 @@
 defmodule EhOsContract.Process.Build do
-  @moduledoc """
-  Builds a process module's model and compiles it into the module as
-  `__eh_os_contract_model__/0` (plan DD, P2b, #205).
-
-  Runs last, after every rule, so the model is only built from a process that is well
-  formed. It is plain data, as a contract's is (`EhOsContract.Contract.Build`):
-
-      %{format: 1, kind: :process, module: Rehmed.Processes.ClinicalVisit,
-        id: "rehmed.clinical_visit", label: "…", domain: Rehmed.Domain,
-        accountable: :manager, source: nil, correlate: [:visit_id],
-        stages: [%{name: :departure, label: nil,
-                   includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
-        ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
-        deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
-
-  Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
-  `unverified`.
-
-  **The digest does not see declaration order where it means nothing**, as a
-  contract's does not (`EhOsContract.Digest`): promises, the events of `ends_on` and a
-  stage's includes are sets to it. What keeps its order is what has one: `correlate`,
-  which makes the run's key, and the stages, whose order makes a backward step
-  backward. Each declaration also has its own digest, keyed `"<kind>:<name>"`, and
-  the process's own options `"process"`.
-  """
+  # Builds a process module's model and compiles it into the module as
+  # `__eh_os_contract_model__/0` (plan DD, P2b, #205).
+  #
+  # Runs last, after every rule, so the model is only built from a process that is well
+  # formed. It is plain data, as a contract's is (`EhOsContract.Contract.Build`):
+  #
+  #     %{format: 1, kind: :process, module: Rehmed.Processes.ClinicalVisit,
+  #       id: "rehmed.clinical_visit", label: "…", domain: Rehmed.Domain,
+  #       accountable: :manager, source: nil, correlate: [:visit_id],
+  #       stages: [%{name: :departure, label: nil,
+  #                  includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
+  #       ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
+  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
+  #
+  # Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
+  # `unverified`.
+  #
+  # **The digest does not see declaration order where it means nothing**, as a
+  # contract's does not (`EhOsContract.Digest`): promises, the events of `ends_on` and a
+  # stage's includes are sets to it. What keeps its order is what has one: `correlate`,
+  # which makes the run's key, and the stages, whose order makes a backward step
+  # backward. Each declaration also has its own digest, keyed `"<kind>:<name>"`, and
+  # the process's own options `"process"`.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 

@@ -1,10 +1,11 @@
 defmodule EhOsContract.Relay do
   @moduledoc """
-  What carries a `publish` out of the application (v2 §16, D11): one ordered
-  subscription over the log per publication, which hands what it reads to
-  `EhOsContract.Bus`. The log is the outbox; there is no outbox table.
+  What carries a `publish` out of the application: one ordered subscription over the
+  log per publication, which hands what it reads to `EhOsContract.Bus`. The log is
+  the outbox; there is no outbox table.
 
-  A relay is a consumer like a policy (`EhOsContract.Subscription`), with its row in
+  A relay is a consumer fed from the log like a policy delivered `:at_least_once`,
+  listed by `mix eh_os_contract.subscriptions`, with its row in
   `eh_os_contract_subscriptions` under `"<contract id>:relay:<name>"`, and it differs
   in what it does with a batch:
 
@@ -30,7 +31,7 @@ defmodule EhOsContract.Relay do
     since, rather than starting over at the head.
   - **It starts at the head of the log**, as a policy does: what is in the log when a
     `publish` is first deployed is history, and nothing publishes it by itself.
-    `EhOsContract.Subscription.rebuild/2` moves it back to position 0, and it
+    `mix eh_os_contract.subscriptions --reset` moves it back to position 0, and it
     publishes the whole log again under the same ids — a person's decision.
   - **A batch that raises goes again one event at a time**, so the failure lands on
     the event at fault and what comes before it leaves.

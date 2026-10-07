@@ -39,9 +39,9 @@ defmodule EhOsContract.Contract do
   `"<domain name>.<segment>…"` (D11), unique in the application (X7), and types every
   event it records, `"<id>.<event>"`.
 
-  It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
-  struct for every command, event, state, row and query and a behaviour for
-  everything code implements (`EhOsContract.Contract.Generate`). Code binds to
+  It compiles, refusing what cannot be right with a code and a message; its model is
+  data; and it generates a struct for every command, event, state, row and query and
+  a behaviour for everything code implements. Code binds to
   it with `use Contract, aggregate: :name` (`EhOsContract.Implementation`), and
   `EhOsContract.dispatch/3` runs a command through it (`EhOsContract.Dispatcher`).
   """

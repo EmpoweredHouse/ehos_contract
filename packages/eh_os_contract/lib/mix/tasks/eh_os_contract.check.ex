@@ -23,6 +23,15 @@ defmodule Mix.Tasks.EhOsContract.Check do
   repeated here keeps the compiler's code instead. Nothing silences a rule: a
   finding goes away when the model changes.
 
+  Findings come out errors first, then warnings, then notices, each group sorted by
+  its text, so the same findings print the same output from one run to the next. In
+  the human format a finding is a line with its level, rule and message, and a second
+  line saying where the declaration it is about was written and where its rule is
+  documented, when anything says either; a count closes the report. In JSON a finding
+  is `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and
+  `line` (`null` when nothing says where) and `documentation` (`null` for a repeated
+  compiler rule, which the catalogue does not document).
+
   `--format json` prints the array and nothing else, but the compile this task runs
   first prints what it prints: compile beforehand when a program reads the output.
   `--warnings-as-errors` changes the exit status, and nothing that is printed.
@@ -104,33 +113,33 @@ defmodule Mix.Tasks.EhOsContract.Check do
     end
   end
 
-  @doc """
-  The findings in the order they are printed: errors, then warnings, then notices,
-  each group sorted by its text.
-
-  A fixed order rather than the order the checks produced them. Some checks group
-  by module into a map, and on OTP 26 and later a small map keyed by atoms iterates
-  in the order the atoms were created, not alphabetically. A new module anywhere in
-  the build could therefore swap two lines of this report between runs of the same
-  code (v2 plan, E1). The plan compares this output commit to commit, so it has to
-  come out the same for the same findings.
-  """
+  # The findings in the order they are printed: errors, then warnings, then notices,
+  # each group sorted by its text.
+  #
+  # A fixed order rather than the order the checks produced them. Some checks group
+  # by module into a map, and on OTP 26 and later a small map keyed by atoms iterates
+  # in the order the atoms were created, not alphabetically. A new module anywhere in
+  # the build could therefore swap two lines of this report between runs of the same
+  # code (v2 plan, E1). The plan compares this output commit to commit, so it has to
+  # come out the same for the same findings.
+  # Called by this task and its tests.
+  @doc false
   @spec ordered([Finding.t()]) :: [Finding.t()]
   def ordered(findings) do
     rank = %{error: 0, warn: 1, info: 2}
     Enum.sort_by(findings, &{Map.fetch!(rank, &1.level), &1.message, &1.rule})
   end
 
-  @doc """
-  What the task prints for `findings`, as `format` says: `:human`, two lines a
-  finding and a count; `:json`, one array and nothing else (plan EL1).
-
-  A finding's second line says where the declaration it is about was written, when
-  anything does, and where its rule is documented; a finding with neither has none. In JSON a finding is `rule`,
-  `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
-  when nothing says where) and `documentation` (`null` for a repeated compiler rule,
-  which the catalog does not document).
-  """
+  # What the task prints for `findings`, as `format` says: `:human`, two lines a
+  # finding and a count; `:json`, one array and nothing else (plan EL1).
+  #
+  # A finding's second line says where the declaration it is about was written, when
+  # anything does, and where its rule is documented; a finding with neither has none. In JSON a finding is `rule`,
+  # `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
+  # when nothing says where) and `documentation` (`null` for a repeated compiler rule,
+  # which the catalog does not document).
+  # Called by this task and its tests.
+  @doc false
   @spec render([Finding.t()], :human | :json) :: String.t()
   def render(findings, :human) do
     lines =
@@ -185,10 +194,10 @@ defmodule Mix.Tasks.EhOsContract.Check do
     if Catalog.known?(rule), do: Catalog.url(rule)
   end
 
-  @doc """
-  Whether `findings` fail the task: any error does, and a warning does when
-  `warnings_as_errors` is set. Notices never do. The output is the same either way.
-  """
+  # Whether `findings` fail the task: any error does, and a warning does when
+  # `warnings_as_errors` is set. Notices never do. The output is the same either way.
+  # Called by this task.
+  @doc false
   @spec failed?([Finding.t()], boolean()) :: boolean()
   def failed?(findings, warnings_as_errors) do
     Enum.any?(findings, &(&1.level == :error or (warnings_as_errors and &1.level == :warn)))

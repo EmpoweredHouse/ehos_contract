@@ -1,39 +1,38 @@
 defmodule EhOsContract.Contract.Links.Domain do
-  @moduledoc """
-  X1–X4 of v2 §6, and the parts of D10 and D11 that need the domain: what a
-  contract names in the domain it says it belongs to.
-
-  - **X1.** `domain:` names a compiled `EhOsContract.Domain`, and `context:` one of
-    its contexts. When the domain is not one, nothing else here is checked, since
-    there is nothing to check it against.
-  - **X2.** Every actor a contract names — in a command's or a query's `by:`, an
-    event's `recorded_by:`, the process's `accountable` and a scenario's `actor` —
-    is an actor of the domain, and of this contract's context unless the actor
-    names no context.
-  - **X3.** Every field type that is not built in is a value of the domain, inside
-    a list as well; every `{:id, entity}` names an entity of the domain; every
-    `subject:` is a subject of the domain.
-  - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
-    `issued_by` name externals of the domain. Since plan EP5a, a call that names an
-    operation, `{:p1, :submit_report}`, names one of that external's; and a call to an
-    external that declares operations names one, since what the effect asks of it is
-    what the operations are for.
-  - **F7**, the part that needs the domain: a field F7 keeps from being personal
-    is not of a domain value that holds personal data, at any depth.
-  - **F5**, the part that needs the domain: a personal field is not of a type that
-    holds personal data of its own, which would be sealed under this field's
-    subject and outlive the erasure of its own.
-  - **D11**, the part that needs the domain: a publication carries no field of a
-    type that holds personal data; a copy on a broker cannot be erased.
-  - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
-    scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
-    grant to that actor carries the values the answer is narrowed to. The same for a
-    scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
-  - **F8**, the part that needs the domain: a field a run or a process manager's
-    record is told by, typed by a domain value, is of one resting on `:id`.
-  - **D11.** A `publish` is named under the application's namespace, the domain's
-    `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
-  """
+  # X1–X4 of v2 §6, and the parts of D10 and D11 that need the domain: what a
+  # contract names in the domain it says it belongs to.
+  #
+  # - **X1.** `domain:` names a compiled `EhOsContract.Domain`, and `context:` one of
+  #   its contexts. When the domain is not one, nothing else here is checked, since
+  #   there is nothing to check it against.
+  # - **X2.** Every actor a contract names — in a command's or a query's `by:`, an
+  #   event's `recorded_by:`, the process's `accountable` and a scenario's `actor` —
+  #   is an actor of the domain, and of this contract's context unless the actor
+  #   names no context.
+  # - **X3.** Every field type that is not built in is a value of the domain, inside
+  #   a list as well; every `{:id, entity}` names an entity of the domain; every
+  #   `subject:` is a subject of the domain.
+  # - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
+  #   `issued_by` name externals of the domain. Since plan EP5a, a call that names an
+  #   operation, `{:p1, :submit_report}`, names one of that external's; and a call to an
+  #   external that declares operations names one, since what the effect asks of it is
+  #   what the operations are for.
+  # - **F7**, the part that needs the domain: a field F7 keeps from being personal
+  #   is not of a domain value that holds personal data, at any depth.
+  # - **F5**, the part that needs the domain: a personal field is not of a type that
+  #   holds personal data of its own, which would be sealed under this field's
+  #   subject and outlive the erasure of its own.
+  # - **D11**, the part that needs the domain: a publication carries no field of a
+  #   type that holds personal data; a copy on a broker cannot be erased.
+  # - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
+  #   scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
+  #   grant to that actor carries the values the answer is narrowed to. The same for a
+  #   scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
+  # - **F8**, the part that needs the domain: a field a run or a process manager's
+  #   record is told by, typed by a domain value, is of one resting on `:id`.
+  # - **D11.** A `publish` is named under the application's namespace, the domain's
+  #   `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
+  @moduledoc false
 
   alias EhOsContract.Codec
   alias EhOsContract.Domain

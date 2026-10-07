@@ -116,17 +116,17 @@ defmodule EhOsContract do
      forgetting the second leaves the report unable to tell history from drift.
      Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2
      contract declares personal fields and the vault has no master key to seal
-     them with, and `EhOsContract.Personal.check_forgetting!/1` when a read model
-     projects personal data and defines no `forget/2`. After the deployment is
-     recorded, `EhOsContract.UndeclaredTypes.warn/2` logs a warning, and goes on, when the log
-     holds event types no contract declares — a log written before event types became
-     `"<contract id>.<event>"`, which the rest of the engine would skip silently — and
-     `warn_contracts/2` when it files events under a name that is no contract's id, as a
-     log written before rows named a contract by its id does (#179).
-  2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
-     the log, marks the read models whose declaration changed `stale`, and rebuilds
-     those that define `reset/0` (v2 §12).
-  3. It starts one `EhOsContract.Subscription.Runner` per subscription.
+     them with, and the engine refuses as well when a read model projects personal
+     data and defines no `forget/2`. After the deployment is recorded, it logs a warning, and goes on,
+     when the log holds event types no contract declares — a log written before event
+     types became `"<contract id>.<event>"`, which the rest of the engine would skip
+     silently — and when it files events under a name that is no contract's id, as a
+     log written before rows named a contract by its id does.
+  2. It registers every consumer fed from the log, each with a row of its own in
+     `eh_os_contract_subscriptions`, marks the read models whose declaration changed
+     `stale`, and rebuilds those that define `reset/0`.
+  3. It starts one runner per subscription: a process that reads the log from where
+     its consumer stopped and delivers each event to it.
 
   **`config :eh_os_contract, subscriptions: :manual`** skips the last two steps:
   nothing is registered and no runner starts. Tests use it, and push the work through

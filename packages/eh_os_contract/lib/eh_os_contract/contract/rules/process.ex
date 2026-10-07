@@ -1,30 +1,29 @@
 defmodule EhOsContract.Contract.Rules.Process do
-  @moduledoc """
-  R1–R6 of v2 §6: the process a contract describes, when it describes one.
-
-  - **R1.** At most one `process`: one contract, one process (v2 §3, amended
-    6 October 2026, plan DD, P1c (#190)). A contract without one describes units
-    and what reacts to them, and has no runs, so nothing in it may say where a run
-    stands or ends: no stage group in a unit, no `terminal:` event. A contract that
-    declares nothing at all is refused too.
-  - **R2.** The process correlates on at least one field, and every such field is
-    in every local event, where a unit's identity counts as declared. With no field
-    every event of the contract would land in one run named after the process.
-  - **R3.** Stages are all or nothing. When the process declares stages, every
-    local event sits in a stage group of its unit, every `include` in a stage, and
-    a stage group names a stage the process declares. When it declares none, there
-    are no groups.
-  - **R4.** `include` places events consumed from a sibling contract; a local event
-    is placed by its unit's stage group, and an event received from another
-    application is not in this log at all (D12).
-  - **R5.** A promise's `from`, `eventually` and `or_else` are events of the run:
-    local events, and consumed events the process includes.
-  - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
-    (`EhOsContract.Duration`), since the report measures elapsed time against them;
-    a timer's `wait` may also count weeks, months and years — a timer by the
-    calendar, the user's choice of 27 September 2026 (plan EM3). A process declares
-    its `deadline` at most once.
-  """
+  # R1–R6 of v2 §6: the process a contract describes, when it describes one.
+  #
+  # - **R1.** At most one `process`: one contract, one process (v2 §3, amended
+  #   6 October 2026, plan DD, P1c (#190)). A contract without one describes units
+  #   and what reacts to them, and has no runs, so nothing in it may say where a run
+  #   stands or ends: no stage group in a unit, no `terminal:` event. A contract that
+  #   declares nothing at all is refused too.
+  # - **R2.** The process correlates on at least one field, and every such field is
+  #   in every local event, where a unit's identity counts as declared. With no field
+  #   every event of the contract would land in one run named after the process.
+  # - **R3.** Stages are all or nothing. When the process declares stages, every
+  #   local event sits in a stage group of its unit, every `include` in a stage, and
+  #   a stage group names a stage the process declares. When it declares none, there
+  #   are no groups.
+  # - **R4.** `include` places events consumed from a sibling contract; a local event
+  #   is placed by its unit's stage group, and an event received from another
+  #   application is not in this log at all (D12).
+  # - **R5.** A promise's `from`, `eventually` and `or_else` are events of the run:
+  #   local events, and consumed events the process includes.
+  # - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
+  #   (`EhOsContract.Duration`), since the report measures elapsed time against them;
+  #   a timer's `wait` may also count weeks, months and years — a timer by the
+  #   calendar, the user's choice of 27 September 2026 (plan EM3). A process declares
+  #   its `deadline` at most once.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Duration

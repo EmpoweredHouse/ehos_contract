@@ -15,8 +15,7 @@ defmodule EhOsContract.Domain do
   A domain module declares subdomains, contexts with their glossary, actors, subjects of
   personal data, value types, external systems and the relations between contexts.
 
-  A value may declare invariants, each with values that break it and keep it
-  (plan EL2b):
+  A value may declare invariants, each with values that break it and keep it:
 
       value :money, :integer, unit: :grosze do
         invariant :not_negative, "Kwota nie jest ujemna",
@@ -25,9 +24,15 @@ defmodule EhOsContract.Domain do
       end
 
   The domain then generates a behaviour, `Rehmed.Domain.Values.Money`, and a module
-  bound with `use Rehmed.Domain, value: :money` defines one function per invariant.
-  Dispatch holds every value of the type to them (`EhOsContract.Value`), and
-  `use EhOsContract.ScenarioCase, domain: Rehmed.Domain` tests each example.
+  bound with `use Rehmed.Domain, value: :money` defines one function per invariant,
+  answering whether a value keeps it. Dispatch holds every value of the type to them,
+  once the value fits its type and after the values it is made of: a command, or a
+  recorded event, that carries a value breaking one is refused with
+  `{field, {:invariant, name}}`, and an event a decision returns with one raises, as
+  a defect. Dispatch raises, too, on a value with invariants that no module implements.
+  What is read back from the log is never held to them, so an invariant declared
+  today does not make yesterday's events unreadable. `use EhOsContract.ScenarioCase,
+  domain: Rehmed.Domain` tests each example.
   It compiles to plain data, `__eh_os_contract_model__/0`, which
   `EhOsContract.Model.fetch/1` returns for it. The data carries a `version`: a digest
   that ignores the order declarations are written in.
@@ -36,11 +41,11 @@ defmodule EhOsContract.Domain do
   are written in, unless a context says otherwise. The name is the application's
   namespace, the first segment of every name its contracts publish and of every
   capability, so it is one such segment: lowercase letters, digits, `_` and `-`,
-  starting with a letter and not ending with a dash (D11, `EhOsContract.Domain.Rules`).
+  starting with a letter and not ending with a dash.
   `time_zone:` is the zone its days are in, UTC unless it says otherwise: an event's
-  `:timestamp` is tagged with its day there when it is appended (plan W2), so a day
-  is the business's, not Greenwich's. A zone the configured time zone database does
-  not know does not compile (D13).
+  `:timestamp` is tagged with its day there when it is appended, so a day is the
+  business's, not Greenwich's. A zone the configured time zone database does not
+  know does not compile.
   """
 
   use Spark.Dsl,

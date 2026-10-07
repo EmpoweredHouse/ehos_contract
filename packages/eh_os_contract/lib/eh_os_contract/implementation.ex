@@ -15,8 +15,8 @@ defmodule EhOsContract.Implementation do
   `read_model:`, `query:`, `domain_service:` — names exactly one declaration of the
   contract `C`, and brings in:
 
-  - `@behaviour` of the module `C` generated for it (`EhOsContract.Contract.Callbacks`
-    says which callbacks);
+  - `@behaviour` of the module `C` generated for it, whose callbacks are listed
+    below;
   - aliases for the structs it touches: a unit's commands, events and `State`; a
     reaction's events and the commands it issues; a read model's events and `Row`; a
     query's parameters and rows. An event consumed from a sibling under a new name
@@ -27,7 +27,24 @@ defmodule EhOsContract.Implementation do
     `evolve/2` handles every event its state is kept from.
 
   The dependency runs one way: the implementation compiles against the contract and
-  the structs it expands, and the contract names no implementation (v2 §8).
+  the structs it expands, and the contract names no implementation.
+
+  ## The callbacks
+
+  | Kind | Callbacks |
+  | --- | --- |
+  | aggregate, dcb | one per command, `(command, state) :: decision`; `evolve/2` when the unit declares a state |
+  | policy | one per handled event, `(event) :: issued` |
+  | effect | one per handled event, `(event) :: :ok \\| {:error, term}` |
+  | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
+  | read model | one per projected event, `(event) :: :ok` |
+  | query | one, named after it, `(params, ctx) :: rows` |
+  | domain service | one per function, `(arguments…) :: result`, typed as declared |
+  | value, of a domain | one per invariant, `(value) :: boolean` |
+
+  A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
+  issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
+  unit's own, a boundary's consulted ones too, and a process manager's triggers.
 
   **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`
   (plan EL2b): the behaviour is `Rehmed.Domain.Values.Money`, with one function per

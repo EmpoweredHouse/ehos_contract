@@ -1,26 +1,25 @@
 defmodule EhOsContract.Graph.Contract do
-  @moduledoc """
-  A v2 contract's full graph (plan EG1): the steps of `EhOsContract.Paths` —
-  commands, the events they emit, the policies, process managers and effects that
-  react, and timers — and around them who acts and who reads. The actors issuing
-  its commands, recording its events and asking its queries; its read models, with
-  the events they project and the queries over them; and the domain's external
-  systems it touches: an effect's `calls`, an event's `depends_on`, a system actor's
-  `backed_by`, a field an external `issued_by`. Each unit's commands and events sit
-  in a group of the unit's own.
-
-  `overlay: true` lays the log over the steps, as the graph of steps did (plan
-  E7c-2): on each event how often it occurred, on each step how often it was taken,
-  and what waits or fails there. Occurrences, not runs, since plan DD, P1a (#183): a
-  step is the contract's, whether or not it has a process.
-  The counts sit on the edge that is the step's own — the emit, or the consumer's
-  command — since an event may reach one consumer that issues two commands.
-  `since:` and `until:` bound the log, as in the report. Actors, read models,
-  queries and externals carry no counts: nothing in the log is theirs.
-
-  It is one contract's, whether or not it has a process: navigation is per contract
-  (ADR §9, amended by plan DD, P1b, #186).
-  """
+  # A v2 contract's full graph (plan EG1): the steps of `EhOsContract.Paths` —
+  # commands, the events they emit, the policies, process managers and effects that
+  # react, and timers — and around them who acts and who reads. The actors issuing
+  # its commands, recording its events and asking its queries; its read models, with
+  # the events they project and the queries over them; and the domain's external
+  # systems it touches: an effect's `calls`, an event's `depends_on`, a system actor's
+  # `backed_by`, a field an external `issued_by`. Each unit's commands and events sit
+  # in a group of the unit's own.
+  #
+  # `overlay: true` lays the log over the steps, as the graph of steps did (plan
+  # E7c-2): on each event how often it occurred, on each step how often it was taken,
+  # and what waits or fails there. Occurrences, not runs, since plan DD, P1a (#183): a
+  # step is the contract's, whether or not it has a process.
+  # The counts sit on the edge that is the step's own — the emit, or the consumer's
+  # command — since an event may reach one consumer that issues two commands.
+  # `since:` and `until:` bound the log, as in the report. Actors, read models,
+  # queries and externals carry no counts: nothing in the log is theirs.
+  #
+  # It is one contract's, whether or not it has a process: navigation is per contract
+  # (ADR §9, amended by plan DD, P1b, #186).
+  @moduledoc false
 
   import Ecto.Query
 

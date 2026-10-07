@@ -11,7 +11,8 @@ defmodule EhOsContract.Contract.Dsl do
   the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
-  Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
+  Options may stand beside a `do` block, as in `command :record_payment, "…", by:
+  :reception do … end`.
 
   The structs this module defines are what Spark builds from each declaration. They stay inside the
   extension: readers get plain data from `EhOsContract.Model`, never these structs.
@@ -50,11 +51,10 @@ defmodule EhOsContract.Contract.Dsl do
   end
 
   defmodule Generated do
-    @moduledoc """
-    `identity :booking_id, generated: :uuid` in an aggregate (plan EM3): the identity,
-    and that the library gives each new aggregate one. Spark's option takes one
-    argument, so this two-argument form sets the two options it stands for.
-    """
+    # `identity :booking_id, generated: :uuid` in an aggregate (plan EM3): the identity,
+    # and that the library gives each new aggregate one. Spark's option takes one
+    # argument, so this two-argument form sets the two options it stands for.
+    @moduledoc false
 
     @doc "Sets the aggregate's `identity` and how a new one is `generated`."
     defmacro identity(fields, opts) do

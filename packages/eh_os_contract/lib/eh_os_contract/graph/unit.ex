@@ -1,22 +1,21 @@
 defmodule EhOsContract.Graph.Unit do
-  @moduledoc """
-  One unit of a v2 contract as a graph (plan EG1): its state, its commands and the
-  events they emit, its invariants and its commands' constraints, and how many
-  scenarios pin each of those paths.
-
-  The state is a card listing its fields. An aggregate's state is built from its own
-  events, so each event points at it; a dynamic consistency boundary decides over
-  the events it consults instead, its own among them only where it consults them,
-  so those point at it, with the fields they are matched by. An invariant is a rule
-  hanging off each command it may refuse; a command's constraint hangs off that
-  command alone.
-
-  **Scenarios are counted, not drawn.** A scenario of the unit whose command is
-  expected to emit an event counts on that edge; one refused on an invariant counts
-  on the command's edge to it. So a path no scenario pins is the edge with no count
-  — which is what somebody reading the unit before it is built can ask about. The
-  scenarios themselves, with their data, are on the unit's page.
-  """
+  # One unit of a v2 contract as a graph (plan EG1): its state, its commands and the
+  # events they emit, its invariants and its commands' constraints, and how many
+  # scenarios pin each of those paths.
+  #
+  # The state is a card listing its fields. An aggregate's state is built from its own
+  # events, so each event points at it; a dynamic consistency boundary decides over
+  # the events it consults instead, its own among them only where it consults them,
+  # so those point at it, with the fields they are matched by. An invariant is a rule
+  # hanging off each command it may refuse; a command's constraint hangs off that
+  # command alone.
+  #
+  # **Scenarios are counted, not drawn.** A scenario of the unit whose command is
+  # expected to emit an event counts on that edge; one refused on an invariant counts
+  # on the command's edge to it. So a path no scenario pins is the edge with no count
+  # — which is what somebody reading the unit before it is built can ask about. The
+  # scenarios themselves, with their data, are on the unit's page.
+  @moduledoc false
 
   alias EhOsContract.Graph.Mermaid
   alias EhOsContract.Model

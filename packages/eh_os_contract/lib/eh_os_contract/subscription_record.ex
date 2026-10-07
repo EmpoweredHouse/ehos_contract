@@ -1,13 +1,12 @@
 defmodule EhOsContract.SubscriptionRecord do
-  @moduledoc """
-  A row of `eh_os_contract_subscriptions`: how far one consumer has read the log
-  (`EhOsContract.Subscription`, v2 §10.3).
-
-  `status` is `running`, `stale` (its declaration changed and it has not been
-  rebuilt), `rebuilding`, or `failing` at `failed_position`, whose exception's
-  module is `failure`. `mode` is `ordered` for a consumer a runner feeds and
-  `inline` for a read model dispatch projects.
-  """
+  # A row of `eh_os_contract_subscriptions`: how far one consumer has read the log
+  # (`EhOsContract.Subscription`, v2 §10.3).
+  #
+  # `status` is `running`, `stale` (its declaration changed and it has not been
+  # rebuilt), `rebuilding`, or `failing` at `failed_position`, whose exception's
+  # module is `failure`. `mode` is `ordered` for a consumer a runner feeds and
+  # `inline` for a read model dispatch projects.
+  @moduledoc false
 
   use Ecto.Schema
 

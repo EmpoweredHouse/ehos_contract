@@ -1,35 +1,34 @@
 defmodule EhOsContract.Duration do
-  @moduledoc """
-  The DSL's time units — **one source of truth for the gate and for the arithmetic.**
-
-  It exists because of a specific failure. `within: {1, :month}` passed
-  compilation, because the gate had no list of allowed units, and blew up only
-  **at run time**, during assertion evaluation, at the client's. A textbook shape
-  of drift: the DSL accepted a word the mechanism could not compute.
-
-  It was invisible because both our contracts count in days — TaxVision `{2, :day}`,
-  and the universality gate fixture `{3, :day}` and `{90, :day}`. Writing the
-  second one, the habit of the first was copied without thinking: for a treatment
-  episode `{3, :month}` is more natural than 90 days. The universality gate let
-  the habit through, because it checks the vocabulary rather than the mechanisms.
-
-  **Calendar units are not here, and will not arrive quietly.** A month has no
-  fixed length, so shifting by one requires calendar arithmetic and a decision
-  about what a month after 31 January is. That is a decision, not an
-  implementation detail — until it is taken, `within` accepts only fixed-length
-  units, and a contract using `:month` **does not compile**.
-
-  **27 September 2026, plan EM3: the decision was taken, for timers only.** The user
-  chose ESDM's calendar arithmetic for a process manager's timer: `wait: {1, :month}`
-  fires on the same day of the next month, and on its last day when there is no such
-  day — 31 January, then the end of February (`calendar_shift/2`, which is
-  `DateTime.shift/2`). `within` and `deadline` stay in fixed units, since the report
-  measures elapsed time against them and a month there would make one run's window
-  longer than another's. **The calendar is UTC's**, since the log is: an event at 00:30 in
-  Warsaw on 31 March is 22:30 UTC on the 30th, so a month later is 22:30 UTC on 30 April,
-  which is 1 May in Warsaw. A business that needs its own zone's month sets the timer
-  `at:` a moment its state computes.
-  """
+  # The DSL's time units — **one source of truth for the gate and for the arithmetic.**
+  #
+  # It exists because of a specific failure. `within: {1, :month}` passed
+  # compilation, because the gate had no list of allowed units, and blew up only
+  # **at run time**, during assertion evaluation, at the client's. A textbook shape
+  # of drift: the DSL accepted a word the mechanism could not compute.
+  #
+  # It was invisible because both our contracts count in days — TaxVision `{2, :day}`,
+  # and the universality gate fixture `{3, :day}` and `{90, :day}`. Writing the
+  # second one, the habit of the first was copied without thinking: for a treatment
+  # episode `{3, :month}` is more natural than 90 days. The universality gate let
+  # the habit through, because it checks the vocabulary rather than the mechanisms.
+  #
+  # **Calendar units are not here, and will not arrive quietly.** A month has no
+  # fixed length, so shifting by one requires calendar arithmetic and a decision
+  # about what a month after 31 January is. That is a decision, not an
+  # implementation detail — until it is taken, `within` accepts only fixed-length
+  # units, and a contract using `:month` **does not compile**.
+  #
+  # **27 September 2026, plan EM3: the decision was taken, for timers only.** The user
+  # chose ESDM's calendar arithmetic for a process manager's timer: `wait: {1, :month}`
+  # fires on the same day of the next month, and on its last day when there is no such
+  # day — 31 January, then the end of February (`calendar_shift/2`, which is
+  # `DateTime.shift/2`). `within` and `deadline` stay in fixed units, since the report
+  # measures elapsed time against them and a month there would make one run's window
+  # longer than another's. **The calendar is UTC's**, since the log is: an event at 00:30 in
+  # Warsaw on 31 March is 22:30 UTC on the 30th, so a month later is 22:30 UTC on 30 April,
+  # which is 1 May in Warsaw. A business that needs its own zone's month sets the timer
+  # `at:` a moment its state computes.
+  @moduledoc false
 
   @seconds %{second: 1, minute: 60, hour: 3600, day: 86_400}
 

@@ -1,35 +1,34 @@
 defmodule EhOsContract.DslWrappers do
-  @moduledoc """
-  Options beside a `do` block, for the library's Spark DSLs (v2 §16, D13).
-
-  Elixir reads `context :settlement, "Rozliczenia", subdomain: :billing do … end`
-  as four arguments: the two positional ones, the keyword list, and `[do: …]`. A Spark
-  entity macro takes its positional arguments and one options list, so that call
-  names a macro Spark never defines. For every entity that takes a block, one that
-  has entities nested in it and options of its own, `attach/2` defines that one more
-  arity from the entity's definition. It moves the block into the options, `context(name, label, opts, do: b)`
-  → `context(name, label, opts ++ [do: b])`, and Spark's own macro reads the block
-  from `opts[:do]`. Nothing is written by hand per entity.
-
-  The wrappers are imported where Spark imports the entity macros they stand beside:
-  a top-level entity's through the section's `imports`, a nested entity's through
-  its parent's. The call they expand to keeps the caller's file and line, so a DSL
-  error points at the declaration, never at this module.
-
-  An entity with an optional positional argument needs one more thing. Spark already
-  defines the arity the wrapper would take for the shorter form: for
-  `value :address, label: "Adres" do … end` it calls `value(name, type, opts)`, with
-  the keyword list in `type` and only the block in `opts`. Without a block Spark
-  itself reads a keyword list in the last optional argument as options. `attach/2`
-  gives such an entity a `transform` that applies the same rule when a block follows.
-  Spark checks the argument's type before a transform runs, so the argument's type
-  is widened to accept a keyword list as well, which the transform moves into the
-  options before anything reads it. An optional positional argument of an entity
-  that takes a block must therefore never take a keyword list as a legal value.
-
-  The formatter needs nothing for them: it never adds parentheses to a call with a
-  `do` block, so a consumer's `mix format` keeps the four-argument form as written.
-  """
+  # Options beside a `do` block, for the library's Spark DSLs (v2 §16, D13).
+  #
+  # Elixir reads `context :settlement, "Rozliczenia", subdomain: :billing do … end`
+  # as four arguments: the two positional ones, the keyword list, and `[do: …]`. A Spark
+  # entity macro takes its positional arguments and one options list, so that call
+  # names a macro Spark never defines. For every entity that takes a block, one that
+  # has entities nested in it and options of its own, `attach/2` defines that one more
+  # arity from the entity's definition. It moves the block into the options, `context(name, label, opts, do: b)`
+  # → `context(name, label, opts ++ [do: b])`, and Spark's own macro reads the block
+  # from `opts[:do]`. Nothing is written by hand per entity.
+  #
+  # The wrappers are imported where Spark imports the entity macros they stand beside:
+  # a top-level entity's through the section's `imports`, a nested entity's through
+  # its parent's. The call they expand to keeps the caller's file and line, so a DSL
+  # error points at the declaration, never at this module.
+  #
+  # An entity with an optional positional argument needs one more thing. Spark already
+  # defines the arity the wrapper would take for the shorter form: for
+  # `value :address, label: "Adres" do … end` it calls `value(name, type, opts)`, with
+  # the keyword list in `type` and only the block in `opts`. Without a block Spark
+  # itself reads a keyword list in the last optional argument as options. `attach/2`
+  # gives such an entity a `transform` that applies the same rule when a block follows.
+  # Spark checks the argument's type before a transform runs, so the argument's type
+  # is widened to accept a keyword list as well, which the transform moves into the
+  # options before anything reads it. An optional positional argument of an entity
+  # that takes a block must therefore never take a keyword list as a legal value.
+  #
+  # The formatter needs nothing for them: it never adds parentheses to a call with a
+  # `do` block, so a consumer's `mix format` keeps the four-argument form as written.
+  @moduledoc false
 
   @doc """
   Defines the wrappers for `section`'s entities under `namespace` and returns the
