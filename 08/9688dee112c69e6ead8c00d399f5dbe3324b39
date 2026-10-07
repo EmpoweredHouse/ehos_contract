@@ -1,0 +1,1 @@
+pre-pr-review, #214 fix-up (CodeRabbit): qualify/2 now gives t: references the module's name (t:entry/0, t:query/0 on behaviours.md). One regex branch; reviewed by hand. ExDoc: no warning for the two references. Gate: mix check in sandbox EXIT=0.
