@@ -893,7 +893,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 
 | Przed | Pytanie | Domyślnie |
 |---|---|---|
-| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 — **decided 7 October: V02** |
+| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 — **decided 7 October: a new version, never V01 in place.** T2a's is V02 (`_commands.inputs`); P2h, on hold until E13, comes after it and takes the next version, V03, since a host may already have applied V02 |
 | P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem — **decided 6 October: removed** |
 | P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak — **decided 7 October: yes** |
 | P2b | `deadline` bez `ends_on` | błąd L2 w module procesu — **decided 7 October: an L2 error** |
