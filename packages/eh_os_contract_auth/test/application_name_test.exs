@@ -87,7 +87,10 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
 
     assert error.message =~ ~s(audience: "billing-app/prod" names the application billing-app)
     assert error.message =~ "the domain clinic (#{inspect(ClinicDomain)})"
-    assert error.message =~ ~s(rename the domain to name: :"billing-app")
+
+    assert error.message =~
+             ~s{rename the domain clinic (#{inspect(ClinicDomain)}) to name: :"billing-app"}
+
     assert error.message =~ "register the application in EHOS as clinic"
   end
 
@@ -107,7 +110,6 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
 
   test "a domain named with _ starts under EHOS's spelling of it, with -" do
     assert %{start: _} = boot(:auth_rig_shop, [ShopDomain, ShopOrders], "my-shop/prod")
-    assert %{start: _} = boot(:auth_rig_shop, [ShopDomain, ShopOrders], "my_shop/prod")
   end
 
   test "another domain with contracts that publishes nothing does not stop the boot" do
@@ -152,10 +154,71 @@ defmodule EhOsContract.Auth.ApplicationNameTest do
              boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits, ShopDomain], "clinic/prod")
   end
 
-  # The child itself refuses to start without an audience (`PackageTest`); a host without it
-  # checks nothing, and neither does the check without an audience to compare.
-  test "with no audience, nothing is checked" do
-    assert EhOsContract.Auth.check_application!(nil, [ClinicVisits, ShopOrders]) == :ok
+  test "an audience without a / is all application" do
+    assert %{start: _} = boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "clinic")
+
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "billing")
+      end
+
+    assert error.message =~ "names the application billing in EHOS"
+  end
+
+  test "an audience whose application is empty is refused as malformed, with no rename advised" do
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(:auth_rig_clinic, [ClinicDomain, ClinicVisits], "/prod")
+      end
+
+    assert error.message =~ ~s(audience: "/prod" is malformed)
+    refute error.message =~ "rename"
+  end
+
+  test "an audience in the domain's spelling, with _, is refused as malformed: EHOS never issues it" do
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(:auth_rig_shop, [ShopDomain, ShopOrders], "my_shop/prod")
+      end
+
+    assert error.message =~ ~s(its application, the part before the /, is "my_shop")
+  end
+
+  test "with several domains, none publishing, the advice is to rename one of them" do
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(:auth_rig_both, [ClinicDomain, ClinicVisits, ShopDomain, ShopOrders], "billing/prod")
+      end
+
+    assert error.message =~ "rename one of them to name: :billing"
+  end
+
+  test "with several domains, the one that publishes is the one named to rename" do
+    error =
+      assert_raise ArgumentError, fn ->
+        boot(
+          :auth_rig_both,
+          [ClinicDomain, ClinicVisits, ShopDomain, ShopOrders, ShopPayments],
+          "billing/prod"
+        )
+      end
+
+    assert error.message =~
+             "rename the domain that publishes, my_shop (#{inspect(ShopDomain)}), to name: :billing"
+
+    assert error.message =~ "register the application in EHOS as my-shop"
+  end
+
+  test "a contract whose domain is not loaded is refused, naming both" do
+    model = %{ClinicVisits.__eh_os_contract_model__() | domain: NoSuchDomain}
+
+    error =
+      assert_raise ArgumentError, fn ->
+        EhOsContract.Auth.check_application!("clinic/prod", [model])
+      end
+
+    assert error.message =~ "#{inspect(ClinicVisits)} names the domain NoSuchDomain"
+    assert error.message =~ "not loaded"
   end
 
   defp boot(app, modules, audience) do

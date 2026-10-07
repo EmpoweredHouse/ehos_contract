@@ -1764,8 +1764,8 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 > registered name and by refusing such a manifest at registration (EmpoweredHouse/eh-os#201). The library checks it
 > early: `eh_os_contract_auth` refuses to start when the application of its configured `audience` is the name of
 > no domain with contracts, or when another domain in the same application publishes, since it would publish under a
-> name that is not the application's; it checks nothing without an `audience`. A release may hold several domains,
-> as the sandbox does, as long as only the application's own publishes.
+> name that is not the application's; it checks whenever it starts, since it requires an `audience`. A release may
+> hold several domains, as the sandbox does, as long as only the application's own publishes.
 > ([#180](https://github.com/EmpoweredHouse/eh-os-contract/issues/180))
 
 > **1 October 2026, before E12 — what the relay guarantees, and what `Bus` does not.**

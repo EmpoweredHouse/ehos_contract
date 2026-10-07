@@ -13,8 +13,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `config :eh_os_contract, applications:`, or that name with each `_` spelled `-`, as the manifest generator does.
   One of them must match, and every other one must declare no `publish` in any of its contracts. Every name the
   application publishes begins with its domain's name, and EHOS lets an application publish only under the name it
-  registered (eh-os#201); a domain that publishes nothing sends no name to anyone. Without an `audience` nothing
-  is checked.
+  registered (eh-os#201); a domain that publishes nothing sends no name to anyone. The check runs whenever
+  the child starts, which already requires an `audience`. An `audience` whose application is not a name EHOS
+  gives (`"/prod"`), and a contract whose domain is not loaded, are refused too.
   - **Action:** a host whose domains' names all differ from its application's name in EHOS either renames the
     domain that publishes, which renames every event and every stored contract id, so the event log starts again,
     or has EHOS register the application under that domain's name. A host with a second domain that publishes moves

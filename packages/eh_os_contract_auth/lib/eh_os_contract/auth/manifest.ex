@@ -187,7 +187,11 @@ defmodule EhOsContract.Auth.Manifest do
 
   defp not_its_own!(_file, _application), do: :ok
 
-  defp application?(name),
+  @doc false
+  # Whether EHOS takes `name` for an application. `EhOsContract.Auth.child_spec/1` holds the
+  # application of the configured audience to it (#180).
+  @spec application?(String.t()) :: boolean()
+  def application?(name),
     do:
       Regex.match?(@application, name) and String.length(name) <= @max_application and
         name != "ehos"
