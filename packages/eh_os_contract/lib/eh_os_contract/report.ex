@@ -12,9 +12,10 @@ defmodule EhOsContract.Report do
   engine writes its own sentences in one language; it still does not decide what
   language the client wrote their labels in.
 
-  What is **not** here: declarations the process owner has not confirmed. The filter lives in `EhOsContract.Conformance`, not here, because
-  it is a rule about evidence rather than about formatting — the consequence is
-  visible right here: an unconfirmed `deadline` never reaches `render/1`'s input.
+  What is **not** here: declarations the process owner has not confirmed. The filter
+  lives in `EhOsContract.Conformance`, not here, because it is a rule about evidence
+  rather than about formatting — the consequence is visible right here: an unconfirmed
+  `deadline` never reaches `render/1`'s input.
   """
 
   # Rendered here rather than in the application, which reversed an earlier decision:

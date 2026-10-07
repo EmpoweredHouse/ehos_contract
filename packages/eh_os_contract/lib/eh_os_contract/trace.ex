@@ -3,6 +3,8 @@ defmodule EhOsContract.Trace do
   # 2026. A promise is declared in a contract's one `process` (v2 §13, plan E7c), and
   # an included event counts in the including run (v2 D7). Notes §9 also foresee a
   # single-run view, for debugging: "what happened to invoice 4712".
+  # test/conformance/promise_edges_test.exs pins the disjunction's edge cases, and
+  # test/conformance/promise_test.exs the verdicts.
   @moduledoc """
   Evaluation of a process's `promise`s **per run**.
 
@@ -56,7 +58,6 @@ defmodule EhOsContract.Trace do
   blocked by an outage. It is not taken, because the promise is the disjunction
   itself — "X or Y" — and here Y was impossible, which stands as a reason to withhold
   judgement on the run even when X depended on nothing.
-  `test/conformance/promise_edges_test.exs` pins this.
 
   ## Three decisions with teeth
 
@@ -123,7 +124,6 @@ defmodule EhOsContract.Trace do
   `eh_os_contract_event_runs` for that process, so an event another contract decided
   and this one includes counts in its run, and the events are
   named by their stored types, `"<contract id>.<event>"`.
-  `test/conformance/promise_test.exs` pins the verdicts.
 
   But **the report aggregates to numbers** (`summary/1`). "Which company has no
   open July" is a question about the state of the business and belongs to the

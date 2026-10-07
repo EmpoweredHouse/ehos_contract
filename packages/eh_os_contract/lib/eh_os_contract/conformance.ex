@@ -9,9 +9,10 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  A step counts its **occurrences**: a step is the contract's, and a contract may have no process to count runs of. A process's
-  promises and durations are judged per **run**. And the report has to avoid lying in
-  the three situations where lying is easy:
+  A step counts its **occurrences**: a step is the contract's, and a contract may have
+  no process to count runs of. A process's promises and durations are judged per
+  **run**. And the report has to avoid lying in the three situations where lying is
+  easy:
 
   **Nothing happening is no basis for a verdict, not three untraversed paths.** A
   contract nobody used has every step untraversed — and listing them as findings
@@ -101,9 +102,9 @@ defmodule EhOsContract.Conformance do
 
   A process module (`use EhOsContract.Process`) gets the process section of a contract's
   report, and only that, under `processes`: its runs, its confirmed declarations, its
-  duration against its `deadline` and its promises' verdicts, and its deployment. It has no steps, lifecycles or scenarios of its own; those are its
-  contracts'. Its report is keyed `process:`, its `id:`, where a contract's is keyed
-  `contract:`.
+  duration against its `deadline` and its promises' verdicts, and its deployment. It has
+  no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
+  keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
   """
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)

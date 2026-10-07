@@ -29,12 +29,12 @@ defmodule EhOsContract.ScenarioCase do
   their correlation fails too, before anything is folded.
 
   **What it asserts.** The events a scenario expects, and the commands it says are
-  issued, **appear among those produced, in that order — a subsequence, not
-  equality**; each with the fields its data names, and any others. Pinning every
-  event would break a scenario of one rule whenever the flow grew by one event.
-  `rejected` asserts the rejection on exactly that
-  invariant. Whatever a decision returns is also held to its declaration: an event
-  the command does not emit fails the scenario, whatever it expects.
+  issued, **appear among those produced, in that order — a subsequence, not equality**;
+  each with the fields its data names, and any others. Pinning every event would break a
+  scenario of one rule whenever the flow grew by one event. `rejected` asserts the
+  rejection on exactly that invariant. Whatever a decision returns is also held to its
+  declaration: an event the command does not emit fails the scenario, whatever it
+  expects.
 
   **A query's scenario** (ESDM's read model scenario) projects every `given`
   through the implementation of the read model the query reads, asks the query with

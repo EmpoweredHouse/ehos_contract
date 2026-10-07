@@ -62,14 +62,15 @@ defmodule EhOsContract.Model do
         )
   end
 
-  # The capability names (v2 §16), and the subscribe grant (eh-os D-41).
+  # The capability names (v2 §16, D14, with D6 for recordings and D10 for scopes), and the
+  # subscribe grant (eh-os D-41).
   @doc """
-  The capabilities a v2 contract declares, under the names EHOS grants them by
-  (D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
-  query and `<domain>.<event>` for each event a contract records (`recorded_by:`,
-  D6), where `<domain>` is the domain's `name:`. Each says which roles may use it,
+  The capabilities a contract declares, under the names EHOS grants them by:
+  `<domain>.<command>` for each command, `<domain>.<query>` for each query and
+  `<domain>.<event>` for each event a contract records (`recorded_by:`), where
+  `<domain>` is the domain's `name:`. Each says which roles may use it,
   `<domain>.<actor>` for every `:human` actor in its `by:` or `recorded_by:`, and a
-  query also the field its grant is scoped by (D10).
+  query also the field its grant is scoped by.
 
   **Only what a person may do is a capability.** A declaration whose `by:` or
   `recorded_by:` names no `:human` actor — a command only a reaction issues, an event
@@ -250,7 +251,7 @@ defmodule EhOsContract.Model do
 
   # The generated modules (v2 §5, §7); a value's behaviour since plan EL2b.
   @doc """
-  The module a v2 contract generates for a declaration: the struct of a command, an
+  The module a contract generates for a declaration: the struct of a command, an
   event or a query's parameters, or the behaviour of a unit, a policy, an effect, a
   process manager or a read model. A domain generates one too, the behaviour of a
   value that declares invariants:

@@ -1,8 +1,8 @@
 defmodule EhOsContract.Meta do
   @moduledoc """
   What a command or an event carries besides its fields: who acted, when,
-  and which run and which cause it belongs to. Every struct a v2 contract generates
-  has it as `__meta__`, a name no declared field may take (F1).
+  and which run and which cause it belongs to. Every struct a contract generates has
+  it as `__meta__`, a name no declared field may take (F1).
 
   A decision reads it and never writes it: dispatch sets it on a command, and the
   store on an event it appends. `evolve/2` may take a business date from

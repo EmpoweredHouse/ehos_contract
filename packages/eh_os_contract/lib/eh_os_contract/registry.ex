@@ -31,14 +31,14 @@ defmodule EhOsContract.Registry do
 
   **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
   `inspect/1`, to drop from the scan before anything downstream ever sees them.**
-  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and `EhOsContract.Trace` all read
-  contracts through this one registry, so one config key keeps a
-  namespace out of every one of them at once — the alternative would be an
-  exception written into each report by hand. Not a DSL word: which binary is
-  running is an operational fact a deployer states in configuration, never a
-  claim the contract itself makes. Empty by default, so the existing property —
-  the graph comes from the binary that actually runs, in full — is unchanged
-  unless a deployer opts into narrowing it.
+  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and
+  `EhOsContract.Trace` all read contracts through this one registry, so one config key
+  keeps a namespace out of every one of them at once — the alternative would be an
+  exception written into each report by hand. Not a DSL word: which binary is running is
+  an operational fact a deployer states in configuration, never a claim the contract
+  itself makes. Empty by default, so the existing property — the graph comes from the
+  binary that actually runs, in full — is unchanged unless a deployer opts into
+  narrowing it.
   """
   @spec load!(atom() | [atom()] | nil) :: %{
           contracts: [module()],
@@ -163,7 +163,8 @@ defmodule EhOsContract.Registry do
     do: Enum.find(contracts(), &(EhOsContract.Model.fetch(&1).id == id))
 
   @doc """
-  The registered process module whose `id:` is `id`, or `nil`: the whole id, as `contract/1` takes a contract's.
+  The registered process module whose `id:` is `id`, or `nil`: the whole id, as
+  `contract/1` takes a contract's.
   """
   @spec process(String.t()) :: module() | nil
   def process(id) when is_binary(id),

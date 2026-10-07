@@ -17,7 +17,8 @@ defmodule EhOsContract.Graph do
   alias EhOsContract.Model
   alias EhOsContract.Graph.Mermaid
 
-  # This is not the graph that was rejected (notes §5, §9). `PLAN.md` records a dated
+  # The graphs are the ones notes §5 and §9 foresee. This is not the graph that was
+  # rejected: `PLAN.md` records a dated
   # finding that a diagram was not worth building: eleven events gave three edges and
   # it said nothing a sorted list did not. That was the **handler graph** — edges from
   # handler registrations — drawn for the team's evidence screen. This is a different
