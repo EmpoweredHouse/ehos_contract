@@ -39,7 +39,7 @@ Given a green gate, three things are closed:
   right thing is not (below).
 - **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
   `packages/eh_os_contract/docs/contract.md`'s examples and refusal table against the code (`test/docs_test.exs`).
-- **The docs are complete and most of their references resolve**: every public function of the engine's
+- **The docs are complete and most of their references resolve**: every public function of each package's
   `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
   a `@doc false` function is not held to a `@spec`, though `CLAUDE.md` still asks for one); and no doc
   references a missing or hidden function of an existing module, a hidden module, a module outside `lib/`

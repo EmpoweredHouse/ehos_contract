@@ -126,8 +126,10 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
    `packages/eh_os_contract`, and commit the pages it rewrote.
 2. Read the generated page of what you changed, not only the source: a doc that reads well beside the
    code can read badly alone.
-3. The gate: `docs --warnings-as-errors` and `test/doc_coverage_test.exs` run inside the package's
-   `mix check`.
+3. The gate: `docs --warnings-as-errors` and `test/doc_coverage_test.exs` run inside each package's
+   `mix check`, the engine's, `eh_os_contract_web`'s and `eh_os_contract_auth`'s alike. The latter two
+   publish only what a host calls or implements; a module the host never names (a LiveView, a plug its
+   router mounts) is `@moduledoc false`, its text kept as a comment.
 
 ## Not this skill
 
@@ -135,5 +137,3 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
   (`docs_test.exs`) and are guides, not reference.
 - Comments for the next maintainer: `CLAUDE.md`, "A code never stands alone in prose", and the issue
   convention (`plan DD, ID1 (#165)`).
-- `eh_os_contract_web` and `eh_os_contract_auth` publish no docs yet; until they do, write their docs
-  by the same rules, since the gate will hold them to these once they do.
