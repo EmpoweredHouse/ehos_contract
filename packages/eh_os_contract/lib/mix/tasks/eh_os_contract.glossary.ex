@@ -2,8 +2,8 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
   @shortdoc "Prints a domain's ubiquitous language as Markdown"
 
   @moduledoc """
-  The glossary of the application's domain, one section per context
-  (`EhOsContract.Glossary`; ESDM's `glossary`).
+  Prints the glossary of the application's domain as Markdown: each context's terms,
+  their definitions, the words to avoid and their translations.
 
       mix eh_os_contract.glossary                        # every term, in its context's language
       mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
@@ -11,8 +11,7 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
       mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
 
   The domain is found among the modules of `config :eh_os_contract, applications:`.
-  Use `--output` to write a file: Erlang keeps stdout in latin1 when it is not a
-  terminal, and the terms are in the client's language.
+  `--output` writes the glossary to a file.
   """
 
   use Boundary, classify_to: EhOsContract

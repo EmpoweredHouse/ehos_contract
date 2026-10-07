@@ -1,6 +1,6 @@
 defmodule EhOsContract.Store do
   @moduledoc """
-  Where events are appended and read back (v2 §10.1).
+  Where events are appended and read back.
 
   It isolates the SQL, not the transaction model. **Every call runs inside the
   caller's Ecto transaction**, so an append commits or rolls back together with
@@ -12,7 +12,7 @@ defmodule EhOsContract.Store do
     a reader has to wait for. A reader that follows `position > checkpoint` therefore
     never skips a row that commits late. Holes left by rolled-back appends are
     permanent and harmless. `EhOsContract.Store.Postgres` gets this from one
-    transaction-scoped advisory lock (v2 §10.2).
+    transaction-scoped advisory lock.
   - **A stream's versions have no gaps.** `{:stream, id, expected}` appends only when
     the stream's highest version is `expected` (`0`: the stream must not exist yet).
     The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
@@ -20,7 +20,7 @@ defmodule EhOsContract.Store do
     no stream: the condition does.
   - **`{:dcb, query, after_position}` appends only when nothing matching `query` was
     appended after `after_position`** — the head `c:read_query/2` returned with what it
-    read (v2 §10.4). Otherwise `{:error, :condition_failed}`, and nothing is written.
+    read. Otherwise `{:error, :condition_failed}`, and nothing is written.
     Such an append carries no stream: a consistency boundary is a query over the log,
     not a stream of its own.
   - **`:none` appends without a condition**, and then no entry may carry a stream.

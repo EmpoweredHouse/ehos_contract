@@ -9,15 +9,14 @@ the [configuration](configuration.md) under the key after its name.
 
 Configured with `config :eh_os_contract, authorizer: ...`, a module.
 
-The question dispatch and query ask about a credential's actor: may it do this
-(v2 §11, D14)?
+The question dispatch and query ask about a credential's actor: may it do this?
 
     config :eh_os_contract, authorizer: MyApp.Authorizer
 
 The engine asks it about every command, query and recorded event that arrives
 with a credential, before anything else runs. It is not asked about the
 application's own code — a `:system` actor or a reaction — which the contract
-holds to its declarations instead (v2 §11, the note of 26 September 2026).
+holds to its declarations instead.
 
 **The decision is `EhOsContract.Authorizer.check/2`**, and it reads nothing but the actor and the request:
 
@@ -27,7 +26,7 @@ holds to its declarations instead (v2 §11, the note of 26 September 2026).
     grant nobody finished, and it is refused;
   * `{:error, :outside_scope}` — the value asked for is not among them.
 
-Values are compared as the strings the credential carries (`eh-os` D-40), so a
+Values are compared as the strings the credential carries, so a
 granted value that is not of the field's type matches nothing.
 
 **An implementation may narrow what a credential grants, and never widen it.**
@@ -38,7 +37,8 @@ after an `:ok` and raises when that refuses, so a mistake in an implementation
 fails loudly instead of letting a call through. It follows that grants travel in
 the credential, as EHOS issues them.
 
-A refusal writes nothing, neither to the log nor to `_commands`: the row that
+A refusal writes nothing, neither to the log nor to the table of commands
+(`eh_os_contract_commands`): the row that
 records it belongs to the implementation.
 
 ### Callbacks
@@ -54,8 +54,8 @@ Whether `actor` may make `request`.
 
 Configured with `config :eh_os_contract, bus: ...`, a module or `{module, opts}`.
 
-How an integration event leaves one application and reaches another (v2 §16, D11 and
-D12): the seam between the engine and a transport.
+How an integration event leaves one application and reaches another: the seam
+between the engine and a transport.
 
 The engine is on both sides of it. The relay publishes what a `publish` declares,
 from the log, and advances its checkpoint when `c:EhOsContract.Bus.publish/2` returns `:ok`; the
@@ -70,8 +70,8 @@ them.
 ### What an adapter promises
 
 `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-it. It cannot see the absence of an order, nor how a relay treats an error, which is
-E12b's.
+it. It cannot see the absence of an order, nor how a relay treats an error, which
+`EhOsContract.Relay` describes.
 
 - **`:ok` from `c:EhOsContract.Bus.publish/2` means the transport holds every message of the batch.**
   An error means it may hold some of them: the relay publishes the whole batch again,
@@ -82,8 +82,7 @@ E12b's.
   consumer that stops with a message in hand, get it again later. A consumer that
   comes back under the same name gets what was published while it was down.
 - **No order.** Messages may arrive in any order, and a redelivered one after a later
-  one. The relay publishes in log order, but nothing downstream may rely on it
-  (v2 §16, the note of 1 October 2026).
+  one. The relay publishes in log order, but nothing downstream may rely on it.
 - **No deduplication is required.** A message published twice may arrive twice. The
   inbox drops the second one by its key, so a transport that deduplicates (JetStream's
   `Nats-Msg-Id`) saves work and changes no result.
@@ -98,7 +97,7 @@ E12b's.
 
 Who may consume a name is not the engine's question either. The subscriber's
 `subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
-and the transport adapter routes by the grant (`eh-os` D-41). An adapter that cannot
+and the transport adapter routes by the grant. An adapter that cannot
 refuse an ungranted consumer grants every one.
 
 ### A message
@@ -159,7 +158,7 @@ the state with `format_status/1`.
 
 Configured with `config :eh_os_contract, store: ...`, a module.
 
-Where events are appended and read back (v2 §10.1).
+Where events are appended and read back.
 
 It isolates the SQL, not the transaction model. **Every call runs inside the
 caller's Ecto transaction**, so an append commits or rolls back together with
@@ -171,7 +170,7 @@ whatever else the caller wrote.
   a reader has to wait for. A reader that follows `position > checkpoint` therefore
   never skips a row that commits late. Holes left by rolled-back appends are
   permanent and harmless. `EhOsContract.Store.Postgres` gets this from one
-  transaction-scoped advisory lock (v2 §10.2).
+  transaction-scoped advisory lock.
 - **A stream's versions have no gaps.** `{:stream, id, expected}` appends only when
   the stream's highest version is `expected` (`0`: the stream must not exist yet).
   The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
@@ -179,7 +178,7 @@ whatever else the caller wrote.
   no stream: the condition does.
 - **`{:dcb, query, after_position}` appends only when nothing matching `query` was
   appended after `after_position`** — the head `c:EhOsContract.Store.read_query/2` returned with what it
-  read (v2 §10.4). Otherwise `{:error, :condition_failed}`, and nothing is written.
+  read. Otherwise `{:error, :condition_failed}`, and nothing is written.
   Such an append carries no stream: a consistency boundary is a query over the log,
   not a stream of its own.
 - **`:none` appends without a condition**, and then no entry may carry a stream.
@@ -263,8 +262,7 @@ Up to `limit` events after `after_position`, in position order, of the given typ
 
 Configured with `config :eh_os_contract, supplier: ...`, a module.
 
-Where the values of the fields a contract declares `supplied_by: :host` come from
-(plan T1).
+Where the values of the fields a contract declares `supplied_by: :host` come from.
 
     config :eh_os_contract, supplier: MyApp.Supplier
 
@@ -316,9 +314,10 @@ The values of `request.fields`, or why the host cannot give them.
 
 Configured with `config :eh_os_contract, vault: ...`, a module.
 
-The master keys that wrap the subjects' data keys (v2 §14). A data key is 32
-random bytes per subject, stored in `eh_os_contract_subject_keys` only wrapped:
-the database alone cannot decrypt a personal field.
+The master keys that wrap the subjects' data keys.
+
+A data key is 32 random bytes per subject, stored in `eh_os_contract_subject_keys`
+only wrapped: the database alone cannot decrypt a personal field.
 
 **The default is `EhOsContract.Vault.Local`**, which takes the master keys from
 configuration:

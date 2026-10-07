@@ -1,7 +1,6 @@
 defmodule EhOsContract.Supplier do
   @moduledoc """
-  Where the values of the fields a contract declares `supplied_by: :host` come from
-  (plan T1).
+  Where the values of the fields a contract declares `supplied_by: :host` come from.
 
       config :eh_os_contract, supplier: MyApp.Supplier
 
