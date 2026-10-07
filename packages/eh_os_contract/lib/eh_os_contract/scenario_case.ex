@@ -338,7 +338,7 @@ defmodule EhOsContract.ScenarioCase do
   """
   @spec checkout() :: :ok
   def checkout do
-    with repo when repo != nil <- Application.get_env(:eh_os_contract, :repo),
+    with repo when repo != nil <- EhOsContract.Config.get(:repo),
          Ecto.Adapters.SQL.Sandbox <- repo.config()[:pool] do
       owner = Ecto.Adapters.SQL.Sandbox.start_owner!(repo, shared: false)
       ExUnit.Callbacks.on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
@@ -376,7 +376,7 @@ defmodule EhOsContract.ScenarioCase do
     read_model = Enum.find(model.read_models, &(&1.name == query.reads))
     projection = implementation!(model, %{kind: :read_model, name: read_model.name}, found)
     domain = domain(model)
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
 
     params =
       struct!(

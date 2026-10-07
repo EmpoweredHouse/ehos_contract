@@ -53,7 +53,7 @@ defmodule EhOsContract.Testing do
   """
   @spec drain(keyword()) :: drained()
   def drain(opts \\ []) do
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
     only = Keyword.get(opts, :only)
     wanted = fn key -> only == nil or key in List.wrap(only) end
 

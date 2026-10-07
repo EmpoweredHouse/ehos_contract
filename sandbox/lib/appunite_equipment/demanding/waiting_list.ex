@@ -25,7 +25,7 @@ defmodule AppuniteEquipment.Demanding.WaitingList do
         }
       )
 
-    for row <- Application.fetch_env!(:eh_os_contract, :repo).all(query) do
+    for row <- EhOsContract.Config.fetch!(:repo).all(query) do
       struct!(Row, %{
         row
         | reason: String.to_existing_atom(row.reason),

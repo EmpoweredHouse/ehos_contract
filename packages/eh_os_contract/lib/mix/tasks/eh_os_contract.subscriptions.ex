@@ -34,7 +34,7 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
     {opts, _} = OptionParser.parse!(args, strict: [skip: :string, reset: :string])
 
     Mix.Task.run("app.start")
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
 
     cond do
       key = opts[:skip] -> skip(repo, key)

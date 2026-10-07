@@ -165,5 +165,5 @@ defmodule EhOsContract.Dependency do
   # What is lost is `compile_env!`'s check that configuration has not changed since
   # the build. What is gained is that this compiles standing alone, which is the
   # whole point of a package.
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

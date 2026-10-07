@@ -63,8 +63,8 @@ defmodule EhOsContract.Vault.Local do
   # rotation.
   defp keys do
     configured =
-      :eh_os_contract
-      |> Application.get_env(EhOsContract.Vault, [])
+      EhOsContract.Vault
+      |> EhOsContract.Config.get()
       |> Keyword.get(:keys, [])
 
     decoded =

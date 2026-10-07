@@ -217,7 +217,7 @@ defmodule EhOsContract.Personal do
       end
 
     declared!(subject)
-    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    repo = EhOsContract.Config.fetch!(:repo)
     type = Atom.to_string(subject)
 
     {:ok, found} =

@@ -591,5 +591,5 @@ defmodule EhOsContract.Paths do
     |> then(fn q -> if at = opts[:until], do: where(q, [c], c.recorded_at <= ^at), else: q end)
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

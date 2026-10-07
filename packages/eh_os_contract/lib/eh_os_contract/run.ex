@@ -213,5 +213,5 @@ defmodule EhOsContract.Run do
   defp maybe_run(query, id), do: where(query, [r], r.instance_id == ^id)
 
   @spec repo() :: module()
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

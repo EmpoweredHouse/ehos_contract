@@ -330,5 +330,5 @@ defmodule EhOsContract.Graph.Contract do
     |> Map.new(fn {type, count} -> {{:event, Map.fetch!(by_type, type)}, count} end)
   end
 
-  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 end

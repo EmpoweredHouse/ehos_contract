@@ -120,7 +120,7 @@ defmodule EhOsContract.Store do
   `EhOsContract.Store.Postgres` when nothing is configured.
   """
   @spec impl() :: module()
-  def impl, do: Application.get_env(:eh_os_contract, :store, EhOsContract.Store.Postgres)
+  def impl, do: EhOsContract.Config.get(:store)
 
   @doc "`c:lock/1` on the configured implementation."
   @spec lock(module()) :: :ok

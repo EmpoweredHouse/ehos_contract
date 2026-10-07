@@ -15,7 +15,7 @@ defmodule Rehmed.Settlement.DailyTotalsFor do
         select: {p.method, type(sum(p.amount), :integer)}
       )
 
-    for {method, total} <- Application.fetch_env!(:eh_os_contract, :repo).all(query),
+    for {method, total} <- EhOsContract.Config.fetch!(:repo).all(query),
         do: %Row{business_date: day, method: String.to_existing_atom(method), total: total}
   end
 end

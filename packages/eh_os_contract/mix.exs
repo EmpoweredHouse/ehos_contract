@@ -115,6 +115,7 @@ defmodule EhOsContract.MixProject do
         "README.md",
         "docs/contract.md",
         "docs/authorization.md",
+        "docs/configuration.md",
         "docs/rules.md",
         "docs/dsl/domain-dsl.md",
         "docs/dsl/contract-dsl.md",

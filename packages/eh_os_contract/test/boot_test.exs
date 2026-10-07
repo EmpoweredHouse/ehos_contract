@@ -36,6 +36,14 @@ defmodule EhOsContract.BootTest do
     assert Repo.all(SubscriptionRecord) == []
   end
 
+  test "a misspelled key of the configuration stops the boot, naming the key" do
+    Application.put_env(:eh_os_contract, :autorizer, EhOsContract.Authorizer.Default)
+    on_exit(fn -> Application.delete_env(:eh_os_contract, :autorizer) end)
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+    assert message =~ ":autorizer"
+  end
+
   defmodule Unforgetting do
     @moduledoc false
   end
