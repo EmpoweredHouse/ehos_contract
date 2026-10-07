@@ -1,0 +1,23 @@
+**Review of P2f's AppUnite part** (`8cf5f60`, settled in the commit after it). One review covered correctness, and security and performance.
+
+**Faithful move: no finding.** Compared with the removed `Assignments` contract, these are the same:
+- the correlation;
+- the three stages in order, all including events from `Computers`;
+- the two ends, `lost` and `returned`;
+- the accountable role and the label.
+
+Other checks found nothing either:
+- **The moduledoc** matches the old text and the distillation's shape B.
+- **References:** nothing in the sandbox's code, tests, config or manifest named the removed contract.
+- **Boundaries:** the boundary exports are right, and the new process boundary depends on the library alone.
+- **Boot:** the removed contract declared no events, so no start-up warning about unknown contracts or types fires. Its old deployment rows stay behind, harmless.
+
+**Fixed:** `AppuniteEquipment`'s moduledoc still listed three contracts.
+
+**Stated, not changed:**
+- **Runs are now filed under `"appunite_equipment.assignment"`.** In a log that is not reseeded, an assignment issued before the deploy and returned after it shows as a run without its issue. The migration note on this issue covers it.
+- **The sandbox dashboard no longer shows the assignment runs** until process modules join it (#220).
+
+**Numbers unchanged.** On the 95 seeded events the report shows the same 4 assignment runs under the module.
+
+Gate: `mix check` in `sandbox/`, EXIT=0. The sandbox's check is unchanged: 0 errors, 36 warnings, 10 notices, and 196 tests. Engine 0, 69, 6 and 1495 tests; web 57; auth 287 + 1 property.
