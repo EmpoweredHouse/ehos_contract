@@ -716,6 +716,7 @@ within `rejects:`, routing a stored type to its struct, and encryption.
 > X9). A decision is still a pure function of its arguments; it has three of them. Rejected: putting the rows in
 > `__meta__`, which says who and when and comes back with the log; folding them into the state, which is the
 > unit's history and would then depend on when it was read.
+> ([#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240))
 
 ## 6. Checks, in five layers
 

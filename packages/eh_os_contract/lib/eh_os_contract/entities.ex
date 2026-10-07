@@ -40,8 +40,14 @@ defmodule EhOsContract.Entities do
   Once per command, after the caller is authorized and what it sent is found sound,
   and before the decision's transaction: when the decision meets a conflict and runs
   again, it decides on the same rows. A retry of a command already accepted under its
-  idempotency key gets its receipt without asking. What was read is kept with the
-  command's record. The call has no time limit of the engine's.
+  idempotency key gets its receipt without asking. A command dispatched inside a
+  transaction of the caller's, or issued by a policy that reacts inside dispatch's, is
+  asked inside that transaction, and while another append waits on it: keep `fetch/3`
+  a local read. The call has no time limit of the engine's.
+
+  What was read is kept with the command's record, accepted or rejected, the row's
+  declared fields whole: an entity with a long text or a long list makes every command
+  that reads it that much larger.
 
   A node with a contract whose command `reads:` does not start without an
   implementation configured, one that is loaded and exports `fetch/3`.

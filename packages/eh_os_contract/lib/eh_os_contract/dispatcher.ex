@@ -119,11 +119,13 @@ defmodule EhOsContract.Dispatcher do
 
   @typedoc """
   What is wrong with one field of a command: missing, not of its type, breaking an
-  invariant of its domain value, or brought by the caller when the engine generates
-  it (`:generated`) or the host supplies it (`:supplied`).
+  invariant of its domain value, brought by the caller when the engine generates
+  it (`:generated`) or the host supplies it (`:supplied`), or naming an entity the
+  command reads that the host does not have (`:unknown`).
   """
   @type problem ::
-          {field :: atom(), :required | :type | {:invariant, atom()} | :generated | :supplied}
+          {field :: atom(),
+           :required | :type | {:invariant, atom()} | :generated | :supplied | :unknown}
 
   @typedoc "What dispatch refuses a command with, before or instead of deciding."
   @type refusal ::
@@ -705,10 +707,12 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
-  # the transaction, so a conflict's retry decides on the same rows and the host's lookup
-  # never runs with the transaction open. As for supplied fields, a retry of a command
-  # already accepted under its key gets its receipt without asking: a row deleted since
-  # would turn the receipt into a refusal.
+  # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
+  # host's lookup does not hold the transaction open. A command dispatched inside a
+  # caller's transaction, or issued by a policy inside dispatch's, is asked inside that
+  # one, and after the append lock when one is already held. As for supplied fields, a
+  # retry of a command already accepted under its key gets its receipt without asking: a
+  # row deleted since would turn the receipt into a refusal.
   defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
     with :new <- idempotent(repo(), job) do
       Entities.read(job.model, job.declaration, job.command)

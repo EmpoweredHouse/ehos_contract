@@ -786,9 +786,9 @@ transaction, so a retry after a conflict decides on the same rows; a row that is
 as `{field, :unknown}` (422; `:unknown` joins the reserved invariant names, D9), and a row that does not fit the
 entity's fields raises (`UnfitRowError`). What was read is kept in a new column `inputs` of `_commands`, added
 by a migration **V02** (decided 7 October); entities have no personal fields (D6), so it can be. Depends on N1.
-*Odrzucone (mechanika):* `Meta.inputs` (Meta znaczy kto/kiedy i wraca z logiem), wstrzyknięcie do stanu.
-**T2b — `given_entity`**: done inside T2a (#240). A scenario that rejects on an invariant only a reading command
-rejects could not be written without it, and every invariant needs one (S8), so T2a alone would not compile.
+*Rejected (mechanics):* `Meta.inputs` (Meta says who and when, and comes back with the log); folding the rows into
+the state.
+**T2b — `given_entity`**: done inside T2a (#240); why is on the issue.
 **T2s — sandbox**: `book_visit` czyta `:service` i utrwala flagę P1 w `visit_booked` (AGG-15, w chwili rezerwacji).
 
 **A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
