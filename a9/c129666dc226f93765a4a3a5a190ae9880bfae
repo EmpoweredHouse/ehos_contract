@@ -1,0 +1,27 @@
+**Review of #180** (two reviews in parallel on `3d9569b`; settled in the commit after it).
+
+**Correctness** found no bug. The rule matches the decision:
+- one domain with contracts must have the application's name;
+- every other domain with contracts must publish nothing;
+- an application without contracts passes.
+
+Process modules are not counted. Contracts spread over several OTP applications are grouped by domain. The manifest's output is unchanged by the comparison now shared with it.
+
+Fixed:
+- **Unloaded domain module.** A contract whose domain module is not loaded made `Model.fetch/1` raise a misleading error. It is now refused by name. Skipping it was rejected: a domain's name has no default, unlike its time zone, so skipping would let its contracts publish unchecked.
+- **Missing `audience`.** "Without an `audience` nothing is checked" was unreachable, since the auth child already refuses to start without one. The case is removed, and the CHANGELOG, the code comment and the D11 amendment say the check runs whenever the child starts. The sandbox and tests without `eh_os_contract_auth` are unaffected.
+- **Malformed audience.** An audience whose application is not a name EHOS issues was offered as a new domain name. That covers an empty name (`"/prod"`), upper case, and `_`. It is now refused as malformed, so `"my_shop/prod"` is refused, as EHOS never issues `_`. With several domains, the advice names the domain to rename.
+- **Tests** added for an audience without `/`, an empty application, `_`, the advice with several domains, and an unloaded domain.
+
+**Security and performance** found nothing blocking. Credentials are verified as before: `aud` is still matched exactly. The messages print the audience, domain and publication names and nothing secret.
+
+Left, as notes:
+- a contract excluded through `config :eh_os_contract, exclude:` is not seen by the check. EHOS's bus credential is the guarantee;
+- the registry is scanned twice at boot, once by the auth child and once by the engine. It runs once, and its cost grows only with the module count;
+- a host using the auth package must configure `applications:`. It needs that for the engine anyway.
+
+**The sandbox** now has the audience `taxvision/sandbox`, matching its `ehos.yaml` and its one publishing domain. No test depended on the old value.
+
+Gate: `mix check` in `sandbox/`, EXIT=0 (with the docs built with `--warnings-as-errors`). Sandbox 194 tests, engine 1523, web 60, auth 304 + 1 property; check counts unchanged.
+
+After merging main (#232): gate EXIT=0, counts unchanged. PLAN.md records P2g as merged and #180 in the handoff (documentation only).
