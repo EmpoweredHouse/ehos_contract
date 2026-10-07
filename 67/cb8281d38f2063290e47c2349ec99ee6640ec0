@@ -1,0 +1,1 @@
+pre-pr-review, #223 fix-up (CodeRabbit): a backtick fence whose info string holds a backtick opens no block (CommonMark). One clause; reviewed by hand; the new test fails on the previous reading. Gate: mix check in sandbox EXIT=0.
