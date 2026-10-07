@@ -1,0 +1,6 @@
+pre-pr-review, #211 fix-up (CodeRabbit's two comments), 1 commit
+
+- fixed: optional argument types showed DslWrappers' keyword widening (consumes.events, value.type); renderer shows the declared type; test added, reverse-checked (red with the widened row)
+- fixed: field's description named only the value, though entity nests it too
+Small fix-up: reviewed by hand (one renderer function, one describe string, one test); no new I/O, no runtime code beyond a describe string.
+Gate: mix check in sandbox EXIT=0; check counts unchanged.
