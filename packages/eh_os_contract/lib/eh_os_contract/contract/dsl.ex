@@ -990,6 +990,12 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  @doc false
+  # The promise, as a process module writes it too (plan DD, P2b, #205): one shape in
+  # both places, so a promise moved out of a contract is written as it was.
+  @spec promise() :: Spark.Dsl.Entity.t()
+  def promise, do: @promise
+
   @process %Spark.Dsl.Entity{
     name: :process,
     describe:

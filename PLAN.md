@@ -52,8 +52,8 @@ merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurr
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
 assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e merged in #194 (issue #192): test contracts
 declare a process only when the test is about one. P1d merged in #196 and #200 (issue #195): no
-`cadence`, and the sandbox keeps only the four processes its clients described. P2a (issue #202) on
-`dd/202-one-process-model`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+`cadence`, and the sandbox keeps only the four processes its clients described. P2a merged in #204 (issue #202): readers ask
+`Model.process/1` and `Model.process_events/1`. P2b (issue #205) on `dd/205-process-module`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -568,8 +568,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P1c | 2 | R1: najwyżej jeden proces | P1b | ☑ #191 | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` (usunąć, 6 października) | ☑ #196, #200 | [#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195) |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☑ #194 | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
-| P2a | 2 | jeden model procesu dla czytelników | P1d | ◐ `dd/202-one-process-model` | [#202](https://github.com/EmpoweredHouse/eh-os-contract/issues/202) |
-| P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ | — |
+| P2a | 2 | jeden model procesu dla czytelników | P1d | ☑ #204 | [#202](https://github.com/EmpoweredHouse/eh-os-contract/issues/202) |
+| P2b | 2 | DSL `EhOsContract.Process` | P2a | ◐ `dd/205-process-module` | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ | — |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ | — |
 | P2e | 2 | grafy i strony procesu | P2d | ☐ | — |
@@ -725,11 +725,11 @@ move, check and conformance, auth (the web fixtures keep theirs). The 61 that te
 them: run, trace, paths, conformance, the graphs, check, deployment, implementations, pages, view, the graph task, the
 manifest and the graph page. Not the model's builders. Accepted when the sandbox's report, check and graphs on one
 seeded database are byte for byte the same before and after.
-**P2b — DSL `EhOsContract.Process`** (kompilacja): `lib/eh_os_contract/process.ex`, `process/{dsl,rules,build}.ex`;
-`use … id:, domain:, label:, accountable:, source:`; `correlate`, `stage name, label, include: [{Kontrakt, ev |
-[ev]}]` (`no_depend_modules` jak `consumes`), `ends_on [..]`, `promise`, `deadline`. L2: R2/R3/R5/R6/F9/D11/N1.
-`docs/dsl/process-dsl.md`, formatter, `docs_test` `@layers`. Uwaga: nigdy aliasować w bibliotece (kolizja z
-`Process` Elixira).
+**P2b — a process can be written as a module of its own** (#205; tightened 7 October 2026; compile only).
+`use EhOsContract.Process, id:, label:, domain:` (+ `accountable:`, `source:`); `correlate`, `stage name, label,
+include: [{Contract, ev | [ev]}]` without a compile dependency, `ends_on`, `promise`, `deadline`. L2 with the contract's
+codes (D11, N1, R2, F9, R3, R5, R6; `deadline` without `ends_on` under R6); a model of kind `:process`;
+`docs/dsl/process-dsl.md`, formatter, `docs/contract.md`. Nothing reads it yet (P2c). Never aliased in the library.
 **P2c — powiązania i przebiegi**: L3 `contract/links/processes.ex` (X1, X2, X5, X6 przez
 `Links.Siblings.problems/4`, X7, D11); indeks typ → procesy w `Implementations.build/1`; dispatch pisze
 `_event_runs` dla każdego procesu obejmującego zdarzenie (`included_runs/3`).
@@ -880,8 +880,8 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 |---|---|---|
 | T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 |
 | P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem — **decided 6 October: removed** |
-| P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak |
-| P2b | `deadline` bez `ends_on` | błąd L2 w module procesu |
+| P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak — **decided 7 October: yes** |
+| P2b | `deadline` bez `ends_on` | błąd L2 w module procesu — **decided 7 October: an L2 error** |
 | P1b | pole `"process"` w manifeście EHOS-a | id kontraktu + issue w `eh-os` |
 | P1e | sprzątanie szablonowych procesów w testach | tak |
 | W2 | tagi miesiąca obok tagów dnia | tylko dzień |
@@ -901,6 +901,17 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### Before P2b — the user's decisions (7 October 2026)
+
+Both recommended defaults, taken as they stood:
+- **`use EhOsContract.Process` requires `id:` and `label:`.** A process's runs and its events' place in reports
+  are keyed by its id, and a report names it by its label. Rejected: deriving the id from the module's name, which
+  would tie the log to a rename (the reason contracts got `id:` in ID1); an optional label, which leaves a report
+  line with a bare atom.
+- **`deadline` without `ends_on` is a compile error.** A deadline measures a run from its first event to an end,
+  and without `ends_on` there is none, so the report could never judge it. Rejected: an L5 warning, which would let
+  a promise nobody can keep compile; inferring the end from the included events' `terminal:`, which P2h removes.
 
 ### Before P1d — the user's decision (6 October 2026)
 

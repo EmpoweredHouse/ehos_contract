@@ -83,7 +83,8 @@ defmodule EhOsContract.MixProject do
         "eh_os_contract.check",
         "eh_os_contract.rules --check",
         "eh_os_contract.docs --check",
-        "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl --check",
+        "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl," <>
+          "EhOsContract.Process.Dsl --check",
         "test"
       ]
     ]
@@ -118,6 +119,7 @@ defmodule EhOsContract.MixProject do
         "docs/rules.md",
         "docs/dsl/domain-dsl.md",
         "docs/dsl/contract-dsl.md",
+        "docs/dsl/process-dsl.md",
         "CHANGELOG.md"
       ],
       source_ref: "v#{@version}"

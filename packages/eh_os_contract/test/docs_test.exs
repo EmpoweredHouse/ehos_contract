@@ -74,6 +74,7 @@ defmodule EhOsContract.DocsTest do
     {"lib/eh_os_contract/contract/rules.ex", "L2"},
     {"lib/eh_os_contract/contract/rules/*.ex", "L2"},
     {"lib/eh_os_contract/domain/rules.ex", "L2"},
+    {"lib/eh_os_contract/process/rules.ex", "L2"},
     {"lib/eh_os_contract/contract/links.ex", "L3"},
     {"lib/eh_os_contract/contract/links/*.ex", "L3"},
     {"lib/eh_os_contract/implementation.ex", "L4"}
@@ -159,7 +160,7 @@ defmodule EhOsContract.DocsTest do
 
   defp blank?(text), do: not is_binary(text) or String.trim(text) == ""
 
-  for extension <- [EhOsContract.Domain.Dsl, EhOsContract.Contract.Dsl] do
+  for extension <- [EhOsContract.Domain.Dsl, EhOsContract.Contract.Dsl, EhOsContract.Process.Dsl] do
     test "every declaration and key of #{inspect(extension)} has a description" do
       undescribed =
         for {path, describe, schema} <- declarations(unquote(extension)),

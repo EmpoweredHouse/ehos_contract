@@ -116,7 +116,7 @@ defmodule EhOsContract.DslRules do
   string, which `""` is, and a blank label leaves a page, a graph's node or a
   report's sentence with nothing saying what the business calls the declaration.
 
-  Every declaration of either DSL with a `label` is asked, so one added later is
+  Every declaration of the library's DSLs with a `label` is asked, so one added later is
   covered without being listed here. An optional label left out is `nil`, and passes.
   Only the DSLs' own structs are walked: a struct in a scenario's rows or an
   invariant's examples is data, and its fields are not declarations.
@@ -163,7 +163,7 @@ defmodule EhOsContract.DslRules do
 
   defp declaration?(struct) do
     case Module.split(struct) do
-      ["EhOsContract", dsl, "Dsl" | _] when dsl in ["Contract", "Domain"] -> true
+      ["EhOsContract", dsl, "Dsl" | _] when dsl in ["Contract", "Domain", "Process"] -> true
       _other -> false
     end
   end

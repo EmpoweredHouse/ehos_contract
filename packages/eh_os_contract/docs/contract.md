@@ -11,7 +11,8 @@ contradicts the model. At run time it dispatches commands through the model, app
 its own log, and compares what the log holds with what the contract promised.
 
 This page is how to start and what will not compile. Every key of both DSLs, with its type, default and
-description, is in the generated reference: [the domain](dsl/domain-dsl.md) and [the contract](dsl/contract-dsl.md).
+description, is in the generated reference: [the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md)
+and [the process module](dsl/process-dsl.md).
 What `mix eh_os_contract.check` reports about a model that compiles is in [its rules](rules.md).
 
 ## A domain
@@ -196,6 +197,49 @@ when it cannot. The application's own `dispatch/3` is trusted, as every other fi
 command's field, or a recorded event's, takes it (`F10`), and a node with such a field and no supplier does not
 start.
 
+## A process
+
+A process whose run crosses several contracts — a loan lent at one desk and returned at another, a visit
+booked, documented and reported by three parts of a practice — is written as a module of its own. It names
+the run, what tells one run from another, its stages and the events of each contract they include, the events
+that end a run, its promises, and how long a run may take:
+
+```elixir
+defmodule Lending.Processes.Loan do
+  use EhOsContract.Process,
+    id: "lending.loan",
+    domain: Lending.Domain,
+    label: "A loan, from lending to return",
+    accountable: :librarian
+
+  correlate :loan_id
+
+  stage :lending, include: [{Lending.Contracts.Loans, :loan_opened}]
+  stage :return, "Return", include: [{Lending.Contracts.Loans, [:copy_returned]}]
+
+  ends_on :copy_returned
+
+  promise :returned_within_a_month do
+    from :loan_opened
+    eventually :copy_returned
+    within {30, :day}
+  end
+
+  deadline {60, :day}
+end
+```
+
+`id:` and `label:` are required; `id:` is formed as a contract's is (`D11`). A stage's `include:` names a
+contract and one of its events, or a list of them, and names the contract without a compile dependency, as
+`consumes` does. Everywhere else in the module an included event is named by its name alone, so two includes
+of one name are refused (`N1`). The module refuses what it can see is wrong in itself: no `correlate` or an
+empty one, two, or a field named twice (`R2`) or one of more than six fields (`F9`), no stage, a stage that
+includes nothing, or an `include:` entry naming no event or no contract module (`R3`), a promise or
+`ends_on` naming an event it does not include, or `ends_on` twice (`R5`), a duration not in a fixed unit, `deadline`
+twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end (`R6`). It compiles to a
+model `EhOsContract.Model.fetch/1` returns, of kind `:process`. In this version nothing at run time reads it:
+a contract's own `process` is still the one dispatch, the report and the check read.
+
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates
@@ -254,7 +298,7 @@ A model is checked in five layers. The first four refuse; the fifth reports.
 | Layer | When | What it is |
 | --- | --- | --- |
 | L1 | compile | Spark's schema: an unknown key or entity, a missing required one, a wrong type |
-| L2 | compile | the rules of one module, a domain's or a contract's, each with its file and line |
+| L2 | compile | the rules of one module, a domain's, a contract's or a process module's, each with its file and line |
 | L3 | compile | `compile.eh_os_contract`, the rules between modules: a contract against its domain and its siblings |
 | L4 | compile | the implementation macros, at the `use` or the call that breaks them |
 | L5 | `mix eh_os_contract.check` | what a model may legally say and a reader should still hear about ([rules](rules.md)) |
@@ -270,7 +314,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command or an event an actor records; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events; a label given and blank |
+| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; the process's stages or promises; a process module's stages, promises or included events, an event included twice from one contract or two; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command or an event an actor records; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events; a label given and blank |
 | `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
 | `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, repeats one, or labels one blank; a domain service function without `returns`, or with a malformed return type |
@@ -280,7 +324,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
 | `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
-| `F9` | L2 | a unit's identity, a process's `correlate` or a process manager's `correlate` of more than six fields |
+| `F9` | L2 | a unit's identity, a process's or a process module's `correlate` or a process manager's `correlate` of more than six fields |
 | `F10` | L2 | `supplied_by: :host` on a field no request fills — a state's, a read model's row, an event no actor records — or on a command's `scope` field |
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
@@ -300,11 +344,11 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
 | `R1` | L2 | a contract declaring two `process`es, or nothing at all; with no process, a unit's `stage` group or a `terminal:` event |
-| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts) |
-| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group |
+| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts); a process module without `correlate`, with an empty one, with two, or naming a field twice |
+| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group; a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
-| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice |
+| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one; in a process module, a promise's events or an `ends_on` event the module does not include, or `ends_on` declared twice |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice; in a process module, `deadline` without `ends_on` |
 | `K1` | L2 | `consumes` given a published name, which is `subscribe`d to; a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |
@@ -326,7 +370,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`/`:supplied`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
-| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields; a contract without an `id:`, or one that is not the namespace and dotted snake_case segments, is versioned, over 100 bytes, or outside the domain's `name:` |
+| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields; a contract without an `id:`; a contract's or a process module's `id:` that is not the namespace and dotted snake_case segments, is versioned or is over 100 bytes; a contract's outside the domain's `name:` |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
 | `D13` | L2 | a domain's `time_zone:` the time zone database Elixir is configured with does not know |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |

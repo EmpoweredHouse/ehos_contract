@@ -49,6 +49,8 @@ defmodule EhOsContract do
       Model,
       OpenAPI,
       Plug,
+      Process,
+      {Process.Dsl, []},
       ProcessManager,
       ProcessManagerRecord,
       Registry,

@@ -247,11 +247,17 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     ]
   end
 
-  def contract_id(%{value: id, at: at}) do
-    if byte_size(id) <= @id_bytes and contract_id?(id),
+  def contract_id(%{value: _, at: _} = id), do: id_form(id, "contract")
+
+  @doc false
+  # The form of an `id:` that names `what`, a contract or a process module (plan DD,
+  # P2b, #205): the application's namespace, then dotted snake_case segments.
+  @spec id_form(%{value: String.t(), at: term()}, String.t()) :: [{String.t(), term()}]
+  def id_form(%{value: id, at: at}, what) do
+    if is_binary(id) and byte_size(id) <= @id_bytes and contract_id?(id),
       do: [],
       else: [
-        {"D11: the contract's id: #{inspect(id)} is not a contract's name: the application's " <>
+        {"D11: the #{what}'s id: #{inspect(id)} is not a #{what}'s name: the application's " <>
            "namespace, then dotted snake_case segments, unversioned, at most #{@id_bytes} bytes, " <>
            "like \"my-shop.settlement\"", at}
       ]

@@ -2,9 +2,10 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   @shortdoc "Regenerates the DSL reference in docs/dsl/ and docs/configuration.md"
 
   @moduledoc """
-  Writes the reference of the two DSLs — `docs/dsl/domain-dsl.md` for
-  `use EhOsContract.Domain` and `docs/dsl/contract-dsl.md` for `use EhOsContract.Contract`
-  — from their Spark extensions, with `Spark.CheatSheet.cheat_sheet/1`: every
+  Writes the reference of the three DSLs — `docs/dsl/domain-dsl.md` for
+  `use EhOsContract.Domain`, `docs/dsl/contract-dsl.md` for `use EhOsContract.Contract`
+  and `docs/dsl/process-dsl.md` for `use EhOsContract.Process` — from their Spark
+  extensions, with `Spark.CheatSheet.cheat_sheet/1`: every
   entity, where it nests, its arguments and options, which are required, their types,
   defaults and docs. It writes `docs/configuration.md` too, from the schema of
   `EhOsContract.Config`.
@@ -28,6 +29,7 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   @pages [
     {"docs/dsl/domain-dsl.md", {:dsl, EhOsContract.Domain.Dsl}},
     {"docs/dsl/contract-dsl.md", {:dsl, EhOsContract.Contract.Dsl}},
+    {"docs/dsl/process-dsl.md", {:dsl, EhOsContract.Process.Dsl}},
     {"docs/configuration.md", :config}
   ]
 

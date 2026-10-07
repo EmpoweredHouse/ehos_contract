@@ -216,7 +216,11 @@ defmodule EhOsContract.Contract.Rules.Process do
     end
   end
 
-  defp problems({n, unit}, units) do
+  @doc false
+  # What is wrong with a duration a rule counts in `units`, one sentence per problem
+  # (R6): read by a process module's rules too (`EhOsContract.Process.Rules`).
+  @spec problems(term(), [atom()]) :: [String.t()]
+  def problems({n, unit}, units) do
     count =
       if is_integer(n) and n >= 0,
         do: [],
@@ -239,5 +243,5 @@ defmodule EhOsContract.Contract.Rules.Process do
     count ++ unit
   end
 
-  defp problems(other, _units), do: ["is #{inspect(other)}, which is not {count, unit}"]
+  def problems(other, _units), do: ["is #{inspect(other)}, which is not {count, unit}"]
 end
