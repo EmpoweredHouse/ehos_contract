@@ -92,5 +92,27 @@ defmodule EhOsContract.Web.RouterTest do
       assert get(api, "/admin/api/model").status == 200
       assert get(api, "/api/model").status == 403
     end
+
+    test "a connected screen links under the prefix too", %{conn: conn} do
+      conn = Access.put_actor(conn, "admin", ["eh_os_contract_admin"])
+      {:ok, _view, html} = live(conn, "/admin/dashboard/contract")
+      assert html =~ ~s(href="/admin/dashboard/graph")
+    end
+  end
+
+  describe "mounted in a scope with an alias" do
+    test "the screens and the API are the package's modules, not the alias's", %{conn: conn} do
+      conn = Access.put_actor(conn, "admin", ["eh_os_contract_admin"])
+
+      assert conn |> get("/aliased/dashboard") |> redirected_to() == "/aliased/dashboard/contract"
+      assert html_response(get(conn, "/aliased/dashboard/contract"), 200) =~ "Access: all"
+
+      api = Plug.Conn.put_req_header(conn, "accept", "application/json")
+      assert get(api, "/aliased/api/model").status == 200
+    end
+  end
+
+  test "a mount path with a trailing slash gives the same paths as one without", %{conn: conn} do
+    assert conn |> get("/slashed") |> redirected_to() == "/slashed/contract"
   end
 end

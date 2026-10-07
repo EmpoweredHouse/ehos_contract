@@ -51,4 +51,28 @@ defmodule EhOsContract.Web.TestHost.Router do
 
     eh_os_contract_api("/api", resolver: EhOsContract.Web.TestHost.Resolver)
   end
+
+  # A scope with an alias, the usual Phoenix shape (`scope "/", MyAppWeb do`): the
+  # package's modules are named in full and must not get the alias in front.
+  scope "/aliased", EhOsContract.Web.TestHost do
+    pipe_through :browser
+    import EhOsContract.Web.Router
+
+    eh_os_contract_dashboard("/dashboard", resolver: EhOsContract.Web.TestHost.Resolver)
+  end
+
+  scope "/aliased", EhOsContract.Web.TestHost do
+    pipe_through :eh_os_contract_api
+    import EhOsContract.Web.Router
+
+    eh_os_contract_api("/api", resolver: EhOsContract.Web.TestHost.Resolver)
+  end
+
+  # A mount path written with a trailing slash.
+  scope "/" do
+    pipe_through :browser
+    import EhOsContract.Web.Router
+
+    eh_os_contract_dashboard("/slashed/", resolver: EhOsContract.Web.TestHost.Resolver)
+  end
 end

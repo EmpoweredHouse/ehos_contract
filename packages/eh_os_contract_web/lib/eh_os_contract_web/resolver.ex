@@ -60,8 +60,10 @@ defmodule EhOsContract.Web.Resolver do
   @doc """
   Turns a resolved user into an access level, or a redirect.
 
-  `base_path` is the path the asking macro was mounted at: the dashboard's for a page,
-  the API's for a JSON request. A host may use it to answer the two differently, or to
+  `base_path` is the path the asking macro was mounted at, as a browser sees it: the
+  dashboard's for a page, the API's for a JSON request, each with the prefix of every
+  scope around it and without a trailing slash (`"/admin/dashboard"` for
+  `eh_os_contract_dashboard "/dashboard"` inside `scope "/admin"`). A host may use it to answer the two differently, or to
   build the `{:forbidden, path}` it sends a person to, typically its own login; match
   it with a clause that accepts any path, or a request to the other mount fails.
   """
