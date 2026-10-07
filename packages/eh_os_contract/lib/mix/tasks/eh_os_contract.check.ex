@@ -2,23 +2,25 @@ defmodule Mix.Tasks.EhOsContract.Check do
   @shortdoc "Whole-program checks over the contracts and their implementations"
 
   @moduledoc """
-  Checks what no single module can show: the rules that need every contract, domain
-  and implementation of the application at once.
+  Reports what a contract may legally say and a reader should still hear about, as
+  errors, warnings and notices.
 
-  A compile error can only say what one module shows. Whether a contract is
-  implemented, whether a reaction loops back up its own process, whether a promise
-  has an event that keeps it: those need the whole application, and this task
-  checks them. A project that does not add the `:eh_os_contract` compiler gets that
-  compiler's checks here too, as errors.
+  A compile refuses a contract that cannot be right. This task reads every contract,
+  domain and implementation of the application at once and reports the rest: a
+  contract nothing implements, a reaction that points back up its own process, a
+  deadline with no event that ends the run, a free-text field not marked personal.
+  A project that does not add the `:eh_os_contract` compiler gets that compiler's
+  violations here too, as errors.
 
       mix eh_os_contract.check                         # errors fail the task
       mix eh_os_contract.check --warnings-as-errors    # so do warnings
       mix eh_os_contract.check --format json           # one JSON array
 
   Every finding names its rule, and, where it can, the file and line of the
-  declaration it is about. The rules, with what each one means and how to clear it,
-  are in [the rules](rules.md). Nothing silences a rule: a finding goes away when
-  the model changes.
+  declaration it is about. What each rule means and how to clear it is in
+  [the rules](rules.md) (`docs/rules.md` in the package); a compiler violation
+  repeated here keeps the compiler's code instead. Nothing silences a rule: a
+  finding goes away when the model changes.
 
   `--format json` prints the array and nothing else, but the compile this task runs
   first prints what it prints: compile beforehand when a program reads the output.

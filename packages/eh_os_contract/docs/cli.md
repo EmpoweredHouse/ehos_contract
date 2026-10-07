@@ -9,11 +9,15 @@ The `mix` tasks of `eh_os_contract`, as each one's documentation describes it. R
 
 Checks that contracts agree with their domain and with each other
 
-Checks, on every compile, what a contract says about modules other than itself:
-that its domain exists and declares the terms, values and actors it uses; that the
-sibling contracts it consumes publish the events and fields it reads; that names
-are unique across the application; and that a process module agrees with the
-contracts whose events it includes.
+Checks, on every compile, the rules a contract cannot hold on its own: those that
+need its domain, the contracts it consumes, or the rest of the application.
+
+Among them: a contract's domain declares the contexts, terms, values and actors it
+uses; a sibling contract declares every event and field this one consumes; a
+reaction to another context's event says how it is delivered; personal data stays
+out of what is published; every declaration has one implementation; names are
+unique across the application; and a process module agrees with the contracts
+whose events it includes.
 
 Add it to the project's compilers, after Elixir's:
 
@@ -25,7 +29,7 @@ A contract names its domain and its siblings without depending on them at compil
 time, so changing a domain recompiles none of the contracts that name it. That is
 why this runs on every compile and over the whole project, not only when a
 contract changed. It reads each `.beam` file's exports, and loads only the modules
-that carry a contract, a domain or an implementation.
+that carry a model (a contract, a domain, a process) or an implementation.
 
 A violation is an error at the file and line of the declaration at fault, and
 fails the compile. In a project without this compiler, `mix eh_os_contract.check`
@@ -39,23 +43,25 @@ found by its name.
 
 Whole-program checks over the contracts and their implementations
 
-Checks what no single module can show: the rules that need every contract, domain
-and implementation of the application at once.
+Reports what a contract may legally say and a reader should still hear about, as
+errors, warnings and notices.
 
-A compile error can only say what one module shows. Whether a contract is
-implemented, whether a reaction loops back up its own process, whether a promise
-has an event that keeps it: those need the whole application, and this task
-checks them. A project that does not add the `:eh_os_contract` compiler gets that
-compiler's checks here too, as errors.
+A compile refuses a contract that cannot be right. This task reads every contract,
+domain and implementation of the application at once and reports the rest: a
+contract nothing implements, a reaction that points back up its own process, a
+deadline with no event that ends the run, a free-text field not marked personal.
+A project that does not add the `:eh_os_contract` compiler gets that compiler's
+violations here too, as errors.
 
     mix eh_os_contract.check                         # errors fail the task
     mix eh_os_contract.check --warnings-as-errors    # so do warnings
     mix eh_os_contract.check --format json           # one JSON array
 
 Every finding names its rule, and, where it can, the file and line of the
-declaration it is about. The rules, with what each one means and how to clear it,
-are in [the rules](rules.md). Nothing silences a rule: a finding goes away when
-the model changes.
+declaration it is about. What each rule means and how to clear it is in
+[the rules](rules.md) (`docs/rules.md` in the package); a compiler violation
+repeated here keeps the compiler's code instead. Nothing silences a rule: a
+finding goes away when the model changes.
 
 `--format json` prints the array and nothing else, but the compile this task runs
 first prints what it prints: compile beforehand when a program reads the output.
@@ -74,8 +80,7 @@ their definitions, the words to avoid and their translations.
     mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
 
 The domain is found among the modules of `config :eh_os_contract, applications:`.
-Use `--output` to write a file: when the output is not a terminal, Erlang writes
-it in Latin-1, and the terms are in the client's language.
+`--output` writes the glossary to a file.
 
 ## mix eh_os_contract.graph
 
@@ -83,16 +88,19 @@ Draws a process, a contract, a unit or a domain as a Mermaid diagram
 
 Draws one picture of the application's contracts as a Mermaid diagram: a process,
 a contract, one unit of it, a lifecycle, the domain's context map, or the system of
-contracts. Which picture is a flag; with none, the task lists the forms it takes.
+contracts.
+
+Which picture is a flag; with none, the task lists the forms it takes. Use
+`--output` to write the diagram to a file.
 
 ### `--process`: one process, for the person who owns it
 
     mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
 
-Draws the process as declared: its stages as lanes, how it can end, and each
-promise as an arrow carrying its time window. It needs nothing built yet. With
-`--overlay` it is drawn as its contract's full graph instead, with the log laid
-over it (below).
+Draws the process as declared, before any implementation exists: its stages as
+lanes, how it can end, and each promise as an arrow carrying its time window. It
+takes `--mermaid`. With `--overlay` it is drawn as its contract's full graph
+instead, with the log laid over it (below).
 
 ### `--contract`, `--unit` and `--lifecycle`: a contract, whole or in part
 
@@ -108,11 +116,8 @@ over it (below).
   events and invariants, and how many scenarios cover each path.
 - `--lifecycle` draws an aggregate's lifecycle: where it starts, its statuses and
   ends, and the transitions between them.
-- `--overlay` lays the log over the picture: how many runs passed each step, and
-  what waits or fails there; on a lifecycle, the report's counts per transition.
-  `--since` limits it to runs from a moment on.
 
-All of these are Mermaid, so `--mermaid` is not needed.
+These are Mermaid already, so `--mermaid` is not needed.
 
 ### `--map` and `--system`: the domain
 
@@ -122,17 +127,22 @@ All of these are Mermaid, so `--mermaid` is not needed.
 - `--map` draws the domain's context map: subdomains, their contexts, the external
   systems, and the relations between them.
 - `--system` draws the contracts in their contexts and what one consumes from
-  another; with `--overlay`, the runs per contract, and per connection the events
-  consumed and what waits or fails at the consumer.
+  another.
 
 Both take the domain's `name:`.
+
+### `--overlay`: the log over the picture
+
+`--overlay` lays what the log holds over `--contract`, `--process`, `--lifecycle`
+and `--system`: on a contract's steps, how many times each happened, and what waits
+or fails there; on a lifecycle, the report's counts per transition; on the system,
+the runs per contract, and per connection the events consumed and what waits or
+fails at the consumer. `--since 2026-07-01T00:00:00Z` counts only what happened
+from that moment on.
 
 A process is always drawn on its own, never as part of one global picture, and
 the system shows contracts and what flows between them, not every event: a
 contract's own steps are `--contract`'s.
-
-Use `--output`: when the output is not a terminal, Erlang writes it in Latin-1, and
-every node on the diagram is in the client's language.
 
 ## mix eh_os_contract.pages
 
@@ -161,48 +171,53 @@ is left over.
 
 Prints the conformance report for a period: what the code did against what the contracts say
 
-Prints the conformance report of every contract of the application for a period,
-one section each. It answers four questions about each contract: which declared
-paths were never taken, which transitions happened that no contract declares,
-which promises were broken, and which version of the contract was deployed, and
-since when.
+Prints the conformance report of the application for a period: a section for each
+contract, then one for each process module, if there are any.
+
+Each contract's section answers four questions about it: which declared paths were
+never taken, which transitions happened that the contract does not declare, which
+promises were broken, and which version of the contract was deployed, and since
+when. Around them it shows what explains the answers: steps in progress or
+failing, scenarios never observed, declarations that changed, and events written
+under earlier versions.
 
     mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
     mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md
 
-`--since` and `--until` take ISO 8601 times, and either may be left out. The task
-starts the application, since the report reads the log through its repo. Use
-`--output` to write a file: the contracts' labels are in the client's language.
+`--since` and `--until` take ISO 8601 times with an offset (`Z`), and either may
+be left out. The task starts the application, since the report reads the log
+through its repo. `--output` writes the report to a file.
 
 ## mix eh_os_contract.rewrap
 
 Rewraps the subjects' data keys with the vault's current master key
 
 Rewraps every subject's data key that a master key other than the vault's current
-one wraps, so that an old master key can be retired (`EhOsContract.Vault`):
+one wraps, so that an old master key can be retired.
 
     mix eh_os_contract.rewrap
 
-How a master key is rotated: put the new key first in the vault's list, keep the
-old one after it, deploy, run this, and only then drop the old key. No event is
-rewritten; each data key is unwrapped with the key that wrapped it and wrapped
-again. It runs in batches of 500, each its own transaction, so it can be stopped
-and run again.
+How a master key is rotated (`EhOsContract.Vault`): put the new key first in the
+vault's list, keep the old one after it, deploy, run this, and only then drop the
+old key. No event is rewritten; each data key is unwrapped with the key that
+wrapped it and wrapped again. It runs in batches of 500, each its own transaction,
+so it can be stopped and run again.
 
 ## mix eh_os_contract.subscriptions
 
 Where each subscription stands, and a person's way past a poison event
 
-Lists every consumer fed from the log, the read models, policies and relays that
-read it in order: how far each has read, and whether it is `running`, `stale`,
-`rebuilding` or `failing`. It also takes the two decisions that move one past a
-failure.
+Lists every consumer fed from the log in order, with how far it has read and
+whether it is `running`, `stale`, `rebuilding` or `failing`, and moves one past a
+failure when a person decides to.
 
     mix eh_os_contract.subscriptions
 
-A subscription that fails on an event stops there, and nothing moves it past that
-event by itself: a consumer that skipped events in order would be a read model
-that silently lies. Moving it is a decision a person takes, in one of two ways:
+The consumers are the read models, process managers, policies delivered
+`:at_least_once`, and relays. One that fails on an event stops there, and nothing
+moves it past that event by itself: an ordered consumer that skipped events would
+be a read model that silently lies. Moving it is a person's decision, taken in one
+of two ways:
 
     mix eh_os_contract.subscriptions --skip dispatch_rig.ledger:read_model:ledger_lines
     mix eh_os_contract.subscriptions --reset dispatch_rig.ledger:read_model:ledger_lines
@@ -211,12 +226,16 @@ that silently lies. Moving it is a decision a person takes, in one of two ways:
   then never applied. If that event erased a subject, the read model keeps the
   subject's copy until it is reset.
 - `--reset` empties a read model through its `reset/0` and replays the whole log
-  into it; a read model without `reset/0` cannot be reset. A policy keeps no rows,
-  so `--reset` moves it back to the beginning of the log, and it reacts to history
-  it would otherwise have left alone.
-- A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) is the same:
-  `--skip` means that event never leaves the application, and `--reset` publishes
-  the whole log again, under the same ids.
+  into it; a read model without `reset/0` cannot be reset.
+- `--reset` of a process manager forgets every run it steers and replays the log
+  with its reactions suppressed, so it learns the runs again and issues nothing
+  for them.
+- `--reset` of a policy moves it back to the beginning of the log, and it reacts to
+  every event from there. The keys it derives from each event keep it from issuing
+  again what it issued before.
+- A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`): `--skip` means that
+  event never leaves the application, and `--reset` publishes the whole log again,
+  under the same ids.
 
 ## mix eh_os_contract.view
 
@@ -232,6 +251,4 @@ each its contracts, their units, consumers and queries.
     mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
 
 The domain and its contracts are found among the modules of
-`config :eh_os_contract, applications:`. Use `--output` to write a file: when the
-output is not a terminal, Erlang writes it in Latin-1, and the labels are in the
-client's language.
+`config :eh_os_contract, applications:`. `--output` writes the tree to a file.

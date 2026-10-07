@@ -70,7 +70,8 @@ them.
 ### What an adapter promises
 
 `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-it. It cannot see the absence of an order, nor how a relay treats an error.
+it. It cannot see the absence of an order, nor how a relay treats an error, which
+`EhOsContract.Relay` describes.
 
 - **`:ok` from `c:EhOsContract.Bus.publish/2` means the transport holds every message of the batch.**
   An error means it may hold some of them: the relay publishes the whole batch again,
@@ -313,9 +314,10 @@ The values of `request.fields`, or why the host cannot give them.
 
 Configured with `config :eh_os_contract, vault: ...`, a module.
 
-The master keys that wrap the subjects' data keys. A data key is 32
-random bytes per subject, stored in `eh_os_contract_subject_keys` only wrapped:
-the database alone cannot decrypt a personal field.
+The master keys that wrap the subjects' data keys.
+
+A data key is 32 random bytes per subject, stored in `eh_os_contract_subject_keys`
+only wrapped: the database alone cannot decrypt a personal field.
 
 **The default is `EhOsContract.Vault.Local`**, which takes the master keys from
 configuration:

@@ -12,9 +12,7 @@ defmodule Mix.Tasks.EhOsContract.View do
       mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
 
   The domain and its contracts are found among the modules of
-  `config :eh_os_contract, applications:`. Use `--output` to write a file: when the
-  output is not a terminal, Erlang writes it in Latin-1, and the labels are in the
-  client's language.
+  `config :eh_os_contract, applications:`. `--output` writes the tree to a file.
   """
 
   use Boundary, classify_to: EhOsContract

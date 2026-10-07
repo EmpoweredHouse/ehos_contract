@@ -2,11 +2,15 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   @shortdoc "Checks that contracts agree with their domain and with each other"
 
   @moduledoc """
-  Checks, on every compile, what a contract says about modules other than itself:
-  that its domain exists and declares the terms, values and actors it uses; that the
-  sibling contracts it consumes publish the events and fields it reads; that names
-  are unique across the application; and that a process module agrees with the
-  contracts whose events it includes.
+  Checks, on every compile, the rules a contract cannot hold on its own: those that
+  need its domain, the contracts it consumes, or the rest of the application.
+
+  Among them: a contract's domain declares the contexts, terms, values and actors it
+  uses; a sibling contract declares every event and field this one consumes; a
+  reaction to another context's event says how it is delivered; personal data stays
+  out of what is published; every declaration has one implementation; names are
+  unique across the application; and a process module agrees with the contracts
+  whose events it includes.
 
   Add it to the project's compilers, after Elixir's:
 
@@ -18,7 +22,7 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   time, so changing a domain recompiles none of the contracts that name it. That is
   why this runs on every compile and over the whole project, not only when a
   contract changed. It reads each `.beam` file's exports, and loads only the modules
-  that carry a contract, a domain or an implementation.
+  that carry a model (a contract, a domain, a process) or an implementation.
 
   A violation is an error at the file and line of the declaration at fault, and
   fails the compile. In a project without this compiler, `mix eh_os_contract.check`

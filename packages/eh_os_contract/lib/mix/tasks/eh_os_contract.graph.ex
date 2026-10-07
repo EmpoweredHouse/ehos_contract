@@ -4,16 +4,19 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   @moduledoc """
   Draws one picture of the application's contracts as a Mermaid diagram: a process,
   a contract, one unit of it, a lifecycle, the domain's context map, or the system of
-  contracts. Which picture is a flag; with none, the task lists the forms it takes.
+  contracts.
+
+  Which picture is a flag; with none, the task lists the forms it takes. Use
+  `--output` to write the diagram to a file.
 
   ## `--process`: one process, for the person who owns it
 
       mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
 
-  Draws the process as declared: its stages as lanes, how it can end, and each
-  promise as an arrow carrying its time window. It needs nothing built yet. With
-  `--overlay` it is drawn as its contract's full graph instead, with the log laid
-  over it (below).
+  Draws the process as declared, before any implementation exists: its stages as
+  lanes, how it can end, and each promise as an arrow carrying its time window. It
+  takes `--mermaid`. With `--overlay` it is drawn as its contract's full graph
+  instead, with the log laid over it (below).
 
   ## `--contract`, `--unit` and `--lifecycle`: a contract, whole or in part
 
@@ -29,11 +32,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     events and invariants, and how many scenarios cover each path.
   - `--lifecycle` draws an aggregate's lifecycle: where it starts, its statuses and
     ends, and the transitions between them.
-  - `--overlay` lays the log over the picture: how many runs passed each step, and
-    what waits or fails there; on a lifecycle, the report's counts per transition.
-    `--since` limits it to runs from a moment on.
 
-  All of these are Mermaid, so `--mermaid` is not needed.
+  These are Mermaid already, so `--mermaid` is not needed.
 
   ## `--map` and `--system`: the domain
 
@@ -43,17 +43,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   - `--map` draws the domain's context map: subdomains, their contexts, the external
     systems, and the relations between them.
   - `--system` draws the contracts in their contexts and what one consumes from
-    another; with `--overlay`, the runs per contract, and per connection the events
-    consumed and what waits or fails at the consumer.
+    another.
 
   Both take the domain's `name:`.
+
+  ## `--overlay`: the log over the picture
+
+  `--overlay` lays what the log holds over `--contract`, `--process`, `--lifecycle`
+  and `--system`: on a contract's steps, how many times each happened, and what waits
+  or fails there; on a lifecycle, the report's counts per transition; on the system,
+  the runs per contract, and per connection the events consumed and what waits or
+  fails at the consumer. `--since 2026-07-01T00:00:00Z` counts only what happened
+  from that moment on.
 
   A process is always drawn on its own, never as part of one global picture, and
   the system shows contracts and what flows between them, not every event: a
   contract's own steps are `--contract`'s.
-
-  Use `--output`: when the output is not a terminal, Erlang writes it in Latin-1, and
-  every node on the diagram is in the client's language.
   """
 
   use Boundary, classify_to: EhOsContract

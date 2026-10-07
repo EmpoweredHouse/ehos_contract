@@ -11,8 +11,7 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
       mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
 
   The domain is found among the modules of `config :eh_os_contract, applications:`.
-  Use `--output` to write a file: when the output is not a terminal, Erlang writes
-  it in Latin-1, and the terms are in the client's language.
+  `--output` writes the glossary to a file.
   """
 
   use Boundary, classify_to: EhOsContract
