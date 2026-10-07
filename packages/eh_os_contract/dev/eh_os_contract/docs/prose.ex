@@ -64,6 +64,16 @@ defmodule EhOsContract.Docs.Prose do
   end
 
   @doc """
+  The lines of `markdown` outside its fenced code blocks, as CommonMark reads the
+  fences, without their line endings.
+  """
+  @spec outside_fences(String.t()) :: [String.t()]
+  def outside_fences(markdown) do
+    for {line, false} <- lines(markdown),
+        do: String.trim_trailing(line, "\n") |> String.trim_trailing("\r")
+  end
+
+  @doc """
   What `markdown` says it covers, from every `<!-- covers: ... -->` outside its code
   blocks. Raises on a comment it cannot read, naming it.
   """

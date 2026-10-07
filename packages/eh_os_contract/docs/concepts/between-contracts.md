@@ -27,9 +27,9 @@ every contract that consumes it at the next compile. The reference is
 
 The contract names the sibling's module without a compile dependency, and the Mix compiler
 (`compile.eh_os_contract`) checks the link instead: the sibling is a compiled contract of the same domain, and
-declares every event named (`X5`). A field this contract relies on to tell one run or one boundary from
+declares every event named ([`X5`](../contract.md#refusals-x)). A field this contract relies on to tell one run or one boundary from
 another (a `correlate` field, a boundary's `match:`) exists in the sibling's event with the same type, and is
-neither optional nor personal (`X6`).
+neither optional nor personal ([`X6`](../contract.md#refusals-x)).
 
 ### Delivery across contexts
 
@@ -41,7 +41,7 @@ sibling of the same context that is usually right: one step of the business, com
 of **another context** it means the two contexts commit together, and the reaction's failure rolls the other
 context's fact back: a person's command in one context fails because something in another one did. So a
 policy or a read model that takes an event of a sibling of another context has to declare its delivery, and
-one that does not, does not compile (`X10`). Usually it is `:at_least_once`: a policy then names its
+one that does not, does not compile ([`X10`](../contract.md#refusals-x)). Usually it is `:at_least_once`: a policy then names its
 `idempotency`, a read model none. An effect and a process manager are left alone, since undeclared they run
 `:at_least_once` already. How each delivery fails is on [the reactions page](reactions.md).
 
@@ -109,7 +109,7 @@ policy :release_hold, "A lent copy is no longer held", handles: :copy_lent, issu
 transaction the inbox writes its row and runs each policy that handles the event, whose commands are
 dispatched as a policy's always are, and only after that commits does it acknowledge the message. A read
 model, an effect and a process manager read the log, where the event never is, so a contract in which one of
-them takes a received event does not compile (`D12`); they react to what the policy's command records
+them takes a received event does not compile ([`D12`](../contract.md#refusals-d)); they react to what the policy's command records
 instead. The policy's `delivery` changes nothing for a received event: the inbox runs it in the transaction
 that writes its row.
 
@@ -249,17 +249,17 @@ end
 ## What the compiler refuses
 
 - `consumes` of a contract that is not compiled, of another domain, or of an event the sibling does not
-  declare (`X5`); a field this contract correlates or matches on that is missing in the sibling's event, of
-  another type, optional or personal (`X6`). Another domain's events come only through `subscribe`.
+  declare ([`X5`](../contract.md#refusals-x)); a field this contract correlates or matches on that is missing in the sibling's event, of
+  another type, optional or personal ([`X6`](../contract.md#refusals-x)). Another domain's events come only through `subscribe`.
 - `consumes` given a published name, which is `subscribe`d to; `consumes` of the contract itself, naming no
-  events, renaming one it does not consume, or declaring fields (`K1`).
+  events, renaming one it does not consume, or declaring fields ([`K1`](../contract.md#refusals-k)).
 - A policy or a read model taking an event of a sibling of another context without declaring `delivery`
-  (`X10`).
+  ([`X10`](../contract.md#refusals-x)).
 - A `publish` from no local event, with no fields, with fields the event does not have or personal ones, with
   `idempotent_on:` outside its `fields:`, or under a name that is unversioned, shared with another
   publication, or outside the domain's `name:`; a `subscribe` unversioned, without `as:`, or listing no fields
-  (`D11`).
-- A read model, an effect or a process manager taking a received event (`D12`).
+  ([`D11`](../contract.md#refusals-d)).
+- A read model, an effect or a process manager taking a received event ([`D12`](../contract.md#refusals-d)).
 
 ## What `mix eh_os_contract.check` reports
 

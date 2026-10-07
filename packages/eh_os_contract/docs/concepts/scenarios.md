@@ -159,7 +159,7 @@ contract without code is legal, a test of one is not.
 
 ## The trigger, and who the scenario is about
 
-A scenario has exactly one trigger (`S1`):
+A scenario has exactly one trigger ([`S1`](../contract.md#refusals-s)):
 
 - **`command`**: a command of the contract, to the unit that declares it.
 - **`on`**: an event delivered to the reaction that handles it: a policy or a process manager; for a process
@@ -167,30 +167,30 @@ A scenario has exactly one trigger (`S1`):
 - **`query`**: a query of the contract, with its parameters as the data.
 
 The trigger names its target when one declaration takes it. When several take one event, `target` says
-which (`S1`): in the example `copy_lent` is handled by the policy and projected by the read model, so the
-policy's scenario names the policy. An effect and a read model are never a target (`S6`): an effect's outcome is
+which ([`S1`](../contract.md#refusals-s)): in the example `copy_lent` is handled by the policy and projected by the read model, so the
+policy's scenario names the policy. An effect and a read model are never a target ([`S6`](../contract.md#refusals-s)): an effect's outcome is
 outside the log, and a read model is shown by the scenario of a query that reads it.
 
-`actor:` picks who issues a scenario's command, among its `by:` (`S7`).
+`actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../contract.md#refusals-s)).
 
 ## What follows
 
-Which outcomes a scenario may state depends on its target (`S6`):
+Which outcomes a scenario may state depends on its target ([`S6`](../contract.md#refusals-s)):
 
 | Target | Given | Outcome |
 | --- | --- | --- |
 | a unit's command | the unit's own events, or a boundary's consulted ones | `expect` one or more events, or `rejected` with one rule (exactly one of the two) |
-| a policy | none (`S2`) | `issues` the commands it issues |
+| a policy | none ([`S2`](../contract.md#refusals-s)) | `issues` the commands it issues |
 | a process manager | the events it handles | `issues`, `sets` and `cancels` a timer, `ended: true`; `state` its run holds after the step |
 | a query | events its read model projects | `answers` the rows, or for a query that returns one, the row |
 
-What a scenario expects has to be possible: `expect` names an event the command emits (`S5`), `rejected` a
-rule it `rejects:` (`S4`), and an outcome the declaration cannot produce does not compile (`S6`). Its data
-names declared fields of the right type, with every required one in a `given` or the trigger (`S3`), and fits
-the domain's values (`X9`). The unit's identity is the exception: left out, it is the scenario's own.
+What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../contract.md#refusals-s)), `rejected` a
+rule it `rejects:` ([`S4`](../contract.md#refusals-s)), and an outcome the declaration cannot produce does not compile ([`S6`](../contract.md#refusals-s)). Its data
+names declared fields of the right type, with every required one in a `given` or the trigger ([`S3`](../contract.md#refusals-s)), and fits
+the domain's values ([`X9`](../contract.md#refusals-x)). The unit's identity is the exception: left out, it is the scenario's own.
 
 `illustrates:` names the rules a reaction's or a query's scenario shows: a constraint of the policy, process
-manager or query, or an invariant of the process manager (`S10`). A command's scenario shows its rules with
+manager or query, or an invariant of the process manager ([`S10`](../contract.md#refusals-s)). A command's scenario shows its rules with
 `rejected` instead, and `illustrates:` there does not compile.
 
 ## How a scenario runs
@@ -241,7 +241,7 @@ the process owner: the code decided something the agreed cases do not say.
 
 ## Which declarations need one
 
-The compiler refuses an invariant, or a command's constraint, without a `rejected` scenario (`S8`): a rule
+The compiler refuses an invariant, or a command's constraint, without a `rejected` scenario ([`S8`](../contract.md#refusals-s)): a rule
 of a decision is proved only by a case that refuses on it. For everything else a missing scenario is a
 warning of [the check](../rules.md):
 

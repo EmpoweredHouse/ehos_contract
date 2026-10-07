@@ -218,21 +218,21 @@ and a label that repeats it drifts the day someone changes it.
 
 An event the manager takes that lacks its `correlate` fields joins no run and is passed over, and for a
 local event nothing refuses that at compile time: check that each event it names carries them. Its state
-holds no personal data (`F7`): it lives outside the log, where erasure cannot reach it.
+holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the log, where erasure cannot reach it.
 
 ## What the compiler refuses
 
 - A policy or an effect taking an event that is neither this contract's nor consumed, or a policy issuing a
-  command of another contract (`P1`). Issue a command of this contract; another context's unit is reached
+  command of another contract ([`P1`](../contract.md#refusals-p)). Issue a command of this contract; another context's unit is reached
   through its own policy.
-- An effect with `calls:` delivered `:in_transaction` (`P2`): deliver it `:at_least_once`.
+- An effect with `calls:` delivered `:in_transaction` ([`P2`](../contract.md#refusals-p)): deliver it `:at_least_once`.
 - A policy or an effect delivered `:at_least_once` without `idempotency`; `owner: :downstream` outside an
-  effect; `owner: :infrastructure` on an effect, or on a key other than `:event_id` (`P3`).
+  effect; `owner: :infrastructure` on an effect, or on a key other than `:event_id` ([`P3`](../contract.md#refusals-p)).
 - A process manager that starts on nothing, has an empty `correlate`, or is delivered `:in_transaction`; a
   trigger that is neither an event it may take nor its own timer; a timer without exactly one of `wait:` and
-  `at:` (`P4`).
-- A command no actor may issue and no reaction issues (`C1`).
-- In a module: `issue/1` given anything but struct literals of the commands its `issues:` names (`I4`, `I6`).
+  `at:` ([`P4`](../contract.md#refusals-p)).
+- A command no actor may issue and no reaction issues ([`C1`](../contract.md#refusals-c)).
+- In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](../contract.md#refusals-i), [`I6`](../contract.md#refusals-i)).
 
 ## What `mix eh_os_contract.check` reports
 

@@ -89,7 +89,7 @@ end
 ## A read model
 
 A read model declares the shape of its rows (`field`) and the events it `projects`: events of this
-contract, or ones it `consumes` from a sibling (`P5`). It is implemented by a module with one callback
+contract, or ones it `consumes` from a sibling ([`P5`](../contract.md#refusals-p)). It is implemented by a module with one callback
 per projected event, which writes the application's own tables and returns `:ok`. The library knows
 nothing of those tables: the application creates them with its own migrations.
 
@@ -141,7 +141,7 @@ end
 - `:in_transaction`, when `delivery` is left out: dispatch projects the appended events inside the
   transaction that appends them, before it commits. A query reads the command's effect as soon as
   dispatch returns, and a projection that raises rolls the command back with it. A read model of an
-  event of a sibling contract in another context has to say which it is (`X10`).
+  event of a sibling contract in another context has to say which it is ([`X10`](../contract.md#refusals-x)).
 - `:at_least_once`: a subscription reads the log in order after the commit, in batches, and moves its
   position in the same transaction as the rows it wrote, so each batch's rows are committed once. A
   callback may still run more than once (a batch that raises is run again), so keep it to writes in that
@@ -151,7 +151,7 @@ end
   is a person's decision.
 
 A read model takes only events in this application's log: an event received from another application
-arrives in an inbox that only a policy takes (`D12`). Project what the policy's command records
+arrives in an inbox that only a policy takes ([`D12`](../contract.md#refusals-d)). Project what the policy's command records
 instead.
 
 **Rebuilding.** A read model's version is a digest of its declaration and of every event it takes.
@@ -174,7 +174,7 @@ which is why `copy_lent` above keeps a name only when it is a string.
 
 ## A query
 
-A query names the read model it `reads`, who may ask it (`by:`, required, `D10`), its parameters
+A query names the read model it `reads`, who may ask it (`by:`, required, [`D10`](../contract.md#refusals-d)), its parameters
 (`param`), and whether it answers rows or one row (`returns: :many`, the default, or `:one`). Its
 implementation is one function named after it, taking the parameters' struct and a context with the
 actor, and answering the read model's `Row` structs (a list, or one row or `nil`):
@@ -256,7 +256,7 @@ the parameters against the declaration and go through `query/3`.
 
 **Narrowing by a grant.** A query declared `scope: :branch_id` answers only rows whose `branch_id`
 the credential grants: the scope is a parameter and a field of the read model's row of the same type,
-and every actor in `by:` carries it (`D10`). A value outside the grant is refused before the
+and every actor in `by:` carries it ([`D10`](../contract.md#refusals-d)). A value outside the grant is refused before the
 implementation runs, and every row it answers is checked again, so a wrong `where` raises
 `EhOsContract.Authorizer.OutsideScopeError` instead of handing out another branch's rows. How grants
 are made is in [authorization](../authorization.md).
@@ -264,14 +264,14 @@ are made is in [authorization](../authorization.md).
 ## What the compiler refuses
 
 - a read model projecting an event neither of this contract nor consumed from a sibling, or a query
-  reading what is not a read model of this contract (`P5`);
-- a read model taking an event received from another application (`D12`);
-- a read model of a sibling's event in another context without `delivery` (`X10`);
-- a query without `by:`, or a scope that is not a same-typed parameter and row field (`D10`);
-- a query named like a command, or like an event an actor records (`N1`): each is a capability, and
+  reading what is not a read model of this contract ([`P5`](../contract.md#refusals-p));
+- a read model taking an event received from another application ([`D12`](../contract.md#refusals-d));
+- a read model of a sibling's event in another context without `delivery` ([`X10`](../contract.md#refusals-x));
+- a query without `by:`, or a scope that is not a same-typed parameter and row field ([`D10`](../contract.md#refusals-d));
+- a query named like a command, or like an event an actor records ([`N1`](../contract.md#refusals-n)): each is a capability, and
   their names share one namespace;
-- a query's scenario whose `given` are not events its read model projects (`S2`), or without one
-  `answers` shaped as the query returns (`S6`).
+- a query's scenario whose `given` are not events its read model projects ([`S2`](../contract.md#refusals-s)), or without one
+  `answers` shaped as the query returns ([`S6`](../contract.md#refusals-s)).
 
 ## What `mix eh_os_contract.check` reports
 
