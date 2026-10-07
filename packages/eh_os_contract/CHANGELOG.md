@@ -1292,7 +1292,7 @@ The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — 
   way by `V01`/`V02` with no upgrade path), the AsyncAPI extensions
   (`x-eh-os-contract-*`) and the report schema (`eh_os_contract.conformance.v1`).
 - `docs/contract.md`, the DSL reference, ships inside the package;
-  `mix eh_os_contract.docs` is tooling for developing the package and is no longer
+  the `eh_os_contract.docs` task is tooling for developing the package and is no longer
   compiled into consumers.
 
 - **Every contract's `version/0` moved once, deliberately.** A seventh declaration

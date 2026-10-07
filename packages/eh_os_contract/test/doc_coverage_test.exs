@@ -4,9 +4,14 @@ defmodule EhOsContract.DocCoverageTest do
   false` when it is public only for another module of the library; and every
   documented function has a `@spec`, so `dialyzer` has something to check (#141).
 
-  `CLAUDE.md` asked for this before anything held it. A callback implementation is
-  left out: its behaviour documents it (`@impl`), and Spark's transformers and
-  verifiers inject theirs.
+  `CLAUDE.md` asked for this before anything held it. Left out:
+
+    * a callback implementation, which its behaviour documents (`@impl`), and the
+      ones Spark's transformers and verifiers inject;
+    * a module with `@moduledoc false`, whose functions are the library's own and
+      published nowhere;
+    * the `@spec` of a function with `@doc false`, which is the `write-docs` skill's
+      to decide.
   """
 
   use ExUnit.Case, async: true
@@ -42,6 +47,12 @@ defmodule EhOsContract.DocCoverageTest do
         not String.starts_with?(Atom.to_string(name), "_"),
         {name, arity} not in implemented,
         do: {kind, name, arity, doc}
+  end
+
+  # Otherwise a source path spelled differently from the working directory (a
+  # symlink, `/tmp` against `/private/tmp`) leaves nothing to check, and both pass.
+  test "the modules of lib/ are found" do
+    assert EhOsContract in Enum.map(modules(), &elem(&1, 0))
   end
 
   test "every public function and macro of lib/ has a @doc or @doc false" do

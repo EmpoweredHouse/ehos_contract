@@ -11,7 +11,8 @@ defmodule EhOsContract.Check.Catalog do
   follows and the text says where it differs. The level is fixed per rule, as in
   ESDM, and nothing silences one: a finding goes away when the model changes.
 
-  `docs/rules.md` is generated from this list (`mix eh_os_contract.rules`), one
+  `docs/rules.md` is generated from this list (by `eh_os_contract.rules`, a task of
+  the package's own `dev/`, not shipped), one
   entry per rule, and each finding links to its entry.
 
   The rules of the compiler — `N1`, `X2` and the rest of L2 and L3 — are not here.
