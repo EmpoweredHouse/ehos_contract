@@ -16,7 +16,7 @@ defmodule EhOsContract.Web do
   """
 
   use Boundary,
-    deps: [EhOsContract],
+    deps: [EhOsContract, EhOsContract.GraphRenderer],
     exports: [
       Api.AsyncAPI,
       Api.Conformance,
@@ -28,6 +28,7 @@ defmodule EhOsContract.Web do
       Router.RedirectToContract,
       Authentication,
       Live.ContractStatus,
-      Live.Graph
+      Live.Graph,
+      Live.GraphPreview
     ]
 end

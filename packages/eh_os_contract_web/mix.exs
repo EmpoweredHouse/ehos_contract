@@ -131,6 +131,15 @@ defmodule EhOsContract.Web.MixProject do
     end
   end
 
+  # The renderer, the same way as the engine above.
+  defp eh_os_contract_graph_dep do
+    if File.exists?(Path.expand("../eh_os_contract_graph/mix.exs", __DIR__)) do
+      {:eh_os_contract_graph, path: "../eh_os_contract_graph"}
+    else
+      {:eh_os_contract_graph, git: @git_url, sparse: "packages/eh_os_contract_graph"}
+    end
+  end
+
   defp deps do
     [
       # Declared rather than inherited. It reaches here today only through
@@ -141,6 +150,9 @@ defmodule EhOsContract.Web.MixProject do
       {:jason, "~> 1.4"},
       # The engine, whose report and graph the screens render.
       eh_os_contract_dep(),
+      # The renderer the graph is drawn with (plan E13b), its script and stylesheet bundled
+      # into this package's own by `mix assets.build`.
+      eh_os_contract_graph_dep(),
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.1"},
       {:phoenix_html, "~> 4.0"},

@@ -7,6 +7,10 @@ Two screens and nothing else: the contract's conformance status, and the graphs 
 each domain's context map and system, and per process its declared shape, its graph
 with the log laid over it, and its contract's units.
 
+The graphs are moving onto [`eh_os_contract_graph`](../eh_os_contract_graph), the renderer of
+the engine's `graph.v1` documents (plan E13b). Until they have, it draws on one temporary
+screen of its own, `<mount>/graph/preview`, not in the nav.
+
 ## Installation
 
 From git, beside the engine, with the same `git:` and `sparse:` shape — this package

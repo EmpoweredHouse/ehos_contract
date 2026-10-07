@@ -12,6 +12,10 @@
 /* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
 @import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";
 
+/* The graph renderer's cards, arrows and panel (plan E13b), from the package beside this one. It defines
+   only --eh-os-contract-graph-* and reads the tokens above. */
+@import "../../../eh_os_contract_graph/priv/static/eh_os_contract_graph.css";
+
 /* Fonts, served beside this stylesheet by the Plug.Static line the host already has. Relative
    URLs, so they follow wherever that line mounts the assets; the build leaves them as written
    (--external in config/config.exs). Weights 400 and 500 only, which is all the design system

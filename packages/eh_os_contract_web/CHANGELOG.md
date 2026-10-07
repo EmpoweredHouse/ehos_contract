@@ -8,6 +8,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, batch 1: the dashboard depends on `eh_os_contract_graph`, the graph renderer.** Its script and stylesheet
+  are bundled into the dashboard's own `app.js` and `app.css`, so a host serves nothing new and registers nothing.
+  A temporary screen, `<mount>/graph/preview` and not in the nav, draws one document of the registry with it, every
+  node and relation, with the overlay once connected, so the drawing layer can be looked at under the host's
+  policy. The Graph and Contract status screens are unchanged; the preview goes when the Graph screen moves onto the
+  renderer. A host fetching this package from git gets the renderer the same way it gets the engine.
+
 - **E13a: the graph as an API.** `eh_os_contract_api/2` serves `GET <mount>/graph` (an index of contracts — each
   `contract`, its id, with its `module` — and domains, with their versions and digests),
   `<mount>/graph/rehmed.settlement` (the contract's `graph.v1` document, its digest as the `ETag`, `304` on

@@ -51,6 +51,8 @@ defmodule EhOsContract.Web.Router do
           on_mount: [EhOsContract.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
           live "/contract", EhOsContract.Web.Live.ContractStatus, :index
           live "/graph", EhOsContract.Web.Live.Graph, :index
+          # Temporary (plan E13b, batch 1): the renderer on one document, until batch 4.
+          live "/graph/preview", EhOsContract.Web.Live.GraphPreview, :index
         end
       end
     end

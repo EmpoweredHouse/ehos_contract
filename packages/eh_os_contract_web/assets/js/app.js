@@ -5,6 +5,8 @@
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
+// The graph renderer's hook (plan E13b), bundled into this file from the package beside this one.
+import { EhOsContractGraph } from "../../../eh_os_contract_graph/priv/static/eh_os_contract_graph.esm.js"
 
 // Mermaid is loaded by its own <script defer> tag in the root layout, not
 // `import`ed here, and that is load-bearing, not a style choice: the
@@ -258,7 +260,7 @@ const csrfToken = document
 
 const liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
-  hooks: Hooks,
+  hooks: { ...Hooks, EhOsContractGraph },
 })
 
 liveSocket.connect()

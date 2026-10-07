@@ -19,6 +19,8 @@ defmodule EhOsContract.Web.DesignSystemTest do
   @layer Path.join(@root, "assets/css/app.css")
   @built Path.join(@root, "priv/static/assets/app.css")
   @script Path.join(@root, "assets/js/app.js")
+  # The graph renderer's stylesheet, which the build imports into the dashboard's (plan E13b).
+  @renderer Application.app_dir(:eh_os_contract_graph, "priv/static/eh_os_contract_graph.css")
   @fonts Path.join(@root, "priv/static/assets/fonts")
   @package_tokens Path.join(
                     @root,
@@ -65,7 +67,7 @@ defmodule EhOsContract.Web.DesignSystemTest do
     defined = @built |> File.read!() |> defined_properties()
 
     read =
-      for path <- [@layer, @script],
+      for path <- [@layer, @script, @renderer],
           [name] <-
             Regex.scan(~r/(?:var\(|["'])(--[a-z0-9-]+)/, File.read!(path),
               capture: :all_but_first
