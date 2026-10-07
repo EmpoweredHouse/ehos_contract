@@ -14,7 +14,8 @@ defmodule Rehmed.Processes.ClinicalVisit do
   moduledoc.
 
   The run ends when the report is sent (`E-54`) or waived. A rejection by the
-  registry (`AGG-10`'s error state) does not end it: the report is retried.
+  registry (`AGG-10`'s error state) does not end it: the report is still owed, and
+  its retry (`S-46`) is not written yet.
   """
 
   # The old watchdog "notified the manager at the moment the deadline had already
