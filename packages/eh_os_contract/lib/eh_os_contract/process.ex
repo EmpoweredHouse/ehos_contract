@@ -46,8 +46,12 @@ defmodule EhOsContract.Process do
 
   What one module can get wrong does not compile (`EhOsContract.Process.Rules`). It
   compiles to plain data, `__eh_os_contract_model__/0`, which
-  `EhOsContract.Model.fetch/1` returns, of kind `:process`. Nothing at run time reads
-  it yet.
+  `EhOsContract.Model.fetch/1` returns, of kind `:process`. What it names in other
+  modules — its domain, the contracts and their events — is checked by the rules
+  between modules (`EhOsContract.Contract.Links.Processes`, plan DD, P2c, #210), and
+  dispatch files each event it includes into its run, under its `id:` and keyed by
+  its `correlate` (`EhOsContract.Implementations.included/2`). No reader shows those
+  runs yet.
 
   Inside the library this module is always written in full, never aliased: `Process`
   is Elixir's.

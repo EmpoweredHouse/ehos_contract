@@ -203,6 +203,14 @@ scenario        description!   scope · actor
 > It reuses the contract's codes (D11, N1, R2, F9, R3, R5, R6) and adds one rule: a `deadline` needs `ends_on`, since
 > a deadline measures a run to its end. §4.1's "one process" per contract is the step before; the `process` block in a
 > contract goes in P2h. ([#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205))
+>
+> *Added 7 October 2026, plan DD, P2c.* **A process module's runs are filed under its `id:`.** The links compiler
+> checks the module against the contracts it names (X1, X2, X5, X6, X7, and the id's domain prefix under D11), and
+> dispatch writes a row of `eh_os_contract_event_runs` for every process module that includes the event, its process
+> column the module's id (`"rehmed.clinical_visit"`), where a contract's process is filed under its short name. The
+> id is namespaced and survives renaming the module, the reason contracts' rows moved to ids in ID3–ID4; a process
+> that moves from a contract into a module therefore starts its runs afresh under the new key.
+> ([#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210))
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

@@ -1361,12 +1361,13 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # An event without the fields another process correlates on is in none of its runs,
-  # as one without its home process's is in no home run.
+  # as one without its home process's is in no home run. A process module's runs are
+  # filed under its id (plan DD, P2c, #210), a contract process's under its name.
   defp included_runs(model, type, event) do
     for process <- Implementations.included(model.module, type),
         key = run_key(process, event),
         key != nil,
-        do: {Atom.to_string(process.name), key}
+        do: {to_string(process.name), key}
   end
 
   defp write_row!(repo, job, outcome, fields) do
