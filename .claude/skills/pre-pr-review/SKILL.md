@@ -121,6 +121,8 @@ them, not against memory:
   `encoding: :unicode`, zsh not splitting words.
 - `.claude/skills/review-pr/SKILL.md`: what the gate already guarantees, and where a human
   reviewer's attention goes instead.
+- `.claude/skills/write-docs/SKILL.md`, when the change touches a public module or function: does
+  its `@doc` still describe it, and does it read for a host rather than the team.
 - On a stage branch (`dsl-v2/eN-*`): the rules of every commit and the stage's acceptance
   criteria in `PLAN.md`, "Dopisek 25 września (2) — Etap 6".
 
