@@ -56,8 +56,8 @@ declare a process only when the test is about one. P1d merged in #196 and #200 (
 `Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
 module of its own. P2c merged in #212 (issue #210): process modules
 are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
-and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold: P2e (#220) and P2h (#221)**, until E13 (#217, #219, another contributor) is in `main`. P2f merged in #225–#227
-(issue #222): the sandbox's processes are process modules. P2g (issue #228) on `dd/228-test-rigs-process-modules`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
+and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold until the graph documents and renderer (E13; #217, #219, another contributor) are in `main`: a process module's picture and page (P2e, #220), and removing the contract's own `process` (P2h, #221).** P2f merged in #225–#227
+(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228). #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -578,7 +578,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
 | P2e | 2 | grafy i strony procesu | P2d, **E13a** | ⏸ **on hold until E13a (#217) is in `main`** | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
-| P2g | 2 | rigi i testy o procesach | P2d | ◐ `dd/228-test-rigs-process-modules` | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
+| P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |
@@ -1418,10 +1418,11 @@ użytkownika.
 ### After wave 2 — the user's decision and the migration note (7 October 2026)
 
 **Wave 2 is closed conditionally** (the user's decision of 7 October, option 1). 15 of its 17 stages are in `main`:
-ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **P2e (#220) and P2h (#221) are on hold** until E13 (#217, #219) is in `main`,
-and continue as a group of their own after it. The wave's aim stands: a process is a module of its own spanning
+ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **On hold** until the graph documents and renderer (E13; #217, #219) are in
+`main`, and continuing as a group of their own after it: a process module's picture and page (P2e, #220), and removing
+the contract's own `process` block with its columns in the log (P2h, #221). The wave's aim stands: a process is a module of its own spanning
 contracts, checked at compile time, with runs, a report, a deployment record and a check, and the test material
-and the library's tests use it. What is missing is its picture (P2e) and the removal of the old way (P2h).
+and the library's tests use it. What is missing is its picture and the removal of the old way.
 *Rejected:* waiting for E13 to close the wave, which would hold back this note while AppUnite's application needs it now.
 **Version tag:** not yet, on the user's word only, as after wave 1.
 
@@ -1443,7 +1444,7 @@ act" entries of the three changelogs carry the detail.
 | A process may be a module of its own, `use EhOsContract.Process` (P2b–P2d; #205, #210, #213) | optional now, required once P2h lands: move each contract's `process` into a module; its runs are filed under the module's id, so runs before the move are not continued; the manifest change above applies | `assignment` as a module, as the sandbox did (#227); the `Assignments` contract goes |
 | The configuration is one schema, checked at boot (#206) | an unknown key or a wrong shape in `config :eh_os_contract` stops the engine, naming the key | check the config boots |
 | `eh_os_contract_commands` indexed by contract (#185) | none for a reset database; otherwise `CREATE INDEX CONCURRENTLY` as the changelog gives | none after the reset |
-| The domain's `name:` must be the EHOS application's name (#180, #234) | the application in `audience` must be one domain's name (with `-` for `_`), and no other domain may publish; the auth child refuses to start otherwise | **check before upgrading** that the domain's `name:` (in the sandbox's copy `:appunite_equipment`) is the application's name in EHOS |
+| The domain's `name:` must be the EHOS application's name (#180, #234) | the application in `audience` (`"<application>/<environment>"`) must equal one domain's `name:` exactly, and no other domain may publish; the auth child refuses to start otherwise. A domain named with `_` cannot match, since EHOS never issues `_`: rename it with `-` | **check before upgrading** that the domain's `name:` (in the sandbox's copy `:appunite_equipment`) is the application's name in EHOS |
 
 `ehos-ledger` takes the same rows; its manifest changes only where a capability loses its process. The bump of
 either pin is done in those repositories, on the user's word.
