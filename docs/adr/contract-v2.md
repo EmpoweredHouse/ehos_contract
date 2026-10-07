@@ -194,6 +194,15 @@ scenario        description!   scope · actor
 > runs should exist and the log sees only what was recorded. A contract that declares it no longer compiles. A
 > process is digested as it was with none declared, so no other contract's version moves. It comes back with a
 > reader that knows what should exist. ([#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195))
+>
+> *Added 7 October 2026, plan DD, P2b, in the programme the user approved on 5 October.* **A process may be a
+> module of its own:** `use EhOsContract.Process, id!:, label!:, domain!:` (`accountable`, `source`), with `correlate`,
+> `stage name, label, include: [{Contract, event | [events]}]`, `ends_on [events]`, `promise` and `deadline`. It names
+> contracts without a compile dependency, as `consumes` does, and gathers their events into one run: a clinic's
+> visit runs through booking, documentation, reporting and settlement, four contracts, and belongs to none of them.
+> It reuses the contract's codes (D11, N1, R2, F9, R3, R5, R6) and adds one rule: a `deadline` needs `ends_on`, since
+> a deadline measures a run to its end. §4.1's "one process" per contract is the step before; the `process` block in a
+> contract goes in P2h. ([#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205))
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

@@ -27,6 +27,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A process can be written as a module of its own** (plan DD, stage P2b, #205): `use EhOsContract.Process`,
+  with `id:`, `label:` and `domain:`, `correlate`, stages that `include:` the events of named contracts,
+  `ends_on`, promises and a `deadline`. It compiles to a model of kind `:process` that
+  `EhOsContract.Model.fetch/1` returns, and refuses what one module can see is wrong under the contract's codes
+  (D11, N1, R2, F9, R3, R5, R6), a `deadline` without `ends_on` among them. Nothing at run time reads it yet,
+  so no verdict moves and nothing has to be done. The DSL reference is `docs/dsl/process-dsl.md`, and the
+  formatter's exported `locals_without_parens` covers it.
 - **A contract may describe no process** (plan DD, stage P1c, #190). R1 refuses a second `process`, and in a
   contract without one, a unit's `stage` group and a `terminal:` event, which only a run has. Such a contract
   dispatches with no run indexed, runs its scenarios, and gets a report with its steps, lifecycles and

@@ -2,9 +2,10 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   @shortdoc "Regenerates the DSL reference in docs/dsl/ from the Spark extensions"
 
   @moduledoc """
-  Writes the reference of the two DSLs — `docs/dsl/domain-dsl.md` for
-  `use EhOsContract.Domain` and `docs/dsl/contract-dsl.md` for `use EhOsContract.Contract`
-  — from their Spark extensions, with `Spark.CheatSheet.cheat_sheet/1`: every
+  Writes the reference of the three DSLs — `docs/dsl/domain-dsl.md` for
+  `use EhOsContract.Domain`, `docs/dsl/contract-dsl.md` for `use EhOsContract.Contract`
+  and `docs/dsl/process-dsl.md` for `use EhOsContract.Process` — from their Spark
+  extensions, with `Spark.CheatSheet.cheat_sheet/1`: every
   entity, where it nests, its arguments and options, which are required, their types,
   defaults and docs.
 
@@ -15,7 +16,7 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   Only the reference is generated. `docs/contract.md` is prose a generator has no
   business writing: how to start, what each layer of checks refuses, and why.
 
-  `--check` verifies both files are current and exits non-zero otherwise: a key
+  `--check` verifies every file is current and exits non-zero otherwise: a key
   table written by hand beside the extension is a second copy, and every second copy
   in this project has eventually disagreed with the code. The package's `mix check`
   runs it.
@@ -26,7 +27,8 @@ defmodule Mix.Tasks.EhOsContract.Docs do
 
   @pages [
     {"docs/dsl/domain-dsl.md", EhOsContract.Domain.Dsl},
-    {"docs/dsl/contract-dsl.md", EhOsContract.Contract.Dsl}
+    {"docs/dsl/contract-dsl.md", EhOsContract.Contract.Dsl},
+    {"docs/dsl/process-dsl.md", EhOsContract.Process.Dsl}
   ]
 
   @impl Mix.Task
