@@ -25,8 +25,9 @@ defmodule EhOsContractHost.E10OutputsTest do
     # events only a `terminal:` or an `include` read, and a relation of the context map
     # only that `include` crossed, came out. P2f (#222): three of Rehmed's events a
     # process module now includes have a reader, and statutory reporting no longer
-    # consumes scheduling's event across an undeclared relation.
-    assert output =~ "eh_os_contract.check: 0 errors, 32 warnings, 10 notices"
+    # consumes scheduling's event across an undeclared relation; two of TaxVision's
+    # matching events had no reader until the process module included them.
+    assert output =~ "eh_os_contract.check: 0 errors, 30 warnings, 10 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
@@ -87,8 +88,9 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   # The sandbox's `ehos.yaml` names TaxVision, since Rehmed is registered beside it.
-  # Registry Watch declares no process, so its two capabilities name none; the
-  # accounting month's name theirs (plan DD, P1d, #195).
+  # No contract declares a process, so no capability names one: Registry Watch's
+  # lost theirs in plan DD, P1d (#195), and the accounting month's when its run
+  # became `Taxvision.Processes.AccountingMonth` (P2f, #222).
   @tag :tmp_dir
   test "the manifest task extends ehos.yaml with TaxVision's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "taxvision.json")
@@ -117,14 +119,12 @@ defmodule EhOsContractHost.E10OutputsTest do
                    "name" => "taxvision.ingest_bank_statement",
                    "command" => "ingest_bank_statement",
                    "label" => "Wgraj wyciąg bankowy",
-                   "process" => "accounting_month",
                    "principals" => ["human"]
                  },
                  %{
                    "name" => "taxvision.open_month",
                    "command" => "open_month",
                    "label" => "Otwórz miesiąc księgowy",
-                   "process" => "accounting_month",
                    "principals" => ["human"]
                  },
                  %{

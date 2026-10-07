@@ -4,6 +4,8 @@ defmodule Taxvision.AccountingMonthTest do
   E9c): the accountant's check, the registries asked by the effect, the comparison,
   the policy that opens the month — and a month later the timer that checks the next
   period on its own (P1). The registries are `Taxvision.Adapters.RegistryLookup.Fake`.
+  The promise is `Taxvision.Processes.AccountingMonth`'s, and its runs are filed
+  under the module's id, `"taxvision.accounting_month"` (plan DD, P2f, #222).
   """
 
   use Taxvision.DataCase, async: false
@@ -12,6 +14,7 @@ defmodule Taxvision.AccountingMonthTest do
   alias Taxvision.Contracts.{AccountingMonth, RegistryWatch}
   alias Taxvision.Contracts.AccountingMonth.Commands.OpenMonth
   alias Taxvision.Contracts.RegistryWatch.Commands.{CompleteCompanyProfile, RetriggerVerification}
+  alias Taxvision.Processes
 
   @at ~U[2026-09-01 06:00:00Z]
 
@@ -89,7 +92,7 @@ defmodule Taxvision.AccountingMonthTest do
            ]
 
     assert [%{verdict: :satisfied, via: :eventually}] =
-             Trace.evaluate(AccountingMonth, :month_opens_or_is_blocked,
+             Trace.evaluate(Processes.AccountingMonth, :month_opens_or_is_blocked,
                now: DateTime.add(@at, 3600)
              )
   end
@@ -114,7 +117,7 @@ defmodule Taxvision.AccountingMonthTest do
 
     # The promise keeps the other way: the month is blocked, not forgotten.
     assert [%{verdict: :satisfied, via: :or_else}] =
-             Trace.evaluate(AccountingMonth, :month_opens_or_is_blocked,
+             Trace.evaluate(Processes.AccountingMonth, :month_opens_or_is_blocked,
                now: DateTime.add(@at, 3600)
              )
   end
