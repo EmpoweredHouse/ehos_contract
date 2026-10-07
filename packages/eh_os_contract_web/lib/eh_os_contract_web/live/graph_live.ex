@@ -1,44 +1,43 @@
 defmodule EhOsContract.Web.Live.Graph do
-  @moduledoc """
-  Screen 3: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
-  dashboard instead of dev-only CLI output — the second half of a plan
-  `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
-  out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia
-  (10)" for why this was parked, then unparked. From the top: each domain's context
-  map and system, then the selected contract's panels, then its units.
-
-  The selector picks a contract, by its id, whether or not it has a process (plan DD,
-  P1b, #186; until then it picked a process, and a contract without one could not be
-  reached). Its panels, per ADR §9 ("navigation is per-process, never global"; the
-  domain's pictures above them are a dated exception there):
-
-    * **Declared shape of its process**, only when it has one —
-      `EhOsContract.Graph.declared_to_mermaid/2`. The structural view: stages,
-      endings, promise windows — true even for a process with zero runs.
-    * **Declared versus observed** — the contract's full graph with the log laid
-      over it (`EhOsContract.Graph.contract_to_mermaid/2`, v2 plan E7c, plan EG1):
-      the steps, and the actors, read models, queries and external systems around
-      them.
-
-  **Above both, each domain** (plan EG2): its context map —
-  `EhOsContract.Graph.context_map_to_mermaid/1`, subdomains, contexts, externals and
-  their relations — and its system, the v2 contracts in their contexts, what one
-  consumes from another, and the log over it (`EhOsContract.Graph.system_to_mermaid/3`).
-  **Below both, the units** of the selected contract, each its own
-  picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
-  invariants and the scenarios that pin each path. The map and the units describe
-  the model rather than the log; they are here since 28 September at the user's
-  word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG"). An
-  aggregate that declares a lifecycle has it drawn beside its unit
-  (`EhOsContract.Graph.lifecycle_to_mermaid/3`, plan LC4b), with the log over it once
-  the socket is connected — the report's own counts, read once per contract.
-
-  Rendering is client-side, through `app.js`'s `MermaidRender` hook: every
-  diagram strings reach the template as plain data in a `data-graph`
-  attribute, never as trusted HTML — HEEx escapes them like any other
-  interpolated value, and the hook reads the attribute back out before
-  handing it to Mermaid.
-  """
+  # Screen 3: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
+  # dashboard instead of dev-only CLI output — the second half of a plan
+  # `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
+  # out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia
+  # (10)" for why this was parked, then unparked. From the top: each domain's context
+  # map and system, then the selected contract's panels, then its units.
+  #
+  # The selector picks a contract, by its id, whether or not it has a process (plan DD,
+  # P1b, #186; until then it picked a process, and a contract without one could not be
+  # reached). Its panels, per ADR §9 ("navigation is per-process, never global"; the
+  # domain's pictures above them are a dated exception there):
+  #
+  #   * **Declared shape of its process**, only when it has one —
+  #     `EhOsContract.Graph.declared_to_mermaid/2`. The structural view: stages,
+  #     endings, promise windows — true even for a process with zero runs.
+  #   * **Declared versus observed** — the contract's full graph with the log laid
+  #     over it (`EhOsContract.Graph.contract_to_mermaid/2`, v2 plan E7c, plan EG1):
+  #     the steps, and the actors, read models, queries and external systems around
+  #     them.
+  #
+  # **Above both, each domain** (plan EG2): its context map —
+  # `EhOsContract.Graph.context_map_to_mermaid/1`, subdomains, contexts, externals and
+  # their relations — and its system, the v2 contracts in their contexts, what one
+  # consumes from another, and the log over it (`EhOsContract.Graph.system_to_mermaid/3`).
+  # **Below both, the units** of the selected contract, each its own
+  # picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
+  # invariants and the scenarios that pin each path. The map and the units describe
+  # the model rather than the log; they are here since 28 September at the user's
+  # word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG"). An
+  # aggregate that declares a lifecycle has it drawn beside its unit
+  # (`EhOsContract.Graph.lifecycle_to_mermaid/3`, plan LC4b), with the log over it once
+  # the socket is connected — the report's own counts, read once per contract.
+  #
+  # Rendering is client-side, through `app.js`'s `MermaidRender` hook: every
+  # diagram strings reach the template as plain data in a `data-graph`
+  # attribute, never as trusted HTML — HEEx escapes them like any other
+  # interpolated value, and the hook reads the attribute back out before
+  # handing it to Mermaid.
+  @moduledoc false
 
   use Phoenix.LiveView
 

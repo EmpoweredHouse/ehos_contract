@@ -1,15 +1,14 @@
 defmodule EhOsContract.Web.Api.OpenAPI do
-  @moduledoc """
-  The generated OpenAPI document for one v2 contract, or the index of all of them.
-
-  `GET <mount>/openapi` lists each contract with its version and document digest.
-  `GET <mount>/openapi/<contract id>` serves that contract's command-and-query API,
-  with the digest both in `info["x-eh-os-contract-digest"]` and as the `ETag`.
-
-  The same host resolver that protects conformance, model and AsyncAPI documents
-  protects these routes. They expose the contract's authorization surface and
-  business language, even though they contain no business data.
-  """
+  # The generated OpenAPI document for one v2 contract, or the index of all of them.
+  #
+  # `GET <mount>/openapi` lists each contract with its version and document digest.
+  # `GET <mount>/openapi/<contract id>` serves that contract's command-and-query API,
+  # with the digest both in `info["x-eh-os-contract-digest"]` and as the `ETag`.
+  #
+  # The same host resolver that protects conformance, model and AsyncAPI documents
+  # protects these routes. They expose the contract's authorization surface and
+  # business language, even though they contain no business data.
+  @moduledoc false
 
   @behaviour Plug
 

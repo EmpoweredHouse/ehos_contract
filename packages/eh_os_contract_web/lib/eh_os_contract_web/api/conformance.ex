@@ -1,28 +1,27 @@
 defmodule EhOsContract.Web.Api.Conformance do
-  @moduledoc """
-  The conformance report, as data, for one contract.
-
-  `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
-
-  The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
-  the shape a consumer compares version to version is part of what the engine
-  promises, and a transport that owned it would make that promise a property of
-  whichever web package happened to serve it.
-
-  ## What this exposes, said out loud
-
-  `report.deployment.in_log` carries per-version event counts with timestamps —
-  volume data about the client's business, which is on the other side of the line
-  `EhOsContract.Conformance`'s own moduledoc draws between paths and companies. It is not
-  redacted here, because a package deciding how sensitive a client's data is would
-  be the package knowing that client's domain. It is named here so a host's
-  resolver can decide.
-
-  `Jason.encode_to_iodata!/1` directly rather than `Phoenix.Controller.json/2`: the
-  latter reads `config :phoenix, :json_library`, which is host configuration a
-  mountable package has no business assuming — the same argument this package's
-  router already makes about `Plug.Parsers`.
-  """
+  # The conformance report, as data, for one contract.
+  #
+  # `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
+  #
+  # The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
+  # the shape a consumer compares version to version is part of what the engine
+  # promises, and a transport that owned it would make that promise a property of
+  # whichever web package happened to serve it.
+  #
+  # ## What this exposes, said out loud
+  #
+  # `report.deployment.in_log` carries per-version event counts with timestamps —
+  # volume data about the client's business, which is on the other side of the line
+  # `EhOsContract.Conformance`'s own moduledoc draws between paths and companies. It is not
+  # redacted here, because a package deciding how sensitive a client's data is would
+  # be the package knowing that client's domain. It is named here so a host's
+  # resolver can decide.
+  #
+  # `Jason.encode_to_iodata!/1` directly rather than `Phoenix.Controller.json/2`: the
+  # latter reads `config :phoenix, :json_library`, which is host configuration a
+  # mountable package has no business assuming — the same argument this package's
+  # router already makes about `Plug.Parsers`.
+  @moduledoc false
 
   @behaviour Plug
 

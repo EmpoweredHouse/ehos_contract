@@ -1,14 +1,13 @@
 defmodule EhOsContract.Web.Api.Model do
-  @moduledoc """
-  The named v2 model document for one contract, or an index of all of them.
-
-  `GET <mount>/model` lists v2 contracts with their contract version and exported
-  document digest. `GET <mount>/model/<contract id>` serves
-  `EhOsContract.Model.to_data/1`, with its digest in the body and as the `ETag`.
-
-  Authenticated through the same resolver as conformance and AsyncAPI: the model
-  contains the client's domain language and authorization surface.
-  """
+  # The named v2 model document for one contract, or an index of all of them.
+  #
+  # `GET <mount>/model` lists v2 contracts with their contract version and exported
+  # document digest. `GET <mount>/model/<contract id>` serves
+  # `EhOsContract.Model.to_data/1`, with its digest in the body and as the `ETag`.
+  #
+  # Authenticated through the same resolver as conformance and AsyncAPI: the model
+  # contains the client's domain language and authorization surface.
+  @moduledoc false
 
   @behaviour Plug
 

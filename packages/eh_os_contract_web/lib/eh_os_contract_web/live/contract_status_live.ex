@@ -1,24 +1,23 @@
 defmodule EhOsContract.Web.Live.ContractStatus do
-  @moduledoc """
-  Screen 1 of 3: the four questions, per contract, as HTML instead of
-  `EhOsContract.Report`'s text.
-
-  **Every sentence comes from `EhOsContract.Report.Sentence`.** This screen decides what is a
-  heading, what is a list and what is red; it decides nothing about what the answer
-  says. That split used to be a comment rather than a mechanism — the sentences were
-  duplicated here, deliberately, on the argument that the structure was small enough
-  to copy. By the time anybody ran both renderers side by side, this one was silently
-  missing six answers the text one had grown: the addressee, the measured `deadline`,
-  a run suspended by an external outage, a run judged under a rule that had since
-  changed, which met runs reached the fallback, and queued work at all.
-
-  No contract picker: the registry's contracts are the same source
-  `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
-  same way that task does, one section per contract. A contract's report has its
-  steps, its promises, its wiring and its scenarios (v2 plan, E7c), and for an
-  aggregate that declares a lifecycle, the same first two questions of its
-  transitions (plan LC4b).
-  """
+  # Screen 1 of 3: the four questions, per contract, as HTML instead of
+  # `EhOsContract.Report`'s text.
+  #
+  # **Every sentence comes from `EhOsContract.Report.Sentence`.** This screen decides what is a
+  # heading, what is a list and what is red; it decides nothing about what the answer
+  # says. That split used to be a comment rather than a mechanism — the sentences were
+  # duplicated here, deliberately, on the argument that the structure was small enough
+  # to copy. By the time anybody ran both renderers side by side, this one was silently
+  # missing six answers the text one had grown: the addressee, the measured `deadline`,
+  # a run suspended by an external outage, a run judged under a rule that had since
+  # changed, which met runs reached the fallback, and queued work at all.
+  #
+  # No contract picker: the registry's contracts are the same source
+  # `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
+  # same way that task does, one section per contract. A contract's report has its
+  # steps, its promises, its wiring and its scenarios (v2 plan, E7c), and for an
+  # aggregate that declares a lifecycle, the same first two questions of its
+  # transitions (plan LC4b).
+  @moduledoc false
 
   use Phoenix.LiveView
 

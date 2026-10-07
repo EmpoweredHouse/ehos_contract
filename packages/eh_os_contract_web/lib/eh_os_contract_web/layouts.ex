@@ -1,9 +1,8 @@
 defmodule EhOsContract.Web.Layouts do
-  @moduledoc """
-  The dashboard's own root layout, isolated from whatever layout the host
-  application already has — `eh_os_contract_dashboard/2` wires this in explicitly via
-  `root_layout:`, the same isolation `oban_web` ships.
-  """
+  # The dashboard's own root layout, isolated from whatever layout the host
+  # application already has — `eh_os_contract_dashboard/2` wires this in explicitly via
+  # `root_layout:`, the same isolation `oban_web` ships.
+  @moduledoc false
 
   use Phoenix.Component
 
