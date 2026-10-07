@@ -44,6 +44,30 @@ defmodule EhOsContract.BootTest do
     assert message =~ ":autorizer"
   end
 
+  # Plan DD, T2a (#240). DDL is transactional, so the sandbox rolls the version back.
+  test "storage at an older version than the release needs stops the boot, saying what to run" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '1'")
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+
+    assert message =~
+             "storage is at version 1, and this release needs version 2: add a migration " <>
+               "calling EhOsContract.Migrations.up(version: 2)"
+
+    assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
+           "refused before anything is recorded"
+  end
+
+  test "storage missing, or from a newer release, stops the boot too" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '3'")
+    assert {:error, {{%ArgumentError{message: newer}, _}, _}} = start_supervised(EhOsContract)
+    assert newer =~ "records version 3, and this release of eh_os_contract knows versions up to 2"
+
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS NULL")
+    assert {:error, {{%ArgumentError{message: none}, _}, _}} = start_supervised(EhOsContract)
+    assert none =~ "has no eh_os_contract storage in its current schema"
+  end
+
   defmodule Unforgetting do
     @moduledoc false
   end

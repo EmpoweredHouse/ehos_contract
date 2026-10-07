@@ -102,6 +102,17 @@ defmodule EhOsContract.Migrations do
   @initial_version 1
   @current_version 2
 
+  # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
+  # match on the path: with `search_path: "ledger, public"` and the tables already
+  # in `public`, that match would be theirs.
+  @version_query """
+  SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
+  FROM pg_class
+  JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+  WHERE pg_class.relname = 'eh_os_contract_events'
+  AND pg_namespace.nspname = current_schema()
+  """
+
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
   def initial_version, do: @initial_version
@@ -162,19 +173,40 @@ defmodule EhOsContract.Migrations do
   it must be current" is the assumption that makes the second version unshippable.
   """
   @spec migrated_version() :: non_neg_integer()
-  def migrated_version do
-    # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
-    # match on the path: with `search_path: "ledger, public"` and the tables already
-    # in `public`, that match would be theirs.
-    query = """
-    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
-    FROM pg_class
-    JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-    WHERE pg_class.relname = 'eh_os_contract_events'
-    AND pg_namespace.nspname = current_schema()
-    """
+  def migrated_version, do: recorded(repo())
 
-    case repo().query(query, [], log: false) do
+  # Refuses to start the engine on a database whose storage is not at
+  # `current_version/0`: below it, every command's row would fail on a column this
+  # release writes and the database lacks (plan DD, T2a, #240); above it, a newer
+  # release migrated it. Called when the engine starts, with the host's repo, outside
+  # any migration. Raises `ArgumentError` naming both versions and what to do.
+  @doc false
+  @spec check!(module()) :: :ok
+  def check!(repo) do
+    case recorded(repo) do
+      @current_version ->
+        :ok
+
+      0 ->
+        raise ArgumentError,
+              "the database has no eh_os_contract storage in its current schema: add a " <>
+                "migration calling EhOsContract.Migrations.up() and run it"
+
+      recorded when recorded < @current_version ->
+        raise ArgumentError,
+              "the database's eh_os_contract storage is at version #{recorded}, and this " <>
+                "release needs version #{@current_version}: add a migration calling " <>
+                "EhOsContract.Migrations.up(version: #{@current_version}) and run it"
+
+      recorded ->
+        known!(recorded)
+    end
+
+    :ok
+  end
+
+  defp recorded(repo) do
+    case repo.query(@version_query, [], log: false) do
       {:ok, %{rows: [[version]]}} when is_binary(version) -> String.to_integer(version)
       _ -> 0
     end

@@ -18,6 +18,7 @@ defmodule EhOsContract.Supervisor do
     EhOsContract.Vault.check!(models)
     EhOsContract.Supplier.check!(models)
     EhOsContract.Entities.check!(models)
+    EhOsContract.Migrations.check!(EhOsContract.Config.fetch!(:repo))
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
     repo = EhOsContract.Config.fetch!(:repo)
