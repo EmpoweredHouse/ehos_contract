@@ -50,7 +50,7 @@ defmodule EhOsContract.Inbox do
   taken.
 
   **When it subscribes.** The engine's tree starts every inbox before any relay
-  (`EhOsContract.Supervisor`), each through an `EhOsContract.Inbox.Keeper` that
+  (`EhOsContract`, the child a host adds), each through an `EhOsContract.Inbox.Keeper` that
   starts the adapter's consumer in its own `init`, and a consumer is subscribed once
   its child has started, so in one node — two applications side by side on
   `EhOsContract.Bus.Local` — nothing a relay publishes is published before its

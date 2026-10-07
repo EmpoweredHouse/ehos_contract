@@ -1,7 +1,7 @@
 defmodule EhOsContract.Bus do
   @moduledoc """
-  How an integration event leaves one application and reaches another (v2 §16, D11 and
-  D12): the seam between the engine and a transport.
+  How an integration event leaves one application and reaches another: the seam
+  between the engine and a transport.
 
   The engine is on both sides of it. The relay publishes what a `publish` declares,
   from the log, and advances its checkpoint when `c:publish/2` returns `:ok`; the
@@ -16,8 +16,8 @@ defmodule EhOsContract.Bus do
   ## What an adapter promises
 
   `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-  it. It cannot see the absence of an order, nor how a relay treats an error, which is
-  E12b's.
+  it. It cannot see the absence of an order, nor how a relay treats an error, which
+  `EhOsContract.Relay` describes.
 
   - **`:ok` from `c:publish/2` means the transport holds every message of the batch.**
     An error means it may hold some of them: the relay publishes the whole batch again,
@@ -28,8 +28,7 @@ defmodule EhOsContract.Bus do
     consumer that stops with a message in hand, get it again later. A consumer that
     comes back under the same name gets what was published while it was down.
   - **No order.** Messages may arrive in any order, and a redelivered one after a later
-    one. The relay publishes in log order, but nothing downstream may rely on it
-    (v2 §16, the note of 1 October 2026).
+    one. The relay publishes in log order, but nothing downstream may rely on it.
   - **No deduplication is required.** A message published twice may arrive twice. The
     inbox drops the second one by its key, so a transport that deduplicates (JetStream's
     `Nats-Msg-Id`) saves work and changes no result.
@@ -44,7 +43,7 @@ defmodule EhOsContract.Bus do
 
   Who may consume a name is not the engine's question either. The subscriber's
   `subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
-  and the transport adapter routes by the grant (`eh-os` D-41). An adapter that cannot
+  and the transport adapter routes by the grant. An adapter that cannot
   refuse an ungranted consumer grants every one.
 
   ## A message

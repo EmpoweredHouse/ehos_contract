@@ -80,7 +80,7 @@ defmodule EhOsContract.Domain do
   @doc """
   Whether `zone` is one the time zone database Elixir is configured with knows
   (plan W2): asked as dispatch asks it, so a database module that is configured but
-  not there — `Tz.TimeZoneDatabase` without `{:tz, …}` — answers `false`, as an
+  not there — Tz's database without `{:tz, …}` among the deps — answers `false`, as an
   unknown zone does, rather than raising.
   """
   @spec time_zone_known?(term()) :: boolean()
