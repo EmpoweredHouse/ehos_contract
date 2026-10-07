@@ -62,10 +62,13 @@ defmodule Rehmed.Contracts.Scheduling do
               "Odwołać wizytę albo odnotować nieobecność można tylko przed jej odbyciem",
               source: "AGG-01, stany: C-16 i C-17 tylko z Umówiona, Potwierdzona, BrakKontaktu"
 
+    # The service booked is read from the clinic's catalogue (plan DD, T2s, #245): whether
+    # it is reported to P1 is the catalogue's to say, not the receptionist's.
     command :book_visit, "Umów wizytę",
       by: :reception,
       emits: :visit_booked,
       creates: true,
+      reads: [service: :service_id],
       source: "C-09, aktor A-02" do
       field :patient_id, :id, subject: :patient
       field :service_id, {:id, :service}
@@ -86,12 +89,15 @@ defmodule Rehmed.Contracts.Scheduling do
       source: "C-17, aktor A-02"
 
     # `E-14`. The service decides what else happens to the visit: whether it is
-    # reported to P1 is a flag on the service (`AGG-15`).
+    # reported to P1 is a flag on the service (`AGG-15`), kept here as it stood when the
+    # visit was booked, so a later change to the catalogue does not move a visit already
+    # booked (plan DD, T2s, #245). No log held a `visit_booked` when it was added.
     event :visit_booked, "Pacjent umówił wizytę", source: "E-14" do
       field :patient_id, :id, subject: :patient
       field :service_id, {:id, :service}
       field :specialist_id, :id
       field :scheduled_at, :timestamp
+      field :p1_reported, :boolean, label: "Raportowana do P1"
     end
 
     # The three ends of `AGG-01` and the arrival before the good one. Which may follow
@@ -116,6 +122,8 @@ defmodule Rehmed.Contracts.Scheduling do
   end
 
   scenario "recepcja umawia pacjenta — wizyta powstaje" do
+    given_entity :service, %{service_id: "service-physiotherapy", p1_reported: true}
+
     command :book_visit, %{
       patient_id: "patient-anna",
       service_id: "service-physiotherapy",
@@ -123,7 +131,24 @@ defmodule Rehmed.Contracts.Scheduling do
       scheduled_at: "2026-10-05T09:00:00Z"
     }
 
-    expect :visit_booked, %{patient_id: "patient-anna", service_id: "service-physiotherapy"}
+    expect :visit_booked, %{
+      patient_id: "patient-anna",
+      service_id: "service-physiotherapy",
+      p1_reported: true
+    }
+  end
+
+  scenario "wizyta na usługę spoza P1 pamięta, że nie będzie zgłaszana" do
+    given_entity :service, %{service_id: "service-fitness", p1_reported: false}
+
+    command :book_visit, %{
+      patient_id: "patient-anna",
+      service_id: "service-fitness",
+      specialist_id: "specialist-ewa",
+      scheduled_at: "2026-10-05T09:00:00Z"
+    }
+
+    expect :visit_booked, %{service_id: "service-fitness", p1_reported: false}
   end
 
   scenario "pacjent odwołuje wizytę przed terminem" do
@@ -131,7 +156,8 @@ defmodule Rehmed.Contracts.Scheduling do
       patient_id: "patient-anna",
       service_id: "service-physiotherapy",
       specialist_id: "specialist-ewa",
-      scheduled_at: "2026-10-05T09:00:00Z"
+      scheduled_at: "2026-10-05T09:00:00Z",
+      p1_reported: true
     }
 
     command :cancel_visit
@@ -143,7 +169,8 @@ defmodule Rehmed.Contracts.Scheduling do
       patient_id: "patient-anna",
       service_id: "service-physiotherapy",
       specialist_id: "specialist-ewa",
-      scheduled_at: "2026-10-05T09:00:00Z"
+      scheduled_at: "2026-10-05T09:00:00Z",
+      p1_reported: true
     }
 
     given :visit_completed
@@ -156,7 +183,8 @@ defmodule Rehmed.Contracts.Scheduling do
       patient_id: "patient-anna",
       service_id: "service-physiotherapy",
       specialist_id: "specialist-ewa",
-      scheduled_at: "2026-10-05T09:00:00Z"
+      scheduled_at: "2026-10-05T09:00:00Z",
+      p1_reported: true
     }
 
     given :patient_arrived

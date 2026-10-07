@@ -193,6 +193,58 @@ defmodule Rehmed.AuthorizationTest do
     assert Repo.aggregate(Event, :count) == written
   end
 
+  test "a booking reads its service from the catalogue, and the visit keeps its P1 flag" do
+    # Plan DD, T2s (#245): whether the visit is reported to P1 is the catalogue's to say,
+    # as it stood when the visit was booked (`AGG-15`).
+    reception = credential("u-reception", ["rehmed.book_visit"])
+    booking = entries_body("rehmed.book_visit")
+
+    # A booking creates the visit, so it carries an idempotency key.
+    book = fn service ->
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> reception)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("idempotency-key", "booking-" <> service)
+      |> post(
+        "/api/rehmed/commands/rehmed.book_visit",
+        Jason.encode!(%{booking | service_id: service})
+      )
+    end
+
+    for {service, reported} <- [{"service-physiotherapy", true}, {"service-fitness", false}] do
+      booked = book.(service)
+      assert booked.status == 200
+
+      assert [%{"p1_reported" => ^reported}] =
+               Repo.all(
+                 from(e in Event,
+                   where: e.type == "rehmed.scheduling.visit_booked",
+                   where: fragment("?->>'service_id' = ?", e.payload, ^service),
+                   select: e.payload
+                 )
+               )
+    end
+
+    # A service the catalogue does not have names nothing: refused as the field's
+    # problem, and nothing is written.
+    written = Repo.aggregate(Event, :count)
+    unknown = book.("service-yoga")
+
+    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
+             {422, %{"invalid" => %{"service_id" => "unknown"}}}
+
+    assert Repo.aggregate(Event, :count) == written
+  end
+
+  defp entries_body("rehmed.book_visit") do
+    %{
+      patient_id: "patient-anna",
+      service_id: "service-physiotherapy",
+      specialist_id: "specialist-ewa",
+      scheduled_at: "2026-10-05T09:00:00Z"
+    }
+  end
+
   test "a settlement's total is the host's too, by who pays" do
     # Reception could otherwise settle for any amount: the payment lines are held to
     # the total, and the total to nothing.

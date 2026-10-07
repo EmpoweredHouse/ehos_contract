@@ -22,7 +22,10 @@ config :eh_os_contract,
   authorizer: EhOsContract.Auth,
   # Rehmed's `p1_reported` and `total` are the host's to give (plan T1s); a stand-in
   # for its systems answers them.
-  supplier: Rehmed.Supplier
+  supplier: Rehmed.Supplier,
+  # Rehmed's booking reads the service it names from the clinic's catalogue (plan DD,
+  # T2s, #245); a stand-in catalogue answers it.
+  entities: Rehmed.Entities
 
 # EHOS's address and this application's audience. There is no EHOS beside the
 # sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot
