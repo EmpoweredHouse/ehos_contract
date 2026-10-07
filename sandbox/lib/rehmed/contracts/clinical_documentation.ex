@@ -4,7 +4,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   clinical close, which is what hands a medical event to statutory reporting. It
   declares no process: the visit's run spans booking, documentation and settlement
   (distillation, finding 1), so it belongs to none of the three contracts; its place
-  is the process module (plan DD, P2b). Statutory reporting's `clinical_visit` includes the clinical close
+  is the process module (plan DD, P2b). `Rehmed.Processes.ClinicalVisit` includes the clinical close
   from here.
 
   Written from `AGG-02` in `2-Solution/20-aggregates.md` and process 2 of

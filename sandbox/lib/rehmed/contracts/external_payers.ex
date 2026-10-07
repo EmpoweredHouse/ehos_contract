@@ -8,7 +8,8 @@ defmodule Rehmed.Contracts.ExternalPayers do
   `2-Solution/20-aggregates.md`, process 5 of `docs/rehmed-2026-08-18-distillation.md`
   and the mockup's payer settlement screen (`51-mock.md` §4.8, `EK-N3`). It replaces
   `Rehmed.Contracts.PayerSettlement`, the v1 contract, whose four findings are in
-  the plan.
+  the plan. The run, one payer in one month from the first visit charged to the
+  invoice, is `Rehmed.Processes.PayerSettlement` since plan DD, P2f (#222).
 
   ## One payer in one month, over visits that are another unit's
 
@@ -136,46 +137,24 @@ defmodule Rehmed.Contracts.ExternalPayers do
       field :invoice_id, :id
     end
 
-    stage :reconciliation do
-      # `E-86`, the load-bearing click: if it is not made, the payer never pays.
-      event :visit_marked_settled_with_payer, "Oznaczono wizytę jako rozliczoną u płatnika",
-        source: "E-86" do
-        field :visit_id, :id
-      end
-
-      # A delivered visit that will not be invoiced has to say why. The reason is
-      # accounting prose about a visit, not clinical content.
-      event :visit_excluded_from_invoice,
-            "Wykluczono wizytę z rozliczenia okresu, z podanym powodem",
-            source: "AGG-11 niezmiennik 4" do
-        field :visit_id, :id
-        field :reason, :string
-      end
+    # `E-86`, the load-bearing click: if it is not made, the payer never pays.
+    event :visit_marked_settled_with_payer, "Oznaczono wizytę jako rozliczoną u płatnika",
+      source: "E-86" do
+      field :visit_id, :id
     end
 
-    stage :invoicing do
-      event :payer_invoice_issued, "Wystawiono fakturę miesięczną dla płatnika",
-        terminal: true,
-        source: "E-87" do
-        field :invoice_id, :id
-      end
-    end
-  end
-
-  # One run is one payer in one month; LuxMed, Enelmed and TuZdrowie settle
-  # independently and identically (2026-08-14). Once a month the practice manager
-  # opens the module, verifies and invoices: human-initiated, and nothing here
-  # starts a run on a schedule.
-  process :payer_settlement, "Miesięczne rozliczenie z płatnikiem zewnętrznym",
-    accountable: :manager do
-    correlate [:payer_id, :period_id]
-
-    stage :charging do
-      include :visit_charged_to_payer
+    # A delivered visit that will not be invoiced has to say why. The reason is
+    # accounting prose about a visit, not clinical content.
+    event :visit_excluded_from_invoice,
+          "Wykluczono wizytę z rozliczenia okresu, z podanym powodem",
+          source: "AGG-11 niezmiennik 4" do
+      field :visit_id, :id
+      field :reason, :string
     end
 
-    stage :reconciliation
-    stage :invoicing
+    event :payer_invoice_issued, "Wystawiono fakturę miesięczną dla płatnika", source: "E-87" do
+      field :invoice_id, :id
+    end
   end
 
   scenario "obie wizyty LuxMed z września oznaczone u płatnika — faktura wystawiona" do
