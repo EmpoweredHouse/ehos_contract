@@ -3,8 +3,12 @@ import Config
 # Only this package's own suite reads this file: a path dependency's configuration
 # is never loaded by the application that pulls it in.
 
-# The engine's repo is the one this package writes to, as it is at a consumer.
-config :eh_os_contract, repo: EhOsContract.Auth.TestRepo
+# The engine's repo is the one this package writes to, as it is at a consumer. The
+# applications the engine scans are this package's own, which hold no contracts:
+# `EhOsContract.Auth.child_spec/1` compares the audience with their domains at boot.
+config :eh_os_contract,
+  repo: EhOsContract.Auth.TestRepo,
+  applications: [:eh_os_contract_auth]
 
 config :eh_os_contract_auth,
   ecto_repos: [EhOsContract.Auth.TestRepo, EhOsContract.Auth.CommitRepo]

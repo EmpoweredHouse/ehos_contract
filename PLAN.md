@@ -57,8 +57,10 @@ declare a process only when the test is about one. P1d merged in #196 and #200 (
 module of its own. P2c merged in #212 (issue #210): process modules
 are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
 and check show process modules. **On hold: P2e (#220) and P2h (#221)**, until E13 (#217, #219, another contributor) is in `main`. P2f merged in #225–#227
-(issue #222): the sandbox's processes are process modules. P2g (issue #228) on `dd/228-test-rigs-process-modules`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
-EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
+(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228).
+#193 (an upper bound for durations, R6) is open. A follow-up outside the stages (#180, the user's decision of 7 October):
+`eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`, the application equals
+one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus (EmpoweredHouse/eh-os#201).
 
 ### Stan repozytorium
 
@@ -578,7 +580,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
 | P2e | 2 | grafy i strony procesu | P2d, **E13a** | ⏸ **on hold until E13a (#217) is in `main`** | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
-| P2g | 2 | rigi i testy o procesach | P2d | ◐ `dd/228-test-rigs-process-modules` | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
+| P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |

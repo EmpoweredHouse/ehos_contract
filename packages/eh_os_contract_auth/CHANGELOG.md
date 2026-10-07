@@ -7,6 +7,22 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **eh-os-contract#180: the application refuses to start when no domain of its contracts has its name in EHOS,
+  or when another domain publishes.** `EhOsContract.Auth.child_spec/1` compares the application in the configured
+  `audience` (`"clinic/prod"`, the part before the `/`) with the `name:` of the domains that have contracts in
+  `config :eh_os_contract, applications:`. One of them must equal it exactly, and every other one must declare no
+  `publish` in any of its contracts. Every name the application publishes begins with its domain's name, and EHOS
+  lets an application publish only under the name it registered (eh-os#201); a domain that publishes nothing sends
+  no name to anyone. A domain named `:my_shop` does not match `"my-shop/prod"`: EHOS never names an application
+  with `_`, the manifest generator refuses such a domain, and the message advises renaming it to `:"my-shop"`. The
+  check runs whenever the child starts, which already requires an `audience`. An `audience` that is not
+  `<application>/<environment>` with both parts non-empty (`"clinic"`, `"/prod"`), one whose application is not a
+  name EHOS gives, and a contract whose domain is not loaded, are refused too.
+  - **Action:** a host whose domains' names all differ from its application's name in EHOS either renames the
+    domain that publishes, which renames every event and every stored contract id, so the event log starts again,
+    or has EHOS register the application under that domain's name; a domain named with `_` has only the rename. A host with a second domain that publishes moves
+    that domain's contracts to an application of its own, or removes its `publish`.
+
 - **eh-os-contract#186 (plan DD, P1b): a capability names a process only when its contract has one.** The
   manifest generator stopped with an error on a contract without a process; it now leaves `"process"` out of that
   contract's capabilities. EHOS keeps the field optional and reads it nowhere (eh-os#203).
