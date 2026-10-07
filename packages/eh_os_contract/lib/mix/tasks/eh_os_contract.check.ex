@@ -6,7 +6,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
   errors, warnings and notices.
 
   A compile refuses a contract that cannot be right. This task reads every contract,
-  domain and implementation of the application at once and reports the rest: a
+  domain and implementation of the applications `config :eh_os_contract,
+  applications:` names, less what `exclude:` leaves out, and reports the rest: a
   contract nothing implements, a reaction that points back up its own process, a
   deadline with no event that ends the run, a free-text field not marked personal.
   A project that does not add the `:eh_os_contract` compiler gets that compiler's

@@ -14,11 +14,14 @@ need its domain, the contracts it consumes, or the rest of the application.
 
 Among them: a contract's domain declares the contexts, terms, values and actors it
 uses; a sibling contract declares every event and field this one consumes; a
-reaction to another context's event says how it is delivered; personal data stays
-out of what is published; no declaration has two implementations; names are
-unique across the application; and a process module agrees with the contracts
-whose events it includes. A declaration with no implementation at all is not a
-compile error: `mix eh_os_contract.check` reports it.
+policy or read model that takes another context's event says how it is delivered;
+personal data stays out of what is published; no declaration has two
+implementations; names are unique across the application; and a process module
+agrees with the contracts whose events it includes.
+
+Some of what these rules leave open is reported by `mix eh_os_contract.check`
+instead of refused: a declaration with no implementation at all, and a reaction to
+another context's event declared `delivery: :in_transaction`.
 
 Add it to the project's compilers, after Elixir's:
 
@@ -48,7 +51,8 @@ Reports what a contract may legally say and a reader should still hear about, as
 errors, warnings and notices.
 
 A compile refuses a contract that cannot be right. This task reads every contract,
-domain and implementation of the application at once and reports the rest: a
+domain and implementation of the applications `config :eh_os_contract,
+applications:` names, less what `exclude:` leaves out, and reports the rest: a
 contract nothing implements, a reaction that points back up its own process, a
 deadline with no event that ends the run, a free-text field not marked personal.
 A project that does not add the `:eh_os_contract` compiler gets that compiler's
