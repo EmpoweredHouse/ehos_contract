@@ -120,8 +120,12 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 `mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
 `eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
-DSL reference in `docs/dsl/` and the rule catalogue in `docs/rules.md` to the code, and `test/docs_test.exs`,
-which holds the examples and the refusal table of `docs/contract.md` to it), `packages/eh_os_contract_web` and
+generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md` — to
+the code; `test/docs_test.exs`, which holds the examples and the refusal table of `docs/contract.md` to it; `docs
+--warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
+hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
+`test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`),
+`packages/eh_os_contract_web` and
 `packages/eh_os_contract_auth`. **It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres

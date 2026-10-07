@@ -717,8 +717,8 @@ defmodule EhOsContract.Dispatcher do
   @doc """
   Whether `key` is an idempotency key the log holds: printable ASCII (`0x21`–`0x7E`) of 1 to
   255 bytes, what a text column, `jsonb` and a btree entry all take. A command with any other
-  key is refused with `:idempotency_key_invalid`. `EhOsContract.Consumer.reaction_key/5`
-  holds the keys the library derives to it too.
+  key is refused with `:idempotency_key_invalid`. The keys the library derives for the
+  commands a reaction issues hold to it too.
   """
   # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
   @spec idempotency_key?(term()) :: boolean()
