@@ -8,6 +8,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`<mount>/conformance?process=<id>` serves a process module's report** (plan DD, P2w, eh-os-contract#259, agreed
+  with EHOS in EmpoweredHouse/eh-os#297). The report keeps the schema `eh_os_contract.conformance.v3` and has
+  `"process"` where a contract's has `"contract"`. An unknown process is 400, and so is naming a contract and a
+  process at once. A request with neither, or with `contract=`, answers as before.
+
 - **The dashboard and the API work mounted in a scope with a path of its own, or with an alias.** Mounted in
   `scope "/admin"`, `/admin/dashboard` redirected to `/dashboard/contract`, a 404, and the screens linked outside
   the prefix; in `scope "/admin", MyAppWeb`, every route named `MyAppWeb.EhOsContract.Web.…` and failed. The

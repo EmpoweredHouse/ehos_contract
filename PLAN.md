@@ -69,8 +69,9 @@ boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entit
 in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
 S3 merged in #257 (issue #256): the clinic's and the accounting firm's promises have scenarios. Open from it, the
 user's: an outage of a system a promise depends on one step upstream cannot excuse it (#256). Next without E13: O1,
-which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both are asked
-of EHOS in EmpoweredHouse/eh-os#297 (8 October), and O1 starts on its answer.
+which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both were asked
+of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w (#259) puts process modules on the wire, keyed
+`process`, and O1 (#260) follows it.
 
 ### Stan repozytorium
 
@@ -592,6 +593,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ◐ `dd/259-process-on-the-wire` | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
@@ -603,7 +605,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
-| O1 | 3 | kolejność etapów w przebiegu | P2d | ⏸ **waits for EHOS's answer** (EmpoweredHouse/eh-os#297) | — |
+| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☐ (EHOS agreed in EmpoweredHouse/eh-os#297) | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
 | V2 | 4 | upcast przez callback | V1 | ☐ | — |
@@ -833,6 +835,12 @@ wait on (X4).
 a P1 outage inside the window but not after it, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening,
 kept by a discrepancy, broken; no outage, since the library excuses a promise only by what its own events depend on, and
 the registries are one step upstream (recorded on #256). A test module per process.
+
+**P2w — a process module's report on the wire** (#259; added 8 October 2026, agreed with EHOS in
+EmpoweredHouse/eh-os#297). `Conformance.as_data/2` stops refusing a process module; a v3 report has exactly one of
+`contract` and `process` (the user's choice of 8 October); `Wire`'s moduledoc states the compatibility rule (unknown
+keys ignored, a key an older reader must not ignore comes with a new version); `eh_os_contract_web` takes
+`?process=<id>`, 400 with both parameters.
 
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;

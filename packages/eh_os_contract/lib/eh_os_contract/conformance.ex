@@ -65,7 +65,8 @@ defmodule EhOsContract.Conformance do
   lifecycle adds the first two questions for its transitions, under `lifecycles`.
   `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
   contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
-  it. v2 is not served.
+  it. A process module's report has `process`, its `id:`, in the place of `contract`,
+  and only its process; a report has exactly one of the two. v2 is not served.
 
   ## The boundary
 
@@ -107,9 +108,10 @@ defmodule EhOsContract.Conformance do
   keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
   """
   @spec report(module(), keyword()) :: map()
-  def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
+  def report(module, opts \\ []), do: module |> Model.fetch() |> from_model(opts)
 
-  # A process module stays off the wire by the decision on #213.
+  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS in
+  # EmpoweredHouse/eh-os#297; until then it stayed off by the decision on #213.
   @doc """
   The same report, projected onto values that survive JSON.
 
@@ -117,23 +119,19 @@ defmodule EhOsContract.Conformance do
   reads the Elixir shape, and a transport is the only caller that needs the other
   one. See `EhOsContract.Conformance.Wire` for what each mapping is and why.
 
-  A process module is not on the wire, which `eh_os_contract.conformance.v3` names
-  for a contract, and is refused by name.
+  A contract's report and a process module's share the schema,
+  `eh_os_contract.conformance.v3`, and each has exactly one of `"contract"` and
+  `"process"` under `"report"`, which tells a reader which it is.
   """
   @spec as_data(module(), keyword()) :: map()
-  def as_data(contract, opts \\ []) do
-    with %{kind: :process, module: module} <- Model.fetch(contract) do
-      raise ArgumentError,
-            "#{inspect(module)} is a process module, which the conformance wire does not carry yet"
-    end
-
+  def as_data(module, opts \\ []) do
     %{
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
       # inside the report itself and is deliberately not repeated here.
       "schema" => "eh_os_contract.conformance.v3",
       "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
-      "report" => contract |> report(opts) |> EhOsContract.Conformance.Wire.encode()
+      "report" => module |> report(opts) |> EhOsContract.Conformance.Wire.encode()
     }
   end
 

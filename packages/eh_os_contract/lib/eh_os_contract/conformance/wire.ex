@@ -12,6 +12,21 @@ defmodule EhOsContract.Conformance.Wire do
   package promises. A projection written in whichever web package happens to serve
   it would make the promise a property of the transport.
 
+  ## What a reader may rely on
+
+  The document names its shape in `"schema"`, `eh_os_contract.conformance.v3`, and
+  every reader may hold it to these rules:
+
+  - **A key a reader does not know is ignored.** A new key that a reader may ignore
+    is added to the same schema.
+  - **A key an older reader must not ignore comes with a new schema name**, as v3 replaced
+    v2.
+  - **A report has exactly one of `"contract"` and `"process"`.** A contract's report
+    is keyed by the contract's id and has its paths, lifecycles and scenarios; a
+    process module's is keyed by the process's id and has only its process. A reader
+    tells the two apart by that key, never by which other keys are missing: a
+    contract's keys were never promised in every v3 report, only in a contract's.
+
   ## Why not a `Jason.Encoder` implementation
 
   Implementing the protocol for `Tuple` would be a library changing how *every*

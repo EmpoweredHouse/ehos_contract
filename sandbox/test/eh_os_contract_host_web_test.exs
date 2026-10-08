@@ -33,6 +33,18 @@ defmodule EhOsContractHostWebTest do
     assert html =~ "taxvision.accounting_month"
   end
 
+  # Plan DD, P2w (#259): the clinic's visit, a process module, on the conformance wire.
+  test "the conformance endpoint serves a process module's report", %{conn: conn} do
+    conn = get(conn, "/api/eh_os_contract/conformance?process=rehmed.clinical_visit")
+
+    assert conn.status == 200
+    report = Jason.decode!(conn.resp_body)["report"]
+    assert report["process"] == "rehmed.clinical_visit"
+
+    assert [%{"promises" => [%{"promise" => "medical_event_reported_within_statutory_window"}]}] =
+             report["processes"]
+  end
+
   test "the live socket upgrade reaches the same screen as the dead render", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/dashboard/contract")
     assert html =~ "taxvision.accounting_month"

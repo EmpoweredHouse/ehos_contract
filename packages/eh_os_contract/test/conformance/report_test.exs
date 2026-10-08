@@ -350,9 +350,11 @@ defmodule EhOsContract.ReportTest do
       assert step["in_flight"] == %{"effects" => 0, "timers" => 0, "lag" => 1}
       assert step["failing"] == %{"commands" => 0, "subscription" => nil, "effects" => 0}
 
-      # The process is a module's since plan DD, P2g (#228), which the wire does not
-      # carry yet (#213); the projection that will carry it takes its report.
-      [p] = handling() |> EhOsContract.Conformance.Wire.encode() |> Map.fetch!("processes")
+      # The process is a module's since plan DD, P2g (#228), and on the wire since
+      # P2w (#259), keyed by its id.
+      report = Conformance.as_data(Handling)["report"]
+      assert report["process"] == "process_shapes.handling"
+      [p] = report["processes"]
       assert [%{"promise" => "completed_or_refusal_notified"}] = p["promises"]
     end
   end

@@ -14,10 +14,9 @@ defmodule EhOsContract.Conformance.WireReportTest do
   deadline (a duration), a rig with scenarios and a process manager.
 
   Since plan DD, P2g (#228) the promise and the deadline are process modules',
-  `ProcessShapes.Handling` and `ProcessShapes.Timing`, which the wire does not carry
-  yet (#213): their reports are walked through the same projection,
-  `EhOsContract.Conformance.Wire.encode/1`, which `as_data/2` puts a contract's
-  through.
+  `ProcessShapes.Handling` and `ProcessShapes.Timing`: their reports are walked through
+  the same projection, `EhOsContract.Conformance.Wire.encode/1`, which `as_data/2`
+  puts every report through, a process module's too since plan DD, P2w (#259).
   """
 
   use EhOsContract.DataCase, async: false
