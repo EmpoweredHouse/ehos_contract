@@ -43,6 +43,7 @@ defmodule EhOsContract do
       Entities.UnfitRowError,
       Erased,
       Event,
+      Generators,
       Graph,
       Implementation,
       Key,

@@ -197,6 +197,10 @@ defmodule EhOsContract.MixProject do
       # HTTP. Optional: a host without Plug does not get it, and the module compiles
       # only when Plug is there.
       {:plug, "~> 1.16", optional: true},
+      # `EhOsContract.Generators` gives valid examples of a contract's data as StreamData
+      # generators (plan DD, PC1). Optional, as Plug is: the module compiles only where a
+      # host has StreamData, usually as a test dependency.
+      {:stream_data, "~> 1.1", optional: true},
       {:boundary, "~> 0.10", runtime: false},
       # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
       # error locations, formatter export, digest stability under `boundary`.
