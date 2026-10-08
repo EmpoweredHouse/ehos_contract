@@ -3,13 +3,13 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   Decides the codes and the clinical close of a visit (`AGG-02`). A service
   reported to P1, by the flag recorded when the visit was booked, is refused a close
   without both codes (`DEC-19`), and a visit is closed once: each close queues a report
-  to P1. Who may close it — the specialist who saw the patient — the engine checks
+  to P1. Who may close it — the specialist the visit is booked with — the engine checks
   before this decision runs.
   """
 
   use Rehmed.Contracts.ClinicalDocumentation, dcb: :visit_documentation
 
-  alias Rehmed.Contracts.Scheduling.Events.{VisitBooked, VisitCompleted}
+  alias Rehmed.Contracts.Scheduling.Events.VisitBooked
 
   @impl true
   def code_diagnosis(%CodeDiagnosis{} = coding, _state) do
@@ -38,7 +38,7 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
       icd10: close.icd10,
       icd9: close.icd9,
       practitioner_number: close.practitioner_number,
-      p1_reported: state.p1_reported == true
+      p1_reported: state.p1_reported
     })
   end
 
@@ -47,10 +47,8 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
     do: emit(%DocumentationOverdueTaskCreated{visit_id: id})
 
   @impl true
-  def evolve(state, %VisitBooked{p1_reported: reported}), do: %{state | p1_reported: reported}
-
-  def evolve(state, %VisitCompleted{specialist_id: specialist}),
-    do: %{state | specialist_id: specialist}
+  def evolve(state, %VisitBooked{p1_reported: reported, specialist_id: specialist}),
+    do: %{state | p1_reported: reported, specialist_id: specialist}
 
   def evolve(state, %VisitClosedClinically{}), do: %{state | closed: true}
   def evolve(state, _event), do: state

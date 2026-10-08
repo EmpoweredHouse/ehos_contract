@@ -34,11 +34,13 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   ("remind, don't block"), so if it becomes a reminder this invariant goes.
 
   `AGG-02` invariant 3, **only the specialist who delivered the visit may close it**,
-  is enforced today. The specialist who recorded the patient leaving is on
-  `visit_completed`, given by the host from their credential, and the close names
-  them with `actor_is`: the engine refuses any other specialist before the decision.
-  Until plan DD, A2 (#249) the contract could not say it (the finding of E9a): a
-  decision sees the command and the state, not who issued the command.
+  is enforced today. The visit is delivered by the specialist reception booked it with,
+  on `visit_booked`, and the close names them with `actor_is`: the engine refuses any
+  other specialist before the decision. A specialist can record the patient leaving,
+  so who did is no proof of who saw them; who the visit is booked with, only
+  reception changes. A substitute is booked again, not let through. Until plan DD,
+  A2 (#249) the contract could not say this rule (the finding of E9a): a decision sees
+  the command and the state, not who issued the command.
 
   ## Twenty-four hours
 
@@ -58,14 +60,15 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   consumes Rehmed.Contracts.Scheduling, [:visit_booked, :visit_completed]
 
   # A boundary, not an aggregate (plan DD, A2 (#249)): what the close depends on was
-  # recorded by scheduling — the service's P1 flag at booking (`AGG-15`), and who saw
-  # the patient when they left — so the documentation reads those events of its visit
-  # beside its own.
+  # recorded by scheduling when the visit was booked — the service's P1 flag (`AGG-15`)
+  # and the specialist the visit is booked with — so the documentation reads that event
+  # of its visit beside its own. The specialist comes from reception's booking, not from
+  # anything a specialist records: a colleague could record the patient leaving, but not
+  # rebook the visit.
   dcb :visit_documentation, "Dokumentacja wizyty" do
     identity :visit_id
 
     consults :visit_booked, match: :visit_id
-    consults :visit_completed, match: :visit_id
 
     state do
       field :closed, :boolean, default: false
@@ -78,8 +81,9 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     invariant :closed_clinically_once, "Wizytę zamyka się klinicznie raz",
       source: "AGG-02, stan ZamkniętaKlinicznie"
 
-    # Enforced by the clinic today; the engine compares the specialist who recorded the
-    # patient leaving with whoever closes (`actor_is`).
+    # Enforced by the clinic today; the engine compares the specialist the visit is
+    # booked with and whoever closes (`actor_is`). With no booking, nobody is named, and
+    # every close is refused.
     invariant :closed_by_its_specialist,
               "Wizytę zamyka klinicznie tylko specjalista, który ją wykonał",
               source: "AGG-02 niezmiennik 3, egzekwowane dziś"
@@ -180,7 +184,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     actor :specialist
     as "specialist-ewa"
     given :visit_booked, @physiotherapy
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
     command :close_visit_clinically, Map.merge(@close, %{icd10: "M54.5", icd9: "93.39"})
     expect :visit_closed_clinically, %{icd10: "M54.5", icd9: "93.39", p1_reported: true}
   end
@@ -191,7 +194,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     actor :specialist
     as "specialist-ola"
     given :visit_booked, @physiotherapy
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
     command :close_visit_clinically, Map.merge(@close, %{icd10: "M54.5", icd9: "93.39"})
     rejected :closed_by_its_specialist
   end
@@ -200,7 +202,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     actor :specialist
     as "specialist-ewa"
     given :visit_booked, @physiotherapy
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
     command :close_visit_clinically, @close
     rejected :codes_before_clinical_close
   end
@@ -210,7 +211,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     actor :specialist
     as "specialist-ewa"
     given :visit_booked, %{@physiotherapy | service_id: "service-fitness", p1_reported: false}
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
     command :close_visit_clinically, @close
     expect :visit_closed_clinically, %{p1_reported: false}
   end
@@ -219,7 +219,6 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     actor :specialist
     as "specialist-ewa"
     given :visit_booked, %{@physiotherapy | service_id: "service-fitness", p1_reported: false}
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
     given :visit_closed_clinically, Map.put(@close, :p1_reported, false)
     command :close_visit_clinically, @close
     rejected :closed_clinically_once
@@ -227,7 +226,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
 
   scenario "doba po wyjściu pacjenta bez zamknięcia — zadanie o zaległej dokumentacji" do
     target :documentation_chase
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
+    given :visit_completed
     on :documentation_due
     issues :create_documentation_overdue_task
   end

@@ -805,12 +805,12 @@ Dispatch checks it after folding the state and before the decision, for a creden
 reaction pass), and refuses as the lifecycle's precondition does: a `rejected` row on the invariant. No exception
 for a role (decided 7 October). A scenario names the person with `as: "specialist-ewa"` beside its `actor:` (S7
 extended). Depends on T1.
-**A2 — Rehmed's clinical close by the visit's own specialist** (`AGG-02` invariant 3): `visit_completed` records
-the specialist who saw the patient, `specialist_id` supplied by the host from the credential; the visit's
-documentation becomes a boundary consulting `visit_booked` and `visit_completed` by `visit_id` (no new event names),
-so its state knows the specialist and the P1 flag recorded at booking (T2s). `close_visit_clinically` gets
-`actor_is :specialist_id`, loses its supplied `p1_reported`, and the codes rule becomes an invariant on the booked
-flag. Closes the finding of E9a. Depends on A1 and T2s.
+**A2 — Rehmed's clinical close by the visit's own specialist** (`AGG-02` invariant 3): the visit's documentation
+becomes a boundary consulting `visit_booked` by `visit_id` (no new event names), so its state knows the specialist
+reception booked the visit with and the P1 flag recorded at booking (T2s). `close_visit_clinically` gets `actor_is
+:specialist_id`, loses its supplied `p1_reported`, and the codes rule becomes an invariant on the booked flag. This
+settles what E9a found: the contract could not say who closes. Depends on A1 and T2s; why the booking and not the
+recorded departure names the specialist is on the issue.
 
 **B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
 Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".

@@ -156,16 +156,14 @@ defmodule Rehmed.AuthorizationTest do
     assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
   end
 
-  test "only the specialist who saw the patient closes the visit, by the flag of its booking" do
-    # Plan DD, A2 (#249): who saw the patient is the host's to record, from the
-    # credential of whoever records them leaving; and only they close the visit
-    # (`AGG-02` invariant 3). Whether the codes are required is the booking's flag.
+  test "only the specialist the visit is booked with closes it, by the flag of its booking" do
+    # Plan DD, A2 (#249): the specialist reception booked the visit with closes it
+    # (`AGG-02` invariant 3), and whether the codes are required is the booking's flag.
+    # Both specialists hold the role's whole permission, as the clinic grants it.
+    specialist = ["rehmed.visit_completed", "rehmed.close_visit_clinically"]
     reception = credential("u-reception", ["rehmed.book_visit"])
-
-    ewa =
-      credential("specialist-ewa", ["rehmed.visit_completed", "rehmed.close_visit_clinically"])
-
-    ola = credential("specialist-ola", ["rehmed.close_visit_clinically"])
+    ewa = credential("specialist-ewa", specialist)
+    ola = credential("specialist-ola", specialist)
 
     booked =
       build_conn()
@@ -177,16 +175,9 @@ defmodule Rehmed.AuthorizationTest do
     %{"identity" => %{"visit_id" => visit}} = Jason.decode!(booked.resp_body)
     close = %{@close | visit_id: visit}
 
-    # The specialist cannot say who they are: the field is the host's.
-    sent =
-      record(ewa, "rehmed.visit_completed", %{visit_id: visit, specialist_id: "specialist-ola"})
-
-    assert {sent.status, Jason.decode!(sent.resp_body)} ==
-             {422, %{"invalid" => %{"specialist_id" => "supplied"}}}
-
-    assert record(ewa, "rehmed.visit_completed", %{visit_id: visit}).status == 200
-
-    # A colleague with the same permission is refused, as the business refuses it.
+    # A colleague who records the patient leaving is still not the one the visit is
+    # booked with, and is refused, as the business refuses it.
+    assert record(ola, "rehmed.visit_completed", %{visit_id: visit}).status == 200
     other = command(ola, "rehmed.close_visit_clinically", close)
 
     assert {other.status, Jason.decode!(other.resp_body)} ==
@@ -207,6 +198,18 @@ defmodule Rehmed.AuthorizationTest do
                  select: e.payload
                )
              )
+  end
+
+  test "a visit the host does not price is the host's to answer, and nothing is written" do
+    # Plan T1s: the settlement's total is the host's; a visit it has no price for is a
+    # 503, not the caller's fault.
+    reception = credential("u-reception", ["rehmed.close_settlement"])
+    unknown = command(reception, "rehmed.close_settlement", %{visit_id: "visit-zofia"})
+
+    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
+             {503, %{"error" => "not_supplied"}}
+
+    assert Repo.aggregate(Event, :count) == 0
   end
 
   test "a booking reads its service from the catalogue, and the visit keeps its P1 flag" do

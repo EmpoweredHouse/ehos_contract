@@ -60,7 +60,7 @@ defmodule Rehmed.ClinicalVisitTest do
       Clock.at(@left, fn ->
         EhOsContract.record(
           Scheduling,
-          %VisitCompleted{visit_id: id, specialist_id: "specialist-ewa"},
+          %VisitCompleted{visit_id: id},
           actor: @specialist
         )
       end)

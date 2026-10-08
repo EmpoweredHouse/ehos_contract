@@ -111,14 +111,9 @@ defmodule Rehmed.Contracts.Scheduling do
 
     # `E-51`, the good end, `AGG-01`'s delivered state. The statutory two days to P1 count from
     # here (Dz.U. 2025 poz. 866), which is why `Rehmed.Processes.ClinicalVisit` includes it.
-    # Who saw the patient is whoever records that they left: the host gives it from the
-    # credential, never the caller (plan DD, A2 (#249)). Only they close the visit
-    # clinically (`AGG-02` invariant 3).
     event :visit_completed, "Pacjent wyszedł z gabinetu",
       recorded_by: :specialist,
-      source: "E-51" do
-      field :specialist_id, :id, supplied_by: :host
-    end
+      source: "E-51"
 
     event :visit_cancelled, "Oznaczono wizytę jako odwołaną", source: "E-28"
 
@@ -178,7 +173,7 @@ defmodule Rehmed.Contracts.Scheduling do
       p1_reported: true
     }
 
-    given :visit_completed, %{specialist_id: "specialist-ewa"}
+    given :visit_completed
     command :cancel_visit
     rejected :only_a_visit_not_yet_held_ends_early
   end

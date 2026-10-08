@@ -103,7 +103,7 @@ defmodule Rehmed.ConsumedFieldChangeTest do
     rename = fn source ->
       source
       |> String.replace(
-        ~r/(event :visit_closed_clinically[^\n]*\n(?:      [^\n]*\n)*?      field :)p1_reported/,
+        ~r/(event :visit_closed_clinically[^\n]*\n(?:      [^\n]*\n)*?      field :)p1_reported/u,
         "\\1reported_to_p1"
       )
       |> String.split("\n")
