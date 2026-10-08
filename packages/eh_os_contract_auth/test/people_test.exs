@@ -190,6 +190,19 @@ defmodule EhOsContract.Auth.PeopleTest do
     end
   end
 
+  defp cursor(query), do: Base.url_encode64(query, padding: false)
+
+  # The renewal's minute has come: as if the credential were about to expire.
+  defp due(server), do: :sys.replace_state(server, &%{&1 | renew_at: &1.renew_at - 10_000})
+
+  defp eventually(check, tries \\ 50) do
+    cond do
+      check.() -> :ok
+      tries == 0 -> flunk("never came true")
+      true -> Process.sleep(20) && eventually(check, tries - 1)
+    end
+  end
+
   defp answer(conn, status, body),
     do: conn |> Plug.Conn.put_status(status) |> Req.Test.json(body)
 
@@ -251,7 +264,13 @@ defmodule EhOsContract.Auth.PeopleTest do
             [q: String.duplicate("a", 2049)],
             [sort: :name],
             [after: "not a cursor"],
-            [after: Base.url_encode64("id=1", padding: false)]
+            [after: ""],
+            [after: cursor("id=1&after=x")],
+            [after: cursor("q=a")],
+            [after: cursor("state=disabled&after=x")],
+            [after: cursor("limit=100000&after=x")],
+            [after: cursor("q=#{String.duplicate("a", 2049)}&after=x")],
+            [after: cursor("after=x"), q: "a"]
           ] do
         assert_raise ArgumentError, fn -> People.list([server: server] ++ opts) end
       end
@@ -265,13 +284,18 @@ defmodule EhOsContract.Auth.PeopleTest do
   end
 
   describe "the credential" do
-    test "is taken again shortly before it expires", %{ehos: ehos} do
-      set(ehos, %{expires_in: 30})
+    test "is renewed beside, a minute before it expires, while callers go on with it",
+         %{ehos: ehos} do
       server = start!(ehos)
+      assert {:ok, _} = People.list(server: server)
 
-      assert {:ok, _} = People.list(server: server)
-      assert {:ok, _} = People.list(server: server)
-      assert ehos(ehos, :tokens) == ["credential-1", "credential-2"]
+      # The minute before it expires: the call is answered at once, and a renewal starts.
+      due(server)
+      set(ehos, %{token_delay: 300})
+      {elapsed, {:ok, _}} = :timer.tc(fn -> People.list(server: server) end)
+      assert elapsed < 250_000
+
+      eventually(fn -> ehos(ehos, :tokens) == ["credential-1", "credential-2"] end)
     end
 
     test "is taken again once when EHOS answers 401, and a second 401 is :unavailable",
@@ -289,16 +313,19 @@ defmodule EhOsContract.Auth.PeopleTest do
       capture_log(fn -> assert People.list(server: server) == {:error, :unavailable} end)
     end
 
-    test "is asked for once by callers that need it at the same time", %{ehos: ehos} do
-      set(ehos, %{token_delay: 200})
+    test "is asked for once by callers that need it at the same time, and the process still answers",
+         %{ehos: ehos} do
+      set(ehos, %{token_delay: 300})
       server = start!(ehos)
 
-      results =
-        1..5
-        |> Enum.map(fn _ -> Task.async(fn -> People.list(server: server) end) end)
-        |> Task.await_many()
+      tasks = Enum.map(1..5, fn _ -> Task.async(fn -> People.list(server: server) end) end)
+      Process.sleep(50)
 
-      assert Enum.all?(results, &match?({:ok, _}, &1))
+      # The request is not made in the process: it answers while the request is out.
+      {elapsed, _state} = :timer.tc(fn -> :sys.get_state(server) end)
+      assert elapsed < 100_000
+
+      assert tasks |> Task.await_many() |> Enum.all?(&match?({:ok, _}, &1))
       assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
@@ -313,12 +340,16 @@ defmodule EhOsContract.Auth.PeopleTest do
       assert ehos(ehos, :requests) == [{"POST", "/oauth/token"}]
     end
 
-    test "a failed renewal keeps the credential while it is valid", %{ehos: ehos} do
-      set(ehos, %{expires_in: 30})
+    test "a failed renewal keeps the credential while it is valid, for every caller",
+         %{ehos: ehos} do
       server = start!(ehos)
       assert {:ok, _} = People.list(server: server)
 
+      due(server)
       set(ehos, %{answer: :token_rate_limited})
+
+      for _ <- 1..3, do: assert({:ok, _} = People.list(server: server))
+      eventually(fn -> :sys.get_state(server).failed != nil end)
       assert {:ok, _} = People.list(server: server)
       assert ehos(ehos, :tokens) == ["credential-1"]
     end

@@ -234,11 +234,16 @@ defmodule EhOsContract.Auth.People do
     {:error, :unavailable}
   end
 
+  # A cursor is a value a page may have handed a browser: what it carries is held to the same
+  # rules as the options, and it must carry EHOS's `after`.
   defp query!(after: cursor) when is_binary(cursor) do
     with {:ok, query} <- Base.url_decode64(cursor, padding: false),
          params = URI.decode_query(query),
-         true <- Map.keys(params) -- @page_params == [] do
-      Enum.sort(params)
+         true <- Map.keys(params) -- @page_params == [],
+         {after_key, params} when is_binary(after_key) and after_key != "" <-
+           Map.pop(params, "after"),
+         {:ok, opts} <- cursor_opts(params) do
+      [{"after", after_key} | query!(opts)]
     else
       _bad -> raise ArgumentError, "after: takes the next of a page list/1 answered"
     end
@@ -261,6 +266,27 @@ defmodule EhOsContract.Auth.People do
 
       _other ->
         bad!()
+    end)
+  end
+
+  defp cursor_opts(params) do
+    Enum.reduce_while(params, {:ok, []}, fn
+      {"q", q}, {:ok, opts} ->
+        {:cont, {:ok, [{:q, q} | opts]}}
+
+      {"state", states}, {:ok, opts} ->
+        named =
+          for name <- String.split(states, ","), state <- @states, "#{state}" == name, do: state
+
+        if length(named) == length(String.split(states, ",")),
+          do: {:cont, {:ok, [{:state, named} | opts]}},
+          else: {:halt, :error}
+
+      {"limit", limit}, {:ok, opts} ->
+        case Integer.parse(limit) do
+          {limit, ""} -> {:cont, {:ok, [{:limit, limit} | opts]}}
+          _other -> {:halt, :error}
+        end
     end)
   end
 
@@ -313,6 +339,7 @@ defmodule EhOsContract.Auth.People do
        config: config,
        credential: nil,
        expires_at: 0,
+       renew_at: 0,
        taking: nil,
        waiting: [],
        failed: nil
@@ -324,7 +351,14 @@ defmodule EhOsContract.Auth.People do
     state = forget_stale(state, stale)
 
     cond do
-      fresh?(state) ->
+      # A valid credential is given at once; inside the last minute it is renewed beside, and
+      # nobody waits for that.
+      valid?(state) ->
+        state =
+          if renew_due?(state) and is_nil(state.taking) and is_nil(recent_failure(state)),
+            do: start_taking(state, []),
+            else: state
+
         {:reply, {:ok, state.credential}, state}
 
       state.taking ->
@@ -334,12 +368,16 @@ defmodule EhOsContract.Auth.People do
         {:reply, failure, state}
 
       true ->
-        # The request runs in a process of its own, so callers wait for it and not for each other,
-        # and its result comes back as its exit: one that crashes is an answer too.
-        config = state.config
-        {_pid, ref} = spawn_monitor(fn -> exit({:taken, take(config)}) end)
-        {:noreply, %{state | taking: ref, waiting: [from]}}
+        {:noreply, start_taking(state, [from])}
     end
+  end
+
+  # The request runs in a process of its own, so callers wait for it and not for each other, and
+  # its result comes back as its exit: one that crashes is an answer too.
+  defp start_taking(state, waiting) do
+    config = state.config
+    {_pid, ref} = spawn_monitor(fn -> exit({:taken, take(config)}) end)
+    %{state | taking: ref, waiting: waiting}
   end
 
   @impl true
@@ -354,17 +392,25 @@ defmodule EhOsContract.Auth.People do
   # The bearer token and the key are never shown, a crash report's state included.
   @impl true
   def format_status(status) do
-    Map.update(status, :state, nil, fn
+    status
+    |> Map.update(:state, nil, fn
       %{credential: _} = state -> %{state | credential: state.credential && :redacted}
       other -> other
+    end)
+    |> Map.update(:message, nil, fn
+      {:DOWN, ref, :process, pid, {:taken, {:ok, _token, expires_in}}} ->
+        {:DOWN, ref, :process, pid, {:taken, {:ok, :redacted, expires_in}}}
+
+      other ->
+        other
     end)
   end
 
   defp forget_stale(%{credential: %{id: id}} = state, id), do: %{state | credential: nil}
   defp forget_stale(state, _stale), do: state
 
-  defp fresh?(state),
-    do: state.credential != nil and state.expires_at - now() > @renew_before_seconds
+  defp valid?(state), do: state.credential != nil and state.expires_at > now()
+  defp renew_due?(state), do: now() >= state.renew_at
 
   defp recent_failure(%{failed: {error, at}}) do
     if System.monotonic_time(:millisecond) - at < @failure_kept_ms, do: error
@@ -383,8 +429,17 @@ defmodule EhOsContract.Auth.People do
             request_opts: state.config.request_opts
           }
 
+          # Renewed a minute before it expires, or halfway for one that lives less than two.
+          renew_in = max(expires_in - @renew_before_seconds, div(expires_in, 2))
+
           {{:ok, credential},
-           %{state | credential: credential, expires_at: now() + expires_in, failed: nil}}
+           %{
+             state
+             | credential: credential,
+               expires_at: now() + expires_in,
+               renew_at: now() + renew_in,
+               failed: nil
+           }}
 
         {:error, _reason} = error ->
           state = %{state | failed: {error, System.monotonic_time(:millisecond)}}
