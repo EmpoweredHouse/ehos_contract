@@ -143,10 +143,18 @@ export const EhOsContractGraph = {
       .filter(gesture)
       // A press that moves less than this is a click on a card, not a pan.
       .clickDistance(4)
+      // While a gesture lasts the graph is a layer of its own, which the browser moves and scales without
+      // painting the cards and the arrows again on every frame; after it, the layer goes, and the graph is
+      // painted once more at the scale it was left at, sharp.
+      .on("start", () => (this.moving = true))
       .on("zoom", ({ transform, sourceEvent }) => {
         // A wheel, a pinch or a drag is the reader's; a fit is not.
         if (sourceEvent) this.touched = true
         this.zoomed(transform)
+      })
+      .on("end", () => {
+        this.moving = false
+        if (this.at) this.zoomed(this.at)
       })
     select(this.canvas).call(this.zoom).on("dblclick.zoom", null)
 
@@ -424,7 +432,10 @@ export const EhOsContractGraph = {
     this.fitted = true
   },
 
-  zoomed({ x, y, k }) {
-    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k}) }`)
+  zoomed(at) {
+    this.at = at
+    const { x, y, k } = at
+    const layer = this.moving ? "; will-change: transform" : ""
+    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k})${layer} }`)
   },
 }

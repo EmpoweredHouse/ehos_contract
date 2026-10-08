@@ -24,9 +24,12 @@
 
 /* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
    width, never taller than this. */
+/* Contained: what changes inside a canvas — a zoom, a selection, a new layout — is laid out and painted inside
+   it, never the page around it. Its height is always set, so size containment costs nothing. */
 .ehg-canvas {
   position: relative;
   overflow: hidden;
+  contain: strict;
   height: min(72vh, 760px);
   max-height: min(72vh, 760px);
   min-height: 120px;

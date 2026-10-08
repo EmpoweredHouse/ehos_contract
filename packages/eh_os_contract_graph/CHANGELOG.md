@@ -18,8 +18,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and systems apart, a row selecting one in a canvas. A policy, a process manager and a query say on their card
   how many scenarios pin them. A canvas is as tall as its picture fitted to its width, up to `min(72vh, 760px)`,
   and is fitted again when its width changes unless the reader has zoomed or panned it. The panel is a sidebar at
-  the right of the window, as tall as it and scrolled inside, one for the page, closed by Escape; the reader drags
-  its edge to set its width (`--eh-os-contract-graph-panel-width`), which the browser keeps.
+  the right of the window, as tall as it and scrolled inside, one for the page, closed by Escape, lying over the
+  page so that no canvas is resized by it; the reader drags its edge to set its width
+  (`--eh-os-contract-graph-panel-width`), which the browser keeps. A canvas is contained, and a pan or a zoom
+  moves the graph as a layer of its own.
 - **E13b, batch 3: the views.** `EhOsContract.GraphRenderer.View` builds the six pictures the engine drew as
   Mermaid diagrams from the graph of facts — a contract's full graph, its process's declared shape, a unit, an
   aggregate's lifecycle, a domain's context map and its system — with the words and the lines those pictures

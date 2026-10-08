@@ -4497,9 +4497,12 @@ var EhOsContractGraph = {
     this.key = null;
     this.arrows = /* @__PURE__ */ new Map();
     this.canvas = this.el.querySelector(".ehg-canvas");
-    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("zoom", ({ transform: transform2, sourceEvent }) => {
+    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("start", () => this.moving = true).on("zoom", ({ transform: transform2, sourceEvent }) => {
       if (sourceEvent) this.touched = true;
       this.zoomed(transform2);
+    }).on("end", () => {
+      this.moving = false;
+      if (this.at) this.zoomed(this.at);
     });
     select_default2(this.canvas).call(this.zoom).on("dblclick.zoom", null);
     if (!widthSheet && keptWidth()) panelWidth(clampWidth(keptWidth()));
@@ -4736,8 +4739,11 @@ var EhOsContractGraph = {
     select_default2(this.canvas).call(this.zoom.transform, at2);
     this.fitted = true;
   },
-  zoomed({ x, y, k }) {
-    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k}) }`);
+  zoomed(at2) {
+    this.at = at2;
+    const { x, y, k } = at2;
+    const layer = this.moving ? "; will-change: transform" : "";
+    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k})${layer} }`);
   }
 };
 export {
