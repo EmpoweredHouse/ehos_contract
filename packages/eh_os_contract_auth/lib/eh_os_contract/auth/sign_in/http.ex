@@ -9,7 +9,8 @@ defmodule EhOsContract.Auth.SignIn.Http do
   #
   #   * https only, and no redirect followed: a redirect is an answer, which `oidcc`
   #     refuses as a status it did not expect;
-  #   * a body of at most 64 KiB;
+  #   * a body of at most 64 KiB, or the `:max_body` a caller's config names: the people
+  #     client's pages are larger than a document;
   #   * one deadline for the whole call, the `timeout` `oidcc` passes.
   #
   # Nothing here raises: a defect of the transport is an `{:error, _}`, as a refused
@@ -36,7 +37,7 @@ defmodule EhOsContract.Auth.SignIn.Http do
 
     Process.delete(@status)
 
-    with :ok <- https(url) do
+    with :ok <- https(url, config) do
       task = Task.async(fn -> send_request(method, url, headers, body, deadline, config) end)
 
       case Task.yield(task, deadline) || Task.shutdown(task, :brutal_kill) do
@@ -109,8 +110,15 @@ defmodule EhOsContract.Auth.SignIn.Http do
   end
 
   # By the rule the document's endpoints are held to (#89), for whichever field a call's address
-  # came from.
-  defp https(url) do
+  # came from. A caller that builds its own query from the issuer, the people client's (#252),
+  # says so with `own_query: true`, and the address before the query is held to the rule; any
+  # other address with a query is refused.
+  defp https(url, %{own_query: true}) do
+    [address | _query] = String.split(url, "?", parts: 2)
+    https(address, %{})
+  end
+
+  defp https(url, _config) do
     case Address.check(url, plain_on_loopback: false, path: true) do
       :ok -> :ok
       :error -> {:error, {:not_https, url}}
@@ -131,7 +139,7 @@ defmodule EhOsContract.Auth.SignIn.Http do
         decode_body: false,
         receive_timeout: deadline,
         connect_options: connect_options(config),
-        into: &at_most/2
+        into: &at_most(&1, &2, Map.get(config, :max_body, @max_body))
       ]
       |> then(&if body, do: Keyword.put(&1, :body, body), else: &1)
       |> Kernel.++(Keyword.take(Map.to_list(config), [:plug]))
@@ -166,11 +174,11 @@ defmodule EhOsContract.Auth.SignIn.Http do
     end
   end
 
-  # Collects the body up to `@max_body` and gives up past it.
-  defp at_most({:data, data}, {request, response}) do
+  # Collects the body up to `max_body` and gives up past it.
+  defp at_most({:data, data}, {request, response}, max_body) do
     body = (response.body || "") <> data
 
-    if byte_size(body) > @max_body,
+    if byte_size(body) > max_body,
       do: {:halt, {request, %{response | body: :too_large}}},
       else: {:cont, {request, %{response | body: body}}}
   end

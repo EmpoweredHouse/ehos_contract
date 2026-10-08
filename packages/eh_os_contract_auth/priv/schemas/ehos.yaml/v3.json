@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ehos.yaml/v3",
+  "description": "What a workload needs in order to run, as its developer states it (D-51). A released version is frozen: this file is never edited, and any change is a new version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "health"
+  ],
+  "properties": {
+    "schema": {
+      "description": "The version of this format the file is written in. A file without it is refused, never guessed at.",
+      "const": "ehos.yaml/v3"
+    },
+    "application": {
+      "description": "Which of the project's contract domains this image is: lowercase letters, digits and dashes, starting with a letter and not ending with a dash, and not `ehos`. Only a project whose contracts declare more than one domain names it; otherwise the generator takes the name from the one domain.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "not": {
+        "const": "ehos"
+      }
+    },
+    "needs": {
+      "description": "What the workload needs from the environment it runs in. A workload may need nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "description": "A PostgreSQL schema of its own, on the resource its environment binds it to (D-54).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "engine"
+          ],
+          "properties": {
+            "engine": {
+              "description": "The database engine.",
+              "enum": [
+                "postgres"
+              ]
+            },
+            "version": {
+              "description": "The PostgreSQL major version: `16` for exactly 16, `>= 16` for 16 or later. Without it, any version the resource runs.",
+              "type": "string",
+              "pattern": "^(>= ?)?[1-9][0-9]{0,2}$"
+            },
+            "migrate": {
+              "description": "The command and its arguments, run before the workload starts, as the schema's owner. Without it, no migration runs.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          }
+        },
+        "people": {
+          "description": "Present when the workload reads the company's people from EHOS, by itself, through EHOS's API (D-81): `read` is the only value. The reading waits until someone who manages people agrees, and the workload is given the key it identifies itself with, whether or not it signs people in.",
+          "enum": [
+            "read"
+          ]
+        }
+      }
+    },
+    "serves": {
+      "description": "Each endpoint that listens, public or not. A workload may listen on nothing but its health port. Names and ports are unique, and no port is the health port: EHOS checks these beside the schema.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/serve"
+      }
+    },
+    "sign_in": {
+      "description": "Present when the workload signs people in through EHOS (D-64, D-69): `{}` for its own application only, `applications` for the others its pages get credentials for. It needs an entry `web` that is public, where sign-in returns (D-68): EHOS checks this beside the schema.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "applications": {
+          "description": "The other applications its pages get credentials for, by name, each once and not its own. An application's side agrees before any credential for it is issued (D-64).",
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/application"
+          }
+        }
+      }
+    },
+    "health": {
+      "description": "Where EHOS probes the workload. EHOS never starts a workload it cannot probe, and never exposes this port.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port",
+        "ready",
+        "live"
+      ],
+      "properties": {
+        "port": {
+          "description": "The port EHOS probes on. It is never exposed, and no entry of `serves` may use it.",
+          "$ref": "#/$defs/port"
+        },
+        "ready": {
+          "description": "The HTTP path, starting with a slash, that answers 2xx once the workload can serve.",
+          "$ref": "#/$defs/path"
+        },
+        "live": {
+          "description": "The HTTP path, starting with a slash, that answers 2xx while the workload is not stuck.",
+          "$ref": "#/$defs/path"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "serve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "port"
+      ],
+      "properties": {
+        "name": {
+          "description": "The endpoint's name, which is also a Kubernetes port name: lowercase letters, digits and single dashes, starting with a letter, at most 15 characters. `web` gets the application's own host; any other public one gets `<application>-<name>` (D-55).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15,
+          "pattern": "^[a-z](-?[a-z0-9])*$"
+        },
+        "port": {
+          "$ref": "#/$defs/port"
+        },
+        "public": {
+          "description": "Whether the endpoint asks to be reachable from outside the installation. A request: EHOS decides whether to expose it.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "port": {
+      "description": "A TCP port the workload listens on, from 1024 to 65535.",
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^/[!-~]*$"
+    },
+    "application": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "not": {
+        "const": "ehos"
+      }
+    }
+  }
+}

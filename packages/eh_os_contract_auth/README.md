@@ -8,10 +8,11 @@ down, and after a restart while EHOS is down.
 The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credential's actor may
 do, and this package is the implementation for EHOS's credentials. The engine does not depend on it.
 
-Five parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
+Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
-front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest, and
-`EhOsContract.Auth.Testing` for a host's tests.
+front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
+`EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
+company's people, and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -65,8 +66,9 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-EHOS deploys an image with its `ehos.manifest/v2`: the application's `ehos.yaml`, which
-says what the workload needs, extended with what its contracts offer. In CI, beside the image:
+EHOS deploys an image with its `ehos.manifest/v2`, or `v3` for an `ehos.yaml/v3`: the
+application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
+offer. In CI, beside the image:
 
 ```bash
 mix eh_os_contract.manifest --output ehos.manifest.json
@@ -307,6 +309,64 @@ or a page would hand it to the browser, which the session otherwise keeps EHOS's
 - **The other refusals** are `actor/2`'s: `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
 
 Why signing in and the session work this way is recorded in [`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/browser-session.md).
+
+**A person's key is `sub`.** The `sub` of a person signed in is their `id` in EHOS: it never
+changes, and it is the `id` the people API below answers for the same person. Store it, never the
+email, which can change and later be given to someone else.
+
+## Reading the company's people
+
+A form that offers an employee, instead of a text field someone types a name into, reads EHOS's
+people as the application itself (`eh-os` D-81). The application asks for it in its
+`ehos.yaml/v3`; EHOS then gives its workload `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, whether
+or not it signs people in, and answers only once someone who manages people agrees, for that
+environment.
+
+```yaml
+schema: ehos.yaml/v3
+needs:
+  people: read
+```
+
+```elixir
+# config/runtime.exs, beside issuer:
+config :eh_os_contract_auth,
+  people: [
+    client_id: System.fetch_env!("EHOS_CLIENT_ID"),
+    client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE")
+  ]
+
+# the supervision tree; cacertfile: as for EhOsContract.Auth
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.People]
+```
+
+```elixir
+{:ok, %{people: people, next: next}} = EhOsContract.Auth.People.list(q: "ad", limit: 50)
+{:ok, more} = EhOsContract.Auth.People.list(after: next)   # the cursor carries q: and limit:
+{:ok, person} = EhOsContract.Auth.People.get(id)
+# %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
+```
+
+The process takes a credential of its own at EHOS's token endpoint with the client credentials
+grant, signed with the client key, keeps it for its ten minutes and takes another before it
+expires; callers that need one at once wait for one request, and a refusal or an outage is
+answered for five seconds without asking again. Nothing is fetched at start, so the host starts
+while EHOS is down. `list/1` takes `q:`, `state:` (`:invited`, `:joined`) and `limit:` (1 to
+500), or `after:` alone; an option EHOS would refuse raises `ArgumentError` before EHOS is asked. Store a person's
+`id`; show the email beside the name, which two people can share.
+
+A call that answers no people says why, for the page to say it in words:
+
+| Error | When |
+| --- | --- |
+| `:not_agreed` | No people manager has agreed for this environment, or the agreement was withdrawn |
+| `:not_found` | `get/2` of an id that is no one's |
+| `:not_asked` | The deployment does not ask `needs.people: read` |
+| `:rate_limited` | EHOS's limits: 60 credentials a minute, 600 calls a minute |
+| `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
+
+The list is never copied into the application: while EHOS cannot answer, the call fails and the
+page says so, and the rest of the application goes on.
 
 ## Deciding, and recording every decision
 

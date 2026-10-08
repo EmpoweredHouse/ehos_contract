@@ -1,0 +1,14 @@
+# A workload that signs people in through EHOS and reads the company's people from it, as itself
+# (eh-os D-81).
+schema: ehos.yaml/v3
+needs:
+  people: read
+serves:
+  - name: web
+    port: 4000
+    public: true
+sign_in: {}
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live
