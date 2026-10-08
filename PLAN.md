@@ -813,9 +813,10 @@ Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's bou
 
 **S2 — a process's promise can be tested with a scenario** (#251; tightened 8 October 2026). A process module gets
 `scenario "…", verdict:, via: do given …, at: …; outage :external, at: …; promise :name, at: … end`, and `given … at:`
-works in every scenario (the user's decision of 8 October). L2: the trigger names a promise of the module (S1), givens
-name included events (S2), `at:` is a timestamp never earlier than the given before it (S3), the shape (S11). L3: given
-data against the declaring contract (X9), an outage only of what `eventually` or `or_else` depends on (X4).
+works in every scenario (the user's decision of 8 October). Refused in the module: a trigger naming no promise of it
+(S1), a given of an event it does not include (S2), an `at:` going back (S3), a shape no verdict fits (S11). Refused
+against the contracts: given data the declaring event does not fit (X9), an outage of a system the promise does not
+wait on (X4).
 `ScenarioCase, process:` judges through `Trace.trace/2` and `Trace.judge/3`, without a database.
 **S3 — sandbox**: obietnica `medical_event_reported_within_statutory_window` (spełniona przez wysłanie, przez
 `or_else`, złamana po 2 dniach, zawieszona przy awarii P1); TaxVision `month_opens_or_is_blocked`.

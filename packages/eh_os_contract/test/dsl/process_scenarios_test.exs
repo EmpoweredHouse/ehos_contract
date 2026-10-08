@@ -286,6 +286,35 @@ defmodule EhOsContract.ProcessScenariosTest do
       )
     end
 
+    test "via: without a verdict is refused for the verdict alone" do
+      scenario =
+        replace(@scenario, "verdict: :satisfied,\n    via: :eventually", "via: :eventually")
+
+      message = refuse(scenario, "says no verdict", 23)
+      refute message =~ "via: is the route"
+    end
+
+    test "a verdict the promise cannot get is refused" do
+      unexcused =
+        @scenario
+        |> replace("verdict: :satisfied,\n    via: :eventually", "verdict: :suspended")
+        |> replace(~s|    outage :p1, at: "2026-09-08T08:00:00Z"\n|, "")
+
+      refuse(unexcused, "verdict :suspended, and no outage excuses the promise", 23)
+
+      unbounded =
+        @scenario
+        |> replace("verdict: :satisfied,\n    via: :eventually", "verdict: :violated")
+        |> replace("promise :reported_within_two_days,", "promise :reported_at_all,")
+
+      refuse(
+        unbounded,
+        "verdict :violated, and promise :reported_at_all has no within, so its window never " <>
+          "closes; it is only :satisfied or :pending",
+        23
+      )
+    end
+
     test "a verdict outside the four is refused" do
       scenario =
         replace(@scenario, "verdict: :satisfied,\n    via: :eventually", "verdict: :kept")
@@ -396,6 +425,11 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       typed = checked("ProcScenarioTyped", ~s|%{visit_id: "visit-anna", room: 12}|, ":register")
       assert assert_linked(typed, "field :room:", "proc_scenario_typed_visit.ex", 17)
+    end
+
+    test "a given that leaves out its unit's identity is refused, since runs are told apart by it" do
+      violations = checked("ProcScenarioNoId", ~s|%{room: "12"}|, ":register")
+      assert assert_linked(violations, "needs :visit_id", "proc_scenario_no_id_visit.ex", 17)
     end
 
     test "an outage of a system the promise does not wait on is refused" do

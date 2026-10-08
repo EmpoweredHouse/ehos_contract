@@ -15,8 +15,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   one of a domain value is the Mix compiler's (X9). An event consumed from a
   #   sibling contract has its fields in the sibling, so its data is X9's as well. A
   #   given's `at:` is an ISO 8601 timestamp with an offset, never earlier than the given
-  #   before it, since a log never holds a later event before an earlier one (plan DD,
-  #   S2, #251).
+  #   before it, since a log never holds a later event before an earlier one, and no
+  #   undated given comes before a dated one (plan DD, S2, #251).
   # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
   # - **S5.** `expect` names events in the command's `emits:`.
   # - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
@@ -760,7 +760,23 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
             else: {acc, at}
       end)
 
-    Enum.reverse(violations)
+    Enum.reverse(violations) ++ undated_first(where, givens)
+  end
+
+  # An undated given before a dated one would happen on 1 January 2026, the default,
+  # whatever the dated ones say, so a window could open months before the author meant.
+  defp undated_first(where, givens) do
+    case Enum.split_while(givens, &(Map.get(&1, :at) == nil)) do
+      {[_ | _] = undated, [dated | _]} ->
+        for given <- undated do
+          {"S3: #{where}: given #{inspect(given.event)} has no at:, and comes before given " <>
+             "#{inspect(dated.event)}, which has one; it would happen on " <>
+             "#{DateTime.to_iso8601(@epoch)}, so date it too", given}
+        end
+
+      _ ->
+        []
+    end
   end
 
   defp dated(scenario), do: dated(~s|scenario "#{scenario.description}"|, scenario.given)

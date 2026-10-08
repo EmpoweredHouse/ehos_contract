@@ -151,7 +151,7 @@ end
   A given's event happened a minute after the given before it, the first at 2026-01-01 09:00 UTC, unless it
   says when: `given :loan_opened, %{copy_id: "c-1"}, at: "2026-09-01T09:00:00Z"`. The moment is an ISO 8601
   timestamp with an offset, never earlier than the given before it, since a log holds events in the order they
-  happened ([`S3`](#refusals-s)).
+  happened, and a given without it does not come before one with it ([`S3`](#refusals-s)).
 
 - **The implementation reads the contract where it is written.** Each callback of a generated behaviour
   carries what the contract says of it: the declaration's label and source, what it may emit or issue,
@@ -285,8 +285,8 @@ anything else excuses nothing. `use EhOsContract.ScenarioCase, process: Lending.
 per scenario, which builds each given as the event its contract declares, files it into its run and judges the
 promise as the report would, without a database. A scenario judges exactly one promise of the module, each
 description once ([`S1`](#refusals-s)); its givens are events the process includes ([`S2`](#refusals-s)), their
-data held to the contract that declares each ([`X9`](#refusals-x)); every `at:` is a timestamp, a given's never
-earlier than the given before it ([`S3`](#refusals-s)). It says a verdict, `via:` only on `:satisfied` and
+data held to the contract that declares each, the unit's identity included, since runs and items are told apart by it ([`X9`](#refusals-x)); every `at:` is a timestamp, a given's never
+earlier than the given before it ([`S3`](#refusals-s)). It says a verdict the promise can get, `via:` only on `:satisfied` and
 `:or_else` only for a promise that has one, gives the event that opens the promise, and nothing after the moment
 of judgement ([`S11`](#refusals-s)).
 
@@ -463,7 +463,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | --- | --- | --- |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description; a process module's scenario judging no promise, several, or one the module does not make |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy; in a process module, a `given` of an event the process does not include |
-| `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted); an `at:` that is no ISO 8601 timestamp with an offset, or a given's earlier than the given before it |
+| `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted); an `at:` that is no ISO 8601 timestamp with an offset, or a given's earlier than the given before it; a given without `at:` before one with it |
 | `S4` | L2 | `rejected` naming what the command does not `rejects:` |
 | `S5` | L2 | `expect` naming an event outside the command's `emits:` |
 | `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a `state` said twice, or of anything but a process manager; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
@@ -471,7 +471,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
-| `S11` | L2 | a process module's scenario without a `verdict:` or with one outside `:satisfied`, `:violated`, `:pending`, `:suspended`; `via:` on another verdict than `:satisfied`, outside `:eventually` and `:or_else`, or `:or_else` for a promise without one; no given of the promise's `from`; a given or an outage after the moment of judgement |
+| `S11` | L2 | a process module's scenario without a `verdict:` or with one outside `:satisfied`, `:violated`, `:pending`, `:suspended`; `via:` on another verdict than `:satisfied`, outside `:eventually` and `:or_else`, or `:or_else` for a promise without one; `:violated` or `:suspended` for a promise without `within`, or `:suspended` without an `outage`; no given of the promise's `from`; a given or an outage after the moment of judgement |
 | `S12` | L2 | a scenario of a command that `reads:` an entity without a `given_entity` of it; a `given_entity` of an entity the command does not read, or in a scenario of anything else |
 
 <a id="refusals-d"></a>
@@ -509,7 +509,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
 | `X7` | L3 | two processes of the system with one name, which keys their runs, a process module's being its `id:`; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
-| `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values; a `given_entity` row with a field its entity lacks, missing its identity or a required field, or with an ill-typed value; a process module's `given` with data the event its contract declares does not fit, in the same ways |
+| `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values; a `given_entity` row with a field its entity lacks, missing its identity or a required field, or with an ill-typed value; a process module's `given` with data the event its contract declares does not fit, in the same ways, or leaving out its unit's identity |
 | `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
 
 <a id="refusals-i"></a>

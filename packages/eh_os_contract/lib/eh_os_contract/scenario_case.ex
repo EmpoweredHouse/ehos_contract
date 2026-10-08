@@ -110,6 +110,15 @@ defmodule EhOsContract.ScenarioCase do
   # Plan DD, S2 (#251).
   defp process_case(opts) do
     process = Keyword.fetch!(opts, :process)
+
+    unless match?(%{kind: :process}, EhOsContract.Model.fetch(Macro.expand(process, __ENV__))),
+      do:
+        raise(
+          ArgumentError,
+          "process: #{inspect(process)} is not a process module, `use EhOsContract.Process`; " <>
+            "a contract's scenarios run with contract:"
+        )
+
     async = Keyword.get(opts, :async, true)
 
     quote do
@@ -439,10 +448,10 @@ defmodule EhOsContract.ScenarioCase do
           {contract, declaration} = Model.declaring(model, given.event),
           event =
             message(Model.fetch(contract), :event, given.event, given.data, identity, at, nil),
-          values = Enum.map(run.correlate, &Map.get(event, &1)),
-          nil not in values do
+          instance_id = EhOsContract.Dispatcher.run_key(run, event),
+          instance_id != nil do
         %{
-          instance_id: EhOsContract.Key.join([run.name | values]),
+          instance_id: instance_id,
           type: declaration.type,
           occurred_at: at,
           payload: payload(trace, event)

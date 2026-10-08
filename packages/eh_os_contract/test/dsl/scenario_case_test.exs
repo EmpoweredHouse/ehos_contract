@@ -231,7 +231,7 @@ defmodule EhOsContract.ScenarioCaseTest do
           end
 
           scenario "dwa zdarzenia — zamknięcie" do
-            given :opened, at: #{inspect(first)}
+            given :opened#{if first, do: ", at: #{inspect(first)}"}
             given :opened, at: #{inspect(second)}
             command :close
             expect :closed
@@ -245,6 +245,10 @@ defmodule EhOsContract.ScenarioCaseTest do
 
       assert refuse_contract("DatedForm", body.("2026-09-01", "2026-09-02T09:00:00Z")) =~
                ~s|given :opened, at: "2026-09-01" is not an ISO 8601 timestamp with an offset|
+
+      assert refuse_contract("DatedLate", body.(nil, "2026-09-02T09:00:00Z")) =~
+               "given :opened has no at:, and comes before given :opened, which has one; it " <>
+                 "would happen on 2026-01-01T09:00:00Z, so date it too"
 
       assert %{scenarios: [_]} =
                compile_contract(

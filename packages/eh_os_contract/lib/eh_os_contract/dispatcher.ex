@@ -1298,7 +1298,12 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  defp run_key(process, struct) do
+  # The key of the run of `process` an event belongs to, or nil when it lacks a
+  # correlation field. Called by scenario_case.ex too, which files a promise scenario's
+  # givens as dispatch files events (plan DD, S2, #251).
+  @doc false
+  @spec run_key(map(), struct()) :: String.t() | nil
+  def run_key(process, struct) do
     values = Enum.map(process.correlate, &Map.get(struct, &1))
     if Enum.all?(values, &(&1 != nil)), do: Key.join([process.name | values])
   end

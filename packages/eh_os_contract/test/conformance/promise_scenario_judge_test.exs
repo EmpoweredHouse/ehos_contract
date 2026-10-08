@@ -173,4 +173,16 @@ defmodule EhOsContract.PromiseScenarioJudgeTest do
     assert error.message =~
              ~s|the givens make 2 judged runs, ["shop.judge_delivery|
   end
+
+  test "process: naming a contract is refused when the test compiles" do
+    assert_raise ArgumentError, ~r/is not a process module/, fn ->
+      Code.compile_quoted(
+        quote do
+          defmodule EhOsContract.Fixtures.JudgeNotAProcessTest do
+            use EhOsContract.ScenarioCase, process: ProcessShapes.Promised
+          end
+        end
+      )
+    end
+  end
 end

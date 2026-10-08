@@ -1542,7 +1542,7 @@ the person's.
 > that the promise's `eventually` or `or_else` depends on, the same narrowing the report applies. Every scenario,
 > a contract's too, may date a given (`at:`); a given's moment never goes back, since a log holds events in the
 > order they happened (the user's decision of 8 October: allowed in every scenario, not only a promise's). A
-> contract that still declares its own `process` gets no promise scenarios: that form goes away with P2h (#221).
+> contract that still declares its own `process` gets no promise scenarios: that form is being removed (#221).
 > [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251)
 
 | Fate | Modules |

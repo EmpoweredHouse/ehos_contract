@@ -25,7 +25,7 @@ defmodule EhOsContract.Contract.Links.Processes do
   # - **X9 and X4 in a scenario** (plan DD, S2, #251). A given's data fits the event the
   #   contract that declares it declares, as a sibling event's data in a contract's
   #   scenario does (`EhOsContract.Contract.Links.Scenarios`): its fields, every required
-  #   one but the unit's identity, each value of its type. An outage is of an external
+  #   one and its unit's identity, each value of its type. An outage is of an external
   #   the promise's `eventually` or `or_else` depends on: `from` already happened, so
   #   what it needs was working, and an outage of anything else excuses nothing in the
   #   report (`EhOsContract.Trace`), so a scenario of one would show what never happens.
@@ -165,9 +165,13 @@ defmodule EhOsContract.Contract.Links.Processes do
     end
   end
 
+  # Unlike a contract's scenario, which is about one stream and fills its identity in,
+  # a process's scenario is about runs and items told apart by the units' identities,
+  # so each given names its unit, as every event in the log does.
   defp given_problems(contract, event, data, values) do
     identity = Enum.find(contract.model.units, &(&1.name == event.unit)).identity
-    Links.Scenarios.sibling_problems(event.fields, identity, data, values, true)
+    fields = event.fields ++ for(name <- identity, do: %{name: name, type: :id, optional: false})
+    Links.Scenarios.sibling_problems(Enum.uniq_by(fields, & &1.name), [], data, values, true)
   end
 
   defp outages(p, included) do

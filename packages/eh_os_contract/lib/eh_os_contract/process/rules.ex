@@ -35,8 +35,10 @@ defmodule EhOsContract.Process.Rules do
   #   offset, and a given's never earlier than the given before it (S3). Its shape
   #   (S11): a verdict, one of the four `EhOsContract.Trace` gives; `via:` only on
   #   `:satisfied`, `:eventually` or `:or_else`, and `:or_else` only for a promise that
-  #   has one; a given of the promise's `from`, without which no run is judged; and
-  #   nothing after the moment of judgement, which a verdict cannot have seen.
+  #   has one; a verdict the promise can get, so none but `:satisfied` or `:pending`
+  #   without `within`, and `:suspended` only with an outage; a given of the promise's
+  #   `from`, without which no run is judged; and nothing after the moment of
+  #   judgement, which a verdict cannot have seen.
   #
   # What one module cannot see — that each included event exists in its contract and
   # carries the `correlate` fields, that the accountable actor is the domain's, that a
@@ -407,6 +409,9 @@ defmodule EhOsContract.Process.Rules do
         scenario.via == nil ->
           []
 
+        scenario.verdict not in @verdicts ->
+          []
+
         scenario.verdict != :satisfied ->
           [
             {"S11: #{where}: via: is the route by which a promise was kept, and a promise " <>
@@ -437,7 +442,33 @@ defmodule EhOsContract.Process.Rules do
              "#{inspect(promise.name)}; without it no run is judged", scenario}
         ]
 
-    verdict ++ via ++ opened ++ after_judgement(where, scenario, judged)
+    verdict ++
+      via ++
+      reachable(where, scenario, promise) ++
+      opened ++
+      after_judgement(where, scenario, judged)
+  end
+
+  # A verdict judge/3 cannot give these declarations: one with no `within` has no window
+  # to close, so it is never broken or excused, and only an outage excuses one.
+  defp reachable(where, scenario, promise) do
+    cond do
+      scenario.verdict in [:violated, :suspended] and promise.within == nil ->
+        [
+          {"S11: #{where}: verdict #{inspect(scenario.verdict)}, and promise " <>
+             "#{inspect(promise.name)} has no within, so its window never closes; it is only " <>
+             ":satisfied or :pending", scenario}
+        ]
+
+      scenario.verdict == :suspended and scenario.outages == [] ->
+        [
+          {"S11: #{where}: verdict :suspended, and no outage excuses the promise; say when the " <>
+             ~s|system was down, `outage :external, at: "…"`|, scenario}
+        ]
+
+      true ->
+        []
+    end
   end
 
   # Nothing the verdict is about happened after it was given. A moment that is no
