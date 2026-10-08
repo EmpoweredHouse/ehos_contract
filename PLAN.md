@@ -1603,28 +1603,30 @@ Batch 1 needs no views: it is what every view is drawn with.
   with one view, `all/1`, every node and relation, plus `with_observed/2` for the moves an overlay saw and the
   document does not declare; `Marks`, what an overlay entry says as a count and states, recounting nothing. An
   overlay whose `document_digest` is not the document's is not drawn, and the page says so.
-- **The hook** (`assets/js/eh_os_contract_graph.js`, about 240 lines): measures the cards and labels, lays them
+- **The hook** (`assets/js/eh_os_contract_graph.js`, about 280 lines): measures the cards and labels, lays them
   out with dagre, draws each arrow as a visible line and a wide invisible one for the click, copies a label's
-  `is-*` classes onto its arrow, fits the graph on the first layout and keeps the reader's zoom after. Positions,
-  sizes and the zoom are in two constructed stylesheets; it writes no `style` and no markup. A plain wheel
+  `is-*` classes onto its arrow, fits the graph whenever its cards are other cards and keeps the reader's zoom
+  otherwise. Positions, sizes and the zoom are in two constructed stylesheets; it writes no `style` and no
+  markup. The one style anything sets is d3-zoom's tap highlight on a touch device, through the CSSOM, which the
+  policy allows. A plain wheel
   scrolls the page, Ctrl or ⌘ with the wheel (and a trackpad's pinch) zooms, a drag pans, and a press that moves
   more than 4 px is not a click.
 - **dagre and d3-zoom are vendored**, so the build stays esbuild alone: dagre's published `dist/dagre.esm.js`
   unmodified, and d3-zoom with the eight modules it imports bundled once into one ES module from their
   unmodified sources, with the command that rebuilds it at its top. `NOTICE` carries every licence. The
-  package's script is an ES module the host bundles (156 KB, not minified); the dashboard's `app.js` grows from
-  150 to 251 KB minified, 46 to 80 KB gzip — the prototype's +33 KB.
+  package's script is an ES module the host bundles (162 KB, not minified); the dashboard's `app.js` grows from
+  150 to 251 KB minified, 46 to 81 KB gzip — the prototype's +33 KB.
 - **The dashboard** depends on the package (a path beside it, git elsewhere, as for the engine), bundles its script
   and stylesheet into its own, and has a temporary screen, `<mount>/graph/preview`, not in the nav, that draws one
   document of the registry with its overlay. The existing screens are unchanged and Mermaid stays.
-- **Tests:** the package's own suite (23) on three documents taken from the sandbox on 7 October and a hand-made
+- **Tests:** the package's own suite (25) on three documents taken from the sandbox on 7 October and a hand-made
   one with ids of quotes, backslashes and Polish letters, a `<script>` label, a self-loop and a dangling
   relation: the cards and labels the hook reads, no `style` attribute, text escaped, the overlay's marks, a stale
   overlay, selection through a LiveView; the hook's source, the bundle and the stylesheet read for what the
   policy refuses. The sandbox draws every document of the three client trees and holds the one decoded from the
   API's JSON to draw the same as the function's. The dashboard's preview has its test, and the design-system test
   reads the renderer's stylesheet for tokens the build does not define. Gate EXIT=0 on CI's Elixir 1.18.4 and
-  OTP 27.2: sandbox 204, engine 1530, dashboard 64, auth 287, renderer 23.
+  OTP 27.2: sandbox 206, engine 1530, dashboard 64, auth 287, renderer 25.
 - **In a browser**, headless Chrome on the sandbox host under `default-src 'self'`, all 14 documents: no
   violation, no `style` attribute, no card over a card, no label over a card or a label, no broken path. A click
   on a card or an arrow opens its panel and moves nothing; the wheel, Ctrl with the wheel and a drag behave as
@@ -1633,6 +1635,25 @@ Batch 1 needs no views: it is what every view is drawn with.
   measured narrow and drawn wide, over its neighbours (up to 18 labels on cards in AppUnite `computers`); cards
   and labels are now as wide as their content, up to their `max-width`. And the dashboard's `h4` style turned the
   panel's heading, a client's label, into capitals.
+- **After the review (8 October)**, by an agent given the batch to read against the ADR, the overlay's schema and
+  this repository's conventions:
+  - *A relation from a card to itself was drawn as a zigzag beside the card*, and every move a lifecycle does not
+    allow is one (the overlay gives it `from` and `to` the same status): dagre 3.1.1 centres a loop's points on
+    its label. The hook draws the loop itself, out of the card's side that faces the label and back, stopping
+    short of the label. None of the sandbox's documents has one, so it is checked on the hand-made document in a
+    browser.
+  - *The graph was fitted once per page*, so another document kept the last one's zoom, and a canvas laid out
+    while hidden was never laid out again. It is fitted again when its cards change, and laid out again when the
+    canvas changes its size.
+  - *The check of the hook's source let a style through* an SVG helper given a `style` key; it now refuses the
+    word anywhere in the code.
+  - *An update that names only some attributes* (`send_update/2` with only an overlay) raised or cleared the
+    overlay; what it leaves out stays.
+  - Smaller: `.is-far` scoped to the graph; a determinism test that tested nothing replaced by one over maps
+    large enough to lose their keys' order; two limits written down (an id with a carriage return or a NUL
+    cannot be selected; the dashboard's script and the renderer's markup are updated together); stale text in
+    `mix.exs`, the README and here. The sandbox now also draws the engine's real overlay over every document
+    and holds the three fixtures taken from it to today's schema.
 - **Not done, known:** AppUnite `computers` fitted to the screen is unreadable, as the ADR said: a matter of views.
   The panel is raw (the node's facts, nested values as JSON) until batch 4. Locally, mise's Elixir 1.20.4 fails
   the engine's gate on new type warnings in code this batch does not touch (`EhOsContract.Trace`,

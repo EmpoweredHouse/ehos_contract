@@ -34,7 +34,8 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md, 8px);
   background: var(--surface-1);
-  /* d3-zoom sets these through the CSSOM as well; LiveView's next patch takes them away, so they are here. */
+  /* A pan by touch is the graph's, not the page's. d3-zoom sets the tap highlight through the CSSOM on a touch
+     device, which the policy allows and LiveView's next patch takes away; it is here so it stays. */
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   cursor: grab;
@@ -194,7 +195,7 @@
   outline-offset: 2px;
 }
 
-.is-far {
+.ehg .is-far {
   opacity: 0.3;
 }
 

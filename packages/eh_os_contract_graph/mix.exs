@@ -75,9 +75,9 @@ defmodule EhOsContract.GraphRenderer.MixProject do
 
   defp deps do
     [
-      # The component, HEEx and the hook's events. The only dependency a host gets.
+      # The component, HEEx and the hook's events.
       {:phoenix_live_view, "~> 1.1"},
-      # The test endpoint (test/support/endpoint.ex) is a Phoenix endpoint. Declared for
+      # The test endpoint (test/support/test_live.ex) is a Phoenix endpoint. Declared for
       # every environment because phoenix_live_view needs it in every one, and Mix
       # refuses `only: :test` for a dependency another declares without it.
       {:phoenix, "~> 1.8"},

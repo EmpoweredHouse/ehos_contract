@@ -10,12 +10,24 @@ defmodule EhOsContract.GraphRenderer.AssetsTest do
   @bundle Path.join(@root, "priv/static/eh_os_contract_graph.esm.js")
   @stylesheet Path.join(@root, "priv/static/eh_os_contract_graph.css")
 
+  # The hook's code without its comments, which name what it must not do. The `//` of a URL
+  # in a string (the SVG namespace) follows a colon and stays.
+  defp code(path) do
+    path
+    |> File.read!()
+    |> String.replace(~r{/\*.*?\*/}s, "")
+    |> String.replace(~r{(^|[^:])//.*$}m, "\\1")
+  end
+
   test "the hook never writes a style or markup, only classes and the constructed stylesheets" do
-    source = File.read!(@hook)
+    source = code(@hook)
+
+    # The word itself, so that no spelling slips past: `setAttribute('style', …)`, an SVG
+    # helper given a `style:` key, `setAttributeNS(null, "style", …)`, `el.style.x`.
+    refute source =~ ~r/\bstyle\b/, "assets/js/eh_os_contract_graph.js names a style in its code"
 
     for forbidden <- [
-          ".style",
-          ~s{setAttribute("style"},
+          "attributeStyleMap",
           "cssText",
           "innerHTML",
           "outerHTML",

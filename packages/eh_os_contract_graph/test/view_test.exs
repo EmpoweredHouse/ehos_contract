@@ -35,13 +35,27 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     refute Enum.any?(relations, &(&1.id == "handled_by:dangling"))
   end
 
-  test "all/1 gives the same view, in the same order, for the same document" do
-    document = Fixtures.document("rehmed.settlement")
-    reordered = Map.update!(document, "nodes", &Map.new(Enum.reverse(Map.to_list(&1))))
+  test "all/1 takes kinds and types in name order, whatever order the map holds them in" do
+    # A map of more than 32 keys is a hash map, whose order is not its keys': forty kinds of
+    # one node each, and as many types of one relation, make the document's maps that large.
+    many = for i <- 1..40, do: "kind_#{String.pad_leading("#{i}", 2, "0")}"
+    nodes = Map.new(many, &{&1, [%{"id" => &1, "name" => &1, "label" => nil}]})
 
-    assert View.all(document) == View.all(reordered)
-    kinds = Enum.map(View.all(document).nodes, & &1.kind) |> Enum.dedup()
-    assert kinds == Enum.sort(kinds)
+    relations =
+      Map.new(many, &{"type_" <> &1, [%{"id" => "r_" <> &1, "from" => &1, "to" => "kind_01"}]})
+
+    refute Map.keys(nodes) == Enum.sort(Map.keys(nodes))
+
+    view = View.all(%{"nodes" => nodes, "relations" => relations})
+    assert Enum.map(view.nodes, & &1.kind) == Enum.sort(many)
+    assert Enum.map(view.relations, & &1.type) == Enum.sort(Map.keys(relations))
+  end
+
+  test "all/1 keeps each group in the document's order" do
+    document = Fixtures.document("rehmed.settlement")
+    commands = for %{kind: "command"} = node <- View.all(document).nodes, do: node.id
+
+    assert commands == Enum.map(document["nodes"]["command"], & &1["id"])
   end
 
   test "with_observed/2 adds the moves the overlay saw and the document does not declare" do

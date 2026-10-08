@@ -1,17 +1,21 @@
 defmodule EhOsContract.GraphRendererTest do
   @moduledoc """
   Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
-  the client trees as the engine gives it today. The renderer's own suite runs on
-  fixtures taken once and does not follow these trees as they change; this does.
+  the client trees as the engine gives it today, with the overlay the engine reads from
+  the log over it. The renderer's own suite runs on fixtures taken once, which do not
+  follow these trees as they change; this does, and holds the fixtures to today's schema.
   """
 
-  use ExUnit.Case, async: true
+  use Taxvision.DataCase, async: false
 
   import Phoenix.LiveViewTest
 
-  alias EhOsContract.Graph.Document
+  alias EhOsContract.Graph.{Document, Overlay}
   alias EhOsContract.GraphRenderer.Canvas
   alias EhOsContract.Registry
+
+  @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+  @fixtures Path.expand("../../packages/eh_os_contract_graph/test/fixtures", __DIR__)
 
   defp documents do
     contracts = Registry.contracts()
@@ -20,7 +24,16 @@ defmodule EhOsContract.GraphRendererTest do
       for d <- Registry.domains(), do: {inspect(d), Document.domain(d, contracts)}
   end
 
-  defp draw(document), do: render_component(Canvas, id: "graph", document: document)
+  defp overlays do
+    contracts = Registry.contracts()
+
+    for(c <- contracts, do: {inspect(c), Document.contract(c), Overlay.contract(c)}) ++
+      for d <- Registry.domains(),
+          do: {inspect(d), Document.domain(d, contracts), Overlay.domain(d, contracts)}
+  end
+
+  defp draw(document, overlay \\ nil),
+    do: render_component(Canvas, id: "graph", document: document, overlay: overlay)
 
   defp all(document, group),
     do: for({_kind, list} <- document[group], element <- list, do: element["id"])
@@ -47,6 +60,44 @@ defmodule EhOsContract.GraphRendererTest do
     for {name, document} <- documents() do
       decoded = document |> Document.encode() |> Jason.decode!()
       assert draw(decoded) == draw(document), name
+    end
+  end
+
+  test "the overlay is drawn over every document: a count on each step the log has numbers for" do
+    numbered =
+      for {name, document, overlay} <- overlays() do
+        html = document |> draw(overlay) |> LazyHTML.from_fragment()
+        assert Enum.count(LazyHTML.query(html, ".ehg-note")) == 0, name
+
+        # What the overlay gives a number for, by its schema: every entry but a relation
+        # several steps end at (`by_trigger`) and an effect's step, whose `taken` is null.
+        counted =
+          for {id, entry} <- overlay["relations"],
+              not Map.has_key?(entry, "by_trigger"),
+              not (Map.has_key?(entry, "taken") and entry["taken"] == nil),
+              do: id
+
+        drawn =
+          html
+          |> LazyHTML.query("[data-ehg-relation]:has(.ehg-count)")
+          |> LazyHTML.attribute("data-ehg-relation")
+
+        assert Enum.sort(drawn) == Enum.sort(counted), name
+        length(counted)
+      end
+
+    assert Enum.sum(numbered) > 0
+  end
+
+  test "the renderer's fixtures taken from the client trees still hold to the schema" do
+    # edge_cases.json is made by hand for what no client wrote, and is not a whole document.
+    names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
+    taken = names -- ["edge_cases.json"]
+    assert length(taken) == 3
+
+    for name <- taken do
+      document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()
+      assert {:ok, _} = JSV.validate(document, @schema), name
     end
   end
 end

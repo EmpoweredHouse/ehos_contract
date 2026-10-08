@@ -198,5 +198,22 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       send(view.pid, {:document, Map.update!(document, "relations", &Map.put(&1, "emits", []))})
       assert Enum.count(LazyHTML.query(page(view), ".ehg-panel, .is-selected")) == 0
     end
+
+    test "an update that names only some attributes keeps the rest", %{
+      view: view,
+      document: document
+    } do
+      overlay = %{
+        "document_digest" => document["digest"],
+        "nodes" => %{"event:edge_cases:zażółć gęślą jaźń" => %{"occurrences" => 3}},
+        "relations" => %{}
+      }
+
+      Phoenix.LiveView.send_update(view.pid, Canvas, id: "graph", overlay: overlay)
+      assert page(view) |> LazyHTML.query(".ehg-count") |> LazyHTML.text() == "×3"
+
+      Phoenix.LiveView.send_update(view.pid, Canvas, id: "graph", document: document)
+      assert page(view) |> LazyHTML.query(".ehg-count") |> LazyHTML.text() == "×3"
+    end
   end
 end

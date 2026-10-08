@@ -4445,6 +4445,20 @@ var curve = (points) => {
   step(x1, y1);
   return d + `L${x1},${y1}`;
 };
+var loop = (card, label) => {
+  const [dx, dy] = [label.x - card.x, label.y - card.y];
+  const across = Math.abs(dx) / card.width > Math.abs(dy) / card.height;
+  const [ux, uy] = across ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1];
+  const [vx, vy] = [-uy, ux];
+  const edge = across ? card.width / 2 : card.height / 2;
+  const side = across ? card.height : card.width;
+  const spread = Math.min(side / 4, 24);
+  const centre = Math.max(-side / 2 + spread, Math.min(side / 2 - spread, dx * vx + dy * vy));
+  const gap = Math.abs(across ? dx : dy) - edge - (across ? label.width : label.height) / 2;
+  const reach = Math.max(16, (gap - 4) / 0.75);
+  const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
+  return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
+};
 var gesture = (event) => event.type === "wheel" ? event.ctrlKey || event.metaKey : !event.button && !event.ctrlKey;
 var EhOsContractGraph = {
   mounted() {
@@ -4463,6 +4477,8 @@ var EhOsContractGraph = {
     });
     this.fontsLoaded = () => this.draw();
     document.fonts.addEventListener("loadingdone", this.fontsLoaded);
+    this.resized = new ResizeObserver(() => this.draw());
+    this.resized.observe(this.canvas);
     this.drawn = Promise.resolve();
     this.draw();
   },
@@ -4472,6 +4488,7 @@ var EhOsContractGraph = {
   destroyed() {
     this.gone = true;
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded);
+    this.resized.disconnect();
     const own = [this.layoutSheet, this.zoomSheet];
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet));
   },
@@ -4480,7 +4497,9 @@ var EhOsContractGraph = {
     this.drawn = this.drawn.then(() => this.redraw()).catch((error) => console.error("eh_os_contract_graph: the graph could not be drawn:", error));
   },
   // Laid out again only when a card or a label appeared, went, or changed its size; otherwise only the
-  // arrows' classes follow the labels', which is all a selection or a new overlay changes.
+  // arrows' classes follow the labels', which is all a selection or a new overlay changes. Fitted to the
+  // canvas again only when the cards are other cards — another document, another view — so the reader's
+  // zoom stays across a selection, a new overlay and a late font.
   async redraw() {
     await document.fonts.ready;
     if (this.gone) return;
@@ -4504,12 +4523,19 @@ var EhOsContractGraph = {
       this.lay(cards, labels);
     }
     this.paint(labels);
+    const nodes = cards.map(({ id: id2 }) => id2).join("\n");
+    if (nodes !== this.fittedFor) {
+      this.fittedFor = nodes;
+      this.fitted = false;
+    }
+    if (!this.fitted) this.fit();
   },
   lay(cards, labels) {
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`);
       this.el.querySelector(".ehg-arrows").replaceChildren();
       this.arrows = /* @__PURE__ */ new Map();
+      this.size = null;
       return;
     }
     const graph = new ie.Graph({ multigraph: true });
@@ -4534,7 +4560,7 @@ var EhOsContractGraph = {
     });
     this.layoutSheet.replaceSync(rules.join("\n"));
     this.drawArrows(graph, labels, width, height);
-    if (!this.fitted) this.fit(width, height);
+    this.size = { width, height };
   },
   // Each arrow is two paths: the line the reader sees, and a wide invisible one under it that takes the click.
   // No visible style reaches the second — a dash would cut gaps in it, a fill would draw it — so the stylesheet
@@ -4557,8 +4583,9 @@ var EhOsContractGraph = {
     const defs = svg("defs");
     defs.append(marker);
     this.arrows = /* @__PURE__ */ new Map();
-    const arrows = labels.map(({ id: id2, from, to }) => {
-      const d = curve(graph.edge({ v: from, w: to, name: id2 }).points);
+    const arrows = labels.map(({ id: id2, from, to, width: width2, height: height2 }) => {
+      const edge = graph.edge({ v: from, w: to, name: id2 });
+      const d = from === to ? loop(graph.node(from), { x: edge.x, y: edge.y, width: width2, height: height2 }) : curve(edge.points);
       const arrow = svg("g", { class: "ehg-arrow", "data-ehg-arrow": id2 });
       arrow.append(
         svg("path", { class: "ehg-hit", d }),
@@ -4575,10 +4602,12 @@ var EhOsContractGraph = {
       this.arrows.get(id2)?.setAttribute("class", ["ehg-arrow", ...states].join(" "));
     });
   },
-  // The whole graph in view, never larger than its own size, centred.
-  fit(width, height) {
+  // The whole graph in view, never larger than its own size, centred. Not while the canvas has no size: the
+  // ResizeObserver tries again when it has one.
+  fit() {
     const box = this.canvas.getBoundingClientRect();
-    if (!box.width || !box.height || !width || !height) return;
+    if (!this.size || !box.width || !box.height) return;
+    const { width, height } = this.size;
     const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
     const at2 = identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k);
     select_default2(this.canvas).call(this.zoom.transform, at2);

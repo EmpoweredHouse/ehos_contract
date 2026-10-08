@@ -37,7 +37,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   Content-Security-Policy of `default-src 'self'` refuses one, and LiveView takes
   away on its next patch one the server did not render. Positions, sizes and the zoom
   live in the hook's constructed stylesheets. `test/canvas_test.exs` holds the
-  template to it, `test/assets_test.exs` the hook.
+  template to it, `test/assets_test.exs` the hook. The one style anything sets is
+  d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which
+  the policy allows; the stylesheet sets the same, so LiveView taking it away changes
+  nothing.
+
+  **An id with a carriage return or a NUL cannot be selected**: the browser's HTML
+  parser rewrites both in the `phx-value-id` a click sends, so the id that comes back
+  is not the document's. Nothing a client declares today has either.
   """
 
   use Phoenix.LiveComponent
@@ -47,17 +54,21 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   @impl true
   def mount(socket), do: {:ok, assign(socket, selected: nil)}
 
+  # What an update leaves out stays as it was: a `send_update/2` with only an overlay keeps
+  # the document, and one without an overlay keeps the overlay. `:given` is the overlay as
+  # the host passed it, `:overlay` the one drawn.
   @impl true
   def update(assigns, socket) do
-    document = Map.fetch!(assigns, :document)
-    given = Map.get(assigns, :overlay)
+    socket = assign(socket, Map.take(assigns, [:id, :document]))
+    document = Map.fetch!(socket.assigns, :document)
+    given = Map.get(assigns, :overlay, socket.assigns[:given])
     overlay = if given && given["document_digest"] == document["digest"], do: given
     view = document |> View.all() |> View.with_observed(overlay)
     selected = socket.assigns.selected
 
     {:ok,
      assign(socket,
-       id: Map.fetch!(assigns, :id),
+       given: given,
        view: view,
        overlay: overlay,
        stale_overlay?: given != nil and overlay == nil,

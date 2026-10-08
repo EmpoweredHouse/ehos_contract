@@ -30,6 +30,10 @@ def deps do
 end
 ```
 
+The dashboard brings the graph renderer, `eh_os_contract_graph`, the same way, and carries its
+script in its own bundle. That script reads the markup the renderer's component renders, so
+update the two together: `mix deps.update eh_os_contract_web eh_os_contract_graph`.
+
 ## Mounting it
 
 ```elixir

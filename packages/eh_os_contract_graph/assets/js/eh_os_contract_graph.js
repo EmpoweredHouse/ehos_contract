@@ -57,6 +57,30 @@ const curve = (points) => {
   return d + `L${x1},${y1}`
 }
 
+// A relation from a card to itself — a move a lifecycle does not allow, which leaves a status for the same one —
+// as a loop out of the card's side that faces its label and back, its far end just short of the label, which
+// stays where dagre made room for it. dagre 3.1.1 centres a loop's points on its label and never touches the
+// card with them, so they are not used.
+const loop = (card, label) => {
+  const [dx, dy] = [label.x - card.x, label.y - card.y]
+  const across = Math.abs(dx) / card.width > Math.abs(dy) / card.height
+  // u points out of the card towards the label, v along the side the loop leaves from.
+  const [ux, uy] = across ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1]
+  const [vx, vy] = [-uy, ux]
+  const edge = across ? card.width / 2 : card.height / 2
+  const side = across ? card.height : card.width
+  const spread = Math.min(side / 4, 24)
+  const centre = Math.max(-side / 2 + spread, Math.min(side / 2 - spread, dx * vx + dy * vy))
+  // A cubic whose two controls lie at c out from the side peaks at three quarters of c.
+  const gap = Math.abs(across ? dx : dy) - edge - (across ? label.width : label.height) / 2
+  const reach = Math.max(16, (gap - 4) / 0.75)
+  const at = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`
+  return (
+    `M${at(centre - spread, 0)}` +
+    `C${at(centre - spread - 12, reach)} ${at(centre + spread + 12, reach)} ${at(centre + spread, 0)}`
+  )
+}
+
 // A plain wheel scrolls the page, as it does everywhere else on it; with Ctrl or ⌘ — which is also what a
 // trackpad's pinch sends — it zooms. The main button pans.
 const gesture = (event) =>
@@ -85,9 +109,12 @@ export const EhOsContractGraph = {
       if (arrow) this.pushEventTo(this.el, "select", { id: arrow.dataset.ehgArrow })
     })
 
-    // A font that arrives after the first layout changes the cards' sizes: lay them out again.
+    // A font that arrives after the first layout changes the cards' sizes: lay them out again. So does a
+    // canvas that was hidden when it was first laid out, whose cards measured nothing, once it is shown.
     this.fontsLoaded = () => this.draw()
     document.fonts.addEventListener("loadingdone", this.fontsLoaded)
+    this.resized = new ResizeObserver(() => this.draw())
+    this.resized.observe(this.canvas)
 
     this.drawn = Promise.resolve()
     this.draw()
@@ -100,6 +127,7 @@ export const EhOsContractGraph = {
   destroyed() {
     this.gone = true
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded)
+    this.resized.disconnect()
     const own = [this.layoutSheet, this.zoomSheet]
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet))
   },
@@ -112,7 +140,9 @@ export const EhOsContractGraph = {
   },
 
   // Laid out again only when a card or a label appeared, went, or changed its size; otherwise only the
-  // arrows' classes follow the labels', which is all a selection or a new overlay changes.
+  // arrows' classes follow the labels', which is all a selection or a new overlay changes. Fitted to the
+  // canvas again only when the cards are other cards — another document, another view — so the reader's
+  // zoom stays across a selection, a new overlay and a late font.
   async redraw() {
     await document.fonts.ready
     if (this.gone) return
@@ -138,6 +168,13 @@ export const EhOsContractGraph = {
       this.lay(cards, labels)
     }
     this.paint(labels)
+
+    const nodes = cards.map(({ id }) => id).join("\n")
+    if (nodes !== this.fittedFor) {
+      this.fittedFor = nodes
+      this.fitted = false
+    }
+    if (!this.fitted) this.fit()
   },
 
   lay(cards, labels) {
@@ -146,6 +183,7 @@ export const EhOsContractGraph = {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`)
       this.el.querySelector(".ehg-arrows").replaceChildren()
       this.arrows = new Map()
+      this.size = null
       return
     }
 
@@ -173,7 +211,7 @@ export const EhOsContractGraph = {
     this.layoutSheet.replaceSync(rules.join("\n"))
 
     this.drawArrows(graph, labels, width, height)
-    if (!this.fitted) this.fit(width, height)
+    this.size = { width, height }
   },
 
   // Each arrow is two paths: the line the reader sees, and a wide invisible one under it that takes the click.
@@ -199,8 +237,12 @@ export const EhOsContractGraph = {
     defs.append(marker)
 
     this.arrows = new Map()
-    const arrows = labels.map(({ id, from, to }) => {
-      const d = curve(graph.edge({ v: from, w: to, name: id }).points)
+    const arrows = labels.map(({ id, from, to, width, height }) => {
+      const edge = graph.edge({ v: from, w: to, name: id })
+      const d =
+        from === to
+          ? loop(graph.node(from), { x: edge.x, y: edge.y, width, height })
+          : curve(edge.points)
       const arrow = svg("g", { class: "ehg-arrow", "data-ehg-arrow": id })
       arrow.append(
         svg("path", { class: "ehg-hit", d }),
@@ -219,10 +261,12 @@ export const EhOsContractGraph = {
     })
   },
 
-  // The whole graph in view, never larger than its own size, centred.
-  fit(width, height) {
+  // The whole graph in view, never larger than its own size, centred. Not while the canvas has no size: the
+  // ResizeObserver tries again when it has one.
+  fit() {
     const box = this.canvas.getBoundingClientRect()
-    if (!box.width || !box.height || !width || !height) return
+    if (!this.size || !box.width || !box.height) return
+    const { width, height } = this.size
     const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
     const at = zoomIdentity.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k)
     select(this.canvas).call(this.zoom.transform, at)

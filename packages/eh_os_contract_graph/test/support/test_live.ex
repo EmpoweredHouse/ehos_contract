@@ -9,7 +9,7 @@ end
 defmodule EhOsContract.GraphRenderer.TestLive do
   @moduledoc false
   # A LiveView that renders the component over the document and the overlay its session
-  # names, as a host would; `{:overlay, _}` and `{:document, _}` change them, as a host's update would.
+  # names, as a host would; `{:overlay, _}` and `{:document, _}` change them, as a host's render would.
   use Phoenix.LiveView
 
   @impl true

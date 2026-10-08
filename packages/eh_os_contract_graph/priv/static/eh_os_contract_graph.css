@@ -197,7 +197,7 @@
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
 }
-.is-far {
+.ehg .is-far {
   opacity: 0.3;
 }
 .ehg-arrow.is-selected .ehg-line,
