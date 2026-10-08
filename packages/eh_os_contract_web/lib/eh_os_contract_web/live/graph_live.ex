@@ -15,7 +15,7 @@ defmodule EhOsContract.Web.Live.Graph do
   user's decision of 8 October (`EhOsContract.GraphRenderer.View`). The log is read
   once the socket is connected, once per document: the first, static render draws
   the pictures declared, and the mount that follows lays the log over them. A click
-  on a card or an arrow opens the renderer's panel, raw until the panels are built.
+  on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).
 
   The selector picks a contract, by its id, whether or not it has a process (plan DD,
   P1b, #186; until then it picked a process, and a contract without one could not be
@@ -29,7 +29,9 @@ defmodule EhOsContract.Web.Live.Graph do
       external systems around them.
 
   **Above both, each domain** (plan EG2): its context map — subdomains, contexts,
-  externals and their relations — and, where it has a v2 contract, its system: the
+  externals and their relations — with its actors under it, people and systems apart,
+  a row opening the actor's panel beside the map; and, where it has a v2 contract, its
+  system: the
   contracts in their contexts, what one consumes from another, and the log over it.
   **Below both, the units** of the selected contract, each its own picture: state,
   commands, events, invariants and the scenarios that pin each path. The map and the
@@ -42,7 +44,7 @@ defmodule EhOsContract.Web.Live.Graph do
   use Phoenix.LiveView
 
   alias EhOsContract.Graph.{Document, Overlay}
-  alias EhOsContract.GraphRenderer.{Canvas, View}
+  alias EhOsContract.GraphRenderer.{Actors, Canvas, View}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -128,6 +130,7 @@ defmodule EhOsContract.Web.Live.Graph do
             document={domain.document}
             view={:context_map}
           />
+          <Actors.table document={domain.document} canvas={"map-graph-#{domain.name}"} />
         </section>
 
         <section :if={domain.system?}>

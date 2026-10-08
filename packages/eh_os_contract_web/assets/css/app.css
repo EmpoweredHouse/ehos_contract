@@ -146,6 +146,11 @@ main {
   margin: 0 auto;
 }
 
+/* A page with graphs on it takes the window's width: a graph is read across, and its panel sits beside it. */
+main:has(.ehg) {
+  max-width: none;
+}
+
 /* No edge-to-edge bar: nav sits inside the same padded column as everything else. The page being
    viewed is raised onto surface-2 with a hairline and carries the lime dot — the one signal on the
    page, as in Shugyo's sidebar. */

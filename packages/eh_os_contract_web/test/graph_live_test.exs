@@ -84,6 +84,20 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert cards(html, "system-graph-web_test_host") == drawn(domain_document, :system)
   end
 
+  # Point 2 of the working plan: the domain's actors under its map, a row opening the
+  # actor's panel beside the map, though the map does not draw actors.
+  test "the actors under a domain's map, a row opening the actor's panel beside the map" do
+    view = live_graph()
+
+    assert has_element?(view, ~s(.ehg-actors button[phx-target="#map-graph-web_test_host"]))
+
+    view |> element(".ehg-actors button", "Case officer") |> render_click()
+
+    assert view
+           |> element("#map-graph-web_test_host .ehg-panel h4")
+           |> render() =~ "Case officer"
+  end
+
   # The static render, before the socket connects: the first contract by id, its pictures
   # drawn declared, without reading the log.
   test "the dead render draws the first contract by id, without the log" do
