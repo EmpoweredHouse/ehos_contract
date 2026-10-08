@@ -1,4 +1,4 @@
-defmodule Taxvision.AccountingMonthScenariosTest do
+defmodule Taxvision.AccountingMonthProcessScenariosTest do
   @moduledoc "One test per scenario of `Taxvision.Processes.AccountingMonth`: its promise judged."
 
   use EhOsContract.ScenarioCase, process: Taxvision.Processes.AccountingMonth

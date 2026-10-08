@@ -824,8 +824,9 @@ wait on (X4).
 `ScenarioCase, process:` judges through `Trace.trace/2` and `Trace.judge/3`, without a database.
 **S3 — the test material's promises have scenarios** (#256; tightened 8 October 2026). Rehmed's
 `medical_event_reported_within_statutory_window`: kept by sending, kept by waiving, broken after two days, excused by
-a P1 outage, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening, kept by a discrepancy, broken; no
-outage, since nothing it waits on depends on an external system. A test module per process.
+a P1 outage inside the window but not after it, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening,
+kept by a discrepancy, broken; no outage, since the library excuses a promise only by what its own events depend on, and
+the registries are one step upstream (recorded on #256). A test module per process.
 
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;

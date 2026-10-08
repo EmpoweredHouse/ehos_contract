@@ -17,7 +17,7 @@ defmodule Rehmed.Processes.ClinicalVisit do
   registry (`AGG-10`'s error state) does not end it: the report is still owed, and
   its retry (`S-46`) is not written yet.
 
-  The scenarios show the promise judged (plan DD, S3, #256). The register being down
+  The scenarios show the promise judged (plan DD, S3 (#256)). The register being down
   excuses a visit whose two days it falls in; the regulation's own rule, three days
   from the end of the outage, needs an outage with an end, which the library does
   not have, so a suspension approximates it (the contract's moduledoc).
@@ -78,6 +78,12 @@ defmodule Rehmed.Processes.ClinicalVisit do
   scenario "rejestr P1 nie działał, raport niewysłany — termin zawieszony", verdict: :suspended do
     given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
     outage :p1, at: "2026-09-08T10:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
+  end
+
+  scenario "rejestr P1 padł dopiero po terminie — termin przekroczony", verdict: :violated do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    outage :p1, at: "2026-09-09T12:00:00+02:00"
     promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
   end
 

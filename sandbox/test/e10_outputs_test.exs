@@ -47,6 +47,21 @@ defmodule EhOsContractHost.E10OutputsTest do
     end
   end
 
+  # Plan DD, S3 (#256): a process module carries scenarios too. It is not exported yet
+  # (P2e, #220), so its model is held to the same, as what an export will be made from.
+  test "no process module's model carries Rehmed's personal scenario values" do
+    processes = EhOsContract.Registry.processes()
+    assert Rehmed.Processes.ClinicalVisit in processes
+
+    for process <- processes do
+      model = process |> EhOsContract.Model.fetch() |> inspect(limit: :infinity)
+
+      for personal <- ["85010112345", "M54.5", "93.39"] do
+        refute model =~ personal, "#{inspect(process)} carries #{personal}"
+      end
+    end
+  end
+
   test "TaxVision's public event is the only AsyncAPI message boundary" do
     document = EhOsContract.AsyncAPI.document(Taxvision.Contracts.AccountingMonth)
 

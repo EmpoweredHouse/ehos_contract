@@ -13,9 +13,12 @@ defmodule Taxvision.Processes.AccountingMonth do
   Nothing ends a run yet: the month closes past E9c, so the module declares no
   `ends_on`, and no deadline, which would measure a run to its end.
 
-  The scenarios show the promise judged (plan DD, S3, #256). None is excused: neither
-  an open month nor a discrepancy waits on an external system, so an outage of the
-  registries explains nothing about either.
+  The scenarios show the promise judged (plan DD, S3 (#256)). None is excused, and
+  none can be yet: both endings follow the registry check, which depends on the
+  registries, but the library excuses a promise only by what its `eventually` and
+  `or_else` depend on themselves, and neither does. An outage of the registries is
+  refused in a scenario of this promise; whether it should reach one step upstream is
+  recorded on #256.
   """
 
   use EhOsContract.Process,
