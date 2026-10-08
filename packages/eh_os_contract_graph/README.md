@@ -87,7 +87,10 @@ It is drawn on the EmpoweredHouse design system's tokens (`--surface-*`, `--bord
 which the host defines, so it follows the host's theme.
 
 Nothing it loads or sets needs more than a Content-Security-Policy of `default-src 'self'`: no `style`
-attribute, no inline `<style>`, no `eval`. Positions and the zoom live in constructed stylesheets. The one
+attribute, no inline `<style>`, no `eval`. Positions and sizes live in constructed stylesheets; what moves
+on every frame — the zoom, the panel's edge while it is dragged — is a Web Animation, because WebKit styles the
+whole page again whenever a stylesheet changes, and Safari stuttered while a stylesheet was written every
+frame. The one
 style anything sets is d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which the
 policy allows.
 

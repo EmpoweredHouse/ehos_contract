@@ -4,10 +4,10 @@
    which the host's own stylesheet defines: this file uses them and defines none of them, so it follows the
    host's theme. What it adds is named --eh-os-contract-graph-*. Every class is .ehg-*, every state .is-*.
 
-   Nothing here is a position, a size of the graph or the zoom: those are in the hook's constructed
-   stylesheets (assets/js/eh_os_contract_graph.js), because the host's Content-Security-Policy refuses a
-   `style` attribute and LiveView takes away one it did not render. Until the hook has laid the graph out,
-   the viewport is hidden, so nothing is seen piled at the top left. */
+   Nothing here is a position, a size of the graph or the zoom: positions and sizes are in the hook's
+   constructed stylesheets and the zoom is a Web Animation (assets/js/eh_os_contract_graph.js), because the
+   host's Content-Security-Policy refuses a `style` attribute and LiveView takes away one it did not render.
+   Until the hook has laid the graph out, the viewport is hidden, so nothing is seen piled at the top left. */
 
 .ehg {
   display: grid;
@@ -53,6 +53,12 @@
   top: 0;
   transform-origin: 0 0;
   visibility: hidden;
+}
+
+/* During a pan or a zoom: a layer of its own, which the browser moves without painting the cards and the arrows
+   again; after it, painted once more at the scale it was left at, sharp. */
+.ehg-viewport.ehg-moving {
+  will-change: transform;
 }
 
 /* The arrows. The line the reader sees takes no pointer; a wide stroke nobody sees, which no dash and no

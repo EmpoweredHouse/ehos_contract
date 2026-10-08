@@ -9,9 +9,12 @@
 // patches:
 //
 // * No `style` attribute, ever. The policy refuses one written as markup or through setAttribute, and
-//   LiveView takes away, on its next patch, one the server did not render. Every position, size and the zoom
-//   live in constructed stylesheets (the CSSOM), which the policy allows and LiveView does not see.
-//   test/assets_test.exs holds this file to it.
+//   LiveView takes away, on its next patch, one the server did not render. Every position and size lives in
+//   constructed stylesheets (the CSSOM), which the policy allows and LiveView does not see. What moves on every
+//   frame — the zoom, the panel's edge while it is dragged — is a Web Animation instead: WebKit styles the whole
+//   page again whenever a stylesheet changes, which Chrome does not, so a stylesheet written on every frame made
+//   Safari stutter. An animation's value is neither an attribute nor a stylesheet, so the policy allows it and
+//   LiveView keeps it. test/assets_test.exs holds this file to it.
 // * The arrows live in an <svg phx-update="ignore">, so LiveView leaves what is drawn there alone.
 
 import { graphlib, layout } from "../vendor/dagre.esm.js"
@@ -27,6 +30,12 @@ const SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 2
 const HOLD = "\u0000hold"
 
 let instances = 0
+
+const adopt = () => {
+  const sheet = new CSSStyleSheet()
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+  return sheet
+}
 
 // The panel is one sidebar for the page, whichever canvas it is of, so its width is the page's: a rule in a
 // stylesheet every canvas shares, set while the reader drags the panel's edge and kept in the browser. A browser
@@ -57,14 +66,22 @@ const keepWidth = (px) => {
   } catch {}
 }
 
+// `element` held at `value` by a Web Animation that has ended and stays, `animation` reused while it is still
+// the element's: what moves on every frame, without a stylesheet or an attribute (see the top of this file).
+const hold = (element, animation, value) => {
+  const frames = [value, value]
+  if (animation && animation.effect.target === element) {
+    animation.effect.setKeyframes(frames)
+    return animation
+  }
+  animation?.cancel()
+  const held = element.animate(frames, { duration: 0, fill: "forwards" })
+  held.persist()
+  return held
+}
+
 // As wide as the reader drags it, but never so narrow it says nothing nor so wide no graph is left beside it.
 const clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)))
-
-const adopt = () => {
-  const sheet = new CSSStyleSheet()
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
-  return sheet
-}
 
 // A value inside a quoted attribute selector. A node's id is the client's names and may hold any character.
 const quoted = (value) => `"${CSS.escape(value)}"`
@@ -135,7 +152,6 @@ export const EhOsContractGraph = {
     this.scope = `#${CSS.escape(this.el.id)}`
     this.head = `ehg-head-${++instances}`
     this.layoutSheet = adopt()
-    this.zoomSheet = adopt()
     this.sizeSheet = adopt()
     this.key = null
     this.arrows = new Map()
@@ -149,7 +165,10 @@ export const EhOsContractGraph = {
       // While a gesture lasts the graph is a layer of its own, which the browser moves and scales without
       // painting the cards and the arrows again on every frame; after it, the layer goes, and the graph is
       // painted once more at the scale it was left at, sharp.
-      .on("start", () => (this.moving = true))
+      .on("start", () => {
+        this.moving = true
+        this.layer()
+      })
       .on("zoom", ({ transform, sourceEvent }) => {
         // A wheel, a pinch or a drag is the reader's; a fit is not.
         if (sourceEvent) this.touched = true
@@ -157,7 +176,7 @@ export const EhOsContractGraph = {
       })
       .on("end", () => {
         this.moving = false
-        if (this.at) this.zoomed(this.at)
+        this.layer()
       })
     select(this.canvas).call(this.zoom).on("dblclick.zoom", null)
 
@@ -184,8 +203,8 @@ export const EhOsContractGraph = {
     // canvas that was hidden when it was first laid out, whose cards measured nothing, once it is shown.
     this.fontsLoaded = () => this.draw()
     document.fonts.addEventListener("loadingdone", this.fontsLoaded)
-    // A canvas whose width changes — the window's, a panel opening beside the page — is fitted to it again, unless
-    // the reader has zoomed or panned it: then their view stays.
+    // A canvas whose width changes with the window's is fitted to it again, unless the reader has zoomed or panned
+    // it: then their view stays.
     this.resized = new ResizeObserver(() => {
       if (!this.touched) this.fitted = false
       this.draw()
@@ -198,6 +217,9 @@ export const EhOsContractGraph = {
 
   updated() {
     this.announce()
+    // A patch that put another viewport in place, or took the gesture's class away, leaves the zoom where it was.
+    if (this.at && this.zooming?.effect.target !== this.viewport()) this.zoomed(this.at)
+    if (this.moving) this.layer()
     this.draw()
   },
 
@@ -207,7 +229,7 @@ export const EhOsContractGraph = {
     document.removeEventListener("keydown", this.escape)
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded)
     this.resized.disconnect()
-    const own = [this.layoutSheet, this.zoomSheet, this.sizeSheet]
+    const own = [this.layoutSheet, this.sizeSheet]
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet))
   },
 
@@ -225,14 +247,17 @@ export const EhOsContractGraph = {
     if (!grip || event.button) return
     event.preventDefault()
     grip.setPointerCapture(event.pointerId)
-    // A pointer reports more moves than the screen shows frames: the last of each frame's is the one set.
+    // While it is dragged, the panel's width is an animation of the panel alone, the last move of each frame; the
+    // stylesheet every panel takes its width from is written once, when the drag ends.
+    const panel = grip.closest(".ehg-panel")
     let px = null
     let frame = null
+    let sizing = null
     const move = (e) => {
       px = clampWidth(window.innerWidth - e.clientX)
       frame ??= requestAnimationFrame(() => {
         frame = null
-        panelWidth(px)
+        sizing = hold(panel, sizing, { width: `${px}px` })
       })
     }
     const end = () => {
@@ -244,6 +269,7 @@ export const EhOsContractGraph = {
         panelWidth(px)
         keepWidth(px)
       }
+      sizing?.cancel()
     }
     grip.addEventListener("pointermove", move)
     grip.addEventListener("pointerup", end)
@@ -259,13 +285,14 @@ export const EhOsContractGraph = {
 
   // Laid out again only when a card or a label appeared, went, or changed its size; otherwise only the
   // arrows' classes follow the labels', which is all a selection or a new overlay changes. Fitted to the
-  // canvas again only when the cards are other cards — another document, another view — so the reader's
-  // zoom stays across a selection, a new overlay and a late font.
+  // canvas again when the cards are other cards — another document, another view — or when the canvas's width
+  // changed and the reader has not moved the graph, so the reader's zoom stays across a selection, a new overlay
+  // and a late font.
   async redraw() {
     await document.fonts.ready
     if (this.gone) return
 
-    const viewport = this.el.querySelector(".ehg-viewport")
+    const viewport = this.viewport()
     const direction = this.el.dataset.direction === "TB" ? "TB" : "LR"
     const boxes = [...viewport.querySelectorAll("[data-ehg-group]")]
     const present = new Set(boxes.map((el) => el.dataset.ehgGroup))
@@ -432,9 +459,9 @@ export const EhOsContractGraph = {
   // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
   // ResizeObserver tries again when it has one.
   fit() {
-    if (!this.size || !this.canvas.getBoundingClientRect().width) return
-    const { width, height } = this.size
     const across = this.canvas.getBoundingClientRect().width
+    if (!this.size || !across) return
+    const { width, height } = this.size
     const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32)
     this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`)
     const box = this.canvas.getBoundingClientRect()
@@ -447,7 +474,16 @@ export const EhOsContractGraph = {
   zoomed(at) {
     this.at = at
     const { x, y, k } = at
-    const layer = this.moving ? "; will-change: transform" : ""
-    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k})${layer} }`)
+    this.zooming = hold(this.viewport(), this.zooming, { transform: `translate(${x}px, ${y}px) scale(${k})` })
+  },
+
+  // While a gesture lasts the viewport is a layer of its own (.ehg-moving, in the stylesheet). The class is on an
+  // element the server renders, so a patch in the middle of a gesture takes it away, and `updated` puts it back.
+  layer() {
+    this.viewport().classList.toggle("ehg-moving", this.moving === true)
+  },
+
+  viewport() {
+    return this.el.querySelector(".ehg-viewport")
   },
 }

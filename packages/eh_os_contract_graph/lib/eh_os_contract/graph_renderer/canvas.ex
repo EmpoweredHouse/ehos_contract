@@ -48,8 +48,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   **Nothing here renders a `style` attribute**, and the hook sets none: the host's
   Content-Security-Policy of `default-src 'self'` refuses one, and LiveView takes
-  away on its next patch one the server did not render. Positions, sizes and the zoom
-  live in the hook's constructed stylesheets. `test/canvas_test.exs` holds the
+  away on its next patch one the server did not render. Positions and sizes live in
+  the hook's constructed stylesheets; the zoom, and the panel's width while its edge
+  is dragged, are Web Animations, since WebKit styles the whole page again whenever a
+  stylesheet changes, which on every frame made Safari stutter. `test/canvas_test.exs` holds the
   template to it, `test/assets_test.exs` the hook. The one style anything sets is
   d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which
   the policy allows; the stylesheet sets the same, so LiveView taking it away changes

@@ -21,7 +21,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the right of the window, as tall as it and scrolled inside, one for the page, closed by Escape, lying over the
   page so that no canvas is resized by it; it opens `--eh-os-contract-graph-panel-width` wide, and the reader
   drags its edge to set its width, once a frame, which the browser keeps. A canvas is contained, and a pan or a zoom
-  moves the graph as a layer of its own.
+  moves the graph as a layer of its own. The zoom and the panel's width while it is dragged are Web Animations,
+  not a stylesheet written on every frame, after which WebKit styles the whole page again: Safari stuttered.
 - **E13b, batch 3: the views.** `EhOsContract.GraphRenderer.View` builds the six pictures the engine drew as
   Mermaid diagrams from the graph of facts — a contract's full graph, its process's declared shape, a unit, an
   aggregate's lifecycle, a domain's context map and its system — with the words and the lines those pictures

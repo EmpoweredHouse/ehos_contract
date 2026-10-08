@@ -1,6 +1,7 @@
 defmodule EhOsContract.GraphRenderer.Panel do
   @moduledoc """
-  The panel beside a graph: what the selected node, group or relation is, read from
+  The panel of a graph, a sidebar at the right of the window: what the selected node,
+  group or relation is, read from
   the `graph.v1` document it belongs to (plan E13b, batch 4; the working plan's points
   1, 2, 6 and 8 to 12, and "Pole", in "Szczegóły ekranu Graph").
 
@@ -71,7 +72,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
       </dl>
       <.relation_body
         type={@relation.type}
-        relation={@relation}
         facts={@relation.facts}
         ctx={@ctx}
       />
@@ -976,7 +976,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # --- a relation, by its type --------------------------------------------------------------
 
   attr :type, :string, required: true
-  attr :relation, :map, required: true
   attr :facts, :map, required: true
   attr :ctx, :map, required: true
 

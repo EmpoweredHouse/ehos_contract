@@ -32,6 +32,9 @@
   transform-origin: 0 0;
   visibility: hidden;
 }
+.ehg-viewport.ehg-moving {
+  will-change: transform;
+}
 .ehg-arrows {
   position: absolute;
   left: 0;

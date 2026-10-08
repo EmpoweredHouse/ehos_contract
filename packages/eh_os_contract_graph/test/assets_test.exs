@@ -43,6 +43,23 @@ defmodule EhOsContract.GraphRenderer.AssetsTest do
     assert source =~ "adoptedStyleSheets"
   end
 
+  # docs/adr/graph-renderer.md, amendment of 8 October 2026: WebKit styles the whole page again whenever a
+  # stylesheet changes, so what changes on every frame is a Web Animation, and a stylesheet is written only when
+  # the layout or the canvas's size changes, or when a drag of the panel's edge ends.
+  test "what moves on every frame is a Web Animation, not a stylesheet" do
+    source = code(@hook)
+
+    assert source =~ ".animate(", "the hook holds no value in a Web Animation"
+    assert source =~ "setKeyframes(", "the hook sets an animation's value again in no other way"
+
+    [zoomed] = Regex.run(~r/^  zoomed\(at\) \{.*?^  \},/ms, source)
+    refute zoomed =~ "replaceSync", "a zoom writes a stylesheet on every frame"
+
+    [move] = Regex.run(~r/const move = \(e\) => \{.*?^    \}/ms, source)
+    refute move =~ "replaceSync", "a drag of the panel's edge writes a stylesheet on every move"
+    refute move =~ "panelWidth(", "a drag of the panel's edge writes a stylesheet on every move"
+  end
+
   test "the committed bundle exports the hook and injects no stylesheet or code" do
     bundle = File.read!(@bundle)
 

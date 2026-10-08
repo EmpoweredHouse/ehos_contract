@@ -4422,6 +4422,11 @@ var SVG = "http://www.w3.org/2000/svg";
 var SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
 var HOLD = "\0hold";
 var instances = 0;
+var adopt = () => {
+  const sheet = new CSSStyleSheet();
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  return sheet;
+};
 var WIDTH = "eh_os_contract_graph.panel_width";
 var widthSheet = null;
 var panelWidth = (px) => {
@@ -4442,12 +4447,18 @@ var keepWidth = (px) => {
   } catch {
   }
 };
-var clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)));
-var adopt = () => {
-  const sheet = new CSSStyleSheet();
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-  return sheet;
+var hold = (element, animation, value) => {
+  const frames = [value, value];
+  if (animation && animation.effect.target === element) {
+    animation.effect.setKeyframes(frames);
+    return animation;
+  }
+  animation?.cancel();
+  const held = element.animate(frames, { duration: 0, fill: "forwards" });
+  held.persist();
+  return held;
 };
+var clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)));
 var quoted = (value) => `"${CSS.escape(value)}"`;
 var svg = (name, attributes = {}) => {
   const element = document.createElementNS(SVG, name);
@@ -4492,17 +4503,19 @@ var EhOsContractGraph = {
     this.scope = `#${CSS.escape(this.el.id)}`;
     this.head = `ehg-head-${++instances}`;
     this.layoutSheet = adopt();
-    this.zoomSheet = adopt();
     this.sizeSheet = adopt();
     this.key = null;
     this.arrows = /* @__PURE__ */ new Map();
     this.canvas = this.el.querySelector(".ehg-canvas");
-    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("start", () => this.moving = true).on("zoom", ({ transform: transform2, sourceEvent }) => {
+    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("start", () => {
+      this.moving = true;
+      this.layer();
+    }).on("zoom", ({ transform: transform2, sourceEvent }) => {
       if (sourceEvent) this.touched = true;
       this.zoomed(transform2);
     }).on("end", () => {
       this.moving = false;
-      if (this.at) this.zoomed(this.at);
+      this.layer();
     });
     select_default2(this.canvas).call(this.zoom).on("dblclick.zoom", null);
     if (!widthSheet && keptWidth()) panelWidth(clampWidth(keptWidth()));
@@ -4532,6 +4545,8 @@ var EhOsContractGraph = {
   },
   updated() {
     this.announce();
+    if (this.at && this.zooming?.effect.target !== this.viewport()) this.zoomed(this.at);
+    if (this.moving) this.layer();
     this.draw();
   },
   destroyed() {
@@ -4540,7 +4555,7 @@ var EhOsContractGraph = {
     document.removeEventListener("keydown", this.escape);
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded);
     this.resized.disconnect();
-    const own = [this.layoutSheet, this.zoomSheet, this.sizeSheet];
+    const own = [this.layoutSheet, this.sizeSheet];
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet));
   },
   // A selection made here that was not here before tells the other canvases to close their panels.
@@ -4556,13 +4571,15 @@ var EhOsContractGraph = {
     if (!grip || event.button) return;
     event.preventDefault();
     grip.setPointerCapture(event.pointerId);
+    const panel = grip.closest(".ehg-panel");
     let px = null;
     let frame2 = null;
+    let sizing = null;
     const move = (e) => {
       px = clampWidth(window.innerWidth - e.clientX);
       frame2 ??= requestAnimationFrame(() => {
         frame2 = null;
-        panelWidth(px);
+        sizing = hold(panel, sizing, { width: `${px}px` });
       });
     };
     const end = () => {
@@ -4574,6 +4591,7 @@ var EhOsContractGraph = {
         panelWidth(px);
         keepWidth(px);
       }
+      sizing?.cancel();
     };
     grip.addEventListener("pointermove", move);
     grip.addEventListener("pointerup", end);
@@ -4585,12 +4603,13 @@ var EhOsContractGraph = {
   },
   // Laid out again only when a card or a label appeared, went, or changed its size; otherwise only the
   // arrows' classes follow the labels', which is all a selection or a new overlay changes. Fitted to the
-  // canvas again only when the cards are other cards — another document, another view — so the reader's
-  // zoom stays across a selection, a new overlay and a late font.
+  // canvas again when the cards are other cards — another document, another view — or when the canvas's width
+  // changed and the reader has not moved the graph, so the reader's zoom stays across a selection, a new overlay
+  // and a late font.
   async redraw() {
     await document.fonts.ready;
     if (this.gone) return;
-    const viewport = this.el.querySelector(".ehg-viewport");
+    const viewport = this.viewport();
     const direction = this.el.dataset.direction === "TB" ? "TB" : "LR";
     const boxes = [...viewport.querySelectorAll("[data-ehg-group]")];
     const present = new Set(boxes.map((el) => el.dataset.ehgGroup));
@@ -4736,9 +4755,9 @@ var EhOsContractGraph = {
   // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
   // ResizeObserver tries again when it has one.
   fit() {
-    if (!this.size || !this.canvas.getBoundingClientRect().width) return;
-    const { width, height } = this.size;
     const across = this.canvas.getBoundingClientRect().width;
+    if (!this.size || !across) return;
+    const { width, height } = this.size;
     const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32);
     this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`);
     const box = this.canvas.getBoundingClientRect();
@@ -4750,8 +4769,15 @@ var EhOsContractGraph = {
   zoomed(at2) {
     this.at = at2;
     const { x, y, k } = at2;
-    const layer = this.moving ? "; will-change: transform" : "";
-    this.zoomSheet.replaceSync(`${this.scope} .ehg-viewport { transform: translate(${x}px, ${y}px) scale(${k})${layer} }`);
+    this.zooming = hold(this.viewport(), this.zooming, { transform: `translate(${x}px, ${y}px) scale(${k})` });
+  },
+  // While a gesture lasts the viewport is a layer of its own (.ehg-moving, in the stylesheet). The class is on an
+  // element the server renders, so a patch in the middle of a gesture takes it away, and `updated` puts it back.
+  layer() {
+    this.viewport().classList.toggle("ehg-moving", this.moving === true);
+  },
+  viewport() {
+    return this.el.querySelector(".ehg-viewport");
   }
 };
 export {
