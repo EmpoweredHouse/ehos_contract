@@ -7,9 +7,9 @@ Two screens and nothing else: the contract's conformance status, and the graphs 
 each domain's context map and system, and per process its declared shape, its graph
 with the log laid over it, and its contract's units.
 
-The graphs are moving onto [`eh_os_contract_graph`](../eh_os_contract_graph), the renderer of
-the engine's `graph.v1` documents (plan E13b). Until they have, it draws on one temporary
-screen of its own, `<mount>/graph/preview`, not in the nav.
+The graphs are drawn by [`eh_os_contract_graph`](../eh_os_contract_graph), the renderer of
+the engine's `graph.v1` documents (plan E13b). One temporary screen, `<mount>/graph/preview`,
+not in the nav, draws each picture beside its old Mermaid diagram until Mermaid goes.
 
 ## Installation
 
@@ -63,7 +63,7 @@ The same line serves the fonts: they sit beside the stylesheet, in
 `priv/static/assets/fonts/`, and the stylesheet names them by relative URL. Nothing
 the dashboard loads comes from anywhere but these assets — no Google Fonts, no CDN —
 so it works under a policy of `default-src 'self'` and without internet, with one
-exception: the graph screen's diagrams need inline styles (see "Looks" below).
+exception: the preview's Mermaid diagrams need inline styles (see "Looks" below).
 
 ## Looks
 
@@ -87,11 +87,12 @@ host stylesheet nor a `data-theme` attribute reaches the page. The
 `--eh-os-contract-*` custom properties are kept as the names such a hook would set.
 
 **The dashboard works under a strict Content-Security-Policy**, `default-src 'self'`
-as EHOS serves it. Mermaid, which draws the graph screen's diagrams in the browser,
-writes a `<style>` element and `style` attributes into each; the dashboard hands both
-to the CSSOM, which such a policy leaves alone. Mermaid still tries inline styles
-while it measures a diagram, so the browser's console logs blocked inline styles on
-the graph screen; the diagrams are drawn in full regardless. The sandbox host serves
+as EHOS serves it. The graph renderer sets no inline style. Mermaid, which draws the
+preview's diagrams in the browser, writes a `<style>` element and `style` attributes
+into each; the dashboard hands both to the CSSOM, which such a policy leaves alone.
+Mermaid still tries inline styles while it measures a diagram, so the browser's
+console logs blocked inline styles on the preview; the diagrams are drawn in full
+regardless. The sandbox host serves
 this policy on the dashboard, so it is looked at there as it runs in EHOS.
 
 ## The API

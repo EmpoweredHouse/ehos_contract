@@ -1,7 +1,7 @@
-// The dashboard's client-side code: connect the LiveView socket, and (since
-// the graph screen) render Mermaid diagrams the server can only ever hand
-// over as text. Everything else — access control and the four questions —
-// is server-rendered.
+// The dashboard's client-side code: connect the LiveView socket, draw the
+// graph renderer's pictures, and render the preview's Mermaid diagrams the
+// server can only ever hand over as text. Everything else — access control
+// and the four questions — is server-rendered.
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
@@ -200,11 +200,11 @@ const scratch = () => {
   return box
 }
 
-// The graph screen's `<pre class="mermaid" phx-hook="MermaidRender" phx-update="ignore">` blocks
+// The preview's `<pre class="mermaid" phx-hook="MermaidRender" phx-update="ignore">` blocks
 // carry the raw diagram source in `data-graph`, and the hook draws it into the block. LiveView
 // leaves an ignored block's children alone — without that, every patch took the drawn SVG out of
 // every block, changed or not — and still updates its attributes, so `updated()` fires when
-// `data-graph` changes (a contract switch re-rendering its diagrams).
+// `data-graph` changes (another document or view picked).
 const Hooks = {
   MermaidRender: {
     mounted() {

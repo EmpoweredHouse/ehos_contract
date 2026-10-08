@@ -4,14 +4,14 @@ defmodule EhOsContract.Web.Live.GraphPreview do
   drawing one view of one `graph.v1` document of the registry at a time, with its
   overlay once the socket is connected, so its drawing layer and its views can be
   looked at in a browser under the host's policy before any screen is built on them.
-  Not in the nav; reached at `<mount>/graph/preview`. The Graph screen moves onto the
-  renderer in batch 4, and this screen goes then.
+  Not in the nav; reached at `<mount>/graph/preview`. The Graph screen draws with the
+  renderer since batch 4; this screen goes with Mermaid, in batch 5.
 
   Under each view it draws the Mermaid diagram of the same picture, as the Graph screen
-  draws it — with the log over the full graph, a lifecycle and the system, and over no
-  other view — so the two can be compared on one page: the views are those pictures,
-  drawn by the renderer (the user's decision of 8 October). The view `all`, every node
-  and relation, has no diagram.
+  drew it before batch 4 — with the log over the full graph, a lifecycle and the
+  system, and over no other view — so the two can be compared on one page: the views
+  are those pictures, drawn by the renderer (the user's decision of 8 October). The
+  view `all`, every node and relation, has no diagram.
 
   `?document=contract:<id>` picks a contract by its `id:`, `?document=domain:<module>`
   a domain; without one, the first contract. `?view=` picks one of the document's views
@@ -101,7 +101,7 @@ defmodule EhOsContract.Web.Live.GraphPreview do
   defp key(kind), do: Atom.to_string(kind)
 
   # The Mermaid diagram of the same picture, with the log over it where the Graph screen
-  # lays it: the full graph, a lifecycle and the system.
+  # laid it: the full graph, a lifecycle and the system.
   defp mermaid(nil, _spec), do: nil
   defp mermaid(_module, nil), do: nil
   defp mermaid(_module, :all), do: nil
@@ -134,8 +134,8 @@ defmodule EhOsContract.Web.Live.GraphPreview do
     EhOsContract.Graph.system_to_mermaid(domain, contracts, overlay: true)
   end
 
-  # The views the Graph screen lays the log over: the full graph, a lifecycle, the system,
-  # and the test bed, which has it all.
+  # The views the Graph screen lays the log over (`EhOsContract.Web.Live.Graph`): the full
+  # graph, a lifecycle, the system, and the test bed, which has it all.
   defp logged?(spec), do: spec in [:all, :contract, :system] or match?({:lifecycle, _}, spec)
 
   # The unit a view's id names: `unit:<contract id>:<name>`.
@@ -153,8 +153,8 @@ defmodule EhOsContract.Web.Live.GraphPreview do
       <section>
         <h3>Graph renderer — preview</h3>
         <p>
-          One view of one document, drawn by the renderer that will replace the diagrams on the
-          Graph screen, and under it the same picture as the Graph screen draws it today.
+          One view of one document, drawn by the renderer the Graph screen draws with, and under
+          it the same picture as Mermaid drew it there.
         </p>
 
         <form :if={@choices != []} id="document-select" phx-change="pick">
@@ -183,7 +183,7 @@ defmodule EhOsContract.Web.Live.GraphPreview do
       />
 
       <section :if={@mermaid}>
-        <h3>The same picture, as the Graph screen draws it</h3>
+        <h3>The same picture, as Mermaid draws it</h3>
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
