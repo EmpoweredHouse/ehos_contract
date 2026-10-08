@@ -56,6 +56,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     ~H"""
     <aside class="ehg-panel" aria-label="Selected">
+      <.grip />
+      <div class="ehg-panel-body">
       <header>
         <p class="ehg-panel-kind">relation</p>
         <h4>{words(@relation.type)}</h4>
@@ -75,6 +77,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       />
       <.scenarios :if={@covering != []} title="Scenarios covering it" list={@covering} ctx={@ctx} />
       <.log :if={@log} entry={@log} ctx={@ctx} />
+      </div>
     </aside>
     """
   end
@@ -93,6 +96,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     ~H"""
     <aside class="ehg-panel" aria-label="Selected">
+      <.grip />
+      <div class="ehg-panel-body">
       <header>
         <p class="ehg-panel-kind">{words(@kind)}</p>
         <h4>{@node["label"] || @node["name"]}</h4>
@@ -104,7 +109,16 @@ defmodule EhOsContract.GraphRenderer.Panel do
         Source: {@node["source"]}
       </p>
       <.log :if={@log} entry={@log} ctx={@ctx} />
+      </div>
     </aside>
+    """
+  end
+
+  # The panel's left edge, which the hook drags to set its width.
+  defp grip(assigns) do
+    ~H"""
+    <div class="ehg-panel-grip" role="separator" aria-orientation="vertical" aria-label="Panel width">
+    </div>
     """
   end
 

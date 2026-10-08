@@ -33,8 +33,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   and both reach
   `handle_event("select", %{"id" => id}, …)` here. The selected element and what
   touches it are classes on the cards and the labels, everything else is drawn
-  faint, and the panel beside the graph (`EhOsContract.GraphRenderer.Panel`) says
-  what it is. Clicking it again, or the panel's close button, clears the selection.
+  faint, and the panel (`EhOsContract.GraphRenderer.Panel`) says what it is.
+  Clicking it again, the panel's close button, or Escape clears the selection.
+
+  **The panel is a sidebar** at the right of the window, as tall as it, whose left
+  edge the reader drags to set its width, kept in the browser between visits. One is
+  open at a time: selecting in one canvas clears the selection of the others on the
+  page (the hook does it). Its width is `--eh-os-contract-graph-panel-width`, by which
+  a host leaves it room.
   A node the view does not draw can be selected too — from a name in the panel, or
   from outside the component, `phx-target` naming its root — and the panel shows it
   while the graph stays as it is.
@@ -112,7 +118,13 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       )
 
     ~H"""
-    <div id={@id} class="ehg" phx-hook="EhOsContractGraph" data-direction={@view.direction}>
+    <div
+      id={@id}
+      class="ehg"
+      phx-hook="EhOsContractGraph"
+      data-direction={@view.direction}
+      data-selected={@selected}
+    >
       <div class="ehg-canvas">
         <div class="ehg-viewport">
           <div

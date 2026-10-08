@@ -28,6 +28,35 @@ const HOLD = "\u0000hold"
 
 let instances = 0
 
+// The panel is one sidebar for the page, whichever canvas it is of, so its width is the page's: a custom property
+// in a stylesheet every canvas shares, set while the reader drags the panel's edge and kept in the browser. A
+// browser that refuses storage keeps it for the page only.
+const WIDTH = "eh_os_contract_graph.panel_width"
+let widthSheet = null
+
+const panelWidth = (px) => {
+  widthSheet ??= adopt()
+  widthSheet.replaceSync(`:root { --eh-os-contract-graph-panel-width: ${px}px }`)
+}
+
+const keptWidth = () => {
+  try {
+    const px = Number(localStorage.getItem(WIDTH))
+    return px > 0 ? px : null
+  } catch {
+    return null
+  }
+}
+
+const keepWidth = (px) => {
+  try {
+    localStorage.setItem(WIDTH, String(px))
+  } catch {}
+}
+
+// As wide as the reader drags it, but never so narrow it says nothing nor so wide no graph is left beside it.
+const clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)))
+
 const adopt = () => {
   const sheet = new CSSStyleSheet()
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
@@ -104,6 +133,7 @@ export const EhOsContractGraph = {
     this.head = `ehg-head-${++instances}`
     this.layoutSheet = adopt()
     this.zoomSheet = adopt()
+    this.sizeSheet = adopt()
     this.key = null
     this.arrows = new Map()
 
@@ -113,8 +143,26 @@ export const EhOsContractGraph = {
       .filter(gesture)
       // A press that moves less than this is a click on a card, not a pan.
       .clickDistance(4)
-      .on("zoom", ({ transform }) => this.zoomed(transform))
+      .on("zoom", ({ transform, sourceEvent }) => {
+        // A wheel, a pinch or a drag is the reader's; a fit is not.
+        if (sourceEvent) this.touched = true
+        this.zoomed(transform)
+      })
     select(this.canvas).call(this.zoom).on("dblclick.zoom", null)
+
+    if (!widthSheet && keptWidth()) panelWidth(clampWidth(keptWidth()))
+    this.el.addEventListener("pointerdown", (event) => this.resize(event))
+
+    // One panel at a time: a canvas whose selection opens the panel closes the others'. And Escape closes it.
+    this.closeOthers = ({ detail }) => {
+      if (detail !== this.el && this.el.dataset.selected !== undefined) this.pushEventTo(this.el, "deselect", {})
+    }
+    window.addEventListener("eh_os_contract_graph:opened", this.closeOthers)
+    this.escape = (event) => {
+      if (event.key === "Escape" && this.el.dataset.selected !== undefined) this.pushEventTo(this.el, "deselect", {})
+    }
+    document.addEventListener("keydown", this.escape)
+    this.announce()
 
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
       const arrow = event.target.closest("[data-ehg-arrow]")
@@ -125,7 +173,12 @@ export const EhOsContractGraph = {
     // canvas that was hidden when it was first laid out, whose cards measured nothing, once it is shown.
     this.fontsLoaded = () => this.draw()
     document.fonts.addEventListener("loadingdone", this.fontsLoaded)
-    this.resized = new ResizeObserver(() => this.draw())
+    // A canvas whose width changes — the window's, a panel opening beside the page — is fitted to it again, unless
+    // the reader has zoomed or panned it: then their view stays.
+    this.resized = new ResizeObserver(() => {
+      if (!this.touched) this.fitted = false
+      this.draw()
+    })
     this.resized.observe(this.canvas)
 
     this.drawn = Promise.resolve()
@@ -133,15 +186,48 @@ export const EhOsContractGraph = {
   },
 
   updated() {
+    this.announce()
     this.draw()
   },
 
   destroyed() {
     this.gone = true
+    window.removeEventListener("eh_os_contract_graph:opened", this.closeOthers)
+    document.removeEventListener("keydown", this.escape)
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded)
     this.resized.disconnect()
-    const own = [this.layoutSheet, this.zoomSheet]
+    const own = [this.layoutSheet, this.zoomSheet, this.sizeSheet]
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet))
+  },
+
+  // A selection made here that was not here before tells the other canvases to close their panels.
+  announce() {
+    const selected = this.el.dataset.selected
+    if (selected !== undefined && selected !== this.selected)
+      window.dispatchEvent(new CustomEvent("eh_os_contract_graph:opened", { detail: this.el }))
+    this.selected = selected
+  },
+
+  // A drag on the panel's edge sets its width, for every panel of the page, and keeps it when the drag ends.
+  resize(event) {
+    const grip = event.target.closest(".ehg-panel-grip")
+    if (!grip || event.button) return
+    event.preventDefault()
+    grip.setPointerCapture(event.pointerId)
+    let px = null
+    const move = (e) => {
+      px = clampWidth(window.innerWidth - e.clientX)
+      panelWidth(px)
+    }
+    const end = () => {
+      grip.removeEventListener("pointermove", move)
+      grip.removeEventListener("pointerup", end)
+      grip.removeEventListener("pointercancel", end)
+      if (px !== null) keepWidth(px)
+    }
+    grip.addEventListener("pointermove", move)
+    grip.addEventListener("pointerup", end)
+    grip.addEventListener("pointercancel", end)
   },
 
   // One draw at a time, each after the one before, so what is left on screen is the last one asked for.
@@ -196,6 +282,7 @@ export const EhOsContractGraph = {
     if (nodes !== this.fittedFor) {
       this.fittedFor = nodes
       this.fitted = false
+      this.touched = false
     }
     if (!this.fitted) this.fit()
   },
@@ -204,6 +291,7 @@ export const EhOsContractGraph = {
     // A view with nothing in it: dagre would size an empty graph as -Infinity.
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`)
+      this.sizeSheet.replaceSync("")
       this.el.querySelector(".ehg-arrows").replaceChildren()
       this.arrows = new Map()
       this.size = null
@@ -249,15 +337,6 @@ export const EhOsContractGraph = {
 
     const { width, height } = graph.graph()
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
-    // The canvas as tall as the graph fitted to its width, as fit() fits it, so a small picture takes little room;
-    // the stylesheet's max-height holds a tall one, which is fitted smaller and zoomed into, and its min-height a
-    // tiny one and one with a panel open. Not while the canvas has no width: laid out again once it has, it is
-    // sized then.
-    const across = this.canvas.getBoundingClientRect().width
-    if (across) {
-      const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32)
-      rules.push(`${this.scope} .ehg-canvas { height: ${tall}px }`)
-    }
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)
       rules.push(
@@ -328,12 +407,17 @@ export const EhOsContractGraph = {
     })
   },
 
-  // The whole graph in view, never larger than its own size, centred. Not while the canvas has no size: the
+  // The whole graph in view, never larger than its own size, centred, in a canvas as tall as the graph fitted to
+  // its width, so a small picture takes little room; the stylesheet's max-height holds a tall one, which is fitted
+  // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
   // ResizeObserver tries again when it has one.
   fit() {
-    const box = this.canvas.getBoundingClientRect()
-    if (!this.size || !box.width || !box.height) return
+    if (!this.size || !this.canvas.getBoundingClientRect().width) return
     const { width, height } = this.size
+    const across = this.canvas.getBoundingClientRect().width
+    const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32)
+    this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`)
+    const box = this.canvas.getBoundingClientRect()
     const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
     const at = zoomIdentity.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k)
     select(this.canvas).call(this.zoom.transform, at)

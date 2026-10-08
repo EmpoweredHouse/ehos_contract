@@ -4422,6 +4422,27 @@ var SVG = "http://www.w3.org/2000/svg";
 var SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
 var HOLD = "\0hold";
 var instances = 0;
+var WIDTH = "eh_os_contract_graph.panel_width";
+var widthSheet = null;
+var panelWidth = (px) => {
+  widthSheet ??= adopt();
+  widthSheet.replaceSync(`:root { --eh-os-contract-graph-panel-width: ${px}px }`);
+};
+var keptWidth = () => {
+  try {
+    const px = Number(localStorage.getItem(WIDTH));
+    return px > 0 ? px : null;
+  } catch {
+    return null;
+  }
+};
+var keepWidth = (px) => {
+  try {
+    localStorage.setItem(WIDTH, String(px));
+  } catch {
+  }
+};
+var clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)));
 var adopt = () => {
   const sheet = new CSSStyleSheet();
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
@@ -4472,31 +4493,80 @@ var EhOsContractGraph = {
     this.head = `ehg-head-${++instances}`;
     this.layoutSheet = adopt();
     this.zoomSheet = adopt();
+    this.sizeSheet = adopt();
     this.key = null;
     this.arrows = /* @__PURE__ */ new Map();
     this.canvas = this.el.querySelector(".ehg-canvas");
-    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("zoom", ({ transform: transform2 }) => this.zoomed(transform2));
+    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("zoom", ({ transform: transform2, sourceEvent }) => {
+      if (sourceEvent) this.touched = true;
+      this.zoomed(transform2);
+    });
     select_default2(this.canvas).call(this.zoom).on("dblclick.zoom", null);
+    if (!widthSheet && keptWidth()) panelWidth(clampWidth(keptWidth()));
+    this.el.addEventListener("pointerdown", (event) => this.resize(event));
+    this.closeOthers = ({ detail }) => {
+      if (detail !== this.el && this.el.dataset.selected !== void 0) this.pushEventTo(this.el, "deselect", {});
+    };
+    window.addEventListener("eh_os_contract_graph:opened", this.closeOthers);
+    this.escape = (event) => {
+      if (event.key === "Escape" && this.el.dataset.selected !== void 0) this.pushEventTo(this.el, "deselect", {});
+    };
+    document.addEventListener("keydown", this.escape);
+    this.announce();
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
       const arrow = event.target.closest("[data-ehg-arrow]");
       if (arrow) this.pushEventTo(this.el, "select", { id: arrow.dataset.ehgArrow });
     });
     this.fontsLoaded = () => this.draw();
     document.fonts.addEventListener("loadingdone", this.fontsLoaded);
-    this.resized = new ResizeObserver(() => this.draw());
+    this.resized = new ResizeObserver(() => {
+      if (!this.touched) this.fitted = false;
+      this.draw();
+    });
     this.resized.observe(this.canvas);
     this.drawn = Promise.resolve();
     this.draw();
   },
   updated() {
+    this.announce();
     this.draw();
   },
   destroyed() {
     this.gone = true;
+    window.removeEventListener("eh_os_contract_graph:opened", this.closeOthers);
+    document.removeEventListener("keydown", this.escape);
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded);
     this.resized.disconnect();
-    const own = [this.layoutSheet, this.zoomSheet];
+    const own = [this.layoutSheet, this.zoomSheet, this.sizeSheet];
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => !own.includes(sheet));
+  },
+  // A selection made here that was not here before tells the other canvases to close their panels.
+  announce() {
+    const selected = this.el.dataset.selected;
+    if (selected !== void 0 && selected !== this.selected)
+      window.dispatchEvent(new CustomEvent("eh_os_contract_graph:opened", { detail: this.el }));
+    this.selected = selected;
+  },
+  // A drag on the panel's edge sets its width, for every panel of the page, and keeps it when the drag ends.
+  resize(event) {
+    const grip = event.target.closest(".ehg-panel-grip");
+    if (!grip || event.button) return;
+    event.preventDefault();
+    grip.setPointerCapture(event.pointerId);
+    let px = null;
+    const move = (e) => {
+      px = clampWidth(window.innerWidth - e.clientX);
+      panelWidth(px);
+    };
+    const end = () => {
+      grip.removeEventListener("pointermove", move);
+      grip.removeEventListener("pointerup", end);
+      grip.removeEventListener("pointercancel", end);
+      if (px !== null) keepWidth(px);
+    };
+    grip.addEventListener("pointermove", move);
+    grip.addEventListener("pointerup", end);
+    grip.addEventListener("pointercancel", end);
   },
   // One draw at a time, each after the one before, so what is left on screen is the last one asked for.
   draw() {
@@ -4542,12 +4612,14 @@ var EhOsContractGraph = {
     if (nodes !== this.fittedFor) {
       this.fittedFor = nodes;
       this.fitted = false;
+      this.touched = false;
     }
     if (!this.fitted) this.fit();
   },
   lay(direction, groups, cards, labels) {
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`);
+      this.sizeSheet.replaceSync("");
       this.el.querySelector(".ehg-arrows").replaceChildren();
       this.arrows = /* @__PURE__ */ new Map();
       this.size = null;
@@ -4585,11 +4657,6 @@ var EhOsContractGraph = {
     });
     const { width, height } = graph.graph();
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
-    const across = this.canvas.getBoundingClientRect().width;
-    if (across) {
-      const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32);
-      rules.push(`${this.scope} .ehg-canvas { height: ${tall}px }`);
-    }
     groups.forEach(({ id: id2 }) => {
       const { x, y, width: width2, height: height2 } = graph.node(id2);
       rules.push(
@@ -4653,12 +4720,17 @@ var EhOsContractGraph = {
       arrow.setAttribute("data-head", el.dataset.head ?? "arrow");
     });
   },
-  // The whole graph in view, never larger than its own size, centred. Not while the canvas has no size: the
+  // The whole graph in view, never larger than its own size, centred, in a canvas as tall as the graph fitted to
+  // its width, so a small picture takes little room; the stylesheet's max-height holds a tall one, which is fitted
+  // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
   // ResizeObserver tries again when it has one.
   fit() {
-    const box = this.canvas.getBoundingClientRect();
-    if (!this.size || !box.width || !box.height) return;
+    if (!this.size || !this.canvas.getBoundingClientRect().width) return;
     const { width, height } = this.size;
+    const across = this.canvas.getBoundingClientRect().width;
+    const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32);
+    this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`);
+    const box = this.canvas.getBoundingClientRect();
     const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
     const at2 = identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k);
     select_default2(this.canvas).call(this.zoom.transform, at2);

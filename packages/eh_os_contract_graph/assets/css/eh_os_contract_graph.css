@@ -16,24 +16,14 @@
   align-items: start;
 }
 
-.ehg:has(.ehg-panel) {
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
-}
-
-@media (max-width: 720px) {
-  .ehg:has(.ehg-panel) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ehg-panel {
-    contain: none;
-    max-height: min(72vh, 760px);
-  }
+/* How wide the panel is: the hook sets it when the reader drags the panel's edge, and a host can read it to
+   leave the panel room. */
+:root {
+  --eh-os-contract-graph-panel-width: 420px;
 }
 
 /* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
-   width, never taller than this, and with a panel open never so short that the panel, as tall as the
-   canvas, has no room. */
+   width, never taller than this. */
 .ehg-canvas {
   position: relative;
   overflow: hidden;
@@ -48,10 +38,6 @@
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   cursor: grab;
-}
-
-.ehg:has(.ehg-panel) .ehg-canvas {
-  min-height: min(420px, 72vh);
 }
 
 .ehg-canvas:active {
@@ -347,17 +333,50 @@
 
 /* The panel. */
 
-/* As tall as the canvas beside it, and scrolled inside: its content does not size the row (contain), the
-   canvas does, and the panel stretches to it. Below the canvas, on a narrow screen, it sizes itself. */
+/* A sidebar at the right of the window, as tall as the window, whichever canvas it is of: one is open at a
+   time (the hook closes the others). Its left edge is a grip that drags its width; its body scrolls. On a
+   narrow screen it covers the window. */
 .ehg-panel {
-  align-self: stretch;
-  contain: size;
-  overflow: auto;
-  padding: 12px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md, 8px);
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  width: var(--eh-os-contract-graph-panel-width);
+  max-width: 100vw;
+  border-left: 1px solid var(--border-soft);
   background: var(--surface-1);
   font-size: 12px;
+}
+
+.ehg-panel-grip {
+  flex: none;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ehg-panel-grip:hover,
+.ehg-panel-grip:active {
+  background: var(--border-soft);
+}
+
+.ehg-panel-body {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 16px 24px 10px;
+}
+
+@media (max-width: 720px) {
+  .ehg-panel {
+    width: 100vw;
+  }
+
+  .ehg-panel-grip {
+    display: none;
+  }
 }
 
 .ehg-panel header {

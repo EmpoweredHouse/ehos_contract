@@ -58,8 +58,13 @@ reads the markup this package renders — so update them together:
 | `:system` | a domain | its contracts in their contexts and what flows between them |
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
-`EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel opens
-beside the graph, as tall as the canvas and scrolled inside; a name in it selects that node, drawn or not.
+`EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
+sidebar at the right of the window, as tall as it and scrolled inside, one for the page: selecting in one
+canvas closes another's, and Escape closes it. The reader drags its left edge to set its width, which the
+browser keeps; it is `--eh-os-contract-graph-panel-width`, by which the host leaves it room, as the dashboard
+does with `main:has(.ehg-panel) { margin-right: var(--eh-os-contract-graph-panel-width) }`. A name in the panel
+selects that node, drawn or not. A canvas whose width changes is fitted to it again, unless the reader has
+zoomed or panned it.
 A domain's actors, which no view draws, are a table of their own, each row selecting its actor in a canvas
 of the same document:
 
