@@ -1804,6 +1804,22 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **Gate**, on CI's Elixir 1.18.4 and OTP 27.2, beside another `phx.server` of the sandbox holding 11 connections,
   so each project alone, in order, as before: all EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287,
   renderer 69.
+- **The panel as a sidebar (the user, 8 October, after looking):** a panel taller than its canvas made the canvas
+  grow (the floor of `min(420px, 72vh)` set while a panel was open), so "the panel is a sidebar at the right of
+  the whole screen, attached to no canvas, always the full height, with a handle to make it wider or narrower";
+  and "a small margin on the right and the left". Built: the panel is `position: fixed` at the right of the
+  window, as tall as it, its body scrolled; one for the page — a canvas that opens a panel tells the others on
+  the page to close theirs (a window event between the hooks, no host code), and Escape closes it; its left edge
+  is a grip whose drag sets `--eh-os-contract-graph-panel-width` in a stylesheet the canvases share, kept in
+  `localStorage` (a browser that refuses storage keeps it for the page). The dashboard leaves it room
+  (`main:has(.ehg-panel) { margin-right: … }`) and pads a page with graphs by `clamp(24px, 3vw, 56px)`. The page
+  narrowing as the panel opened cut the pictures at the right, the zoom being kept, so **a canvas whose width
+  changes is fitted to it again, and its height with it, unless the reader has zoomed or panned it** — the
+  reader's view still stays (batch 1's rule), a width they did not choose no longer cuts a picture. Checked in
+  headless Chrome at 1600 px: the panel 420 px wide, the window's height, at its right edge, the page ending at
+  its left; one panel when a second canvas opens one; a drag to 617 px, kept across a reload; Escape; no picture
+  cut with the panel open; no violation of the policy, no console error. Gate: the whole `mix check` in
+  `sandbox/`, with nothing else on Postgres, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 69.
 - **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
   labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
   its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
