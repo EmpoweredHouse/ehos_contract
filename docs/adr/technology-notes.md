@@ -1025,6 +1025,15 @@ without integrating ESDM itself. The renderer reading the contract directly is b
 gives it the real edge this section waited for. Commanded is still not a dependency, but its shape is no
 longer rejected: v2 is event-sourced, on the engine's own store and dispatch.
 
+*Corrected 8 October 2026, plan E13* ([contract v2](contract-v2.md) §3, requirement 6). **The renderer no
+longer reads the contract.** The engine generates a contract's and a domain's graph as data — a `graph.v1`
+document and an overlay from the log — and `eh_os_contract_graph`, a package of its own that does not depend on
+the engine, draws it, for the dashboard and for EHOS Console alike. The Mermaid diagrams the engine drew are
+gone, and the model pages carry a contract's document beside them in place of their diagrams. EventCatalog's own
+renderer, `@eventcatalog/visualiser`, was tried for it and set aside: it is React Flow with EventCatalog's kinds,
+none of which is a process manager, a timer, a stage or a promise ([graph renderer](graph-renderer.md)).
+([#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219))
+
 ## 13. Library decisions
 
 | Concern | Choice | Note |
