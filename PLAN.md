@@ -1654,6 +1654,16 @@ Batch 1 needs no views: it is what every view is drawn with.
     cannot be selected; the dashboard's script and the renderer's markup are updated together); stale text in
     `mix.exs`, the README and here. The sandbox now also draws the engine's real overlay over every document
     and holds the three fixtures taken from it to today's schema.
+  - *The dashboard's `NOTICE` does not name dagre and d3*, which its `app.js` now carries. **The user's decision
+    (8 October): no new pattern.** The rule in place since `NOTICE` came in (22 September, `d4c751dc`) is that it
+    names third-party files copied into a package — Mermaid, the fonts — and the renderer's `NOTICE` follows it
+    for its vendored dagre and d3. Code a dependency brings into a bundle is not named: the dashboard's `app.js`
+    has carried Phoenix's (MIT) from the start without it. *Rejected:* the renderer's licences repeated in the
+    dashboard's `NOTICE` (a new pattern, and inconsistent while Phoenix is not there). **Open, for whoever owns
+    the convention:** whether a package that bundles a dependency's code names it — Phoenix today, dagre and d3
+    now. So stays the bundle's comment from dagre's own file pointing at its licence file, which is not
+    vendored. Step 4 above ("`NOTICE` wycięty" with Mermaid) holds for Mermaid's section only: the fonts are in
+    the file since 28 September.
 - **Not done, known:** AppUnite `computers` fitted to the screen is unreadable, as the ADR said: a matter of views.
   The panel is raw (the node's facts, nested values as JSON) until batch 4. Locally, mise's Elixir 1.20.4 fails
   the engine's gate on new type warnings in code this batch does not touch (`EhOsContract.Trace`,
