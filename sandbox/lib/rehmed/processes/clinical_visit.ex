@@ -16,6 +16,11 @@ defmodule Rehmed.Processes.ClinicalVisit do
   The run ends when the report is sent (`E-54`) or waived. A rejection by the
   registry (`AGG-10`'s error state) does not end it: the report is still owed, and
   its retry (`S-46`) is not written yet.
+
+  The scenarios show the promise judged (plan DD, S3, #256). The register being down
+  excuses a visit whose two days it falls in; the regulation's own rule, three days
+  from the end of the outage, needs an outage with an end, which the library does
+  not have, so a suspension approximates it (the contract's moduledoc).
   """
 
   # The old watchdog "notified the manager at the moment the deadline had already
@@ -46,5 +51,38 @@ defmodule Rehmed.Processes.ClinicalVisit do
     within {2, :day}
     or_else :p1_reporting_not_required
     source "Dz.U. 2025 poz. 866"
+  end
+
+  scenario "raport do P1 wysłany następnego dnia — termin dotrzymany",
+    verdict: :satisfied,
+    via: :eventually do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    given :p1_report_sent, %{visit_id: "visit-anna"}, at: "2026-09-08T10:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
+  end
+
+  scenario "usługa niezgłaszana do P1 — termin dotrzymany bez raportu",
+    verdict: :satisfied,
+    via: :or_else do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    given :p1_reporting_not_required, %{visit_id: "visit-anna"}, at: "2026-09-07T15:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
+  end
+
+  scenario "raport wysłany po dwóch dniach — termin przekroczony", verdict: :violated do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    given :p1_report_sent, %{visit_id: "visit-anna"}, at: "2026-09-09T11:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
+  end
+
+  scenario "rejestr P1 nie działał, raport niewysłany — termin zawieszony", verdict: :suspended do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    outage :p1, at: "2026-09-08T10:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-10T09:00:00+02:00"
+  end
+
+  scenario "dzień po wizycie, raportu jeszcze nie ma — termin biegnie", verdict: :pending do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+    promise :medical_event_reported_within_statutory_window, at: "2026-09-08T09:00:00+02:00"
   end
 end
