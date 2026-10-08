@@ -16,27 +16,31 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   The context map makes statutory reporting a conformist of this context: "ICD-10,
   ICD-9, PESEL, practitioner number; payload assembly on clinical close". So
   `visit_closed_clinically` carries what P1 needs, and whether the service is
-  reported at all. The PESEL comes from the patient record and the flag from the
-  catalogue (`AGG-15`, "one flag, not two"); the application reads both and puts
-  them on the command, because a decision reads no other context. The flag is the
-  host's to give, never the specialist's (`supplied_by: :host`, plan T1s): a request
-  that sends it is refused.
+  reported at all. The PESEL comes from the patient record, on the command. The flag
+  comes from the catalogue (`AGG-15`, "one flag, not two"): scheduling records it on
+  `visit_booked` when the visit is booked, and this boundary reads that event, so the
+  specialist never says it (plan DD, A2 (#249)).
 
   **PESEL and the codes are the patient's personal data**, and so are sealed per
   patient (v2 §14). The distillation's hardest question stays open beside it:
   medical records are kept for twenty years by statute, so whether erasing a patient
   may shred them is the clinic's lawyer's answer, not the library's.
 
-  ## The one gate, and the one that cannot be written
+  ## The two gates
 
   `DEC-19`: a service reported to P1 closes clinically only with both codes. The close
-  carries the codes, so this is a constraint on the command. It is a proposal and contradicts the room's 2026-08-13 decision ("remind, don't block"), so
-  if it becomes a reminder this invariant goes.
+  carries the codes and the booking the flag, so this is an invariant of the visit's
+  documentation. It is a proposal and contradicts the room's 2026-08-13 decision
+  ("remind, don't block"), so if it becomes a reminder this invariant goes.
 
   `AGG-02` invariant 3, **only the specialist who delivered the visit may close it**,
-  is enforced today and is not here. A decision sees the command and the state, not
-  who issued the command, and the capability says only that *a* specialist may close
-  a visit. The finding is in the plan (E9a).
+  is enforced today. The visit is delivered by the specialist reception booked it with,
+  on `visit_booked`, and the close names them with `actor_is`: the engine refuses any
+  other specialist before the decision. A specialist can record the patient leaving,
+  so who did is no proof of who saw them; who the visit is booked with, only
+  reception changes. A substitute is booked again, not let through. Until plan DD,
+  A2 (#249) the contract could not say this rule (the finding of E9a): a decision sees
+  the command and the state, not who issued the command.
 
   ## Twenty-four hours
 
@@ -53,19 +57,42 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     context: :clinical_documentation,
     id: "rehmed.clinical_documentation"
 
-  consumes Rehmed.Contracts.Scheduling, :visit_completed
+  consumes Rehmed.Contracts.Scheduling, [:visit_booked, :visit_completed]
 
-  aggregate :visit_documentation, "Dokumentacja wizyty" do
+  # A boundary, not an aggregate (plan DD, A2 (#249)): what the close depends on was
+  # recorded by scheduling when the visit was booked — the service's P1 flag (`AGG-15`)
+  # and the specialist the visit is booked with — so the documentation reads that event
+  # of its visit beside its own. The specialist comes from reception's booking, not from
+  # anything a specialist records: a colleague could record the patient leaving, but not
+  # rebook the visit.
+  dcb :visit_documentation, "Dokumentacja wizyty" do
     identity :visit_id
+
+    consults :visit_booked, match: :visit_id
 
     state do
       field :closed, :boolean, default: false
+      field :p1_reported, :boolean, optional: true
+      field :specialist_id, :id, optional: true
     end
 
     # `AGG-02`'s clinical close is its final state, and each close queues a report to
     # P1: a second close would send the registry the same visit twice.
     invariant :closed_clinically_once, "Wizytę zamyka się klinicznie raz",
       source: "AGG-02, stan ZamkniętaKlinicznie"
+
+    # Enforced by the clinic today; the engine compares the specialist the visit is
+    # booked with and whoever closes (`actor_is`). With no booking, nobody is named, and
+    # every close is refused.
+    invariant :closed_by_its_specialist,
+              "Wizytę zamyka klinicznie tylko specjalista, który ją wykonał",
+              source: "AGG-02 niezmiennik 3, egzekwowane dziś"
+
+    # The service's flag as it stood at booking, so a rule on the visit's state, not on
+    # the command: the codes come with the close, the flag with the booking.
+    invariant :codes_before_clinical_close,
+              "Wizyta z usługą raportowaną do P1 zamyka się klinicznie dopiero z kodami ICD-10 i ICD-9",
+              source: "AGG-02 niezmiennik 2, DEC-19 (propozycja)"
 
     command :code_diagnosis, "Wybierz kody ICD",
       by: :specialist,
@@ -76,27 +103,22 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
       field :icd9, :string, personal: :patient_id
     end
 
-    # The codes come with the close, from the screen the specialist closes on, so the
-    # rule is about the command's own fields: a constraint, not an invariant. The
-    # state could not hold them: a personal field folds under a patient the first
-    # event names, and before it the state has no patient (F5).
+    # The codes come with the close, from the screen the specialist closes on; the state
+    # could not hold them: a personal field folds under a patient the first event
+    # names, and before it the state has no patient (F5). Whether the service is
+    # reported is the booking's, in the state.
     command :close_visit_clinically, "Zamknij wizytę klinicznie",
       by: :specialist,
       emits: :visit_closed_clinically,
-      rejects: [:closed_clinically_once, :codes_before_clinical_close],
+      rejects: [:closed_clinically_once, :closed_by_its_specialist, :codes_before_clinical_close],
       source: "C-29, aktor A-03" do
+      actor_is(:specialist_id, or_rejects: :closed_by_its_specialist)
+
       field :patient_id, :id, subject: :patient
       field :pesel, :string, personal: :patient_id
       field :icd10, :string, personal: :patient_id, optional: true
       field :icd9, :string, personal: :patient_id, optional: true
       field :practitioner_number, :id
-      # The service's P1 flag (`AGG-15`), not the specialist's to say: the host gives it
-      # (plan T1s, `Rehmed.Supplier`).
-      field :p1_reported, :boolean, supplied_by: :host
-
-      constraint :codes_before_clinical_close,
-                 "Wizyta z usługą raportowaną do P1 zamyka się klinicznie dopiero z kodami ICD-10 i ICD-9",
-                 source: "AGG-02 niezmiennik 2, DEC-19 (propozycja)"
     end
 
     # Issued by the chase only, so no actor may.
@@ -139,62 +161,66 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     ends_on :visit_closed_clinically
   end
 
+  # A physiotherapy visit as scheduling booked it, and the close without codes.
+  @physiotherapy %{
+    patient_id: "patient-anna",
+    service_id: "service-physiotherapy",
+    specialist_id: "specialist-ewa",
+    scheduled_at: "2026-10-05T09:00:00Z",
+    p1_reported: true
+  }
+  @close %{
+    patient_id: "patient-anna",
+    pesel: "85010112345",
+    practitioner_number: "practitioner-ewa"
+  }
+
   scenario "fizjoterapeuta koduje rozpoznanie i procedurę" do
     command :code_diagnosis, %{patient_id: "patient-anna", icd10: "M54.5", icd9: "93.39"}
     expect :diagnosis_coded, %{icd10: "M54.5", icd9: "93.39"}
   end
 
   scenario "fizjoterapia z kodami — wizyta zamyka się klinicznie" do
-    command :close_visit_clinically, %{
-      patient_id: "patient-anna",
-      pesel: "85010112345",
-      icd10: "M54.5",
-      icd9: "93.39",
-      practitioner_number: "practitioner-ewa",
-      p1_reported: true
-    }
-
+    actor :specialist
+    as "specialist-ewa"
+    given :visit_booked, @physiotherapy
+    command :close_visit_clinically, Map.merge(@close, %{icd10: "M54.5", icd9: "93.39"})
     expect :visit_closed_clinically, %{icd10: "M54.5", icd9: "93.39", p1_reported: true}
   end
 
-  scenario "fizjoterapia bez kodów — zamknięcie kliniczne odrzucone" do
-    command :close_visit_clinically, %{
-      patient_id: "patient-anna",
-      pesel: "85010112345",
-      practitioner_number: "practitioner-ewa",
-      p1_reported: true
-    }
+  # `AGG-02` invariant 3: the specialist who saw the patient closes the visit, not a
+  # colleague with the same permission.
+  scenario "wizytę zamyka inny specjalista — zamknięcie odrzucone" do
+    actor :specialist
+    as "specialist-ola"
+    given :visit_booked, @physiotherapy
+    command :close_visit_clinically, Map.merge(@close, %{icd10: "M54.5", icd9: "93.39"})
+    rejected :closed_by_its_specialist
+  end
 
+  scenario "fizjoterapia bez kodów — zamknięcie kliniczne odrzucone" do
+    actor :specialist
+    as "specialist-ewa"
+    given :visit_booked, @physiotherapy
+    command :close_visit_clinically, @close
     rejected :codes_before_clinical_close
   end
 
   # H21: beauty, fitness and the stable are never reported, so nothing gates them.
   scenario "usługa niezgłaszana do P1 zamyka się bez kodów" do
-    command :close_visit_clinically, %{
-      patient_id: "patient-anna",
-      pesel: "85010112345",
-      practitioner_number: "practitioner-ewa",
-      p1_reported: false
-    }
-
+    actor :specialist
+    as "specialist-ewa"
+    given :visit_booked, %{@physiotherapy | service_id: "service-fitness", p1_reported: false}
+    command :close_visit_clinically, @close
     expect :visit_closed_clinically, %{p1_reported: false}
   end
 
   scenario "wizyta już zamknięta klinicznie — drugie zamknięcie odrzucone" do
-    given :visit_closed_clinically, %{
-      patient_id: "patient-anna",
-      pesel: "85010112345",
-      practitioner_number: "practitioner-ewa",
-      p1_reported: false
-    }
-
-    command :close_visit_clinically, %{
-      patient_id: "patient-anna",
-      pesel: "85010112345",
-      practitioner_number: "practitioner-ewa",
-      p1_reported: false
-    }
-
+    actor :specialist
+    as "specialist-ewa"
+    given :visit_booked, %{@physiotherapy | service_id: "service-fitness", p1_reported: false}
+    given :visit_closed_clinically, Map.put(@close, :p1_reported, false)
+    command :close_visit_clinically, @close
     rejected :closed_clinically_once
   end
 

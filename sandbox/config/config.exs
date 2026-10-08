@@ -20,8 +20,8 @@ config :eh_os_contract,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
   authorizer: EhOsContract.Auth,
-  # Rehmed's `p1_reported` and `total` are the host's to give (plan T1s); a stand-in
-  # for its systems answers them.
+  # Rehmed's settlement `total` is the host's to give (plan T1s); a stand-in
+  # for its systems answers it.
   supplier: Rehmed.Supplier,
   # Rehmed's booking reads the service it names from the clinic's catalogue (plan DD,
   # T2s (#245)); a stand-in catalogue answers it.

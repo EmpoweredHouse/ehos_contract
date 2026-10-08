@@ -96,9 +96,23 @@ defmodule Rehmed.ConsumedFieldChangeTest do
   test "renaming a field the subscriber reads breaks its contract and its implementation" do
     ns = namespace("Renamed")
 
-    # The publisher's author renames the flag everywhere in their own file: the
-    # command, the event, their scenarios. Their contract compiles.
-    rename = &String.replace(&1, "p1_reported", "reported_to_p1")
+    # The publisher's author renames the flag on their event and in their scenarios of
+    # it, and leaves alone what is not theirs: scheduling's `visit_booked`, whose flag
+    # the documentation reads into its state (plan DD, A2 (#249)). Their contract
+    # compiles.
+    rename = fn source ->
+      source
+      |> String.replace(
+        ~r/(event :visit_closed_clinically[^\n]*\n(?:      [^\n]*\n)*?      field :)p1_reported/u,
+        "\\1reported_to_p1"
+      )
+      |> String.split("\n")
+      |> Enum.map_join("\n", fn line ->
+        if line =~ "visit_closed_clinically",
+          do: String.replace(line, "p1_reported", "reported_to_p1"),
+          else: line
+      end)
+    end
 
     violations = contracts(ns, rename)
 
