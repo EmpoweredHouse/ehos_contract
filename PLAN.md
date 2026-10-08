@@ -65,8 +65,9 @@ the application equals one domain's `name:` exactly, and no other domain publish
 boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entity the application keeps, through
 `EhOsContract.Entities`, and the storage is at migration V02, which the engine requires at boot. T2s merged in #246
 (issue #245), A1 in #248 (issue #247): a command can require the person a field of its unit's state names
-(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 is
-in #254 (issue #251). Next without E13: S3, then O1.
+(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 merged
+in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
+S3 is the test material's (issue #256). Next without E13: O1, which needs EHOS's agreement first.
 
 ### Stan repozytorium
 
@@ -597,8 +598,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
-| S2 | 3 | scenariusze obietnic | W3, P2b | ◐ `dd/251-promise-scenarios` | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
-| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ◐ `dd/256-promise-scenarios-material`, on S2 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
+| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ◐ `dd/256-promise-scenarios-material` | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
