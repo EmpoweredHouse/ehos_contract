@@ -1,0 +1,17 @@
+Two rounds; each a correctness review and a security-and-performance review. `mix check` in `sandbox/` passed after each.
+
+Fixed:
+- The token request ran inside the process's `handle_call`: with EHOS slow, callers queued behind it, the third one's `GenServer.call` timed out and exited its LiveView or request, and each queued caller asked EHOS again. The request now runs in a process of its own; callers that need a credential at the same time wait for that one request, and the process keeps answering.
+- A failure was not remembered: each call during an outage, or while the deployment does not ask, made a new token request. A refusal or an outage is now answered for five seconds without asking again.
+- The page cursor kept only EHOS's `after`, so the next page asked with it alone, as the documentation said, dropped `q`, `state` and `limit`. The cursor now carries the page's query, its values held to the options' rules, and must carry `after`.
+- Inside a credential's last minute every caller waited for the renewal, and once a renewal failed, callers got the failure though the credential still worked. A valid credential is now handed out at once, and renewed beside it.
+- `state: :disabled` was sent and came back as `:not_agreed`; a `q` past 2048 bytes and an id such as `..` were sent. All three are refused before EHOS is asked.
+- Every caller was given the whole configuration, the client key included; the credential's map no longer carries it. The credential is left out of `:sys.get_status` and crash reports.
+- A missing process exited the caller; it is `:unavailable`. A 422 or 5xx was `:unavailable` with nothing logged; it is logged.
+- Expiry is measured on the monotonic clock.
+
+No change needed:
+- `own_query` and `max_body` in `SignIn.Http` apply only when a caller's config sets them, which only `People` does; sign-in's calls keep the 64 KiB bound and the refusal of any query (its existing test).
+- The exit reason of the token request's process carries the token, but a plain process that exits with no links writes no report.
+
+Left: none filed.
