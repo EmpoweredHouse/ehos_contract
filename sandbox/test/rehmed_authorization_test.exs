@@ -156,22 +156,49 @@ defmodule Rehmed.AuthorizationTest do
     assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
   end
 
-  test "what the host supplies is refused from the caller, and given by the host" do
-    # Plan T1s: whether the service is reported to P1 decides whether the codes are
-    # required, so a specialist who could send `false` could close without them.
-    specialist = credential("u-specialist", ["rehmed.close_visit_clinically"])
+  test "only the specialist who saw the patient closes the visit, by the flag of its booking" do
+    # Plan DD, A2 (#249): who saw the patient is the host's to record, from the
+    # credential of whoever records them leaving; and only they close the visit
+    # (`AGG-02` invariant 3). Whether the codes are required is the booking's flag.
+    reception = credential("u-reception", ["rehmed.book_visit"])
 
+    ewa =
+      credential("specialist-ewa", ["rehmed.visit_completed", "rehmed.close_visit_clinically"])
+
+    ola = credential("specialist-ola", ["rehmed.close_visit_clinically"])
+
+    booked =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> reception)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("idempotency-key", "booking-anna")
+      |> post("/api/rehmed/commands/rehmed.book_visit", Jason.encode!(@booking))
+
+    %{"identity" => %{"visit_id" => visit}} = Jason.decode!(booked.resp_body)
+    close = %{@close | visit_id: visit}
+
+    # The specialist cannot say who they are: the field is the host's.
     sent =
-      command(specialist, "rehmed.close_visit_clinically", Map.put(@close, :p1_reported, false))
+      record(ewa, "rehmed.visit_completed", %{visit_id: visit, specialist_id: "specialist-ola"})
 
     assert {sent.status, Jason.decode!(sent.resp_body)} ==
-             {422, %{"invalid" => %{"p1_reported" => "supplied"}}}
+             {422, %{"invalid" => %{"specialist_id" => "supplied"}}}
 
-    assert Repo.all(from(e in Event, select: e.type)) == []
+    assert record(ewa, "rehmed.visit_completed", %{visit_id: visit}).status == 200
 
-    # The control: without it, the host's answer for visit-anna is what was decided.
-    closed = command(specialist, "rehmed.close_visit_clinically", @close)
-    assert closed.status == 200
+    # A colleague with the same permission is refused, as the business refuses it.
+    other = command(ola, "rehmed.close_visit_clinically", close)
+
+    assert {other.status, Jason.decode!(other.resp_body)} ==
+             {422, %{"rejected" => "closed_by_its_specialist"}}
+
+    # Physiotherapy is reported, by its booking: without the codes it does not close.
+    uncoded = command(ewa, "rehmed.close_visit_clinically", Map.drop(close, [:icd10, :icd9]))
+
+    assert {uncoded.status, Jason.decode!(uncoded.resp_body)} ==
+             {422, %{"rejected" => "codes_before_clinical_close"}}
+
+    assert command(ewa, "rehmed.close_visit_clinically", close).status == 200
 
     assert [%{"p1_reported" => true}] =
              Repo.all(
@@ -180,18 +207,6 @@ defmodule Rehmed.AuthorizationTest do
                  select: e.payload
                )
              )
-
-    # A visit the host does not know is the host's to answer, not the caller's fault,
-    # and nothing of the refused request is written.
-    written = Repo.aggregate(Event, :count)
-
-    unknown =
-      command(specialist, "rehmed.close_visit_clinically", %{@close | visit_id: "visit-zofia"})
-
-    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
-             {503, %{"error" => "not_supplied"}}
-
-    assert Repo.aggregate(Event, :count) == written
   end
 
   test "a booking reads its service from the catalogue, and the visit keeps its P1 flag" do

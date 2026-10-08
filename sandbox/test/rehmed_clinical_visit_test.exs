@@ -58,12 +58,17 @@ defmodule Rehmed.ClinicalVisitTest do
 
     {:ok, _} =
       Clock.at(@left, fn ->
-        EhOsContract.record(Scheduling, %VisitCompleted{visit_id: id}, actor: @specialist)
+        EhOsContract.record(
+          Scheduling,
+          %VisitCompleted{visit_id: id, specialist_id: "specialist-ewa"},
+          actor: @specialist
+        )
       end)
 
     id
   end
 
+  # The codes a reported service needs; whether it is reported is the booking's.
   defp close(id, reported?, at) do
     codes = if reported?, do: %{icd10: "M54.5", icd9: "93.39"}, else: %{}
 
@@ -76,8 +81,7 @@ defmodule Rehmed.ClinicalVisitTest do
             visit_id: id,
             patient_id: "patient-anna",
             pesel: "85010112345",
-            practitioner_number: "practitioner-ewa",
-            p1_reported: reported?
+            practitioner_number: "practitioner-ewa"
           })
         ),
         actor: @specialist

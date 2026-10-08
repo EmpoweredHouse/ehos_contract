@@ -1,11 +1,15 @@
 defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   @moduledoc """
   Decides the codes and the clinical close of a visit (`AGG-02`). A service
-  reported to P1 is refused a close without both codes (`DEC-19`), and a visit is
-  closed once: each close queues a report to P1.
+  reported to P1, by the flag recorded when the visit was booked, is refused a close
+  without both codes (`DEC-19`), and a visit is closed once: each close queues a report
+  to P1. Who may close it — the specialist who saw the patient — the engine checks
+  before this decision runs.
   """
 
-  use Rehmed.Contracts.ClinicalDocumentation, aggregate: :visit_documentation
+  use Rehmed.Contracts.ClinicalDocumentation, dcb: :visit_documentation
+
+  alias Rehmed.Contracts.Scheduling.Events.{VisitBooked, VisitCompleted}
 
   @impl true
   def code_diagnosis(%CodeDiagnosis{} = coding, _state) do
@@ -20,13 +24,13 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   @impl true
   def close_visit_clinically(_close, %State{closed: true}), do: reject(:closed_clinically_once)
 
-  def close_visit_clinically(%CloseVisitClinically{p1_reported: true, icd10: nil}, _state),
+  def close_visit_clinically(%CloseVisitClinically{icd10: nil}, %State{p1_reported: true}),
     do: reject(:codes_before_clinical_close)
 
-  def close_visit_clinically(%CloseVisitClinically{p1_reported: true, icd9: nil}, _state),
+  def close_visit_clinically(%CloseVisitClinically{icd9: nil}, %State{p1_reported: true}),
     do: reject(:codes_before_clinical_close)
 
-  def close_visit_clinically(%CloseVisitClinically{} = close, _state) do
+  def close_visit_clinically(%CloseVisitClinically{} = close, %State{} = state) do
     emit(%VisitClosedClinically{
       visit_id: close.visit_id,
       patient_id: close.patient_id,
@@ -34,7 +38,7 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
       icd10: close.icd10,
       icd9: close.icd9,
       practitioner_number: close.practitioner_number,
-      p1_reported: close.p1_reported
+      p1_reported: state.p1_reported == true
     })
   end
 
@@ -43,6 +47,11 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
     do: emit(%DocumentationOverdueTaskCreated{visit_id: id})
 
   @impl true
+  def evolve(state, %VisitBooked{p1_reported: reported}), do: %{state | p1_reported: reported}
+
+  def evolve(state, %VisitCompleted{specialist_id: specialist}),
+    do: %{state | specialist_id: specialist}
+
   def evolve(state, %VisitClosedClinically{}), do: %{state | closed: true}
   def evolve(state, _event), do: state
 end
