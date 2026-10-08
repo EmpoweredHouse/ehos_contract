@@ -4421,6 +4421,7 @@ function zoom_default2() {
 var SVG = "http://www.w3.org/2000/svg";
 var SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
 var HOLD = "\0hold";
+var MIN_HEIGHT = 120;
 var instances = 0;
 var adopt = () => {
   const sheet = new CSSStyleSheet();
@@ -4585,6 +4586,11 @@ var EhOsContractGraph = {
     });
     const { width, height } = graph.graph();
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
+    const across = this.canvas.getBoundingClientRect().width;
+    if (across) {
+      const tall = Math.max(MIN_HEIGHT, Math.ceil(height * Math.min(1, (across - 32) / width) + 32));
+      rules.push(`${this.scope} .ehg-canvas { height: ${tall}px; min-height: 0 }`);
+    }
     groups.forEach(({ id: id2 }) => {
       const { x, y, width: width2, height: height2 } = graph.node(id2);
       rules.push(

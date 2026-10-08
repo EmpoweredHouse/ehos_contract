@@ -26,6 +26,9 @@ const SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 2
 // a NUL (EhOsContract.GraphRenderer.Canvas), so the name is never a relation's.
 const HOLD = "\u0000hold"
 
+// The least a laid-out canvas is tall, in pixels, however small its graph.
+const MIN_HEIGHT = 120
+
 let instances = 0
 
 const adopt = () => {
@@ -249,6 +252,14 @@ export const EhOsContractGraph = {
 
     const { width, height } = graph.graph()
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
+    // The canvas as tall as the graph fitted to its width, as fit() fits it, so a small picture takes little room;
+    // the stylesheet's max-height holds a tall one, which is fitted smaller and zoomed into. Not while the
+    // canvas has no width: laid out again once it has, it is sized then.
+    const across = this.canvas.getBoundingClientRect().width
+    if (across) {
+      const tall = Math.max(MIN_HEIGHT, Math.ceil(height * Math.min(1, (across - 32) / width) + 32))
+      rules.push(`${this.scope} .ehg-canvas { height: ${tall}px; min-height: 0 }`)
+    }
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)
       rules.push(
