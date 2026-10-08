@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1668,6 +1668,64 @@ Batch 1 needs no views: it is what every view is drawn with.
   The panel is raw (the node's facts, nested values as JSON) until batch 4. Locally, mise's Elixir 1.20.4 fails
   the engine's gate on new type warnings in code this batch does not touch (`EhOsContract.Trace`,
   `EhOsContract.Bus.Local.Consumer`, `test/support/shredding_rig`); CI runs 1.18.4, which passes.
+
+### E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)
+
+- **The user's decision (8 October): the views are the six pictures the Mermaid diagrams draw, drawn with the
+  renderer** — "takie same widoki jak są w mermaidzie, tylko nowymi narzędziami". That is batch 2's
+  specification: each picture's builder in the engine (`Graph.Contract`, `Declared`, `Unit`, `Lifecycle`,
+  `ContextMap`, `System`) is what its view shows, and a test holds the one to the other. *Rejected for now:*
+  specifying new views first (step 1 above) — the needs the user has not written down, the panels and the
+  working plan's points move to batch 4 and after, onto views that already draw what the screen draws today.
+- **`EhOsContract.GraphRenderer.View`** builds them from the graph of facts: `contract/1`, `declared/1`,
+  `unit/2`, `lifecycle/2`, `context_map/1`, `system/1`, with `views/1` listing a document's views in the
+  Graph screen's order and `build/3` laying an overlay's undeclared moves over one; `all/1` stays as the test
+  bed. Each arrow says what its picture said (`async` dotted, a scenario count, `may be refused`, a promise's
+  window on a heavy arrow, `or else`, `gives <field>`, a transition's event label, a pattern's name, the
+  consumed events' names), and a relation that is not a delivery has no head. `Canvas` takes the view as
+  `view`; without it, the test bed.
+- **The drawing layer gains what the pictures need:** groups (units, stages, subdomains, contexts) as dagre
+  clusters, each a box with a title that selects it, a stage with no event a box of its own; a view laid out
+  top to bottom (the declared shape, a lifecycle); an arrow from one group to another (one stage before the
+  next), which dagre does not lay out, so each card of one is held before each card of the other and the arrow
+  is drawn box to box; an arrow's line (solid, dotted, heavy) and head as attributes of its label, which the
+  hook copies; a state card listing its fields, a process's end in green, a lifecycle's end heavier and its
+  start a dot; a label with nothing to say that takes no room.
+- **Where the view is not the picture**, by the facts being finer (*not asked for; the user to confirm*): a
+  process manager's start, its end and an event it takes during its run are arrows of their own (`starts`,
+  `ends`, `during the run`), where the picture drew a manager's reaction only when it issued a command — so
+  Rehmed's `documentation_chase` had no arrow from the visit's end that starts it, nor TaxVision's
+  `monthly_registry_check` from the confirmation that starts it; a timer a manager cancels is drawn as one it
+  sets is (no sandbox manager cancels one); two arrows of one type between the same two cards say which is which
+  (TaxVision's timer `sets · at start` and `sets · during the run`, one arrow in the picture). And by the
+  renderer, as batch 1 drew it: its cards (kind, label, name) everywhere, where Mermaid drew the label alone,
+  and colours rather than Mermaid's shapes.
+- **The preview** (`<mount>/graph/preview`, temporary) picks a view (`?view=`) and draws under it the Mermaid
+  diagram of the same picture, as the Graph screen draws it, to compare them on one page — with the log over
+  the full graph, a lifecycle and the system, as there. The Graph screen is unchanged (batch 4).
+- **Tests:** the renderer's suite (46) on six documents of the sandbox (three taken today: a process with stages
+  and a promise, a boundary, a lifecycle) and the hand-made one, now with an external giving a field: each view's
+  rules, the views a document lists, the groups and the looks in the markup, a group's title selecting it, no
+  `style` in any view of any fixture. `sandbox/test/graph_views_test.exs` holds every view of every contract and
+  domain of the three client trees to its picture's builder — every card, group and arrow of the picture is in
+  the view, and the view adds only the manager's flow above — and holds the arrows' words where the picture said
+  a number (async, scenarios, a window, a transition's label). It goes with the builders in batch 5.
+- **In a browser**, headless Chrome on the sandbox host, all 48 views of the 14 documents, with the Mermaid
+  diagram stubbed out: no violation of the policy, no `style` attribute, no card over a card, no label over a
+  card or a label, no card outside its group or inside another's, no group title outside its box or over a card,
+  no group over a group, no broken path, no console error. The Mermaid diagram itself breaks the policy on the
+  preview as it does on the Graph screen today (865 refused inline styles there). **Found there, fixed:** a
+  lifecycle's start dot, black, did not show on the dark canvas (now the theme's ink) and carried the log's count
+  of the unit's aggregates, its card being the unit's (the dot shows nothing); an arrow across a stage's title
+  hid it (the title lies over arrows); the preview laid the log over a unit's view, mixing its scenario counts
+  with the log's.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: `mix check` in `sandbox/` failed once on connections, not on code —
+  9 of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside another
+  `phx.server` of the sandbox holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 209,
+  engine 1530, dashboard 65, auth 287, renderer 46.
+- **Not done, known:** the system's arrows carry the consumed events' names, as the picture did, not their
+  labels (working plan, point 3); the panel is raw; AppUnite `computers` fitted to the screen is as unreadable as
+  its Mermaid picture.
 
 ### Wobec programu DD
 
