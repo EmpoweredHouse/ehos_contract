@@ -35,6 +35,13 @@ if Code.ensure_loaded?(StreamData) do
     declaration does not have raises `ArgumentError`, as does naming a command, event,
     entity or unit the contract or domain does not declare.
 
+    What it generates is what a host's own code hands the engine: a command for
+    `EhOsContract.dispatch/3`, which trusts its struct, so a field the host supplies
+    (`supplied_by: :host`) is filled in too; a command that creates its aggregate has
+    no identity, which the engine generates. An event is what the log gives back: now
+    and then a personal field of it is `%EhOsContract.Erased{}`, as after its subject
+    was erased, and its `__meta__` is left unset.
+
     The module exists only when StreamData is a dependency of the application:
     `{:stream_data, "~> 1.1"}`, usually `only: :test`.
     """
@@ -48,13 +55,12 @@ if Code.ensure_loaded?(StreamData) do
     @max_list 5
     @max_history 20
 
-    # Days from 0001-01-01 to 9999-12-31, and seconds over the same years.
+    # Days from 0001-01-01 to 9999-12-31, and seconds a day inside the same years: a
+    # timestamp at either end, shifted into a domain's time zone for its day tag, would
+    # fall in the year 0 or 10000.
     @days Date.diff(~D[9999-12-31], ~D[0001-01-01])
-    @first_second DateTime.to_unix(~U[0001-01-01 00:00:00Z])
-    @last_second DateTime.to_unix(~U[9999-12-31 23:59:59Z])
-
-    @typedoc "A generator, or a constant a generator always gives."
-    @type value :: StreamData.t(term()) | term()
+    @first_second DateTime.to_unix(~U[0001-01-02 00:00:00Z])
+    @last_second DateTime.to_unix(~U[9999-12-30 23:59:59Z])
 
     @doc """
     A generator of the command `name` of `contract`, as its struct.
@@ -63,11 +69,23 @@ if Code.ensure_loaded?(StreamData) do
     """
     @spec command(module(), atom(), keyword()) :: StreamData.t(struct())
     def command(contract, name, opts \\ []) do
+      options!(opts, [:fields])
       model = Model.fetch(contract)
 
       declaration =
         Enum.find(model.commands, &(&1.name == name)) ||
           raise ArgumentError, unknown("command", name, contract, model.commands)
+
+      # A command that creates its aggregate arrives without the identity, which the
+      # engine generates and refuses from the caller.
+      opts =
+        if Map.get(declaration, :creates) do
+          identity = Enum.find(model.units, &(&1.name == declaration.unit)).identity
+          absent = for field <- identity, do: {field, nil}
+          Keyword.update(opts, :fields, absent, &Keyword.merge(absent, &1))
+        else
+          opts
+        end
 
       struct_of(model, Model.module_for(model, :command, name), declaration.fields, opts)
     end
@@ -80,13 +98,19 @@ if Code.ensure_loaded?(StreamData) do
     """
     @spec event(module(), atom(), keyword()) :: StreamData.t(struct())
     def event(contract, name, opts \\ []) do
+      options!(opts, [:fields])
       model = Model.fetch(contract)
 
       declaration =
         Enum.find(model.events, &(&1.name == name)) ||
           raise ArgumentError, unknown("event", name, contract, model.events)
 
-      struct_of(model, Model.module_for(model, :event, name), declaration.fields, opts)
+      struct_of(
+        model,
+        Model.module_for(model, :event, name),
+        declaration.fields,
+        Keyword.put(opts, :erased, true)
+      )
     end
 
     @doc """
@@ -95,6 +119,7 @@ if Code.ensure_loaded?(StreamData) do
     """
     @spec entity_row(module(), atom(), keyword()) :: StreamData.t(map())
     def entity_row(domain, name, opts \\ []) do
+      options!(opts, [:fields])
       model = Model.fetch(domain)
 
       declaration =
@@ -117,6 +142,7 @@ if Code.ensure_loaded?(StreamData) do
     """
     @spec history(module(), atom(), keyword()) :: StreamData.t([struct()])
     def history(contract, name, opts \\ []) do
+      options!(opts, [:fields, :max_length])
       model = Model.fetch(contract)
 
       unit =
@@ -147,21 +173,21 @@ if Code.ensure_loaded?(StreamData) do
           walked
           |> Enum.map(fn event_name ->
             declaration = Enum.find(events, &(&1.name == event_name))
-            own = Enum.filter(fixed, fn {field, _} -> has_field?(declaration, field) end)
 
-            event_fields =
-              own ++
-                for(
-                  {field, value} <- identity,
-                  not Keyword.has_key?(own, field),
-                  do: {field, value}
-                )
+            # The identity was drawn once for the history, so a generator in `fields:`
+            # narrows it and is never drawn again per event.
+            own =
+              Enum.filter(fixed, fn {field, _} ->
+                field not in unit.identity and has_field?(declaration, field)
+              end)
 
             struct_of(
               model,
               Model.module_for(model, :event, event_name),
               declaration.fields,
-              Keyword.put(other, :fields, event_fields),
+              other
+              |> Keyword.put(:fields, own ++ Map.to_list(identity))
+              |> Keyword.put(:erased, true),
               values
             )
           end)
@@ -211,14 +237,68 @@ if Code.ensure_loaded?(StreamData) do
                 inspect(names)
       end
 
-      fixed_map(
-        for field <- fields do
-          case Keyword.fetch(fixed, field.name) do
-            {:ok, value} -> {field.name, generator(value)}
-            :error -> {field.name, field(field, values)}
+      generated =
+        fixed_map(
+          for field <- fields do
+            case Keyword.fetch(fixed, field.name) do
+              {:ok, value} -> {field.name, generator(value)}
+              :error -> {field.name, field(field, values)}
+            end
           end
-        end
-      )
+        )
+
+      if Keyword.get(opts, :erased, false),
+        do: erasable(generated, fields, fixed),
+        else: generated
+    end
+
+    # A stored event's personal field reads back erased once its subject is shredded,
+    # and a unit's `evolve/2` folds it so: now and then, a personal field the caller did
+    # not fix is `%EhOsContract.Erased{}`, naming the subject its sibling field holds.
+    defp erasable(generated, fields, fixed) do
+      personal =
+        for %{personal: sibling} = field <- fields,
+            is_atom(sibling) and sibling != nil,
+            not Keyword.has_key?(fixed, field.name),
+            subject = Enum.find(fields, &(&1.name == sibling)),
+            subject != nil,
+            do: {field.name, sibling, subject.subject}
+
+      if personal == [] do
+        generated
+      else
+        bind(generated, fn data ->
+          personal
+          |> Enum.map(fn {name, sibling, subject} ->
+            case data[sibling] do
+              id when is_binary(id) ->
+                map(
+                  frequency([{4, constant(false)}, {1, constant(true)}]),
+                  &if(&1, do: {name, %EhOsContract.Erased{subject: subject, id: id}}, else: nil)
+                )
+
+              _ ->
+                constant(nil)
+            end
+          end)
+          |> fixed_list()
+          |> map(fn erased -> Map.merge(data, Map.new(Enum.reject(erased, &is_nil/1))) end)
+        end)
+      end
+    end
+
+    defp options!(opts, allowed) do
+      for {key, _} <- opts, key not in allowed do
+        raise ArgumentError, "no option #{inspect(key)}; it takes #{inspect(allowed)}"
+      end
+
+      case Keyword.fetch(opts, :max_length) do
+        {:ok, n} when not (is_integer(n) and n >= 0) ->
+          raise ArgumentError, "max_length: is a non-negative integer, not #{inspect(n)}"
+
+        _ ->
+          :ok
+      end
     end
 
     defp has_field?(declaration, field), do: Enum.any?(declaration.fields, &(&1.name == field))

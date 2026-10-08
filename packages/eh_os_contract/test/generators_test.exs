@@ -63,6 +63,44 @@ defmodule EhOsContract.GeneratorsTest do
       end
     end
 
+    property "a command that creates its aggregate has no identity" do
+      check all(command <- Generators.command(BoundaryRig.Waitlist, :join_waitlist)) do
+        assert command.entry_id == nil
+      end
+    end
+
+    test "an event's personal field is sometimes erased, naming its subject" do
+      model = Model.fetch(ShreddingRig.Members)
+      joined = Enum.find(model.events, &(&1.name == :joined))
+      sample = ShreddingRig.Members |> Generators.event(:joined) |> Enum.take(200)
+
+      erased = Enum.filter(sample, &match?(%EhOsContract.Erased{}, &1.name))
+      assert erased != [] and length(erased) < 200
+
+      assert Enum.all?(
+               erased,
+               &(&1.name == %EhOsContract.Erased{subject: :member, id: &1.member_id})
+             )
+
+      for event <- sample, do: fits!(model, joined, event)
+
+      # A command is what a caller sends, never erased.
+      refute ShreddingRig.Members
+             |> Generators.command(:join)
+             |> Enum.take(100)
+             |> Enum.any?(&match?(%EhOsContract.Erased{}, &1.name))
+    end
+
+    test "an unknown option, or a bad max_length:, is refused by name" do
+      assert_raise ArgumentError, ~r/no option :size/, fn ->
+        Generators.command(LifecycleRig.Visits, :book_visit, size: 3)
+      end
+
+      assert_raise ArgumentError, ~r/max_length: is a non-negative integer, not -1/, fn ->
+        Generators.history(LifecycleRig.Visits, :visit, max_length: -1)
+      end
+    end
+
     test "an unknown name, or a field the declaration lacks, is refused by name" do
       assert_raise ArgumentError, ~r/declares no command :book/, fn ->
         Generators.command(LifecycleRig.Visits, :book)
@@ -117,20 +155,33 @@ defmodule EhOsContract.GeneratorsTest do
       end
     end
 
-    property "reaches a final status, and stops there" do
-      check all(events <- Generators.history(LifecycleRig.Visits, :visit), max_runs: 200) do
-        names = Enum.map(events, &name_of(Model.fetch(LifecycleRig.Visits), &1))
-        final = Enum.find_index(names, &(&1 in [:closed, :cancelled]))
-        assert final == nil or final == length(names) - 1
-      end
+    test "reaches a final status in some histories, and stops there" do
+      model = Model.fetch(LifecycleRig.Visits)
+
+      finals =
+        LifecycleRig.Visits
+        |> Generators.history(:visit)
+        |> Enum.take(300)
+        |> Enum.map(fn events ->
+          names = Enum.map(events, &name_of(model, &1))
+          {Enum.find_index(names, &(&1 in [:closed, :cancelled])), length(names)}
+        end)
+
+      assert Enum.all?(finals, fn {final, length} -> final == nil or final == length - 1 end)
+      assert Enum.any?(finals, fn {final, _} -> final != nil end)
     end
 
-    property "fields: fixes the identity of every event" do
+    property "fields: fixes the identity of every event, or narrows it once for the history" do
       check all(
               events <-
-                Generators.history(LifecycleRig.Visits, :visit, fields: [visit_id: "visit-1"])
+                Generators.history(LifecycleRig.Visits, :visit, fields: [visit_id: "visit-1"]),
+              narrowed <-
+                Generators.history(LifecycleRig.Visits, :visit,
+                  fields: [visit_id: member_of(Enum.map(1..50, &"visit-#{&1}"))]
+                )
             ) do
         assert Enum.all?(events, &(&1.visit_id == "visit-1"))
+        assert narrowed |> Enum.map(& &1.visit_id) |> Enum.uniq() |> length() <= 1
       end
     end
 
