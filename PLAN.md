@@ -605,7 +605,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
-| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☐ (EHOS agreed in EmpoweredHouse/eh-os#297) | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
+| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ◐ `dd/260-stage-order` | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
 | V2 | 4 | upcast przez callback | V1 | ☐ | — |

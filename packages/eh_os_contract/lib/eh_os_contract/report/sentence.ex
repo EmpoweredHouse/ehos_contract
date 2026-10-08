@@ -202,6 +202,19 @@ defmodule EhOsContract.Report.Sentence do
     "#{step(s)} — failing: #{Enum.join(parts, "; ")}"
   end
 
+  @doc """
+  The runs that entered a later stage before an earlier one: a heading and one line per
+  pair of stages, or nothing when every run kept the order. Never which runs: those are
+  the business's data.
+  """
+  @spec out_of_order(map()) :: {String.t(), [String.t()]} | nil
+  def out_of_order(%{runs: 0}), do: nil
+
+  def out_of_order(%{runs: n, pairs: pairs}) do
+    {"Stages out of order in #{runs(n)}:",
+     for(p <- pairs, do: "#{p.later_label} before #{p.earlier_label}: #{runs(p.runs)}")}
+  end
+
   @doc "A count of runs, with the numeral where it belongs."
   @spec runs(non_neg_integer()) :: String.t()
   def runs(1), do: "1 run"

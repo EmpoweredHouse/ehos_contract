@@ -279,9 +279,18 @@ broke it, are pending or suspended. Beside it the report prints the process's la
 the number of runs in the period, and the runs measured against a confirmed deadline: kept, exceeded,
 overdue.
 
-A process module gets a section of its own after the contracts': its deployment, runs, deadline and
-promises, and no steps, lifecycles or scenarios, which are its contracts'. It is not yet in the JSON the
-dashboard reads.
+The report also counts the runs that entered a later stage before an earlier one, and names the pairs of
+stages: a visit reported before it was closed. A stage is entered by its first event, and the order is
+the log's, not the clock's: a process includes only contracts of its own application, so all its stages
+are in one log. Only stages a run reached are compared, so a skipped stage, or one whose reaction still
+waits in a queue, is no finding. A run belongs to the period by its first event and is judged on all of
+its events. The report says how many runs, never which: finding them is the application's job
+(`EhOsContract.StageOrder`).
+
+A process module gets a section of its own after the contracts': its deployment, runs, deadline,
+promises and stage order, and no steps, lifecycles or scenarios, which are its contracts'. The JSON
+document (`EhOsContract.Conformance.as_data/2`) carries it, keyed `process`; the dashboard does not list it
+yet.
 
 When a deploy changes a promise, the runs whose `from` came before the change were held to a promise that
 is no longer the one declared: the report counts them apart, not among the verdicts, and prints the date of

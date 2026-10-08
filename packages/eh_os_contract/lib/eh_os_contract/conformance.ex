@@ -61,7 +61,10 @@ defmodule EhOsContract.Conformance do
   rolled back and delivered again by the transport, so a path that always fails there
   reads as untraversed.
 
-  The assertions are the process's `promises`. An aggregate that declares its
+  The assertions are the process's `promises`. Beside them, `out_of_order` counts the
+  runs that entered a later stage before an earlier one, with the pairs of stages
+  (`EhOsContract.StageOrder`): a claim about the process, kept apart from a contract's
+  undeclared transitions. An aggregate that declares its
   lifecycle adds the first two questions for its transitions, under `lifecycles`.
   `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
   contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
@@ -232,7 +235,23 @@ defmodule EhOsContract.Conformance do
           %{key: :deadline, value: {value.amount, value.unit}}
         end,
       duration: duration(model, opts),
-      promises: promises(model, opts)
+      promises: promises(model, opts),
+      # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
+      out_of_order: out_of_order(model, process, opts)
+    }
+  end
+
+  # The stages' labels beside their names, as a promise carries its events' labels.
+  defp out_of_order(model, process, opts) do
+    label = Map.new(process.stages, &{&1.name, &1.label || to_string(&1.name)})
+    result = EhOsContract.StageOrder.evaluate(model, opts)
+
+    %{
+      result
+      | pairs:
+          for pair <- result.pairs do
+            Map.merge(pair, %{earlier_label: label[pair.earlier], later_label: label[pair.later]})
+          end
     }
   end
 

@@ -1558,6 +1558,14 @@ the person's.
 > contract that still declares its own `process` gets no promise scenarios: that form is being removed (#221).
 > [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251)
 
+> **8 October 2026, plan DD, O1 — the report checks the order of a process's stages.** The stages were an order
+> nothing read. The report now counts, per process, the runs that entered a later stage before an earlier one,
+> and names the pairs, under a key of its own (`out_of_order`), never among a contract's undeclared transitions:
+> it is a claim about the process, and it can be addressed to someone else. Agreed with EHOS
+> (EmpoweredHouse/eh-os#297): by position in the log, never by timestamp; only stages a run reached; the period
+> takes a run by its first event and does not cut it; a stage entered by its first event; the count and the pairs,
+> never which runs. [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260)
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |
