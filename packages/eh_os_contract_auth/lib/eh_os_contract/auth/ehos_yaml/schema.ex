@@ -4,7 +4,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # `priv/schemas/` is EHOS's file byte for byte, a quotation with its source, not a second
   # definition: `ehos.yaml/v1` from `eh-os` `eeb732a`, read at `f7b2330` (1 October 2026), the
   # same bytes the `ehos-tools` template puts in an application's `.ehos/`, and `ehos.yaml/v2`
-  # from `eh-os` `99e036b` (D-69), read at `2cd95cb` (2 October 2026). A test pins each SHA-256;
+  # from `eh-os` `99e036b` (D-69), read at `2cd95cb` (2 October 2026), and `ehos.yaml/v3` from
+  # `eh-os` `d758c33` (D-81), read at `8ae669f` (8 October 2026). A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #
@@ -13,7 +14,11 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # enclosing object as well. The rules EHOS checks beside the schema, such as unique names and
   # ports in `serves`, are not repeated here: EHOS refuses them when the manifest is deployed.
 
-  @versions %{"ehos.yaml/v1" => "v1.json", "ehos.yaml/v2" => "v2.json"}
+  @versions %{
+    "ehos.yaml/v1" => "v1.json",
+    "ehos.yaml/v2" => "v2.json",
+    "ehos.yaml/v3" => "v3.json"
+  }
   @dir Path.expand("../../../../priv/schemas/ehos.yaml", __DIR__)
 
   for {_version, file} <- @versions, do: @external_resource(Path.join(@dir, file))
