@@ -8,6 +8,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         id="contract-graph"
         document={@document}
         overlay={@overlay}
+        view={:contract}
       />
 
   `document` is a `graph.v1` document with string keys, as the engine gives it and
@@ -16,16 +17,20 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   document's `digest` is of another version and is not drawn, as its schema says. `id`
   is the root element's DOM id, so it is unique on the page.
 
-  **What it draws** is a view of the document (`EhOsContract.GraphRenderer.View`);
-  until the views are specified it is `View.all/1`, every node and relation. Each
-  node is a card and each relation a label, both rendered here in HEEx; the hook
-  (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads them from
-  the page, lays them out and draws the arrows. The overlay's marks
+  **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
+  `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `:declared`,
+  `{:unit, id}`, `{:lifecycle, id}`, `:context_map`, `:system`, or `:all`, every node
+  and relation, which it draws when `view` is left out. Each node is a card, each
+  group a box with its title, and each relation a label, all rendered here in HEEx;
+  the hook (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads
+  them from the page, lays them out in the view's direction and draws the arrows, each
+  with the line and the head its label names. The overlay's marks
   (`EhOsContract.GraphRenderer.Marks`) are a count on the card or the label and a
   class per state, which the hook copies onto the arrow.
 
-  **A click** on a card, a label or an arrow selects it: the card and the label are
-  buttons with `phx-click`, the arrow is pushed by the hook, and both reach
+  **A click** on a card, a group's title, a label or an arrow selects it: the card, the
+  title and the label are buttons with `phx-click`, the arrow is pushed by the hook,
+  and both reach
   `handle_event("select", %{"id" => id}, …)` here. The selected element and what
   touches it are classes on the cards and the labels, everything else is drawn
   faint, and the panel beside the graph shows it. Clicking it again, or the panel's
@@ -55,19 +60,21 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   def mount(socket), do: {:ok, assign(socket, selected: nil)}
 
   # What an update leaves out stays as it was: a `send_update/2` with only an overlay keeps
-  # the document, and one without an overlay keeps the overlay. `:given` is the overlay as
-  # the host passed it, `:overlay` the one drawn.
+  # the document and the view, and one without an overlay keeps the overlay. `:given` is
+  # the overlay as the host passed it, `:overlay` the one drawn.
   @impl true
   def update(assigns, socket) do
     socket = assign(socket, Map.take(assigns, [:id, :document]))
     document = Map.fetch!(socket.assigns, :document)
+    spec = Map.get(assigns, :view, socket.assigns[:spec] || :all)
     given = Map.get(assigns, :overlay, socket.assigns[:given])
     overlay = if given && given["document_digest"] == document["digest"], do: given
-    view = document |> View.all() |> View.with_observed(overlay)
+    view = View.build(document, spec, overlay)
     selected = socket.assigns.selected
 
     {:ok,
      assign(socket,
+       spec: spec,
        given: given,
        view: view,
        overlay: overlay,
@@ -99,9 +106,26 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       )
 
     ~H"""
-    <div id={@id} class="ehg" phx-hook="EhOsContractGraph">
+    <div id={@id} class="ehg" phx-hook="EhOsContractGraph" data-direction={@view.direction}>
       <div class="ehg-canvas">
         <div class="ehg-viewport">
+          <div
+            :for={group <- @view.groups}
+            class={["ehg-group" | classes(group.id, @selected, @near, nil)]}
+            data-ehg-group={group.id}
+            data-kind={group.kind}
+          >
+            <button
+              type="button"
+              class="ehg-group-title"
+              title={group.title}
+              phx-click="select"
+              phx-value-id={group.id}
+              phx-target={@myself}
+            >
+              {group.title}
+            </button>
+          </div>
           <svg id={"#{@id}-arrows"} class="ehg-arrows" phx-update="ignore" aria-hidden="true"></svg>
           <button
             :for={node <- @view.nodes}
@@ -109,30 +133,37 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             class={["ehg-card" | classes(node.id, @selected, @near, Marks.node(@overlay, node.id))]}
             data-ehg-node={node.id}
             data-kind={node.kind}
+            data-variant={node.variant}
+            data-group={node.group}
+            aria-label={if node.kind == "start", do: "start"}
             phx-click="select"
             phx-value-id={node.id}
             phx-target={@myself}
           >
-            <span class="ehg-kind">{words(node.kind)}</span>
-            <span class="ehg-label">{node.label || node.name}</span>
-            <span :if={node.label} class="ehg-name">{node.name}</span>
+            <span :if={node.tag} class="ehg-kind">{node.tag}</span>
+            <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
+            <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
+            <span :for={line <- node.lines} class="ehg-field">{line}</span>
             <.count marks={Marks.node(@overlay, node.id)} />
           </button>
           <button
             :for={relation <- @view.relations}
             type="button"
             class={[
-              "ehg-relation"
+              "ehg-relation",
+              blank?(relation, Marks.relation(@overlay, relation.id)) && "ehg-blank"
               | classes(relation.id, @selected, @near, Marks.relation(@overlay, relation.id))
             ]}
             data-ehg-relation={relation.id}
             data-from={relation.from}
             data-to={relation.to}
+            data-line={relation.line}
+            data-head={if relation.head, do: "arrow", else: "none"}
             phx-click="select"
             phx-value-id={relation.id}
             phx-target={@myself}
           >
-            {words(relation.type)}<.count marks={Marks.relation(@overlay, relation.id)} />
+            {relation.words}<.count marks={Marks.relation(@overlay, relation.id)} />
           </button>
         </div>
       </div>
@@ -157,14 +188,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   attr :overlay, :map
   attr :myself, :any, required: true
 
-  defp panel(%{picked: {:node, node}} = assigns) do
+  defp panel(%{picked: {kind, node}} = assigns) when kind in [:node, :group] do
     assigns = assign(assigns, node: node, log: get_in(assigns.overlay || %{}, ["nodes", node.id]))
 
     ~H"""
     <aside class="ehg-panel" aria-label="Selected">
       <header>
         <p class="ehg-panel-kind">{words(@node.kind)}</p>
-        <h4>{@node.label || @node.name}</h4>
+        <h4>{@node.facts["label"] || @node.facts["name"]}</h4>
         <button type="button" phx-click="deselect" phx-target={@myself} aria-label="Close">×</button>
       </header>
       <.facts facts={Map.drop(@node.facts, ["id", "label"])} />
@@ -174,7 +205,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   end
 
   defp panel(%{picked: {:relation, relation}} = assigns) do
-    by_id = Map.new(assigns.view.nodes, &{&1.id, &1})
+    by_id = Map.new(assigns.view.nodes ++ assigns.view.groups, &{&1.id, &1})
 
     assigns =
       assign(assigns,
@@ -193,9 +224,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       </header>
       <dl>
         <dt>from</dt>
-        <dd>{words(@from.kind)} {@from.label || @from.name}</dd>
+        <dd>{words(@from.kind)} {@from.facts["label"] || @from.facts["name"]}</dd>
         <dt>to</dt>
-        <dd>{words(@to.kind)} {@to.label || @to.name}</dd>
+        <dd>{words(@to.kind)} {@to.facts["label"] || @to.facts["name"]}</dd>
       </dl>
       <.facts facts={Map.drop(@relation.facts, ["id", "from", "to"])} />
       <.log :if={@log} entry={@log} />
@@ -225,27 +256,30 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     """
   end
 
-  # The element `id` names, a node or a relation of the view; nil when it has neither.
+  # The element `id` names, a node, a group or a relation of the view; nil when it has
+  # none of them.
   defp element(view, id) do
-    case Enum.find(view.nodes, &(&1.id == id)) do
-      nil ->
-        with %{} = relation <- Enum.find(view.relations, &(&1.id == id)),
-             do: {:relation, relation}
-
-      node ->
-        {:node, node}
-    end
+    Enum.find_value([node: view.nodes, group: view.groups, relation: view.relations], fn
+      {kind, elements} ->
+        with %{} = found <- Enum.find(elements, &(&1.id == id)), do: {kind, found}
+    end)
   end
 
-  # What touches the selection: a node's relations and the nodes at their other ends, or
-  # a relation's two ends. Empty without a selection.
+  # What touches the selection: a node's relations, the nodes at their other ends and the
+  # group it sits in; a group's cards and relations; a relation's two ends. Empty without
+  # a selection.
   defp near(_view, nil), do: MapSet.new()
 
   defp near(view, selected) do
+    touching = fn id -> Enum.filter(view.relations, &(&1.from == id or &1.to == id)) end
+
     case element(view, selected) do
       {:node, node} ->
-        touching = Enum.filter(view.relations, &(&1.from == node.id or &1.to == node.id))
-        MapSet.new(Enum.flat_map(touching, &[&1.id, &1.from, &1.to]))
+        MapSet.new([node.group | Enum.flat_map(touching.(node.id), &[&1.id, &1.from, &1.to])])
+
+      {:group, group} ->
+        members = for %{group: ^selected} = node <- view.nodes, do: node.id
+        MapSet.new(members ++ Enum.flat_map(touching.(group.id), &[&1.id, &1.from, &1.to]))
 
       {:relation, relation} ->
         MapSet.new([relation.from, relation.to])
@@ -261,11 +295,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         true -> ["is-far"]
       end
 
-    focus ++ Enum.map(marks.states, &"is-#{&1}")
+    focus ++ Enum.map((marks && marks.states) || [], &"is-#{&1}")
   end
 
-  # A kind or a type as the reader sees it while there are no words for them: the name,
-  # spaced. The views give them their words (plan E13b, batch 2).
+  # A label with nothing to say is there for the hook, which reads the relation from it,
+  # and takes no room: the arrow alone is drawn, and takes the click.
+  defp blank?(relation, marks), do: relation.words in [nil, ""] and marks.count == nil
+
+  # A kind or a type in the panel: the name, spaced.
   defp words(name), do: String.replace(name, "_", " ")
 
   defp shown(value) when is_binary(value), do: value

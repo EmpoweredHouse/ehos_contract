@@ -4419,7 +4419,8 @@ function zoom_default2() {
 
 // js/eh_os_contract_graph.js
 var SVG = "http://www.w3.org/2000/svg";
-var SPACING = { rankdir: "LR", nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
+var SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
+var HOLD = "\0hold";
 var instances = 0;
 var adopt = () => {
   const sheet = new CSSStyleSheet();
@@ -4458,6 +4459,11 @@ var loop = (card, label) => {
   const reach = Math.max(16, (gap - 4) / 0.75);
   const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
   return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
+};
+var border = (box, toward) => {
+  const [dx, dy] = [toward.x - box.x, toward.y - box.y];
+  const s = Math.min(dx ? box.width / 2 / Math.abs(dx) : Infinity, dy ? box.height / 2 / Math.abs(dy) : Infinity);
+  return Number.isFinite(s) ? { x: box.x + dx * s, y: box.y + dy * s } : { x: box.x, y: box.y };
 };
 var gesture = (event) => event.type === "wheel" ? event.ctrlKey || event.metaKey : !event.button && !event.ctrlKey;
 var EhOsContractGraph = {
@@ -4504,11 +4510,20 @@ var EhOsContractGraph = {
     await document.fonts.ready;
     if (this.gone) return;
     const viewport = this.el.querySelector(".ehg-viewport");
+    const direction = this.el.dataset.direction === "TB" ? "TB" : "LR";
+    const boxes = [...viewport.querySelectorAll("[data-ehg-group]")];
+    const present = new Set(boxes.map((el) => el.dataset.ehgGroup));
     const cards = [...viewport.querySelectorAll("[data-ehg-node]")].map((el) => ({
       id: el.dataset.ehgNode,
+      group: present.has(el.dataset.group) ? el.dataset.group : null,
       width: el.offsetWidth,
       height: el.offsetHeight
     }));
+    const filled = new Set(cards.map(({ group }) => group));
+    const groups = boxes.map((el) => {
+      const id2 = el.dataset.ehgGroup;
+      return filled.has(id2) ? { id: id2, filled: true } : { id: id2, filled: false, width: el.offsetWidth, height: el.offsetHeight };
+    });
     const labels = [...viewport.querySelectorAll("[data-ehg-relation]")].map((el) => ({
       el,
       id: el.dataset.ehgRelation,
@@ -4517,10 +4532,10 @@ var EhOsContractGraph = {
       width: el.offsetWidth,
       height: el.offsetHeight
     }));
-    const key = JSON.stringify([cards, labels.map(({ el, ...label }) => label)]);
+    const key = JSON.stringify([direction, groups, cards, labels.map(({ el, ...label }) => label)]);
     if (key !== this.key) {
       this.key = key;
-      this.lay(cards, labels);
+      this.lay(direction, groups, cards, labels);
     }
     this.paint(labels);
     const nodes = cards.map(({ id: id2 }) => id2).join("\n");
@@ -4530,7 +4545,7 @@ var EhOsContractGraph = {
     }
     if (!this.fitted) this.fit();
   },
-  lay(cards, labels) {
+  lay(direction, groups, cards, labels) {
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`);
       this.el.querySelector(".ehg-arrows").replaceChildren();
@@ -4538,34 +4553,62 @@ var EhOsContractGraph = {
       this.size = null;
       return;
     }
-    const graph = new ie.Graph({ multigraph: true });
-    graph.setGraph({ ...SPACING });
+    const graph = new ie.Graph({ multigraph: true, compound: true });
+    graph.setGraph({ rankdir: direction, ...SPACING });
     graph.setDefaultEdgeLabel(() => ({}));
     cards.forEach(({ id: id2, width: width2, height: height2 }) => graph.setNode(id2, { width: width2, height: height2 }));
-    labels.forEach(
-      ({ id: id2, from, to, width: width2, height: height2 }) => graph.setEdge({ v: from, w: to, name: id2 }, { width: width2, height: height2, labelpos: "c" })
-    );
+    groups.forEach(({ id: id2, filled, width: width2, height: height2 }) => graph.setNode(id2, filled ? {} : { width: width2, height: height2 }));
+    cards.forEach(({ id: id2, group }) => group !== null && graph.setParent(id2, group));
+    const members = new Map(groups.filter(({ filled }) => filled).map(({ id: id2 }) => [id2, []]));
+    cards.forEach(({ id: id2, group }) => members.get(group)?.push(id2));
+    const boxed = ({ from, to }) => members.has(from) || members.has(to);
+    let held = 0;
+    labels.forEach((label) => {
+      const { id: id2, from, to, width: width2, height: height2 } = label;
+      if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id2 }, { width: width2, height: height2, labelpos: "c" });
+      if (from === to) return;
+      for (const v of members.get(from) ?? [from])
+        for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {});
+    });
     Oe(graph);
+    const geometry = labels.map((label) => {
+      const { id: id2, from, to, width: width2, height: height2 } = label;
+      if (boxed(label)) {
+        const [a, b] = [graph.node(from), graph.node(to)];
+        const [start2, end] = [border(a, b), border(b, a)];
+        return { id: id2, d: `M${start2.x},${start2.y}L${end.x},${end.y}`, x: (start2.x + end.x) / 2, y: (start2.y + end.y) / 2 };
+      }
+      const edge = graph.edge({ v: from, w: to, name: id2 });
+      const at2 = edge.x === void 0 ? edge.points[Math.floor(edge.points.length / 2)] : edge;
+      const d = from === to ? loop(graph.node(from), { x: at2.x, y: at2.y, width: width2, height: height2 }) : curve(edge.points);
+      return { id: id2, d, x: at2.x, y: at2.y, width: width2, height: height2 };
+    });
     const { width, height } = graph.graph();
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
+    groups.forEach(({ id: id2 }) => {
+      const { x, y, width: width2, height: height2 } = graph.node(id2);
+      rules.push(
+        `${this.scope} [data-ehg-group=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px; width: ${width2}px; height: ${height2}px }`
+      );
+    });
     cards.forEach(({ id: id2, width: width2, height: height2 }) => {
       const { x, y } = graph.node(id2);
       rules.push(`${this.scope} [data-ehg-node=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px }`);
     });
-    labels.forEach(({ id: id2, from, to, width: width2, height: height2 }) => {
-      const { x, y } = graph.edge({ v: from, w: to, name: id2 });
+    labels.forEach(({ id: id2, width: width2, height: height2 }, i) => {
+      const { x, y } = geometry[i];
       rules.push(
         `${this.scope} [data-ehg-relation=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px }`
       );
     });
     this.layoutSheet.replaceSync(rules.join("\n"));
-    this.drawArrows(graph, labels, width, height);
+    this.drawArrows(geometry, width, height);
     this.size = { width, height };
   },
   // Each arrow is two paths: the line the reader sees, and a wide invisible one under it that takes the click.
   // No visible style reaches the second — a dash would cut gaps in it, a fill would draw it — so the stylesheet
   // styles them apart (.ehg-line, .ehg-hit).
-  drawArrows(graph, labels, width, height) {
+  drawArrows(geometry, width, height) {
     const layer = this.el.querySelector(".ehg-arrows");
     layer.setAttribute("width", width);
     layer.setAttribute("height", height);
@@ -4583,9 +4626,7 @@ var EhOsContractGraph = {
     const defs = svg("defs");
     defs.append(marker);
     this.arrows = /* @__PURE__ */ new Map();
-    const arrows = labels.map(({ id: id2, from, to, width: width2, height: height2 }) => {
-      const edge = graph.edge({ v: from, w: to, name: id2 });
-      const d = from === to ? loop(graph.node(from), { x: edge.x, y: edge.y, width: width2, height: height2 }) : curve(edge.points);
+    const arrows = geometry.map(({ id: id2, d }) => {
       const arrow = svg("g", { class: "ehg-arrow", "data-ehg-arrow": id2 });
       arrow.append(
         svg("path", { class: "ehg-hit", d }),
@@ -4596,10 +4637,15 @@ var EhOsContractGraph = {
     });
     layer.replaceChildren(defs, ...arrows);
   },
+  // An arrow takes its label's states, and the line and the head the label names.
   paint(labels) {
     labels.forEach(({ el, id: id2 }) => {
+      const arrow = this.arrows.get(id2);
+      if (!arrow) return;
       const states = [...el.classList].filter((name) => name.startsWith("is-"));
-      this.arrows.get(id2)?.setAttribute("class", ["ehg-arrow", ...states].join(" "));
+      arrow.setAttribute("class", ["ehg-arrow", ...states].join(" "));
+      arrow.setAttribute("data-line", el.dataset.line ?? "solid");
+      arrow.setAttribute("data-head", el.dataset.head ?? "arrow");
     });
   },
   // The whole graph in view, never larger than its own size, centred. Not while the canvas has no size: the

@@ -19,5 +19,5 @@ defmodule EhOsContract.GraphRenderer do
   lives on the server alone.
   """
 
-  use Boundary, deps: [], exports: [Canvas]
+  use Boundary, deps: [], exports: [Canvas, View]
 end

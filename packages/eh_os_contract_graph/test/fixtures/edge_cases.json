@@ -23,7 +23,23 @@
         "label": null,
         "source": null,
         "unit": "unit:edge_cases:1st",
-        "fields": []
+        "fields": [
+          {
+            "name": "numer",
+            "label": null,
+            "type": "id",
+            "required": true,
+            "issued_by": "external:EdgeCases.Domain:rejestr"
+          }
+        ]
+      }
+    ],
+    "external": [
+      {
+        "id": "external:EdgeCases.Domain:rejestr",
+        "name": "rejestr",
+        "label": "Rejestr „zewnętrzny”",
+        "source": null
       }
     ],
     "event": [

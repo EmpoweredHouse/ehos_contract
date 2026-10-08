@@ -8,10 +8,18 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
   @endpoint EhOsContract.GraphRenderer.TestEndpoint
 
-  defp draw(document, overlay \\ nil),
+  defp draw(document, overlay \\ nil, view \\ :all),
     do:
-      render_component(Canvas, id: "graph", document: document, overlay: overlay)
+      render_component(Canvas, id: "graph", document: document, overlay: overlay, view: view)
       |> LazyHTML.from_fragment()
+
+  # Every view of every fixture, the test bed among them.
+  defp every_view do
+    for name <- Fixtures.names(),
+        document = Fixtures.document(name),
+        {spec, _title} <- [{:all, nil} | View.views(document)],
+        do: {"#{name} #{inspect(spec)}", document, spec}
+  end
 
   defp at(html, attribute, id), do: LazyHTML.query(html, ~s([#{attribute}="#{escape(id)}"]))
 
@@ -43,8 +51,8 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "no element has a style attribute, and the arrows' layer is left to the hook" do
-      for name <- Fixtures.names() do
-        html = draw(Fixtures.document(name))
+      for {name, document, spec} <- every_view() do
+        html = draw(document, nil, spec)
 
         assert Enum.count(LazyHTML.query(html, "[style]")) == 0, name
 
@@ -56,6 +64,84 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
                  "EhOsContractGraph"
                ]
       end
+    end
+
+    test "each view's groups as boxes with their titles, each card naming its group" do
+      for {name, document, spec} <- every_view() do
+        view = View.build(document, spec)
+        html = draw(document, nil, spec)
+        boxes = LazyHTML.query(html, "div.ehg-group[data-ehg-group]")
+
+        assert LazyHTML.attribute(boxes, "data-ehg-group") == Enum.map(view.groups, & &1.id), name
+
+        assert boxes |> LazyHTML.query("button.ehg-group-title") |> LazyHTML.attribute("title") ==
+                 Enum.map(view.groups, & &1.title),
+               name
+
+        grouped = for node <- view.nodes, node.group, do: {node.id, node.group}
+        cards = LazyHTML.query(html, "[data-ehg-node][data-group]")
+
+        assert Enum.zip(
+                 LazyHTML.attribute(cards, "data-ehg-node"),
+                 LazyHTML.attribute(cards, "data-group")
+               ) == grouped,
+               name
+
+        assert LazyHTML.attribute(LazyHTML.query(html, ".ehg"), "data-direction") == [
+                 view.direction
+               ]
+      end
+    end
+
+    test "a label names its arrow's line and head, and one with nothing to say is blank" do
+      html = draw(Fixtures.document("rehmed.statutory_reporting"), nil, :declared)
+
+      promise =
+        "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+
+      label = at(html, "data-ehg-relation", promise)
+      assert LazyHTML.attribute(label, "data-line") == ["thick"]
+      assert LazyHTML.attribute(label, "data-head") == ["arrow"]
+      assert LazyHTML.text(label) =~ "within 2 days"
+
+      resting =
+        at(
+          html,
+          "data-ehg-relation",
+          "depends_on:event:rehmed.statutory_reporting:p1_report_sent:external:Rehmed.Domain:p1"
+        )
+
+      assert LazyHTML.attribute(resting, "data-head") == ["none"]
+      assert "ehg-blank" in classes(resting)
+      refute "ehg-blank" in classes(label)
+    end
+
+    test "a state card lists its fields, an end of a lifecycle and its start have their looks" do
+      html =
+        draw(
+          Fixtures.document("rehmed.settlement"),
+          nil,
+          {:unit, "unit:rehmed.settlement:visit_settlement"}
+        )
+
+      fields =
+        html
+        |> at("data-ehg-node", "unit:rehmed.settlement:visit_settlement")
+        |> LazyHTML.query(".ehg-field")
+        |> Enum.map(&LazyHTML.text/1)
+
+      assert "visit_id: id · identity" in fields
+
+      unit = "unit:appunite_equipment.demands:demand"
+      html = draw(Fixtures.document("appunite_equipment.demands"), nil, {:lifecycle, unit})
+      start = at(html, "data-ehg-node", unit)
+
+      assert LazyHTML.attribute(start, "data-kind") == ["start"]
+      assert String.trim(LazyHTML.text(start)) == ""
+
+      assert html
+             |> at("data-ehg-node", "status:appunite_equipment.demands:demand:fulfilled")
+             |> LazyHTML.attribute("data-variant") == ["final"]
     end
 
     test "a client's text is text, and an id of any characters survives into the page" do
@@ -166,6 +252,28 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert panel |> LazyHTML.query("h4") |> LazyHTML.text() == "transition"
       assert LazyHTML.text(panel) =~ "Otwarta"
       assert LazyHTML.text(panel) =~ "Zamknięta"
+    end
+
+    test "a group's title selects the group, and marks its cards" do
+      document = Fixtures.document("rehmed.settlement")
+      unit = "unit:rehmed.settlement:visit_settlement"
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "view" => :contract}
+        )
+
+      view |> element(~s(button.ehg-group-title)) |> render_click()
+      html = page(view)
+
+      assert "is-selected" in classes(at(html, "data-ehg-group", unit))
+
+      assert "is-near" in classes(
+               at(html, "data-ehg-node", "command:rehmed.settlement:close_settlement")
+             )
+
+      assert "is-far" in classes(at(html, "data-ehg-node", "actor:Rehmed.Domain:reception"))
+      assert html |> LazyHTML.query(".ehg-panel h4") |> LazyHTML.text() == "Rozliczenie wizyty"
     end
 
     test "a second click, the close button, or an unknown id leave nothing new selected", %{

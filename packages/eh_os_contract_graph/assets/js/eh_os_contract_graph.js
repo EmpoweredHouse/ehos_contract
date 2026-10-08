@@ -1,8 +1,9 @@
 // The drawing layer of eh_os_contract_graph (docs/adr/graph-renderer.md, option C). The server renders every
-// card and every relation's label in HEEx (EhOsContract.GraphRenderer.Canvas); this hook measures them, lays
-// them out with dagre, places them, draws the arrows in SVG, and pans and zooms with d3-zoom. What is selected
-// and what the overlay says are classes the server puts on the cards and the labels; the hook copies a label's
-// classes onto its arrow and keeps nothing of its own but the layout and the zoom.
+// card, every group's box and every relation's label in HEEx (EhOsContract.GraphRenderer.Canvas); this hook
+// measures them, lays them out with dagre in the direction the view names, places them, draws the arrows in
+// SVG, and pans and zooms with d3-zoom. What is selected and what the overlay says are classes the server puts
+// on the cards and the labels, and an arrow's line and head are attributes of its label; the hook copies both
+// onto the arrow and keeps nothing of its own but the layout and the zoom.
 //
 // Two rules keep it working under a Content-Security-Policy of `default-src 'self'` and under LiveView's
 // patches:
@@ -19,7 +20,11 @@ import { select, zoom, zoomIdentity } from "../vendor/d3-zoom.esm.js"
 const SVG = "http://www.w3.org/2000/svg"
 
 // Room between cards, in pixels: across a rank, between ranks, between arrows, around the graph.
-const SPACING = { rankdir: "LR", nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 }
+const SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 }
+
+// The name of an edge dagre lays out only to hold one card before another (below). A relation's id cannot hold
+// a NUL (EhOsContract.GraphRenderer.Canvas), so the name is never a relation's.
+const HOLD = "\u0000hold"
 
 let instances = 0
 
@@ -79,6 +84,13 @@ const loop = (card, label) => {
     `M${at(centre - spread, 0)}` +
     `C${at(centre - spread - 12, reach)} ${at(centre + spread + 12, reach)} ${at(centre + spread, 0)}`
   )
+}
+
+// Where the line from a box's centre towards a point leaves the box.
+const border = (box, toward) => {
+  const [dx, dy] = [toward.x - box.x, toward.y - box.y]
+  const s = Math.min(dx ? box.width / 2 / Math.abs(dx) : Infinity, dy ? box.height / 2 / Math.abs(dy) : Infinity)
+  return Number.isFinite(s) ? { x: box.x + dx * s, y: box.y + dy * s } : { x: box.x, y: box.y }
 }
 
 // A plain wheel scrolls the page, as it does everywhere else on it; with Ctrl or ⌘ — which is also what a
@@ -148,11 +160,22 @@ export const EhOsContractGraph = {
     if (this.gone) return
 
     const viewport = this.el.querySelector(".ehg-viewport")
+    const direction = this.el.dataset.direction === "TB" ? "TB" : "LR"
+    const boxes = [...viewport.querySelectorAll("[data-ehg-group]")]
+    const present = new Set(boxes.map((el) => el.dataset.ehgGroup))
     const cards = [...viewport.querySelectorAll("[data-ehg-node]")].map((el) => ({
       id: el.dataset.ehgNode,
+      group: present.has(el.dataset.group) ? el.dataset.group : null,
       width: el.offsetWidth,
       height: el.offsetHeight,
     }))
+    // A group with cards in it is as large as dagre makes it around them, so it is not measured; one with none
+    // is laid out as a card of its own, as large as its title.
+    const filled = new Set(cards.map(({ group }) => group))
+    const groups = boxes.map((el) => {
+      const id = el.dataset.ehgGroup
+      return filled.has(id) ? { id, filled: true } : { id, filled: false, width: el.offsetWidth, height: el.offsetHeight }
+    })
     const labels = [...viewport.querySelectorAll("[data-ehg-relation]")].map((el) => ({
       el,
       id: el.dataset.ehgRelation,
@@ -162,10 +185,10 @@ export const EhOsContractGraph = {
       height: el.offsetHeight,
     }))
 
-    const key = JSON.stringify([cards, labels.map(({ el, ...label }) => label)])
+    const key = JSON.stringify([direction, groups, cards, labels.map(({ el, ...label }) => label)])
     if (key !== this.key) {
       this.key = key
-      this.lay(cards, labels)
+      this.lay(direction, groups, cards, labels)
     }
     this.paint(labels)
 
@@ -177,7 +200,7 @@ export const EhOsContractGraph = {
     if (!this.fitted) this.fit()
   },
 
-  lay(cards, labels) {
+  lay(direction, groups, cards, labels) {
     // A view with nothing in it: dagre would size an empty graph as -Infinity.
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`)
@@ -187,37 +210,72 @@ export const EhOsContractGraph = {
       return
     }
 
-    const graph = new graphlib.Graph({ multigraph: true })
-    graph.setGraph({ ...SPACING })
+    const graph = new graphlib.Graph({ multigraph: true, compound: true })
+    graph.setGraph({ rankdir: direction, ...SPACING })
     graph.setDefaultEdgeLabel(() => ({}))
     cards.forEach(({ id, width, height }) => graph.setNode(id, { width, height }))
-    labels.forEach(({ id, from, to, width, height }) =>
-      graph.setEdge({ v: from, w: to, name: id }, { width, height, labelpos: "c" }),
-    )
+    groups.forEach(({ id, filled, width, height }) => graph.setNode(id, filled ? {} : { width, height }))
+    cards.forEach(({ id, group }) => group !== null && graph.setParent(id, group))
+
+    // dagre lays out no edge that ends at a group with cards in it. Such a relation — one stage before the next —
+    // holds each card of one end before each card of the other instead, and its arrow is drawn between the two
+    // boxes (geometry, below).
+    const members = new Map(groups.filter(({ filled }) => filled).map(({ id }) => [id, []]))
+    cards.forEach(({ id, group }) => members.get(group)?.push(id))
+    const boxed = ({ from, to }) => members.has(from) || members.has(to)
+    let held = 0
+    labels.forEach((label) => {
+      const { id, from, to, width, height } = label
+      if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id }, { width, height, labelpos: "c" })
+      if (from === to) return
+      for (const v of members.get(from) ?? [from])
+        for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {})
+    })
     layout(graph)
+
+    const geometry = labels.map((label) => {
+      const { id, from, to, width, height } = label
+      if (boxed(label)) {
+        const [a, b] = [graph.node(from), graph.node(to)]
+        const [start, end] = [border(a, b), border(b, a)]
+        return { id, d: `M${start.x},${start.y}L${end.x},${end.y}`, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
+      }
+      const edge = graph.edge({ v: from, w: to, name: id })
+      // A label with nothing on it takes no room, and dagre then gives it no place: it sits mid-arrow.
+      const at = edge.x === undefined ? edge.points[Math.floor(edge.points.length / 2)] : edge
+      const d = from === to ? loop(graph.node(from), { x: at.x, y: at.y, width, height }) : curve(edge.points)
+      return { id, d, x: at.x, y: at.y, width, height }
+    })
 
     const { width, height } = graph.graph()
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
+    groups.forEach(({ id }) => {
+      const { x, y, width, height } = graph.node(id)
+      rules.push(
+        `${this.scope} [data-ehg-group=${quoted(id)}] ` +
+          `{ left: ${x - width / 2}px; top: ${y - height / 2}px; width: ${width}px; height: ${height}px }`,
+      )
+    })
     cards.forEach(({ id, width, height }) => {
       const { x, y } = graph.node(id)
       rules.push(`${this.scope} [data-ehg-node=${quoted(id)}] { left: ${x - width / 2}px; top: ${y - height / 2}px }`)
     })
-    labels.forEach(({ id, from, to, width, height }) => {
-      const { x, y } = graph.edge({ v: from, w: to, name: id })
+    labels.forEach(({ id, width, height }, i) => {
+      const { x, y } = geometry[i]
       rules.push(
         `${this.scope} [data-ehg-relation=${quoted(id)}] { left: ${x - width / 2}px; top: ${y - height / 2}px }`,
       )
     })
     this.layoutSheet.replaceSync(rules.join("\n"))
 
-    this.drawArrows(graph, labels, width, height)
+    this.drawArrows(geometry, width, height)
     this.size = { width, height }
   },
 
   // Each arrow is two paths: the line the reader sees, and a wide invisible one under it that takes the click.
   // No visible style reaches the second — a dash would cut gaps in it, a fill would draw it — so the stylesheet
   // styles them apart (.ehg-line, .ehg-hit).
-  drawArrows(graph, labels, width, height) {
+  drawArrows(geometry, width, height) {
     const layer = this.el.querySelector(".ehg-arrows")
     layer.setAttribute("width", width)
     layer.setAttribute("height", height)
@@ -237,12 +295,7 @@ export const EhOsContractGraph = {
     defs.append(marker)
 
     this.arrows = new Map()
-    const arrows = labels.map(({ id, from, to, width, height }) => {
-      const edge = graph.edge({ v: from, w: to, name: id })
-      const d =
-        from === to
-          ? loop(graph.node(from), { x: edge.x, y: edge.y, width, height })
-          : curve(edge.points)
+    const arrows = geometry.map(({ id, d }) => {
       const arrow = svg("g", { class: "ehg-arrow", "data-ehg-arrow": id })
       arrow.append(
         svg("path", { class: "ehg-hit", d }),
@@ -254,10 +307,15 @@ export const EhOsContractGraph = {
     layer.replaceChildren(defs, ...arrows)
   },
 
+  // An arrow takes its label's states, and the line and the head the label names.
   paint(labels) {
     labels.forEach(({ el, id }) => {
+      const arrow = this.arrows.get(id)
+      if (!arrow) return
       const states = [...el.classList].filter((name) => name.startsWith("is-"))
-      this.arrows.get(id)?.setAttribute("class", ["ehg-arrow", ...states].join(" "))
+      arrow.setAttribute("class", ["ehg-arrow", ...states].join(" "))
+      arrow.setAttribute("data-line", el.dataset.line ?? "solid")
+      arrow.setAttribute("data-head", el.dataset.head ?? "arrow")
     })
   },
 

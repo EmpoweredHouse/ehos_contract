@@ -1,0 +1,823 @@
+{
+  "context": "context:Rehmed.Domain:external_payers",
+  "contract": "rehmed.external_payers",
+  "digest": "08e35949050e",
+  "domain": "Rehmed.Domain",
+  "kind": "contract",
+  "module": "Rehmed.Contracts.ExternalPayers",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:reception",
+        "label": "Recepcja",
+        "name": "reception",
+        "responsibilities": [],
+        "role": "rehmed.reception",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:manager",
+        "label": "Manager gabinetu",
+        "name": "manager",
+        "responsibilities": [
+          {
+            "label": "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
+            "name": "overdue_reports",
+            "source": "P-25"
+          }
+        ],
+        "role": "rehmed.manager",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "capability": "rehmed.mark_settled_with_payer",
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.external_payers:mark_settled_with_payer",
+        "label": "Oznacz rozliczenie u płatnika",
+        "name": "mark_settled_with_payer",
+        "source": "C-48, aktor A-02; S-58",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "capability": "rehmed.exclude_visit_from_invoice",
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "reason",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "command:rehmed.external_payers:exclude_visit_from_invoice",
+        "label": "Wyłącz wizytę z rozliczenia",
+        "name": "exclude_visit_from_invoice",
+        "source": "51-mock.md §4.8; AGG-11 niezmiennik 4",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "capability": "rehmed.issue_payer_invoice",
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "invoice_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.external_payers:issue_payer_invoice",
+        "label": "Wystaw fakturę płatnikowi",
+        "name": "issue_payer_invoice",
+        "source": "C-49, aktor A-05 (2026-08-14); S-121",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      }
+    ],
+    "constraint": [],
+    "context": [
+      {
+        "id": "context:Rehmed.Domain:external_payers",
+        "label": "Płatnicy zewnętrzni",
+        "name": "external_payers",
+        "source": "CTX-06"
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.external_payers:visit_marked_settled_with_payer",
+        "label": "Oznaczono wizytę jako rozliczoną u płatnika",
+        "name": "visit_marked_settled_with_payer",
+        "schema_version": 1,
+        "source": "E-86",
+        "stage": "stage:rehmed.external_payers:payer_settlement:reconciliation",
+        "type": "rehmed.external_payers.visit_marked_settled_with_payer",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "reason",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "event:rehmed.external_payers:visit_excluded_from_invoice",
+        "label": "Wykluczono wizytę z rozliczenia okresu, z podanym powodem",
+        "name": "visit_excluded_from_invoice",
+        "schema_version": 1,
+        "source": "AGG-11 niezmiennik 4",
+        "stage": "stage:rehmed.external_payers:payer_settlement:reconciliation",
+        "type": "rehmed.external_payers.visit_excluded_from_invoice",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "invoice_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.external_payers:payer_invoice_issued",
+        "label": "Wystawiono fakturę miesięczną dla płatnika",
+        "name": "payer_invoice_issued",
+        "schema_version": 1,
+        "source": "E-87",
+        "stage": "stage:rehmed.external_payers:payer_settlement:invoicing",
+        "terminal": true,
+        "type": "rehmed.external_payers.payer_invoice_issued",
+        "unit": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "declared_as": "event:rehmed.settlement:visit_charged_to_payer",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.external_payers:visit_charged_to_payer",
+        "included": true,
+        "label": "Wizyta obciąża płatnika zewnętrznego",
+        "name": "visit_charged_to_payer",
+        "schema_version": 1,
+        "source": "30-contexts.md, CTX-05 → CTX-06",
+        "stage": "stage:rehmed.external_payers:payer_settlement:charging",
+        "type": "rehmed.settlement.visit_charged_to_payer"
+      }
+    ],
+    "external": [],
+    "invariant": [
+      {
+        "id": "invariant:rehmed.external_payers:unit:payer_period:every_delivered_visit_settled_or_excluded",
+        "label": "Każda wykonana wizyta płatnika w okresie jest oznaczona u płatnika albo wykluczona z podanym powodem",
+        "name": "every_delivered_visit_settled_or_excluded",
+        "of": "unit:rehmed.external_payers:payer_period",
+        "source": "AGG-11 niezmiennik 4 (2026-08-14); C-49: dane nie przechodzą weryfikacji"
+      },
+      {
+        "id": "invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change",
+        "label": "Zafakturowanego okresu się nie zmienia — faktura jest jedna, a oznaczenia i wykluczenia są przed nią",
+        "name": "invoiced_period_does_not_change",
+        "of": "unit:rehmed.external_payers:payer_period",
+        "source": "51-mock.md §4.8: stan „zafakturowana” blokuje ponowne ujęcie"
+      },
+      {
+        "id": "invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded",
+        "label": "Oznacza się albo wyklucza tylko wizytę obciążającą płatnika w tym okresie, i tylko raz",
+        "name": "only_a_charged_visit_is_marked_or_excluded",
+        "of": "unit:rehmed.external_payers:payer_period",
+        "source": "AGG-11 niezmiennik 4: „jeśli wyliczy za dużo to będzie problem z LuxMed”"
+      },
+      {
+        "id": "invariant:rehmed.external_payers:unit:payer_period:an_invoice_covers_a_marked_visit",
+        "label": "Faktura obejmuje co najmniej jedną wizytę oznaczoną u płatnika",
+        "name": "an_invoice_covers_a_marked_visit",
+        "of": "unit:rehmed.external_payers:payer_period",
+        "source": "AGG-11; S-60: moduł miesięczny po weryfikacji danych"
+      }
+    ],
+    "policy": [],
+    "process": [
+      {
+        "correlate": [
+          "payer_id",
+          "period_id"
+        ],
+        "id": "process:rehmed.external_payers:payer_settlement",
+        "label": "Miesięczne rozliczenie z płatnikiem zewnętrznym",
+        "name": "payer_settlement",
+        "source": null
+      }
+    ],
+    "process_manager": [],
+    "promise": [],
+    "publication": [],
+    "query": [],
+    "read_model": [],
+    "stage": [
+      {
+        "id": "stage:rehmed.external_payers:payer_settlement:charging",
+        "label": null,
+        "name": "charging",
+        "process": "process:rehmed.external_payers:payer_settlement",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.external_payers:payer_settlement:reconciliation",
+        "label": null,
+        "name": "reconciliation",
+        "process": "process:rehmed.external_payers:payer_settlement",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.external_payers:payer_settlement:invoicing",
+        "label": null,
+        "name": "invoicing",
+        "process": "process:rehmed.external_payers:payer_settlement",
+        "source": null
+      }
+    ],
+    "status": [],
+    "subject": [],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:rehmed.external_payers:payer_period",
+        "identity": [
+          "payer_id",
+          "period_id"
+        ],
+        "label": "Rozliczenie płatnika za okres",
+        "name": "payer_period",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "charged",
+            "required": true,
+            "type": {
+              "list": "id"
+            }
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "marked",
+            "required": true,
+            "type": {
+              "list": "id"
+            }
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "excluded",
+            "required": true,
+            "type": {
+              "list": "id"
+            }
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "invoiced",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "unit_kind": "dcb"
+      }
+    ],
+    "value": []
+  },
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Rehmed.Domain:manager",
+        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.external_payers:payer_settlement",
+        "to": "process:rehmed.external_payers:payer_settlement"
+      }
+    ],
+    "allowed_in": [],
+    "backed_by": [],
+    "builds": [],
+    "calls": [],
+    "cancels": [],
+    "consulted_by": [
+      {
+        "from": "event:rehmed.external_payers:visit_charged_to_payer",
+        "id": "consulted_by:event:rehmed.external_payers:visit_charged_to_payer:unit:rehmed.external_payers:payer_period:match=payer_id,period_id",
+        "match": [
+          "payer_id",
+          "period_id"
+        ],
+        "to": "unit:rehmed.external_payers:payer_period"
+      }
+    ],
+    "depends_on": [],
+    "emits": [
+      {
+        "from": "command:rehmed.external_payers:mark_settled_with_payer",
+        "id": "emits:command:rehmed.external_payers:mark_settled_with_payer:event:rehmed.external_payers:visit_marked_settled_with_payer",
+        "to": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+      },
+      {
+        "from": "command:rehmed.external_payers:exclude_visit_from_invoice",
+        "id": "emits:command:rehmed.external_payers:exclude_visit_from_invoice:event:rehmed.external_payers:visit_excluded_from_invoice",
+        "to": "event:rehmed.external_payers:visit_excluded_from_invoice"
+      },
+      {
+        "from": "command:rehmed.external_payers:issue_payer_invoice",
+        "id": "emits:command:rehmed.external_payers:issue_payer_invoice:event:rehmed.external_payers:payer_invoice_issued",
+        "to": "event:rehmed.external_payers:payer_invoice_issued"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "fulfils": [],
+    "handled_by": [],
+    "issues": [],
+    "may_ask": [],
+    "may_issue": [
+      {
+        "from": "actor:Rehmed.Domain:reception",
+        "id": "may_issue:actor:Rehmed.Domain:reception:command:rehmed.external_payers:mark_settled_with_payer",
+        "to": "command:rehmed.external_payers:mark_settled_with_payer"
+      },
+      {
+        "from": "actor:Rehmed.Domain:manager",
+        "id": "may_issue:actor:Rehmed.Domain:manager:command:rehmed.external_payers:exclude_visit_from_invoice",
+        "to": "command:rehmed.external_payers:exclude_visit_from_invoice"
+      },
+      {
+        "from": "actor:Rehmed.Domain:manager",
+        "id": "may_issue:actor:Rehmed.Domain:manager:command:rehmed.external_payers:issue_payer_invoice",
+        "to": "command:rehmed.external_payers:issue_payer_invoice"
+      }
+    ],
+    "may_record": [],
+    "opens": [],
+    "or_else": [],
+    "projected_into": [],
+    "published_as": [],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:rehmed.external_payers:mark_settled_with_payer",
+        "id": "refused_on:command:rehmed.external_payers:mark_settled_with_payer:invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change"
+      },
+      {
+        "from": "command:rehmed.external_payers:mark_settled_with_payer",
+        "id": "refused_on:command:rehmed.external_payers:mark_settled_with_payer:invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded"
+      },
+      {
+        "from": "command:rehmed.external_payers:exclude_visit_from_invoice",
+        "id": "refused_on:command:rehmed.external_payers:exclude_visit_from_invoice:invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change"
+      },
+      {
+        "from": "command:rehmed.external_payers:exclude_visit_from_invoice",
+        "id": "refused_on:command:rehmed.external_payers:exclude_visit_from_invoice:invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded"
+      },
+      {
+        "from": "command:rehmed.external_payers:issue_payer_invoice",
+        "id": "refused_on:command:rehmed.external_payers:issue_payer_invoice:invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change"
+      },
+      {
+        "from": "command:rehmed.external_payers:issue_payer_invoice",
+        "id": "refused_on:command:rehmed.external_payers:issue_payer_invoice:invariant:rehmed.external_payers:unit:payer_period:an_invoice_covers_a_marked_visit",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:an_invoice_covers_a_marked_visit"
+      },
+      {
+        "from": "command:rehmed.external_payers:issue_payer_invoice",
+        "id": "refused_on:command:rehmed.external_payers:issue_payer_invoice:invariant:rehmed.external_payers:unit:payer_period:every_delivered_visit_settled_or_excluded",
+        "to": "invariant:rehmed.external_payers:unit:payer_period:every_delivered_visit_settled_or_excluded"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [],
+    "process_manager": [],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:issue_payer_invoice",
+          "data": {
+            "invoice_id": "invoice-luxmed-2026-09"
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.external_payers:issue_payer_invoice:event:rehmed.external_payers:payer_invoice_issued"
+        ],
+        "description": "obie wizyty LuxMed z września oznaczone u płatnika — faktura wystawiona",
+        "expect": [
+          {
+            "data": {
+              "invoice_id": "invoice-luxmed-2026-09"
+            },
+            "event": "event:rehmed.external_payers:payer_invoice_issued"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:obie wizyty LuxMed z września oznaczone u płatnika — faktura wystawiona",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:issue_payer_invoice",
+          "data": {
+            "invoice_id": "invoice-luxmed-2026-09"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.external_payers:issue_payer_invoice:invariant:rehmed.external_payers:unit:payer_period:every_delivered_visit_settled_or_excluded"
+        ],
+        "description": "wizyta Bena nieoznaczona i niewykluczona — faktura odrzucona",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:wizyta Bena nieoznaczona i niewykluczona — faktura odrzucona",
+        "rejected": "invariant:rehmed.external_payers:unit:payer_period:every_delivered_visit_settled_or_excluded",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:issue_payer_invoice",
+          "data": {
+            "invoice_id": "invoice-luxmed-2026-09"
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.external_payers:issue_payer_invoice:event:rehmed.external_payers:payer_invoice_issued"
+        ],
+        "description": "wizyta Bena wykluczona z powodem — faktura za resztę wystawiona",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.external_payers:payer_invoice_issued"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          },
+          {
+            "data": {
+              "reason": "the patient used up the payer's allowance elsewhere",
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.external_payers:visit_excluded_from_invoice"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:wizyta Bena wykluczona z powodem — faktura za resztę wystawiona",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:mark_settled_with_payer",
+          "data": {
+            "visit_id": "visit-ben"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.external_payers:mark_settled_with_payer:invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change"
+        ],
+        "description": "okres zafakturowany — oznaczenie po fakturze odrzucone",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          },
+          {
+            "data": {
+              "invoice_id": "invoice-luxmed-2026-09"
+            },
+            "event": "event:rehmed.external_payers:payer_invoice_issued"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:okres zafakturowany — oznaczenie po fakturze odrzucone",
+        "rejected": "invariant:rehmed.external_payers:unit:payer_period:invoiced_period_does_not_change",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:mark_settled_with_payer",
+          "data": {
+            "visit_id": "visit-anna"
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.external_payers:mark_settled_with_payer:event:rehmed.external_payers:visit_marked_settled_with_payer"
+        ],
+        "description": "recepcja oznacza wizytę u płatnika przy rozliczeniu",
+        "expect": [
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:recepcja oznacza wizytę u płatnika przy rozliczeniu",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:mark_settled_with_payer",
+          "data": {
+            "visit_id": "visit-ben"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.external_payers:mark_settled_with_payer:invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded"
+        ],
+        "description": "wizyta nieobciążona w tym okresie — oznaczenie odrzucone",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:wizyta nieobciążona w tym okresie — oznaczenie odrzucone",
+        "rejected": "invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:exclude_visit_from_invoice",
+          "data": {
+            "reason": "duplicate",
+            "visit_id": "visit-anna"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.external_payers:exclude_visit_from_invoice:invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded"
+        ],
+        "description": "wizyta już oznaczona — wykluczenie jej odrzucone",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_charged_to_payer"
+          },
+          {
+            "data": {
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.external_payers:visit_marked_settled_with_payer"
+          }
+        ],
+        "id": "scenario:rehmed.external_payers:wizyta już oznaczona — wykluczenie jej odrzucone",
+        "rejected": "invariant:rehmed.external_payers:unit:payer_period:only_a_charged_visit_is_marked_or_excluded",
+        "target": "unit:rehmed.external_payers:payer_period"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.external_payers:issue_payer_invoice",
+          "data": {
+            "invoice_id": "invoice-luxmed-2026-09",
+            "payer_id": "payer-luxmed",
+            "period_id": "2026-09"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.external_payers:issue_payer_invoice:invariant:rehmed.external_payers:unit:payer_period:an_invoice_covers_a_marked_visit"
+        ],
+        "description": "nic nie oznaczono we wrześniu — faktura odrzucona, okres zostaje otwarty",
+        "expect": [],
+        "given": [],
+        "id": "scenario:rehmed.external_payers:nic nie oznaczono we wrześniu — faktura odrzucona, okres zostaje otwarty",
+        "rejected": "invariant:rehmed.external_payers:unit:payer_period:an_invoice_covers_a_marked_visit",
+        "target": "unit:rehmed.external_payers:payer_period"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "d85b172285e1"
+}

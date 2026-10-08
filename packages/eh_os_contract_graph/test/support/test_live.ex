@@ -8,13 +8,19 @@ end
 
 defmodule EhOsContract.GraphRenderer.TestLive do
   @moduledoc false
-  # A LiveView that renders the component over the document and the overlay its session
-  # names, as a host would; `{:overlay, _}` and `{:document, _}` change them, as a host's render would.
+  # A LiveView that renders the component over the document, the overlay and the view its
+  # session names, as a host would; `{:overlay, _}` and `{:document, _}` change them, as a host's render would.
   use Phoenix.LiveView
 
   @impl true
   def mount(_params, %{"document" => document} = session, socket),
-    do: {:ok, assign(socket, document: document, overlay: session["overlay"])}
+    do:
+      {:ok,
+       assign(socket,
+         document: document,
+         overlay: session["overlay"],
+         view: session["view"] || :all
+       )}
 
   @impl true
   def handle_info({:overlay, overlay}, socket), do: {:noreply, assign(socket, overlay: overlay)}
@@ -30,6 +36,7 @@ defmodule EhOsContract.GraphRenderer.TestLive do
       id="graph"
       document={@document}
       overlay={@overlay}
+      view={@view}
     />
     """
   end

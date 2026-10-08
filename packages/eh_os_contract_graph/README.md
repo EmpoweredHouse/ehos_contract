@@ -9,9 +9,10 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress** (plan E13b). What it draws today is a test bed: every node and every relation of the
-document, and a raw panel. The views a reader is shown — which facts go on one picture — and the panels
-come next, once they are specified.
+**Work in progress** (plan E13b). It draws the six views the engine's Mermaid diagrams drew — a contract's
+full graph, its process's declared shape, a unit, an aggregate's lifecycle, a domain's context map and its
+system — and, as a test bed, every node and relation of a document. The panel is raw: the facts of what is
+clicked, as the document has them, until the panels are specified.
 
 ## Installation
 
@@ -36,12 +37,27 @@ reads the markup this package renders — so update them together:
   id="contract-graph"
   document={@document}
   overlay={@overlay}
+  view={:contract}
 />
 ```
 
 `document` is a `graph.v1` document with string keys. `overlay`, optional, is an
 `eh_os_contract.graph_overlay.v1` of the same document; one whose `document_digest` is not the document's
-`digest` is not drawn. The panel opens beside the graph.
+`digest` is not drawn. `view` names which picture of the document is drawn
+(`EhOsContract.GraphRenderer.View`):
+
+| `view` | Of | The picture |
+| --- | --- | --- |
+| `:contract` | a contract | its full graph: commands and events in their units, the reactions and timers between them, read models and queries, the actors and external systems around them |
+| `:declared` | a contract with a process | the process's stages in order, the events in them, its promises with their windows |
+| `{:unit, id}` | a contract | one unit: its state, commands, events and rules, and the scenarios that pin each path |
+| `{:lifecycle, id}` | a contract | an aggregate's statuses and the events that move it between them |
+| `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
+| `:system` | a domain | its contracts in their contexts and what flows between them |
+| `:all`, the default | either | every node and relation: the drawing layer's test bed |
+
+`EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel opens
+beside the graph.
 
 The script is an ES module, `priv/static/eh_os_contract_graph.esm.js`, which the host's own bundle imports
 and whose hook it registers:
@@ -64,7 +80,7 @@ policy allows.
 ## Using it
 
 Drag to pan; Ctrl or ⌘ with the wheel, or a trackpad's pinch, to zoom; the wheel alone scrolls the page. A
-click on a card, a label or an arrow selects it and opens its panel; a second click, or the panel's close
+click on a card, a group's title, a label or an arrow selects it and opens its panel; a second click, or the panel's close
 button, clears it.
 
 ## Developing it
