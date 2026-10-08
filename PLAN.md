@@ -69,7 +69,8 @@ boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entit
 in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
 S3 merged in #257 (issue #256): the clinic's and the accounting firm's promises have scenarios. Open from it, the
 user's: an outage of a system a promise depends on one step upstream cannot excuse it (#256). Next without E13: O1,
-which adds a key to the conformance wire EHOS reads, so it needs EHOS's agreement first.
+which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both are asked
+of EHOS in EmpoweredHouse/eh-os#297 (8 October), and O1 starts on its answer.
 
 ### Stan repozytorium
 
@@ -602,7 +603,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
-| O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
+| O1 | 3 | kolejność etapów w przebiegu | P2d | ⏸ **waits for EHOS's answer** (EmpoweredHouse/eh-os#297) | — |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
 | V2 | 4 | upcast przez callback | V1 | ☐ | — |
