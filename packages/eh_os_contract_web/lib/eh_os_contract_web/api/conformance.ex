@@ -15,6 +15,9 @@ defmodule EhOsContract.Web.Api.Conformance do
   #
   # ## What this exposes, said out loud
   #
+  # A process module's report carries no `in_log`, but its runs and the counts of its
+  # durations and promises are the same kind of volume.
+  #
   # `report.deployment.in_log` carries per-version event counts with timestamps —
   # volume data about the client's business, which is on the other side of the line
   # `EhOsContract.Conformance`'s own moduledoc draws between paths and companies. It is not
@@ -56,7 +59,11 @@ defmodule EhOsContract.Web.Api.Conformance do
     end
   end
 
+  # An empty parameter is one not given, so a client that always sends both keys and
+  # leaves one blank asks about the other.
   @spec subject(term(), term()) :: {:ok, module()} | {:error, String.t()}
+  defp subject("", process), do: subject(nil, process)
+  defp subject(contract, ""), do: subject(contract, nil)
   defp subject(nil, nil), do: contract(nil)
   defp subject(contract, nil), do: contract(contract)
   defp subject(nil, process), do: process(process)
@@ -64,6 +71,9 @@ defmodule EhOsContract.Web.Api.Conformance do
   defp subject(_contract, _process),
     do: {:error, "name a contract= or a process=, not both"}
 
+  # Resolved against the registry, as a contract is below, so a parameter can name only
+  # a process module this application registered.
+  @spec process(term()) :: {:ok, module()} | {:error, String.t()}
   defp process(id) when not is_binary(id), do: {:error, "process= takes one process id"}
 
   defp process(id) do

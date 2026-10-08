@@ -24,7 +24,8 @@ defmodule EhOsContract.Conformance.Wire do
   - **A report has exactly one of `"contract"` and `"process"`.** A contract's report
     is keyed by the contract's id and has its paths, lifecycles and scenarios; a
     process module's is keyed by the process's id and has only its process. A reader
-    tells the two apart by that key, never by which other keys are missing.
+    tells the two apart by that key, never by which other keys are missing: a
+    contract's keys were never promised in every v3 report, only in a contract's.
 
   ## Why not a `Jason.Encoder` implementation
 

@@ -13,13 +13,18 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseRun do
   correlate :case_id
 
   stage :opening, include: [{EhOsContract.Web.TestHost.Fixtures.CaseHandling, :case_opened}]
-  stage :closing, include: [{EhOsContract.Web.TestHost.Fixtures.CaseHandling, :case_closed}]
 
-  ends_on :case_closed
+  stage :closing,
+    include: [
+      {EhOsContract.Web.TestHost.Fixtures.CaseHandling, [:case_closed, :case_closed_as_rejected]}
+    ]
+
+  ends_on [:case_closed, :case_closed_as_rejected]
 
   promise :closed_within_a_week do
     from :case_opened
     eventually :case_closed
     within {7, :day}
+    or_else :case_closed_as_rejected
   end
 end

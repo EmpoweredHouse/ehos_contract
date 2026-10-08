@@ -78,8 +78,8 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   under. `mix eh_os_contract.check` counts an event a process module includes as read
   (`event-without-consumer`) and applies `process-without-accountable`, `unverified-declaration` and
   `promise-without-within` to process modules. `EhOsContract.Model.process/1`, `process_events/1` and
-  `declaring/2` answer for a process module. The conformance wire (`eh_os_contract.conformance.v3`) and the
-  dashboard do not list process modules yet, and `Conformance.as_data/2` refuses one. No verdict of a contract
+  `declaring/2` answer for a process module. The dashboard does not list process modules yet, and until
+  P2w (above) `Conformance.as_data/2` refused one. No verdict of a contract
   moves. One correction for contracts too: the deployment the report shows for a version is the row recorded
   last, so after the wiring changes under the same version the report shows the new wiring and its date, where
   it showed the first row's, and no "since the previous version" line for a wiring-only change.

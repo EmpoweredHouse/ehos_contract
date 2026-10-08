@@ -114,6 +114,13 @@ defmodule EhOsContract.Web.ApiTest do
                body["report"]["processes"]
     end
 
+    test "an empty parameter is one not given", %{conn: conn} do
+      conn = get(conn, "/api/conformance?contract=&process=web_test_host.case_run")
+
+      assert conn.status == 200
+      assert Jason.decode!(conn.resp_body)["report"]["process"] == "web_test_host.case_run"
+    end
+
     test "a contract and a process at once are a bad request", %{conn: conn} do
       conn = get(conn, @contract <> "&process=web_test_host.case_run")
 

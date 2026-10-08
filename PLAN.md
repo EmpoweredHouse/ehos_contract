@@ -589,7 +589,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
-| P2w | 3 | raport modułu procesu na wire | P2d, eh-os#297 | ◐ `dd/259-process-on-the-wire` | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
+| P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ◐ `dd/259-process-on-the-wire` | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
