@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); batch 4 next, screen first, then panels one at a time |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer, the panel raw, for the user's check ("E13b, batch 4 — the Graph screen on the renderer (8 October)"); the panels next, one at a time |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1731,6 +1731,37 @@ Batch 1 needs no views: it is what every view is drawn with.
   batch 4, the user's decision:** first the Graph screen draws the pictures it draws today with these views instead
   of Mermaid, the panel still raw; then the panels and the rest of batch 4 one point at a time, each described for
   the user's approval before it is built. *Rejected:* the whole of batch 4 in one go.
+
+### E13b, batch 4 — the Graph screen on the renderer (8 October)
+
+- **The Graph screen draws with the renderer** (`EhOsContract.Web.Live.Graph`): the same sections, headings and
+  order as before — each domain's context map and system, the contract selector, the declared shape, the full
+  graph, each unit and its lifecycle — each a `Canvas` over the engine's `graph.v1` document, with the view of
+  the same picture. The log (`Graph.Overlay`) lies over the full graph, a lifecycle and the system, as it did, and
+  is read once the socket is connected: the first, static render reads none (before, the full graph and the system
+  read it on both renders). A click on a card or an arrow opens the renderer's panel, still raw, beside its
+  picture. No Mermaid is left on the screen.
+- **A canvas is as tall as its picture fitted to its width**, up to `min(72vh, 760px)` as before and at least
+  120 px: in a box of a fixed 760 px most pictures sat small in empty space (AppUnite's context map is 150 px
+  tall), and a page was 7,000 to 8,800 px long; now 3,100 to 5,200. A change in the drawing layer, the hook and its
+  stylesheet; a canvas keeps its height when the window is resized, as it keeps its zoom.
+- **The preview stays until Mermaid goes** (batch 5), though its moduledoc had it go with this step: it is the one
+  page that draws a view beside its Mermaid diagram. Its text, the dashboard's README and `app.js`'s comments now
+  say the Mermaid diagrams are the preview's.
+- **Tests:** the screen's suite holds each canvas to its view — the cards of the context map, the system, the
+  declared shape, the full graph with the overlay, the unit and the lifecycle are those `View.build/3` gives —
+  and holds the static render to reading no log, every picture to a canvas, and the page to no `pre.mermaid` and
+  no `style`.
+- **In a browser**, headless Chrome on the sandbox host, the Graph screen with each of the 11 contracts selected,
+  8 to 10 canvases a page: no violation of the policy, no `style` attribute, no card over a card, no label over a
+  card or a label, no card outside its group, no group over a group, no broken path, no console error. A click on
+  a card opens its panel and the canvas keeps its height.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: `mix check` in `sandbox/` failed on connections, not on code — 9
+  of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside another
+  `phx.server` of the sandbox holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 209,
+  engine 1530, dashboard 65, auth 287, renderer 46.
+- **Next:** the user's check of the screen; then the panels and the rest of batch 4, one point at a time, each
+  described for the user's approval before it is built.
 
 ### Wobec programu DD
 
