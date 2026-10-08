@@ -238,7 +238,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Given do
     @moduledoc false
-    defstruct [:event, data: %{}, __spark_metadata__: nil]
+    defstruct [:event, :at, data: %{}, __spark_metadata__: nil]
   end
 
   defmodule GivenEntity do
@@ -1051,9 +1051,20 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:event, {:optional, :data}],
     schema: [
       event: [type: :atom, required: true, doc: "The event."],
-      data: [type: :map, default: %{}, doc: "Its fields."]
+      data: [type: :map, default: %{}, doc: "Its fields."],
+      at: [
+        type: :string,
+        doc:
+          "When it happened, an ISO 8601 timestamp with an offset; by default a minute " <>
+            "after the given before it."
+      ]
     ]
   }
+
+  @doc false
+  # The given, as a process module's scenario writes it too (plan DD, S2, #251).
+  @spec given() :: Spark.Dsl.Entity.t()
+  def given, do: @given
 
   # Plan DD, T2a (#240): the row of an entity a command reads, as the application keeps it
   # when the command arrives.

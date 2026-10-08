@@ -117,7 +117,7 @@ defmodule EhOsContract.ContractVocabularyTest do
           :source
         ],
         [:scenario] => [:description, :target, :actor, :rejected, :illustrates, :ended],
-        [:scenario, :given] => [:event, :data],
+        [:scenario, :given] => [:event, :data, :at],
         [:scenario, :given_entity] => [:entity, :data],
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],

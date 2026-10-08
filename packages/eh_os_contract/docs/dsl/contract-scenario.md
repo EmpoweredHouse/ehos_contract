@@ -47,6 +47,12 @@ An event that already happened.
 | `event` | `atom` | yes |  | The event. |
 | `data` | `map` |  | `%{}` | Its fields. |
 
+**Options**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `at` | `String.t` |  |  | When it happened, an ISO 8601 timestamp with an offset; by default a minute after the given before it. |
+
 
 <a id="contract-scenario-given_entity"></a>
 

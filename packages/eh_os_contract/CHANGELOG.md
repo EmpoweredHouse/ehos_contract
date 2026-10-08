@@ -27,6 +27,17 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A process's promise can be shown and tested with a scenario** (plan DD, stage S2, #251). A process module
+  takes `scenario "…", verdict: :satisfied, via: :eventually do … end`, with `given :event, %{…}, at:
+  "2026-09-07T09:00:00Z"`, `outage :external, at: "…"` and the trigger `promise :name, at: "…"`, the moment the
+  promise is judged. `use EhOsContract.ScenarioCase, process: MyApp.Processes.Visit` writes a test per scenario
+  (`EhOsContract.ScenarioCase.judge/2`): it builds each given as the event its contract declares, files it into
+  its run and judges the promise through `EhOsContract.Trace.judge/3`, without a database. New compile refusals:
+  the scenario's shape (S11), and S1, S2, S3, X4 and X9 extended to a process module's scenario. Any scenario,
+  a contract's too, may date a given with `at:`; one without it keeps its moment, a minute after the given
+  before it, and an `at:` earlier than the given before it is refused (S3). A process module with scenarios gets
+  a `scenarios` key in its model and a new version; one without them, and every contract, keeps its version.
+  Moves no verdict.
 - **A command can read an entity the application keeps before it is decided** (plan DD, stage T2a, #240). A
   command declares `reads: [service: :service_id]`, naming a required field of its own typed `{:id, entity}`
   and issued only by an actor, never a policy or a process manager (a new compile refusal, A8); its decision
