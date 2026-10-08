@@ -100,6 +100,35 @@ defmodule EhOsContract.Web.ApiTest do
       end
     end
 
+    # Plan DD, P2w (#259): a process module's report, keyed by its id.
+    test "a named process is served, keyed process and not contract", %{conn: conn} do
+      conn = get(conn, "/api/conformance?process=web_test_host.case_run")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert body["schema"] == "eh_os_contract.conformance.v3"
+      assert body["report"]["process"] == "web_test_host.case_run"
+      refute Map.has_key?(body["report"], "contract")
+
+      assert [%{"promises" => [%{"promise" => "closed_within_a_week"}]}] =
+               body["report"]["processes"]
+    end
+
+    test "a contract and a process at once are a bad request", %{conn: conn} do
+      conn = get(conn, @contract <> "&process=web_test_host.case_run")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "not both"
+    end
+
+    test "an unknown process, or one given as a list, is a bad request", %{conn: conn} do
+      unknown = get(conn, "/api/conformance?process=web_test_host.nothing")
+      assert unknown.status == 400
+      assert Jason.decode!(unknown.resp_body)["detail"] =~ "unknown process"
+
+      assert get(conn, "/api/conformance?process[]=x").status == 400
+    end
+
     test "an unknown contract is a bad request, not a crash", %{conn: conn} do
       conn = get(conn, "/api/conformance?contract=Not.A.Contract")
 

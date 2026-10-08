@@ -124,8 +124,22 @@ defmodule EhOsContract.ProcessModuleReportTest do
       assert report.processes == []
     end
 
-    test "is not on the conformance wire" do
-      assert_raise ArgumentError, ~r/process module/, fn -> Conformance.as_data(AccountReview) end
+    # Plan DD, P2w (#259): one schema, told apart by exactly one of the two keys.
+    test "is on the conformance wire, keyed by process and not by contract" do
+      data = Conformance.as_data(AccountReview, now: later())
+
+      assert %{"schema" => "eh_os_contract.conformance.v3", "report" => report} = data
+      assert report["process"] == "dispatch_rig.account_review"
+      refute Map.has_key?(report, "contract")
+
+      assert [%{"process" => "dispatch_rig.account_review", "promises" => [_]}] =
+               report["processes"]
+
+      assert Jason.encode!(data)
+
+      contract = Conformance.as_data(Ledger, now: later())["report"]
+      assert contract["contract"] == "dispatch_rig.ledger"
+      refute Map.has_key?(contract, "process")
     end
   end
 

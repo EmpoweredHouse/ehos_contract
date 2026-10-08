@@ -1,7 +1,12 @@
 defmodule EhOsContract.Web.Api.Conformance do
-  # The conformance report, as data, for one contract.
+  # The conformance report, as data, for one contract or one process module.
   #
   # `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
+  # `GET <mount>/conformance?process=<process id>&since=…&until=…`
+  #
+  # Both at once is a bad request: the report has exactly one of the two keys, and an
+  # answer to either would leave the other question unanswered (plan DD, P2w, #259,
+  # agreed with EHOS in EmpoweredHouse/eh-os#297).
   #
   # The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
   # the shape a consumer compares version to version is part of what the engine
@@ -39,7 +44,7 @@ defmodule EhOsContract.Web.Api.Conformance do
     else
       conn = fetch_query_params(conn)
 
-      with {:ok, contract} <- contract(conn.params["contract"]),
+      with {:ok, contract} <- subject(conn.params["contract"], conn.params["process"]),
            {:ok, since} <- at(conn.params["since"], "since"),
            {:ok, until} <- at(conn.params["until"], "until") do
         body = EhOsContract.Conformance.as_data(contract, since: since, until: until)
@@ -48,6 +53,23 @@ defmodule EhOsContract.Web.Api.Conformance do
         {:error, detail} ->
           json(conn, 400, %{"error" => "bad_request", "detail" => detail})
       end
+    end
+  end
+
+  @spec subject(term(), term()) :: {:ok, module()} | {:error, String.t()}
+  defp subject(nil, nil), do: contract(nil)
+  defp subject(contract, nil), do: contract(contract)
+  defp subject(nil, process), do: process(process)
+
+  defp subject(_contract, _process),
+    do: {:error, "name a contract= or a process=, not both"}
+
+  defp process(id) when not is_binary(id), do: {:error, "process= takes one process id"}
+
+  defp process(id) do
+    case EhOsContract.Registry.process(id) do
+      nil -> {:error, "unknown process #{id}"}
+      process -> {:ok, process}
     end
   end
 

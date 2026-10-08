@@ -109,7 +109,8 @@ defmodule EhOsContract.Conformance do
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
 
-  # A process module stays off the wire by the decision on #213.
+  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS in
+  # EmpoweredHouse/eh-os#297; until then it stayed off by the decision on #213.
   @doc """
   The same report, projected onto values that survive JSON.
 
@@ -117,16 +118,12 @@ defmodule EhOsContract.Conformance do
   reads the Elixir shape, and a transport is the only caller that needs the other
   one. See `EhOsContract.Conformance.Wire` for what each mapping is and why.
 
-  A process module is not on the wire, which `eh_os_contract.conformance.v3` names
-  for a contract, and is refused by name.
+  A contract's report and a process module's share the schema,
+  `eh_os_contract.conformance.v3`, and each has exactly one of `"contract"` and
+  `"process"` under `"report"`, which tells a reader which it is.
   """
   @spec as_data(module(), keyword()) :: map()
   def as_data(contract, opts \\ []) do
-    with %{kind: :process, module: module} <- Model.fetch(contract) do
-      raise ArgumentError,
-            "#{inspect(module)} is a process module, which the conformance wire does not carry yet"
-    end
-
     %{
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already

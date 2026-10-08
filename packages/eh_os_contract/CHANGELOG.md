@@ -27,6 +27,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A process module's report is on the conformance wire** (plan DD, stage P2w, #259, agreed with EHOS in
+  EmpoweredHouse/eh-os#297). `EhOsContract.Conformance.as_data/2` no longer refuses a process module: its report
+  keeps the schema `eh_os_contract.conformance.v3` and has `"process"`, its id, where a contract's has
+  `"contract"`; a report has exactly one of the two. `EhOsContract.Conformance.Wire` states the rule every reader may
+  rely on: an unknown key is ignored, and a key an older reader must not ignore comes with a new schema name. Moves
+  no verdict.
 - **A process's promise can be shown and tested with a scenario** (plan DD, stage S2, #251). A process module
   takes `scenario "…", verdict: :satisfied, via: :eventually do … end`, with `given :event, %{…}, at:
   "2026-09-07T09:00:00Z"`, `outage :external, at: "…"` and the trigger `promise :name, at: "…"`, the moment the

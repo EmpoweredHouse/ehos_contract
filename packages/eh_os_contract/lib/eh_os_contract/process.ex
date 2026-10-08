@@ -51,7 +51,8 @@ defmodule EhOsContract.Process do
   between modules, and dispatch files each event it includes into its run, under its
   `id:` and keyed by its `correlate`. The conformance report shows those runs, its
   deployment record its version, and the check reads what it includes; the
-  conformance wire and the dashboard do not list it yet.
+  conformance wire carries its report too (`EhOsContract.Conformance.as_data/2`); the
+  dashboard does not list it yet.
 
   Inside the library this module is always written in full, never aliased: `Process`
   is Elixir's.

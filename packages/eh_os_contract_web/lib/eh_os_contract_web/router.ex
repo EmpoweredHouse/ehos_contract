@@ -115,6 +115,7 @@ defmodule EhOsContract.Web.Router do
   | Route | Answers |
   | --- | --- |
   | `<path>/conformance?contract=<id>&since=<ISO 8601>&until=<ISO 8601>` | the contract's conformance report as data (`EhOsContract.Conformance.as_data/2`); `contract` may be left out when one contract is registered; `since` and `until` are optional |
+  | `<path>/conformance?process=<id>&since=<ISO 8601>&until=<ISO 8601>` | a process module's conformance report, keyed `"process"` where a contract's is keyed `"contract"`; naming both is a bad request |
   | `<path>/model` | every contract, with its version and its model document's digest |
   | `<path>/model/<id>` | the contract's model document (`EhOsContract.Model.to_data/1`) |
   | `<path>/openapi` | every contract, with its version and its OpenAPI document's digest |
@@ -126,7 +127,7 @@ defmodule EhOsContract.Web.Router do
   `"digest"`) and as its `ETag`, so a consumer compares what an instance serves with
   what its build recorded with a `HEAD` and no body. A contract id not registered is
   404 with `{"error": "not_found", "detail": ...}` on the document routes. On
-  `conformance`, an unknown contract, like a parameter that does not parse, is 400 with
+  `conformance`, an unknown contract or process, both named at once, or a parameter that does not parse, is 400 with
   `{"error": "bad_request", "detail": ...}`.
 
   None of it is business data, but all of it is the client's business in its own
