@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); batch 4 next, screen first, then panels one at a time |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1691,7 +1691,8 @@ Batch 1 needs no views: it is what every view is drawn with.
   is drawn box to box; an arrow's line (solid, dotted, heavy) and head as attributes of its label, which the
   hook copies; a state card listing its fields, a process's end in green, a lifecycle's end heavier and its
   start a dot; a label with nothing to say that takes no room.
-- **Where the view is not the picture**, by the facts being finer (*not asked for; the user to confirm*): a
+- **Where the view is not the picture**, by the facts being finer (*confirmed by the user, 8 October: kept —
+  "teraz ma większy sens"; the two timer arrows kept as two*): a
   process manager's start, its end and an event it takes during its run are arrows of their own (`starts`,
   `ends`, `during the run`), where the picture drew a manager's reaction only when it issued a command — so
   Rehmed's `documentation_chase` had no arrow from the visit's end that starts it, nor TaxVision's
@@ -1726,6 +1727,10 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **Not done, known:** the system's arrows carry the consumed events' names, as the picture did, not their
   labels (working plan, point 3); the panel is raw; AppUnite `computers` fitted to the screen is as unreadable as
   its Mermaid picture.
+- **Batches 2 and 3 are closed** (the user, 8 October, after checking views on the preview: "wygląda git"). **For
+  batch 4, the user's decision:** first the Graph screen draws the pictures it draws today with these views instead
+  of Mermaid, the panel still raw; then the panels and the rest of batch 4 one point at a time, each described for
+  the user's approval before it is built. *Rejected:* the whole of batch 4 in one go.
 
 ### Wobec programu DD
 
