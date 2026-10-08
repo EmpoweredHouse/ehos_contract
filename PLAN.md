@@ -1744,7 +1744,8 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **A canvas is as tall as its picture fitted to its width**, up to `min(72vh, 760px)` as before and at least
   120 px: in a box of a fixed 760 px most pictures sat small in empty space (AppUnite's context map is 150 px
   tall), and a page was 7,000 to 8,800 px long; now 3,100 to 5,200. A change in the drawing layer, the hook and its
-  stylesheet; a canvas keeps its height when the window is resized, as it keeps its zoom.
+  stylesheet; a canvas keeps its height when the window is resized, as it keeps its zoom. *(Superseded the same
+  day, below: a canvas whose width changes is fitted again unless the reader has moved the graph.)*
 - **The preview stays until Mermaid goes** (batch 5), though its moduledoc had it go with this step: it is the one
   page that draws a view beside its Mermaid diagram. Its text, the dashboard's README and `app.js`'s comments now
   say the Mermaid diagrams are the preview's.
@@ -1766,8 +1767,8 @@ Batch 1 needs no views: it is what every view is drawn with.
 ### E13b, batch 4 — the panels (8 October)
 
 - **The user's decisions (8 October):** the panels are built before the user checks the screen, all at once
-  ("Zrób panele zanim sprawdzę") — *rejected:* one point at a time, each described for approval first (the
-  decision of the same morning); and the screen takes more room ("bez tych dużych marginesów"), the panel as tall
+  ("build the panels before I check") — *rejected:* one point at a time, each described for approval first (the
+  decision of the same morning); and the screen takes more room ("without those big margins"), the panel as tall
   as the canvas beside it and scrolled inside.
 - **`EhOsContract.GraphRenderer.Panel`** says what is selected, from the document alone: each item of the working
   plan's points 1, 2, 6 and 8 to 12 and "Pole" (catalogue table (ii) of "E13a — catalogue of `graph.v1`") is a
@@ -1789,7 +1790,8 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **Room:** a page with graphs takes the window's width (`main:has(.ehg)`); the panel is 300 to 420 px wide, as
   tall as the canvas (`contain: size`, stretched in the grid) and scrolled inside; with a panel open the canvas is
   at least `min(420px, 72vh)`, so a small picture does not leave the panel no room. The canvas keeps the reader's
-  zoom when the panel opens and narrows it, as before.
+  zoom when the panel opens and narrows it, as before. *(Superseded the same day, below: the panel is a sidebar
+  over the page, and no canvas changes its size for it.)*
 - **Tests:** the renderer's suite (69): a panel for every element of every view of every fixture, naming only
   what can be selected; each point's content on the fixtures (who may issue and the grant, what depends on an
   event, personal data, a value's members, the scenarios behind an arrow, a refusal, a policy's and a manager's
@@ -1853,7 +1855,7 @@ Batch 1 needs no views: it is what every view is drawn with.
   Animation (`element.animate`, its keyframes set again each frame, `fill: "forwards"`): neither an attribute nor
   a stylesheet, so the policy allows it and LiveView's patches keep it, and a change restyles the one element;
   the panel's width goes to the shared stylesheet once, when the drag ends, and the gesture's layer is a class
-  on the viewport. **The user, in Safari: "Działa zajebiście teraz."** A dated amendment in
+  on the viewport. **The user, in Safari: "it works great now."** A dated amendment in
   `docs/adr/graph-renderer.md` turns the package's rule into "positions and sizes in a constructed stylesheet,
   what changes every frame in a Web Animation, never a `style` attribute", and `test/assets_test.exs` holds the
   zoom and the drag to it (checked to fail when the zoom writes a stylesheet). Gate: the whole `mix check`,
@@ -1861,6 +1863,37 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **Cleaning after the fixes:** stale comments and docs (the panel "beside the graph", the zoom "in constructed
   stylesheets", a refit only "when the cards are other cards"), an unused attribute of a relation's panel, a
   helper defined after its first use, a width read three times in `fit()`.
+- **The review (an agent, on the whole batch, 8 October):** joins, the hook's lifecycle, the policy and the
+  boundary exports found clean; 18 findings, all taken, each checked in a browser or a test:
+  - *what a panel said:* a lifecycle's start arrow named no event (an `enters` relation's event is its `from`);
+    the declared shape's promise arrow said nothing of the promise and, carrying the promise's id, hid the
+    promise's own panel — its arrows have ids of their own now; a policy taking a received event was told it
+    runs in the transaction, though the inbox runs it after whatever its delivery; personal data was "encrypted
+    in the log" on a command, a state and a read model too — now by what keeps the field (an event's log, a read
+    model's rows forgotten on erasure, a command nowhere); a transition's "not yet" read as a step's; four small
+    wordings (a new *what* starts, an empty "Fields" on a domain's event, an empty note, "Who may ask" over
+    nothing);
+  - *behaviour:* a name in the panel that named the selected node closed the panel (names send `show` now,
+    which never closes it); a click on a card turned the gesture's layer on and off and could count as the
+    reader's zoom (both wait for the graph to move); a canvas's height was written on every resize callback,
+    its own included (only a new width refits, only a new height is written); a canvas laid out again with the
+    same cards was not refitted; the panel's drag measured against a width with the scrollbar in it; a second
+    canvas's panel stayed up for a round trip (hidden at once now); the actors' table targeted its canvas by a
+    raw `#id` (an attribute selector now, escaped);
+  - *tests:* the check that a panel names only what can be selected could not fail (it now refuses an
+    unresolved name, but edge_cases.json's deliberate one, here and over the sandbox's 14 documents); a second
+    hand-made fixture, `messaging.json`, covers what no client wrote — a publication, a received event and the
+    inbox, a manager that ends and a timer it cancels; the root's `data-selected` and `deselect`;
+  - *records:* stale "beside the map" and "beside the picture", two superseded bullets above marked, Polish
+    quotes in this entry and a moduledoc translated, the ADR's amendment linked to #219.
+- **Readability, from the same review:** `panel.ex` shares one frame for every panel, lists of names with what
+  follows each (`then:`) instead of 25 hand-written lists, one function for a manager's phase, one component
+  for a context's and an external's relations; the words the views and the panels share are in
+  `EhOsContract.GraphRenderer.Words`. 1,770 lines to 1,685. *Rejected:* a table of parts per kind (it would take
+  each panel's sentences out of the template, where a reader sees what the panel says); splitting the module
+  (it moves the reading, it does not shorten it). Checked in a browser after both: all 711 elements of the
+  Graph screen clicked, each panel opened; the layer, the sidebar, the drag and every layout as before. Gate: the
+  whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 78.
 - **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
   labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
   its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
