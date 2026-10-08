@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; open: one tab per domain; batch 5 not started |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); batch 5 not started |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1909,8 +1909,11 @@ Batch 1 needs no views: it is what every view is drawn with.
 - **Open, for the user (8 October): every domain on one screen.** The Graph screen draws every domain the registry
   holds, and its contract selector lists every contract; the sandbox host registers three clients' domains, so
   they are all on one page. The user: "shouldn't there be only one? … each domain should have a tab or something,
-  so as not to mix everything" — and asked the assistant not to decide it. Options and a recommendation are with
-  the user; nothing is built.
+  so as not to mix everything" — and asked the assistant not to decide it. **The user's decision: leave it as it
+  is.** An application holds one domain in practice — #180 would make the application refuse to start under a
+  domain name EHOS did not give it — so only the sandbox, three clients in one host, mixes them. *Rejected:* a
+  tab per domain on Graph and Contract status (the assistant's recommendation); the sandbox running one client at
+  a time through `exclude:`; one section per domain on one page.
 - **Pushed** to the draft pull request #219 (the user's word).
 
 ### Wobec programu DD
