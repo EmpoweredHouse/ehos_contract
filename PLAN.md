@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); batch 5 not started |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1915,6 +1915,68 @@ Batch 1 needs no views: it is what every view is drawn with.
   tab per domain on Graph and Contract status (the assistant's recommendation); the sandbox running one client at
   a time through `exclude:`; one section per domain on one page.
 - **Pushed** to the draft pull request #219 (the user's word).
+
+### E13b, batch 5 — Mermaid cut (8 October)
+
+- **The engine draws nothing.** Gone: `EhOsContract.Graph` (the six `*_to_mermaid` functions and `bounded/2`),
+  `Graph.Mermaid`, the six builders of the pictures (`Graph.Contract`, `Declared`, `Unit`, `Lifecycle`,
+  `ContextMap`, `System`), and `Document.graph_node/4`, `Document.edge/4` with the types they made. What leaves
+  the engine is the `graph.v1` document and its overlay; the pictures are `eh_os_contract_graph`'s.
+- **The numbers between two contracts** (runs per contract; per pair, the consumed events in the log, what waits
+  and whether something fails at the consumer): `Overlay.domain/3` took them from `System.build(…, overlay:
+  true)` and put them on the facts' ids; it computes them itself now, with the same queries (a consumer's steps
+  read once, one count for every pair) and the same sums, on the one relation the facts have per pair. Nothing
+  counted them twice before: the picture counted and the overlay borrowed. The test of its query budget moved
+  with it. *Asked by the user (8 October), answered:* the split stays — the engine owns the facts and every number
+  from the log, the renderer draws and recounts nothing, the dashboard holds the screens; with the picture
+  builders gone the engine no longer holds anything about how a graph looks.
+- **`mix eh_os_contract.graph` gives a document only**: `--contract <id>` or `--domain <name>` (optional with one
+  domain, as `view`, `glossary` and `pages` take it), `--overlay`, `--since`, `--output`. `--json`, `--system` and
+  `--map` gave way to `--domain` (`--json` came with E13a and was never on `main`); `--process`, `--mermaid`,
+  `--unit` and `--lifecycle` are refused as unknown. *Rejected:* `--json` kept as a flag that changes nothing;
+  `--system` kept for the domain's document, which holds the context map and the actors too.
+- **The model pages, decision (b), finished:** the domain's index loses its context map and a unit's page its
+  diagram; a contract's page links its document, as since E13a.
+- **The dashboard:** `mermaid.min.js` (vendored and served), its script tag in the root layout, the
+  `MermaidRender` hook with the diagrams' theme and their way past the policy (EG3), the `pre.mermaid` styles,
+  the preview (`<mount>/graph/preview`) and its test, Mermaid's section of `NOTICE` (the fonts stay, and the
+  comment in `mix.exs` on why publication is held now names them), the README's exception to the policy.
+  `app.js` 256 to 252 KB. The renderer: its documentation alone — the views' table and the palette's comment
+  named the engine's builders and Mermaid's table.
+- **Tests:** the engine's tests of the pictures went with them (`graph_test`, `graph_contract_test`,
+  `graph_domain_test`, `graph_lifecycle_test`, and `test/support/graph_coverage.ex`, which held the facts to the
+  pictures). What they held that the facts still say moved onto the document: a process's shape (its stages in
+  order, a promise's window and its three relations, an included event, a dependency) in `graph_document_test`;
+  the task in `graph_task_test` (the bytes, the overlay, the refusals, `--since` with and without an offset,
+  stdout alone); a contract with no process in `no_process_test`; the pages. The sandbox: `graph_views_test`
+  went with the builders, as batch 3 said; `declared_shape_test`, the review of Rehmed's modelling, reads the
+  renderer's `View.declared/1` over the document where it read Mermaid's text — every assertion kept but the
+  refusal of an undeclared process, which no call makes now; TaxVision's system in `e10_outputs_test` reads the
+  domain's document.
+- **Records:** the CHANGELOGs (the engine's: E13a's entry on the builders returning data replaced by "Removed —
+  the Mermaid pictures", E13a's sentences on the task updated; the dashboard's; the renderer's); dated amendments
+  in `docs/adr/contract-v2.md` §3 (requirement 6) and `docs/adr/technology-notes.md` §12; the root README and the
+  engine's.
+- **Against *Odbiór E13b*:** `grep -ri mermaid packages sandbox` is clean but `CHANGELOG.md` and two ```` ```mermaid
+  ```` blocks in `packages/eh_os_contract/docs/authorization.md` — a sequence diagram and a flowchart of the
+  documentation, which GitHub draws, as in the root README and `docs/adr/architecture.md` outside the grep; not
+  the library's. **Left for the user to decide.** Panels on the three domains: batch 4.
+- **In a browser:** the sandbox host on :4011 with a build path of its own (the user's server held :4010),
+  headless Chrome at 1600 px, under the `default-src 'self'` the host serves, each of the 11 contracts: 8 to 10
+  canvases, no violation of the policy, no console error, no `style` attribute, no card over a card or a label,
+  no broken path; `window.mermaid` undefined, `app.js` the one script, no request for `mermaid.min.js` (404 now),
+  `/dashboard/graph/preview` 404; a click on a card, on an arrow of the system and on a card of the full graph
+  opens its panel; the system's arrows carry the overlay's numbers. The same screen from the function's document
+  and from `/graph/:contract`: the sandbox's renderer test holds it since batch 1.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: the whole `mix check` in `sandbox/` failed on connections, not on
+  code — 9 of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside the
+  user's `phx.server` holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 206 (in the
+  whole run), engine 1484, dashboard 62, auth 287, renderer 78.
+- **Open, for the user:** (1) the table of a process's events with what depends on each, and its promises in
+  sentences (decision 8) — the last of E13b: a tab of its own or a part of the Graph screen; (2) the two
+  documentation diagrams above; (3) step 7 outside this repository — an issue in `eh-os` (a screen of processes in
+  the Console, and how the Console authenticates to `/graph`) and a pull request in `ehos-tools` (the template
+  mounts the dashboard, decision 6) — on the user's word.
 
 ### Wobec programu DD
 
