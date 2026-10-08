@@ -11,8 +11,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **E13b, batch 4: the Graph screen draws with the renderer.** Each picture of the screen — a domain's context map
   and system, a contract's declared shape, full graph, units and lifecycles — is the renderer's view of the engine's
   `graph.v1` document, with the log over the same pictures as before, read once connected. A click opens the
-  renderer's panel beside the picture. A domain's actors are a table under its map, a row opening the actor's
-  panel, a sidebar at the right of the window that lies over the page. A page with graphs on it takes the window's
+  renderer's panel, a sidebar at the right of the window that lies over the page. A domain's actors are a table
+  under its map, a row opening the actor's panel. A page with graphs on it takes the window's
   width, with a margin on each side. No Mermaid is left on the screen; the preview keeps its Mermaid
   diagrams until Mermaid is cut.
 - **E13b, batch 3: the preview draws the views.** `<mount>/graph/preview` picks one view of the document —

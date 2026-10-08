@@ -85,11 +85,11 @@ defmodule EhOsContract.Web.Live.GraphTest do
   end
 
   # Point 2 of the working plan: the domain's actors under its map, a row opening the
-  # actor's panel beside the map, though the map does not draw actors.
-  test "the actors under a domain's map, a row opening the actor's panel beside the map" do
+  # actor's panel, though the map does not draw actors.
+  test "the actors under a domain's map, a row opening the actor's panel" do
     view = live_graph()
 
-    assert has_element?(view, ~s(.ehg-actors button[phx-target="#map-graph-web_test_host"]))
+    assert has_element?(view, ~s(.ehg-actors button[phx-target='[id="map-graph-web_test_host"]']))
 
     view |> element(".ehg-actors button", "Case officer") |> render_click()
 

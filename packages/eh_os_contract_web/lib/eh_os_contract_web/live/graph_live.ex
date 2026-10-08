@@ -30,8 +30,7 @@ defmodule EhOsContract.Web.Live.Graph do
 
   **Above both, each domain** (plan EG2): its context map — subdomains, contexts,
   externals and their relations — with its actors under it, people and systems apart,
-  a row opening the actor's panel beside the map; and, where it has a v2 contract, its
-  system: the
+  a row opening the actor's panel; and, where it has a v2 contract, its system: the
   contracts in their contexts, what one consumes from another, and the log over it.
   **Below both, the units** of the selected contract, each its own picture: state,
   commands, events, invariants and the scenarios that pin each path. The map and the
