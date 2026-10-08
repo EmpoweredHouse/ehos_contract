@@ -589,6 +589,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2w | 3 | raport modułu procesu na wire | P2d, eh-os#297 | ◐ `dd/259-process-on-the-wire` | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
@@ -830,6 +831,12 @@ wait on (X4).
 a P1 outage inside the window but not after it, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening,
 kept by a discrepancy, broken; no outage, since the library excuses a promise only by what its own events depend on, and
 the registries are one step upstream (recorded on #256). A test module per process.
+
+**P2w — a process module's report on the wire** (#259; added 8 October 2026, agreed with EHOS in
+EmpoweredHouse/eh-os#297). `Conformance.as_data/2` stops refusing a process module; a v3 report has exactly one of
+`contract` and `process` (the user's choice of 8 October); `Wire`'s moduledoc states the compatibility rule (unknown
+keys ignored, a key an older reader must not ignore comes with a new version); `eh_os_contract_web` takes
+`?process=<id>`, 400 with both parameters.
 
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;
