@@ -146,9 +146,21 @@ main {
   margin: 0 auto;
 }
 
-/* A page with graphs on it takes the window's width: a graph is read across, and its panel sits beside it. */
+/* A page with graphs on it takes the window's width, a graph being read across, with a margin on each side; and
+   while a graph's panel is open at the right of the window, the page ends where the panel starts. */
 main:has(.ehg) {
   max-width: none;
+  padding-inline: clamp(24px, 3vw, 56px);
+}
+
+main:has(.ehg-panel) {
+  margin-right: var(--eh-os-contract-graph-panel-width, 420px);
+}
+
+@media (max-width: 720px) {
+  main:has(.ehg-panel) {
+    margin-right: 0;
+  }
 }
 
 /* No edge-to-edge bar: nav sits inside the same padded column as everything else. The page being
