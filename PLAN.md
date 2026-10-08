@@ -595,7 +595,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
-| S2 | 3 | scenariusze obietnic | W3, P2b | ☐ | — |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ◐ `dd/251-promise-scenarios` | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ | — |
 | O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
@@ -811,9 +811,12 @@ ustalenie z E9a.
 **B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
 Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".
 
-**S2 — scenariusze obietnic** (w modułach procesu): wyzwalacz `promise :nazwa, at: "…"`, `given … at:`, `outage
-:p1, at:`, wynik `verdict:` (`:satisfied | :violated | :pending | :suspended`) i `via:`; S1/S2/S3 rozszerzone,
-**S11** (kształt), X4 (awaria systemu, od którego zależy zdarzenie); ScenarioCase woła `Trace.judge/3` (W3).
+**S2 — a process's promise can be tested with a scenario** (#251; tightened 8 October 2026). A process module gets
+`scenario "…", verdict:, via: do given …, at: …; outage :external, at: …; promise :name, at: … end`, and `given … at:`
+works in every scenario (the user's decision of 8 October). L2: the trigger names a promise of the module (S1), givens
+name included events (S2), `at:` is a timestamp never earlier than the given before it (S3), the shape (S11). L3: given
+data against the declaring contract (X9), an outage only of what `eventually` or `or_else` depends on (X4).
+`ScenarioCase, process:` judges through `Trace.trace/2` and `Trace.judge/3`, without a database.
 **S3 — sandbox**: obietnica `medical_event_reported_within_statutory_window` (spełniona przez wysłanie, przez
 `or_else`, złamana po 2 dniach, zawieszona przy awarii P1); TaxVision `month_opens_or_is_blocked`.
 
@@ -907,7 +910,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 | P1e | sprzątanie szablonowych procesów w testach | tak |
 | W2 | tagi miesiąca obok tagów dnia | tylko dzień |
 | T2a | `reads:` po polu stanu, nie tylko komendy | później |
-| S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone |
+| S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone — **decided 8 October: allowed in every scenario** (#251) |
 | A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem |
 | M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
 | V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
