@@ -503,5 +503,16 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
            ]
 
     assert lines["effect:taxvision.registry_watch:look_up_registries"] == []
+
+    # A timer says when it fires (the working plan's point 5).
+    assert lines["timer:taxvision.registry_watch:monthly_registry_check:next_month"] == [
+             "at check_at"
+           ]
+
+    messaging = "messaging" |> Fixtures.document() |> View.contract()
+
+    assert Enum.find(messaging.nodes, &(&1.id == "timer:messaging:loan:due")).lines == [
+             "after 14 days"
+           ]
   end
 end

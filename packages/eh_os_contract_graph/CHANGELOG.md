@@ -16,7 +16,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   pointer at a person, a domain value's members and unit, an entity, the system that gives its value. A name in
   the panel selects that node, drawn or not. `EhOsContract.GraphRenderer.Actors` lists a domain's actors, people
   and systems apart, a row selecting one in a canvas. A policy, a process manager and a query say on their card
-  how many scenarios pin them. A canvas is as tall as its picture fitted to its width, up to `min(72vh, 760px)`,
+  how many scenarios pin them, and a timer when it fires (`after 24 hours`, `at check_at`). A canvas is as tall as its picture fitted to its width, up to `min(72vh, 760px)`,
   and is fitted again when its width changes unless the reader has zoomed or panned it. The panel is a sidebar at
   the right of the window, as tall as it and scrolled inside, one for the page, closed by Escape, lying over the
   page so that no canvas is resized by it; it opens `--eh-os-contract-graph-panel-width` wide, and the reader

@@ -167,14 +167,14 @@ defmodule EhOsContract.GraphRenderer.View do
   they project and the queries over them; the actors who issue, record or ask, and the
   external systems an effect calls, an event rests on, a system actor is backed by, or
   a field takes its value from. A policy, a process manager and a query say how many
-  scenarios pin them, "0 scenarios" included.
+  scenarios pin them, "0 scenarios" included, and a timer when it fires.
   """
   @spec contract(map()) :: t()
   def contract(document) do
     by_id = index(document)
     own = &(&1.kind == "event" and (&1.facts["unit"] != nil or &1.facts["included"] == true))
 
-    # A policy, a manager and a query say how many scenarios pin them, none included.
+    # How many scenarios pin each policy, process manager and query (`lines/3`).
     pinned =
       for {_type, group} <- document["scenarios"] || %{},
           s <- group,
@@ -187,11 +187,7 @@ defmodule EhOsContract.GraphRenderer.View do
           node <- nodes(document, kind) do
         card(kind, node,
           group: if(kind in ~w(command event), do: node["unit"]),
-          lines:
-            if(kind in ~w(policy process_manager query),
-              do: [scenarios(pinned[node["id"]] || 0)],
-              else: []
-            )
+          lines: lines(kind, node, pinned)
         )
       end
 
@@ -250,6 +246,14 @@ defmodule EhOsContract.GraphRenderer.View do
       groups
     )
   end
+
+  # What a card of the full graph lists under its name: how many scenarios pin a policy, a
+  # process manager or a query, "0 scenarios" included, and when a timer fires.
+  defp lines(kind, node, pinned) when kind in ~w(policy process_manager query),
+    do: [scenarios(pinned[node["id"]] || 0)]
+
+  defp lines("timer", node, _pinned), do: List.wrap(fires(node))
+  defp lines(_kind, _node, _pinned), do: []
 
   # `drawn`, the ids of the cards drawn so far, with those of `kind` one of `arrows` joins
   # to one of them.

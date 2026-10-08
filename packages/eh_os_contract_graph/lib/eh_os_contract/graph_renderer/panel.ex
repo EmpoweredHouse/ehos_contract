@@ -1673,11 +1673,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # The unit a status is of.
   defp unit_of(lookup, status), do: (Lookup.node(lookup, status) || %{})["unit"]
 
-  defp duration(%{"amount" => amount, "unit" => unit}),
-    do: "#{amount} #{if amount == 1, do: unit, else: unit <> "s"}"
-
-  defp duration(_other), do: "?"
-
   defp times(1), do: "once"
   defp times(n), do: "#{n} times"
 

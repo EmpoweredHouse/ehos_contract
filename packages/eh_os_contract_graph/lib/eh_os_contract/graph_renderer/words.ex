@@ -24,6 +24,19 @@ defmodule EhOsContract.GraphRenderer.Words do
   def count(1, noun), do: "1 #{noun}"
   def count(n, noun), do: "#{n} #{noun}s"
 
+  @doc "A duration in words, with its number: `1 day`, `24 hours`."
+  @spec duration(map()) :: String.t()
+  def duration(%{"amount" => amount, "unit" => unit}),
+    do: "#{amount} #{if amount == 1, do: unit, else: unit <> "s"}"
+
+  def duration(_other), do: "?"
+
+  @doc "When a process manager's timer fires: `after 14 days`, `at check_at`."
+  @spec fires(map()) :: String.t() | nil
+  def fires(%{"wait" => %{} = wait}), do: "after #{duration(wait)}"
+  def fires(%{"at" => at}) when is_binary(at), do: "at #{at}"
+  def fires(_timer), do: nil
+
   @doc "The relation types of the eight context-mapping patterns."
   @spec patterns() :: [String.t()]
   def patterns, do: @patterns
