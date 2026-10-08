@@ -84,7 +84,74 @@ defmodule EhOsContract.Contract.Rules.Units do
       unemitted ++
       rejects ++
       constraints(unit, invariants) ++
-      reads(unit, d) ++ consults(unit, d) ++ generated(unit, where)
+      reads(unit, d) ++ actor_is(unit) ++ consults(unit, d) ++ generated(unit, where)
+  end
+
+  # A9 (plan DD, A1, #247): the person who must issue a command is named by a field of
+  # the unit's state, an `:id` that is not personal — the credential's subject is
+  # compared with it, and a personal value would put a person's data in that
+  # comparison's refusal. A state field may be empty until an event fills it: then
+  # nobody is named yet, and the command is refused. The invariant is the unit's and the
+  # command may refuse on it; a command that creates its aggregate has no state to name
+  # anyone; and only a command people issue, `by:`, has a person to compare. Never the
+  # identity: the caller fills it in the command, so anyone could name themselves.
+  defp actor_is(unit) do
+    state = Enum.flat_map(unit.state, & &1.fields)
+    invariants = MapSet.new(unit.invariants, & &1.name)
+
+    for command <- unit.commands,
+        actor_is <- command.actor_is,
+        problem <- actor_is_problems(command, actor_is, unit, state, invariants) do
+      {"A9: command #{inspect(command.name)}, actor_is #{inspect(actor_is.field)}: #{problem}",
+       actor_is}
+    end ++
+      for command <- unit.commands, [_, second | _] <- [command.actor_is] do
+        {"A9: command #{inspect(command.name)} names who must issue it twice", second}
+      end
+  end
+
+  defp actor_is_problems(command, actor_is, unit, state, invariants) do
+    field = actor_is.field
+    declared = Enum.find(state, &(&1.name == field))
+
+    Enum.concat([
+      cond do
+        field in List.wrap(unit.identity) ->
+          [
+            "is the unit's identity, which the caller fills in the command, so anyone could " <>
+              "name themselves; the person is one an earlier event recorded in the state"
+          ]
+
+        declared == nil ->
+          ["is not a field of the unit's state; the person is one the unit already knows"]
+
+        not (declared.type == :id or match?({:id, _}, declared.type)) ->
+          ["is typed #{inspect(declared.type)}; a person is named by an :id"]
+
+        declared.personal != nil ->
+          ["is personal; the subject compared with it would be a person's data in a refusal"]
+
+        true ->
+          []
+      end,
+      if(
+        MapSet.member?(invariants, actor_is.or_rejects) and
+          actor_is.or_rejects in command.rejects,
+        do: [],
+        else: [
+          "or_rejects: #{inspect(actor_is.or_rejects)} is not an invariant of the unit in the " <>
+            "command's rejects:"
+        ]
+      ),
+      if(command.creates,
+        do: ["the command creates: its aggregate, which has no state yet to name anyone"],
+        else: []
+      ),
+      if(command.by == [],
+        do: ["the command names nobody in by:, so no person issues it"],
+        else: []
+      )
+    ])
   end
 
   defp reads(unit, d) do

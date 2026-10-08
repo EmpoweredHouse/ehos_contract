@@ -28,7 +28,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   model it reads. An effect's outcome is outside the log, so an effect is no
   #   scenario's target; neither is a read model on its own, which a scenario reaches
   #   through a query, as ESDM's read model scenario does.
-  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
+  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one;
+  #   `as:`, the person issuing it (plan DD, A1, #247), only beside an `actor`.
   # - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
   #   successor of architecture §18's gate, kept an error although ESDM makes it a
   #   warning — and so is every constraint of a command, by a scenario of that command
@@ -655,6 +656,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     end
   end
 
+  # Plan DD, A1 (#247): `as:` names the person beside the role, so it needs one.
+  defp actor(where, %{actor: nil, as: as} = scenario, _command) when is_binary(as),
+    do: [{"S7: #{where}: as: names a person only beside an actor:", scenario}]
+
   defp actor(_where, %{actor: nil}, _command), do: []
 
   defp actor(where, scenario, command) do
@@ -665,6 +670,9 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
            "#{inspect(command.name)}, #{inspect(command.by)}", scenario}
       ]
   end
+
+  defp no_actor(where, %{actor: nil, as: as} = scenario) when is_binary(as),
+    do: [{"S7: #{where}: only a command's scenario names a person with as:", scenario}]
 
   defp no_actor(_where, %{actor: nil}), do: []
 

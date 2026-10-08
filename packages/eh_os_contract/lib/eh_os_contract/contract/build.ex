@@ -199,6 +199,16 @@ defmodule EhOsContract.Contract.Build do
     |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
     # And for what the decision reads (plan DD, T2a, #240), in the order written.
     |> then(&if command.reads == [], do: Map.delete(&1, :reads), else: &1)
+    # And for the person who must issue it (plan DD, A1, #247): one, as a map.
+    |> then(fn built ->
+      case command.actor_is do
+        [%{field: field, or_rejects: invariant} | _] ->
+          %{built | actor_is: %{field: field, or_rejects: invariant}}
+
+        [] ->
+          Map.delete(built, :actor_is)
+      end
+    end)
     # And for a lifecycle's precondition (plan LC1).
     |> then(fn built ->
       if command.from == [],
@@ -360,8 +370,12 @@ defmodule EhOsContract.Contract.Build do
         _ -> %{}
       end
 
+    # Plan DD, A1 (#247): the person issuing the command, kept only where named.
+    person = if scenario.as, do: %{as: scenario.as}, else: %{}
+
     answers
     |> Map.merge(entities)
+    |> Map.merge(person)
     |> Map.merge(illustrates)
     |> Map.merge(state)
     |> Map.merge(%{
