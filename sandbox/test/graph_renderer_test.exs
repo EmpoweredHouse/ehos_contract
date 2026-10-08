@@ -93,7 +93,7 @@ defmodule EhOsContract.GraphRendererTest do
     # edge_cases.json is made by hand for what no client wrote, and is not a whole document.
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
     taken = names -- ["edge_cases.json"]
-    assert length(taken) == 3
+    assert length(taken) == 6
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()

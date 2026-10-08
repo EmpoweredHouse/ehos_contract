@@ -8,6 +8,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, batch 3: the preview draws the views.** `<mount>/graph/preview` picks one view of the document —
+  `?view=` the full graph, the declared shape, a unit, a lifecycle, the context map, the system, or `all` — and
+  draws under it the Mermaid diagram of the same picture, as the Graph screen draws it, to compare the two. The
+  Graph and Contract status screens are unchanged.
 - **E13b, batch 1: the dashboard depends on `eh_os_contract_graph`, the graph renderer.** Its script and stylesheet
   are bundled into the dashboard's own `app.js` and `app.css`, so a host serves nothing new and registers nothing.
   A temporary screen, `<mount>/graph/preview` and not in the nav, draws one document of the registry with it, every
