@@ -591,7 +591,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
 | A1 | 3 | `actor_is` | T1 | ◐ `dd/247-actor-is` | [#247](https://github.com/EmpoweredHouse/eh-os-contract/issues/247) |
-| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
+| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ◐ `dd/249-own-specialist-closes` | [#249](https://github.com/EmpoweredHouse/eh-os-contract/issues/249) |
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
@@ -805,11 +805,12 @@ Dispatch checks it after folding the state and before the decision, for a creden
 reaction pass), and refuses as the lifecycle's precondition does: a `rejected` row on the invariant. No exception
 for a role (decided 7 October). A scenario names the person with `as: "specialist-ewa"` beside its `actor:` (S7
 extended). Depends on T1.
-**A2 — Rehmed AGG-02 inw. 3**: `visit_completed` dostaje `specialist_id` z `supplied_by: :host` (supplier wpisuje
-`actor.subject`); dokumentacja wizyty staje się DCB konsultującą `visit_completed` i `visit_booked` po `visit_id`
-(bez nowych nazw zdarzeń — nazwy tylko z warsztatu), więc stan zna specjalistę i flagę P1 utrwaloną przy
-rezerwacji (T2s): `close_visit_clinically` dostaje `actor_is`, a pole `p1_reported` znika z komendy. Zamknąć
-ustalenie z E9a.
+**A2 — Rehmed's clinical close by the visit's own specialist** (`AGG-02` invariant 3): `visit_completed` records
+the specialist who saw the patient, `specialist_id` supplied by the host from the credential; the visit's
+documentation becomes a boundary consulting `visit_booked` and `visit_completed` by `visit_id` (no new event names),
+so its state knows the specialist and the P1 flag recorded at booking (T2s). `close_visit_clinically` gets
+`actor_is :specialist_id`, loses its supplied `p1_reported`, and the codes rule becomes an invariant on the booked
+flag. Closes the finding of E9a. Depends on A1 and T2s.
 
 **B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
 Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".
