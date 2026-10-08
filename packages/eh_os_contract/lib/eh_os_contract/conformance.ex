@@ -237,21 +237,7 @@ defmodule EhOsContract.Conformance do
       duration: duration(model, opts),
       promises: promises(model, opts),
       # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
-      out_of_order: out_of_order(model, process, opts)
-    }
-  end
-
-  # The stages' labels beside their names, as a promise carries its events' labels.
-  defp out_of_order(model, process, opts) do
-    label = Map.new(process.stages, &{&1.name, &1.label || to_string(&1.name)})
-    result = EhOsContract.StageOrder.evaluate(model, opts)
-
-    %{
-      result
-      | pairs:
-          for pair <- result.pairs do
-            Map.merge(pair, %{earlier_label: label[pair.earlier], later_label: label[pair.later]})
-          end
+      out_of_order: EhOsContract.StageOrder.evaluate(model, opts)
     }
   end
 

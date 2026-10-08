@@ -53,7 +53,16 @@ defmodule EhOsContract.StageOrderTest do
     confirm("never-withdrawn")
     withdraw("never-confirmed")
 
-    assert StageOrder.evaluate(AccountReview) == %{runs: 1, pairs: [Map.put(@pair, :runs, 1)]}
+    assert StageOrder.evaluate(AccountReview) == %{
+             runs: 1,
+             pairs: [
+               Map.merge(@pair, %{
+                 runs: 1,
+                 earlier_label: "withdrawal",
+                 later_label: "confirmation"
+               })
+             ]
+           }
   end
 
   test "a stage is entered by its first event, so one entered again later still counts" do
@@ -73,6 +82,15 @@ defmodule EhOsContract.StageOrderTest do
 
     # Its withdrawal came after `until`, and the run still counts on it.
     assert %{runs: 1} = StageOrder.evaluate(AccountReview, until: until)
+
+    # A run that began before `since` is not in the period, though its later events are:
+    # read row by row, its confirmation and second withdrawal after `since` would be out
+    # of order.
+    withdraw("began-before")
+    since = mark()
+    confirm("began-before")
+    dispatch(%Withdraw{account_id: "began-before", amount: 10})
+    assert %{runs: 0} = StageOrder.evaluate(AccountReview, since: since)
 
     # And a run that began after `until` is not in the period at all.
     assert %{runs: 0, pairs: []} =

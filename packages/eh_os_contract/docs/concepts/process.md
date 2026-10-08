@@ -283,8 +283,9 @@ The report also counts the runs that entered a later stage before an earlier one
 stages: a visit reported before it was closed. A stage is entered by its first event, and the order is
 the log's, not the clock's: a process includes only contracts of its own application, so all its stages
 are in one log. Only stages a run reached are compared, so a skipped stage, or one whose reaction still
-waits in a queue, is no finding. A run belongs to the period by its first event and is judged on all of
-its events. The report says how many runs, never which: finding them is the application's job
+waits in a queue, is no finding. A run belongs to the period by its first event, as its duration is measured, and is
+judged on all of its events; the count of runs in the period takes every run with an event in it. The order
+is judged by the stages declared today. The dashboard does not show it yet. The report says how many runs, never which: finding them is the application's job
 (`EhOsContract.StageOrder`).
 
 A process module gets a section of its own after the contracts': its deployment, runs, deadline,
