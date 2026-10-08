@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), for the user's check; left of batch 4: points 3, 4, 5, 7 and the table of events |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; open: one tab per domain; batch 5 not started |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1894,11 +1894,24 @@ Batch 1 needs no views: it is what every view is drawn with.
   (it moves the reading, it does not shorten it). Checked in a browser after both: all 711 elements of the
   Graph screen clicked, each panel opened; the layer, the sidebar, the drag and every layout as before. Gate: the
   whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 78.
-- **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
-  labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
-  its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
-  table of events with what depends on each and the promises in sentences (decision 8); the sandbox's stage labels
-  (point 7). Then batch 5.
+- **The rest of batch 4 — the user's decisions (8 October), on the assistant's recommendation:**
+  - **Built:** what one run is, on Contract status beside the count (point 4): "Runs in this period: 3, one per
+    visit_id." — the sentence in `Report.Sentence.runs_per/1`, the fields from the contract's model, since the
+    report carries no such field and goes to EHOS on the wire unchanged (the text report does not print it);
+    and a timer's card says when it fires (point 5: `after 24 hours`, `at check_at`). Checked on the sandbox host;
+    gate: the whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 78.
+  - **Dropped:** the events' labels on the system's arrows (point 3: long sentences, several to an arrow; the
+    arrow's panel lists them); "ends «…»" under an ending event (point 5: the view draws the `ends` arrow); Polish
+    stage labels in the sandbox (point 7: test data, and every label moves a contract's version).
+  - **Moved to the end of E13b, open:** the table of a process's events with what depends on each, empty in red,
+    and its promises in sentences (decision 8). The user: perhaps a tab of its own rather than a part of the
+    Graph screen — to decide when it is built.
+- **Open, for the user (8 October): every domain on one screen.** The Graph screen draws every domain the registry
+  holds, and its contract selector lists every contract; the sandbox host registers three clients' domains, so
+  they are all on one page. The user: "shouldn't there be only one? … each domain should have a tab or something,
+  so as not to mix everything" — and asked the assistant not to decide it. Options and a recommendation are with
+  the user; nothing is built.
+- **Pushed** to the draft pull request #219 (the user's word).
 
 ### Wobec programu DD
 
