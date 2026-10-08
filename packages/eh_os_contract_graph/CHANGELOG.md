@@ -4,6 +4,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, batch 5: this package is the one that draws.** The engine's Mermaid pictures are gone, and with them
+  the table the palette was copied from: the colours of the kinds and their looks are this package's own.
 - **E13b, batch 4: the panels.** `EhOsContract.GraphRenderer.Panel` says what is selected, from the document
   alone, through the joins of `EhOsContract.GraphRenderer.Lookup`: a command's fields, who may issue it and the
   grant EHOS gives, its scope, the statuses it is allowed in and the rules it may be refused on; an event's

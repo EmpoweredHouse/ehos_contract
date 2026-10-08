@@ -242,9 +242,8 @@
   overflow: hidden;
 }
 
-/* The palette: one row per kind, in Event Storming's colours as the engine's Mermaid drew them
-   (EhOsContract.Graph.Mermaid's @classes), dark ink on a light note in both themes, as there. A kind not
-   in the table is a grey note. */
+/* The palette: one row per kind, in Event Storming's colours as the engine's pictures had them before
+   this package, dark ink on a light note in both themes. A kind not in the table is a grey note. */
 
 .ehg-card {
   --eh-os-contract-graph-fill: #f5f5f5;
@@ -273,7 +272,7 @@
   border-style: dashed;
 }
 
-/* A look of a kind, as the Mermaid pictures drew it: an event that ends a process green, a lifecycle's end a
+/* A look of a kind, as the engine's pictures drew it: an event that ends a process green, a lifecycle's end a
    status drawn heavier, and where a new aggregate starts a dot, in the ink of the host's theme so that it shows
    on a dark canvas too. */
 

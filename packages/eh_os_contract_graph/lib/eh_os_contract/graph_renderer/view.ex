@@ -9,18 +9,18 @@ defmodule EhOsContract.GraphRenderer.View do
   the drawing layer takes, and keeps a relation only when both of its ends are in the
   view, so that no arrow points at nothing.
 
-  **The views are the six pictures the engine drew as Mermaid diagrams** (plan E13b,
+  **The views are the six pictures the engine drew before this package** (plan E13b,
   batch 3, the user's decision of 8 October), each chosen here from the graph of
   facts rather than built by the engine:
 
-  | View | The engine's picture | What it shows |
-  | --- | --- | --- |
-  | `contract/1` | `Graph.Contract` | commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
-  | `declared/1` | `Graph.Declared` | the process's stages in order, the events in them, its promises with their windows, the systems its events rest on |
-  | `unit/2` | `Graph.Unit` | one unit's state, commands, events and rules, and how many scenarios pin each path |
-  | `lifecycle/2` | `Graph.Lifecycle` | an aggregate's statuses and the events that move it between them |
-  | `context_map/1` | `Graph.ContextMap` | a domain's subdomains, contexts, external systems and their relations |
-  | `system/1` | `Graph.System` | a domain's contracts in their contexts, what one consumes from another, and its publications |
+  | View | What it shows |
+  | --- | --- |
+  | `contract/1` | a contract's full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
+  | `declared/1` | a process's declared shape: its stages in order, the events in them, its promises with their windows, the systems its events rest on |
+  | `unit/2` | one unit's state, commands, events and rules, and how many scenarios pin each path |
+  | `lifecycle/2` | an aggregate's statuses and the events that move it between them |
+  | `context_map/1` | a domain's subdomains, contexts, external systems and their relations |
+  | `system/1` | a domain's contracts in their contexts, what one consumes from another, and its publications |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation

@@ -9,10 +9,9 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress** (plan E13b). It draws the six views the engine's Mermaid diagrams drew — a contract's
-full graph, its process's declared shape, a unit, an aggregate's lifecycle, a domain's context map and its
-system — and, as a test bed, every node and relation of a document. The panel says what is clicked, from the
-document alone: a command's fields and who may issue it, an event's and what depends on it, a reaction's
+**Work in progress** (plan E13b). It draws six views — a contract's full graph, its process's declared shape,
+a unit, an aggregate's lifecycle, a domain's context map and its system — and, as a test bed, every node and
+relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and what depends on it, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
 what it may do, the scenarios behind an arrow.
 
