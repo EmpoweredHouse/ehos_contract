@@ -201,8 +201,18 @@ defmodule EhOsContract.Report do
       ["  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
+      out_of_order(p) ++
       assertions(p.promises) ++
       [""]
+  end
+
+  # Plan DD, O1 (#260).
+  @spec out_of_order(map()) :: [String.t()]
+  defp out_of_order(p) do
+    case Sentence.out_of_order(p.out_of_order) do
+      nil -> []
+      {heading, pairs} -> ["  " <> heading] ++ for(pair <- pairs, do: "    · " <> pair)
+    end
   end
 
   # Plan DD, P1a (#183): the contract's steps, whether or not it has a process.

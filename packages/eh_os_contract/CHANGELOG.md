@@ -27,6 +27,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The report counts the runs whose stages happened out of order — can move a verdict** (plan DD, stage O1,
+  #260, agreed with EHOS in EmpoweredHouse/eh-os#297). Each process section of
+  `EhOsContract.Conformance.report/2` has `out_of_order: %{runs: n, pairs: [%{earlier:, later:, runs:,
+  earlier_label:, later_label:}]}` (`EhOsContract.StageOrder`): the runs that entered a later stage before an
+  earlier one they also entered, by position in the log, a stage entered by its first event, a run in the
+  period by its first event and judged on all of them. On the wire it is a new key of v3, and the text report
+  prints "Stages out of order in n runs" with a line per pair, only when there is one. It never names a run. The
+  dashboard does not show it yet.
 - **A process module's report is on the conformance wire** (plan DD, stage P2w, #259, agreed with EHOS in
   EmpoweredHouse/eh-os#297). `EhOsContract.Conformance.as_data/2` no longer refuses a process module: its report
   keeps the schema `eh_os_contract.conformance.v3` and has `"process"`, its id, where a contract's has

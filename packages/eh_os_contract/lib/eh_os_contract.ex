@@ -57,6 +57,7 @@ defmodule EhOsContract do
       ProcessManager,
       ProcessManagerRecord,
       Registry,
+      StageOrder,
       Receipt,
       Rejection,
       Report,
