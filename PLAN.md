@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer, the panel raw, for the user's check ("E13b, batch 4 — the Graph screen on the renderer (8 October)"); the panels next, one at a time |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), for the user's check; left of batch 4: points 3, 4, 5, 7 and the table of events |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1762,6 +1762,53 @@ Batch 1 needs no views: it is what every view is drawn with.
   engine 1530, dashboard 65, auth 287, renderer 46.
 - **Next:** the user's check of the screen; then the panels and the rest of batch 4, one point at a time, each
   described for the user's approval before it is built.
+
+### E13b, batch 4 — the panels (8 October)
+
+- **The user's decisions (8 October):** the panels are built before the user checks the screen, all at once
+  ("Zrób panele zanim sprawdzę") — *rejected:* one point at a time, each described for approval first (the
+  decision of the same morning); and the screen takes more room ("bez tych dużych marginesów"), the panel as tall
+  as the canvas beside it and scrolled inside.
+- **`EhOsContract.GraphRenderer.Panel`** says what is selected, from the document alone: each item of the working
+  plan's points 1, 2, 6 and 8 to 12 and "Pole" (catalogue table (ii) of "E13a — catalogue of `graph.v1`") is a
+  node's own facts or a join that **`EhOsContract.GraphRenderer.Lookup`** makes — relations into and out of a
+  node, nodes by an owner field, scenarios by `covers` and by `target`. A panel for every node kind a view draws
+  (command, event, policy, process manager, timer, effect, read model, query, unit, rule, status, actor, external,
+  context, subdomain, process, stage, promise, publication, contract, value, entity) and for every relation, the
+  view's own (`gives`, an undeclared move) among them; anything else shows its facts as the document has them.
+  A field reads the same everywhere: type, required, default, personal data of whom (encrypted, erased with
+  them), a pointer at a person (in the clear), a domain value's members and unit, an entity, the system that
+  gives its value, the host. Scenarios show their data as the document has it, redacted; a manager's are grouped
+  by what triggers them. The log's numbers are sentences. A name in a panel selects that node, drawn or not; one
+  the view does not draw fades nothing.
+- **The actors' table** (point 2): `EhOsContract.GraphRenderer.Actors.table/1`, people and systems apart, under each
+  domain's context map; a row selects its actor in the map's canvas (`phx-target` naming it), whose panel says
+  what the role may do, contract by contract.
+- **"N scenarios"** on a policy's, a process manager's and a query's card in the full graph (points 9 and 10), "0
+  scenarios" included; a unit's arrows say theirs as before.
+- **Room:** a page with graphs takes the window's width (`main:has(.ehg)`); the panel is 300 to 420 px wide, as
+  tall as the canvas (`contain: size`, stretched in the grid) and scrolled inside; with a panel open the canvas is
+  at least `min(420px, 72vh)`, so a small picture does not leave the panel no room. The canvas keeps the reader's
+  zoom when the panel opens and narrows it, as before.
+- **Tests:** the renderer's suite (69): a panel for every element of every view of every fixture, naming only
+  what can be selected; each point's content on the fixtures (who may issue and the grant, what depends on an
+  event, personal data, a value's members, the scenarios behind an arrow, a refusal, a policy's and a manager's
+  scenarios, an effect's operation, a query's answer, a context's terms and relations, an external's outage, the
+  domain actor's capabilities, a system arrow's events by label, the actors' table); a name in the panel selecting
+  a node the view does not draw. The sandbox renders the panel of every element of every view of all 14 documents
+  with their overlays. The dashboard: a row of the actors' table opens the actor's panel beside the map.
+- **In a browser**, headless Chrome on the sandbox host at 1600 px: every card, group and label of every canvas of
+  the Graph screen, for each of the 11 contracts, clicked — 711 panels: each opened, as tall as its canvas and
+  level with it, no `style` attribute, no violation of the policy, no console error. **Found there, fixed:** the
+  panel's parts took the dashboard's `section` frame, and a term's source fell to a line of its own.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2, beside another `phx.server` of the sandbox holding 11 connections,
+  so each project alone, in order, as before: all EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287,
+  renderer 69.
+- **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
+  labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
+  its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
+  table of events with what depends on each and the promises in sentences (decision 8); the sandbox's stage labels
+  (point 7). Then batch 5.
 
 ### Wobec programu DD
 
