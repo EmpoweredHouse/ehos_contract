@@ -310,7 +310,8 @@ it, being no attribute, and a change restyles the one element. So the rule the p
 **positions and sizes in a constructed stylesheet, written when the layout changes; what changes on every frame
 in a Web Animation; never a `style` attribute.** The user confirmed the difference in Safari. A custom property
 on `:root`, written on every frame, cost Chrome too — every element inherits it — and was replaced the same day
-by a rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)".
+by a rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
+[#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
 
 ## Sources
 

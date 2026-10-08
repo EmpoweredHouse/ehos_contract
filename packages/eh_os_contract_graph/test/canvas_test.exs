@@ -94,10 +94,9 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a label names its arrow's line and head, and one with nothing to say is blank" do
-      html = draw(Fixtures.document("rehmed.statutory_reporting"), nil, :declared)
-
-      promise =
-        "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+      document = Fixtures.document("rehmed.statutory_reporting")
+      html = draw(document, nil, :declared)
+      [promise] = for %{type: "promise"} = r <- View.declared(document).relations, do: r.id
 
       label = at(html, "data-ehg-relation", promise)
       assert LazyHTML.attribute(label, "data-line") == ["thick"]

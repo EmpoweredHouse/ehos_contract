@@ -6,7 +6,9 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
   # a process manager with a timer, a process with stages and a promise, a boundary, and a
   # lifecycle. They do not follow the sandbox when its
   # contracts change; sandbox/test/graph_renderer_test.exs draws every document the engine
-  # gives today. A hand-made document beside them holds what no client wrote.
+  # gives today. Two hand-made documents beside them hold what no client wrote: edge_cases.json,
+  # ids of any character, a loop and a dangling relation; messaging.json, an event published to
+  # and one received from another application, the inbox, and a manager that ends and cancels.
 
   @dir Path.expand("../fixtures", __DIR__)
 

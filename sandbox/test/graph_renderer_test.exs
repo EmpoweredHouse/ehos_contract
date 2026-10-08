@@ -112,15 +112,20 @@ defmodule EhOsContract.GraphRendererTest do
 
       assert Enum.count(LazyHTML.query(html, "aside.ehg-panel")) == 1, where
 
+      # A name the document does not hold is shown as text, not as a button.
+      assert Enum.empty?(LazyHTML.query(html, "span.ehg-ref")),
+             "#{where} names #{html |> LazyHTML.query("span.ehg-ref") |> LazyHTML.text()}"
+
       for id <- html |> LazyHTML.query("button.ehg-ref") |> LazyHTML.attribute("phx-value-id"),
           do: assert(Lookup.kind(lookup, id), "#{where} names #{id}")
     end
   end
 
   test "the renderer's fixtures taken from the client trees still hold to the schema" do
-    # edge_cases.json is made by hand for what no client wrote, and is not a whole document.
+    # edge_cases.json and messaging.json are made by hand for what no client wrote, and are not
+    # whole documents.
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
-    taken = names -- ["edge_cases.json"]
+    taken = names -- ["edge_cases.json", "messaging.json"]
     assert length(taken) == 6
 
     for name <- taken do

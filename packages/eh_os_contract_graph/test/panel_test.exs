@@ -61,6 +61,11 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert Enum.count(LazyHTML.query(html, "aside.ehg-panel")) == 1, where
       assert Enum.count(LazyHTML.query(html, "[style]")) == 0, where
 
+      # A name the document does not hold is text, not a button; edge_cases.json holds one on
+      # purpose, a relation to a policy it does not have.
+      unresolved = html |> LazyHTML.query("span.ehg-ref") |> Enum.map(&LazyHTML.text/1)
+      assert unresolved -- ["policy:edge_cases:not in this document"] == [], where
+
       for id <- html |> LazyHTML.query("button.ehg-ref") |> LazyHTML.attribute("phx-value-id"),
           do: assert(Lookup.kind(lookup, id), "#{where} names #{id}")
     end
@@ -114,14 +119,28 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
   end
 
   describe "a field, the same everywhere (Pole)" do
-    test "personal data, and a pointer at a person" do
+    test "personal data, and a pointer at a person, by what keeps them" do
       text =
-        open("rehmed.statutory_reporting", "command:rehmed.statutory_reporting:queue_p1_report")
+        open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:p1_report_queued")
 
       assert text =~
                "pesel string · required Personal data of Pacjent — encrypted in the log, gone once they are erased."
 
       assert text =~ "patient_id id · required Points at Pacjent — in the log in the clear."
+
+      # A command is kept nowhere; a read model's rows forget the person.
+      text =
+        open("rehmed.statutory_reporting", "command:rehmed.statutory_reporting:queue_p1_report")
+
+      assert text =~ "pesel string · required Personal data of Pacjent. "
+      assert text =~ "patient_id id · required Points at Pacjent. "
+
+      text = open("messaging", "read_model:messaging:borrowers")
+
+      assert text =~
+               "name Name string · required Personal data of Reader — forgotten once they are erased."
+
+      assert text =~ "reader_id id · required Points at Reader."
     end
 
     test "a domain value's members and unit, an entity, the host" do
@@ -301,7 +320,114 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
              |> LazyHTML.query("button.ehg-ref")
              |> LazyHTML.attribute("phx-target")
              |> Enum.uniq() ==
-               ["#map"]
+               [~s([id="map"])]
+    end
+  end
+
+  describe "what a view draws as an arrow of its own" do
+    test "a lifecycle's start names the event a new one starts on" do
+      id =
+        "enters:event:appunite_equipment.demands:opened:status:appunite_equipment.demands:demand:open"
+
+      text =
+        open(
+          "appunite_equipment.demands",
+          id,
+          {:lifecycle, "unit:appunite_equipment.demands:demand"}
+        )
+
+      assert text =~ "On Otwarto zapotrzebowanie na komputer event."
+    end
+
+    test "a promise's arrow names the promise, whose own panel stays reachable by its name" do
+      document = Fixtures.document("rehmed.statutory_reporting")
+      [arrow] = for %{type: "promise"} = r <- View.declared(document).relations, do: r.id
+
+      promise =
+        "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+
+      text = open("rehmed.statutory_reporting", arrow, :declared)
+
+      assert text =~
+               "The promise medical_event_reported_within_statutory_window promise, kept within 2 days"
+
+      assert text =~ "the first event opens it, and the second keeps it."
+
+      text = open("rehmed.statutory_reporting", promise, :declared)
+      assert text =~ "Opened by Pacjent wyszedł z gabinetu event"
+    end
+
+    test "a transition not yet taken says an aggregate still stands where it can be taken" do
+      document = Fixtures.document("appunite_equipment.demands")
+
+      id =
+        "transition:status:appunite_equipment.demands:demand:open:status:appunite_equipment.demands:demand:ordered:event:appunite_equipment.demands:computer_ordered"
+
+      overlay = %{
+        "document_digest" => document["digest"],
+        "nodes" => %{},
+        "relations" => %{id => %{"count" => 0, "pending" => true, "untraversed" => false}},
+        "observed" => %{"relations" => %{"undeclared" => []}}
+      }
+
+      {:ok, live, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{
+            "document" => document,
+            "overlay" => overlay,
+            "view" => {:lifecycle, "unit:appunite_equipment.demands:demand"}
+          }
+        )
+
+      live |> with_target("#graph") |> render_click("select", %{"id" => id})
+      text = live |> element(".ehg-panel") |> render() |> text()
+
+      assert text =~
+               "From the log Made 0 times. Not yet taken: an aggregate still stands where it can be taken."
+    end
+  end
+
+  describe "another application, the inbox, a manager's end (messaging.json)" do
+    test "a publication: where it is published from, and what it is received as" do
+      text = open("messaging", "publication:Messaging.Domain:library.copy_lent")
+
+      assert text =~ "On the wire as library.copy_lent."
+
+      assert text =~
+               "Published from Copy lent event, with copy_id, a repeat recognised by copy_id"
+
+      assert text =~ "Received as A copy lent elsewhere event"
+    end
+
+    test "a received event, and the policy that takes it through the inbox whatever its delivery" do
+      text = open("messaging", "event:messaging:copy_lent")
+      assert text =~ "Received from another application as library.copy_lent publication."
+      assert text =~ "The application takes it with messaging.copy_lent.subscribe."
+      assert text =~ "handled by Release the hold when lent elsewhere policy, through the inbox"
+
+      text = open("messaging", "policy:messaging:release_hold")
+      assert text =~ "Takes A copy lent elsewhere event, through the inbox"
+
+      assert text =~
+               "An event received from another application reaches it through the inbox, after the transaction, whatever its delivery."
+    end
+
+    test "an event that leaves for another application and starts a run" do
+      text = open("messaging", "event:messaging:lent")
+      assert text =~ "leaves for other applications as library.copy_lent publication"
+      assert text =~ "starts a run of A loan process manager, after the transaction"
+    end
+
+    test "a manager that ends, and a timer it sets and cancels" do
+      text = open("messaging", "process_manager:messaging:loan")
+      assert text =~ "Ends on Copy returned event"
+
+      assert text =~
+               "Due back timer — fires 14 days after it is set, issuing Remind the reader command"
+
+      text = open("messaging", "timer:messaging:loan:due")
+      assert text =~ "Set on Copy lent, as a run starts"
+      assert text =~ "Cancelled on Copy returned, during the run"
     end
   end
 
@@ -323,7 +449,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       assert render(live) =~ "is-far"
 
-      html = render_click(target, "select", %{"id" => "actor:Taxvision.Domain:accountant"})
+      html = render_click(target, "show", %{"id" => "actor:Taxvision.Domain:accountant"})
 
       assert html
              |> LazyHTML.from_fragment()
@@ -332,6 +458,36 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       refute html =~ "is-far"
       refute html =~ "is-selected"
+    end
+
+    test "a name of what the panel is of keeps it open; the root says what is selected, while it is" do
+      {:ok, live, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => Fixtures.document("messaging")}
+        )
+
+      target = with_target(live, "#graph")
+
+      selected = fn ->
+        live
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#graph")
+        |> LazyHTML.attribute("data-selected")
+      end
+
+      assert selected.() == []
+
+      render_click(target, "select", %{"id" => "timer:messaging:loan:due"})
+      assert selected.() == ["timer:messaging:loan:due"]
+
+      render_click(target, "show", %{"id" => "timer:messaging:loan:due"})
+      assert selected.() == ["timer:messaging:loan:due"]
+      assert has_element?(live, ".ehg-panel")
+
+      render_click(target, "deselect", %{})
+      assert selected.() == []
+      refute has_element?(live, ".ehg-panel")
     end
   end
 

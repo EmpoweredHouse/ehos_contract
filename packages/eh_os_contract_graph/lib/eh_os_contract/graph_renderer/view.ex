@@ -36,6 +36,8 @@ defmodule EhOsContract.GraphRenderer.View do
   the document does not declare; `views/1` lists the views a document has.
   """
 
+  import EhOsContract.GraphRenderer.Words
+
   @typedoc "A view by name: a unit's and a lifecycle's take the unit's id."
   @type spec ::
           :all
@@ -412,7 +414,9 @@ defmodule EhOsContract.GraphRenderer.View do
   end
 
   # A promise as the picture drew it: from the event that opens it to the one that keeps
-  # it, and to the one that keeps it the other way.
+  # it, and to the one that keeps it the other way. Each arrow has an id of its own, made
+  # of the two relations it joins: the promise's id stays the promise node's, whose panel
+  # a reader opens from a name.
   defp promise(document, p) do
     at = fn type -> for r <- relations(document, type), r["to"] == p["id"], do: r end
     window = if p["within"], do: "within #{humanize(p["within"])}", else: "eventually"
@@ -421,7 +425,7 @@ defmodule EhOsContract.GraphRenderer.View do
         {type, r} <-
           Enum.map(at.("fulfils"), &{"promise", &1}) ++ Enum.map(at.("or_else"), &{"or_else", &1}) do
       %{
-        id: if(type == "promise", do: p["id"], else: r["id"]),
+        id: "#{type}:#{opens["id"]}:#{r["id"]}",
         type: type,
         from: opens["from"],
         to: r["from"],
@@ -524,9 +528,7 @@ defmodule EhOsContract.GraphRenderer.View do
   end
 
   defp scenarios(nil), do: nil
-  defp scenarios(0), do: "0 scenarios"
-  defp scenarios(1), do: "1 scenario"
-  defp scenarios(n), do: "#{n} scenarios"
+  defp scenarios(n), do: count(n, "scenario")
 
   defp consulted(%{"match" => [_ | _] = match}), do: "consulted by #{Enum.join(match, ", ")}"
   defp consulted(_where_in_prose), do: "consulted, where stated in prose"
@@ -543,11 +545,6 @@ defmodule EhOsContract.GraphRenderer.View do
     "#{field["name"]}: #{type(field["type"])}" <>
       if(notes == [], do: "", else: " · " <> Enum.join(notes, ", "))
   end
-
-  defp type(%{"list" => inner}), do: "list of #{type(inner)}"
-  defp type(%{"enum" => values}), do: "one of #{Enum.map_join(values, ", ", & &1["value"])}"
-  defp type(type) when is_binary(type), do: type
-  defp type(_unknown), do: "?"
 
   # --- an aggregate's lifecycle -----------------------------------------------------------
 
@@ -593,10 +590,6 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- a domain's context map and system --------------------------------------------------
 
-  @symmetric ~w(partnership shared_kernel separate_ways)
-  @patterns ~w(partnership shared_kernel separate_ways customer_supplier conformist
-               anticorruption_layer open_host_service published_language)
-
   @doc """
   The context map of a domain's `document`, left to right: its subdomains as groups of
   their contexts, every external system of the domain — one no relation reaches too —
@@ -614,11 +607,11 @@ defmodule EhOsContract.GraphRenderer.View do
           do: group("subdomain", s, "#{title(s)} · #{s["type"]}")
 
     arrows =
-      for type <- @patterns, r <- relations(document, type) do
+      for type <- patterns(), r <- relations(document, type) do
         arrow(type, r,
           words: words(type),
           line: if(type == "separate_ways", do: "dotted", else: "solid"),
-          head: type not in @symmetric
+          head: not symmetric?(type)
         )
       end
 
@@ -764,7 +757,4 @@ defmodule EhOsContract.GraphRenderer.View do
       parts -> Enum.join(parts, " · ")
     end
   end
-
-  # A kind or a type as the reader sees it: the name, spaced.
-  defp words(name), do: String.replace(name, "_", " ")
 end

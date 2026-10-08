@@ -82,8 +82,16 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     view = View.build(document, spec, overlay)
     selected = socket.assigns.selected
 
+    # The panel's joins, made once a document.
+    lookup =
+      if socket.assigns[:lookup_of] == document["digest"],
+        do: socket.assigns.lookup,
+        else: Lookup.new(document)
+
     {:ok,
      assign(socket,
+       lookup: lookup,
+       lookup_of: document["digest"],
        spec: spec,
        given: given,
        view: view,
@@ -105,6 +113,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     {:noreply, assign(socket, selected: selected)}
   end
 
+  # A name in the panel shows its node, and never closes the panel, even when it names what
+  # the panel is of.
+  def handle_event("show", %{"id" => id}, socket) do
+    if picked(socket.assigns.view, socket.assigns.document, id),
+      do: {:noreply, assign(socket, selected: id)},
+      else: {:noreply, socket}
+  end
+
   def handle_event("deselect", _params, socket), do: {:noreply, assign(socket, selected: nil)}
 
   @impl true
@@ -116,8 +132,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         near: near(assigns.view, assigns.selected),
         # A node the view does not draw is shown in the panel and fades nothing.
         focus: assigns.selected && element(assigns.view, assigns.selected) && assigns.selected,
-        picked: picked,
-        lookup: picked && Lookup.new(assigns.document)
+        picked: picked
       )
 
     ~H"""

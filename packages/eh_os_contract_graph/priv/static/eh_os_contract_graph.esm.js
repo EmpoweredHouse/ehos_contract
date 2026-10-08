@@ -4458,7 +4458,8 @@ var hold = (element, animation, value) => {
   held.persist();
   return held;
 };
-var clampWidth = (px) => Math.round(Math.max(280, Math.min(px, window.innerWidth - 240)));
+var across = () => document.documentElement.clientWidth;
+var clampWidth = (px) => Math.round(Math.max(280, Math.min(px, across() - 240)));
 var quoted = (value) => `"${CSS.escape(value)}"`;
 var svg = (name, attributes = {}) => {
   const element = document.createElementNS(SVG, name);
@@ -4480,14 +4481,14 @@ var curve = (points) => {
 };
 var loop = (card, label) => {
   const [dx, dy] = [label.x - card.x, label.y - card.y];
-  const across = Math.abs(dx) / card.width > Math.abs(dy) / card.height;
-  const [ux, uy] = across ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1];
+  const across2 = Math.abs(dx) / card.width > Math.abs(dy) / card.height;
+  const [ux, uy] = across2 ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1];
   const [vx, vy] = [-uy, ux];
-  const edge = across ? card.width / 2 : card.height / 2;
-  const side = across ? card.height : card.width;
+  const edge = across2 ? card.width / 2 : card.height / 2;
+  const side = across2 ? card.height : card.width;
   const spread = Math.min(side / 4, 24);
   const centre = Math.max(-side / 2 + spread, Math.min(side / 2 - spread, dx * vx + dy * vy));
-  const gap = Math.abs(across ? dx : dy) - edge - (across ? label.width : label.height) / 2;
+  const gap = Math.abs(across2 ? dx : dy) - edge - (across2 ? label.width : label.height) / 2;
   const reach = Math.max(16, (gap - 4) / 0.75);
   const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
   return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
@@ -4497,6 +4498,7 @@ var border = (box, toward) => {
   const s = Math.min(dx ? box.width / 2 / Math.abs(dx) : Infinity, dy ? box.height / 2 / Math.abs(dy) : Infinity);
   return Number.isFinite(s) ? { x: box.x + dx * s, y: box.y + dy * s } : { x: box.x, y: box.y };
 };
+var moved = (from, to) => !from || from.k !== to.k || Math.abs(from.x - to.x) + Math.abs(from.y - to.y) > 4;
 var gesture = (event) => event.type === "wheel" ? event.ctrlKey || event.metaKey : !event.button && !event.ctrlKey;
 var EhOsContractGraph = {
   mounted() {
@@ -4507,13 +4509,15 @@ var EhOsContractGraph = {
     this.key = null;
     this.arrows = /* @__PURE__ */ new Map();
     this.canvas = this.el.querySelector(".ehg-canvas");
-    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("start", () => {
-      this.moving = true;
-      this.layer();
-    }).on("zoom", ({ transform: transform2, sourceEvent }) => {
-      if (sourceEvent) this.touched = true;
+    this.zoom = zoom_default2().scaleExtent([0.1, 2]).filter(gesture).clickDistance(4).on("start", ({ transform: transform2 }) => this.from = transform2).on("zoom", ({ transform: transform2, sourceEvent }) => {
+      if (sourceEvent && !this.moving && moved(this.from, transform2)) {
+        this.moving = true;
+        this.touched = true;
+        this.layer();
+      }
       this.zoomed(transform2);
     }).on("end", () => {
+      if (!this.moving) return;
       this.moving = false;
       this.layer();
     });
@@ -4521,7 +4525,9 @@ var EhOsContractGraph = {
     if (!widthSheet && keptWidth()) panelWidth(clampWidth(keptWidth()));
     this.el.addEventListener("pointerdown", (event) => this.resize(event));
     this.closeOthers = ({ detail }) => {
-      if (detail !== this.el && this.el.dataset.selected !== void 0) this.pushEventTo(this.el, "deselect", {});
+      if (detail === this.el || this.el.dataset.selected === void 0) return;
+      this.el.querySelector(".ehg-panel")?.setAttribute("hidden", "");
+      this.pushEventTo(this.el, "deselect", {});
     };
     window.addEventListener("eh_os_contract_graph:opened", this.closeOthers);
     this.escape = (event) => {
@@ -4535,7 +4541,10 @@ var EhOsContractGraph = {
     });
     this.fontsLoaded = () => this.draw();
     document.fonts.addEventListener("loadingdone", this.fontsLoaded);
-    this.resized = new ResizeObserver(() => {
+    this.resized = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      if (width === this.width) return;
+      this.width = width;
       if (!this.touched) this.fitted = false;
       this.draw();
     });
@@ -4576,7 +4585,7 @@ var EhOsContractGraph = {
     let frame2 = null;
     let sizing = null;
     const move = (e) => {
-      px = clampWidth(window.innerWidth - e.clientX);
+      px = clampWidth(across() - e.clientX);
       frame2 ??= requestAnimationFrame(() => {
         frame2 = null;
         sizing = hold(panel, sizing, { width: `${px}px` });
@@ -4602,10 +4611,9 @@ var EhOsContractGraph = {
     this.drawn = this.drawn.then(() => this.redraw()).catch((error) => console.error("eh_os_contract_graph: the graph could not be drawn:", error));
   },
   // Laid out again only when a card or a label appeared, went, or changed its size; otherwise only the
-  // arrows' classes follow the labels', which is all a selection or a new overlay changes. Fitted to the
-  // canvas again when the cards are other cards — another document, another view — or when the canvas's width
-  // changed and the reader has not moved the graph, so the reader's zoom stays across a selection, a new overlay
-  // and a late font.
+  // arrows' classes follow the labels', which is all a selection changes. Fitted to the canvas again when the
+  // cards are other cards — another document, another view — or, unless the reader has moved the graph, when
+  // they were laid out again or the canvas's width changed: the reader's zoom stays.
   async redraw() {
     await document.fonts.ready;
     if (this.gone) return;
@@ -4636,6 +4644,7 @@ var EhOsContractGraph = {
     if (key !== this.key) {
       this.key = key;
       this.lay(direction, groups, cards, labels);
+      if (!this.touched) this.fitted = false;
     }
     this.paint(labels);
     const nodes = cards.map(({ id: id2 }) => id2).join("\n");
@@ -4650,6 +4659,7 @@ var EhOsContractGraph = {
     if (!cards.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`);
       this.sizeSheet.replaceSync("");
+      this.tall = null;
       this.el.querySelector(".ehg-arrows").replaceChildren();
       this.arrows = /* @__PURE__ */ new Map();
       this.size = null;
@@ -4755,11 +4765,14 @@ var EhOsContractGraph = {
   // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
   // ResizeObserver tries again when it has one.
   fit() {
-    const across = this.canvas.getBoundingClientRect().width;
-    if (!this.size || !across) return;
+    const wide = this.canvas.getBoundingClientRect().width;
+    if (!this.size || !wide) return;
     const { width, height } = this.size;
-    const tall = Math.ceil(height * Math.min(1, (across - 32) / width) + 32);
-    this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`);
+    const tall = Math.ceil(height * Math.min(1, (wide - 32) / width) + 32);
+    if (tall !== this.tall) {
+      this.tall = tall;
+      this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`);
+    }
     const box = this.canvas.getBoundingClientRect();
     const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
     const at2 = identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k);

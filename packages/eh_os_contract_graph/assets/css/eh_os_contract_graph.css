@@ -359,6 +359,11 @@
   font-size: 12px;
 }
 
+/* Another canvas's panel opened: this one is hidden at once, and goes with its server's answer. */
+.ehg-panel[hidden] {
+  display: none;
+}
+
 .ehg-panel-grip {
   flex: none;
   width: 6px;

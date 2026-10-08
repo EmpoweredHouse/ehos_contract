@@ -70,6 +70,10 @@ defmodule EhOsContract.GraphRenderer.Actors do
     """
   end
 
+  # The canvas's id inside a quoted attribute selector, so that any id names it: the
+  # dashboard's own have colons and dots.
+  defp escape(id), do: id |> String.replace("\\", "\\\\") |> String.replace(~s("), ~s(\\"))
+
   attr :actor, :map, required: true
   attr :canvas, :string, required: true
 
@@ -80,7 +84,7 @@ defmodule EhOsContract.GraphRenderer.Actors do
       class="ehg-ref"
       phx-click="select"
       phx-value-id={@actor["id"]}
-      phx-target={"##{@canvas}"}
+      phx-target={~s([id="#{escape(@canvas)}"])}
     >{@actor["label"] || @actor["name"]}</button>
     """
   end

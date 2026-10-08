@@ -314,6 +314,9 @@
   background: var(--surface-1);
   font-size: 12px;
 }
+.ehg-panel[hidden] {
+  display: none;
+}
 .ehg-panel-grip {
   flex: none;
   width: 6px;
