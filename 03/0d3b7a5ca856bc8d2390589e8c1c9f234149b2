@@ -1,0 +1,1 @@
+Merge of origin/main (96c2f82f, A1 #248 and A2 #250) into S2. Conflicts in PLAN.md (decision table: both dated decisions kept), CHANGELOG (both entries) and the contract vocabulary test (scenario has as, given has at); no code conflict. The S2 review (note on 5f52f95a) stands. Gate EXIT=0: sandbox 198, check 0/29/10; engine 1618, check 0/60/5; web 68; auth 328 + 1 property.
