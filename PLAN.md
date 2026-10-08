@@ -589,9 +589,9 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
-| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ◐ `dd/245-booking-reads-service` | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
-| A1 | 3 | `actor_is` | T1 | ☐ | — |
-| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
+| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
+| A1 | 3 | `actor_is` | T1 | ◐ `dd/247-actor-is` | [#247](https://github.com/EmpoweredHouse/eh-os-contract/issues/247) |
+| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ◐ `dd/249-own-specialist-closes` | [#249](https://github.com/EmpoweredHouse/eh-os-contract/issues/249) |
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
@@ -797,16 +797,20 @@ service's P1 flag on `visit_booked` as `p1_reported`, as it stood when the visit
 gets `Rehmed.Entities`, a stand-in catalogue beside `Rehmed.Supplier`. `close_visit_clinically` keeps its supplied
 flag until the specialist's close checks the flag recorded at booking (A2). No `visit_booked` row is in any log (reset in wave 2), so the new required field breaks no history.
 
-**A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
-`:id`, nieosobowe; inwariant w `rejects:`; nie na `creates:`; komenda z `by:`); X2: `by:` ma aktora `:human`.
-Dispatch po `fold/6`, przed `decide/7` (attempt/2 783-805), tylko dla aktorów z credentialem (`:system` i reakcje
-przechodzą); odmowa jak bramka LC2 (wiersz `rejected`). Scenariusz `actor :specialist, as: "specialist-ewa"`
-(makro jak `Generated.identity/2`, nie `subject:`), S7 rozszerzone.
-**A2 — Rehmed AGG-02 inw. 3**: `visit_completed` dostaje `specialist_id` z `supplied_by: :host` (supplier wpisuje
-`actor.subject`); dokumentacja wizyty staje się DCB konsultującą `visit_completed` i `visit_booked` po `visit_id`
-(bez nowych nazw zdarzeń — nazwy tylko z warsztatu), więc stan zna specjalistę i flagę P1 utrwaloną przy
-rezerwacji (T2s): `close_visit_clinically` dostaje `actor_is`, a pole `p1_reported` znika z komendy. Zamknąć
-ustalenie z E9a.
+**A1 — a command only the person the unit names may issue**: inside a command, `actor_is :specialist_id,
+or_rejects: :invariant` says the credential's subject must equal that field of the unit's state. A new compile
+refusal (A9): the field is the unit's state, a required, non-personal `:id`; the invariant is the unit's and in the
+command's `rejects:`; not on a command that `creates:`, which has no state yet; the command names actors in `by:`.
+Dispatch checks it after folding the state and before the decision, for a credential only (a `:system` actor and a
+reaction pass), and refuses as the lifecycle's precondition does: a `rejected` row on the invariant. No exception
+for a role (decided 7 October). A scenario names the person with `as: "specialist-ewa"` beside its `actor:` (S7
+extended). Depends on T1.
+**A2 — Rehmed's clinical close by the visit's own specialist** (`AGG-02` invariant 3): the visit's documentation
+becomes a boundary consulting `visit_booked` by `visit_id` (no new event names), so its state knows the specialist
+reception booked the visit with and the P1 flag recorded at booking (T2s). `close_visit_clinically` gets `actor_is
+:specialist_id`, loses its supplied `p1_reported`, and the codes rule becomes an invariant on the booked flag. This
+settles what E9a found: the contract could not say who closes. Depends on A1 and T2s; why the booking and not the
+recorded departure names the specialist is on the issue.
 
 **B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
 Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".
@@ -912,7 +916,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 | W2 | tagi miesiąca obok tagów dnia | tylko dzień |
 | T2a | `reads:` po polu stanu, nie tylko komendy | później |
 | S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone — **decided 8 October: allowed in every scenario** (#251) |
-| A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem |
+| A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem — **decided 7 October: no exception** |
 | M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
 | V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
 | L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie |
@@ -926,6 +930,13 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### Before A1 — the user's decision (7 October 2026)
+
+**No exception for a role in `actor_is`** (the recommended default). Only the person the unit names may issue the
+command; a manager who must act on another specialist's visit does so through another command, declared for it.
+Rejected: an exception for a role, `actor_is :specialist_id, unless: :manager`, which would make one command mean
+two things and leave the report unable to tell an override from an ordinary close.
 
 ### Before wave 3's boundaries — the user's decision (7 October 2026)
 

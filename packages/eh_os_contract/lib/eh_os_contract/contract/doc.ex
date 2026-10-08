@@ -43,6 +43,7 @@ defmodule EhOsContract.Contract.Doc do
       "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
       list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
       issued_in(command),
+      issued_by_person(command),
       rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
       scenarios(own)
     ])
@@ -175,6 +176,15 @@ defmodule EhOsContract.Contract.Doc do
 
   defp issued_in(_command), do: nil
 
+  # Plan DD, A1 (#247): the person who must issue it, whom the engine compares before
+  # this callback runs — the callback never sees the credential, so it cannot.
+  defp issued_by_person(%{actor_is: %{field: field, or_rejects: invariant}}) do
+    "Issued only by the person `state.#{field}` names: anyone else is refused on " <>
+      "`#{invariant}` by the engine before this callback runs."
+  end
+
+  defp issued_by_person(_command), do: nil
+
   defp declaration(model, kind, name) when kind in [:aggregate, :dcb],
     do: Enum.find(model.units, &(&1.name == name and &1.kind == kind))
 
@@ -235,10 +245,14 @@ defmodule EhOsContract.Contract.Doc do
 
   defp rules(_model, _kind, _declaration), do: []
 
+  # The engine's own refusal on an `actor_is` invariant is not the callback's to make.
   defp command_rules(model, kind, unit, command) do
+    engine = for %{or_rejects: invariant} <- [Map.get(command, :actor_is)], do: invariant
+
     for(
       i <- unit.invariants,
       i.name in command.rejects,
+      i.name not in engine,
       do: {"invariant", i, refused_in(model, kind, unit, nil, i)}
     ) ++
       for k <- Map.get(command, :constraints, []),

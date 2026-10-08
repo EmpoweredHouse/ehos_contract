@@ -478,6 +478,44 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T4: command :open_room has from:, and aggregate :room declares no lifecycle"
     end
 
+    # Plan DD, A1 (#247): the engine refuses on an `actor_is` invariant itself, so it is
+    # no rule the decision can refuse on in a status it cannot leave.
+    test "an actor_is invariant is no rule to refuse on in a stuck status" do
+      message =
+        refuse_contract("LifecycleStuckPerson", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id, generated: :uuid
+
+            state do
+              field :specialist_id, :id, optional: true
+            end
+
+            invariant :only_a_booked_visit, "Tylko umówiona wizyta"
+            invariant :own_visit, "Tylko własna wizyta"
+
+            lifecycle do
+              status :booked, "Umówiona"
+              status :in_progress, "W trakcie"
+
+              initial :booked, on: :visit_booked
+              transition :booked, :patient_arrived, :in_progress
+            end
+
+            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked, creates: true
+
+            command :readmit, "Ponowne przyjęcie", by: :reception, emits: :patient_arrived,
+              from: [:booked, :in_progress], or_rejects: :only_a_booked_visit,
+              rejects: [:only_a_booked_visit, :own_visit] do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+          end
+        """)
+
+      assert message =~
+               "T4: command :readmit is issued from :in_progress, which no event it emits " <>
+                 "leaves, and rejects: names no rule but its or_rejects: to refuse on there"
+    end
+
     test "from: is no word of a boundary's command (L1)" do
       message =
         refuse_contract("LifecycleFromBoundary", """

@@ -46,6 +46,8 @@ defmodule EhOsContract.ContractVocabularyTest do
       [kind, :command, :field] => @field,
       # Plan EL2: ESDM's constraint, checked as an invariant is.
       [kind, :command, :constraint] => [:name, :label, :source],
+      # Plan DD, A1 (#247): the person who must issue it.
+      [kind, :command, :actor_is] => [:field, :or_rejects],
       [kind, :event] => @event,
       [kind, :event, :field] => @field,
       [kind, :stage] => [:name],
@@ -116,7 +118,7 @@ defmodule EhOsContract.ContractVocabularyTest do
           :unverified,
           :source
         ],
-        [:scenario] => [:description, :target, :actor, :rejected, :illustrates, :ended],
+        [:scenario] => [:description, :target, :actor, :as, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data, :at],
         [:scenario, :given_entity] => [:entity, :data],
         [:scenario, :command] => [:name, :data],
