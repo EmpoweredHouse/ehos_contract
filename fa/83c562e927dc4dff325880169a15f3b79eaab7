@@ -1,0 +1,1 @@
+Documentation only: PLAN.md status rows and the handoff line (git diff --stat origin/main..HEAD: PLAN.md only). Checked against GitHub: #248 and #250 merged, #247 and #249 closed, #254 open.
