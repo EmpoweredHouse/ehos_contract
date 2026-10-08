@@ -27,7 +27,9 @@ defmodule EhOsContractHost.E10OutputsTest do
     # process module now includes have a reader, and statutory reporting no longer
     # consumes scheduling's event across an undeclared relation; two of TaxVision's
     # matching events had no reader until the process module included them.
-    assert output =~ "eh_os_contract.check: 0 errors, 30 warnings, 10 notices"
+    # Plan DD, A2 (#249): scheduling's visit_booked has a reader now, the boundary of
+    # the visit's documentation, which consults it for the P1 flag.
+    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 10 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
