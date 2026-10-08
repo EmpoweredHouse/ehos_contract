@@ -1820,6 +1820,22 @@ Batch 1 needs no views: it is what every view is drawn with.
   its left; one panel when a second canvas opens one; a drag to 617 px, kept across a reload; Escape; no picture
   cut with the panel open; no violation of the policy, no console error. Gate: the whole `mix check` in
   `sandbox/`, with nothing else on Postgres, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 69.
+- **Slow with many cards (the user, 8 October): "the side panel opens slowly, and scrolling the graph stutters",
+  most on AppUnite `computers`; and "let the side panel not resize the canvases".** Measured in headless Chrome
+  at 1600 px on `computers` (9 canvases, 1,251 elements): a click to the panel painted in 10 to 23 ms, the
+  server's round trip included; a pan, a zoom and the page's scroll at 16 ms a frame, at six times slower CPU too.
+  So the work itself is not slow there; what a click did was to narrow the page, which made every canvas of it
+  measure its cards again, fit again and change its height, and the page jump — the slowness seen. And the
+  painting a GPU does on a retina screen, which headless Chrome does not show, is the likely cost of a pan or a
+  zoom with many cards. Built: **the panel lies over the page** (no `margin-right`), so opening it resizes no
+  canvas; **a canvas is contained** (`contain: strict`), so what changes in one is laid out and painted in it
+  alone; **during a pan or a zoom the graph is a layer of its own** (`will-change: transform` in the zoom's
+  stylesheet from d3-zoom's `start` to its `end`), moved by the compositor without painting the cards again,
+  and painted sharp once the gesture ends — checked: `transform` while dragging, `auto` at rest and after.
+  Checked again: no canvas resized by the panel, every view of every contract laid out without a problem, no
+  violation of the policy. Gate: the whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth
+  287, renderer 69. *Not measured:* the effect on the user's own browser; if a pan still stutters, a profile
+  from it is the next step.
 - **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
   labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
   its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
