@@ -4,6 +4,20 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, batch 4: the panels.** `EhOsContract.GraphRenderer.Panel` says what is selected, from the document
+  alone, through the joins of `EhOsContract.GraphRenderer.Lookup`: a command's fields, who may issue it and the
+  grant EHOS gives, its scope, the statuses it is allowed in and the rules it may be refused on; an event's
+  fields, who records it, where it comes from, whether it ends the run, the systems it rests on and everything
+  that depends on it; a policy's, a process manager's and an effect's triggers, commands, timers, rules,
+  delivery and idempotency, and their scenarios with their data, a manager's by what triggers them; a read
+  model's and a query's fields, parameters, readers and scenarios; a context's terms, relations, contracts and
+  entities; an external system's outage and operations; an actor's role, responsibilities and what the role may
+  do; a relation's ends and the scenarios that cover it. A field reads the same everywhere: personal data, a
+  pointer at a person, a domain value's members and unit, an entity, the system that gives its value. A name in
+  the panel selects that node, drawn or not. `EhOsContract.GraphRenderer.Actors` lists a domain's actors, people
+  and systems apart, a row selecting one in a canvas. A policy, a process manager and a query say on their card
+  how many scenarios pin them. A canvas is as tall as its picture fitted to its width, up to `min(72vh, 760px)`;
+  the panel is as tall as the canvas and scrolls.
 - **E13b, batch 3: the views.** `EhOsContract.GraphRenderer.View` builds the six pictures the engine drew as
   Mermaid diagrams from the graph of facts — a contract's full graph, its process's declared shape, a unit, an
   aggregate's lifecycle, a domain's context map and its system — with the words and the lines those pictures

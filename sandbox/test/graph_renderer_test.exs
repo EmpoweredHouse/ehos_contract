@@ -11,7 +11,7 @@ defmodule EhOsContract.GraphRendererTest do
   import Phoenix.LiveViewTest
 
   alias EhOsContract.Graph.{Document, Overlay}
-  alias EhOsContract.GraphRenderer.Canvas
+  alias EhOsContract.GraphRenderer.{Canvas, Lookup, Panel, View}
   alias EhOsContract.Registry
 
   @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
@@ -87,6 +87,34 @@ defmodule EhOsContract.GraphRendererTest do
       end
 
     assert Enum.sum(numbered) > 0
+  end
+
+  # Plan E13b, batch 4: the panels read the document by joins alone, so a shape a client
+  # wrote and no fixture has shows here first.
+  test "every element of every view has a panel, with the log, naming only what can be selected" do
+    for {name, document, overlay} <- overlays(),
+        lookup = Lookup.new(document),
+        {spec, _title} <- [{:all, nil} | View.views(document)],
+        view = View.build(document, spec, overlay),
+        picked <-
+          Enum.map(view.nodes, &{:node, &1}) ++
+            Enum.map(view.groups, &{:group, &1}) ++ Enum.map(view.relations, &{:relation, &1}) do
+      where = "#{name} #{inspect(spec)} #{elem(picked, 1).id}"
+
+      html =
+        render_component(&Panel.panel/1,
+          picked: picked,
+          lookup: lookup,
+          overlay: overlay,
+          target: "#graph"
+        )
+        |> LazyHTML.from_fragment()
+
+      assert Enum.count(LazyHTML.query(html, "aside.ehg-panel")) == 1, where
+
+      for id <- html |> LazyHTML.query("button.ehg-ref") |> LazyHTML.attribute("phx-value-id"),
+          do: assert(Lookup.kind(lookup, id), "#{where} names #{id}")
+    end
   end
 
   test "the renderer's fixtures taken from the client trees still hold to the schema" do

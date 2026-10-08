@@ -11,8 +11,10 @@ comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount
 
 **Work in progress** (plan E13b). It draws the six views the engine's Mermaid diagrams drew — a contract's
 full graph, its process's declared shape, a unit, an aggregate's lifecycle, a domain's context map and its
-system — and, as a test bed, every node and relation of a document. The panel is raw: the facts of what is
-clicked, as the document has them, until the panels are specified.
+system — and, as a test bed, every node and relation of a document. The panel says what is clicked, from the
+document alone: a command's fields and who may issue it, an event's and what depends on it, a reaction's
+rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
+what it may do, the scenarios behind an arrow.
 
 ## Installation
 
@@ -57,7 +59,13 @@ reads the markup this package renders — so update them together:
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel opens
-beside the graph.
+beside the graph, as tall as the canvas and scrolled inside; a name in it selects that node, drawn or not.
+A domain's actors, which no view draws, are a table of their own, each row selecting its actor in a canvas
+of the same document:
+
+```heex
+<EhOsContract.GraphRenderer.Actors.table document={@domain_document} canvas="domain-map" />
+```
 
 The script is an ES module, `priv/static/eh_os_contract_graph.esm.js`, which the host's own bundle imports
 and whose hook it registers:

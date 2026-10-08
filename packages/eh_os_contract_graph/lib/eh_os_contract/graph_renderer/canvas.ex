@@ -33,10 +33,11 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   and both reach
   `handle_event("select", %{"id" => id}, …)` here. The selected element and what
   touches it are classes on the cards and the labels, everything else is drawn
-  faint, and the panel beside the graph shows it. Clicking it again, or the panel's
-  close button, clears the selection. The panel is raw for now — the facts of the
-  node or relation as the document has them — until the panels are specified with
-  the views (plan E13b, batch 4).
+  faint, and the panel beside the graph (`EhOsContract.GraphRenderer.Panel`) says
+  what it is. Clicking it again, or the panel's close button, clears the selection.
+  A node the view does not draw can be selected too — from a name in the panel, or
+  from outside the component, `phx-target` naming its root — and the panel shows it
+  while the graph stays as it is.
 
   **Nothing here renders a `style` attribute**, and the hook sets none: the host's
   Content-Security-Policy of `default-src 'self'` refuses one, and LiveView takes
@@ -54,7 +55,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Marks, View}
+  alias EhOsContract.GraphRenderer.{Lookup, Marks, Panel, View}
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, selected: nil)}
@@ -79,7 +80,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
        view: view,
        overlay: overlay,
        stale_overlay?: given != nil and overlay == nil,
-       selected: if(selected && element(view, selected), do: selected)
+       selected: if(selected && picked(view, document, selected), do: selected)
      )}
   end
 
@@ -88,7 +89,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     selected =
       cond do
         id == socket.assigns.selected -> nil
-        element(socket.assigns.view, id) -> id
+        picked(socket.assigns.view, socket.assigns.document, id) -> id
         true -> socket.assigns.selected
       end
 
@@ -99,10 +100,15 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   @impl true
   def render(assigns) do
+    picked = assigns.selected && picked(assigns.view, assigns.document, assigns.selected)
+
     assigns =
       assign(assigns,
         near: near(assigns.view, assigns.selected),
-        picked: assigns.selected && element(assigns.view, assigns.selected)
+        # A node the view does not draw is shown in the panel and fades nothing.
+        focus: assigns.selected && element(assigns.view, assigns.selected) && assigns.selected,
+        picked: picked,
+        lookup: picked && Lookup.new(assigns.document)
       )
 
     ~H"""
@@ -111,7 +117,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         <div class="ehg-viewport">
           <div
             :for={group <- @view.groups}
-            class={["ehg-group" | classes(group.id, @selected, @near, nil)]}
+            class={["ehg-group" | classes(group.id, @focus, @near, nil)]}
             data-ehg-group={group.id}
             data-kind={group.kind}
           >
@@ -130,7 +136,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
           <button
             :for={node <- @view.nodes}
             type="button"
-            class={["ehg-card" | classes(node.id, @selected, @near, Marks.node(@overlay, node.id))]}
+            class={["ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id))]}
             data-ehg-node={node.id}
             data-kind={node.kind}
             data-variant={node.variant}
@@ -152,7 +158,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             class={[
               "ehg-relation",
               blank?(relation, Marks.relation(@overlay, relation.id)) && "ehg-blank"
-              | classes(relation.id, @selected, @near, Marks.relation(@overlay, relation.id))
+              | classes(relation.id, @focus, @near, Marks.relation(@overlay, relation.id))
             ]}
             data-ehg-relation={relation.id}
             data-from={relation.from}
@@ -170,7 +176,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       <p :if={@stale_overlay?} class="ehg-note">
         The numbers from the log are of another version of this document and are not shown.
       </p>
-      <.panel :if={@picked} picked={@picked} view={@view} overlay={@overlay} myself={@myself} />
+      <Panel.panel :if={@picked} picked={@picked} lookup={@lookup} overlay={@overlay} target={@myself} />
     </div>
     """
   end
@@ -183,79 +189,6 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     """
   end
 
-  attr :picked, :map, required: true
-  attr :view, :map, required: true
-  attr :overlay, :map
-  attr :myself, :any, required: true
-
-  defp panel(%{picked: {kind, node}} = assigns) when kind in [:node, :group] do
-    assigns = assign(assigns, node: node, log: get_in(assigns.overlay || %{}, ["nodes", node.id]))
-
-    ~H"""
-    <aside class="ehg-panel" aria-label="Selected">
-      <header>
-        <p class="ehg-panel-kind">{words(@node.kind)}</p>
-        <h4>{@node.facts["label"] || @node.facts["name"]}</h4>
-        <button type="button" phx-click="deselect" phx-target={@myself} aria-label="Close">×</button>
-      </header>
-      <.facts facts={Map.drop(@node.facts, ["id", "label"])} />
-      <.log :if={@log} entry={@log} />
-    </aside>
-    """
-  end
-
-  defp panel(%{picked: {:relation, relation}} = assigns) do
-    by_id = Map.new(assigns.view.nodes ++ assigns.view.groups, &{&1.id, &1})
-
-    assigns =
-      assign(assigns,
-        relation: relation,
-        from: Map.fetch!(by_id, relation.from),
-        to: Map.fetch!(by_id, relation.to),
-        log: get_in(assigns.overlay || %{}, ["relations", relation.id])
-      )
-
-    ~H"""
-    <aside class="ehg-panel" aria-label="Selected">
-      <header>
-        <p class="ehg-panel-kind">relation</p>
-        <h4>{words(@relation.type)}</h4>
-        <button type="button" phx-click="deselect" phx-target={@myself} aria-label="Close">×</button>
-      </header>
-      <dl>
-        <dt>from</dt>
-        <dd>{words(@from.kind)} {@from.facts["label"] || @from.facts["name"]}</dd>
-        <dt>to</dt>
-        <dd>{words(@to.kind)} {@to.facts["label"] || @to.facts["name"]}</dd>
-      </dl>
-      <.facts facts={Map.drop(@relation.facts, ["id", "from", "to"])} />
-      <.log :if={@log} entry={@log} />
-    </aside>
-    """
-  end
-
-  attr :facts, :map, required: true
-
-  defp facts(assigns) do
-    ~H"""
-    <dl :if={@facts != %{}}>
-      <%= for {key, value} <- Enum.sort(@facts) do %>
-        <dt>{key}</dt>
-        <dd>{shown(value)}</dd>
-      <% end %>
-    </dl>
-    """
-  end
-
-  attr :entry, :map, required: true
-
-  defp log(assigns) do
-    ~H"""
-    <p class="ehg-panel-kind">from the log</p>
-    <.facts facts={@entry} />
-    """
-  end
-
   # The element `id` names, a node, a group or a relation of the view; nil when it has
   # none of them.
   defp element(view, id) do
@@ -265,15 +198,28 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     end)
   end
 
+  # What `id` names for the panel: an element of the view, or else a node of the document,
+  # shown as the view would show it; nil when the document has no such node either.
+  defp picked(view, document, id) do
+    element(view, id) ||
+      Enum.find_value(document["nodes"] || %{}, fn {kind, group} ->
+        with %{} = node <- Enum.find(group, &(&1["id"] == id)),
+             do: {:node, %{kind: kind, facts: node}}
+      end)
+  end
+
   # What touches the selection: a node's relations, the nodes at their other ends and the
   # group it sits in; a group's cards and relations; a relation's two ends. Empty without
-  # a selection.
+  # a selection, and for a node the view does not draw.
   defp near(_view, nil), do: MapSet.new()
 
   defp near(view, selected) do
     touching = fn id -> Enum.filter(view.relations, &(&1.from == id or &1.to == id)) end
 
     case element(view, selected) do
+      nil ->
+        MapSet.new()
+
       {:node, node} ->
         MapSet.new([node.group | Enum.flat_map(touching.(node.id), &[&1.id, &1.from, &1.to])])
 
@@ -301,12 +247,4 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   # A label with nothing to say is there for the hook, which reads the relation from it,
   # and takes no room: the arrow alone is drawn, and takes the click.
   defp blank?(relation, marks), do: relation.words in [nil, ""] and marks.count == nil
-
-  # A kind or a type in the panel: the name, spaced.
-  defp words(name), do: String.replace(name, "_", " ")
-
-  defp shown(value) when is_binary(value), do: value
-  defp shown(nil), do: "—"
-  defp shown(value) when is_number(value) or is_boolean(value), do: to_string(value)
-  defp shown(value), do: JSON.encode!(value)
 end

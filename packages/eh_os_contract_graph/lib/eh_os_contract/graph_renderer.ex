@@ -11,7 +11,9 @@ defmodule EhOsContract.GraphRenderer do
   decoded, so the EHOS Console draws it without the engine's tables, jobs or
   migrations.
 
-  `EhOsContract.GraphRenderer.Canvas` is the component a host renders. The server
+  `EhOsContract.GraphRenderer.Canvas` is the component a host renders, with its panel
+  (`EhOsContract.GraphRenderer.Panel`); `EhOsContract.GraphRenderer.Actors` is a
+  domain's actors as a table, a row selecting one in a canvas. The server
   renders every card and every relation's label in HEEx; a hook in
   `priv/static/eh_os_contract_graph.esm.js` measures them, lays them out with dagre,
   draws the arrows in SVG and pans and zooms with `d3-zoom`. What is selected, and
@@ -19,5 +21,5 @@ defmodule EhOsContract.GraphRenderer do
   lives on the server alone.
   """
 
-  use Boundary, deps: [], exports: [Canvas, View]
+  use Boundary, deps: [], exports: [Actors, Canvas, View]
 end

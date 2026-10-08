@@ -164,17 +164,34 @@ defmodule EhOsContract.GraphRenderer.View do
   process managers, effects and timers between them; its read models with the events
   they project and the queries over them; the actors who issue, record or ask, and the
   external systems an effect calls, an event rests on, a system actor is backed by, or
-  a field takes its value from.
+  a field takes its value from. A policy, a process manager and a query say how many
+  scenarios pin them, "0 scenarios" included.
   """
   @spec contract(map()) :: t()
   def contract(document) do
     by_id = index(document)
     own = &(&1.kind == "event" and (&1.facts["unit"] != nil or &1.facts["included"] == true))
 
+    # A policy, a manager and a query say how many scenarios pin them, none included.
+    pinned =
+      for {_type, group} <- document["scenarios"] || %{},
+          s <- group,
+          reduce: %{} do
+        acc -> Map.update(acc, s["target"], 1, &(&1 + 1))
+      end
+
     cards =
       for kind <- @always ++ ~w(event actor external),
-          node <- nodes(document, kind),
-          do: card(kind, node, group: if(kind in ~w(command event), do: node["unit"]))
+          node <- nodes(document, kind) do
+        card(kind, node,
+          group: if(kind in ~w(command event), do: node["unit"]),
+          lines:
+            if(kind in ~w(policy process_manager query),
+              do: [scenarios(pinned[node["id"]] || 0)],
+              else: []
+            )
+        )
+      end
 
     managers = MapSet.new(nodes(document, "process_manager"), & &1["id"])
     flow = for type <- @flow, r <- relations(document, type), do: flow(type, r, by_id, managers)
@@ -507,6 +524,7 @@ defmodule EhOsContract.GraphRenderer.View do
   end
 
   defp scenarios(nil), do: nil
+  defp scenarios(0), do: "0 scenarios"
   defp scenarios(1), do: "1 scenario"
   defp scenarios(n), do: "#{n} scenarios"
 

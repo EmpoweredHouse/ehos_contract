@@ -17,23 +17,29 @@
 }
 
 .ehg:has(.ehg-panel) {
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
 }
 
 @media (max-width: 720px) {
   .ehg:has(.ehg-panel) {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .ehg-panel {
+    contain: none;
+    max-height: min(72vh, 760px);
+  }
 }
 
 /* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
-   width, never taller than this. */
+   width, never taller than this, and with a panel open never so short that the panel, as tall as the
+   canvas, has no room. */
 .ehg-canvas {
   position: relative;
   overflow: hidden;
   height: min(72vh, 760px);
   max-height: min(72vh, 760px);
-  min-height: 320px;
+  min-height: 120px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md, 8px);
   background: var(--surface-1);
@@ -42,6 +48,10 @@
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   cursor: grab;
+}
+
+.ehg:has(.ehg-panel) .ehg-canvas {
+  min-height: min(420px, 72vh);
 }
 
 .ehg-canvas:active {
@@ -337,8 +347,11 @@
 
 /* The panel. */
 
+/* As tall as the canvas beside it, and scrolled inside: its content does not size the row (contain), the
+   canvas does, and the panel stretches to it. Below the canvas, on a narrow screen, it sizes itself. */
 .ehg-panel {
-  max-height: min(72vh, 760px);
+  align-self: stretch;
+  contain: size;
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--border-soft);
@@ -407,4 +420,219 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+/* The panel's parts: a titled section each, the client's words as they wrote them, the renderer's sentences
+   around them. */
+
+.ehg-panel p {
+  margin: 0 0 6px;
+}
+
+.ehg-panel-name,
+.ehg-panel code {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.ehg-panel-name {
+  grid-column: 1;
+  margin: 0;
+  color: var(--text-tertiary);
+}
+
+.ehg-part {
+  margin: 0 0 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-faint, var(--border-soft));
+}
+
+.ehg-part-title,
+.ehg-step {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ehg-panel .ehg-step {
+  margin: 6px 0 2px;
+}
+
+.ehg-list {
+  margin: 0 0 6px;
+  padding-left: 16px;
+}
+
+.ehg-list li {
+  margin: 0 0 3px;
+}
+
+/* A node named in a panel or a table: a button that selects it, with its kind beside it. */
+.ehg-ref {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong, var(--border-soft));
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ehg-ref:hover {
+  text-decoration-color: currentColor;
+}
+
+.ehg-ref-kind {
+  margin-inline-start: 4px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.ehg-grant {
+  margin-inline-start: 6px;
+  color: var(--text-secondary);
+}
+
+.ehg-quiet,
+.ehg-source {
+  color: var(--text-secondary);
+}
+
+.ehg-strong {
+  font-weight: 600;
+}
+
+/* Something missing: an event nothing depends on, a command nothing issues, a move the lifecycle does not
+   allow. */
+.ehg-empty,
+.ehg-refused {
+  color: var(--error-ink);
+}
+
+/* A field, the same everywhere: its name, its label, its type, and what it says of a person, a value, an
+   entity, a system. */
+.ehg-fields {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.ehg-fields li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin: 0 0 6px;
+}
+
+.ehg-field-name {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+}
+
+.ehg-field-type {
+  color: var(--text-tertiary);
+}
+
+.ehg-field-note {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+}
+
+.ehg-personal {
+  color: var(--error-ink);
+}
+
+.ehg-panel .ehg-terms {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ehg-terms dt {
+  color: var(--text-primary);
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.ehg-terms dd > span {
+  display: block;
+}
+
+.ehg-avoid {
+  color: var(--error-ink);
+}
+
+.ehg-translation {
+  color: var(--text-secondary);
+}
+
+.ehg-trigger {
+  margin: 0 0 8px;
+}
+
+.ehg-trigger-title {
+  font-weight: 600;
+}
+
+/* A scenario: its description in the client's words, then what was given, what happened and what came of
+   it, with the data as the document has it — a personal value is not there. */
+.ehg-scenario {
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-2);
+}
+
+.ehg-scenario-title {
+  font-weight: 600;
+}
+
+.ehg-happened {
+  margin: 0 0 4px;
+}
+
+.ehg-panel .ehg-data {
+  margin: 2px 0 4px 12px;
+  font-size: 11px;
+}
+
+.ehg-row {
+  margin: 0 0 4px;
+}
+
+/* The actors of a domain, people and systems apart. */
+.ehg-actors table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ehg-actors caption {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.ehg-actors th,
+.ehg-actors td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: start;
+  vertical-align: top;
+}
+
+.ehg-actors th {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.ehg-cell-line {
+  display: block;
 }
