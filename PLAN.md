@@ -1836,6 +1836,15 @@ Batch 1 needs no views: it is what every view is drawn with.
   violation of the policy. Gate: the whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth
   287, renderer 69. *Not measured:* the effect on the user's own browser; if a pan still stutters, a profile
   from it is the next step.
+- **A slow drag of the panel's edge (the user, 8 October: "can the resize be faster?").** Measured on AppUnite
+  `computers` with the CPU four times slower: 60 moves of the edge took 0.96 s of style recalculation, 16 ms a
+  move, layout 35 ms in all — the width was a custom property on `:root`, which every element of the page
+  inherits, so each move restyled all 1,251 of them. Now the drag writes a rule on `.ehg-panel` alone (on a
+  screen wider than 720 px; a narrower one has the panel cover it), once an animation frame however many moves
+  the pointer reports, and the last at the drag's end: 0.08 s of style recalculation for the same drag, 0.30 s
+  of work in all where it was 1.29 s. `--eh-os-contract-graph-panel-width` stays as the width the panel opens
+  at, which a host may set. Checked again: the drag, the width kept across a reload, no violation. Gate: the
+  whole `mix check`, EXIT=0, the same counts.
 - **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
   labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
   its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
