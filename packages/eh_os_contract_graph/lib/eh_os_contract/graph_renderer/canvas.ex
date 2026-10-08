@@ -40,8 +40,8 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   edge the reader drags to set its width, kept in the browser between visits. One is
   open at a time: selecting in one canvas clears the selection of the others on the
   page (the hook does it). It lies over the page rather than narrowing it, so opening
-  it resizes no canvas; its width is `--eh-os-contract-graph-panel-width`, which a
-  host may read to leave it room instead.
+  it resizes no canvas. It opens `--eh-os-contract-graph-panel-width` wide, which a
+  host may set.
   A node the view does not draw can be selected too — from a name in the panel, or
   from outside the component, `phx-target` naming its root — and the panel shows it
   while the graph stays as it is.

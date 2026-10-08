@@ -28,15 +28,18 @@ const HOLD = "\u0000hold"
 
 let instances = 0
 
-// The panel is one sidebar for the page, whichever canvas it is of, so its width is the page's: a custom property
-// in a stylesheet every canvas shares, set while the reader drags the panel's edge and kept in the browser. A
-// browser that refuses storage keeps it for the page only.
+// The panel is one sidebar for the page, whichever canvas it is of, so its width is the page's: a rule in a
+// stylesheet every canvas shares, set while the reader drags the panel's edge and kept in the browser. A browser
+// that refuses storage keeps it for the page only.
 const WIDTH = "eh_os_contract_graph.panel_width"
 let widthSheet = null
 
+// A rule on the panel itself, not the custom property it starts from: a property on :root is inherited by every
+// element of the page, which the browser would style again on every move of the drag. Not on a narrow screen,
+// where the panel covers the window and has no grip.
 const panelWidth = (px) => {
   widthSheet ??= adopt()
-  widthSheet.replaceSync(`:root { --eh-os-contract-graph-panel-width: ${px}px }`)
+  widthSheet.replaceSync(`@media (min-width: 721px) { .ehg-panel { width: ${px}px } }`)
 }
 
 const keptWidth = () => {
@@ -222,16 +225,25 @@ export const EhOsContractGraph = {
     if (!grip || event.button) return
     event.preventDefault()
     grip.setPointerCapture(event.pointerId)
+    // A pointer reports more moves than the screen shows frames: the last of each frame's is the one set.
     let px = null
+    let frame = null
     const move = (e) => {
       px = clampWidth(window.innerWidth - e.clientX)
-      panelWidth(px)
+      frame ??= requestAnimationFrame(() => {
+        frame = null
+        panelWidth(px)
+      })
     }
     const end = () => {
       grip.removeEventListener("pointermove", move)
       grip.removeEventListener("pointerup", end)
       grip.removeEventListener("pointercancel", end)
-      if (px !== null) keepWidth(px)
+      if (frame !== null) cancelAnimationFrame(frame)
+      if (px !== null) {
+        panelWidth(px)
+        keepWidth(px)
+      }
     }
     grip.addEventListener("pointermove", move)
     grip.addEventListener("pointerup", end)

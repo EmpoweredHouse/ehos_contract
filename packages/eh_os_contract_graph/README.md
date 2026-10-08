@@ -61,8 +61,8 @@ reads the markup this package renders — so update them together:
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
 sidebar at the right of the window, as tall as it and scrolled inside, one for the page: selecting in one
 canvas closes another's, and Escape closes it. It lies over the page, so opening it resizes no canvas. The
-reader drags its left edge to set its width, which the browser keeps; it is
-`--eh-os-contract-graph-panel-width`, which a host may read to leave it room instead. A name in the panel
+reader drags its left edge to set its width, which the browser keeps; it opens
+`--eh-os-contract-graph-panel-width` wide, which a host may set. A name in the panel
 selects that node, drawn or not. A canvas whose width changes is fitted to it again, unless the reader has
 zoomed or panned it; while a pan or a zoom lasts, the graph is a layer of its own, moved without being
 painted again.

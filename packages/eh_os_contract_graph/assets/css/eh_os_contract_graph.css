@@ -16,8 +16,8 @@
   align-items: start;
 }
 
-/* How wide the panel is: the hook sets it when the reader drags the panel's edge, and a host can read it to
-   leave the panel room. */
+/* How wide the panel opens, which a host may set; a reader who drags its edge sets its width over this, and the
+   browser keeps theirs. */
 :root {
   --eh-os-contract-graph-panel-width: 420px;
 }

@@ -4426,7 +4426,7 @@ var WIDTH = "eh_os_contract_graph.panel_width";
 var widthSheet = null;
 var panelWidth = (px) => {
   widthSheet ??= adopt();
-  widthSheet.replaceSync(`:root { --eh-os-contract-graph-panel-width: ${px}px }`);
+  widthSheet.replaceSync(`@media (min-width: 721px) { .ehg-panel { width: ${px}px } }`);
 };
 var keptWidth = () => {
   try {
@@ -4557,15 +4557,23 @@ var EhOsContractGraph = {
     event.preventDefault();
     grip.setPointerCapture(event.pointerId);
     let px = null;
+    let frame2 = null;
     const move = (e) => {
       px = clampWidth(window.innerWidth - e.clientX);
-      panelWidth(px);
+      frame2 ??= requestAnimationFrame(() => {
+        frame2 = null;
+        panelWidth(px);
+      });
     };
     const end = () => {
       grip.removeEventListener("pointermove", move);
       grip.removeEventListener("pointerup", end);
       grip.removeEventListener("pointercancel", end);
-      if (px !== null) keepWidth(px);
+      if (frame2 !== null) cancelAnimationFrame(frame2);
+      if (px !== null) {
+        panelWidth(px);
+        keepWidth(px);
+      }
     };
     grip.addEventListener("pointermove", move);
     grip.addEventListener("pointerup", end);
