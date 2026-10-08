@@ -169,7 +169,14 @@ defmodule EhOsContract.Contract.Links.Scenarios do
 
   defp problems({:local, fields}, data, values, _required?), do: typed(fields, data, values)
 
-  defp problems({:sibling, fields, identity}, data, values, required?) do
+  defp problems({:sibling, fields, identity}, data, values, required?),
+    do: sibling_problems(fields, identity, data, values, required?)
+
+  @doc false
+  # What is wrong with `data` as an event whose fields another module declares: a
+  # sibling's here, a contract's in a process module's scenario (plan DD, S2, #251).
+  @spec sibling_problems([map()], [atom()], map(), map(), boolean()) :: [String.t()]
+  def sibling_problems(fields, identity, data, values, required?) do
     declared = MapSet.new(fields, & &1.name)
 
     unknown =

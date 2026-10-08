@@ -13,6 +13,10 @@ defmodule EhOsContract.Process.Dsl do
   process that names it. A promise is the contract's own entity, so it is written
   alike in both.
 
+  A scenario shows a promise judged: the events that happened and
+  when, the moments an external system was seen unavailable, and the verdict the
+  promise gets at a moment. Its `given` is the contract's.
+
   The structs below are what Spark builds from each declaration. They stay inside the
   extension: readers get plain data from `EhOsContract.Model`, never these structs.
   """
@@ -35,6 +39,30 @@ defmodule EhOsContract.Process.Dsl do
   defmodule Deadline do
     @moduledoc false
     defstruct [:within, unverified: false, __spark_metadata__: nil]
+  end
+
+  # Plan DD, S2 (#251): a scenario of a promise.
+  defmodule Scenario do
+    @moduledoc false
+    defstruct [
+      :description,
+      :verdict,
+      :via,
+      given: [],
+      outages: [],
+      trigger: [],
+      __spark_metadata__: nil
+    ]
+  end
+
+  defmodule Outage do
+    @moduledoc false
+    defstruct [:external, :at, __spark_metadata__: nil]
+  end
+
+  defmodule Judged do
+    @moduledoc false
+    defstruct [:name, :at, __spark_metadata__: nil]
   end
 
   @correlate %Spark.Dsl.Entity{
@@ -91,18 +119,74 @@ defmodule EhOsContract.Process.Dsl do
     ]
   }
 
+  @outage %Spark.Dsl.Entity{
+    name: :outage,
+    describe: "A moment an external system was seen unavailable.",
+    target: Outage,
+    args: [:external],
+    schema: [
+      external: [type: :atom, required: true, doc: "An external system of the domain."],
+      at: [
+        type: :string,
+        required: true,
+        doc: "When, an ISO 8601 timestamp with an offset."
+      ]
+    ]
+  }
+
+  @judged %Spark.Dsl.Entity{
+    name: :promise,
+    describe: "The promise the scenario judges, and the moment it is judged.",
+    target: Judged,
+    args: [:name],
+    schema: [
+      name: [type: :atom, required: true, doc: "A promise of the process."],
+      at: [
+        type: :string,
+        required: true,
+        doc: "The moment of judgement, an ISO 8601 timestamp with an offset."
+      ]
+    ]
+  }
+
+  @scenario %Spark.Dsl.Entity{
+    name: :scenario,
+    describe:
+      "Given events and when they happened, the moments a system was down, and the verdict " <>
+        "a promise gets: an example the process owner reads.",
+    target: Scenario,
+    args: [:description],
+    entities: [
+      given: [EhOsContract.Contract.Dsl.given()],
+      outages: [@outage],
+      trigger: [@judged]
+    ],
+    schema: [
+      description: [type: :string, required: true, doc: "The case, in the owner's words."],
+      verdict: [
+        type: :atom,
+        doc: "What the promise gets: `:satisfied`, `:violated`, `:pending` or `:suspended`."
+      ],
+      via: [
+        type: :atom,
+        doc: "For `:satisfied`, the route that kept it: `:eventually` or `:or_else`."
+      ]
+    ]
+  }
+
   @process EhOsContract.DslWrappers.attach(
              %Spark.Dsl.Section{
                name: :process,
                top_level?: true,
                describe:
-                 "A process across contracts: its runs, stages, end, promises and deadline.",
+                 "A process across contracts: its runs, stages, end, promises, deadline and scenarios.",
                entities: [
                  @correlate,
                  @stage,
                  @ends_on,
                  EhOsContract.Contract.Dsl.promise(),
-                 @deadline
+                 @deadline,
+                 @scenario
                ]
              },
              __MODULE__

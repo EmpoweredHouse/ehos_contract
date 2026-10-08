@@ -56,7 +56,8 @@ defmodule EhOsContract.ScenarioCase do
   inside a domain value. The unit's identity is the scenario's own: the value a
   scenario gives it anywhere, or `"scenario"`. Every given, and then the trigger,
   gets `__meta__` with `occurred_at` a minute after the one before, from
-  2026-01-01 09:00 UTC, and the command its scenario's `actor`. A given also has an
+  2026-01-01 09:00 UTC, unless the given says when it happened, `at:
+  "2026-09-07T09:00:00Z"`; the command gets its scenario's `actor`. A given also has an
   `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
   log has.
 
@@ -73,6 +74,13 @@ defmodule EhOsContract.ScenarioCase do
   the contract generates, returns the example's result — compared as values, so a
   decimal `2.50` is `2.5`.
 
+  **A process's promise.** `use EhOsContract.ScenarioCase, process:
+  Rehmed.Processes.ClinicalVisit` writes one test per scenario of the process module,
+  each judging its promise from the givens at the trigger's moment, with the
+  scenario's outages, and asserting the verdict and the route it names
+  (`judge/2`). No implementation runs: a promise is judged on events, whoever decided
+  them.
+
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
@@ -83,7 +91,7 @@ defmodule EhOsContract.ScenarioCase do
   import ExUnit.Assertions
 
   alias EhOsContract.{Decision, Lifecycle, Meta, Model, Rejection}
-  alias EhOsContract.Contract.{Callbacks, Data}
+  alias EhOsContract.Contract.{Callbacks, Data, Rules}
 
   @epoch ~U[2026-01-01 09:00:00Z]
 
@@ -92,7 +100,37 @@ defmodule EhOsContract.ScenarioCase do
 
   @doc false
   defmacro __using__(opts) do
-    if Keyword.has_key?(opts, :domain), do: domain_case(opts), else: contract_case(opts)
+    cond do
+      Keyword.has_key?(opts, :domain) -> domain_case(opts)
+      Keyword.has_key?(opts, :process) -> process_case(opts)
+      true -> contract_case(opts)
+    end
+  end
+
+  # Plan DD, S2 (#251).
+  defp process_case(opts) do
+    process = Keyword.fetch!(opts, :process)
+
+    unless match?(%{kind: :process}, EhOsContract.Model.fetch(Macro.expand(process, __ENV__))),
+      do:
+        raise(
+          ArgumentError,
+          "process: #{inspect(process)} is not a process module, `use EhOsContract.Process`; " <>
+            "a contract's scenarios run with contract:"
+        )
+
+    async = Keyword.get(opts, :async, true)
+
+    quote do
+      use ExUnit.Case, async: unquote(async)
+
+      for scenario <- Map.get(EhOsContract.Model.fetch(unquote(process)), :scenarios, []) do
+        @eh_os_contract_scenario scenario
+        test "scenario: #{scenario.description}" do
+          EhOsContract.ScenarioCase.judge(unquote(process), @eh_os_contract_scenario)
+        end
+      end
+    end
   end
 
   defp domain_case(opts) do
@@ -364,8 +402,14 @@ defmodule EhOsContract.ScenarioCase do
     model = Model.fetch(contract)
     implementation = implementation!(model, scenario.target, implementations)
     identity = identity(scenario)
-    times = Stream.iterate(@epoch, &DateTime.add(&1, 60)) |> Enum.take(length(scenario.given) + 1)
-    {given_times, [now]} = Enum.split(times, length(scenario.given))
+    # S3 has refused an `at:` that is no timestamp, so every moment is one.
+    given_times = Rules.Scenarios.moments(scenario.given)
+
+    now =
+      case List.last(given_times) do
+        nil -> @epoch
+        last -> DateTime.add(last, 60)
+      end
 
     # A given is an event read back from a log, as dispatch hands one to its consumers:
     # with an id and a position, in the order the scenario lists them.
@@ -376,6 +420,94 @@ defmodule EhOsContract.ScenarioCase do
       end
 
     run(model, scenario, implementation, identity, givens, now, implementations)
+  end
+
+  @doc """
+  Judges one scenario of a process module's promise, and asserts the verdict it says,
+  and the route when it names one.
+
+  Each given is built as the event of the contract that declares it, dated as the
+  scenario dates it, and filed into its run by the process's `correlate`, as dispatch
+  files it; a given without every correlation field belongs to no run. The promise is
+  judged by `EhOsContract.Trace.judge/3` at the trigger's moment, with the scenario's
+  outages: the verdict the conformance report would give these events. Nothing reads
+  the database. The givens make exactly one judged run, or the scenario fails saying
+  how many; the compiler has made sure that one of them opens the promise and that
+  each carries the process's correlation fields.
+  """
+  @spec judge(module(), map()) :: true
+  def judge(process, scenario) do
+    model = Model.fetch(process)
+    run = Model.process(model)
+    trace = EhOsContract.Trace.trace(model, scenario.promise.name)
+    data = Enum.map(scenario.given, & &1.data)
+    identity = fn field -> Enum.find_value(data, &Map.get(&1, field)) end
+
+    occurrences =
+      for {given, at} <- Enum.zip(scenario.given, Rules.Scenarios.moments(scenario.given)),
+          {contract, declaration} = Model.declaring(model, given.event),
+          event =
+            message(Model.fetch(contract), :event, given.event, given.data, identity, at, nil),
+          instance_id = EhOsContract.Dispatcher.run_key(run, event),
+          instance_id != nil do
+        %{
+          instance_id: instance_id,
+          type: declaration.type,
+          occurred_at: at,
+          payload: payload(trace, event)
+        }
+      end
+
+    verdicts =
+      EhOsContract.Trace.judge(trace, occurrences,
+        now: timestamp!(scenario.promise.at),
+        outages: Enum.map(scenario.outages, &timestamp!(&1.at))
+      )
+
+    case verdicts do
+      [verdict] ->
+        expected =
+          [verdict: scenario.verdict] ++ if(scenario.via, do: [via: scenario.via], else: [])
+
+        got = Enum.map(expected, fn {key, _} -> {key, Map.fetch!(verdict, key)} end)
+
+        assert got == expected,
+               "promise #{inspect(scenario.promise.name)}, judged at #{scenario.promise.at}, " <>
+                 "is #{shown_verdict(verdict)}, and the scenario says #{shown_verdict(Map.new(expected))}; " <>
+                 "its window opened at #{DateTime.to_iso8601(verdict.from_at)}" <>
+                 if(verdict.deadline_at,
+                   do: " and closes at #{DateTime.to_iso8601(verdict.deadline_at)}",
+                   else: " and never closes"
+                 )
+
+      many ->
+        flunk(
+          "the givens make #{length(many)} judged runs, " <>
+            "#{inspect(Enum.map(many, & &1.instance_id))}, and a scenario of a promise is " <>
+            "about one"
+        )
+    end
+  end
+
+  defp shown_verdict(%{verdict: verdict} = v) do
+    case Map.get(v, :via) do
+      nil -> inspect(verdict)
+      via -> "#{inspect(verdict)} via #{inspect(via)}"
+    end
+  end
+
+  # What pairs an occurrence with its item, for a promise made per item: the identity
+  # fields, keyed by strings as the log stores them. One encoding on both sides is all
+  # pairing needs.
+  defp payload(%{identity: nil}, _event), do: %{}
+
+  defp payload(%{identity: identity}, event),
+    do: Map.new(identity, &{&1, Map.get(event, String.to_existing_atom(&1))})
+
+  # The compiler has refused a moment that is no timestamp.
+  defp timestamp!(at) do
+    {:ok, at, _offset} = DateTime.from_iso8601(at)
+    at
   end
 
   defp run(model, %{target: %{kind: :query}} = scenario, impl, _identity, givens, _now, found) do

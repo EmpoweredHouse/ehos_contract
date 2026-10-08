@@ -22,6 +22,13 @@ defmodule EhOsContract.Contract.Links.Processes do
   #   be, an `:id` (F8), and every included event carries it as the same identifier: a
   #   plain `:id` agrees with one domain value resting on `:id`, two different values do
   #   not, whatever the order of the includes.
+  # - **X9 and X4 in a scenario** (plan DD, S2, #251). A given's data fits the event the
+  #   contract that declares it declares, as a sibling event's data in a contract's
+  #   scenario does (`EhOsContract.Contract.Links.Scenarios`): its fields, every required
+  #   one and its unit's identity, each value of its type. An outage is of an external
+  #   the promise's `eventually` or `or_else` depends on: `from` already happened, so
+  #   what it needs was working, and an outage of anything else excuses nothing in the
+  #   report (`EhOsContract.Trace`), so a scenario of one would show what never happens.
   #
   # X7, a process module's `id:` taken by another process, is `Links.System`'s. The
   # error stands at the module's `use` for what names the whole module, and at the stage
@@ -44,7 +51,10 @@ defmodule EhOsContract.Contract.Links.Processes do
 
   defp process(p, system) do
     included = included(p, system)
-    namespace(p) ++ accountable(p) ++ x5(p, included) ++ x6(p, included)
+
+    namespace(p) ++
+      accountable(p) ++
+      x5(p, included) ++ x6(p, included) ++ given_data(p, included) ++ outages(p, included)
   end
 
   defp where(p), do: "process #{inspect(p.model.id)}"
@@ -139,6 +149,75 @@ defmodule EhOsContract.Contract.Links.Processes do
 
         ["which declares no such event (#{Links.place(contract.at)}); #{hint}"]
     end
+  end
+
+  # --- X9, X4: scenarios -----------------------------------------------------------
+
+  defp given_data(p, included) do
+    values = Map.new(p.domain.values, &{&1.name, &1})
+
+    for scenario <- p.declarations.scenarios,
+        given <- scenario.given,
+        {contract, event} <- [declared(included, given.event)],
+        problem <- given_problems(contract, event, given.data, values) do
+      {"X9: scenario #{inspect(scenario.description)}: event #{inspect(given.event)} of " <>
+         "#{inspect(contract.module)}: #{problem}", Links.at(given)}
+    end
+  end
+
+  # Unlike a contract's scenario, which is about one stream and fills its identity in,
+  # a process's scenario is about runs and items told apart by the units' identities,
+  # so each given names its unit, as every event in the log does.
+  defp given_problems(contract, event, data, values) do
+    identity = Enum.find(contract.model.units, &(&1.name == event.unit)).identity
+    fields = event.fields ++ for(name <- identity, do: %{name: name, type: :id, optional: false})
+    Links.Scenarios.sibling_problems(Enum.uniq_by(fields, & &1.name), [], data, values, true)
+  end
+
+  defp outages(p, included) do
+    for scenario <- p.declarations.scenarios,
+        [judged] <- [scenario.trigger],
+        promise = Enum.find(p.model.promises, &(&1.name == judged.name)),
+        promise != nil,
+        depends = depends_on(promise, included),
+        outage <- scenario.outages,
+        outage.external not in depends do
+      on =
+        case depends do
+          [] -> "on no external"
+          some -> "on #{inspect(some)}"
+        end
+
+      {"X4: scenario #{inspect(scenario.description)}: outage #{inspect(outage.external)} " <>
+         "is of no external promise #{inspect(promise.name)} waits on; its eventually and " <>
+         "or_else depend #{on}, and an outage of anything else excuses nothing", Links.at(outage)}
+    end
+  end
+
+  # The externals the events a promise waits on depend on, as the contracts that declare
+  # them say.
+  defp depends_on(promise, included) do
+    for name <- [promise.eventually, promise.or_else],
+        name != nil,
+        {_contract, event} <- [declared(included, name)],
+        event.depends_on != nil,
+        uniq: true,
+        do: event.depends_on
+  end
+
+  # The included event of this name, with the contract that declares it; `nil` when X5
+  # has refused the include.
+  defp declared(included, name) do
+    Enum.find_value(included, fn
+      %{event: ^name, contract: %{} = contract} ->
+        case Enum.find(contract.model.events, &(&1.name == name)) do
+          nil -> nil
+          event -> {contract, event}
+        end
+
+      _include ->
+        nil
+    end)
   end
 
   # --- X6 ---------------------------------------------------------------------------

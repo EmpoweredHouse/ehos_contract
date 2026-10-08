@@ -14,7 +14,15 @@ defmodule EhOsContract.Process.Build do
   #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
   #
   # Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
-  # `unverified`.
+  # `unverified`. A module with scenarios (plan DD, S2, #251) also has
+  #
+  #     scenarios: [%{description: "…", verdict: :satisfied, via: :eventually,
+  #                   given: [%{event: :visit_completed, data: %{…}, at: "…"}],
+  #                   outages: [%{external: :p1, at: "…"}],
+  #                   promise: %{name: :medical_event_reported_within_statutory_window, at: "…"}}]
+  #
+  # where a given keeps `at` only when it sets it, and the key, and its part of the
+  # digest, only where there are scenarios, so that adding the word moved no version.
   #
   # **The digest does not see declaration order where it means nothing**, as a
   # contract's does not (`EhOsContract.Digest`): promises, the events of `ends_on` and a
@@ -73,17 +81,37 @@ defmodule EhOsContract.Process.Build do
     }
 
     promises = Enum.map(d.promises, &promise/1)
+    scenarios = Enum.map(d.scenarios, &scenario/1)
 
     own
+    |> Map.merge(if(scenarios == [], do: %{}, else: %{scenarios: scenarios}))
     |> Map.merge(%{
       format: 1,
       kind: :process,
       module: d.module,
       stages: stages,
       promises: promises,
-      version: version(own, stages, promises),
-      digests: digests(own, stages, promises)
+      version: version(own, stages, promises, scenarios),
+      digests: digests(own, stages, promises, scenarios)
     })
+  end
+
+  # One trigger, which S1 has made sure of.
+  defp scenario(scenario) do
+    [judged] = scenario.trigger
+
+    %{
+      description: scenario.description,
+      verdict: scenario.verdict,
+      via: scenario.via,
+      given:
+        for g <- scenario.given do
+          given = %{event: g.event, data: g.data}
+          if g.at, do: Map.put(given, :at, g.at), else: given
+        end,
+      outages: for(o <- scenario.outages, do: %{external: o.external, at: o.at}),
+      promise: %{name: judged.name, at: judged.at}
+    }
   end
 
   defp promise(promise) do
@@ -116,19 +144,24 @@ defmodule EhOsContract.Process.Build do
 
   # The order of the stages is kept in the process's own part: hashed as a group, the
   # stages are a set.
-  defp version(own, stages, promises) do
+  # Scenarios share one digest, `"scenario:*"`, as a contract's do, since nothing names
+  # them.
+  defp version(own, stages, promises, scenarios) do
     Digest.hash_groups(
-      process: [digest_form(own, stages)],
-      stages: Enum.map(stages, &digest_form/1),
-      promises: Enum.map(promises, &digest_form/1)
+      [
+        process: [digest_form(own, stages)],
+        stages: Enum.map(stages, &digest_form/1),
+        promises: Enum.map(promises, &digest_form/1)
+      ] ++ if(scenarios == [], do: [], else: [scenarios: scenarios])
     )
   end
 
-  defp digests(own, stages, promises) do
+  defp digests(own, stages, promises, scenarios) do
     Map.new(
       [{"process", Digest.hash(digest_form(own, stages))}] ++
         for(s <- stages, do: {"stage:#{s.name}", Digest.hash(digest_form(s))}) ++
-        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(digest_form(p))})
+        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(digest_form(p))}) ++
+        if(scenarios == [], do: [], else: [{"scenario:*", Digest.hash(scenarios)}])
     )
   end
 

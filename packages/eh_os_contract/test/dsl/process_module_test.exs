@@ -153,7 +153,11 @@ defmodule EhOsContract.ProcessModuleTest do
                [:stage] => [:name, :label, :include],
                [:ends_on] => [:events],
                [:promise] => [:name, :from, :eventually, :within, :or_else, :unverified, :source],
-               [:deadline] => [:within, :unverified]
+               [:deadline] => [:within, :unverified],
+               [:scenario] => [:description, :verdict, :via],
+               [:scenario, :given] => [:event, :data, :at],
+               [:scenario, :outage] => [:external, :at],
+               [:scenario, :promise] => [:name, :at]
              }
     end
 

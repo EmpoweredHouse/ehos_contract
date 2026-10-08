@@ -15,12 +15,16 @@ A stage's `include:` names contract modules without a compile dependency, as
 process that names it. A promise is the contract's own entity, so it is written
 alike in both.
 
+A scenario shows a promise judged: the events that happened and
+when, the moments an external system was seen unavailable, and the verdict the
+promise gets at a moment. Its `given` is the contract's.
+
 The structs below are what Spark builds from each declaration. They stay inside the
 extension: readers get plain data from `EhOsContract.Model`, never these structs.
 
 ## process
 
-A process across contracts: its runs, stages, end, promises and deadline.
+A process across contracts: its runs, stages, end, promises, deadline and scenarios.
 
 
 
@@ -31,3 +35,4 @@ A process across contracts: its runs, stages, end, promises and deadline.
 | [`ends_on`](process-ends_on.md) | The included events that end a run. |
 | [`promise`](process-promise.md) | After one event of a run, another eventually follows. |
 | [`deadline`](process-deadline.md) | How long a run may take, from its first event to one it `ends_on`. |
+| [`scenario`](process-scenario.md) | Given events and when they happened, the moments a system was down, and the verdict a promise gets: an example the process owner reads. |

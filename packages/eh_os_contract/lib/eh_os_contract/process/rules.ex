@@ -29,17 +29,28 @@ defmodule EhOsContract.Process.Rules do
   #   (`EhOsContract.Duration`); `deadline` is declared at most once, and only with
   #   `ends_on`, since it measures a run to its end (the user's decision of
   #   7 October 2026).
+  # - **S1, S2, S3, S11: scenarios** (plan DD, S2, #251). A scenario judges exactly one
+  #   promise of the module, at a moment (S1), each description once (S1); its givens
+  #   are events the process includes (S2); every `at:` is an ISO 8601 timestamp with an
+  #   offset, and a given's never earlier than the given before it (S3). Its shape
+  #   (S11): a verdict, one of the four `EhOsContract.Trace` gives; `via:` only on
+  #   `:satisfied`, `:eventually` or `:or_else`, and `:or_else` only for a promise that
+  #   has one; a verdict the promise can get, so none but `:satisfied` or `:pending`
+  #   without `within`, and `:suspended` only with an outage; a given of the promise's
+  #   `from`, without which no run is judged; and nothing after the moment of
+  #   judgement, which a verdict cannot have seen.
   #
   # What one module cannot see — that each included event exists in its contract and
-  # carries the `correlate` fields, that the accountable actor is the domain's — is
-  # left to the rules between modules.
+  # carries the `correlate` fields, that the accountable actor is the domain's, that a
+  # scenario's data fits the event its contract declares and an outage is of a system
+  # the promise depends on — is left to the rules between modules.
   @moduledoc false
 
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Duration
   alias EhOsContract.DslRules
-  alias EhOsContract.Contract.Rules.Boundaries
+  alias EhOsContract.Contract.Rules.{Boundaries, Scenarios}
   alias EhOsContract.Process.Dsl
   alias Spark.Dsl.Transformer
 
@@ -54,7 +65,7 @@ defmodule EhOsContract.Process.Rules do
     violations =
       Boundaries.id_form(%{value: d.id, at: d.at}, "process") ++
         names(d) ++
-        correlation(d) ++ stages(d) ++ events_of_the_run(d) ++ durations(d)
+        correlation(d) ++ stages(d) ++ events_of_the_run(d) ++ durations(d) ++ scenarios(d)
 
     DslRules.result(dsl, [:process], violations)
   end
@@ -75,7 +86,8 @@ defmodule EhOsContract.Process.Rules do
       stages: of.(Dsl.Stage),
       ends_on: of.(Dsl.EndsOn),
       promises: of.(EhOsContract.Contract.Dsl.Promise),
-      deadlines: of.(Dsl.Deadline)
+      deadlines: of.(Dsl.Deadline),
+      scenarios: of.(Dsl.Scenario)
     })
   end
 
@@ -295,5 +307,202 @@ defmodule EhOsContract.Process.Rules do
       end
 
     counted ++ twice ++ unended
+  end
+
+  # --- S1, S2, S3, S11: scenarios ----------------------------------------------------
+
+  @verdicts [:satisfied, :violated, :pending, :suspended]
+  @routes [:eventually, :or_else]
+
+  defp scenarios(d) do
+    run = MapSet.new(for s <- d.stages, {_, event} <- includes(s), do: event)
+
+    twice =
+      for s <- DslRules.duplicates(d.scenarios, & &1.description) do
+        {~s|S1: #{where(d)} has two scenarios described "#{s.description}"; the description | <>
+           "names each one", s}
+      end
+
+    Enum.flat_map(d.scenarios, &scenario(&1, d, run)) ++ twice
+  end
+
+  defp scenario(scenario, d, run) do
+    where = ~s|scenario "#{scenario.description}"|
+
+    givens =
+      for g <- scenario.given, not MapSet.member?(run, g.event) do
+        {"S2: #{where}: given #{inspect(g.event)} is not an event of the run of #{where(d)}, " <>
+           "which includes #{inspect(Enum.sort(run))}", g}
+      end
+
+    outages =
+      for o <- scenario.outages, {:error, problem} <- [moment(o.at)] do
+        {"S3: #{where}: outage #{inspect(o.external)}, at: #{problem}", o}
+      end
+
+    givens ++ Scenarios.dated(where, scenario.given) ++ outages ++ judged(where, scenario, d)
+  end
+
+  defp judged(where, %{trigger: []} = scenario, _d) do
+    [
+      {"S1: #{where} judges no promise; name the promise and the moment it is judged, " <>
+         ~s|`promise :name, at: "2026-09-10T09:00:00Z"`|, scenario}
+    ]
+  end
+
+  defp judged(where, %{trigger: [_, _ | _] = many} = scenario, _d) do
+    [{"S1: #{where} judges #{length(many)} promises; a scenario judges exactly one", scenario}]
+  end
+
+  defp judged(where, %{trigger: [judged]} = scenario, d) do
+    names = Enum.map(d.promises, & &1.name)
+
+    case Enum.find(d.promises, &(&1.name == judged.name)) do
+      nil ->
+        [
+          {"S1: #{where} judges promise #{inspect(judged.name)}, which #{where(d)} does not " <>
+             "make; #{promised(judged.name, names)}", judged}
+        ]
+
+      promise ->
+        at =
+          case moment(judged.at) do
+            {:ok, _at} -> []
+            {:error, problem} -> [{"S3: #{where}: promise, at: #{problem}", judged}]
+          end
+
+        at ++ shape(where, scenario, promise, judged)
+    end
+  end
+
+  defp promised(_name, []), do: "it makes none"
+
+  defp promised(name, names) do
+    case DslRules.closest(name, names) do
+      nil -> "it makes #{inspect(names)}"
+      suggestion -> "did you mean #{inspect(suggestion)}?"
+    end
+  end
+
+  # S11.
+  defp shape(where, scenario, promise, judged) do
+    verdict =
+      cond do
+        scenario.verdict == nil ->
+          [
+            {"S11: #{where} says no verdict; say what the promise gets, `verdict:` one of " <>
+               "#{inspect(@verdicts)}", scenario}
+          ]
+
+        scenario.verdict not in @verdicts ->
+          [
+            {"S11: #{where}: verdict #{inspect(scenario.verdict)} is not one of " <>
+               "#{inspect(@verdicts)}", scenario}
+          ]
+
+        true ->
+          []
+      end
+
+    via =
+      cond do
+        scenario.via == nil ->
+          []
+
+        scenario.verdict not in @verdicts ->
+          []
+
+        scenario.verdict != :satisfied ->
+          [
+            {"S11: #{where}: via: is the route by which a promise was kept, and a promise " <>
+               "#{inspect(scenario.verdict)} was not kept; leave via: out", scenario}
+          ]
+
+        scenario.via not in @routes ->
+          [
+            {"S11: #{where}: via #{inspect(scenario.via)} is not one of #{inspect(@routes)}",
+             scenario}
+          ]
+
+        scenario.via == :or_else and promise.or_else == nil ->
+          [
+            {"S11: #{where}: via :or_else, and promise #{inspect(promise.name)} has no " <>
+               "or_else; it is kept only by #{inspect(promise.eventually)}", scenario}
+          ]
+
+        true ->
+          []
+      end
+
+    opened =
+      if Enum.any?(scenario.given, &(&1.event == promise.from)),
+        do: [],
+        else: [
+          {"S11: #{where} gives no #{inspect(promise.from)}, which opens promise " <>
+             "#{inspect(promise.name)}; without it no run is judged", scenario}
+        ]
+
+    verdict ++
+      via ++
+      reachable(where, scenario, promise) ++
+      opened ++
+      after_judgement(where, scenario, judged)
+  end
+
+  # A verdict judge/3 cannot give these declarations: one with no `within` has no window
+  # to close, so it is never broken or excused, and only an outage excuses one.
+  defp reachable(where, scenario, promise) do
+    cond do
+      scenario.verdict in [:violated, :suspended] and promise.within == nil ->
+        [
+          {"S11: #{where}: verdict #{inspect(scenario.verdict)}, and promise " <>
+             "#{inspect(promise.name)} has no within, so its window never closes; it is only " <>
+             ":satisfied or :pending", scenario}
+        ]
+
+      scenario.verdict == :suspended and scenario.outages == [] ->
+        [
+          {"S11: #{where}: verdict :suspended, and no outage excuses the promise; say when the " <>
+             ~s|system was down, `outage :external, at: "…"`|, scenario}
+        ]
+
+      true ->
+        []
+    end
+  end
+
+  # Nothing the verdict is about happened after it was given. A moment that is no
+  # timestamp is S3's, and compared with nothing.
+  defp after_judgement(where, scenario, judged) do
+    case moment(judged.at) do
+      {:ok, now} ->
+        given =
+          for {g, %DateTime{} = at} <-
+                Enum.zip(scenario.given, Scenarios.moments(scenario.given)),
+              DateTime.compare(at, now) == :gt,
+              do: {"given #{inspect(g.event)}", at, g}
+
+        outages =
+          for o <- scenario.outages,
+              {:ok, at} <- [moment(o.at)],
+              DateTime.compare(at, now) == :gt,
+              do: {"outage #{inspect(o.external)}", at, o}
+
+        for {what, at, declaration} <- given ++ outages do
+          {"S11: #{where}: #{what} at #{DateTime.to_iso8601(at)} is after the moment the " <>
+             "promise is judged, #{DateTime.to_iso8601(now)}; a verdict sees only what " <>
+             "happened by then", declaration}
+        end
+
+      {:error, _problem} ->
+        []
+    end
+  end
+
+  defp moment(at) do
+    case DateTime.from_iso8601(at) do
+      {:ok, at, _offset} -> {:ok, at}
+      {:error, _} -> {:error, hd(EhOsContract.Contract.Data.problems(:timestamp, at))}
+    end
   end
 end

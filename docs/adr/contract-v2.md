@@ -1547,6 +1547,17 @@ the person's.
 > commands failed", which is what happened, and a process's runs still say how much of the business a failure
 > touches. A process keeps its runs, durations and promises, judged per run as before.
 
+> **8 October 2026, plan DD, S2 — a promise has scenarios, and a scenario's events may be dated.** Until now a
+> promise was judged only on the log, so its owner first saw it judged in a report. A process module now carries
+> scenarios of its promises: the events and when they happened, the moments an external system was seen
+> unavailable, the moment of judgement, and the verdict and route expected. They run as tests through the same
+> rules the report applies (`Trace.judge/3`), without a database. An outage in a scenario is only of an external
+> that the promise's `eventually` or `or_else` depends on, the same narrowing the report applies. Every scenario,
+> a contract's too, may date a given (`at:`); a given's moment never goes back, since a log holds events in the
+> order they happened (the user's decision of 8 October: allowed in every scenario, not only a promise's). A
+> contract that still declares its own `process` gets no promise scenarios: that form is being removed (#221).
+> [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251)
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |

@@ -73,6 +73,14 @@ defmodule EhOsContract.ScenarioCaseTest do
       expect :closed, %{visit_id: "w-7"}
     end
 
+    scenario "płatność z września — wizyta zamknięta" do
+      given :payment_recorded, %{visit_id: "w-8", amount: 100, paid_at: "2026-09-01T09:00:00Z"},
+        at: "2026-09-01T09:00:00Z"
+
+      command :close
+      expect :closed, %{visit_id: "w-8"}
+    end
+
     scenario "płatność — przypomnienie" do
       target :remind_on_payment
       on :payment_recorded, %{amount: 1, paid_at: "2026-09-01T09:00:00Z"}
@@ -172,6 +180,81 @@ defmodule EhOsContract.ScenarioCaseTest do
       for scenario <- Model.fetch(EhOsContract.Fixtures.Scenarios).scenarios do
         assert ScenarioCase.run(EhOsContract.Fixtures.Scenarios, scenario, @right)
       end
+    end
+  end
+
+  describe "when a given happened (plan DD, S2, #251)" do
+    test "a given's at: is the moment its event carries, and a given without one is not" do
+      september =
+        visit("September", """
+          @impl true
+          def record_payment(%RecordPayment{visit_id: id}, _state), do: emit(%ReceiptIssued{visit_id: id})
+
+          @impl true
+          def close(%Close{visit_id: id}, %State{paid: 100}), do: emit(%Closed{visit_id: id})
+          def close(_command, _state), do: reject(:paid_in_full)
+
+          @impl true
+          def remind(%Remind{visit_id: id}, _state), do: emit(%Reminded{visit_id: id})
+
+          # Counts only a payment that happened in September.
+          @impl true
+          def evolve(state, %PaymentRecorded{amount: a, __meta__: %{occurred_at: %{month: 9}}}),
+            do: %{state | paid: state.paid + a}
+
+          def evolve(state, _event), do: state
+        """)
+
+      assert run("płatność z września — wizyta zamknięta", [september])
+
+      # Without at:, the given happened on 1 January 2026, the scenario's first moment.
+      assert failure("zapłacono całość — wizyta zamknięta", [september]) =~
+               "{:error, %EhOsContract.Rejection{invariant: :paid_in_full}}"
+    end
+
+    test "the model keeps a given's at: only where it is set" do
+      assert [%{at: "2026-09-01T09:00:00Z"}] =
+               scenario("płatność z września — wizyta zamknięta").given
+
+      assert [given] = scenario("zapłacono całość — wizyta zamknięta").given
+      refute Map.has_key?(given, :at)
+    end
+
+    test "an at: that is no timestamp, or earlier than the given before it, is refused" do
+      body = fn first, second ->
+        """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close, "Zamknięcie", by: :reception, emits: :closed
+            event :opened, "Otwarto", recorded_by: :reception
+            event :closed, "Zamknięto"
+          end
+
+          scenario "dwa zdarzenia — zamknięcie" do
+            given :opened#{if first, do: ", at: #{inspect(first)}"}
+            given :opened, at: #{inspect(second)}
+            command :close
+            expect :closed
+          end
+        """
+      end
+
+      assert refuse_contract("DatedOrder", body.("2026-09-02T09:00:00Z", "2026-09-01T09:00:00Z")) =~
+               ~s|S3: scenario "dwa zdarzenia — zamknięcie": given :opened happened at | <>
+                 "2026-09-01T09:00:00Z, before the given before it (2026-09-02T09:00:00Z)"
+
+      assert refuse_contract("DatedForm", body.("2026-09-01", "2026-09-02T09:00:00Z")) =~
+               ~s|given :opened, at: "2026-09-01" is not an ISO 8601 timestamp with an offset|
+
+      assert refuse_contract("DatedLate", body.(nil, "2026-09-02T09:00:00Z")) =~
+               "given :opened has no at:, and comes before given :opened, which has one; it " <>
+                 "would happen on 2026-01-01T09:00:00Z, so date it too"
+
+      assert %{scenarios: [_]} =
+               compile_contract(
+                 "DatedFine",
+                 body.("2026-09-01T09:00:00Z", "2026-09-01T09:00:00Z")
+               )
     end
   end
 

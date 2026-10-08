@@ -548,6 +548,11 @@ defmodule EhOsContract.Contract.Build do
   defp plain(%Dsl.Field{supplied_by: nil} = field),
     do: field |> plain_struct() |> Map.delete(:supplied_by)
 
+  # Plan DD, S2 (#251): a given's moment is kept only where the scenario sets it, so the
+  # word moved no contract's version.
+  defp plain(%Dsl.Given{at: nil} = given),
+    do: given |> plain_struct() |> Map.delete(:at)
+
   defp plain(%{__struct__: _} = struct), do: plain_struct(struct)
 
   defp plain(list) when is_list(list), do: Enum.map(list, &plain/1)

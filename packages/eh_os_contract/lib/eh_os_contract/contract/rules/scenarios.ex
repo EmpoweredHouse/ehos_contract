@@ -13,7 +13,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   required field, except the target's identity, which a scenario fills in itself:
   #   it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
   #   one of a domain value is the Mix compiler's (X9). An event consumed from a
-  #   sibling contract has its fields in the sibling, so its data is X9's as well.
+  #   sibling contract has its fields in the sibling, so its data is X9's as well. A
+  #   given's `at:` is an ISO 8601 timestamp with an offset, never earlier than the given
+  #   before it, since a log never holds a later event before an earlier one, and no
+  #   undated given comes before a dated one (plan DD, S2, #251).
   # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
   # - **S5.** `expect` names events in the command's `emits:`.
   # - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
@@ -59,6 +62,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   def check(declarations) do
     Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++
       Enum.flat_map(declarations.scenarios, &entities(&1, declarations)) ++
+      Enum.flat_map(declarations.scenarios, &dated/1) ++
       described_once(declarations) ++ covered(declarations) ++ rule_examples(declarations)
   end
 
@@ -709,6 +713,81 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
         end)
     end
   end
+
+  # --- S3: when each given happened (plan DD, S2, #251) ------------------------------
+
+  @epoch ~U[2026-01-01 09:00:00Z]
+
+  @doc false
+  # The moment each given happened, in order: its `at:`, or a minute after the given
+  # before it, the first at 2026-01-01 09:00 UTC. An `at:` that is no timestamp is
+  # `{:unfit, problem}`, and the given after it counts from the one before. The one rule
+  # for S3 and for `EhOsContract.ScenarioCase`, which dates its givens by it.
+  @spec moments([map()]) :: [DateTime.t() | {:unfit, String.t()}]
+  def moments(givens) do
+    {moments, _last} =
+      Enum.map_reduce(givens, nil, fn given, last ->
+        case Map.get(given, :at) do
+          nil ->
+            at = if last, do: DateTime.add(last, 60), else: @epoch
+            {at, at}
+
+          written ->
+            case DateTime.from_iso8601(written) do
+              {:ok, at, _offset} -> {at, at}
+              {:error, _} -> {{:unfit, hd(Data.problems(:timestamp, written))}, last}
+            end
+        end
+      end)
+
+    moments
+  end
+
+  @doc false
+  # S3 over the givens of one scenario, contract's or process module's alike.
+  @spec dated(String.t(), [map()]) :: [DslRules.violation()]
+  def dated(where, givens) do
+    {violations, _last} =
+      givens
+      |> Enum.zip(moments(givens))
+      |> Enum.reduce({[], nil}, fn
+        {given, {:unfit, problem}}, {acc, last} ->
+          {[{"S3: #{where}: given #{inspect(given.event)}, at: #{problem}", given} | acc], last}
+
+        {given, at}, {acc, last} ->
+          if last && DateTime.compare(at, last) == :lt,
+            do:
+              {[
+                 {"S3: #{where}: given #{inspect(given.event)} happened at " <>
+                    "#{DateTime.to_iso8601(at)}, before the given before it " <>
+                    "(#{DateTime.to_iso8601(last)}); a log holds events in the order they " <>
+                    "happened, so list them so, and a given without at: comes a minute " <>
+                    "after the one before it", given}
+                 | acc
+               ], at},
+            else: {acc, at}
+      end)
+
+    Enum.reverse(violations) ++ undated_first(where, givens)
+  end
+
+  # An undated given before a dated one would happen on 1 January 2026, the default,
+  # whatever the dated ones say, so a window could open months before the author meant.
+  defp undated_first(where, givens) do
+    case Enum.split_while(givens, &(Map.get(&1, :at) == nil)) do
+      {[_ | _] = undated, [dated | _]} ->
+        for given <- undated do
+          {"S3: #{where}: given #{inspect(given.event)} has no at:, and comes before given " <>
+             "#{inspect(dated.event)}, which has one; it would happen on " <>
+             "#{DateTime.to_iso8601(@epoch)}, so date it too", given}
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp dated(scenario), do: dated(~s|scenario "#{scenario.description}"|, scenario.given)
 
   # --- S3: data -----------------------------------------------------------------------
 
