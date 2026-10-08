@@ -28,7 +28,6 @@ defmodule EhOsContract.Web do
       Router.RedirectToContract,
       Authentication,
       Live.ContractStatus,
-      Live.Graph,
-      Live.GraphPreview
+      Live.Graph
     ]
 end

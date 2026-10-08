@@ -4,12 +4,12 @@ A conformance dashboard for [EhOsContract](https://hex.pm/packages/eh_os_contrac
 own router.
 
 Two screens and nothing else: the contract's conformance status, and the graphs —
-each domain's context map and system, and per process its declared shape, its graph
-with the log laid over it, and its contract's units.
+each domain's context map and system, and per contract its process's declared shape,
+its full graph with the log laid over it, and its units and their lifecycles.
 
 The graphs are drawn by [`eh_os_contract_graph`](../eh_os_contract_graph), the renderer of
-the engine's `graph.v1` documents (plan E13b). One temporary screen, `<mount>/graph/preview`,
-not in the nav, draws each picture beside its old Mermaid diagram until Mermaid goes.
+the engine's `graph.v1` documents (plan E13b); a click on anything drawn opens a panel
+that says what it is.
 
 ## Installation
 
@@ -62,8 +62,8 @@ instruction rather than assuming it.
 The same line serves the fonts: they sit beside the stylesheet, in
 `priv/static/assets/fonts/`, and the stylesheet names them by relative URL. Nothing
 the dashboard loads comes from anywhere but these assets — no Google Fonts, no CDN —
-so it works under a policy of `default-src 'self'` and without internet, with one
-exception: the preview's Mermaid diagrams need inline styles (see "Looks" below).
+so it works under a policy of `default-src 'self'` and without internet (see "Looks"
+below).
 
 ## Looks
 
@@ -87,13 +87,9 @@ host stylesheet nor a `data-theme` attribute reaches the page. The
 `--eh-os-contract-*` custom properties are kept as the names such a hook would set.
 
 **The dashboard works under a strict Content-Security-Policy**, `default-src 'self'`
-as EHOS serves it. The graph renderer sets no inline style. Mermaid, which draws the
-preview's diagrams in the browser, writes a `<style>` element and `style` attributes
-into each; the dashboard hands both to the CSSOM, which such a policy leaves alone.
-Mermaid still tries inline styles while it measures a diagram, so the browser's
-console logs blocked inline styles on the preview; the diagrams are drawn in full
-regardless. The sandbox host serves
-this policy on the dashboard, so it is looked at there as it runs in EHOS.
+as EHOS serves it: no page carries an inline style, and the graph renderer sets none.
+The sandbox host serves this policy on the dashboard, so it is looked at there as it
+runs in EHOS.
 
 ## The API
 
@@ -142,8 +138,7 @@ This package is not published. Two reasons, both recorded rather than pending:
 
 - it depends on `eh_os_contract`, which is not on Hex either, and a published package
   may depend only on published ones;
-- `priv/static/assets/mermaid.min.js` is a vendored third-party build, and
-  `priv/static/assets/fonts/` holds two third-party fonts, so a tarball redistributes
+- `priv/static/assets/fonts/` holds two third-party fonts, so a tarball redistributes
   somebody else's work. `NOTICE` carries the attribution, and the decision to
   actually publish is a separate one.
 

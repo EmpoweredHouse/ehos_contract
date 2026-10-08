@@ -10,9 +10,9 @@ defmodule EhOsContract.Web.Live.Graph do
   **Drawn by `eh_os_contract_graph`** (plan E13b, batch 4): each picture is a view of
   the engine's `graph.v1` document (`EhOsContract.Graph.Document`), the one the API
   serves, drawn by `EhOsContract.GraphRenderer.Canvas`, with what the log says
-  (`EhOsContract.Graph.Overlay`) over the views the Mermaid diagrams laid it over: the
-  full graph, a lifecycle and the system. The views are those diagrams' pictures, the
-  user's decision of 8 October (`EhOsContract.GraphRenderer.View`). The log is read
+  (`EhOsContract.Graph.Overlay`) over the full graph, a lifecycle and the system. The
+  views are the pictures this screen drew before the renderer, the user's decision of
+  8 October (`EhOsContract.GraphRenderer.View`). The log is read
   once the socket is connected, once per document: the first, static render draws
   the pictures declared, and the mount that follows lays the log over them. A click
   on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).

@@ -8,6 +8,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, batch 5: Mermaid is gone.** The dashboard serves no `mermaid.min.js`, its root layout loads `app.js`
+  alone, and `app.js` connects the socket with the renderer's hook and nothing else: the `MermaidRender` hook, the
+  diagrams' theme and their way past the policy are gone, and so is the preview, `<mount>/graph/preview`. A host
+  that linked to the preview links to `<mount>/graph`; one that served `mermaid.min.js` from these assets has
+  nothing more to serve. Every page now works under `default-src 'self'` with no exception. `NOTICE` names the
+  fonts alone.
 - **E13b, batch 4: the Graph screen draws with the renderer.** Each picture of the screen — a domain's context map
   and system, a contract's declared shape, full graph, units and lifecycles — is the renderer's view of the engine's
   `graph.v1` document, with the log over the same pictures as before, read once connected. A click opens the

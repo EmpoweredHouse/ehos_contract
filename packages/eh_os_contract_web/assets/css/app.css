@@ -337,29 +337,6 @@ select:focus-visible {
   margin-top: 2px;
 }
 
-/* The Mermaid hook replaces this element's content with an SVG once it runs — the scroll container
-   is needed before that happens too, since a diagram wider than the column is the common case, not
-   the exception. Its colours are the diagram's own background, set from the same tokens by
-   assets/js/app.js. */
-pre.mermaid {
-  overflow-x: auto;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin: 8px 0;
-  background: var(--eh-os-contract-bg-muted);
-  color: var(--text-tertiary);
-  font-family: var(--mono);
-  font-size: var(--record-size);
-}
-
-/* Mermaid 11 wraps each label in a <p>, which the page's own `p` rule would otherwise reach: a
-   node's text colour is the diagram's (the theme, or the engine's classDef), not body text's. */
-pre.mermaid p {
-  margin: 0;
-  color: inherit;
-}
-
 @media (max-width: 640px) {
   main {
     padding: 0 16px 32px;

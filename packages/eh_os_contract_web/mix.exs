@@ -62,21 +62,13 @@ defmodule EhOsContract.Web.MixProject do
       check: ["format --check-formatted", "compile --force --warnings-as-errors", "test"],
       # Run by whoever edits assets/js/app.js or assets/css/app.css; the
       # committed output under priv/static/ is what everyone else —
-      # including `mix check` — uses. The vendored Mermaid build is a
-      # straight copy, not an esbuild input: it needs to execute as a
-      # classic global script (see app.js's own comment on why), which
-      # esbuild's bundling would break. The fonts are copied from
+      # including `mix check` — uses. The fonts are copied from
       # `ehos_design` beside the built stylesheet, whose relative url()s
       # name them there.
       "assets.build": [
         "esbuild eh_os_contract_web",
         "esbuild eh_os_contract_web_css",
         fn _args ->
-          File.cp!(
-            Path.expand("assets/js/vendor/mermaid.min.js", __DIR__),
-            Path.expand("priv/static/assets/mermaid.min.js", __DIR__)
-          )
-
           fonts =
             Path.expand(
               "deps/ehos_design/packages/ehos_design/priv/static/ehos_design/fonts",
@@ -94,11 +86,10 @@ defmodule EhOsContract.Web.MixProject do
     ]
   end
 
-  # **Metadata now; publication held.** `priv/static/assets/mermaid.min.js` is a
-  # vendored third-party build (Mermaid, MIT), so a tarball of this package
-  # redistributes somebody else's code. That needs an attribution line a lawyer would
-  # accept, not just a comment in a source file, and publishing is irreversible in a
-  # way editing is not. `NOTICE` carries the attribution; the decision to actually
+  # **Metadata now; publication held.** `priv/static/assets/fonts/` holds
+  # third-party fonts (OFL), so a tarball of this package redistributes somebody
+  # else's work. That needs an attribution line a lawyer would accept, not just a
+  # comment in a source file, and publishing is irreversible in a way editing is not. `NOTICE` carries the attribution; the decision to actually
   # push is a separate one and has not been made.
   defp package do
     [

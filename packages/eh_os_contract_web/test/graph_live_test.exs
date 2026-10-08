@@ -50,7 +50,6 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     assert html =~ "Access: all"
     assert html =~ "web_test_host.case_handling — Case handling"
-    refute html =~ "mermaid"
 
     contract = EhOsContract.Registry.contract("web_test_host.case_handling")
     document = Document.contract(contract)
@@ -146,7 +145,6 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     canvases = LazyHTML.query(html, ".ehg") |> Enum.to_list()
     assert length(canvases) >= 4
-    assert Enum.empty?(LazyHTML.query(html, "pre.mermaid"))
     assert Enum.empty?(LazyHTML.query(html, "main [style]"))
 
     for canvas <- canvases do
