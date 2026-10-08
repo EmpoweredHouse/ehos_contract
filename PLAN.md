@@ -1845,6 +1845,22 @@ Batch 1 needs no views: it is what every view is drawn with.
   of work in all where it was 1.29 s. `--eh-os-contract-graph-panel-width` stays as the width the panel opens
   at, which a host may set. Checked again: the drag, the width kept across a reload, no violation. Gate: the
   whole `mix check`, EXIT=0, the same counts.
+- **Stutters in Safari, smooth in Chrome (the user, 8 October).** Every frame of a pan or a zoom wrote the zoom to a
+  constructed stylesheet, and every frame of a drag of the panel's edge its width: Chrome restyles only what a
+  changed rule can match, WebKit styles the whole page again whenever a stylesheet changes. Not measured in
+  WebKit — Playwright's headless WebKit hung opening a page on this machine, and real Safari's automation needs
+  the user to enable it; the user chose "fix it, I will check". Now what changes on every frame is a Web
+  Animation (`element.animate`, its keyframes set again each frame, `fill: "forwards"`): neither an attribute nor
+  a stylesheet, so the policy allows it and LiveView's patches keep it, and a change restyles the one element;
+  the panel's width goes to the shared stylesheet once, when the drag ends, and the gesture's layer is a class
+  on the viewport. **The user, in Safari: "Działa zajebiście teraz."** A dated amendment in
+  `docs/adr/graph-renderer.md` turns the package's rule into "positions and sizes in a constructed stylesheet,
+  what changes every frame in a Web Animation, never a `style` attribute", and `test/assets_test.exs` holds the
+  zoom and the drag to it (checked to fail when the zoom writes a stylesheet). Gate: the whole `mix check`,
+  EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 70.
+- **Cleaning after the fixes:** stale comments and docs (the panel "beside the graph", the zoom "in constructed
+  stylesheets", a refit only "when the cards are other cards"), an unused attribute of a relation's panel, a
+  helper defined after its first use, a width read three times in `fit()`.
 - **Left of batch 4:** the system's arrows still carry the events' names (point 3; the arrow's panel lists their
   labels); what one run is on Contract status (point 4; the process's panel says it); a timer's label and time on
   its card and "ends «…»" under an ending event (point 5; the timer's and the manager's panels say them); the
