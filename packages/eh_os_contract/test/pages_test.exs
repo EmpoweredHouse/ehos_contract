@@ -101,12 +101,11 @@ defmodule EhOsContract.PagesTest do
       assert counted =~ "- read model [`payments`](../read_models/payments.md)"
     end
 
-    test "a unit draws itself, as the graph task does (plan EG1)", %{pages: pages} do
-      till = pages["till/till/aggregates/till.md"]
-
-      assert till =~
-               "## Diagram\n\n```mermaid\n" <>
-                 EhOsContract.Graph.unit_to_mermaid(ValueRig.Till, :till) <> "\n```\n"
+    test "no page draws a diagram: the contract's page links its graph document instead (plan E13b)",
+         %{pages: pages} do
+      refute pages["index.md"] =~ "## Context map"
+      refute pages["till/till/aggregates/till.md"] =~ "## Diagram"
+      assert pages["till/till/index.md"] =~ "[graph](../../graph/value_rig.till.json)"
     end
 
     test "a domain service shows each rule with its examples as calls", %{pages: pages} do

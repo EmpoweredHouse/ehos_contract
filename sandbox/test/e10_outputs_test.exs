@@ -1,7 +1,8 @@
 defmodule EhOsContractHost.E10OutputsTest do
   @moduledoc """
-  Plan E10: the L5 output and the system graph are pinned on the real sandbox
-  contracts, not only on invented engine fixtures.
+  Plan E10: the L5 output and the system graph — today the domain's `graph.v1`
+  document it is drawn from — are pinned on the real sandbox contracts, not only on
+  invented engine fixtures.
   """
 
   use ExUnit.Case, async: false
@@ -176,21 +177,38 @@ defmodule EhOsContractHost.E10OutputsTest do
   test "the system graph connects TaxVision's contexts, contracts and publication", %{
     tmp_dir: dir
   } do
-    path = Path.join(dir, "taxvision.mmd")
+    alias EhOsContract.Graph.Document
+
+    path = Path.join(dir, "taxvision.json")
     Mix.Task.reenable("eh_os_contract.graph")
 
-    Mix.Tasks.EhOsContract.Graph.run(~w(--system taxvision --output #{path}))
+    Mix.Tasks.EhOsContract.Graph.run(~w(--domain taxvision --output #{path}))
 
-    graph = File.read!(path)
+    graph = Jason.decode!(File.read!(path))
+    contract = &Document.id([:contract, &1])
+    intake = contract.("taxvision.document_intake")
+    month = contract.("taxvision.accounting_month")
 
-    assert graph =~ ~s|subgraph context_document_intake["Przyjmowanie dokumentów · context"]|
+    assert %{"label" => "Przyjmowanie dokumentów"} =
+             Enum.find(graph["nodes"]["context"], &(&1["name"] == "document_intake"))
 
-    assert graph =~
-             "contract_taxvision_contracts_document_intake -->|invoice_pulled_from_ksef| " <>
-               "contract_taxvision_contracts_accounting_month"
+    assert Enum.find(graph["nodes"]["contract"], &(&1["id"] == intake))["context"] ==
+             Document.id([:context, Taxvision.Domain, :document_intake])
 
-    assert graph =~
-             "contract_taxvision_contracts_accounting_month -.->|publishes " <>
-               "accounting_month_opened| publication_taxvision_accounting_month_opened_v1"
+    between =
+      Enum.find(graph["relations"]["consumed_by"], &(&1["from"] == intake and &1["to"] == month))
+
+    assert "event:taxvision.document_intake:invoice_pulled_from_ksef" in Enum.map(
+             between["events"],
+             & &1["event"]
+           )
+
+    publication =
+      Document.id([:publication, Taxvision.Domain, "taxvision.accounting_month.opened.v1"])
+
+    assert Enum.any?(
+             graph["relations"]["publishes"],
+             &(&1["from"] == month and &1["to"] == publication)
+           )
   end
 end

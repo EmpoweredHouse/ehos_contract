@@ -214,6 +214,38 @@ defmodule EhOsContract.GraphOverlayTest do
     assert o["version"] == Model.fetch(DispatchRig.Domain).version
   end
 
+  # How many queries `fun` sends to the repo.
+  defp queries(fun) do
+    handler = "graph-queries-#{System.unique_integer([:positive])}"
+    counter = :counters.new(1, [])
+
+    :telemetry.attach(
+      handler,
+      [:eh_os_contract, :test_repo, :query],
+      fn _event, _measurements, _meta, _config -> :counters.add(counter, 1, 1) end,
+      nil
+    )
+
+    try do
+      fun.()
+      :counters.get(counter, 1)
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  test "a domain's reads the steps of consumers only, and counts every pair at once" do
+    contracts = Registry.contracts()
+    ours = Enum.filter(contracts, &(Model.fetch(&1).domain == DispatchRig.Domain))
+
+    # DispatchRig.Branch is the one consumer: its steps, each process's runs, and one
+    # count for every pair of contracts.
+    with_process = Enum.count(ours, &(Model.process(Model.fetch(&1)) != nil))
+    budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + with_process + 1
+
+    assert queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end) <= budget
+  end
+
   test "the overlay says its period, and counts only what happened in it" do
     seed_ledger()
     since = DateTime.add(DateTime.utc_now(), 3600)

@@ -1,17 +1,15 @@
 defmodule EhOsContract.GraphDocumentTest do
   @moduledoc """
-  Plan E13a: the `graph.v1` documents — a contract's and a domain's graph of facts
-  (batch 3) — and the declared shape of a process as data (batch 2), which the
-  dashboard still draws. Every document of every fixture holds to the schema that
-  ships in `priv/schema`, is JSON as it stands, joins on ids that resolve, holds every
-  fact today's pictures draw, and is written with every object's keys in order, so its
-  bytes depend on its content alone. That it says nothing from the log is
+  Plan E13a: the `graph.v1` documents — a contract's and a domain's graph of facts.
+  Every document of every fixture holds to the schema that ships in `priv/schema`, is
+  JSON as it stands, joins on ids that resolve, and is written with every object's
+  keys in order, so its bytes depend on its content alone. That it says nothing from the log is
   `GraphOverlayTest`'s, which writes the log and builds the document again.
   """
 
   use EhOsContract.DslCase, async: false
 
-  alias EhOsContract.Graph.{Contract, Declared, Document}
+  alias EhOsContract.Graph.Document
   alias EhOsContract.{Model, Registry}
 
   @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
@@ -218,51 +216,6 @@ defmodule EhOsContract.GraphDocumentTest do
       if document["kind"] == "contract",
         do: assert(resolves?.(document["context"]), inspect(module))
     end
-  end
-
-  test "every node and edge today's pictures draw is a fact of the document" do
-    contracts = Registry.contracts()
-
-    for c <- contracts, do: assert(EhOsContract.GraphCoverage.contract(c) == [], inspect(c))
-
-    for d <- Registry.domains(),
-        do: assert(EhOsContract.GraphCoverage.domain(d, contracts) == [], inspect(d))
-
-    # And the check is not empty: a document without a relation type, a node kind or a
-    # group's owner the pictures draw fails it.
-    cut = fn module, document, path ->
-      EhOsContract.GraphCoverage.contract(module, put_in(document, path, []))
-    end
-
-    ledger = Document.contract(DispatchRig.Ledger)
-    refute cut.(DispatchRig.Ledger, ledger, ["relations", "sets"]) == []
-
-    refute cut.(LifecycleRig.Visits, Document.contract(LifecycleRig.Visits), ["nodes", "status"]) ==
-             []
-
-    unowned =
-      update_in(ledger, ["nodes", "command"], fn [c | r] -> [Map.delete(c, "unit") | r] end)
-
-    refute EhOsContract.GraphCoverage.contract(DispatchRig.Ledger, unowned) == []
-
-    domain = Model.fetch(DispatchRig.Ledger).domain
-    document = put_in(Document.domain(domain, contracts), ["relations", "consumed_by"], [])
-    refute EhOsContract.GraphCoverage.domain(domain, contracts, document) == []
-
-    # What a picture says beyond a node's being there: an external giving a field its
-    # value, and how many scenarios pin a unit's arrow.
-    visits = EhOsContract.GraphDocumentTest.Visits
-    document = Document.contract(visits)
-    assert EhOsContract.GraphCoverage.contract(visits, document) == []
-    refute cut.(visits, document, ["scenarios", "unit"]) == []
-
-    unissued =
-      update_in(document, ["nodes", "command"], fn commands ->
-        for c <- commands,
-            do: Map.update!(c, "fields", fn fs -> Enum.map(fs, &Map.delete(&1, "issued_by")) end)
-      end)
-
-    refute EhOsContract.GraphCoverage.contract(visits, unissued) == []
   end
 
   test "the schema names every node kind and relation type the engine builds, and no other" do
@@ -1032,67 +985,55 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  describe "the declared shape of a process" do
-    test "its stages are groups in their order, the order an edge between them" do
-      graph = Declared.build(ProcessShapes.Promised, :handling)
-      stage = &Document.id([:stage, scope(ProcessShapes.Promised), :handling, &1])
-      model = Model.fetch(ProcessShapes.Promised)
+  describe "a process's shape" do
+    test "its stages are nodes in their order, and an event names the stage it sits in" do
+      d = Document.contract(ProcessShapes.Promised)
+      c = scope(ProcessShapes.Promised)
+      stage = &Document.id([:stage, c, :handling, &1])
 
-      assert Enum.map(graph.groups, & &1.name) == Enum.map(Model.process(model).stages, & &1.name)
+      assert Enum.map(d["nodes"]["stage"], & &1["id"]) ==
+               Enum.map([:intake, :decision, :closing], stage)
 
-      assert %{from: from, to: to, relation: :precedes} =
-               Enum.find(graph.edges, &(&1.relation == :precedes))
+      assert Enum.all?(
+               d["nodes"]["stage"],
+               &(&1["process"] == Document.id([:process, c, :handling]))
+             )
 
-      assert {from, to} == {stage.(:intake), stage.(:decision)}
-
-      intake = Enum.find(graph.groups, &(&1.name == :intake))
-
-      assert Document.id([:event, scope(ProcessShapes.Promised), :request_received]) in intake.nodes
+      assert node(d, "event", Document.id([:event, c, :request_received]))["stage"] ==
+               stage.(:intake)
     end
 
-    test "a promise is an edge with its window, and its or_else another" do
-      graph = Declared.build(ProcessShapes.Promised, :handling)
-      event = &Document.id([:event, scope(ProcessShapes.Promised), &1])
+    test "a promise is a node with its window, which events open, fulfil or settle otherwise" do
+      d = Document.contract(ProcessShapes.Promised)
+      c = scope(ProcessShapes.Promised)
+      event = &Document.id([:event, c, &1])
+      promise = Document.id([:promise, c, :handling, :completed_or_refusal_notified])
 
-      assert %{within: %{amount: 2, unit: :day}, promise: promise} =
-               Enum.find(graph.edges, &(&1.relation == :eventually))
+      assert %{"within" => %{"amount" => 2, "unit" => "day"}} = node(d, "promise", promise)
+      assert relation(d, "opens", event.(:request_received), promise)
+      assert relation(d, "fulfils", event.(:request_completed), promise)
+      assert relation(d, "or_else", event.(:refusal_notified), promise)
 
-      assert Enum.find(graph.edges, &(&1.relation == :eventually)).to ==
-               event.(:request_completed)
-
-      assert %{from: from, to: to, promise: ^promise} =
-               Enum.find(graph.edges, &(&1.relation == :or_else))
-
-      assert {from, to} == {event.(:request_received), event.(:refusal_notified)}
-
-      terminal = for %{kind: :event, terminal: true} = e <- graph.nodes, do: e.name
-      assert Enum.sort(terminal) == [:refusal_notified, :request_completed]
+      terminal = for %{"terminal" => true} = e <- d["nodes"]["event"], do: e["name"]
+      assert Enum.sort(terminal) == ["refusal_notified", "request_completed"]
     end
 
-    test "an included event has the id it has on the contract's full graph" do
-      declared = Declared.build(DispatchRig.Branch, :branch)
-      full = Contract.build(DispatchRig.Branch)
+    test "an included event is one node, in the stage its include gives it" do
+      d = Document.contract(DispatchRig.Branch)
       id = Document.id([:event, scope(DispatchRig.Branch), :account_opened])
 
-      assert Enum.any?(declared.nodes, &(&1.id == id))
-      assert Enum.any?(full.nodes, &(&1.id == id))
+      assert [%{"included" => true}] = Enum.filter(d["nodes"]["event"], &(&1["id"] == id))
     end
 
-    test "an event's dependency is an edge to the domain's external" do
-      graph = Declared.build(UniversalityGate.TreatmentEpisode, :treatment_episode)
+    test "an event's dependency is a relation to the domain's external" do
+      d = Document.contract(UniversalityGate.TreatmentEpisode)
       model = Model.fetch(UniversalityGate.TreatmentEpisode)
       external = Document.id([:external, model.domain, :payer_registry])
 
-      assert %{label: "Payer registry: confirmation of eligibility for treatment"} =
-               Enum.find(graph.nodes, &(&1.id == external))
+      assert %{"label" => "Payer registry: confirmation of eligibility for treatment"} =
+               node(d, "external", external)
 
-      assert Enum.any?(graph.edges, &(&1.relation == :depends_on and &1.to == external))
-    end
-
-    test "a process the contract does not declare is refused" do
-      assert_raise ArgumentError, ~r/declares no process :nope/, fn ->
-        Declared.build(ProcessShapes.Promised, :nope)
-      end
+      assert Enum.any?(d["relations"]["depends_on"], &(&1["to"] == external))
     end
   end
 end

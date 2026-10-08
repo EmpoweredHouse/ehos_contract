@@ -5,11 +5,11 @@ defmodule EhOsContract.Graph.Facts do
   of them a relation, each with a stable id. What `EhOsContract.Graph.Document` hands
   a renderer is made of this.
 
-  **Facts, not pictures.** Nothing here chooses what is shown together: the six
-  pictures the dashboard draws today (`EhOsContract.Graph.Contract`, `Unit`,
-  `Lifecycle`, `Declared`, `ContextMap`, `System`) are views over these facts, and
-  views are the renderer's. A fact is what is true of the contract whatever is
-  drawn and takes the DSL's meaning to know — that a timer of a process manager
+  **Facts, not pictures.** Nothing here chooses what is shown together: the
+  pictures the dashboard draws — a contract's full graph, a process's declared
+  shape, a unit, a lifecycle, a domain's context map and its system — are views over
+  these facts, and views are the renderer's (`eh_os_contract_graph`). A fact is what
+  is true of the contract whatever is drawn and takes the DSL's meaning to know — that a timer of a process manager
   issues a command, that a consumed event is the sibling's under another name.
 
   Nodes are grouped by kind and relations by type, each list in declaration order;

@@ -33,92 +33,11 @@ defmodule EhOsContract.Graph.Document do
   context, a subdomain and a publication are the domain's, scoped to the domain's
   module. Nothing should read an id apart: a client's name may hold any character, a
   colon included.
-
-  ## The pictures, until E13b
-
-  `graph_node/4`, `edge/4` and the types below serve the six pictures the dashboard
-  draws with Mermaid (`EhOsContract.Graph.Contract`, `Unit`, `Lifecycle`, `Declared`,
-  `ContextMap`, `System`): a node is `%{id, kind, name, label}` and what its kind
-  adds, an edge `%{id, from, to, relation}` and what its relation adds, a group
-  `%{id, kind, name, label, nodes}`. They go with Mermaid in E13b.
   """
 
   alias EhOsContract.{Graph, Model}
 
-  @typedoc "What an edge's source is to its target."
-  @type relation ::
-          :emits
-          | :handled_by
-          | :issues
-          | :fires
-          | :sets_timer
-          | :records
-          | :asks
-          | :projected_into
-          | :reads
-          | :calls
-          | :depends_on
-          | :backed_by
-          | :gives
-          | :refused_on
-          | :builds
-          | :consulted_by
-          | :transition
-          | :undeclared
-          | :consumed_by
-          | :publishes
-          | :subscribed_by
-          | :precedes
-          | :eventually
-          | :or_else
-          | :partnership
-          | :shared_kernel
-          | :separate_ways
-          | :customer_supplier
-          | :conformist
-          | :anticorruption_layer
-          | :open_host_service
-          | :published_language
-
-  @typedoc "A node of a graph."
-  @type graph_node :: %{
-          required(:id) => String.t(),
-          required(:kind) => atom(),
-          required(:name) => atom() | String.t() | nil,
-          required(:label) => String.t() | nil,
-          optional(atom()) => term()
-        }
-
-  @typedoc "An edge of a graph."
-  @type edge :: %{
-          required(:id) => String.t(),
-          required(:from) => String.t(),
-          required(:to) => String.t(),
-          required(:relation) => relation(),
-          optional(atom()) => term()
-        }
-
-  @typedoc "A group of nodes."
-  @type group :: %{
-          required(:id) => String.t(),
-          required(:kind) => atom(),
-          required(:name) => atom() | String.t(),
-          required(:label) => String.t(),
-          required(:nodes) => [String.t()],
-          optional(atom()) => term()
-        }
-
-  @typedoc "A graph."
-  @type graph :: %{
-          required(:nodes) => [graph_node()],
-          required(:edges) => [edge()],
-          optional(:groups) => [group()]
-        }
-
   @schema "eh_os_contract.graph.v1"
-
-  # What tells apart two edges of one relation between the same two nodes.
-  @discriminators [:event, :promise, :field, :as]
 
   @doc """
   The document of `contract`: its graph of facts (`EhOsContract.Graph.Facts`) under
@@ -227,33 +146,4 @@ defmodule EhOsContract.Graph.Document do
   end
 
   defp part(name), do: name
-
-  @doc """
-  A node of `kind` named `name`, declared in `scope` — a contract's id or a domain's
-  module — with its label or, lacking one, its name.
-  """
-  @spec graph_node(atom(), module() | String.t(), atom() | String.t(), String.t() | nil) ::
-          graph_node()
-  def graph_node(kind, scope, name, label),
-    do: %{id: id([kind, scope, name]), kind: kind, name: name, label: label || to_string(name)}
-
-  @doc """
-  An edge between two node ids, with what `relation` adds; an attribute given as
-  `nil` is left out, so an edge has a key only for what it says. Its id is the
-  relation, its two ends and, where two edges of one relation may join the same two
-  nodes, what tells them apart (`@discriminators`): two transitions between two
-  statuses by two events, two promises over one pair of events, two fields one
-  external gives one command.
-  """
-  @spec edge(String.t(), String.t(), relation(), keyword() | map()) :: edge()
-  def edge(from, to, relation, attrs \\ []) do
-    edge =
-      for {key, value} <- attrs,
-          value != nil,
-          into: %{from: from, to: to, relation: relation},
-          do: {key, value}
-
-    apart = for key <- @discriminators, Map.has_key?(edge, key), do: to_string(edge[key])
-    Map.put(edge, :id, id([relation, from, to | apart]))
-  end
 end

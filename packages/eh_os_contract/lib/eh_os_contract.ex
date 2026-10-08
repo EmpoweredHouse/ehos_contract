@@ -40,7 +40,6 @@ defmodule EhOsContract do
       Duration,
       Erased,
       Event,
-      Graph,
       Graph.Document,
       Graph.Overlay,
       Implementation,

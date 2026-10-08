@@ -10,10 +10,8 @@ defmodule EhOsContract.Graph.Overlay do
   counts it as never taken or not yet; a lifecycle transition's
   count, "not yet" and "never", and an aggregate's count; between contracts, the
   events the log holds and what waits or fails at the consumer, and each contract's
-  runs. They come from `EhOsContract.Paths`, `EhOsContract.Conformance` and, between
-  contracts, `EhOsContract.Graph.System`'s overlay, whose arithmetic moves here when
-  E13b takes that picture away. Nothing is counted here but the sum of a pair of
-  contracts' arrows where one consumes from the other twice.
+  runs. They come from `EhOsContract.Paths` and `EhOsContract.Conformance`; between
+  contracts, from the consumer's steps and one count of the consumed events.
 
   Its JSON Schema is at `schema_path/0`, beside the document's.
 
@@ -66,8 +64,10 @@ defmodule EhOsContract.Graph.Overlay do
 
   require Logger
 
-  alias EhOsContract.{Conformance, Model, Paths}
-  alias EhOsContract.Graph.{Document, System}
+  import Ecto.Query
+
+  alias EhOsContract.{Conformance, Event, Model, Paths}
+  alias EhOsContract.Graph.Document
 
   @schema "eh_os_contract.graph_overlay.v1"
 
@@ -126,31 +126,18 @@ defmodule EhOsContract.Graph.Overlay do
     model = Model.fetch(domain)
     document = Document.domain(model, contracts)
     period = Keyword.take(opts, [:since, :until])
-    picture = System.build(model, contracts, [overlay: true] ++ period)
 
-    runs = for %{kind: :contract, runs: runs} = n <- picture.nodes, do: {n.id, %{runs: runs}}
+    models =
+      contracts
+      |> Enum.map(&Model.fetch/1)
+      |> Enum.filter(&(&1.domain == model.module))
 
-    # One relation per pair of contracts in the facts, every `consumes` of one sibling
-    # merged; the picture draws one arrow per `consumes`, each over its own events, so
-    # the pair's numbers are their sum.
-    traffic =
-      for %{relation: :consumed_by, overlay: %{} = o} = e <- picture.edges,
-          rid <- find(document, "consumed_by", e.from, e.to, %{}) do
-        {rid, o}
-      end
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Enum.map(fn
-        {id, [one]} ->
-          {id, one}
+    id = &Document.id([:contract, &1.id])
 
-        {id, many} ->
-          {id,
-           %{
-             events: Enum.sum(Enum.map(many, & &1.events)),
-             waiting: Enum.sum(Enum.map(many, & &1.waiting)),
-             failing: Enum.any?(many, & &1.failing)
-           }}
-      end)
+    runs =
+      for m <- models,
+          p = Model.process(m),
+          do: {id.(m), %{runs: Paths.runs_of(m, Atom.to_string(p.name), period)}}
 
     seal(
       %{
@@ -159,12 +146,92 @@ defmodule EhOsContract.Graph.Overlay do
         "version" => model.version,
         "document_digest" => document["digest"],
         "nodes" => Map.new(runs),
-        "relations" => Map.new(traffic),
+        "relations" => Map.new(between(document, models, id, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
       period
     )
   end
+
+  # What crosses from one contract to another, on the one relation the facts have for
+  # the pair: how many of the consumed events the log holds, and what waits or fails at
+  # the consumer's steps that start from them. A contract that consumes from a sibling
+  # twice has one relation and the sum of both. Only a consumer's steps are read, once
+  # however many siblings it consumes from, and the consumed events are counted in one
+  # query for every pair.
+  defp between(document, models, id, period) do
+    pairs =
+      for m <- models,
+          %{kind: :contract, from: from} = c <- m.consumes,
+          sibling = Enum.find(models, &(&1.module == from)),
+          do: {sibling, m, c}
+
+    consumers = pairs |> Enum.map(&elem(&1, 1)) |> Enum.uniq_by(& &1.module)
+    steps = Map.new(consumers, &{&1.module, Paths.observe(&1, period)})
+    types = for {sibling, _m, c} <- pairs, e <- sibling.events, e.name in c.events, do: e.type
+    counts = counts(types, period)
+
+    for {sibling, m, c} <- pairs,
+        rid <- find(document, "consumed_by", id.(sibling), id.(m), %{}) do
+      {rid, traffic(sibling, c, steps[m.module], counts)}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.map(fn {rid, many} ->
+      {rid,
+       %{
+         events: Enum.sum(Enum.map(many, & &1.events)),
+         waiting: Enum.sum(Enum.map(many, & &1.waiting)),
+         failing: Enum.any?(many, & &1.failing)
+       }}
+    end)
+  end
+
+  # How many events of each type the log holds, in the period. `count(position)`
+  # rather than of the id, so the `(type, position)` index answers it alone.
+  defp counts([], _period), do: %{}
+
+  defp counts(types, period) do
+    from(e in Event,
+      as: :event,
+      where: e.type in ^Enum.uniq(types),
+      group_by: e.type,
+      select: {e.type, count(e.position)}
+    )
+    |> since(period[:since])
+    |> until(period[:until])
+    |> repo().all()
+    |> Map.new()
+  end
+
+  defp since(query, nil), do: query
+  defp since(query, at), do: where(query, [event: e], e.occurred_at >= ^at)
+
+  defp until(query, nil), do: query
+  defp until(query, at), do: where(query, [event: e], e.occurred_at <= ^at)
+
+  # One `consumes` of a sibling: how many of its events the log holds, and what waits or
+  # fails at the consumer's steps that start from them, under the names they have there.
+  defp traffic(sibling, c, steps, counts) do
+    types = for e <- sibling.events, e.name in c.events, do: e.type
+    local = MapSet.new(c.events, &Map.get(c.renames, &1, &1))
+
+    steps =
+      for step <- steps,
+          step.from.kind == :event,
+          MapSet.member?(local, step.from.name),
+          do: step
+
+    %{
+      events: types |> Enum.map(&Map.get(counts, &1, 0)) |> Enum.sum(),
+      waiting: steps |> Enum.map(&Enum.sum(Map.values(&1.in_flight))) |> Enum.sum(),
+      failing:
+        Enum.any?(steps, fn %{failing: f} ->
+          f.commands > 0 or f.effects > 0 or f.subscription != nil
+        end)
+    }
+  end
+
+  defp repo, do: EhOsContract.Config.fetch!(:repo)
 
   @doc "Where the JSON Schema of an overlay is: in the package's `priv/schema`."
   @spec schema_path() :: Path.t()

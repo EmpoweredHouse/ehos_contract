@@ -315,14 +315,11 @@ defmodule EhOsContract.Pages do
   defp domain_page(site) do
     d = site.domain
     tree = EhOsContract.View.render(d, site.contracts)
-    map = EhOsContract.Graph.ContextMap.to_mermaid(d)
 
     [
       "# Domain #{code(d.name)}",
       "",
       "Written in #{code(d.language)}. Version #{code(d.version)}.",
-      # The context map (plan EG2), drawn from the block as a unit's diagram is.
-      ["", "## Context map", "", "```mermaid", map, "```"],
       "",
       "## Contexts",
       "",
@@ -897,16 +894,6 @@ defmodule EhOsContract.Pages do
 
     [
       facts(["Identity: #{Enum.map_join(u.identity, ", ", &code/1)}."]),
-      # The unit as a picture (plan EG1). GitHub draws the block; a host that puts the
-      # pages in ExDoc's `extras` adds Mermaid's script to its ExDoc configuration.
-      [
-        "",
-        "## Diagram",
-        "",
-        "```mermaid",
-        EhOsContract.Graph.Unit.to_mermaid(model, u.name),
-        "```"
-      ],
       section("Consults", u.consults, &consults(site, model, &1)),
       section("Invariants", u.invariants, fn i ->
         rejecting = for c <- commands, i.name in c.rejects, do: command_link(model, c.name)

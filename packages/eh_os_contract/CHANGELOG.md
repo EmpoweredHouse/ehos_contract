@@ -43,9 +43,8 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   which sibling event it is (`declared_as`), a received one is handled `via_inbox`. Both are JSON-ready, say
   `"schema": "eh_os_contract.graph.v1"` and carry a `"digest"` of the rest (`Document.digest/1`). Their JSON Schema
   ships in `priv/schema/graph.v1.json` (`Document.schema_path/0`), with the overlay's, the only things under `priv/` the package
-  carries. The facts are built by `EhOsContract.Graph.Facts`. The dashboard's Mermaid pictures are unchanged, and
-  the declared shape is data for them too (`EhOsContract.Graph.Declared.build/2`); every edge of a picture has an
-  `id`. `EhOsContract.Model.json_data/1`, the projection both exports share, is public. Nothing in the report
+  carries. The facts are built by `EhOsContract.Graph.Facts`. `EhOsContract.Model.json_data/1`, the projection
+  both exports share, is public. Nothing in the report
   moves. A node's `label` is the client's words or `null`, never its name. Each node carries what a panel shows
   of it — fields in one shape (type, required, default, whose personal data, the subject, value or entity it
   names, the external that issues it), capabilities, delivery and idempotency, windows, terminal and final, a
@@ -56,7 +55,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **E13a: what the log says over a graph, as its own document.** `EhOsContract.Graph.Overlay.contract/2` and
   `domain/3` give `eh_os_contract.graph_overlay.v1` (its schema in `priv/schema/graph_overlay.v1.json`): the period,
   the version, the digest of the `graph.v1` document it joins, and maps from that document's ids to the numbers the
-  report and the pictures already compute — an event's occurrences, a process's runs, how often a step was taken,
+  report and the Mermaid pictures computed — an event's occurrences, a process's runs, how often a step was taken,
   waiting and failing and whether the report counts it never or not yet, a transition's count, traffic between
   contracts — and a move a lifecycle
   does not allow, defined in the document's shape. `EhOsContract.Conformance.steps/2` gives every step with the
@@ -69,9 +68,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   run): the report reads them as one step, and the log does not record which phase a command was issued in.
 - **E13a: the graph documents leave the engine.** `EhOsContract.Graph.Document.encode/2` writes a document or an
   overlay as JSON with every object's keys in order, so the same declarations give the same bytes and the digest is
-  a sound `ETag`. `mix eh_os_contract.graph --json` writes a contract's (`--contract`, by its id) or a domain's (`--system` or
-  `--map`) document, and with `--overlay [--since]` its overlay; the Mermaid flags stay until E13b. `mix
-  eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
+  a sound `ETag`. `mix eh_os_contract.graph` writes a contract's (`--contract`, by its id) or a domain's (`--domain`,
+  by its name) document, and with `--overlay [--since]` its overlay (E13b; the Mermaid pictures it drew are
+  under "Removed" below). `mix eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
   the contract's page, and treats those files as its own when it overwrites, checks or deletes
   (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
 - **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
@@ -172,17 +171,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
-- **E13a: a graph built as data says what each edge is, not how it looks.** `build/*` of `Graph.Contract`,
-  `Graph.Unit`, `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System` return `EhOsContract.Graph.Document.graph()`:
-  an edge has a `relation`, read in its direction (`:emits`, `:issues`, `:records`, `:calls`, `:consumed_by`, a
-  context-mapping pattern …), and the attributes it needs, where it had `line`, `head` and a ready label; the log
-  over it is an `overlay` map of numbers, not words in the label; a node's id is made from its kind, the contract's
-  `id:` (the domain's module for an actor, an external, a context) and that name
-  (`"event:rehmed.scheduling:visit_booked"`), stable and opaque, not Mermaid's — on a contract's graphs an event it
-  consumes is the contract's, under its local name. `Graph.Mermaid`'s public functions are `render/2`, `declared/1` (the look of a process's declared shape) and `escape/1`, and it draws every diagram as
-  before, byte for byte. Nothing in the report moves. **A host that calls `build/*` itself** reads an edge's
-  `relation` where it read `line`, `head` and the label, and the overlay's numbers where it read words; the
-  dashboard does so already. E13b removes these builders, with Mermaid, in favour of the `graph.v1` document.
 - **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
   user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
@@ -330,6 +318,20 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed — a host has to act
 
+- **E13b: the Mermaid pictures.** The engine draws nothing: a contract and a domain leave it as the `graph.v1`
+  document and its overlay (E13a, above), and the pictures are drawn from them by `eh_os_contract_graph`, which the
+  dashboard mounts. Gone: `EhOsContract.Graph` with `declared_to_mermaid/2`, `contract_to_mermaid/2`,
+  `unit_to_mermaid/2`, `lifecycle_to_mermaid/3`, `context_map_to_mermaid/1`, `system_to_mermaid/3` and `bounded/2`;
+  `Graph.Mermaid`; the six builders of the pictures, `Graph.Contract`, `Graph.Declared`, `Graph.Unit`,
+  `Graph.Lifecycle`, `Graph.ContextMap` and `Graph.System`; and `Document.graph_node/4`, `Document.edge/4` and the
+  types they made. `mix eh_os_contract.graph` gives a document only — `--contract <id>` or `--domain <name>`, the
+  latter optional where the application has one domain, with `--overlay`, `--since` and `--output` — and refuses
+  `--process`, `--mermaid`, `--unit`, `--lifecycle`, `--map`, `--system` and `--json` as unknown. The model pages
+  lose the domain's context map and each unit's diagram: a contract's page links its document
+  (`graph/<contract id>.json`) instead. The numbers between two contracts are computed in `Graph.Overlay.domain/3`,
+  which took them from the system's picture, as before. No verdict moves. **A host that drew a picture** with
+  these functions or the task mounts the dashboard (`eh_os_contract_web`) or renders the document with
+  `eh_os_contract_graph`.
 - **A process has no `cadence`** (plan DD, P1d, #195; the user's decision). It said how often a run is due
   (`cadence {1, :month}`), and nothing acted on it: the report printed "Due: every …" among the process's
   confirmed declarations, the pages "Cadence: every …", and the check noted an unconfirmed one
