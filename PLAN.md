@@ -612,7 +612,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
-| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☐ | — |
+| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ◐ `dd/264-generators` | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ | — |
 | L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
@@ -866,9 +866,10 @@ i tożsamości nieobsługiwane. Przykład z materiału: `amount_minor` → `amou
 obietnice) i `text_digest` (etykiety, `source:`, scenariusze) w `Build.version/3`/`digests/3`; `Deployment` zapisuje
 obie; raport rozróżnia „zmieniła się umowa” od „zmieniły się słowa”.
 
-**PC1 — generatory** (`{:stream_data, "~> 1.1", optional: true}`, moduł w `if Code.ensure_loaded?(StreamData)`
-jak `plug.ex`): wartości w granicach `Codec`, wartości dziedziny z `satisfied_by`, `command/3`, `event/3`,
-`entity_row/3`, `history/3` (spacer po `Lifecycle.moves/3`).
+**PC1 — a contract produces valid examples of its data** (#264; tightened 8 October 2026). `EhOsContract.Generators`,
+compiled only with StreamData (`optional: true`, as `EhOsContract.Plug` with Plug): `command/3`, `event/3`,
+`entity_row/3`, `history/3` (a walk over `Lifecycle.moves/3`, one identity, up to `max_length:`); values inside
+`Codec`'s bounds, a domain value with invariants drawn from its `satisfied_by:`, `fields:` to fix or narrow a field.
 **PC2 — `use EhOsContract.PropertyCase, contract: C, max_runs: 50`**: `evolve/2` totalne na legalnych historiach;
 decyzja nie rzuca na legalnym wejściu i mieści się w `Decision.held!/6`; status zgodny z grafem; opcjonalne
 `holds?/2`. Odbiór: celowy defekt `reopen_visit` w `LifecycleRig` złapany; sandbox `rehmed_settlement` z `holds?/2`.
