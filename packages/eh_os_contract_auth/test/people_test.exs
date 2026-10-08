@@ -4,7 +4,8 @@ defmodule EhOsContract.Auth.PeopleTest do
   answers as `eh-os`'s `Ehos.SignIn.Token` and `EhosWeb.PeopleController` do on its
   `main` of 8 October 2026: a ten-minute credential for `client_credentials` with a
   `private_key_jwt` assertion signed by the client key, `unauthorized_client` for a
-  deployment that does not ask, and the people API, 403 while no people manager agrees.
+  deployment that does not ask, and the people API, 403 while no people manager agrees,
+  whose next page's `Link` repeats the request's query with the cursor.
 
   Not async: the tests change `config :eh_os_contract_auth`.
   """
@@ -51,8 +52,10 @@ defmodule EhOsContract.Auth.PeopleTest do
           down: false,
           tokens: [],
           requests: [],
+          queries: [],
           expires_in: 600,
-          answer: nil
+          answer: nil,
+          token_delay: 0
         }
       end)
 
@@ -68,20 +71,16 @@ defmodule EhOsContract.Auth.PeopleTest do
   defp set(ehos, changes), do: Agent.update(ehos, &Map.merge(&1, changes))
   defp ehos(ehos, key), do: Agent.get(ehos, &Map.fetch!(&1, key))
 
-  # EHOS, as far as the people client reaches it.
+  ## EHOS, as far as the people client reaches it
+
   defp serve(ehos, conn) do
     state = Agent.get(ehos, & &1)
     Agent.update(ehos, &%{&1 | requests: &1.requests ++ [{conn.method, conn.request_path}]})
 
     cond do
-      state.down ->
-        Req.Test.transport_error(conn, :econnrefused)
-
-      conn.request_path == "/oauth/token" ->
-        token(ehos, state, conn)
-
-      true ->
-        api(state, conn)
+      state.down -> Req.Test.transport_error(conn, :econnrefused)
+      conn.request_path == "/oauth/token" -> token(ehos, state, conn)
+      true -> api(ehos, state, conn)
     end
   end
 
@@ -90,11 +89,14 @@ defmodule EhOsContract.Auth.PeopleTest do
     form = URI.decode_query(body)
 
     cond do
+      state.answer == :invalid_client ->
+        answer(conn, 401, %{"error" => "invalid_client"})
+
       state.answer == :token_rate_limited ->
-        conn |> Plug.Conn.put_status(429) |> Req.Test.json(%{"error" => "slow_down"})
+        answer(conn, 429, %{"error" => "slow_down"})
 
       not state.asks ->
-        conn |> Plug.Conn.put_status(400) |> Req.Test.json(%{"error" => "unauthorized_client"})
+        answer(conn, 400, %{"error" => "unauthorized_client"})
 
       true ->
         assert form["grant_type"] == "client_credentials"
@@ -106,8 +108,13 @@ defmodule EhOsContract.Auth.PeopleTest do
         refute Map.has_key?(form, "resource")
         check_assertion!(form["client_assertion"])
 
-        token = "credential-#{length(state.tokens) + 1}"
-        Agent.update(ehos, &%{&1 | tokens: &1.tokens ++ [token]})
+        Process.sleep(state.token_delay)
+
+        token =
+          Agent.get_and_update(ehos, fn state ->
+            token = "credential-#{length(state.tokens) + 1}"
+            {token, %{state | tokens: state.tokens ++ [token]}}
+          end)
 
         Req.Test.json(conn, %{
           "access_token" => token,
@@ -137,58 +144,64 @@ defmodule EhOsContract.Auth.PeopleTest do
     assert claims["exp"] - claims["iat"] <= 300
   end
 
-  defp api(state, conn) do
+  defp api(ehos, state, conn) do
     token = conn |> Plug.Conn.get_req_header("authorization") |> List.first()
 
     cond do
       state.answer == :api_rate_limited ->
-        conn
-        |> Plug.Conn.put_status(429)
-        |> Req.Test.json(%{"errors" => %{"detail" => "too many calls"}})
+        answer(conn, 429, %{"errors" => %{"detail" => "too many calls"}})
 
       state.answer == :garbage ->
         Req.Test.json(conn, %{"people" => [%{"id" => 1}]})
 
-      token != "Bearer " <> List.last(state.tokens || [""]) ->
-        conn
-        |> Plug.Conn.put_status(401)
-        |> Req.Test.json(%{"errors" => %{"detail" => "expired"}})
+      state.answer in [422, 500] ->
+        answer(conn, state.answer, %{"errors" => %{}})
+
+      state.answer == :always_401 or token != "Bearer " <> List.last(state.tokens) ->
+        answer(conn, 401, %{"errors" => %{"detail" => "expired"}})
 
       not state.agreed ->
-        conn
-        |> Plug.Conn.put_status(403)
-        |> Req.Test.json(%{"errors" => %{"detail" => "this needs ehos.people.read"}})
+        answer(conn, 403, %{"errors" => %{"detail" => "this needs ehos.people.read"}})
 
       conn.request_path == "/api/people" ->
-        conn = Plug.Conn.fetch_query_params(conn)
-
-        if conn.query_params["after"] do
-          Req.Test.json(conn, %{"people" => [@alan]})
-        else
-          conn
-          |> Plug.Conn.put_resp_header(
-            "link",
-            ~s(<#{@issuer}/api/people?limit=1&after=Y3Vyc29y>; rel="next")
-          )
-          |> Req.Test.json(%{"people" => [@ada]})
-        end
+        list(ehos, conn)
 
       conn.request_path == "/api/people/" <> @ada["id"] ->
         Req.Test.json(conn, %{"person" => @ada})
 
       true ->
-        conn
-        |> Plug.Conn.put_status(404)
-        |> Req.Test.json(%{"errors" => %{"detail" => "not found"}})
+        answer(conn, 404, %{"errors" => %{"detail" => "not found"}})
     end
   end
 
+  defp list(ehos, conn) do
+    conn = Plug.Conn.fetch_query_params(conn)
+    Agent.update(ehos, &%{&1 | queries: &1.queries ++ [conn.query_params]})
+
+    if conn.query_params["after"] do
+      Req.Test.json(conn, %{"people" => [@alan]})
+    else
+      # As EHOS writes it: the same query, with the cursor.
+      next = conn.query_params |> Map.put("after", "Y3Vyc29y") |> URI.encode_query()
+
+      conn
+      |> Plug.Conn.put_resp_header("link", ~s(<#{@issuer}/api/people?#{next}>; rel="next"))
+      |> Req.Test.json(%{"people" => [@ada]})
+    end
+  end
+
+  defp answer(conn, status, body),
+    do: conn |> Plug.Conn.put_status(status) |> Req.Test.json(body)
+
+  ## The tests
+
   describe "reading" do
-    test "lists the people page by page and reads one by id, with one credential", %{ehos: ehos} do
+    test "lists the people page by page and reads one by id, with one credential",
+         %{ehos: ehos} do
       server = start!(ehos)
 
-      assert {:ok, %{people: [%Person{} = ada], next: "Y3Vyc29y"}} =
-               People.list(server: server, limit: 1)
+      assert {:ok, %{people: [%Person{} = ada], next: next}} =
+               People.list(server: server, q: "a", limit: 1)
 
       assert ada == %Person{
                id: @ada["id"],
@@ -197,10 +210,17 @@ defmodule EhOsContract.Auth.PeopleTest do
                state: :joined
              }
 
+      # The cursor carries the page's query: the next page is asked for with it alone.
       assert {:ok, %{people: [%Person{name: nil, state: :invited}], next: nil}} =
-               People.list(server: server, after: "Y3Vyc29y")
+               People.list(server: server, after: next)
+
+      assert ehos(ehos, :queries) == [
+               %{"q" => "a", "limit" => "1"},
+               %{"q" => "a", "limit" => "1", "after" => "Y3Vyc29y"}
+             ]
 
       assert {:ok, ^ada} = People.get(@ada["id"], server: server)
+      assert {:ok, ^ada} = People.get(String.upcase(@ada["id"]), server: server)
 
       assert People.get("6f1c0a1e-0000-4000-8000-00000000ffff", server: server) ==
                {:error, :not_found}
@@ -208,15 +228,39 @@ defmodule EhOsContract.Auth.PeopleTest do
       assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
-    test "sends the query EHOS reads, and refuses an option it does not take", %{ehos: ehos} do
+    test "sends the query EHOS reads", %{ehos: ehos} do
       server = start!(ehos)
 
       assert {:ok, _page} =
                People.list(server: server, q: "ad", state: [:invited, :joined], limit: 10)
 
-      assert_raise ArgumentError, fn -> People.list(server: server, limit: 501) end
-      assert_raise ArgumentError, fn -> People.list(server: server, state: :retired) end
-      assert_raise ArgumentError, fn -> People.list(server: server, sort: :name) end
+      assert ehos(ehos, :queries) == [
+               %{"q" => "ad", "state" => "invited,joined", "limit" => "10"}
+             ]
+    end
+
+    test "refuses, before asking EHOS, what EHOS never answers an application",
+         %{ehos: ehos} do
+      server = start!(ehos)
+
+      for opts <- [
+            [limit: 501],
+            [state: :disabled],
+            [state: [:joined, :disabled]],
+            [state: []],
+            [q: String.duplicate("a", 2049)],
+            [sort: :name],
+            [after: "not a cursor"],
+            [after: Base.url_encode64("id=1", padding: false)]
+          ] do
+        assert_raise ArgumentError, fn -> People.list([server: server] ++ opts) end
+      end
+
+      for id <- ["", "..", "../people", "ada@example.com"] do
+        assert People.get(id, server: server) == {:error, :not_found}
+      end
+
+      assert ehos(ehos, :requests) == []
     end
   end
 
@@ -230,7 +274,8 @@ defmodule EhOsContract.Auth.PeopleTest do
       assert ehos(ehos, :tokens) == ["credential-1", "credential-2"]
     end
 
-    test "is taken again once when EHOS answers 401", %{ehos: ehos} do
+    test "is taken again once when EHOS answers 401, and a second 401 is :unavailable",
+         %{ehos: ehos} do
       server = start!(ehos)
       assert {:ok, _} = People.list(server: server)
 
@@ -239,6 +284,43 @@ defmodule EhOsContract.Auth.PeopleTest do
 
       assert {:ok, _} = People.list(server: server)
       assert List.last(ehos(ehos, :tokens)) == "credential-3"
+
+      set(ehos, %{answer: :always_401})
+      capture_log(fn -> assert People.list(server: server) == {:error, :unavailable} end)
+    end
+
+    test "is asked for once by callers that need it at the same time", %{ehos: ehos} do
+      set(ehos, %{token_delay: 200})
+      server = start!(ehos)
+
+      results =
+        1..5
+        |> Enum.map(fn _ -> Task.async(fn -> People.list(server: server) end) end)
+        |> Task.await_many()
+
+      assert Enum.all?(results, &match?({:ok, _}, &1))
+      assert ehos(ehos, :tokens) == ["credential-1"]
+    end
+
+    test "a refusal is answered for five seconds without asking EHOS again", %{ehos: ehos} do
+      set(ehos, %{asks: false})
+      server = start!(ehos)
+
+      capture_log(fn ->
+        for _ <- 1..5, do: assert(People.list(server: server) == {:error, :not_asked})
+      end)
+
+      assert ehos(ehos, :requests) == [{"POST", "/oauth/token"}]
+    end
+
+    test "a failed renewal keeps the credential while it is valid", %{ehos: ehos} do
+      set(ehos, %{expires_in: 30})
+      server = start!(ehos)
+      assert {:ok, _} = People.list(server: server)
+
+      set(ehos, %{answer: :token_rate_limited})
+      assert {:ok, _} = People.list(server: server)
+      assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
     test "is not taken at start, so the host starts while EHOS is down", %{ehos: ehos} do
@@ -249,7 +331,9 @@ defmodule EhOsContract.Auth.PeopleTest do
       log = capture_log(fn -> assert People.list(server: server) == {:error, :unavailable} end)
       assert log =~ "could not be reached"
 
+      # The outage is answered for five seconds; after that EHOS is asked again.
       set(ehos, %{down: false})
+      :sys.replace_state(server, &%{&1 | failed: nil})
       assert {:ok, _} = People.list(server: server)
     end
   end
@@ -276,16 +360,40 @@ defmodule EhOsContract.Auth.PeopleTest do
       set(ehos, %{answer: :api_rate_limited})
       assert People.list(server: server) == {:error, :rate_limited}
 
-      set(ehos, %{answer: :token_rate_limited, tokens: []})
-      server = start!(ehos)
-      assert People.list(server: server) == {:error, :rate_limited}
+      set(ehos, %{answer: :token_rate_limited})
+      assert People.list(server: start!(ehos)) == {:error, :rate_limited}
     end
 
-    test "an answer EHOS never gives is :unavailable", %{ehos: ehos} do
-      set(ehos, %{answer: :garbage})
+    test "an answer EHOS never gives, or a failure, is :unavailable, and logged",
+         %{ehos: ehos} do
       server = start!(ehos)
 
-      assert People.list(server: server) == {:error, :unavailable}
+      for answer <- [:garbage, 422, 500] do
+        set(ehos, %{answer: answer})
+
+        log =
+          capture_log(fn -> assert People.list(server: server) == {:error, :unavailable} end)
+
+        assert log =~ "EHOS's people API answered"
+      end
+    end
+
+    test "a key EHOS does not accept is :unavailable", %{ehos: ehos} do
+      set(ehos, %{answer: :invalid_client})
+      server = start!(ehos)
+
+      log = capture_log(fn -> assert People.list(server: server) == {:error, :unavailable} end)
+      assert log =~ "invalid_client"
+    end
+
+    test "a process that is not running is :unavailable, not an exit" do
+      log =
+        capture_log(fn ->
+          assert People.list(server: :"no_such_#{System.unique_integer([:positive])}") ==
+                   {:error, :unavailable}
+        end)
+
+      assert log =~ "not running"
     end
   end
 
@@ -323,9 +431,12 @@ defmodule EhOsContract.Auth.PeopleTest do
       assert_raise ArgumentError, ~r/issuer/, fn -> People.child_spec([]) end
     end
 
-    test "never shows the client key", %{ehos: ehos, key: key} do
+    test "never shows the client key or the credential", %{ehos: ehos, key: key} do
       server = start!(ehos)
+      assert {:ok, _} = People.list(server: server)
+
       refute inspect(:sys.get_state(server)) =~ key["d"]
+      refute inspect(:sys.get_status(server)) =~ "credential-1"
     end
   end
 

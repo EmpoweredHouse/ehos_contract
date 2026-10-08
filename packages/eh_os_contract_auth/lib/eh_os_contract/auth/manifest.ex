@@ -1,6 +1,7 @@
 defmodule EhOsContract.Auth.Manifest do
-  # In `eh-os`: the manifest is D-52; `sign_in` D-69; `needs.people` and `ehos.manifest/v3` D-81; a capability naming its declaration's kind
-  # D-73; scope values on a binding D-40; `contracts` left out for the authority digest, issue #92.
+  # In `eh-os`: the manifest is D-52; `sign_in` D-69; `needs.people` and `ehos.manifest/v3`
+  # D-81; a capability naming its declaration's kind D-73; scope values on a binding D-40;
+  # `contracts` left out for the authority digest, issue #92.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
   `ehos.manifest/v3` for an `ehos.yaml/v3`, and `ehos.manifest/v2` for an older one. v3 is

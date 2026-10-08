@@ -342,14 +342,17 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Peopl
 
 ```elixir
 {:ok, %{people: people, next: next}} = EhOsContract.Auth.People.list(q: "ad", limit: 50)
-{:ok, more} = EhOsContract.Auth.People.list(q: "ad", limit: 50, after: next)
+{:ok, more} = EhOsContract.Auth.People.list(after: next)   # the cursor carries q: and limit:
 {:ok, person} = EhOsContract.Auth.People.get(id)
 # %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
 ```
 
 The process takes a credential of its own at EHOS's token endpoint with the client credentials
 grant, signed with the client key, keeps it for its ten minutes and takes another before it
-expires. Nothing is fetched at start, so the host starts while EHOS is down. Store a person's
+expires; callers that need one at once wait for one request, and a refusal or an outage is
+answered for five seconds without asking again. Nothing is fetched at start, so the host starts
+while EHOS is down. `list/1` takes `q:`, `state:` (`:invited`, `:joined`) and `limit:` (1 to
+500), or `after:` alone; an option EHOS would refuse raises `ArgumentError` before EHOS is asked. Store a person's
 `id`; show the email beside the name, which two people can share.
 
 A call that answers no people says why, for the page to say it in words:
