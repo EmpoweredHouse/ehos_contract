@@ -13,7 +13,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `graph.v1` document, with the log over the same pictures as before, read once connected. A click opens the
   renderer's panel, a sidebar at the right of the window that lies over the page. A domain's actors are a table
   under its map, a row opening the actor's panel. A page with graphs on it takes the window's
-  width, with a margin on each side. No Mermaid is left on the screen; the preview keeps its Mermaid
+  width, with a margin on each side. Contract status says what one run of a process is beside the count of runs
+  ("Runs in this period: 3, one per visit_id."), from the process's `correlate`. No Mermaid is left on the screen; the preview keeps its Mermaid
   diagrams until Mermaid is cut.
 - **E13b, batch 3: the preview draws the views.** `<mount>/graph/preview` picks one view of the document —
   `?view=` the full graph, the declared shape, a unit, a lifecycle, the context map, the system, or `all` — and

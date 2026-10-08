@@ -90,7 +90,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <p :if={Sentence.accountable(process.accountable)}>
             {Sentence.accountable(process.accountable)}
           </p>
-          <p>Runs in this period: {process.runs}.</p>
+          <p>Runs in this period: {process.runs}{runs_per(report.module)}.</p>
 
           <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
           <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
@@ -207,5 +207,16 @@ defmodule EhOsContract.Web.Live.ContractStatus do
       a.pending > 0 -> "outcome-pending"
       true -> "outcome-ok"
     end
+  end
+
+  # What one run is, beside the count (the working plan's point 4): the process's
+  # `correlate`, read from the contract's model, since the report carries no such field
+  # and is what EHOS reads on the wire.
+  @spec runs_per(module()) :: String.t() | nil
+  defp runs_per(module) do
+    with %{correlate: fields} <- EhOsContract.Model.process(EhOsContract.Model.fetch(module)),
+         clause when is_binary(clause) <- Sentence.runs_per(fields),
+         do: ", " <> clause,
+         else: (_ -> nil)
   end
 end
