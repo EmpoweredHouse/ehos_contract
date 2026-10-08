@@ -65,8 +65,9 @@ the application equals one domain's `name:` exactly, and no other domain publish
 boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entity the application keeps, through
 `EhOsContract.Entities`, and the storage is at migration V02, which the engine requires at boot. T2s merged in #246
 (issue #245), A1 in #248 (issue #247): a command can require the person a field of its unit's state names
-(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 is
-in #254 (issue #251). Next without E13: S3, then O1.
+(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 merged
+in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
+S3 is the test material's (issue #256). Next without E13: O1, which needs EHOS's agreement first.
 
 ### Stan repozytorium
 
@@ -597,8 +598,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
-| S2 | 3 | scenariusze obietnic | W3, P2b | ◐ `dd/251-promise-scenarios` | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
-| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ | — |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
+| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ◐ `dd/256-promise-scenarios-material` | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
 | O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
@@ -824,8 +825,11 @@ works in every scenario (the user's decision of 8 October). Refused in the modul
 against the contracts: given data the declaring event does not fit (X9), an outage of a system the promise does not
 wait on (X4).
 `ScenarioCase, process:` judges through `Trace.trace/2` and `Trace.judge/3`, without a database.
-**S3 — sandbox**: obietnica `medical_event_reported_within_statutory_window` (spełniona przez wysłanie, przez
-`or_else`, złamana po 2 dniach, zawieszona przy awarii P1); TaxVision `month_opens_or_is_blocked`.
+**S3 — the test material's promises have scenarios** (#256; tightened 8 October 2026). Rehmed's
+`medical_event_reported_within_statutory_window`: kept by sending, kept by waiving, broken after two days, excused by
+a P1 outage inside the window but not after it, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening,
+kept by a discrepancy, broken; no outage, since the library excuses a promise only by what its own events depend on, and
+the registries are one step upstream (recorded on #256). A test module per process.
 
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;
