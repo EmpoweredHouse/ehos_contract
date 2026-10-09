@@ -615,8 +615,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
-| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ◐ `dd/264-generators` | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
-| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ | — |
+| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
+| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ◐ `dd/266-property-case` | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
@@ -873,9 +873,12 @@ obie; raport rozróżnia „zmieniła się umowa” od „zmieniły się słowa�
 compiled only with StreamData (`optional: true`, as `EhOsContract.Plug` with Plug): `command/3`, `event/3`,
 `entity_row/3`, `history/3` (a walk over `Lifecycle.moves/3`, one identity, up to `max_length:`); values inside
 `Codec`'s bounds, a domain value with invariants drawn from its `satisfied_by:`, `fields:` to fix or narrow a field.
-**PC2 — `use EhOsContract.PropertyCase, contract: C, max_runs: 50`**: `evolve/2` totalne na legalnych historiach;
-decyzja nie rzuca na legalnym wejściu i mieści się w `Decision.held!/6`; status zgodny z grafem; opcjonalne
-`holds?/2`. Odbiór: celowy defekt `reopen_visit` w `LifecycleRig` złapany; sandbox `rehmed_settlement` z `holds?/2`.
+**PC2 — a unit's code is tested on legal histories** (#266; tightened 9 October 2026). `use EhOsContract.PropertyCase,
+contract: C, max_runs: 50` writes, per aggregate with an implementation: `evolve/2` folds every legal history (events
+with `__meta__`, personal fields sometimes erased); each command decides, in a status its `from:` admits, only what
+`Decision.held!/7` accepts or a rejection it declares; with `holds?(invariant, state)` defined, a walk of decided
+commands keeps every invariant. Accepted when `LifecycleRig`'s `reopen_visit` is caught and Rehmed's settlement runs
+with `holds?/2` in the sandbox.
 
 #### Fala 5 — język i rdzeń
 
