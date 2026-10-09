@@ -892,9 +892,9 @@ and fields) and `term-of-another-context` (a warning, one per name; a field type
 another context's unit identity is a reference and is not read).
 **L2 — the core is where things are decided** (#272; tightened 9 October 2026). `check` gets
 `core-command-never-refuses` (a notice: a command of a context in a `:core` subdomain with empty `rejects:`, unless
-a policy, a process manager or its timer issues it) and `core-unit-records-only` (a warning: a core unit none of
-whose commands refuses). "Records only" is derived, never declared, and shown on the unit's page; the graph waits
-for E13.
+a policy, a process manager or its timer issues it and no actor may, `by:` empty) and `core-unit-records-only` (a
+warning: a core unit that has events and none of whose commands refuses). "Records only" is derived, never
+declared, and shown on the unit's page; the graph waits for E13.
 **L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być
 jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf je rysuje.
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
