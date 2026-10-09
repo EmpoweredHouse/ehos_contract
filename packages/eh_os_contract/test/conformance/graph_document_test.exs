@@ -14,8 +14,86 @@ defmodule EhOsContract.GraphDocumentTest do
 
   @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
 
+  # Two contracts that declare a process of their own. No rig's contract does since
+  # plan DD, P2g (#228), which moved their processes into process modules; until the
+  # contract's `process` goes (#221) its document still holds one, and the tests of a
+  # process's shape read these. Invented: `Promised` is `ProcessShapes.Promised` as it
+  # was before P2g, `Openings` includes the ledger's event as `DispatchRig.Branch` did.
+  defmodule Promised do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: ProcessShapes.Domain,
+      context: :handling,
+      id: "process_shapes.graph_promised"
+
+    aggregate :request, "Request" do
+      identity :request_id
+
+      command :submit_request, "Submit a request", by: :requester, emits: :request_received
+
+      command :decide_request, "Decide a request",
+        by: :reviewer,
+        emits: [:request_approved, :request_refused]
+
+      command :complete_request, "Complete a request", by: :reviewer, emits: :request_completed
+      command :notify_refusal, "Notify a refusal", by: :reviewer, emits: :refusal_notified
+
+      stage :intake do
+        event :request_received, "Request received"
+      end
+
+      stage :decision do
+        event :request_approved, "Request approved"
+        event :request_refused, "Request refused"
+      end
+
+      stage :closing do
+        event :request_completed, "Request completed", terminal: true
+        event :refusal_notified, "Refusal notified", terminal: true
+      end
+    end
+
+    process :handling, "Request handling" do
+      correlate :request_id
+
+      stage :intake
+      stage :decision
+      stage :closing
+
+      promise :completed_or_refusal_notified do
+        from :request_received
+        eventually :request_completed
+        within {2, :day}
+        or_else :refusal_notified
+      end
+    end
+  end
+
+  defmodule Openings do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.graph_openings"
+
+    consumes DispatchRig.Ledger, :account_opened
+
+    aggregate :branch_note, "Branch note" do
+      identity :branch_id
+      command :note_branch, "Note a branch", by: :auditor, emits: :branch_noted
+      event :branch_noted, "Branch noted"
+    end
+
+    process :openings, "Openings" do
+      correlate :branch_id
+      include :account_opened
+    end
+  end
+
+  # The registry's, and this file's two with a process of their own, so that a stage,
+  # a promise and a terminal event are held to the schema too.
   defp documents do
-    contracts = Registry.contracts()
+    contracts = Registry.contracts() ++ [Promised, Openings]
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
       for d <- Registry.domains(), do: {d, Document.domain(d, contracts)}
@@ -861,7 +939,7 @@ defmodule EhOsContract.GraphDocumentTest do
 
   describe "labels" do
     test "a node's label is the client's words or nil, never its name" do
-      d = Document.contract(ProcessShapes.Promised)
+      d = Document.contract(Promised)
 
       for kind <- ~w(promise stage), n <- d["nodes"][kind] do
         assert n["label"] == nil or n["label"] != n["name"], n["id"]
@@ -1044,8 +1122,8 @@ defmodule EhOsContract.GraphDocumentTest do
 
   describe "a process's shape" do
     test "its stages are nodes in their order, and an event names the stage it sits in" do
-      d = Document.contract(ProcessShapes.Promised)
-      c = scope(ProcessShapes.Promised)
+      d = Document.contract(Promised)
+      c = scope(Promised)
       stage = &Document.id([:stage, c, :handling, &1])
 
       assert Enum.map(d["nodes"]["stage"], & &1["id"]) ==
@@ -1061,8 +1139,8 @@ defmodule EhOsContract.GraphDocumentTest do
     end
 
     test "a promise is a node with its window, which events open, fulfil or settle otherwise" do
-      d = Document.contract(ProcessShapes.Promised)
-      c = scope(ProcessShapes.Promised)
+      d = Document.contract(Promised)
+      c = scope(Promised)
       event = &Document.id([:event, c, &1])
       promise = Document.id([:promise, c, :handling, :completed_or_refusal_notified])
 
@@ -1076,8 +1154,8 @@ defmodule EhOsContract.GraphDocumentTest do
     end
 
     test "an included event is one node, in the stage its include gives it" do
-      d = Document.contract(DispatchRig.Branch)
-      id = Document.id([:event, scope(DispatchRig.Branch), :account_opened])
+      d = Document.contract(Openings)
+      id = Document.id([:event, scope(Openings), :account_opened])
 
       assert [%{"included" => true}] = Enum.filter(d["nodes"]["event"], &(&1["id"] == id))
     end
