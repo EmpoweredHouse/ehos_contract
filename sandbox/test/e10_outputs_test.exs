@@ -30,7 +30,8 @@ defmodule EhOsContractHost.E10OutputsTest do
     # matching events had no reader until the process module included them.
     # Plan DD, A2 (#249): scheduling's visit_booked has a reader now, the boundary of
     # the visit's documentation, which consults it for the P1 flag.
-    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 10 notices"
+    # Plan DD, L1 (#269): a notice per context naming its words no term covers.
+    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 19 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,

@@ -88,6 +88,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   under "Removed" below). `mix eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
   the contract's page, and treats those files as its own when it overwrites, checks or deletes
   (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
+- **The glossary is joined to the code** (plan DD, stage L1, #269). `use EhOsContract.Domain` takes
+  `code_language:`, English by default, and a term's word in code is its translation into it.
+  `mix eh_os_contract.glossary` lists, under each term, the declarations named with that word, and
+  `mix eh_os_contract.check` has two new rules: `word-without-term` (a notice per context, ranking the words of
+  its units', read models' and fields' names that no term covers) and `term-of-another-context` (a warning for
+  a name that says another context's term and none of its own). `code_language:` is in the domain's model
+  only when it is not `:en`, and in no digest, so it moves no version. Moves no verdict.
 - **A unit's code is tested on legal histories of its contract** (plan DD, stage PC2, #266).
   `use EhOsContract.PropertyCase, contract: C, max_runs: 50` writes, for every aggregate with an implementation,
   a property that `evolve/2` folds every legal history (events with `__meta__`, personal fields sometimes

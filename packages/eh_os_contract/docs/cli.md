@@ -86,7 +86,9 @@ first prints what it prints: compile beforehand when a program reads the output.
 Prints a domain's ubiquitous language as Markdown
 
 Prints the glossary of the application's domain as Markdown: each context's terms,
-their definitions, the words to avoid and their translations.
+their definitions, the words to avoid and their translations, and each term's word in
+code — its translation into the domain's `code_language:` — with the declarations of
+the context's contracts named with it.
 
     mix eh_os_contract.glossary                        # every term, in its context's language
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none

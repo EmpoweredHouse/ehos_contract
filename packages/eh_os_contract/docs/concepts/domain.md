@@ -3,7 +3,7 @@
 How a domain module splits a business into subdomains and bounded contexts, gives each context its glossary,
 says how the contexts depend on each other, and why every contract belongs to exactly one of them.
 
-<!-- covers: entities domain.subdomain, domain.context, domain.context.term, domain.relation; rules subdomain-without-bounded-context, bounded-context-without-content, orphan-context-mapping, relation-against-references, label-with-avoided-term, cross-bounded-context-reference-without-mapping -->
+<!-- covers: entities domain.subdomain, domain.context, domain.context.term, domain.relation; rules subdomain-without-bounded-context, bounded-context-without-content, orphan-context-mapping, relation-against-references, label-with-avoided-term, word-without-term, term-of-another-context, cross-bounded-context-reference-without-mapping -->
 
 ## A domain module
 
@@ -17,7 +17,8 @@ use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsa
 ```
 
 `name:` is the application's namespace towards EHOS: the first segment of every capability, role, contract id
-and published event name. `language:` is the language labels and terms are written in. `time_zone:` is the
+and published event name. `language:` is the language labels and terms are written in, and `code_language:`,
+English unless given, the language of identifiers, which the glossary below is held to. `time_zone:` is the
 zone the business's days are in. [Writing a domain and a contract](../contract.md) says what each refuses;
 every key is in [the domain's reference](../dsl/domain-dsl.md).
 
@@ -67,6 +68,28 @@ translations of one term into one language, or one into the context's own ([`D2`
 
 The glossary is what `mix eh_os_contract.glossary` prints, per context, with the words to avoid and the
 translations; `--language en` prints each term in English, or notes that it has none.
+
+### The glossary in the code
+
+Labels are in the context's language and identifiers are in the domain's `code_language:`, English unless
+`use EhOsContract.Domain` says otherwise. A term's **word in code** is its translation into that language — or
+the term itself, in a context written in it — so a term "Wypożyczenie" with `translation :en, "Loan"` is the
+word `loan`, and `:loan`, `:loan_id` and `:return_loan` are named with it. A term with several words is
+matched as those words in a row: "Due date" is in `:due_date_set`, not in `:date_due`. Inflected forms are not
+matched.
+
+`mix eh_os_contract.glossary` lists, under each term, its word in code and the declarations of the context's
+contracts named with it. `mix eh_os_contract.check` reads the names of things — units, read models and
+fields — both ways:
+
+- **`word-without-term`** (notice): one per context, the words of its names no term covers, the word used by
+  the most names first. Words of one or two letters (`id`, `at`) are left out, and so are names of commands
+  and events, whose verbs are inflected ("returned") where a term is not ("Return").
+- **`term-of-another-context`** (warning): a name says the word in code of a term another context declares,
+  and no term of its own context covers it: either the word means something here too and the glossary should
+  say what, or the name borrows the other context's meaning. One finding per name. A field typed
+  `{:id, entity}`, or named like the identity of another context's unit (`loan_id`), is not read, since it
+  refers to that declaration under its name.
 
 ## Relations between contexts
 
