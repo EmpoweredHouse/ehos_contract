@@ -277,8 +277,9 @@ one conflicts with its decision, so under load most decisions are retried or ref
 A command of a core context rejects nothing.
 
 The context belongs to a subdomain of `type: :core`, where the business's rules are meant to
-live, and the command's `rejects:` is empty, so every request is accepted. A command a policy or
-a process manager issues is not reported, since it follows from an event already decided.
+live, and the command's `rejects:` is empty, so no rule of its unit refuses a request; only its
+fields' types and values can. A command only a policy or a process manager issues, with no
+`by:`, is not reported, since it follows from an event already decided.
 Either the command has a rule the contract does not declare yet, or it records a fact, which an
 event `recorded_by:` an actor says more plainly. Some core commands legitimately always
 succeed, so this is a notice.
@@ -289,8 +290,10 @@ succeed, so this is a notice.
 
 A unit of a core context decides nothing.
 
-No command of the unit can be refused — none has `rejects:`, or it has no commands and its
-events are only `recorded_by:` — and its context belongs to a subdomain of `type: :core`. A
+The unit has events and no command of it can be refused — none has `rejects:`, or it has no
+commands and its events are only `recorded_by:` — and its context belongs to a subdomain of
+`type: :core`. A command a reaction issues counts like any other: a unit whose commands only
+reactions send decides nothing either. A
 unit that only records keeps a log; the decisions the core is for are somewhere else, or the
 context is not core. Its page says "Records only" wherever it is.
 

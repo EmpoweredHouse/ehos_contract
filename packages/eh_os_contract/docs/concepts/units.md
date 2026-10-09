@@ -318,12 +318,12 @@ From [its rules](../rules.md):
   this one has none, so dispatch refuses to run it. Add the module.
 - `contract-without-implementation` (notice): nothing implements the contract at all. Legal (a
   contract may be written before its code) but nothing of it can be dispatched yet.
-- `core-unit-records-only` (warning): the unit's context belongs to a subdomain of `type: :core`, and
-  no command of the unit can be refused: none has `rejects:`, or it has no commands and its events are
-  only `recorded_by:`. The core is where the business decides; a unit that only records keeps a log.
+- `core-unit-records-only` (warning): the unit's context belongs to a subdomain of `type: :core`, it has
+  events, and no command of the unit can be refused: none has `rejects:`, or it has no commands and its
+  events are only `recorded_by:`. The core is where the business decides; a unit that only records keeps a log.
   Its page says "Records only", in any context, so a reader sees which units decide nothing.
-- `core-command-never-refuses` (notice): a command of a core context rejects nothing, so every
-  request is accepted. A command a policy or a process manager issues is left out, since it follows
-  from an event already decided. Either the command has a rule not declared yet, or it records a
+- `core-command-never-refuses` (notice): a command of a core context rejects nothing, so no rule of
+  its unit refuses a request; only its fields' types and values can. A command only a policy or a
+  process manager issues, with no `by:`, is left out, since it follows from an event already decided. Either the command has a rule not declared yet, or it records a
   fact, which an event `recorded_by:` an actor says more plainly; some core commands legitimately
   always succeed.

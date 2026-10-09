@@ -80,19 +80,20 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  # A command of the core that nothing can refuse, unless a reaction issues it: what a
-  # policy or a timer sends follows from an event already decided.
+  # A command of the core that nothing can refuse, unless only a reaction issues it:
+  # what a policy or a timer sends follows from an event already decided. A command an
+  # actor may issue too (`by:`) is a person's request like any other.
   defp core_commands_never_refusing(%{model: model} = c) do
     if core?(c) do
       issued = EhOsContract.Refusals.issued_by_reactions(model)
 
       for command <- model.commands,
           not EhOsContract.Refusals.refuses?(command),
-          not MapSet.member?(issued, command.name) do
+          List.wrap(command.by) != [] or not MapSet.member?(issued, command.name) do
         Finding.new(
           "core-command-never-refuses",
           "command #{inspect(command.name)} of #{inspect(c.module)}, in core context " <>
-            "#{inspect(model.context)}, rejects nothing, so it is always accepted",
+            "#{inspect(model.context)}, rejects nothing: no rule of its unit can refuse it",
           declared_command(c, command.unit, command.name)
         )
       end

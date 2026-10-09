@@ -42,10 +42,18 @@ defmodule EhOsContract.CheckCoreTest do
           command :book, "Umów", by: :reception, emits: :booked
           command :close, "Zamknij", by: :reception, emits: :closed, rejects: :once
           command :remind, "Przypomnij", emits: :reminded
+          command :chase, "Pogoń", emits: :chased
+          command :confirm, "Potwierdź", by: :reception, emits: :confirmed
 
           event :booked, "Umówiona"
           event :closed, "Zamknięta"
           event :reminded, "Przypomniano"
+          event :chased, "Pogoniono"
+          event :confirmed, "Potwierdzona"
+        end
+
+        aggregate :draft, "Szkic" do
+          identity :draft_id
         end
 
         aggregate :arrival, "Przyjście" do
@@ -54,6 +62,14 @@ defmodule EhOsContract.CheckCoreTest do
         end
 
         policy :remind_on_booking, "Przypomnij po umówieniu", handles: :booked, issues: :remind
+        policy :confirm_on_booking, "Potwierdź po umówieniu", handles: :booked, issues: :confirm
+
+        process_manager :chasing, "Pogoń za wizytą" do
+          correlate :visit_id
+          starts_on :booked, sets: :chase_due
+          timer :chase_due, "Termin pogoni", wait: {1, :day}, issues: :chase
+          ends_on :closed
+        end
 
         scenario "zamknięta wizyta nie zamyka się drugi raz" do
           given :closed
@@ -84,18 +100,19 @@ defmodule EhOsContract.CheckCoreTest do
         do: {f.message, Finding.place(f)}
   end
 
-  test "core-command-never-refuses: a core command rejecting nothing; control: one that rejects, one a policy issues, one outside the core" do
+  test "core-command-never-refuses: a core command rejecting nothing, and one a policy issues that a person may issue too; control: one that rejects, one only a policy issues, one only a timer issues, one outside the core" do
     assert [
              {"command :book of EhOsContract.CheckCoreTest.Visits, in core context :scheduling, " <>
-                "rejects nothing, so it is always accepted", {"clinic.ex", 21}}
-           ] = found("core-command-never-refuses")
+                "rejects nothing: no rule of its unit can refuse it", {"clinic.ex", 21}},
+             {"command :confirm of" <> _, {"clinic.ex", 25}}
+           ] = Enum.sort_by(found("core-command-never-refuses"), &elem(&1, 1))
   end
 
-  test "core-unit-records-only: a core unit with recorded events only; control: a core unit that rejects, a generic unit that records only" do
+  test "core-unit-records-only: a core unit with recorded events only; control: a core unit that rejects, a core unit with no event, a generic unit that records only" do
     assert [
              {"aggregate :arrival of EhOsContract.CheckCoreTest.Visits, in core context " <>
                 ":scheduling, only records: no command it takes can be refused",
-              {"clinic.ex", 30}}
+              {"clinic.ex", 38}}
            ] = found("core-unit-records-only")
   end
 
@@ -110,5 +127,6 @@ defmodule EhOsContract.CheckCoreTest do
     assert page.("aggregates/arrival.md") =~ marker
     assert page.("aggregates/report.md") =~ marker
     refute page.("aggregates/visit.md") =~ marker
+    refute page.("aggregates/draft.md") =~ marker
   end
 end

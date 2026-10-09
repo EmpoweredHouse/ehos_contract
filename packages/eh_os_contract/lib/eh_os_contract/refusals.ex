@@ -3,8 +3,9 @@ defmodule EhOsContract.Refusals do
   # core and the unit pages' "Records only" read it the same way.
   #
   # A command refuses when its `rejects:` names an invariant; a lifecycle's
-  # `or_rejects:` and `actor_is`'s are in it already. A unit records only when none of
-  # its commands refuses, a unit whose events are all `recorded_by:` included: it is
+  # `or_rejects:` and `actor_is`'s are in it already. A unit records only when it has an
+  # event and none of its commands refuses, a unit whose events are all `recorded_by:`
+  # included; a unit with no event at all is `aggregate-without-events`'s. It is
   # derived, never declared, since a declared marker would make a unit without rules
   # legal by writing it down.
   @moduledoc false
@@ -13,10 +14,14 @@ defmodule EhOsContract.Refusals do
   @spec refuses?(map()) :: boolean()
   def refuses?(command), do: command.rejects != []
 
-  @doc "Whether no command of `unit`, of the contract `model`, can be refused."
+  @doc """
+  Whether `unit`, of the contract `model`, has events and no command of it can be
+  refused.
+  """
   @spec records_only?(map(), map()) :: boolean()
   def records_only?(model, unit) do
-    not Enum.any?(model.commands, &(&1.unit == unit.name and refuses?(&1)))
+    Enum.any?(model.events, &(&1.unit == unit.name)) and
+      not Enum.any?(model.commands, &(&1.unit == unit.name and refuses?(&1)))
   end
 
   @doc """
