@@ -107,7 +107,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   # key set it cannot fetch), and on stdout that would land inside the document. Both
   # the handler running now and the one `app.start` adds when it restarts Logger, from
   # `config :logger, :default_handler`, are moved; a console the host turned off stays
-  # off. A `runtime.exs` that sets `:default_handler` itself still wins.
+  # off. A `runtime.exs` that sets `:default_handler` itself still wins. Called by
+  # `run/1`; public for its test.
   @spec logs_to_stderr((-> result)) :: result when result: term()
   def logs_to_stderr(fun) do
     env = Application.fetch_env(:logger, :default_handler)
