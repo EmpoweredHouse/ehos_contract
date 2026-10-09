@@ -70,8 +70,11 @@ in #254 (issue #251): a process's promise has scenarios that run as tests, and a
 S3 merged in #257 (issue #256): the clinic's and the accounting firm's promises have scenarios. Open from it, the
 user's: an outage of a system a promise depends on one step upstream cannot excuse it (#256). Next without E13: O1,
 which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both were asked
-of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w (#259) puts process modules on the wire, keyed
-`process`, and O1 (#260) follows it.
+of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w merged in #261 (issue #259) puts process modules on
+the wire, keyed `process`, and O1 merged in #262 (issue #260) counts runs whose stages happened out of order. **Wave 3
+closed conditionally** (8 October; migration note in "After wave 3 — the user's decision and the migration note"); M1
+and O2 wait for E13 with P2h and P2e. **Next: the stages of waves 4 and 5 that nothing blocks**, PC1 → PC2, L1, L2,
+L3; V1–V5 and L4 wait for P2h and P2e.
 
 ### Stan repozytorium
 
@@ -593,8 +596,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
-| P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ◐ `dd/259-process-on-the-wire` | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
-| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
+| P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
+| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ⏸ on hold with P2h, until E13 | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
@@ -605,8 +608,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
-| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ◐ `dd/260-stage-order` | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
-| O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
+| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
+| O2 | 3 | ekran: kolejność etapów | O1, P2e | ⏸ on hold with P2e, until E13 | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
 | V2 | 4 | upcast przez callback | V1 | ☐ | — |
 | V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
@@ -955,6 +958,30 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 command; a manager who must act on another specialist's visit does so through another command, declared for it.
 Rejected: an exception for a role, `actor_is :specialist_id, unless: :manager`, which would make one command mean
 two things and leave the report unable to tell an override from an ordinary close.
+
+### After wave 3 — the user's decision and the migration note (8 October 2026)
+
+**Wave 3 is closed conditionally** (the user's decision of 8 October). In `main`: T2a with T2b (#242), T2s (#246),
+A1 (#248), A2 (#250), S2 (#254), S3 (#257), and two stages added on the way, P2w (#261) and O1 (#262), agreed with
+EHOS in EmpoweredHouse/eh-os#297. B2, B3 and B4 were dropped on 7 October. **On hold** until E13: the context map
+(M1), which waits for P2h, and the stage-order screen (O2), which waits for P2e. **Next:** the stages of waves 4 and 5
+that nothing blocks, PC1 → PC2, L1, L2, L3. *Rejected:* waiting for E13 to close the wave, which would leave the
+library idle on work that does not depend on it; stopping for the small issues first (#193, the upstream outage
+of #256), which stay open beside the waves. **Open, the user's:** whether an outage one step upstream may excuse a
+promise (#256); how the clinic handles a substitute specialist (#249). **Version tag:** not yet, on the user's word.
+
+**Migration note.** A host upgrading from `main` after wave 2 to `main` after wave 3:
+
+| Change (stage, issue) | What to do | AppUnite's equipment application |
+|---|---|---|
+| The engine's storage is at migration V02, `_commands.inputs` (T2a, #240) | add a migration calling `EhOsContract.Migrations.up(version: 2)` (and `down(version: 2)`); the engine refuses to start on V01 | the migration, before the bump |
+| A command may read an entity the application keeps, `reads:` (T2a) | only for a contract that uses it: `config :eh_os_contract, entities: MyApp.Entities` | none until a contract reads one |
+| A command may require the person a unit names, `actor_is` (A1, #247) | none until a contract declares it | none |
+| A scenario may date a given, `at:`; a process module may carry promise scenarios (S2, #251) | none; a process module that adds scenarios gets a new version | none |
+| The conformance wire carries a process module's report, `?process=<id>`, keyed `process` (P2w, #259) | a reader of v3 tells a report by `contract` or `process` | whatever reads the conformance JSON |
+| A process section has `out_of_order` (O1, #260) | none; the text report can gain a line | none |
+
+`ehos-ledger` takes the same rows. The test material's stages (T2s, A2, S3) change nothing for a host.
 
 ### Before wave 3's boundaries — the user's decision (7 October 2026)
 
