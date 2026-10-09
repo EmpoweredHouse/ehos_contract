@@ -27,6 +27,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A unit's code is tested on legal histories of its contract** (plan DD, stage PC2, #266).
+  `use EhOsContract.PropertyCase, contract: C, max_runs: 50` writes, for every aggregate with an implementation,
+  a property that `evolve/2` folds every legal history (events with `__meta__`, personal fields sometimes
+  erased), one per command that its decision returns only what dispatch would append, or a rejection it
+  declares, in a status its `from:` admits, and, when the implementation defines `holds?(invariant, state)`, one
+  that every invariant holds after each decided command. `fold/4`, `decide/5`, `walk/4`, `decisions/3` and
+  `walks/2` are public. It compiles only where StreamData is. Moves no verdict.
 - **A contract produces valid examples of its data** (plan DD, stage PC1, #264). `EhOsContract.Generators` gives
   StreamData generators of a contract's commands (`command/3`) and events (`event/3`), of a domain entity's row
   (`entity_row/3`), and of a unit's history in an order its lifecycle allows (`history/3`), every value within what

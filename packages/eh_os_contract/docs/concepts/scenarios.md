@@ -231,6 +231,17 @@ from the log has.
 `use EhOsContract.ScenarioCase, contract:` also turns every example of the contract's domain services' rules
 into a test, and `use EhOsContract.ScenarioCase, domain:` every example of a domain value's invariants.
 
+## Beyond the cases someone wrote
+
+A scenario tests the case its author thought of. `use EhOsContract.PropertyCase, contract:` tries a unit's code
+on hundreds of histories the contract allows, made from it by `EhOsContract.Generators`: `evolve/2` folds each
+one, also with a person's data erased; each command, issued in a status its `from:` admits, decides only events
+its `emits` names, of the command's identity, values that fit and an order the lifecycle allows, or a refusal on
+one of its `rejects:`; and, when the implementation says what each invariant means with
+`holds?(invariant, state)`, every invariant holds after each command it decides. A failure comes with the
+shortest history or list of commands that shows it: a visit reopened while in progress, a correction booked on
+a settlement not yet closed. It needs StreamData, usually as a test dependency.
+
 ## After deploy
 
 Scenarios stay useful once the code runs. The conformance report counts, for each scenario whose trigger is a

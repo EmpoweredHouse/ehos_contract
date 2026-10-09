@@ -57,6 +57,7 @@ defmodule EhOsContract do
       {Process.Dsl, []},
       ProcessManager,
       ProcessManagerRecord,
+      PropertyCase,
       Registry,
       StageOrder,
       Receipt,
