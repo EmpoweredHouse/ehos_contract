@@ -29,7 +29,7 @@ defmodule EhOsContract.GraphOverlayTest do
     use EhOsContract.Contract,
       domain: DispatchRig.Domain,
       context: :ledger,
-      id: "dispatch_rig.graph_openings"
+      id: "dispatch_rig.graph_overlay_openings"
 
     aggregate :branch_note, "Branch note" do
       identity :branch_id
@@ -61,7 +61,7 @@ defmodule EhOsContract.GraphOverlayTest do
     )
   end
 
-  defp openings(kind, name), do: Document.id([kind, "dispatch_rig.graph_openings", name])
+  defp openings(kind, name), do: Document.id([kind, "dispatch_rig.graph_overlay_openings", name])
 
   defp valid!(overlay) do
     case JSV.validate(overlay, @schema) do

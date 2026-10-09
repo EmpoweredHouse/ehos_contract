@@ -49,7 +49,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     html = html_response(conn, 200)
 
     assert html =~ "web_test_host.case_handling"
-    # What one run is, beside the count (the working plan's point 4): the process's correlate.
+    # What one run is, beside the count (point 4 of the working plan, `PLAN.md`,
+    # "Szczegóły ekranu Graph"): the process's correlate.
     assert html =~ "Runs in this period: 1, one per case_id."
     # A v2 step: the rejection reaching its policy, and the policy's command.
     assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"

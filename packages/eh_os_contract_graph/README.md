@@ -106,5 +106,5 @@ and committed under `priv/static/`. The two libraries the script carries, dagre 
 under `assets/vendor/`; `NOTICE` says what each is, its licence and how it was taken.
 
 Each change to the drawing layer is looked at in a browser, under `default-src 'self'`: the prototype's
-defects passed every check that reads the files and showed only on the screen (`docs/adr/graph-renderer.md`).
+defects passed every check that reads the files and showed only on the screen ([`docs/adr/graph-renderer.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/graph-renderer.md)).
 On the sandbox host the dashboard draws every document of the test material with it.

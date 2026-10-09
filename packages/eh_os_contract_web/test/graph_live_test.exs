@@ -83,7 +83,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert cards(html, "system-graph-web_test_host") == drawn(domain_document, :system)
   end
 
-  # Point 2 of the working plan: the domain's actors under its map, a row opening the
+  # Point 2 of the working plan (`PLAN.md`, "Szczegóły ekranu Graph"): the domain's actors under its map, a row opening the
   # actor's panel, though the map does not draw actors.
   test "the actors under a domain's map, a row opening the actor's panel" do
     view = live_graph()

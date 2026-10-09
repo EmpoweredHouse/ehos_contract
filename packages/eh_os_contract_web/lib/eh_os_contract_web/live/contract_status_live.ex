@@ -208,9 +208,9 @@ defmodule EhOsContract.Web.Live.ContractStatus do
     end
   end
 
-  # What one run is, beside the count (the working plan's point 4): the process's
-  # `correlate`, read from the contract's model, since the report carries no such field
-  # and is what EHOS reads on the wire.
+  # What one run is, beside the count (point 4 of the working plan, `PLAN.md`,
+  # "Szczegóły ekranu Graph"): the process's `correlate`, read from the contract's
+  # model, since the report carries no such field and is what EHOS reads on the wire.
   @spec runs_per(module()) :: String.t() | nil
   defp runs_per(module) do
     with %{correlate: fields} <- EhOsContract.Model.process(EhOsContract.Model.fetch(module)),

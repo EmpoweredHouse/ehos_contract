@@ -101,7 +101,6 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     emit_output(Document.encode(document, pretty: true) <> "\n", opts)
   end
 
-  @doc false
   # Runs `fun` with the default log handler writing to stderr rather than stdout, and
   # puts it back after: a host's application logs as it starts (a relay with no bus, a
   # key set it cannot fetch), and on stdout that would land inside the document. Both
@@ -109,6 +108,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   # `config :logger, :default_handler`, are moved; a console the host turned off stays
   # off. A `runtime.exs` that sets `:default_handler` itself still wins. Called by
   # `run/1`; public for its test.
+  @doc false
   @spec logs_to_stderr((-> result)) :: result when result: term()
   def logs_to_stderr(fun) do
     env = Application.fetch_env(:logger, :default_handler)

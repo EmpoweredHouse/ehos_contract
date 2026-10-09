@@ -1,8 +1,10 @@
 defmodule EhOsContract.GraphRenderer.Actors do
+  # Point 2 of the user's working plan for the Graph screen (`PLAN.md`, "Szczegóły
+  # ekranu Graph").
   @moduledoc """
-  The actors of a domain's `graph.v1` document as a table, people and systems apart
-  (the working plan's point 2): who each is, their role in EHOS, what they answer for
-  and where that comes from; for a system, what it stands for and its context.
+  The actors of a domain's `graph.v1` document as a table, people and systems apart:
+  who each is, their role in EHOS, what they answer for and where that comes from; for
+  a system, what it stands for and its context.
 
       <EhOsContract.GraphRenderer.Actors.table document={@domain} canvas="map-graph" />
 

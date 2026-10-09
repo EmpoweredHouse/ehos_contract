@@ -96,8 +96,7 @@ defmodule EhOsContract.Graph.Overlay do
 
     process =
       for p <- List.wrap(Model.process(model)),
-          do:
-            {id.(:process, p.name), %{runs: Paths.runs_of(model, Atom.to_string(p.name), period)}}
+          do: {id.(:process, p.name), %{runs: Paths.runs_of(model, to_string(p.name), period)}}
 
     units = for l <- lifecycles, do: {id.(:unit, l.unit), %{aggregates: l.aggregates}}
 
@@ -140,7 +139,7 @@ defmodule EhOsContract.Graph.Overlay do
     runs =
       for m <- models,
           p = Model.process(m),
-          do: {id.(m), %{runs: Paths.runs_of(m, Atom.to_string(p.name), period)}}
+          do: {id.(m), %{runs: Paths.runs_of(m, to_string(p.name), period)}}
 
     seal(
       %{

@@ -258,7 +258,7 @@ boundaries below would be documentation rather than a check.
 | [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — the domain and contract DSLs, dispatch, the event store, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
 | [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
-| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress, plan E13b) |
+| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress) |
 | [`sandbox`](sandbox) | a host application around the packages, with the test material below |
 | [`docs`](docs) | the starting assumptions (`docs/adr/`), distillations of the test material, and workshop material |
 
