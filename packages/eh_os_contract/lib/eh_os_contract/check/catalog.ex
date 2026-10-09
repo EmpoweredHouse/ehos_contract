@@ -415,6 +415,36 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "word-without-term",
+      level: :info,
+      esdm: nil,
+      summary: "A context names things with words its glossary has no term for.",
+      text: """
+      One finding per context, listing the words of the names of its units, read models and fields
+      that no term of its glossary covers, the word used by the most names first. A term covers a
+      word when the term's word in code — its translation into the domain's `code_language:`, or the
+      term itself in a context written in that language — stands in the name: "Visit" covers
+      `visit_id`, "Settlement date" covers `settlement_date` and not `date`. Names of commands and
+      events are not read, since their verbs are inflected ("closed") where a term is not ("Close"),
+      nor words of one or two letters (`id`, `at`). The words at the top are the ones the glossary
+      most needs, or the ones the code should not use.
+      """
+    },
+    %{
+      id: "term-of-another-context",
+      level: :warn,
+      esdm: nil,
+      summary: "A name uses a term of another context that its own context's glossary lacks.",
+      text: """
+      A unit, a read model or a field of a contract is named with the word in code of a term another
+      context declares, and no term of the contract's own context covers it. Each context has its own
+      language: either the word means something here too, and the context's glossary should say what,
+      or the name borrows the other context's meaning. One finding per name of a contract. A field
+      typed `{:id, entity}`, or named like the identity of another context's unit (`visit_id`), is
+      not read: it refers to that declaration, under its name.
+      """
+    },
+    %{
       id: "external-direction-contradicted",
       level: :warn,
       esdm: nil,

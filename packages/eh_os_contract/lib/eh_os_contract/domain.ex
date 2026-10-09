@@ -41,6 +41,12 @@ defmodule EhOsContract.Domain do
   namespace, the first segment of every name its contracts publish and of every
   capability, so it is one such segment: lowercase letters, digits, `_` and `-`,
   starting with a letter and not ending with a dash.
+  `code_language:` is the language its identifiers are written in, English unless it
+  says otherwise: a term's word in code is its translation into that language, or the
+  term itself in a context written in it. `mix eh_os_contract.glossary` shows each
+  term's word in code and the declarations named with it, and `mix eh_os_contract.check`
+  ranks the words of a context's names no term covers (`word-without-term`) and warns
+  where a name uses a term of another context only (`term-of-another-context`).
   `time_zone:` is the zone its days are in, UTC unless it says otherwise: an event's
   `:timestamp` is tagged with its day there when it is appended, so a day is the
   business's, not Greenwich's. A zone the configured time zone database does not
@@ -61,6 +67,14 @@ defmodule EhOsContract.Domain do
         type: :atom,
         required: true,
         doc: "The language labels and terms are written in."
+      ],
+      # The glossary joined to the code (plan DD, L1 (#269)).
+      code_language: [
+        type: :atom,
+        default: :en,
+        doc:
+          "The language identifiers are written in: a term's word in code is its " <>
+            "translation into it."
       ],
       # A timestamp's business day (plan W2).
       time_zone: [
@@ -102,6 +116,7 @@ defmodule EhOsContract.Domain do
                 %{
                   name: unquote(opts[:name]),
                   language: unquote(opts[:language]),
+                  code_language: unquote(Keyword.get(opts, :code_language, :en)),
                   time_zone: unquote(Keyword.get(opts, :time_zone, "Etc/UTC"))
                 }}
       @persist {:eh_os_contract_line, __ENV__.line}
