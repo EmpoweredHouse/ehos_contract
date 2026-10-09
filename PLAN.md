@@ -617,7 +617,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
-| L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
+| L1 | 5 | słownik połączony z kodem | N1 | ◐ `dd/269-glossary-in-code` | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ | — |
@@ -882,9 +882,12 @@ with `holds?/2` in the sandbox.
 
 #### Fala 5 — język i rdzeń
 
-**L1 — słownik połączony z kodem**: opcja domeny `code_language:` (domyślnie `:en`); tłumaczenie terminu na ten
-język wyznacza słowo identyfikatorów; strona słownika: termin → deklaracje; L5 `word-without-term` (notka, ranking
-po częstości), `term-of-another-context` (ostrzeżenie).
+**L1 — the glossary is joined to the code** (#269; tightened 9 October 2026). `use EhOsContract.Domain,
+code_language: :en` (the default, in the digest only when it is not `:en`); a term's word in code is its
+translation into that language. `mix eh_os_contract.glossary` lists, under each term, the declarations named with
+it; `check` gets `word-without-term` (a notice per context ranking uncovered words of names of units, read models
+and fields) and `term-of-another-context` (a warning). A field typed `{:id, entity}` is not read, so L3's typed
+references silence the sandbox's four warnings on Rehmed's payers.
 **L2 — rdzeń**: L5 `core-command-never-refuses` (komenda kontekstu `:core` bez `rejects:`/`or_rejects:`, poza
 wydawanymi przez reakcje) i `core-unit-records-only`; znacznik „tylko rejestruje” na stronach i grafie.
 **L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być

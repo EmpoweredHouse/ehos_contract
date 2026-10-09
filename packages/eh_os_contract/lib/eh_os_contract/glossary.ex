@@ -9,13 +9,18 @@ defmodule EhOsContract.Glossary do
   # headings and the notes around the terms are the library's, in English; the terms,
   # definitions and words to avoid are the client's, printed as declared.
   #
+  # Given the contracts, each term also says its word in code and the declarations of
+  # its context's contracts named with it (plan DD, L1): the names
+  # `EhOsContract.CodeWords` reads, which the check's two rules about words read too.
+  #
   # Contexts and terms come in the order the domain declares them, as every reader of
   # the model prints (v2 §9).
   @moduledoc false
 
   @doc """
   The glossary of `domain`, a domain module or its model. `language:` asks for the
-  terms in that language; `context:` keeps one context.
+  terms in that language; `context:` keeps one context; `contracts:`, contract
+  modules, adds each term's word in code and the declarations named with it.
   """
   @spec render(module() | map(), keyword()) :: String.t()
   def render(domain, opts \\ []) do
@@ -28,11 +33,18 @@ defmodule EhOsContract.Glossary do
         name -> Enum.filter(model.contexts, &(&1.name == name))
       end
 
-    sections = Enum.map(contexts, &context(&1, model, wanted))
+    names =
+      for module <- Keyword.get(opts, :contracts, []),
+          %{model: %{domain: domain}} = c <- [EhOsContract.Contract.Links.contract(module)],
+          domain == model.module,
+          do: {c.model.context, c}
+
+    code = if Keyword.has_key?(opts, :contracts), do: names, else: nil
+    sections = Enum.map(contexts, &context(&1, model, wanted, code))
     Enum.join(["# Glossary of `#{model.name}`\n" | sections], "\n")
   end
 
-  defp context(context, model, wanted) do
+  defp context(context, model, wanted, code) do
     language = context.language || model.language
     heading = "## #{context.label} (`#{context.name}`)\n"
 
@@ -43,9 +55,13 @@ defmodule EhOsContract.Glossary do
 
         terms ->
           for term <- terms do
+            across =
+              across(model, context.name, term.text) ++
+                in_code(term, context.name, language, model.code_language, code)
+
             if wanted in [nil, language],
-              do: term(term, across(model, context.name, term.text)),
-              else: translated(term, wanted, across(model, context.name, term.text))
+              do: term(term, across),
+              else: translated(term, wanted, across)
           end
       end
 
@@ -81,6 +97,53 @@ defmodule EhOsContract.Glossary do
       where = if MapSet.member?(externals, other), do: "external `#{other}`", else: "`#{other}`"
       ~s|_In #{where} (#{relation.type}): "#{other_word}"._|
     end
+  end
+
+  # The term's word in code and, per contract of its context, the declarations whose
+  # names say it; a field is named once, with how many declarations carry it.
+  defp in_code(_term, _context, _language, _code_language, nil), do: []
+
+  defp in_code(term, context, language, code_language, code) do
+    case EhOsContract.CodeWords.in_code(term, language, code_language) do
+      nil ->
+        ["_No word in code: no translation into #{code_language}._"]
+
+      text ->
+        sequence = EhOsContract.CodeWords.words(text)
+        word = Enum.join(sequence, "_")
+
+        named =
+          for {^context, c} <- code,
+              names =
+                Enum.filter(
+                  EhOsContract.CodeWords.names(c),
+                  &EhOsContract.CodeWords.contains?(&1.words, sequence)
+                ),
+              names != [] do
+            "- `#{inspect(c.module)}`: " <> declarations(names)
+          end
+
+        case named do
+          [] -> ["_In code: `#{word}`, in no declaration._"]
+          named -> ["_In code: `#{word}`._" | named]
+        end
+    end
+  end
+
+  defp declarations(names) do
+    {fields, others} = Enum.split_with(names, &String.starts_with?(&1.what, "field "))
+
+    fields =
+      fields
+      |> Enum.frequencies_by(& &1.name)
+      |> Enum.sort()
+      |> Enum.map(fn
+        {name, 1} -> "field `#{inspect(name)}`"
+        {name, count} -> "field `#{inspect(name)}` (in #{count} declarations)"
+      end)
+
+    others = for n <- others, do: String.replace(n.what, ~r/:(\S+)$/u, "`:\\1`")
+    Enum.join(Enum.uniq(others) ++ fields, ", ")
   end
 
   defp translated(term, language, across) do

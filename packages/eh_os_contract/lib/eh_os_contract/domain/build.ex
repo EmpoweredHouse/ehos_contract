@@ -154,6 +154,7 @@ defmodule EhOsContract.Domain.Build do
       persisted = Transformer.get_persisted(dsl, :eh_os_contract_domain)
 
     time_zone = Map.get(persisted, :time_zone, "Etc/UTC")
+    code_language = Map.get(persisted, :code_language, :en)
     entities = Transformer.get_entities(dsl, [:domain])
 
     collections =
@@ -172,6 +173,9 @@ defmodule EhOsContract.Domain.Build do
     # kept out where it is UTC, the default, so no domain written without it moves.
     own = %{name: name, language: language}
     own = if time_zone == "Etc/UTC", do: own, else: Map.put(own, :time_zone, time_zone)
+    # `code_language` too (plan DD, L1), since it decides which word of a term the code
+    # is held to; kept out where it is English, the default, as `time_zone` is.
+    own = if code_language == :en, do: own, else: Map.put(own, :code_language, code_language)
 
     Map.merge(collections, %{
       format: 1,
@@ -180,6 +184,7 @@ defmodule EhOsContract.Domain.Build do
       name: name,
       language: language,
       time_zone: time_zone,
+      code_language: code_language,
       version:
         Digest.hash_groups(
           [domain: [own]] ++

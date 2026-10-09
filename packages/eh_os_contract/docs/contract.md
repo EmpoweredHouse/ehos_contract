@@ -36,7 +36,8 @@ end
 namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
 `:"my-shop"` — and a domain named otherwise does not compile ([`D11`](#refusals-d)). `language:` is the language the labels
 are written in — labels are the words of the people in the process, in their language, and the engine prints
-them as written. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
+them as written. `code_language:`, English unless given, is the language identifiers are written in: a term's
+translation into it is the word the check holds the names of the context's contracts to. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
 an event's required timestamps are tagged with the day they fall on there, which the host's configured time zone
 database answers (`config :elixir, :time_zone_database`); a zone it does not know does not compile ([`D13`](#refusals-d)).
 

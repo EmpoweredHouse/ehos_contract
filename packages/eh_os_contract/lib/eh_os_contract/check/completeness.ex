@@ -391,6 +391,8 @@ defmodule EhOsContract.Check.Completeness do
       unmapped_references(model, contracts),
       relations_against_references(model, contracts),
       avoided_terms(model, contracts),
+      words_without_terms(model, declared, contracts),
+      terms_of_other_contexts(model, contracts),
       directions(model, declared, contracts),
       scoped_actors_with_unscoped_commands(model, contracts),
       unchecked_values(model, declared, contracts)
@@ -720,6 +722,99 @@ defmodule EhOsContract.Check.Completeness do
         at
       )
     end
+  end
+
+  # Plan DD, L1 (#269): the glossary joined to the code. Only the names of things —
+  # units, read models, fields — are read: a command's or an event's name is a verb
+  # phrase, its verb inflected ("closed") where the term is not ("Close"), and the
+  # noun in it names a unit or a field already read. Words of one or two letters
+  # (`id`, `at`, `by`) are the library's and the language's, not the business's.
+  @shown_words 10
+
+  defp words_without_terms(model, declared, contracts) do
+    for context <- model.contexts,
+        terms = EhOsContract.CodeWords.terms(model, context.name),
+        tally = untermed(contracts, context.name, terms),
+        tally != [] do
+      {shown, rest} = Enum.split(tally, @shown_words)
+      listed = Enum.map_join(shown, ", ", fn {word, count} -> "#{word} (#{count})" end)
+      more = if rest == [], do: "", else: " and #{length(rest)} more"
+
+      Finding.new(
+        "word-without-term",
+        "context #{inspect(context.name)} of #{inspect(model.module)} names things with words " <>
+          "no term of its glossary has in #{inspect(model.code_language)}, most used first: " <>
+          listed <> more,
+        at(declared.contexts, context.name)
+      )
+    end
+  end
+
+  # Each word of the context's names of things that no term covers, with how many
+  # distinct names use it, most used first and then alphabetically.
+  defp untermed(contracts, context, terms) do
+    names =
+      for c <- contracts,
+          c.model.context == context,
+          %{thing?: true} = name <- EhOsContract.CodeWords.names(c),
+          uniq: true,
+          do: name.words
+
+    names
+    |> Enum.flat_map(fn words ->
+      covered =
+        Enum.reduce(terms, MapSet.new(), fn {_term, sequence}, covered ->
+          MapSet.union(covered, EhOsContract.CodeWords.covers(words, sequence))
+        end)
+
+      for {word, position} <- Enum.with_index(words),
+          not MapSet.member?(covered, position),
+          String.length(word) > 2,
+          uniq: true,
+          do: word
+    end)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {word, count} -> {-count, word} end)
+  end
+
+  # A name of a thing that says a term another context has and its own does not: a
+  # word of another context's language in this one's code. The same word as a term of
+  # both is the context's own, as "Visit" is of every context of Rehmed that has it.
+  defp terms_of_other_contexts(model, contracts) do
+    by_context = Map.new(model.contexts, &{&1.name, EhOsContract.CodeWords.terms(model, &1.name)})
+
+    for c <- contracts,
+        own = Map.get(by_context, c.model.context, []),
+        name <- EhOsContract.CodeWords.names(c),
+        name.thing?,
+        {sequence, others} <- elsewhere(by_context, c.model.context, name.words),
+        not Enum.any?(own, fn {_term, mine} -> mine == sequence end),
+        uniq: true do
+      where =
+        Enum.map_join(others, " and ", fn {context, term} ->
+          "#{inspect(term)} of #{inspect(context)}"
+        end)
+
+      Finding.new(
+        "term-of-another-context",
+        "#{inspect(c.module)}: #{name.what} says #{inspect(Enum.join(sequence, " "))}, the " <>
+          "word in code of #{where}, which context #{inspect(c.model.context)} has no term for",
+        name.at
+      )
+    end
+  end
+
+  # The words of other contexts' terms that stand in `words`, each with the contexts
+  # and terms that have it.
+  defp elsewhere(by_context, own, words) do
+    for {context, terms} <- by_context,
+        context != own,
+        {term, sequence} <- terms,
+        EhOsContract.CodeWords.contains?(words, sequence) do
+      {sequence, {context, term}}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.sort()
   end
 
   defp word_pattern(word),

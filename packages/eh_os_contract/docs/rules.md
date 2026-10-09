@@ -358,6 +358,33 @@ are every declaration's and every enum member's; a word matches whole, regardles
 and not inside the term itself. Inflected forms are not caught: `avoid` names each form to avoid.
 The words a translation avoids are another language's, which labels are not written in.
 
+## `word-without-term`
+
+**notice**
+
+A context names things with words its glossary has no term for.
+
+One finding per context, listing the words of the names of its units, read models and fields
+that no term of its glossary covers, the word used by the most names first. A term covers a
+word when the term's word in code — its translation into the domain's `code_language:`, or the
+term itself in a context written in that language — stands in the name: "Visit" covers
+`visit_id`, "Settlement date" covers `settlement_date` and not `date`. Names of commands and
+events are not read, since their verbs are inflected ("closed") where a term is not ("Close"),
+nor words of one or two letters (`id`, `at`). The words at the top are the ones the glossary
+most needs, or the ones the code should not use.
+
+## `term-of-another-context`
+
+**warning**
+
+A name uses a term of another context that its own context's glossary lacks.
+
+A unit, a read model or a field of a contract is named with the word in code of a term another
+context declares, and the contract's own context declares no term with that word. Each context
+has its own language: either the word means something here too, and the context's glossary
+should say what, or the name borrows the other context's meaning. A field typed `{:id, entity}`
+is not read: it refers to what another declaration owns, under that declaration's name.
+
 ## `external-direction-contradicted`
 
 **warning**
