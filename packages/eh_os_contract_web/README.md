@@ -117,6 +117,12 @@ end
 | `GET /api/graph/rehmed.settlement/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
 | `GET /api/graph/domain/Rehmed.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts and what crosses between them |
 
+**Which to read.** A graph or a picture of a contract — the EHOS Console, a renderer — reads
+`/graph`: its document holds every fact a picture or a panel shows, by stable ids, and its
+overlay what the log says over them. `/model` is the contract as its DSL declares it, one
+key per declaration, for a reader that works with the declarations themselves rather than a
+picture of them, such as a code generator or a diff of two versions in CI.
+
 A contract is named by its `id:` on every route; a domain, which has none, by its module.
 A graph document is the same bytes for the same declarations — every object's keys in
 order — so its digest is its `ETag`, and a request sending it back in `If-None-Match`

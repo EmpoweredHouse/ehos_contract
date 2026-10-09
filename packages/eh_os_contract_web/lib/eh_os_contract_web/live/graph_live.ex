@@ -1,9 +1,7 @@
 defmodule EhOsContract.Web.Live.Graph do
   @moduledoc """
-  Screen 3: the pictures of the contract model, live in the dashboard — the second
-  half of a plan `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own
-  moduledoc called out from the start ("this is the seed of the dashboard"). See
-  PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked. From the top: each
+  Screen 3: the pictures of the contract model, live in the dashboard. See PLAN.md,
+  "23 sierpnia (10)" for why this was parked, then unparked. From the top: each
   domain's context map and system, then the selected contract's pictures, then its
   units.
 
