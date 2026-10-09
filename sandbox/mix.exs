@@ -72,7 +72,10 @@ defmodule EhOsContractHost.MixProject do
       # dead-render HTML — not optional, and not visible in
       # phoenix_live_view's own dependency tree (packages/eh_os_contract_web hit the
       # same thing first).
-      {:lazy_html, ">= 0.1.0", only: :test}
+      {:lazy_html, ">= 0.1.0", only: :test},
+      # The test material's units are tried on legal histories of their contracts
+      # (`EhOsContract.PropertyCase`, plan DD, PC2), which exists only where StreamData is.
+      {:stream_data, "~> 1.1", only: :test}
     ]
   end
 

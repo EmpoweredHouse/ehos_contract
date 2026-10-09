@@ -67,6 +67,10 @@ defmodule Rehmed.Contracts.Settlement do
       field :handed_over, :boolean, default: false
       field :payments, {:list, :money}, default: []
       field :closed_on, :date, optional: true
+      # What the close settled, and whether anything but a correction followed it: what
+      # `holds?/2` reads to say the invariants hold (plan DD, PC2, #266).
+      field :total, :money, optional: true
+      field :changed_after_close, :boolean, default: false
     end
 
     invariant :handover_only_after_scope_change,
@@ -85,6 +89,14 @@ defmodule Rehmed.Contracts.Settlement do
     invariant :closed_settlement_changes_only_by_correction,
               "Rozliczonej wizyty nie zmienia się po cichu — zmiana to korekta",
               source: "AGG-03 niezmiennik 4"
+
+    # A correction is booked after the day closed (`E-84`): before the visit is settled
+    # there is no day it belongs to, and nothing to correct. Found by the settlement's
+    # properties (plan DD, PC2, #266), where the decider had relied on dispatch
+    # refusing the event it decided.
+    invariant :only_a_settled_visit_is_corrected,
+              "Korektę księguje się tylko na rozliczonej wizycie",
+              source: "E-84; AGG-03 niezmiennik 4"
 
     # `E-45`, and the one write a specialist may not defer: adding a service changes
     # the price and the duration, and the patient does not leave until it is
@@ -147,6 +159,7 @@ defmodule Rehmed.Contracts.Settlement do
     command :book_correction, "Zaksięguj korektę",
       by: :reception,
       emits: :settlement_corrected,
+      rejects: :only_a_settled_visit_is_corrected,
       source: "C-46, aktor A-02" do
       field :delta, :money
     end
@@ -209,6 +222,11 @@ defmodule Rehmed.Contracts.Settlement do
 
   # VLW 00:19:58: an unpaid penalty is collected with the next visit, "pay 200 zł at
   # once, not 150". A 150 zł visit and a 50 zł penalty are 200 zł.
+  scenario "korekta przed rozliczeniem wizyty — odrzucona" do
+    command :book_correction, %{delta: -1_000}
+    rejected :only_a_settled_visit_is_corrected
+  end
+
   scenario "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka" do
     given :payment_recorded, %{method: :card, amount: 20_000}
     command :close_settlement, %{total: 20_000}

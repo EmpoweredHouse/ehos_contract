@@ -1077,18 +1077,26 @@ defmodule EhOsContract.ScenarioCase do
 
   # --- finding the implementation ---------------------------------------------------
 
-  defp implementation!(model, %{kind: kind, name: name}, implementations) do
+  @doc false
+  # The modules that implement `kind` `name` of `model`: among `implementations` when
+  # given, else among the modules of the contract's application. Called by
+  # property_case.ex too, which finds an implementation as a scenario does.
+  @spec implementations(map(), atom(), atom(), [module()] | nil) :: [module()]
+  def implementations(model, kind, name, implementations) do
     candidates = implementations || modules(model.module)
 
-    found =
-      for module <- candidates,
-          Code.ensure_loaded?(module),
-          function_exported?(module, :__eh_os_implementation__, 0),
-          match?(
-            %{contract: c, kind: ^kind, name: ^name} when c == model.module,
-            module.__eh_os_implementation__()
-          ),
-          do: module
+    for module <- candidates,
+        Code.ensure_loaded?(module),
+        function_exported?(module, :__eh_os_implementation__, 0),
+        match?(
+          %{contract: c, kind: ^kind, name: ^name} when c == model.module,
+          module.__eh_os_implementation__()
+        ),
+        do: module
+  end
+
+  defp implementation!(model, %{kind: kind, name: name}, implementations) do
+    found = implementations(model, kind, name, implementations)
 
     case found do
       [one] ->
