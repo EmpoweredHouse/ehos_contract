@@ -886,8 +886,8 @@ with `holds?/2` in the sandbox.
 code_language: :en` (the default, in the digest only when it is not `:en`); a term's word in code is its
 translation into that language. `mix eh_os_contract.glossary` lists, under each term, the declarations named with
 it; `check` gets `word-without-term` (a notice per context ranking uncovered words of names of units, read models
-and fields) and `term-of-another-context` (a warning). A field typed `{:id, entity}` is not read, so L3's typed
-references silence the sandbox's four warnings on Rehmed's payers.
+and fields) and `term-of-another-context` (a warning, one per name; a field typed `{:id, entity}` or named like
+another context's unit identity is a reference and is not read).
 **L2 — rdzeń**: L5 `core-command-never-refuses` (komenda kontekstu `:core` bez `rejects:`/`or_rejects:`, poza
 wydawanymi przez reakcje) i `core-unit-records-only`; znacznik „tylko rejestruje” na stronach i grafie.
 **L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być
