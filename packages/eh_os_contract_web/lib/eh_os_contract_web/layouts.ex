@@ -1,13 +1,14 @@
 defmodule EhOsContract.Web.Layouts do
-  @moduledoc """
-  The dashboard's own root layout, isolated from whatever layout the host
-  application already has — `eh_os_contract_dashboard/2` wires this in explicitly via
-  `root_layout:`, the same isolation `oban_web` ships.
-  """
+  # The dashboard's own root layout, isolated from whatever layout the host
+  # application already has — `eh_os_contract_dashboard/2` wires this in explicitly via
+  # `root_layout:`, the same isolation `oban_web` ships.
+  @moduledoc false
 
   use Phoenix.Component
 
   embed_templates "layouts/*"
+
+  @spec root(map()) :: Phoenix.LiveView.Rendered.t()
 
   @doc """
   The two-screen nav, shared by both LiveViews rather than duplicated —
@@ -18,6 +19,7 @@ defmodule EhOsContract.Web.Layouts do
   attr :base_path, :string, required: true
   attr :current, :atom, required: true
 
+  @spec nav(map()) :: Phoenix.LiveView.Rendered.t()
   def nav(assigns) do
     ~H"""
     <nav>

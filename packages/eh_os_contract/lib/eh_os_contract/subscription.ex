@@ -1,52 +1,51 @@
 defmodule EhOsContract.Subscription do
-  @moduledoc """
-  A consumer fed from the log in order (v2 §12): a read model or a policy delivered
-  `:at_least_once`, a process manager, a `publish`'s relay (`EhOsContract.Relay`),
-  and a read model delivered `:in_transaction` while it is rebuilt.
-  Its row in `eh_os_contract_subscriptions` holds the position of the last event it
-  applied.
-
-  **One step is one transaction.** It takes the row `FOR UPDATE SKIP LOCKED`, so a
-  second runner, on this node or another, gets nothing instead of the same batch;
-  reads the next events of the consumer's types after the position; applies them;
-  and advances the position in the same transaction, so a batch is applied exactly
-  once. A batch is 500 events for a read model and 1 for a policy, because a policy
-  dispatches, takes the append lock before it decides, and a batch would hold the
-  lock throughout.
-
-  **An event that fails is retried, then isolated, never skipped.** The failing
-  step rolls back, and the row records the event's position, the exception's module
-  and one more attempt. The next step applies what comes before that event, then
-  tries it alone. After three attempts the row is `failing` at that position and the
-  consumer stops there: an ordered consumer that skips is a read model that silently
-  lies. Skipping it, or rebuilding, is a person's decision
-  (`mix eh_os_contract.subscriptions`).
-
-  **Rebuild.** A read model whose declaration changed — its version is the digest of
-  the declaration and of every event it takes — is `stale` from the next
-  registration, and goes on taking events until it is rebuilt. `rebuild/2` empties it through its `reset/0` and replays the log: one
-  delivered `:at_least_once` starts again from position 0; one delivered
-  `:in_transaction` is marked `rebuilding` under the append lock, so dispatch stops
-  projecting it, is caught up by steps, and goes back to `running` under the append
-  lock again, once nothing is left to read. A read model without `reset/0` cannot be
-  rebuilt and stays `stale`.
-
-  **Where a new consumer starts.** What is in the log when a consumer is first
-  registered is history, and nothing new reacts to history by itself. A new policy
-  starts at the head of the log: it keeps no state, so replaying the log with its
-  reactions suppressed would come to the same position. A new process manager
-  replays the log with its reactions suppressed: it learns the runs already there and
-  steers none of them, and a timer of theirs that came due before the deploy is
-  dropped (`EhOsContract.ProcessManager.reconcile!/2`). A deploy onto a year of
-  history therefore issues nothing for that year. An ordered read model starts at
-  position 0 and takes the whole log, since projecting history is what it is for. An
-  inline read model starts at the head, since dispatch has been projecting it all
-  along; one added to a log that already has its events is rebuilt by hand.
-
-  Reacting to history is a person's decision: `rebuild/2` of a policy moves it back
-  to position 0, and it reacts to every event from there, with the keys derived from
-  each event, so what it issued before is not issued twice.
-  """
+  # A consumer fed from the log in order (v2 §12): a read model or a policy delivered
+  # `:at_least_once`, a process manager, a `publish`'s relay (`EhOsContract.Relay`),
+  # and a read model delivered `:in_transaction` while it is rebuilt.
+  # Its row in `eh_os_contract_subscriptions` holds the position of the last event it
+  # applied.
+  #
+  # **One step is one transaction.** It takes the row `FOR UPDATE SKIP LOCKED`, so a
+  # second runner, on this node or another, gets nothing instead of the same batch;
+  # reads the next events of the consumer's types after the position; applies them;
+  # and advances the position in the same transaction, so a batch is applied exactly
+  # once. A batch is 500 events for a read model and 1 for a policy, because a policy
+  # dispatches, takes the append lock before it decides, and a batch would hold the
+  # lock throughout.
+  #
+  # **An event that fails is retried, then isolated, never skipped.** The failing
+  # step rolls back, and the row records the event's position, the exception's module
+  # and one more attempt. The next step applies what comes before that event, then
+  # tries it alone. After three attempts the row is `failing` at that position and the
+  # consumer stops there: an ordered consumer that skips is a read model that silently
+  # lies. Skipping it, or rebuilding, is a person's decision
+  # (`mix eh_os_contract.subscriptions`).
+  #
+  # **Rebuild.** A read model whose declaration changed — its version is the digest of
+  # the declaration and of every event it takes — is `stale` from the next
+  # registration, and goes on taking events until it is rebuilt. `rebuild/2` empties it through its `reset/0` and replays the log: one
+  # delivered `:at_least_once` starts again from position 0; one delivered
+  # `:in_transaction` is marked `rebuilding` under the append lock, so dispatch stops
+  # projecting it, is caught up by steps, and goes back to `running` under the append
+  # lock again, once nothing is left to read. A read model without `reset/0` cannot be
+  # rebuilt and stays `stale`.
+  #
+  # **Where a new consumer starts.** What is in the log when a consumer is first
+  # registered is history, and nothing new reacts to history by itself. A new policy
+  # starts at the head of the log: it keeps no state, so replaying the log with its
+  # reactions suppressed would come to the same position. A new process manager
+  # replays the log with its reactions suppressed: it learns the runs already there and
+  # steers none of them, and a timer of theirs that came due before the deploy is
+  # dropped (`EhOsContract.ProcessManager.reconcile!/2`). A deploy onto a year of
+  # history therefore issues nothing for that year. An ordered read model starts at
+  # position 0 and takes the whole log, since projecting history is what it is for. An
+  # inline read model starts at the head, since dispatch has been projecting it all
+  # along; one added to a log that already has its events is rebuilt by hand.
+  #
+  # Reacting to history is a person's decision: `rebuild/2` of a policy moves it back
+  # to position 0, and it reacts to every event from there, with the keys derived from
+  # each event, so what it issued before is not issued twice.
+  @moduledoc false
 
   import Ecto.Query
 

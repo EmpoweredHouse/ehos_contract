@@ -47,16 +47,13 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   @paused "paused after a failed renewal"
   @verify_opts [:keys, :audience, :issuer]
 
-  @typedoc "Why there is no credential."
-  @type refusal :: :signed_out | :ehos_unavailable | :renewal_busy | :refused
-
   @doc false
   # The credential for `resource`, an application's address, in the session `browser_token`
   # names, renewed when it is stale. `opts`: `session:`, the session already fetched for this
   # request; `verify/2`'s `:keys`, `:audience` and `:issuer`; and, for tests only, `wait_ms:` and
   # `poll_ms:`.
   @spec credential(atom(), term(), String.t(), keyword()) ::
-          {:ok, String.t()} | {:error, refusal()}
+          {:ok, String.t()} | {:error, EhOsContract.Auth.Session.credential_refusal()}
   def credential(name, browser_token, resource, opts \\ []) do
     at = %{
       name: name,

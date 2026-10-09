@@ -2,25 +2,39 @@ defmodule Mix.Tasks.EhOsContract.Check do
   @shortdoc "Whole-program checks over the contracts and their implementations"
 
   @moduledoc """
-  Everything that requires seeing **every** module at once.
+  Reports what a contract may legally say and a reader should still hear about, as
+  errors, warnings and notices.
 
-  The split is forced by the compilation model rather than chosen: a macro sees
-  one file, so it checks what one file can show. That a contract is implemented,
-  that a reaction does not point back up its process, and that the declarations
-  agree with reality — all of that belongs here. A project that does not register
-  the compiler `:eh_os_contract` gets its rules (L3) here too, as errors.
-
-  Every finding names its rule (`EhOsContract.Check.Catalog`, documented in
-  `docs/rules.md`) and, where it can, the file and line of the declaration it is
-  about. Nothing silences a rule; a finding goes when the model changes.
+  A compile refuses a contract that cannot be right. This task reads every contract,
+  domain and implementation of the applications `config :eh_os_contract,
+  applications:` names, less what `exclude:` leaves out, and reports the rest: a
+  contract nothing implements, a reaction that points back up its own process, a
+  deadline with no event that ends the run, a free-text field not marked personal.
+  A project that does not add the `:eh_os_contract` compiler gets that compiler's
+  violations here too, as errors.
 
       mix eh_os_contract.check                         # errors fail the task
       mix eh_os_contract.check --warnings-as-errors    # so do warnings
-      mix eh_os_contract.check --format json           # one JSON array, see render/2
+      mix eh_os_contract.check --format json           # one JSON array
+
+  Every finding names its rule, and, where it can, the file and line of the
+  declaration it is about. What each rule means and how to clear it is in
+  [the rules](rules.md) (`docs/rules.md` in the package); a compiler violation
+  repeated here keeps the compiler's code instead. Nothing silences a rule: a
+  finding goes away when the model changes.
+
+  Findings come out errors first, then warnings, then notices, each group sorted by
+  its text, so the same findings print the same output from one run to the next. In
+  the human format a finding is a line with its level, rule and message, and a second
+  line saying where the declaration it is about was written and where its rule is
+  documented, when anything says either; a count closes the report. In JSON a finding
+  is `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and
+  `line` (`null` when nothing says where) and `documentation` (`null` for a repeated
+  compiler rule, which the catalogue does not document).
 
   `--format json` prints the array and nothing else, but the compile this task runs
-  first prints what it prints: compile beforehand when the output is read by a
-  program. `--warnings-as-errors` changes the exit status and nothing it prints.
+  first prints what it prints: compile beforehand when a program reads the output.
+  `--warnings-as-errors` changes the exit status, and nothing that is printed.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -51,6 +65,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     # catalog's.
     findings = for {rule, message} <- findings, do: Finding.new(rule, message)
     contracts = EhOsContract.Registry.contracts()
+    processes = EhOsContract.Registry.processes()
 
     # An umbrella's root compiles no module of its own, and has no compile path to read.
     compiler =
@@ -66,7 +81,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
     report(
       compiler ++
         EhOsContract.Check.findings(contracts) ++
-        EhOsContract.Check.Completeness.findings(contracts) ++
+        EhOsContract.Check.process_module_findings(processes) ++
+        EhOsContract.Check.Completeness.findings(contracts, processes) ++
         EhOsContract.Check.Contracts.findings(contracts) ++ findings,
       opts
     )
@@ -97,33 +113,27 @@ defmodule Mix.Tasks.EhOsContract.Check do
     end
   end
 
-  @doc """
-  The findings in the order they are printed: errors, then warnings, then notices,
-  each group sorted by its text.
-
-  A fixed order rather than the order the checks produced them. Some checks group
-  by module into a map, and on OTP 26 and later a small map keyed by atoms iterates
-  in the order the atoms were created, not alphabetically. A new module anywhere in
-  the build could therefore swap two lines of this report between runs of the same
-  code (v2 plan, E1). The plan compares this output commit to commit, so it has to
-  come out the same for the same findings.
-  """
+  # The findings in the order they are printed: errors, then warnings, then notices,
+  # each group sorted by its text.
+  #
+  # A fixed order rather than the order the checks produced them. Some checks group
+  # by module into a map, and on OTP 26 and later a small map keyed by atoms iterates
+  # in the order the atoms were created, not alphabetically. A new module anywhere in
+  # the build could therefore swap two lines of this report between runs of the same
+  # code (v2 plan, E1). The plan compares this output commit to commit, so it has to
+  # come out the same for the same findings.
+  # Called by this task and its tests.
+  @doc false
   @spec ordered([Finding.t()]) :: [Finding.t()]
   def ordered(findings) do
     rank = %{error: 0, warn: 1, info: 2}
     Enum.sort_by(findings, &{Map.fetch!(rank, &1.level), &1.message, &1.rule})
   end
 
-  @doc """
-  What the task prints for `findings`, as `format` says: `:human`, two lines a
-  finding and a count; `:json`, one array and nothing else (plan EL1).
-
-  A finding's second line says where the declaration it is about was written, when
-  anything does, and where its rule is documented; a finding with neither has none. In JSON a finding is `rule`,
-  `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
-  when nothing says where) and `documentation` (`null` for a repeated compiler rule,
-  which the catalog does not document).
-  """
+  # What the task prints for `findings`, as `format` says (plan EL1); the format, as a
+  # program reads it, is in the task's moduledoc, so change it there with this.
+  # Called by this task and its tests.
+  @doc false
   @spec render([Finding.t()], :human | :json) :: String.t()
   def render(findings, :human) do
     lines =
@@ -178,10 +188,10 @@ defmodule Mix.Tasks.EhOsContract.Check do
     if Catalog.known?(rule), do: Catalog.url(rule)
   end
 
-  @doc """
-  Whether `findings` fail the task: any error does, and a warning does when
-  `warnings_as_errors` is set. Notices never do. The output is the same either way.
-  """
+  # Whether `findings` fail the task: any error does, and a warning does when
+  # `warnings_as_errors` is set. Notices never do. The output is the same either way.
+  # Called by this task.
+  @doc false
   @spec failed?([Finding.t()], boolean()) :: boolean()
   def failed?(findings, warnings_as_errors) do
     Enum.any?(findings, &(&1.level == :error or (warnings_as_errors and &1.level == :warn)))

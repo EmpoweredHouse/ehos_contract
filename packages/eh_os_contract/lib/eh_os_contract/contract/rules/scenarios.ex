@@ -1,51 +1,58 @@
 defmodule EhOsContract.Contract.Rules.Scenarios do
-  @moduledoc """
-  S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
-
-  - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
-    it resolves to the declaration that answers it. No two scenarios have the same
-    description, which is what names each one. A command belongs to one unit;
-    an event may be handled by several reactions, and then `target` names the one.
-  - **S2.** `given` events are ones the target keeps its state from: a unit's own
-    events, and for a boundary also the events it consults; a process manager's
-    triggers; for a query, the events the read model it reads projects. A policy
-    keeps no state, so it takes no `given`.
-  - **S3.** Data names declared fields only. `given` and the trigger supply every
-    required field, except the target's identity, which a scenario fills in itself:
-    it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
-    one of a domain value is the Mix compiler's (X9). An event consumed from a
-    sibling contract has its fields in the sibling, so its data is X9's as well.
-  - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
-  - **S5.** `expect` names events in the command's `emits:`.
-  - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
-    `expect` or by `rejected`, not both. An event delivered to a policy is followed
-    by what it `issues`; to a process manager, by what it `issues`, `sets`,
-    `cancels`, whether it has `ended`, or the `state` its run holds after it (plan
-    EP4), and each of those is one its declaration allows — `state` once, naming
-    fields of the state or the correlation; `on` may also name one of its timers,
-    which then fires. Only a process manager's scenario says a `state`. A query is
-    followed by one `answers`, ESDM's `result`: a list of rows when it returns
-    many, one row or `nil` when it returns one, each row naming fields of the read
-    model it reads. An effect's outcome is outside the log, so an effect is no
-    scenario's target; neither is a read model on its own, which a scenario reaches
-    through a query, as ESDM's read model scenario does.
-  - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
-  - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
-    successor of architecture §18's gate, kept an error although ESDM makes it a
-    warning — and so is every constraint of a command, by a scenario of that command
-    (plan EL2).
-  - **S9.** **A domain service's rule gives at least one example** (plan EL2b), and
-    each is `{[argument, …], result}`: as many arguments as the function takes, each
-    of its argument's type and the result of the one it returns, as plain data —
-    `nil` only where the declaration says optional — and none twice, since each
-    names its test. A value of a domain type is the Mix compiler's (X9), as a
-    scenario's is.
-  - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
-    shows (plan EP2), each once: a constraint of a policy, a process manager or a
-    query, or an invariant of a process manager. A command's scenario names none: a
-    unit's invariants and a command's constraints are shown by `rejected` (S8). An
-    effect is no scenario's target.
-  """
+  # S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
+  #
+  # - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
+  #   it resolves to the declaration that answers it. No two scenarios have the same
+  #   description, which is what names each one. A command belongs to one unit;
+  #   an event may be handled by several reactions, and then `target` names the one.
+  # - **S2.** `given` events are ones the target keeps its state from: a unit's own
+  #   events, and for a boundary also the events it consults; a process manager's
+  #   triggers; for a query, the events the read model it reads projects. A policy
+  #   keeps no state, so it takes no `given`.
+  # - **S3.** Data names declared fields only. `given` and the trigger supply every
+  #   required field, except the target's identity, which a scenario fills in itself:
+  #   it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
+  #   one of a domain value is the Mix compiler's (X9). An event consumed from a
+  #   sibling contract has its fields in the sibling, so its data is X9's as well. A
+  #   given's `at:` is an ISO 8601 timestamp with an offset, never earlier than the given
+  #   before it, since a log never holds a later event before an earlier one, and no
+  #   undated given comes before a dated one (plan DD, S2, #251).
+  # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
+  # - **S5.** `expect` names events in the command's `emits:`.
+  # - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
+  #   `expect` or by `rejected`, not both. An event delivered to a policy is followed
+  #   by what it `issues`; to a process manager, by what it `issues`, `sets`,
+  #   `cancels`, whether it has `ended`, or the `state` its run holds after it (plan
+  #   EP4), and each of those is one its declaration allows — `state` once, naming
+  #   fields of the state or the correlation; `on` may also name one of its timers,
+  #   which then fires. Only a process manager's scenario says a `state`. A query is
+  #   followed by one `answers`, ESDM's `result`: a list of rows when it returns
+  #   many, one row or `nil` when it returns one, each row naming fields of the read
+  #   model it reads. An effect's outcome is outside the log, so an effect is no
+  #   scenario's target; neither is a read model on its own, which a scenario reaches
+  #   through a query, as ESDM's read model scenario does.
+  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one;
+  #   `as:`, the person issuing it (plan DD, A1, #247), only beside an `actor`.
+  # - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
+  #   successor of architecture §18's gate, kept an error although ESDM makes it a
+  #   warning — and so is every constraint of a command, by a scenario of that command
+  #   (plan EL2).
+  # - **S9.** **A domain service's rule gives at least one example** (plan EL2b), and
+  #   each is `{[argument, …], result}`: as many arguments as the function takes, each
+  #   of its argument's type and the result of the one it returns, as plain data —
+  #   `nil` only where the declaration says optional — and none twice, since each
+  #   names its test. A value of a domain type is the Mix compiler's (X9), as a
+  #   scenario's is.
+  # - **S12** (plan DD, T2a, #240). `given_entity` gives the row of an entity the
+  #   scenario's command `reads:`, and a scenario of such a command gives at least one of
+  #   every entity it reads: the decision cannot be run without them. Whether the row's
+  #   fields are the entity's is X9's, where the domain is known.
+  # - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
+  #   shows (plan EP2), each once: a constraint of a policy, a process manager or a
+  #   query, or an invariant of a process manager. A command's scenario names none: a
+  #   unit's invariants and a command's constraints are shown by `rejected` (S8). An
+  #   effect is no scenario's target.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.{Data, Dsl, Rules}
@@ -54,6 +61,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
     Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++
+      Enum.flat_map(declarations.scenarios, &entities(&1, declarations)) ++
+      Enum.flat_map(declarations.scenarios, &dated/1) ++
       described_once(declarations) ++ covered(declarations) ++ rule_examples(declarations)
   end
 
@@ -131,6 +140,54 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp describe(%Dsl.Argument{name: name}), do: "argument #{inspect(name)}"
   defp describe(%Dsl.Returns{}), do: "the result"
+
+  defp entities(%Dsl.Scenario{} = scenario, d) do
+    where = ~s|scenario "#{scenario.description}"|
+    command = reading(scenario, d)
+
+    case {command, scenario.given_entities} do
+      {nil, []} ->
+        []
+
+      {nil, [first | _]} ->
+        [
+          {"S12: #{where}: given_entity gives a row only to a command that reads: entities",
+           first}
+        ]
+
+      {command, entities} ->
+        read = for {_name, field} <- command.reads, do: read_entity(command, field)
+        given = Enum.map(entities, & &1.entity)
+
+        stray =
+          for e <- entities, e.entity not in read do
+            {"S12: #{where}: given_entity #{inspect(e.entity)} is not an entity command " <>
+               "#{inspect(command.name)} reads (#{inspect(Enum.uniq(read))})", e}
+          end
+
+        missing =
+          for entity <- Enum.uniq(read), entity != nil, entity not in given do
+            {"S12: #{where}: command #{inspect(command.name)} reads #{inspect(entity)}, and the " <>
+               "scenario gives no given_entity #{inspect(entity)}", scenario}
+          end
+
+        stray ++ missing
+    end
+  end
+
+  # The command a scenario triggers, when it reads entities.
+  defp reading(%Dsl.Scenario{trigger: [%Dsl.Trigger{kind: :command, name: name}]}, d),
+    do: Enum.find(Rules.commands(d), &(&1.name == name and &1.reads != []))
+
+  defp reading(_scenario, _d), do: nil
+
+  # The entity a read names, by its field's type; `nil` for a field A8 refuses.
+  defp read_entity(command, field) do
+    case Enum.find(command.fields, &(&1.name == field)) do
+      %{type: {:id, entity}} -> entity
+      _ -> nil
+    end
+  end
 
   # A scenario is named by its description, in the test `EhOsContract.ScenarioCase`
   # generates for it too.
@@ -603,6 +660,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     end
   end
 
+  # Plan DD, A1 (#247): `as:` names the person beside the role, so it needs one.
+  defp actor(where, %{actor: nil, as: as} = scenario, _command) when is_binary(as),
+    do: [{"S7: #{where}: as: names a person only beside an actor:", scenario}]
+
   defp actor(_where, %{actor: nil}, _command), do: []
 
   defp actor(where, scenario, command) do
@@ -613,6 +674,9 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
            "#{inspect(command.name)}, #{inspect(command.by)}", scenario}
       ]
   end
+
+  defp no_actor(where, %{actor: nil, as: as} = scenario) when is_binary(as),
+    do: [{"S7: #{where}: only a command's scenario names a person with as:", scenario}]
 
   defp no_actor(_where, %{actor: nil}), do: []
 
@@ -649,6 +713,81 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
         end)
     end
   end
+
+  # --- S3: when each given happened (plan DD, S2, #251) ------------------------------
+
+  @epoch ~U[2026-01-01 09:00:00Z]
+
+  @doc false
+  # The moment each given happened, in order: its `at:`, or a minute after the given
+  # before it, the first at 2026-01-01 09:00 UTC. An `at:` that is no timestamp is
+  # `{:unfit, problem}`, and the given after it counts from the one before. The one rule
+  # for S3 and for `EhOsContract.ScenarioCase`, which dates its givens by it.
+  @spec moments([map()]) :: [DateTime.t() | {:unfit, String.t()}]
+  def moments(givens) do
+    {moments, _last} =
+      Enum.map_reduce(givens, nil, fn given, last ->
+        case Map.get(given, :at) do
+          nil ->
+            at = if last, do: DateTime.add(last, 60), else: @epoch
+            {at, at}
+
+          written ->
+            case DateTime.from_iso8601(written) do
+              {:ok, at, _offset} -> {at, at}
+              {:error, _} -> {{:unfit, hd(Data.problems(:timestamp, written))}, last}
+            end
+        end
+      end)
+
+    moments
+  end
+
+  @doc false
+  # S3 over the givens of one scenario, contract's or process module's alike.
+  @spec dated(String.t(), [map()]) :: [DslRules.violation()]
+  def dated(where, givens) do
+    {violations, _last} =
+      givens
+      |> Enum.zip(moments(givens))
+      |> Enum.reduce({[], nil}, fn
+        {given, {:unfit, problem}}, {acc, last} ->
+          {[{"S3: #{where}: given #{inspect(given.event)}, at: #{problem}", given} | acc], last}
+
+        {given, at}, {acc, last} ->
+          if last && DateTime.compare(at, last) == :lt,
+            do:
+              {[
+                 {"S3: #{where}: given #{inspect(given.event)} happened at " <>
+                    "#{DateTime.to_iso8601(at)}, before the given before it " <>
+                    "(#{DateTime.to_iso8601(last)}); a log holds events in the order they " <>
+                    "happened, so list them so, and a given without at: comes a minute " <>
+                    "after the one before it", given}
+                 | acc
+               ], at},
+            else: {acc, at}
+      end)
+
+    Enum.reverse(violations) ++ undated_first(where, givens)
+  end
+
+  # An undated given before a dated one would happen on 1 January 2026, the default,
+  # whatever the dated ones say, so a window could open months before the author meant.
+  defp undated_first(where, givens) do
+    case Enum.split_while(givens, &(Map.get(&1, :at) == nil)) do
+      {[_ | _] = undated, [dated | _]} ->
+        for given <- undated do
+          {"S3: #{where}: given #{inspect(given.event)} has no at:, and comes before given " <>
+             "#{inspect(dated.event)}, which has one; it would happen on " <>
+             "#{DateTime.to_iso8601(@epoch)}, so date it too", given}
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp dated(scenario), do: dated(~s|scenario "#{scenario.description}"|, scenario.given)
 
   # --- S3: data -----------------------------------------------------------------------
 

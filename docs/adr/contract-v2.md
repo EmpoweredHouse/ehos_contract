@@ -711,6 +711,38 @@ within `rejects:`, routing a stored type to its struct, and encryption.
 > (§17). `emit/1`, `reject/1` and `issue/1` are imported in every implementation, so a macro in the wrong
 > kind is refused by I7 with a reason, not by the compiler as an undefined function.
 
+> **7 October 2026, plan DD, T2a ([#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240)) — a
+> decision may read an entity.** "A decision is a function of the command and the unit's state" left no place for
+> what the application keeps outside the log: whether a booked visit is reported to the state register depends on
+> the service booked, and the clinic keeps its services. The caller sending the flag makes the decision trust a
+> claim; the decision reading the database itself leaves no record of what it read, and a scenario cannot supply
+> it. So **a command may declare `reads: [service: :service_id]`**, naming a required field of its own typed
+> `{:id, entity}`, and is then issued only by an actor, never by a reaction, whose lookup would run inside the
+> transaction that reacted (A8); **its callback is then `(command, state, reads) :: decision`**, `reads` holding
+> each row under its name, with the fields the domain declares for the entity. The rows come from the host
+> (`EhOsContract.Entities`, asked as the actor who issued the command, so a host with several tenants answers
+> with that tenant's rows), are read once per command before its transaction, so a conflict's retry decides on
+> the same rows, and are kept with the command's record (`inputs` of `eh_os_contract_commands`, migration V02);
+> entities hold no personal data (D6), so the record needs no sealing. A row not found is the caller's error, a
+> field naming nothing (`{field, :unknown}`), not a rejection. A scenario gives the row with `given_entity` (S12,
+> X9). A decision is still a pure function of its arguments; it has three of them. Rejected: putting the rows in
+> `__meta__`, which says who and when and comes back with the log; folding them into the state, which is the
+> unit's history and would then depend on when it was read.
+> ([#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240))
+
+> **7 October 2026, plan DD, A1 — a command may name the person who must issue it.** `by:` names roles, so any
+> specialist could close a colleague's visit, and a rule of the business — "the visit's own specialist closes it"
+> — had nowhere to stand but the decider, which never sees the credential. **A command may declare `actor_is
+> :specialist_id, or_rejects: :invariant`**: the credential's subject must be the one that field of the unit's
+> state holds (A9: a non-personal `:id` of the state or the identity, an invariant in `rejects:`, not on a command
+> that creates its aggregate, and only on a command people issue). Dispatch checks it after folding the state and
+> before the decision, and refuses as a lifecycle's precondition does, on the invariant with a `rejected` row, so
+> the report counts it as any business refusal. A `:system` actor and a reaction act for the application and are
+> not compared. **No exception for a role** (the user's decision): an override is a command of its own, so the
+> report can tell it from an ordinary close. Rejected: comparing in the decider through `__meta__`, which would
+> leave the rule invisible to the contract and to the report; a field of the command, which the caller fills
+> and so would name themselves. ([#247](https://github.com/EmpoweredHouse/eh-os-contract/issues/247))
+
 ## 6. Checks, in five layers
 
 **No rule depends on a Spark verifier.** Verifiers run in `@after_verify`, Spark turns their errors into
@@ -1525,6 +1557,25 @@ the person's.
 > commands failed", which is what happened, and a process's runs still say how much of the business a failure
 > touches. A process keeps its runs, durations and promises, judged per run as before.
 
+> **8 October 2026, plan DD, S2 — a promise has scenarios, and a scenario's events may be dated.** Until now a
+> promise was judged only on the log, so its owner first saw it judged in a report. A process module now carries
+> scenarios of its promises: the events and when they happened, the moments an external system was seen
+> unavailable, the moment of judgement, and the verdict and route expected. They run as tests through the same
+> rules the report applies (`Trace.judge/3`), without a database. An outage in a scenario is only of an external
+> that the promise's `eventually` or `or_else` depends on, the same narrowing the report applies. Every scenario,
+> a contract's too, may date a given (`at:`); a given's moment never goes back, since a log holds events in the
+> order they happened (the user's decision of 8 October: allowed in every scenario, not only a promise's). A
+> contract that still declares its own `process` gets no promise scenarios: that form is being removed (#221).
+> [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251)
+
+> **8 October 2026, plan DD, O1 — the report checks the order of a process's stages.** The stages were an order
+> nothing read. The report now counts, per process, the runs that entered a later stage before an earlier one,
+> and names the pairs, under a key of its own (`out_of_order`), never among a contract's undeclared transitions:
+> it is a claim about the process, and it can be addressed to someone else. Agreed with EHOS
+> (EmpoweredHouse/eh-os#297): by position in the log, never by timestamp; only stages a run reached; the period
+> takes a run by its first event and does not cut it; a stage entered by its first event; the count and the pairs,
+> never which runs. [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260)
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |
@@ -1765,6 +1816,22 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
   acknowledge. The library ships a local adapter for tests and one application; the transport adapters (EHOS's
   v1 relay, JetStream through `gnat`) are EHOS's, and one shared test suite runs against every adapter. The
   library does not depend on NATS.
+
+> **7 October 2026, #180 — where the namespace comes from.** The rule that every published name, and since the
+> contract ids moved to `id:` (ID1–ID4) every contract's `id:`, lives under "the application's own namespace" (D11)
+> left that namespace to the domain's `name:`, a literal the developer writes. Nothing tied it to the application
+> EHOS registered, so two applications naming their domains alike would publish on each other's names. The
+> namespace is the EHOS application's name: the domain's `name:` must equal it exactly, so it is itself a name EHOS
+> takes (lowercase letters, digits and dashes), as the manifest generator already required; `:my_shop` matches
+> neither `my_shop`, which EHOS never issues, nor `my-shop`. EHOS enforces it, by a bus credential that allows
+> publishing only under the registered name and by refusing such a manifest at registration
+> (EmpoweredHouse/eh-os#201). The library checks it early: `eh_os_contract_auth` refuses to start when its
+> configured `audience` is not `<application>/<environment>` with both parts present, when that application is
+> the name of no domain with contracts (advising the dashed rename when a domain differs only by `_`), or when
+> another domain in the same application publishes, since it would publish under a name that is not the
+> application's; it checks whenever it starts, since it requires an `audience`. A release may hold other domains
+> with contracts, as the sandbox does, as long as only the application's own publishes.
+> ([#180](https://github.com/EmpoweredHouse/eh-os-contract/issues/180))
 
 > **1 October 2026, before E12 — what the relay guarantees, and what `Bus` does not.**
 >

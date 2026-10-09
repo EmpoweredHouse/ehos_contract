@@ -1,22 +1,21 @@
 defmodule EhOsContract.Domain.Build do
-  @moduledoc """
-  Builds a domain's model and compiles it into the module as
-  `__eh_os_contract_model__/0` (v2 §9).
-
-  Runs last, after every rule has passed, so the model is only ever built from a
-  domain that is well formed.
-
-  The model is plain data: maps, lists, atoms, strings, and tuples only where the
-  declaration itself holds one. Spark's structs and source annotations stay behind.
-  **Collections keep declaration order**, because readers print in it (E1's
-  correction to v2 §9). **The digest does not see that order.** A domain is a set of
-  declarations, so `version` and each entry of `digests` are computed over a form
-  where every collection of declarations is sorted, nested ones included: a
-  context's terms, a term's translations, a value's fields. Moving a declaration
-  therefore moves nothing. Changing one moves the version and that declaration's
-  digest, and nothing else. The domain's own `name:` and `language:` are covered as
-  well, under the digest key `"domain:<name>"`.
-  """
+  # Builds a domain's model and compiles it into the module as
+  # `__eh_os_contract_model__/0` (v2 §9).
+  #
+  # Runs last, after every rule has passed, so the model is only ever built from a
+  # domain that is well formed.
+  #
+  # The model is plain data: maps, lists, atoms, strings, and tuples only where the
+  # declaration itself holds one. Spark's structs and source annotations stay behind.
+  # **Collections keep declaration order**, because readers print in it (E1's
+  # correction to v2 §9). **The digest does not see that order.** A domain is a set of
+  # declarations, so `version` and each entry of `digests` are computed over a form
+  # where every collection of declarations is sorted, nested ones included: a
+  # context's terms, a term's translations, a value's fields. Moving a declaration
+  # therefore moves nothing. Changing one moves the version and that declaration's
+  # digest, and nothing else. The domain's own `name:` and `language:` are covered as
+  # well, under the digest key `"domain:<name>"`.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 
@@ -57,7 +56,7 @@ defmodule EhOsContract.Domain.Build do
            @moduledoc """
            One type per value of `#{inspect(unquote(model.module))}`, generated from its
            declarations. Contracts refer to them as remote types, which records no
-           compile dependency (v2 §5).
+           compile dependency.
            """
 
            unquote_splicing(types)

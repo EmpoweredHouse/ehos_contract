@@ -12,6 +12,8 @@ spark_locals_without_parens = [
   actor: 1,
   actor: 3,
   actor: 4,
+  actor_is: 1,
+  actor_is: 2,
   aggregate: 2,
   aggregate: 3,
   answers: 1,
@@ -87,6 +89,9 @@ spark_locals_without_parens = [
   given: 1,
   given: 2,
   given: 3,
+  given_entity: 1,
+  given_entity: 2,
+  given_entity: 3,
   handles: 1,
   idempotency: 1,
   idempotent_on: 1,
@@ -115,6 +120,8 @@ spark_locals_without_parens = [
   optional: 1,
   or_else: 1,
   or_rejects: 1,
+  outage: 1,
+  outage: 2,
   param: 2,
   param: 3,
   personal: 1,
@@ -193,6 +200,8 @@ spark_locals_without_parens = [
   value: 1,
   value: 2,
   value: 3,
+  verdict: 1,
+  via: 1,
   violated_by: 1,
   wait: 1,
   where: 1,
@@ -208,7 +217,7 @@ locals_without_parens = spark_locals_without_parens ++ own_locals_without_parens
 [
   # `:ecto_sql` for `EhOsContract.Migrations`' version modules.
   import_deps: [:ecto_sql],
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: ["{mix,.formatter}.exs", "{config,lib,test,dev}/**/*.{ex,exs}"],
   # Named once, used twice: `export:` is what a consumer's `import_deps: [:eh_os_contract]`
   # reads, the top-level key is what this package's own `mix format` uses — and
   # without the second, the fixtures in `test/support/` are the one place in the

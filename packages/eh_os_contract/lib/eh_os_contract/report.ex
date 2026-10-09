@@ -2,12 +2,9 @@ defmodule EhOsContract.Report do
   @moduledoc """
   The conformance report for a period — four questions, one page.
 
-  Rendered here rather than in the application, which reverses an earlier decision:
-  the sentences used to be built client-side, on the argument that the engine cannot
-  know what language its reader speaks. The engine now writes its own sentences in
-  English and passes the contract's `label` through untouched, so a declaration
-  written in the reader's language stays in it. The engine translates its own words
-  and never somebody else's.
+  The engine writes its own sentences in English and passes the contract's `label`
+  through untouched, so a declaration written in the reader's language stays in it.
+  The engine translates its own words and never somebody else's.
 
   **The scaffolding is English; the contract's own labels are not translated.**
   `from_label`, `to_label` and a process's `label` print exactly as the contract
@@ -15,16 +12,35 @@ defmodule EhOsContract.Report do
   engine writes its own sentences in one language; it still does not decide what
   language the client wrote their labels in.
 
-  What is **not** here, unchanged from before the move: declarations the process
-  owner has not confirmed. The filter lives in `EhOsContract.Conformance`, not here, because
-  it is a rule about evidence rather than about formatting — the consequence is
-  visible right here: an unconfirmed `deadline` never reaches `render/1`'s input.
+  What is **not** here: declarations the process owner has not confirmed. The filter
+  lives in `EhOsContract.Conformance`, not here, because it is a rule about evidence
+  rather than about formatting — the consequence is visible right here: an unconfirmed
+  `deadline` never reaches `render/1`'s input.
   """
+
+  # Rendered here rather than in the application, which reversed an earlier decision:
+  # the sentences used to be built client-side, on the argument that the engine cannot
+  # know what language its reader speaks. What the report leaves out stayed as it was
+  # before the move.
 
   alias EhOsContract.Report.Sentence
 
-  @doc "The report for one contract over a period, as text to print."
+  @doc """
+  The report for one contract over a period, as text to print; or for one process
+  module, its deployment and its process section.
+  """
+  # A process module's report: plan DD, P2d (#213).
   @spec render(map()) :: String.t()
+  def render(%{process: _} = report) do
+    [
+      header(report),
+      process_deployment(report.deployment),
+      Enum.map(report.processes, &process/1)
+    ]
+    |> List.flatten()
+    |> Enum.join("\n")
+  end
+
   def render(report) do
     [
       header(report),
@@ -108,6 +124,35 @@ defmodule EhOsContract.Report do
       wired ++ change ++ earlier ++ [""]
   end
 
+  # A process module's version, in force since the deployment that carries it was first
+  # recorded: no event is stamped with it.
+  @spec process_deployment(map()) :: [String.t()]
+  defp process_deployment(deployment) do
+    since =
+      case deployment.deployed.since do
+        nil -> "not recorded as deployed"
+        at -> "deployed since #{day(at)}"
+      end
+
+    change =
+      case deployment.changed do
+        nil ->
+          []
+
+        c ->
+          [
+            "  Since the previous version: " <>
+              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}."
+          ] ++ declarations_changed(c.declarations)
+      end
+
+    [
+      "PROCESS MODULE: #{deployment.process}",
+      "  Version #{deployment.deployed.version}, #{since}."
+    ] ++
+      change ++ [""]
+  end
+
   # The line events and paths could never carry: a promise whose window moved, or an
   # event whose field became `personal:`, adds and removes nothing. Named rather than counted,
   # because "2 declarations changed" sends the reader looking and the names end the
@@ -156,8 +201,18 @@ defmodule EhOsContract.Report do
       ["  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
+      out_of_order(p) ++
       assertions(p.promises) ++
       [""]
+  end
+
+  # Plan DD, O1 (#260).
+  @spec out_of_order(map()) :: [String.t()]
+  defp out_of_order(p) do
+    case Sentence.out_of_order(p.out_of_order) do
+      nil -> []
+      {heading, pairs} -> ["  " <> heading] ++ for(pair <- pairs, do: "    · " <> pair)
+    end
   end
 
   # Plan DD, P1a (#183): the contract's steps, whether or not it has a process.

@@ -1,18 +1,17 @@
 defmodule EhOsContract.DslRules do
-  @moduledoc """
-  How the library's DSLs report a broken rule (v2 §6, layer L2).
-
-  A rule is a transformer, not a verifier: Spark turns a verifier's error into a
-  warning and does not re-run verifiers on an incremental compile, so a rule written
-  as one would hold only sometimes. A transformer's error stops the compilation.
-
-  Every violation found is reported, not only the first. They come in one
-  `Spark.Error.DslError`: its location is the first violation's, and its message
-  lists every violation with the file and line of the declaration at fault. A
-  violation is `{message, declaration}`, where the declaration is the Spark struct
-  whose source annotation says where it was written, or that annotation itself, for
-  what no struct holds, such as an option of `use`.
-  """
+  # How the library's DSLs report a broken rule (v2 §6, layer L2).
+  #
+  # A rule is a transformer, not a verifier: Spark turns a verifier's error into a
+  # warning and does not re-run verifiers on an incremental compile, so a rule written
+  # as one would hold only sometimes. A transformer's error stops the compilation.
+  #
+  # Every violation found is reported, not only the first. They come in one
+  # `Spark.Error.DslError`: its location is the first violation's, and its message
+  # lists every violation with the file and line of the declaration at fault. A
+  # violation is `{message, declaration}`, where the declaration is the Spark struct
+  # whose source annotation says where it was written, or that annotation itself, for
+  # what no struct holds, such as an option of `use`.
+  @moduledoc false
 
   # `\z`, not `$`, which also matches before a final newline.
   @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/

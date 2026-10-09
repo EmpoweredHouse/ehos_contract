@@ -1,31 +1,30 @@
 defmodule EhOsContract.Contract.Build do
-  @moduledoc """
-  Builds a v2 contract's model and compiles it into the module as
-  `__eh_os_contract_model__/0` (v2 §9).
-
-  Runs last, after every rule, so the model is only built from a contract that is
-  well formed. It is plain data: maps, lists, atoms, strings, integers and booleans,
-  with durations as `%{amount: 24, unit: :hour}`. Spark's structs and source
-  annotations stay behind.
-
-  **Collections keep declaration order**, because readers print in it (E1's
-  correction to v2 §9). A unit's commands and events are lifted to the top level,
-  each naming its `unit`, so a reader asking for an event does not walk units; an
-  event declared in a stage group carries that `stage`. `grants` says, per actor,
-  which commands it may issue, queries it may ask and events it may record.
-
-  **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
-  first in its state, in each of its commands and in each of its events, as if they
-  had been declared there. A process manager's `correlate` fields come first in its
-  state the same way, unless the state declares them.
-
-  **The digest does not see declaration order.** Every collection of declarations
-  is a set to it, nested ones included, and so is every value with set meaning
-  (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
-  and `correlate`, the process's stages, and a scenario's givens and expectations.
-  Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
-  one, `"scenario:*"`, since nothing names them.
-  """
+  # Builds a v2 contract's model and compiles it into the module as
+  # `__eh_os_contract_model__/0` (v2 §9).
+  #
+  # Runs last, after every rule, so the model is only built from a contract that is
+  # well formed. It is plain data: maps, lists, atoms, strings, integers and booleans,
+  # with durations as `%{amount: 24, unit: :hour}`. Spark's structs and source
+  # annotations stay behind.
+  #
+  # **Collections keep declaration order**, because readers print in it (E1's
+  # correction to v2 §9). A unit's commands and events are lifted to the top level,
+  # each naming its `unit`, so a reader asking for an event does not walk units; an
+  # event declared in a stage group carries that `stage`. `grants` says, per actor,
+  # which commands it may issue, queries it may ask and events it may record.
+  #
+  # **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
+  # first in its state, in each of its commands and in each of its events, as if they
+  # had been declared there. A process manager's `correlate` fields come first in its
+  # state the same way, unless the state declares them.
+  #
+  # **The digest does not see declaration order.** Every collection of declarations
+  # is a set to it, nested ones included, and so is every value with set meaning
+  # (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
+  # and `correlate`, the process's stages, and a scenario's givens and expectations.
+  # Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
+  # one, `"scenario:*"`, since nothing names them.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 
@@ -198,6 +197,18 @@ defmodule EhOsContract.Contract.Build do
     |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
     # Kept only where it is set, for the same reason (plan E9c).
     |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
+    # And for what the decision reads (plan DD, T2a, #240), in the order written.
+    |> then(&if command.reads == [], do: Map.delete(&1, :reads), else: &1)
+    # And for the person who must issue it (plan DD, A1, #247): one, as a map.
+    |> then(fn built ->
+      case command.actor_is do
+        [%{field: field, or_rejects: invariant} | _] ->
+          %{built | actor_is: %{field: field, or_rejects: invariant}}
+
+        [] ->
+          Map.delete(built, :actor_is)
+      end
+    end)
     # And for a lifecycle's precondition (plan LC1).
     |> then(fn built ->
       if command.from == [],
@@ -346,6 +357,12 @@ defmodule EhOsContract.Contract.Build do
     illustrates =
       if scenario.illustrates == [], do: %{}, else: %{illustrates: scenario.illustrates}
 
+    # Plan DD, T2a (#240): the entities' rows its command reads, kept only where given.
+    entities =
+      if scenario.given_entities == [],
+        do: %{},
+        else: %{given_entities: plain(scenario.given_entities)}
+
     # Plan EP4: a process manager's state after the trigger, where the scenario says it.
     state =
       case scenario.state do
@@ -353,7 +370,12 @@ defmodule EhOsContract.Contract.Build do
         _ -> %{}
       end
 
+    # Plan DD, A1 (#247): the person issuing the command, kept only where named.
+    person = if scenario.as, do: %{as: scenario.as}, else: %{}
+
     answers
+    |> Map.merge(entities)
+    |> Map.merge(person)
     |> Map.merge(illustrates)
     |> Map.merge(state)
     |> Map.merge(%{
@@ -502,7 +524,7 @@ defmodule EhOsContract.Contract.Build do
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
            idempotent_on answers functions rules constraints illustrates operations statuses from
-           initial transitions)a
+           initial transitions reads)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn
@@ -525,6 +547,11 @@ defmodule EhOsContract.Contract.Build do
   # moves its contract's digest.
   defp plain(%Dsl.Field{supplied_by: nil} = field),
     do: field |> plain_struct() |> Map.delete(:supplied_by)
+
+  # Plan DD, S2 (#251): a given's moment is kept only where the scenario sets it, so the
+  # word moved no contract's version.
+  defp plain(%Dsl.Given{at: nil} = given),
+    do: given |> plain_struct() |> Map.delete(:at)
 
   defp plain(%{__struct__: _} = struct), do: plain_struct(struct)
 

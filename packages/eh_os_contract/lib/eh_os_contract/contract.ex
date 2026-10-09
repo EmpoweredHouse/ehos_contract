@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract do
   @moduledoc """
-  A part of a business, and at most one process, written down (v2 §4.1): the contract DSL.
+  A part of a business, and at most one process, written down: the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
         use EhOsContract.Contract,
@@ -33,15 +33,15 @@ defmodule EhOsContract.Contract do
   `__eh_os_contract_model__/0`, which `EhOsContract.Model.fetch/1` returns.
 
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its
-  contexts. Neither records a compile dependency (v2 §8): the domain is checked
+  contexts. Neither records a compile dependency: the domain is checked
   against the contract by a Mix compiler, not by recompiling every contract when the
-  domain changes. `id:` (plan DD, ID1; required from ID3) names the contract,
+  domain changes. `id:`, required, names the contract,
   `"<domain name>.<segment>…"` (D11), unique in the application (X7), and types every
   event it records, `"<id>.<event>"`.
 
-  It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
-  struct for every command, event, state, row and query and a behaviour for
-  everything code implements (`EhOsContract.Contract.Generate`). Code binds to
+  It compiles, refusing what cannot be right with a code and a message; its model is
+  data; and it generates a struct for every command, event, state, row and query and
+  a behaviour for everything code implements. Code binds to
   it with `use Contract, aggregate: :name` (`EhOsContract.Implementation`), and
   `EhOsContract.dispatch/3` runs a command through it (`EhOsContract.Dispatcher`).
   """
@@ -54,18 +54,17 @@ defmodule EhOsContract.Contract do
       id: [
         type: :string,
         doc:
-          "The contract's name (plan DD, ID1; required from ID3, D11): the domain's `name:`, " <>
+          "The contract's name, required (D11): the domain's `name:`, " <>
             "then dotted snake_case segments, like `\"rehmed.settlement\"`; it types every " <>
             "event the contract records, `\"rehmed.settlement.payment_recorded\"`."
       ]
     ]
 
-  @doc """
-  The words of the DSL: for every entity, by its path from the module body, the keys
-  it takes — positional arguments first, then options, in the order the entity
-  defines them. Derived from the extension, never listed by hand, so a test that
-  pins it notices every word added or removed.
-  """
+  # The words of the DSL: for every entity, by its path from the module body, the keys
+  # it takes — positional arguments first, then options, in the order the entity
+  # defines them. Derived from the extension, never listed by hand, so a test that
+  # pins it notices every word added or removed.
+  @doc false
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary,
     do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Contract.Dsl.sections())

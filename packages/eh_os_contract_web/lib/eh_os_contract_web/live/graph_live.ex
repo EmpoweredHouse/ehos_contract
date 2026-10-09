@@ -1,42 +1,41 @@
 defmodule EhOsContract.Web.Live.Graph do
-  @moduledoc """
-  Screen 3: the pictures of the contract model, live in the dashboard. See PLAN.md,
-  "23 sierpnia (10)" for why this was parked, then unparked. From the top: each
-  domain's context map and system, then the selected contract's pictures, then its
-  units.
-
-  **Drawn by `eh_os_contract_graph`** (plan E13b, batch 4): each picture is a view of
-  the engine's `graph.v1` document (`EhOsContract.Graph.Document`), the one the API
-  serves, drawn by `EhOsContract.GraphRenderer.Canvas`, with what the log says
-  (`EhOsContract.Graph.Overlay`) over the full graph, a lifecycle and the system. The
-  views are the pictures this screen drew before the renderer, the user's decision of
-  8 October (`EhOsContract.GraphRenderer.View`). The log is read
-  once the socket is connected, once per document: the first, static render draws
-  the pictures declared, and the mount that follows lays the log over them. A click
-  on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).
-
-  The selector picks a contract, by its id, whether or not it has a process (plan DD,
-  P1b, #186; until then it picked a process, and a contract without one could not be
-  reached). Its pictures, per ADR §9 ("navigation is per-process, never global"; the
-  domain's pictures above them are a dated exception there):
-
-    * **Declared shape of its process**, only when it has one: the structural view —
-      stages, endings, promise windows — true even for a process with zero runs.
-    * **Declared versus observed** — the contract's full graph with the log laid over
-      it (v2 plan E7c, plan EG1): the steps, and the actors, read models, queries and
-      external systems around them.
-
-  **Above both, each domain** (plan EG2): its context map — subdomains, contexts,
-  externals and their relations — with its actors under it, people and systems apart,
-  a row opening the actor's panel; and, where it has a v2 contract, its system: the
-  contracts in their contexts, what one consumes from another, and the log over it.
-  **Below both, the units** of the selected contract, each its own picture: state,
-  commands, events, invariants and the scenarios that pin each path. The map and the
-  units describe the model rather than the log; they are here since 28 September at
-  the user's word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed
-  EG"). An aggregate that declares a lifecycle has it drawn beside its unit (plan
-  LC4b), with the log over it.
-  """
+  # The second screen: the pictures of the contract model, live in the dashboard. See
+  # PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked. From the top:
+  # each domain's context map and system, then the selected contract's pictures, then
+  # its units.
+  #
+  # **Drawn by `eh_os_contract_graph`** (plan E13b, batch 4): each picture is a view of
+  # the engine's `graph.v1` document (`EhOsContract.Graph.Document`), the one the API
+  # serves, drawn by `EhOsContract.GraphRenderer.Canvas`, with what the log says
+  # (`EhOsContract.Graph.Overlay`) over the full graph, a lifecycle and the system. The
+  # views are the pictures this screen drew before the renderer, the user's decision of
+  # 8 October (`EhOsContract.GraphRenderer.View`). The log is read
+  # once the socket is connected, once per document: the first, static render draws
+  # the pictures declared, and the mount that follows lays the log over them. A click
+  # on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).
+  #
+  # The selector picks a contract, by its id, whether or not it has a process (plan DD,
+  # P1b, #186; until then it picked a process, and a contract without one could not be
+  # reached). Its pictures, per ADR §9 ("navigation is per-process, never global"; the
+  # domain's pictures above them are a dated exception there):
+  #
+  #   * **Declared shape of its process**, only when it has one: the structural view —
+  #     stages, endings, promise windows — true even for a process with zero runs.
+  #   * **Declared versus observed** — the contract's full graph with the log laid over
+  #     it (v2 plan E7c, plan EG1): the steps, and the actors, read models, queries and
+  #     external systems around them.
+  #
+  # **Above both, each domain** (plan EG2): its context map — subdomains, contexts,
+  # externals and their relations — with its actors under it, people and systems apart,
+  # a row opening the actor's panel; and, where it has a v2 contract, its system: the
+  # contracts in their contexts, what one consumes from another, and the log over it.
+  # **Below both, the units** of the selected contract, each its own picture: state,
+  # commands, events, invariants and the scenarios that pin each path. The map and the
+  # units describe the model rather than the log; they are here since 28 September at
+  # the user's word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed
+  # EG"). An aggregate that declares a lifecycle has it drawn beside its unit (plan
+  # LC4b), with the log over it.
+  @moduledoc false
 
   use Phoenix.LiveView
 

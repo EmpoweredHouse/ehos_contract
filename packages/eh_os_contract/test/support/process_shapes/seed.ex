@@ -48,8 +48,8 @@ defmodule ProcessShapes.Seed do
 
   @doc """
   One fact of request handling at a moment, written into the log directly, since
-  that is the only way to place one event alone at a time a test chooses. Its home
-  run comes with it, as with any append.
+  that is the only way to place one event alone at a time a test chooses. Its run,
+  `ProcessShapes.Handling`'s, comes with it, as dispatch would file it.
   """
   @spec fact(atom(), String.t(), DateTime.t()) :: EhOsContract.Event.t()
   def fact(name, request_id, at) do
@@ -59,8 +59,7 @@ defmodule ProcessShapes.Seed do
       type: "process_shapes.promised.#{name}",
       contract: EhOsContract.Model.fetch(Promised).id,
       contract_version: EhOsContract.Model.fetch(Promised).version,
-      process: "handling",
-      instance_id: "handling|#{request_id}",
+      runs: [{"process_shapes.handling", "process_shapes.handling|#{request_id}"}],
       correlation_id: Ecto.UUID.generate(),
       actor: EhOsContract.Event.system_actor(),
       payload: %{"request_id" => request_id},

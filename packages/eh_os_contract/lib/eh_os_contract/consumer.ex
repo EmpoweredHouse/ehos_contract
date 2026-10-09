@@ -1,21 +1,20 @@
 defmodule EhOsContract.Consumer do
-  @moduledoc """
-  One consumer taking one event (v2 §12): what a read model, a policy and an effect
-  each do with it. Dispatch runs it inside its transaction for a consumer delivered
-  `:in_transaction`; `EhOsContract.Subscription` runs it for an ordered one, and
-  `EhOsContract.EffectJob` for an effect delivered `:at_least_once`. The three
-  paths share this, so a policy reacts the same way wherever it runs.
-
-  - **A read model** projects: its callback returns `:ok`.
-  - **A policy** reacts: what its callback issues is dispatched at once, as the
-    policy's own actor, with the event as its cause and a key derived from it,
-    `"policy:<contract id>:<name>:<event id>:<index>"`. A second delivery of the event
-    therefore appends nothing. A rejection is the unit's answer and is not a
-    failure; a policy reacting to the kind of event it already reacted to down one
-    chain is a cycle, and raises.
-  - **An effect** acts outside the log: its callback returns `:ok` or
-    `{:error, reason}`.
-  """
+  # One consumer taking one event (v2 §12): what a read model, a policy and an effect
+  # each do with it. Dispatch runs it inside its transaction for a consumer delivered
+  # `:in_transaction`; `EhOsContract.Subscription` runs it for an ordered one, and
+  # `EhOsContract.EffectJob` for an effect delivered `:at_least_once`. The three
+  # paths share this, so a policy reacts the same way wherever it runs.
+  #
+  # - **A read model** projects: its callback returns `:ok`.
+  # - **A policy** reacts: what its callback issues is dispatched at once, as the
+  #   policy's own actor, with the event as its cause and a key derived from it,
+  #   `"policy:<contract id>:<name>:<event id>:<index>"`. A second delivery of the event
+  #   therefore appends nothing. A rejection is the unit's answer and is not a
+  #   failure; a policy reacting to the kind of event it already reacted to down one
+  #   chain is a cycle, and raises.
+  # - **An effect** acts outside the log: its callback returns `:ok` or
+  #   `{:error, reason}`.
+  @moduledoc false
 
   alias EhOsContract.{
     Actor,

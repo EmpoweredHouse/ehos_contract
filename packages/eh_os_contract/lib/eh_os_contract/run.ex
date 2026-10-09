@@ -1,69 +1,68 @@
 defmodule EhOsContract.Run do
-  @moduledoc """
-  How long a run took, against the duration its process declared.
-
-  A process may declare `deadline: {n, unit}` — how long a run is agreed to take.
-  Until now nothing read it: the only mentions were a filter that excluded it when
-  unconfirmed and a renderer that printed it. A declaration nobody reads is the
-  thing stage 2 existed to delete, and this was the last one left.
-
-  ## Where a run starts and where it ends
-
-  **Start is the earliest event of the run.** Not the first event of the first
-  stage: `stages:` declares order *between* gates rather than a starting event, and
-  a process with no `stages:` has no first stage at all. The log's own minimum is
-  the only definition covering every process shape the engine already claims to
-  handle — and it is the one the report's existing sentence already promises,
-  *"Deadline: 2 days from the start."*
-
-  **End is the earliest event declared `terminal: true`.** Three alternatives were
-  rejected for stateable reasons:
-
-    * *The last event.* A run in progress always has one, so every open run would
-      get a duration and be compared against the deadline. This report may not turn
-      an absence of an answer into the answer "no", and that would do exactly that.
-    * *A promise's `eventually`.* A different promise with a different window,
-      which already has its own verdict in `EhOsContract.Trace`.
-    * *The latest terminal occurrence.* A run that reached its ending has ended; a
-      later event does not un-end it. Taking the earliest also means `ended_at` is a
-      minimum over a subset of the same rows the start is a minimum over, so
-      `start <= end` holds by construction rather than by a guard.
-
-  ## Four outcomes, because two would be a lie
-
-  | outcome | condition | in the report |
-  | --- | --- | --- |
-  | `:within` | ended, inside the declared duration | the denominator |
-  | `:exceeded` | ended, outside it | the numerator |
-  | `:overdue` | not ended, already past it | its own sentence |
-  | `:open` | not ended, still inside it | nothing at all |
-
-  `:overdue` is a finding, not an absence: the run has already taken longer than
-  agreed whatever it does next. It must not be folded into `:exceeded`, because
-  there the duration is known and here only a lower bound is — *"took four days"*
-  and *"has taken at least four days"* are different sentences. `:open` produces no
-  finding at all: a run inside its time is the normal case, and printing it would be
-  the same violation by a different route.
-
-  ## The period bound is on the start, not on the rows
-
-  `:since` and `:until` select runs that **started** in the period, as a `having`
-  over the run's minimum. Never as a `where` on `occurred_at`: that would drop the
-  run's early rows, so a run started in June and reported for July would appear to
-  have started in July and come out `:within` a duration it blew. Membership and
-  measurement are different questions, and the duration comes from the run's whole
-  history however narrow the window on it.
-
-  ## The runs
-
-  A contract's one `process` declares its `deadline` (v2 §13, plan E7c), and its runs are the rows of
-  `eh_os_contract_event_runs` for that process, over its own events' types and the
-  ones it includes (D7): an included event can start a run, and an included one
-  declared `terminal:` ends it.
-
-  Like `EhOsContract.Trace`, this counts runs and never names them. Which client is late is a
-  question for the client's own application, which already knows.
-  """
+  # How long a run took, against the duration its process declared.
+  #
+  # A process may declare `deadline: {n, unit}` — how long a run is agreed to take.
+  # Until now nothing read it: the only mentions were a filter that excluded it when
+  # unconfirmed and a renderer that printed it. A declaration nobody reads is the
+  # thing stage 2 existed to delete, and this was the last one left.
+  #
+  # ## Where a run starts and where it ends
+  #
+  # **Start is the earliest event of the run.** Not the first event of the first
+  # stage: `stages:` declares order *between* gates rather than a starting event, and
+  # a process with no `stages:` has no first stage at all. The log's own minimum is
+  # the only definition covering every process shape the engine already claims to
+  # handle — and it is the one the report's existing sentence already promises,
+  # *"Deadline: 2 days from the start."*
+  #
+  # **End is the earliest event declared `terminal: true`.** Three alternatives were
+  # rejected for stateable reasons:
+  #
+  #   * *The last event.* A run in progress always has one, so every open run would
+  #     get a duration and be compared against the deadline. This report may not turn
+  #     an absence of an answer into the answer "no", and that would do exactly that.
+  #   * *A promise's `eventually`.* A different promise with a different window,
+  #     which already has its own verdict in `EhOsContract.Trace`.
+  #   * *The latest terminal occurrence.* A run that reached its ending has ended; a
+  #     later event does not un-end it. Taking the earliest also means `ended_at` is a
+  #     minimum over a subset of the same rows the start is a minimum over, so
+  #     `start <= end` holds by construction rather than by a guard.
+  #
+  # ## Four outcomes, because two would be a lie
+  #
+  # | outcome | condition | in the report |
+  # | --- | --- | --- |
+  # | `:within` | ended, inside the declared duration | the denominator |
+  # | `:exceeded` | ended, outside it | the numerator |
+  # | `:overdue` | not ended, already past it | its own sentence |
+  # | `:open` | not ended, still inside it | nothing at all |
+  #
+  # `:overdue` is a finding, not an absence: the run has already taken longer than
+  # agreed whatever it does next. It must not be folded into `:exceeded`, because
+  # there the duration is known and here only a lower bound is — *"took four days"*
+  # and *"has taken at least four days"* are different sentences. `:open` produces no
+  # finding at all: a run inside its time is the normal case, and printing it would be
+  # the same violation by a different route.
+  #
+  # ## The period bound is on the start, not on the rows
+  #
+  # `:since` and `:until` select runs that **started** in the period, as a `having`
+  # over the run's minimum. Never as a `where` on `occurred_at`: that would drop the
+  # run's early rows, so a run started in June and reported for July would appear to
+  # have started in July and come out `:within` a duration it blew. Membership and
+  # measurement are different questions, and the duration comes from the run's whole
+  # history however narrow the window on it.
+  #
+  # ## The runs
+  #
+  # A contract's one `process` declares its `deadline` (v2 §13, plan E7c), and its runs are the rows of
+  # `eh_os_contract_event_runs` for that process, over its own events' types and the
+  # ones it includes (D7): an included event can start a run, and an included one
+  # declared `terminal:` ends it.
+  #
+  # Like `EhOsContract.Trace`, this counts runs and never names them. Which client is late is a
+  # question for the client's own application, which already knows.
+  @moduledoc false
 
   import Ecto.Query
 
@@ -88,18 +87,21 @@ defmodule EhOsContract.Run do
   Returns `[]` when the process declares no `deadline`, which is the ordinary case
   — most processes promise nothing about how long they take.
 
+  `contract` is a contract, and `process_name` its process's name; or a process
+  module, and `process_name` its `id:` (plan DD, P2d, #213).
+
   `opts`: `:since`, `:until`, `:instance`, and `:now` for the comparison, which is
   what makes `:overdue` testable without waiting.
   """
-  @spec evaluate(module(), atom(), keyword()) :: [outcome()]
+  @spec evaluate(module(), atom() | String.t(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
     model = Model.fetch(contract)
 
-    case {model, Model.process(model)} do
-      {%{units: _}, %{name: ^process_name, deadline: %{} = deadline}} ->
+    case Model.process(model) do
+      %{name: ^process_name, deadline: %{} = deadline} ->
         measure(runs_of(model), {deadline.amount, deadline.unit}, opts)
 
-      {%{units: _}, _none} ->
+      _none ->
         []
     end
   end
@@ -173,7 +175,7 @@ defmodule EhOsContract.Run do
   defp runs_of(model) do
     events = Model.process_events(model)
 
-    {:runs, Atom.to_string(Model.process(model).name), Enum.map(events, & &1.type),
+    {:runs, to_string(Model.process(model).name), Enum.map(events, & &1.type),
      for(%{type: type, terminal: true} <- events, do: type)}
   end
 

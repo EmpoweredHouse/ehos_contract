@@ -1,7 +1,7 @@
 defmodule EhOsContract.Process do
   @moduledoc """
-  A process written as a module of its own (plan DD, P2b, #205): one run that crosses
-  the contracts of several parts of a business.
+  A process written as a module of its own: one run that crosses the contracts of
+  several parts of a business.
 
       defmodule Rehmed.Processes.ClinicalVisit do
         use EhOsContract.Process,
@@ -41,17 +41,18 @@ defmodule EhOsContract.Process do
   name is unique in it.
 
   `domain:` names the application's `EhOsContract.Domain`, and a stage's `include:`
-  names contract modules; neither records a compile dependency (v2 §8). `id:` is
+  names contract modules; neither records a compile dependency. `id:` is
   `"<domain name>.<segment>…"` (D11).
 
-  What one module can get wrong does not compile (`EhOsContract.Process.Rules`). It
-  compiles to plain data, `__eh_os_contract_model__/0`, which
-  `EhOsContract.Model.fetch/1` returns, of kind `:process`. What it names in other
-  modules — its domain, the contracts and their events — is checked by the rules
-  between modules (`EhOsContract.Contract.Links.Processes`, plan DD, P2c, #210), and
-  dispatch files each event it includes into its run, under its `id:` and keyed by
-  its `correlate` (`EhOsContract.Implementations.included/2`). No reader shows those
-  runs yet.
+  What one module can get wrong does not compile. It compiles to plain data,
+  `__eh_os_contract_model__/0`, which `EhOsContract.Model.fetch/1` returns, of kind
+  `:process`. What it names in other modules — its domain, the contracts and their
+  events — is checked by the `:eh_os_contract` compiler, which checks the links
+  between modules, and dispatch files each event it includes into its run, under its
+  `id:` and keyed by its `correlate`. The conformance report shows those runs, its
+  deployment record its version, and the check reads what it includes; the
+  conformance wire carries its report too (`EhOsContract.Conformance.as_data/2`); the
+  dashboard does not list it yet.
 
   Inside the library this module is always written in full, never aliased: `Process`
   is Elixir's.
@@ -73,11 +74,10 @@ defmodule EhOsContract.Process do
       source: [type: :string, doc: "Where the process comes from in the material."]
     ]
 
-  @doc """
-  The words of the DSL: for every entity, by its path from the module body, the keys
-  it takes — positional arguments first, then options, in the order the entity
-  defines them. Derived from the extension, never listed by hand.
-  """
+  # The words of the DSL: for every entity, by its path from the module body, the keys
+  # it takes — positional arguments first, then options, in the order the entity
+  # defines them. Derived from the extension, never listed by hand.
+  @doc false
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary,
     do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Process.Dsl.sections())

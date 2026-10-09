@@ -19,18 +19,18 @@ defmodule EhOsContract.DeploymentHistoryTest do
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Model, Report}
-  alias ProcessShapes.Promised
-  alias ProcessShapes.Seed
+  alias ProcessShapes.{Handling, Promised, Seed}
 
   @promise_key "promise:completed_or_refusal_notified"
 
   defp version, do: Model.fetch(Promised).version
 
   # The model digests the process as a whole; the deployment adds a digest of each
-  # promise's rule, so a changed promise has a boundary of its own.
+  # promise's rule, so a changed promise has a boundary of its own. The promise is a
+  # process module's since plan DD, P2g (#228), recorded in the module's own row.
   defp digests do
-    [promise] = Model.fetch(Promised).process.promises
-    Map.put(Model.fetch(Promised).digests, @promise_key, Deployment.promise_digest(promise))
+    [promise] = Model.process(Handling).promises
+    Map.put(Model.fetch(Handling).digests, @promise_key, Deployment.promise_digest(promise))
   end
 
   defp deployment(attrs) do
@@ -59,13 +59,15 @@ defmodule EhOsContract.DeploymentHistoryTest do
 
     test "the row carries one digest per declaration, and one per promise, so a change is attributable" do
       Deployment.record!()
-      [deployed] = Deployment.all(Promised)
+      [deployed] = Deployment.all(Handling)
 
       # String keys on both sides: the column is jsonb, and the digests are computed
       # with string keys for that reason rather than leaving the round trip to surprise
       # somebody.
       assert deployed.declaration_digests == digests()
-      assert deployed.declaration_digests["process:handling"]
+      assert deployed.declaration_digests["process"]
+      assert [%{declaration_digests: contract}] = Deployment.all(Promised)
+      assert contract == Model.fetch(Promised).digests
     end
 
     test "a row recorded before the column existed is backfilled on the next boot" do
@@ -76,10 +78,10 @@ defmodule EhOsContract.DeploymentHistoryTest do
       Repo.update_all(Deployment, set: [declaration_digests: nil])
 
       Deployment.record!()
-      [deployed] = Deployment.all(Promised)
+      [deployed] = Deployment.all(Handling)
 
       assert deployed.declaration_digests == digests()
-      assert length(Deployment.all(Promised)) == 1
+      assert length(Deployment.all(Handling)) == 1
     end
 
     test "the wiring hash is canonical, the same on every boot of the same code" do
@@ -111,8 +113,7 @@ defmodule EhOsContract.DeploymentHistoryTest do
         type: "process_shapes.promised.request_received",
         contract: EhOsContract.Model.fetch(Promised).id,
         contract_version: "old-version",
-        process: "handling",
-        instance_id: "handling|r-0",
+        runs: [{"process_shapes.handling", "process_shapes.handling|r-0"}],
         payload: %{"request_id" => "r-0"},
         occurred_at: ~U[2026-06-01 09:00:00.000000Z]
       })

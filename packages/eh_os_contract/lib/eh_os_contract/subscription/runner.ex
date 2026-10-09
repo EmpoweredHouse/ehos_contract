@@ -1,23 +1,22 @@
 defmodule EhOsContract.Subscription.Runner do
-  @moduledoc """
-  The process that feeds one subscription (v2 §12), on every node: it runs
-  `EhOsContract.Subscription.step/2` until there is nothing to read, then waits.
-
-  It wakes on a notification after a commit, on Oban's notifier, and polls every
-  second besides, which covers a transaction the host's code owned and a notification
-  lost on the way. Dispatch sends one after a transaction it owns; inside a
-  transaction the engine owns — an inbox taking a message, a runner's step, a timer
-  firing — what was appended is marked (`notify_on_commit/0`), and the engine's
-  `transaction/2` sends it once that commits. Two nodes
-  running the same subscription do not collide: a step takes the row `FOR UPDATE
-  SKIP LOCKED`, and the node that gets nothing waits for the next wake.
-
-  An event that fails is retried after a pause that doubles with each attempt, and
-  a step that raises for another reason — the database gone, say — is logged and
-  retried after five seconds, so a runner never takes the host's tree down with it.
-  A relay whose transport does not take a batch tries again after five seconds too,
-  with no attempt counted (`EhOsContract.Relay`).
-  """
+  # The process that feeds one subscription (v2 §12), on every node: it runs
+  # `EhOsContract.Subscription.step/2` until there is nothing to read, then waits.
+  #
+  # It wakes on a notification after a commit, on Oban's notifier, and polls every
+  # second besides, which covers a transaction the host's code owned and a notification
+  # lost on the way. Dispatch sends one after a transaction it owns; inside a
+  # transaction the engine owns — an inbox taking a message, a runner's step, a timer
+  # firing — what was appended is marked (`notify_on_commit/0`), and the engine's
+  # `transaction/2` sends it once that commits. Two nodes
+  # running the same subscription do not collide: a step takes the row `FOR UPDATE
+  # SKIP LOCKED`, and the node that gets nothing waits for the next wake.
+  #
+  # An event that fails is retried after a pause that doubles with each attempt, and
+  # a step that raises for another reason — the database gone, say — is logged and
+  # retried after five seconds, so a runner never takes the host's tree down with it.
+  # A relay whose transport does not take a batch tries again after five seconds too,
+  # with no attempt counted (`EhOsContract.Relay`).
+  @moduledoc false
 
   use GenServer
 

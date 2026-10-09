@@ -20,17 +20,22 @@ config :eh_os_contract,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
   authorizer: EhOsContract.Auth,
-  # Rehmed's `p1_reported` and `total` are the host's to give (plan T1s); a stand-in
-  # for its systems answers them.
-  supplier: Rehmed.Supplier
+  # Rehmed's settlement `total` is the host's to give (plan T1s); a stand-in
+  # for its systems answers it.
+  supplier: Rehmed.Supplier,
+  # Rehmed's booking reads the service it names from the clinic's catalogue (plan DD,
+  # T2s (#245)); a stand-in catalogue answers it.
+  entities: Rehmed.Entities
 
 # EHOS's address and this application's audience. There is no EHOS beside the
 # sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot
 # that it has no keys and refuses every real credential; the tests pin a key of
-# their own (`EhOsContract.Auth.Testing`).
+# their own (`EhOsContract.Auth.Testing`). The application is `taxvision`, as in
+# `ehos.yaml` (`application: taxvision`): of the sandbox's domains only TaxVision
+# publishes, so it is the one `EhOsContract.Auth` requires the audience to name (#180).
 config :eh_os_contract_auth,
   issuer: "https://ehos.invalid",
-  audience: "rehmed/sandbox"
+  audience: "taxvision/sandbox"
 
 config :eh_os_contract_host, Taxvision.Repo,
   username: "eh_os",

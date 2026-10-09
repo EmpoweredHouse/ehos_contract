@@ -1,29 +1,36 @@
 defmodule EhOsContract.Process.Build do
-  @moduledoc """
-  Builds a process module's model and compiles it into the module as
-  `__eh_os_contract_model__/0` (plan DD, P2b, #205).
-
-  Runs last, after every rule, so the model is only built from a process that is well
-  formed. It is plain data, as a contract's is (`EhOsContract.Contract.Build`):
-
-      %{format: 1, kind: :process, module: Rehmed.Processes.ClinicalVisit,
-        id: "rehmed.clinical_visit", label: "…", domain: Rehmed.Domain,
-        accountable: :manager, source: nil, correlate: [:visit_id],
-        stages: [%{name: :departure, label: nil,
-                   includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
-        ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
-        deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
-
-  Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
-  `unverified`.
-
-  **The digest does not see declaration order where it means nothing**, as a
-  contract's does not (`EhOsContract.Digest`): promises, the events of `ends_on` and a
-  stage's includes are sets to it. What keeps its order is what has one: `correlate`,
-  which makes the run's key, and the stages, whose order makes a backward step
-  backward. Each declaration also has its own digest, keyed `"<kind>:<name>"`, and
-  the process's own options `"process"`.
-  """
+  # Builds a process module's model and compiles it into the module as
+  # `__eh_os_contract_model__/0` (plan DD, P2b, #205).
+  #
+  # Runs last, after every rule, so the model is only built from a process that is well
+  # formed. It is plain data, as a contract's is (`EhOsContract.Contract.Build`):
+  #
+  #     %{format: 1, kind: :process, module: Rehmed.Processes.ClinicalVisit,
+  #       id: "rehmed.clinical_visit", label: "…", domain: Rehmed.Domain,
+  #       accountable: :manager, source: nil, correlate: [:visit_id],
+  #       stages: [%{name: :departure, label: nil,
+  #                  includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
+  #       ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
+  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
+  #
+  # Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
+  # `unverified`. A module with scenarios (plan DD, S2, #251) also has
+  #
+  #     scenarios: [%{description: "…", verdict: :satisfied, via: :eventually,
+  #                   given: [%{event: :visit_completed, data: %{…}, at: "…"}],
+  #                   outages: [%{external: :p1, at: "…"}],
+  #                   promise: %{name: :medical_event_reported_within_statutory_window, at: "…"}}]
+  #
+  # where a given keeps `at` only when it sets it, and the key, and its part of the
+  # digest, only where there are scenarios, so that adding the word moved no version.
+  #
+  # **The digest does not see declaration order where it means nothing**, as a
+  # contract's does not (`EhOsContract.Digest`): promises, the events of `ends_on` and a
+  # stage's includes are sets to it. What keeps its order is what has one: `correlate`,
+  # which makes the run's key, and the stages, whose order makes a backward step
+  # backward. Each declaration also has its own digest, keyed `"<kind>:<name>"`, and
+  # the process's own options `"process"`.
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 
@@ -74,17 +81,37 @@ defmodule EhOsContract.Process.Build do
     }
 
     promises = Enum.map(d.promises, &promise/1)
+    scenarios = Enum.map(d.scenarios, &scenario/1)
 
     own
+    |> Map.merge(if(scenarios == [], do: %{}, else: %{scenarios: scenarios}))
     |> Map.merge(%{
       format: 1,
       kind: :process,
       module: d.module,
       stages: stages,
       promises: promises,
-      version: version(own, stages, promises),
-      digests: digests(own, stages, promises)
+      version: version(own, stages, promises, scenarios),
+      digests: digests(own, stages, promises, scenarios)
     })
+  end
+
+  # One trigger, which S1 has made sure of.
+  defp scenario(scenario) do
+    [judged] = scenario.trigger
+
+    %{
+      description: scenario.description,
+      verdict: scenario.verdict,
+      via: scenario.via,
+      given:
+        for g <- scenario.given do
+          given = %{event: g.event, data: g.data}
+          if g.at, do: Map.put(given, :at, g.at), else: given
+        end,
+      outages: for(o <- scenario.outages, do: %{external: o.external, at: o.at}),
+      promise: %{name: judged.name, at: judged.at}
+    }
   end
 
   defp promise(promise) do
@@ -117,19 +144,24 @@ defmodule EhOsContract.Process.Build do
 
   # The order of the stages is kept in the process's own part: hashed as a group, the
   # stages are a set.
-  defp version(own, stages, promises) do
+  # Scenarios share one digest, `"scenario:*"`, as a contract's do, since nothing names
+  # them.
+  defp version(own, stages, promises, scenarios) do
     Digest.hash_groups(
-      process: [digest_form(own, stages)],
-      stages: Enum.map(stages, &digest_form/1),
-      promises: Enum.map(promises, &digest_form/1)
+      [
+        process: [digest_form(own, stages)],
+        stages: Enum.map(stages, &digest_form/1),
+        promises: Enum.map(promises, &digest_form/1)
+      ] ++ if(scenarios == [], do: [], else: [scenarios: scenarios])
     )
   end
 
-  defp digests(own, stages, promises) do
+  defp digests(own, stages, promises, scenarios) do
     Map.new(
       [{"process", Digest.hash(digest_form(own, stages))}] ++
         for(s <- stages, do: {"stage:#{s.name}", Digest.hash(digest_form(s))}) ++
-        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(digest_form(p))})
+        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(digest_form(p))}) ++
+        if(scenarios == [], do: [], else: [{"scenario:*", Digest.hash(scenarios)}])
     )
   end
 

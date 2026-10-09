@@ -55,7 +55,7 @@ defmodule EhOsContract.SchemaTest do
   and `USAGE` on its sequences, by default privileges, and nothing else. Both reach
   the schema only through the connection's `search_path`.
 
-  `public` of this database already holds the engine's tables at version 1, and that
+  `public` of this database already holds the engine's tables at the current version, and that
   is what the defect hid behind: the version was read from `public` by name, so a
   migration in the schema read "1" and created nothing.
 
@@ -213,7 +213,7 @@ defmodule EhOsContract.SchemaTest do
 
     assert engine_tables(schema) == @tables
     assert "oban_jobs" in tables(schema)
-    assert version(schema) == "1"
+    assert version(schema) == "2"
 
     assert functions(schema) -- ["oban_jobs_notify"] == [
              "eh_os_contract_append_lock",
@@ -223,7 +223,7 @@ defmodule EhOsContract.SchemaTest do
 
     assert tables("public") == public
 
-    # A host's second call reads the schema's "1", and creates nothing twice.
+    # A host's second call reads the schema's "2", and creates nothing twice.
     assert Ecto.Migrator.up(SchemaRepo, 4, Host, log: false) == :ok
     admin!("DELETE FROM #{schema}.schema_migrations WHERE version = 4")
     assert engine_tables(schema) == @tables
@@ -236,11 +236,11 @@ defmodule EhOsContract.SchemaTest do
     migrate(:up)
 
     assert engine_tables(schema) == @tables
-    assert version(schema) == "1"
+    assert version(schema) == "2"
     assert tables("public") == public
   end
 
-  # `public` holds the engine's tables at "1" here, and the owner may read them.
+  # `public` holds the engine's tables at "2" here, and the owner may read them.
   test "with public on the path too, the version is the schema's, and public is left alone",
        %{schema: schema, owner: owner} = context do
     public = tables("public")
@@ -248,7 +248,7 @@ defmodule EhOsContract.SchemaTest do
 
     migrate(:up)
     assert engine_tables(schema) == @tables
-    assert version(schema) == "1"
+    assert version(schema) == "2"
 
     migrate(:down)
     assert tables(schema) == ["schema_migrations"]
@@ -259,7 +259,7 @@ defmodule EhOsContract.SchemaTest do
     migrate(:down)
 
     assert tables("public") == public
-    assert version("public") == "1"
+    assert version("public") == "2"
   end
 
   # Migrated by the owner, run by the role the application runs as, with Oban where

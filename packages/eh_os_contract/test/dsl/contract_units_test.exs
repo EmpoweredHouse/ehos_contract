@@ -296,6 +296,267 @@ defmodule EhOsContract.ContractUnitsTest do
     end
   end
 
+  describe "A8: a command reads an entity by a field that names one (plan DD, T2a, #240)" do
+    test "a field that is missing, optional, an identity or not an entity's is refused" do
+      message =
+        refuse_contract("ReadsWrong", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id, room: :room_id, card: :card_id, visit: :visit_id,
+                      code: :code, again: :service_id, again: :service_id] do
+              field :service_id, {:id, :service}
+              field :card_id, {:id, :card}, optional: true
+              field :code, :id
+            end
+
+            event :visit_booked, "Umówiono"
+          end
+        """)
+
+      assert message =~
+               "A8: command :book_visit reads :room by :room_id, which is not one of its fields " <>
+                 "(reads_wrong.ex:7)"
+
+      assert message =~
+               "A8: command :book_visit reads :card by :card_id, which it declares optional; " <>
+                 "without it there is nothing to read"
+
+      assert message =~
+               "A8: command :book_visit reads :visit by :visit_id, a field of the unit's " <>
+                 "identity, an :id; an entity is named by a field typed {:id, entity}"
+
+      assert message =~
+               "A8: command :book_visit reads :code by :code, typed :id; an entity is named by a " <>
+                 "field typed {:id, entity}"
+
+      assert message =~ "A8: command :book_visit reads :again twice; give each row its own name"
+      refute message =~ "reads :service by"
+    end
+
+    test "a command that reads, issued by a policy or a process manager, is refused" do
+      message =
+        refuse_contract("ReadsByReaction", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id] do
+              field :service_id, {:id, :service}
+            end
+
+            event :visit_booked, "Umówiono"
+          end
+
+          policy :rebook, "Umów ponownie", handles: :visit_booked, issues: :book_visit,
+            delivery: :in_transaction
+
+          process_manager :follow_up, "Wizyta kontrolna" do
+            correlate :visit_id
+            starts_on :visit_booked, issues: :book_visit
+          end
+        """)
+
+      assert message =~
+               "A8: command :book_visit reads entities and is issued by policy :rebook, process " <>
+                 "manager :follow_up; a command that reads is issued only by an actor in by:, " <>
+                 "since a reaction's would be looked up inside the transaction that reacted"
+    end
+
+    test "a process manager's timer issuing a command that reads is refused as well" do
+      message =
+        refuse_contract("ReadsByTimer", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id] do
+              field :service_id, {:id, :service}
+            end
+
+            event :visit_booked, "Umówiono"
+          end
+
+          process_manager :follow_up, "Wizyta kontrolna" do
+            correlate :visit_id
+            starts_on :visit_booked, sets: :again
+            timer :again, "Za miesiąc", wait: {1, :month}, issues: :book_visit
+          end
+        """)
+
+      assert message =~
+               "A8: command :book_visit reads entities and is issued by process manager :follow_up"
+    end
+
+    test "control: a required field typed {:id, entity} compiles, and the model keeps it" do
+      model =
+        compile_contract("ReadsRight", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :book_visit, "Umów wizytę",
+              by: :reception,
+              emits: :visit_booked,
+              reads: [service: :service_id] do
+              field :service_id, {:id, :service}
+            end
+
+            command :cancel_visit, "Odwołaj", by: :reception, emits: :visit_cancelled
+
+            event :visit_booked, "Umówiono"
+            event :visit_cancelled, "Odwołano"
+          end
+        """)
+
+      commands = Map.new(model.commands, &{&1.name, &1})
+      assert commands.book_visit.reads == [service: :service_id]
+      # Kept only where it is set, so no other command's digest moves.
+      refute Map.has_key?(commands.cancel_visit, :reads)
+    end
+  end
+
+  describe "A9: the person who must issue a command is named by the unit's state (plan DD, A1, #247)" do
+    test "a field outside the state, of another type or personal; an invariant outside rejects:; a creating or by-less command; twice" do
+      message =
+        refuse_contract("ActorIsWrong", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            state do
+              field :specialist_id, :id, optional: true
+              field :room, :string, optional: true
+              field :patient_id, :id, personal: :patient, subject: :patient, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :close_a, "A", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :nurse_id, or_rejects: :own_visit
+            end
+
+            command :close_b, "B", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :room, or_rejects: :own_visit
+            end
+
+            command :close_c, "C", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :patient_id, or_rejects: :own_visit
+            end
+
+            command :close_d, "D", by: :reception, emits: :closed do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :close_e, "E", emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :close_f, "F", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+              actor_is :visit_id, or_rejects: :own_visit
+            end
+
+            event :closed, "Zamknięto"
+          end
+
+          policy :close_on_close, "Zamknij", handles: :closed, issues: :close_e,
+            delivery: :in_transaction
+        """)
+
+      assert message =~
+               "A9: command :close_a, actor_is :nurse_id: is not a field of the unit's state; " <>
+                 "the person is one the unit already knows"
+
+      assert message =~
+               "A9: command :close_b, actor_is :room: is typed :string; a person is named by an :id"
+
+      assert message =~
+               "A9: command :close_c, actor_is :patient_id: is personal; the subject compared " <>
+                 "with it would be a person's data in a refusal"
+
+      assert message =~
+               "A9: command :close_d, actor_is :specialist_id: or_rejects: :own_visit is not an " <>
+                 "invariant of the unit in the command's rejects:"
+
+      assert message =~
+               "A9: command :close_e, actor_is :specialist_id: the command names nobody in by:, " <>
+                 "so no person issues it"
+
+      assert message =~ "A9: command :close_f names who must issue it twice"
+
+      assert message =~
+               "A9: command :close_f, actor_is :visit_id: is the unit's identity, which the " <>
+                 "caller fills in the command, so anyone could name themselves"
+    end
+
+    test "a command that creates its aggregate names nobody yet" do
+      message =
+        refuse_contract("ActorIsCreates", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id, generated: :uuid
+
+            state do
+              field :specialist_id, :id, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :open_visit, "Otwórz", by: :reception, emits: :opened, creates: true,
+              rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            event :opened, "Otwarto"
+          end
+        """)
+
+      assert message =~
+               "A9: command :open_visit, actor_is :specialist_id: the command creates: its " <>
+                 "aggregate, which has no state yet to name anyone"
+    end
+
+    test "control: a field of the state or the identity compiles, and the model keeps it" do
+      model =
+        compile_contract("ActorIsRight", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            state do
+              field :specialist_id, {:id, :specialist}, optional: true
+            end
+
+            invariant :own_visit, "Tylko własna wizyta"
+
+            command :close_visit, "Zamknij", by: :reception, emits: :closed, rejects: :own_visit do
+              actor_is :specialist_id, or_rejects: :own_visit
+            end
+
+            command :reopen_visit, "Otwórz ponownie", by: :reception, emits: :reopened
+
+            event :closed, "Zamknięto"
+            event :reopened, "Otwarto ponownie"
+          end
+
+          scenario "zamyka ktoś inny" do
+            actor :reception
+            as "specialist-ola"
+            command :close_visit
+            rejected :own_visit
+          end
+        """)
+
+      commands = Map.new(model.commands, &{&1.name, &1})
+      assert commands.close_visit.actor_is == %{field: :specialist_id, or_rejects: :own_visit}
+      refute Map.has_key?(commands.reopen_visit, :actor_is)
+    end
+  end
+
   describe "C1: a command can be issued" do
     test "a command without by:, which no reaction issues, is refused" do
       message =

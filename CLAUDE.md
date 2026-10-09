@@ -39,6 +39,7 @@ means today's `EhOsContract.X`.
 | **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
 | Every rule of `mix eh_os_contract.check` (generated) | [`packages/eh_os_contract/docs/rules.md`](packages/eh_os_contract/docs/rules.md) |
+| What to write and run when you add something, so the docs stay true | [`packages/eh_os_contract/MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
 | The initial assumptions and decisions, the `§N` code comments cite | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | The contract language v2, its rules and shapes | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
 | Code shapes, schemas, pitfalls, libraries: the `notes §N` comments cite | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
@@ -121,9 +122,16 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 `mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
 `eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
-DSL reference in `docs/dsl/` and the rule catalogue in `docs/rules.md` to the code, and `test/docs_test.exs`,
-which holds the examples and the refusal table of `docs/contract.md` to it), `packages/eh_os_contract_web`,
-`packages/eh_os_contract_auth` and `packages/eh_os_contract_graph`. **It has to pass.** Separate invocations, not an umbrella, so that each package
+generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
+generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal
+table of `docs/contract.md` to it, and what a prose page says it covers (`<!-- covers: … -->`,
+`EhOsContract.Docs.Prose`) to the entities, keys and rules that exist; `docs
+--warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
+hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
+`test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`),
+`packages/eh_os_contract_web` and
+`packages/eh_os_contract_auth` (each with its own `docs --warnings-as-errors` and `test/doc_coverage_test.exs`),
+and `packages/eh_os_contract_graph`. **It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
 listens on **5433**.
@@ -194,8 +202,11 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   the implementation, not at the library.
 - **Events and commands are literals.** `emit/1` and `issue/1` take struct literals, because that decides
   whether the static graph is a fact or a guess.
-- **Public functions in `packages/eh_os_contract/lib/` have `@doc` and `@spec`.** Without them the package has
-  no documentation and `dialyzer` nothing to check.
+- **Public functions in `packages/*/lib/` have `@doc` and `@spec`**, and a doc is written for a host reading it
+  on hexdocs, not for the team: its meaning, an example, what it refuses, and no stage or `§` codes. Without
+  them the package has no documentation and `dialyzer` nothing to check. How: the
+  [`write-docs`](.claude/skills/write-docs/SKILL.md) skill. Each package's gate holds the mechanics
+  (`test/doc_coverage_test.exs`, `docs --warnings-as-errors`).
 - **A code never stands alone in prose.** In `PLAN.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
   (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule

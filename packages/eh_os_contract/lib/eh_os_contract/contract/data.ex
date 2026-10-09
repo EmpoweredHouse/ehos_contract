@@ -1,18 +1,17 @@
 defmodule EhOsContract.Contract.Data do
-  @moduledoc """
-  Values written in a contract — a scenario's data — against the types of the
-  fields they fill.
-
-  A contract compiles to plain data (v2 §9), so a value written in it is plain data
-  too. **A timestamp is an ISO 8601 string with an offset, `"2026-09-01T09:00:00Z"`,
-  and a date an ISO 8601 date, `"2026-09-01"`**: a `~U` or `~D` literal would put a
-  struct into the model, which then no longer encodes to JSON unchanged. A decimal is
-  an integer or a string of digits, for the same reason.
-
-  A field typed with a domain value is checked against the domain, which a contract
-  does not compile against (v2 §8): `problems/2` leaves it alone, and the Mix
-  compiler checks it with `problems/3`, given the domain's values (L3, X9).
-  """
+  # Values written in a contract — a scenario's data — against the types of the
+  # fields they fill.
+  #
+  # A contract compiles to plain data (v2 §9), so a value written in it is plain data
+  # too. **A timestamp is an ISO 8601 string with an offset, `"2026-09-01T09:00:00Z"`,
+  # and a date an ISO 8601 date, `"2026-09-01"`**: a `~U` or `~D` literal would put a
+  # struct into the model, which then no longer encodes to JSON unchanged. A decimal is
+  # an integer or a string of digits, for the same reason.
+  #
+  # A field typed with a domain value is checked against the domain, which a contract
+  # does not compile against (v2 §8): `problems/2` leaves it alone, and the Mix
+  # compiler checks it with `problems/3`, given the domain's values (L3, X9).
+  @moduledoc false
 
   @built_in EhOsContract.Domain.Rules.built_in_types()
 

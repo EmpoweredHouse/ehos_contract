@@ -54,8 +54,27 @@ assume a process. P1c merged in #191 (issue #190): a contract describes at most 
 declare a process only when the test is about one. P1d merged in #196 and #200 (issue #195): no
 `cadence`, and the sandbox keeps only the four processes its clients described. P2a merged in #204 (issue #202): readers ask
 `Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
-module of its own. P2c (issue #210) on `dd/210-process-links-runs`. #193 (an upper bound for durations, R6) is open. #180 (the domain's name must equal the EHOS application's, with
-EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
+module of its own. P2c merged in #212 (issue #210): process modules
+are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
+and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold until the graph documents and renderer (E13; #217, #219, another contributor) are in `main`: a process module's picture and page (P2e, #220), and removing the contract's own `process` (P2h, #221).** P2f merged in #225–#227
+(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228).
+#193 (an upper bound for durations, R6) is open. A follow-up outside the stages, merged in #234 (#180, the user's
+decision of 7 October): `eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`,
+the application equals one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus
+(EmpoweredHouse/eh-os#201). **Wave 3:** B2, B3 and B4 dropped (the user's decision of 7 October, "Before wave 3's
+boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entity the application keeps, through
+`EhOsContract.Entities`, and the storage is at migration V02, which the engine requires at boot. T2s merged in #246
+(issue #245), A1 in #248 (issue #247): a command can require the person a field of its unit's state names
+(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 merged
+in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
+S3 merged in #257 (issue #256): the clinic's and the accounting firm's promises have scenarios. Open from it, the
+user's: an outage of a system a promise depends on one step upstream cannot excuse it (#256). Next without E13: O1,
+which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both were asked
+of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w merged in #261 (issue #259) puts process modules on
+the wire, keyed `process`, and O1 merged in #262 (issue #260) counts runs whose stages happened out of order. **Wave 3
+closed conditionally** (8 October; migration note in "After wave 3 — the user's decision and the migration note"); M1
+and O2 wait for E13 with P2h and P2e. **Next: the stages of waves 4 and 5 that nothing blocks**, PC1 → PC2, L1, L2,
+L3; V1–V5 and L4 wait for P2h and P2e.
 
 ### Stan repozytorium
 
@@ -2207,32 +2226,33 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☑ #194 | [#192](https://github.com/EmpoweredHouse/eh-os-contract/issues/192) |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☑ #204 | [#202](https://github.com/EmpoweredHouse/eh-os-contract/issues/202) |
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☑ #207 | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
-| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ◐ `dd/210-process-links-runs` | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
-| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ | — |
-| P2e | 2 | grafy i strony procesu | P2d | ☐ | — |
-| P2f | 2 | procesy sandboxa jako moduły | P2d | ☐ | — |
-| P2g | 2 | rigi i testy o procesach | P2d | ☐ | — |
-| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g | ☐ | — |
-| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ | — |
-| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ | — |
-| T2b | 3 | `given_entity` | T2a | ☐ | — |
-| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ | — |
-| A1 | 3 | `actor_is` | T1 | ☐ | — |
-| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ | — |
-| B2 | 3 | kubełek w `match:` | W2 | ☐ | — |
-| B3 | 3 | DCB z generowaną tożsamością | DD0 | ☐ | — |
-| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ☐ | — |
-| S2 | 3 | scenariusze obietnic | W3, P2b | ☐ | — |
-| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ | — |
-| O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ | — |
-| O2 | 3 | ekran: kolejność etapów | O1 | ☐ | — |
+| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
+| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
+| P2e | 2 | grafy i strony procesu | P2d, **E13a** | ⏸ **on hold until E13a (#217) is in `main`** | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
+| P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
+| P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
+| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
+| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ⏸ on hold with P2h, until E13 | — |
+| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
+| T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
+| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
+| A1 | 3 | `actor_is` | T1 | ☑ #248 | [#247](https://github.com/EmpoweredHouse/eh-os-contract/issues/247) |
+| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☑ #250 | [#249](https://github.com/EmpoweredHouse/eh-os-contract/issues/249) |
+| B2 | 3 | kubełek w `match:` | W2 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
+| B3 | 3 | DCB z generowaną tożsamością | DD0 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
+| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ✕ dropped 7 October ("Before wave 3's boundaries") | — |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
+| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
+| O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
+| O2 | 3 | ekran: kolejność etapów | O1, P2e | ⏸ on hold with P2e, until E13 | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
 | V2 | 4 | upcast przez callback | V1 | ☐ | — |
 | V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
-| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☐ | — |
-| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ | — |
+| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
+| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
@@ -2372,17 +2392,23 @@ codes (D11, N1, R2, F9, R3, R5, R6; `deadline` without `ends_on` under R6); a mo
 the domain (X5), correlate fields in every included event (X6, via `Links.Siblings.problems/4`), unique process names
 across contracts and modules (X7). `Implementations.build/1` indexes process modules by event type; dispatch files
 their runs under the module's id (`included_runs/3`). No reader shows them yet (P2d, P2e).
-**P2d — raporty, wdrożenia, `check` po procesach**: wiersz `Deployment` na proces (granice deklaracji obietnic),
-L5 po procesach (`deadline-without-terminal-event` = „bez `ends_on`”), zdarzenie czytane przez proces.
-**P2e — grafy i strony procesu**: `Graph.process_to_mermaid/2`, `graph --process <id>`, selektor w `graph_live`,
-`pages` `processes/<id>.md`, `View`.
-*5 października (E13):* graf procesu jako dokument `graph.v1` i komponent `eh_os_contract_graph` zamiast
-`Graph.process_to_mermaid/2`, jeśli E13a jest już w `main` — „Dopisek 5 października (3) — E13”.
-**P2f — procesy sandboxa jako moduły** (PR na domenę): `Rehmed.Processes.ClinicalVisit`,
-`Taxvision.Processes.AccountingMonth`, `AppuniteEquipment.Processes.Assignment` (kontrakt `Assignments` znika).
-**P2g — rigi i testy o procesach** (`ProcessShapes`, `DispatchRig.Branch`, `KeyRig.Audit`, `UniversalityGate`,
-`LifecycleRig`, fikstury web/auth).
-**P2h — stare słowa i kolumny znikają**: z DSL kontraktu `@process`, `@include`, etapy w jednostkach, `terminal:`
+**P2d — the report, the deployment record and the check show process modules** (#213; tightened 7 October 2026).
+The registry loads process modules; the report gives each its process section (runs, duration, promises) and the report
+task prints them; a deployment row per process module; L5 counts an event a module includes as read and applies the
+process rules to modules. Not the conformance wire or the dashboard (P2e or with EHOS). Sandbox outputs unchanged.
+**P2e — a process module gets a picture and a page** (#220). **Waits for E13a** (#217): E13 replaces Mermaid with
+`graph.v1`, a new renderer and graph screen, so this stage is written against `graph.v1` once E13a is in `main` (the
+user's decision of 7 October, after seeing the overlap). No dashboard access rule: whoever sees the dashboard sees it.
+**P2f — the test material's processes become process modules** (#222; tightened 7 October 2026; a PR per client, each
+based on `main`). Rehmed `clinical_visit` and `payer_settlement`, TaxVision `accounting_month`, AppUnite `assignment`
+(the `Assignments` contract goes). The text report's numbers per process unchanged on seeded events; dashboard and
+graphs lose them until P2e.
+**P2g — the library's own test material uses process modules** (#228; tightened 7 October 2026). The engine's
+runtime rigs (`DispatchRig.Ledger`/`Branch`, `KeyRig`, `ProcessShapes`, `UniversalityGate`, `BoundaryRig.Enrolment`)
+move their processes into modules; the tests of runs, promises, deadlines and key budgets hold against them. DSL
+tests of the contract's `process` block and the manifest's process field stay for #221, dashboard fixtures for #220.
+**P2h — a contract can no longer declare a process** (#221). **Waits for E13** and P2e, since E13's contract graph
+still draws a contract's process. Formerly — **P2h — stare słowa i kolumny znikają**: z DSL kontraktu `@process`, `@include`, etapy w jednostkach, `terminal:`
 zdarzenia; reguły R1/R4 i procesowe części R2–R6, `Rules.Fields.correlated/1`; **migracja** (V02 albo V01 w
 miejscu — decyzja niżej): usunąć `process`/`instance_id` z `_events` i `_commands`; `@amendments` ADR §4.5; dopiski z datą w ADR §10.3, §13, D5, D7;
 skille `add-event`, `change-contract`, `contract-distillation`, `module-boundary-check`. Odbiór: grep `terminal:` w
@@ -2402,40 +2428,58 @@ Kierunek i `separate_ways` awansują z L5 na L3; „brak relacji” zostaje ostr
 modułu procesu nie jest referencją. Kod: nowa grupa L3 obok `crossings/2` (`completeness.ex` 722-745 rozwiązuje
 kontekst siostry). Sandbox: poprawić relacje albo kontrakty i powiedzieć to w PR.
 
-**T2a — `reads: [service: :service_id]`**: opcja komendy; **A8** (L2): pole komendy typu `{:id, encja}`;
-behaviour `EhOsContract.Entities` (`fetch/3`, `impl/0`, `UnfitRowError`); dispatch czyta raz na komendę (retry
-używa tych samych wierszy), `:not_found` → `{f, :unknown}` (422, D9); **decyzja dostaje trzeci argument**
-`(command, state, reads)` — `callbacks.ex` `of/3`, I2, `decide/7`; kolumna `inputs :map` w `_commands`
-(migracja jak w P2h) — encje nie mają pól osobowych (D6). *Odrzucone (mechanika):* `Meta.inputs` (Meta znaczy kto/kiedy i
-wraca z logiem), wstrzyknięcie do stanu.
-**T2b — `given_entity`**: encja scenariusza, **S12** (L2), rozszerzenie X9; gałąź agregatu w `scenario_case.ex`
-(443-507) woła z arnością 3.
-**T2s — sandbox**: `book_visit` czyta `:service` i utrwala flagę P1 w `visit_booked` (AGG-15, w chwili rezerwacji).
+**T2a — a command reads an entity before it is decided**: a command option
+`reads: [service: :service_id]` names a field of the command typed `{:id, entity}` (a new compile refusal, A8), and
+the decision gets a third argument, the rows read, `(command, state, reads)` (`Callbacks.of/3`, I2). A host
+behaviour, `EhOsContract.Entities` (`fetch/3`), gives the row; dispatch asks once per command, before the
+transaction, so a retry after a conflict decides on the same rows; a row that is not there refuses the command
+as `{field, :unknown}` (422; `:unknown` joins the reserved invariant names, D9), and a row that does not fit the
+entity's fields raises (`UnfitRowError`). What was read is kept in a new column `inputs` of `_commands`, added
+by a migration **V02** (decided 7 October); entities have no personal fields (D6), so it can be. Depends on N1.
+*Rejected (mechanics):* `Meta.inputs` (Meta says who and when, and comes back with the log); folding the rows into
+the state.
+**T2b — `given_entity`**: done inside T2a (#240); why is on the issue.
+**T2s — Rehmed's booking reads its service**: `book_visit` declares `reads: [service: :service_id]` and records the
+service's P1 flag on `visit_booked` as `p1_reported`, as it stood when the visit was booked (`AGG-15`). The sandbox
+gets `Rehmed.Entities`, a stand-in catalogue beside `Rehmed.Supplier`. `close_visit_clinically` keeps its supplied
+flag until the specialist's close checks the flag recorded at booking (A2). No `visit_booked` row is in any log (reset in wave 2), so the new required field breaks no history.
 
-**A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
-`:id`, nieosobowe; inwariant w `rejects:`; nie na `creates:`; komenda z `by:`); X2: `by:` ma aktora `:human`.
-Dispatch po `fold/6`, przed `decide/7` (attempt/2 783-805), tylko dla aktorów z credentialem (`:system` i reakcje
-przechodzą); odmowa jak bramka LC2 (wiersz `rejected`). Scenariusz `actor :specialist, as: "specialist-ewa"`
-(makro jak `Generated.identity/2`, nie `subject:`), S7 rozszerzone.
-**A2 — Rehmed AGG-02 inw. 3**: `visit_completed` dostaje `specialist_id` z `supplied_by: :host` (supplier wpisuje
-`actor.subject`); dokumentacja wizyty staje się DCB konsultującą `visit_completed` i `visit_booked` po `visit_id`
-(bez nowych nazw zdarzeń — nazwy tylko z warsztatu), więc stan zna specjalistę i flagę P1 utrwaloną przy
-rezerwacji (T2s): `close_visit_clinically` dostaje `actor_is`, a pole `p1_reported` znika z komendy. Zamknąć
-ustalenie z E9a.
+**A1 — a command only the person the unit names may issue**: inside a command, `actor_is :specialist_id,
+or_rejects: :invariant` says the credential's subject must equal that field of the unit's state. A new compile
+refusal (A9): the field is the unit's state, a required, non-personal `:id`; the invariant is the unit's and in the
+command's `rejects:`; not on a command that `creates:`, which has no state yet; the command names actors in `by:`.
+Dispatch checks it after folding the state and before the decision, for a credential only (a `:system` actor and a
+reaction pass), and refuses as the lifecycle's precondition does: a `rejected` row on the invariant. No exception
+for a role (decided 7 October). A scenario names the person with `as: "specialist-ewa"` beside its `actor:` (S7
+extended). Depends on T1.
+**A2 — Rehmed's clinical close by the visit's own specialist** (`AGG-02` invariant 3): the visit's documentation
+becomes a boundary consulting `visit_booked` by `visit_id` (no new event names), so its state knows the specialist
+reception booked the visit with and the P1 flag recorded at booking (T2s). `close_visit_clinically` gets `actor_is
+:specialist_id`, loses its supplied `p1_reported`, and the codes rule becomes an invariant on the booked flag. This
+settles what E9a found: the contract could not say who closes. Depends on A1 and T2s; why the booking and not the
+recorded departure names the specialist is on the issue.
 
-**B2 — kubełek w `match:`**: `consults :visit_booked, match: [:specialist_id, scheduled_at: :day], for:
-:book_visit`; `boundary/3` (1064-1075) liczy tag z pola komendy (`Key.day_tag/2`) — bez pola wyliczanego przez
-wołającego; A4/X6 rozszerzone.
-**B3 — DCB z generowaną tożsamością** (rozluźnić A6; `generate_identity/4` już czyta jednostkę).
-**B4 — Rehmed: rezerwacja jako DCB** `dcb :visit, identity :visit_id, generated: :uuid`, inwariant
-`:one_visit_at_a_time_per_specialist`, `ends_at` w rezerwacji; scenariusze: kolizja odrzucona, styk dozwolony,
-odwołany termin wolny, inny specjalista dozwolony; test wyścigu jak w EM1.
+**B2, B3, B4 — dropped on 7 October 2026**: a day bucket in `match:`, a boundary with a generated identity and
+Rehmed's booking as a boundary. Why, and what was rejected: "Before wave 3's boundaries — the user's decision".
 
-**S2 — scenariusze obietnic** (w modułach procesu): wyzwalacz `promise :nazwa, at: "…"`, `given … at:`, `outage
-:p1, at:`, wynik `verdict:` (`:satisfied | :violated | :pending | :suspended`) i `via:`; S1/S2/S3 rozszerzone,
-**S11** (kształt), X4 (awaria systemu, od którego zależy zdarzenie); ScenarioCase woła `Trace.judge/3` (W3).
-**S3 — sandbox**: obietnica `medical_event_reported_within_statutory_window` (spełniona przez wysłanie, przez
-`or_else`, złamana po 2 dniach, zawieszona przy awarii P1); TaxVision `month_opens_or_is_blocked`.
+**S2 — a process's promise can be tested with a scenario** (#251; tightened 8 October 2026). A process module gets
+`scenario "…", verdict:, via: do given …, at: …; outage :external, at: …; promise :name, at: … end`, and `given … at:`
+works in every scenario (the user's decision of 8 October). Refused in the module: a trigger naming no promise of it
+(S1), a given of an event it does not include (S2), an `at:` going back (S3), a shape no verdict fits (S11). Refused
+against the contracts: given data the declaring event does not fit (X9), an outage of a system the promise does not
+wait on (X4).
+`ScenarioCase, process:` judges through `Trace.trace/2` and `Trace.judge/3`, without a database.
+**S3 — the test material's promises have scenarios** (#256; tightened 8 October 2026). Rehmed's
+`medical_event_reported_within_statutory_window`: kept by sending, kept by waiving, broken after two days, excused by
+a P1 outage inside the window but not after it, still open. TaxVision's `month_opens_or_is_blocked`: kept by opening,
+kept by a discrepancy, broken; no outage, since the library excuses a promise only by what its own events depend on, and
+the registries are one step upstream (recorded on #256). A test module per process.
+
+**P2w — a process module's report on the wire** (#259; added 8 October 2026, agreed with EHOS in
+EmpoweredHouse/eh-os#297). `Conformance.as_data/2` stops refusing a process module; a v3 report has exactly one of
+`contract` and `process` (the user's choice of 8 October); `Wire`'s moduledoc states the compatibility rule (unknown
+keys ignored, a key an older reader must not ignore comes with a new version); `eh_os_contract_web` takes
+`?process=<id>`, 400 with both parameters.
 
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;
@@ -2461,12 +2505,16 @@ i tożsamości nieobsługiwane. Przykład z materiału: `amount_minor` → `amou
 obietnice) i `text_digest` (etykiety, `source:`, scenariusze) w `Build.version/3`/`digests/3`; `Deployment` zapisuje
 obie; raport rozróżnia „zmieniła się umowa” od „zmieniły się słowa”.
 
-**PC1 — generatory** (`{:stream_data, "~> 1.1", optional: true}`, moduł w `if Code.ensure_loaded?(StreamData)`
-jak `plug.ex`): wartości w granicach `Codec`, wartości dziedziny z `satisfied_by`, `command/3`, `event/3`,
-`entity_row/3`, `history/3` (spacer po `Lifecycle.moves/3`).
-**PC2 — `use EhOsContract.PropertyCase, contract: C, max_runs: 50`**: `evolve/2` totalne na legalnych historiach;
-decyzja nie rzuca na legalnym wejściu i mieści się w `Decision.held!/6`; status zgodny z grafem; opcjonalne
-`holds?/2`. Odbiór: celowy defekt `reopen_visit` w `LifecycleRig` złapany; sandbox `rehmed_settlement` z `holds?/2`.
+**PC1 — a contract produces valid examples of its data** (#264; tightened 8 October 2026). `EhOsContract.Generators`,
+compiled only with StreamData (`optional: true`, as `EhOsContract.Plug` with Plug): `command/3`, `event/3`,
+`entity_row/3`, `history/3` (a walk over `Lifecycle.moves/3`, one identity, up to `max_length:`); values inside
+`Codec`'s bounds, a domain value with invariants drawn from its `satisfied_by:`, `fields:` to fix or narrow a field.
+**PC2 — a unit's code is tested on legal histories** (#266; tightened 9 October 2026). `use EhOsContract.PropertyCase,
+contract: C, max_runs: 50` writes, per aggregate with an implementation: `evolve/2` folds every legal history (events
+with `__meta__`, personal fields sometimes erased); each command decides, in a status its `from:` admits, only what
+`Decision.held!/7` accepts or a rejection it declares; with `holds?(invariant, state)` defined, a walk of decided
+commands keeps every invariant. Accepted when `LifecycleRig`'s `reopen_visit` is caught and Rehmed's settlement runs
+with `holds?/2` in the sandbox.
 
 #### Fala 5 — język i rdzeń
 
@@ -2513,7 +2561,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
 - Odbiory fal: (1) Plug odrzuca `p1_reported` (422), dwie reakcje między kontekstami mają jawne `delivery`;
   (2) `clinical_visit` jako moduł procesu, raport: kontrakty i procesy, zero `terminal:` w zdarzeniach;
-  (3) dziesięć rezerwacji tego samego terminu → jedna przyjęta; scenariusze obietnic bez bazy; rig z relacją ACL
+  (3) scenariusze obietnic bez bazy; rig z relacją ACL
   odrzuca read model na zdarzeniu dostawcy (sandbox nie ma ACL między kontekstami); `close_visit_clinically` bez
   pola `p1_reported`; (4) zmiana pól bez `schema_version` nie przechodzi
   `eh_os_contract.schema --check`; `PropertyCase` łapie defekt rigu.
@@ -2522,7 +2570,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 
 | Przed | Pytanie | Domyślnie |
 |---|---|---|
-| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 |
+| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 — **decided 7 October: a new version, never V01 in place.** T2a's is V02 (`_commands.inputs`); P2h, on hold until E13, comes after it and takes the next version, V03, since a host may already have applied V02 |
 | P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem — **decided 6 October: removed** |
 | P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak — **decided 7 October: yes** |
 | P2b | `deadline` bez `ends_on` | błąd L2 w module procesu — **decided 7 October: an L2 error** |
@@ -2530,8 +2578,8 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 | P1e | sprzątanie szablonowych procesów w testach | tak |
 | W2 | tagi miesiąca obok tagów dnia | tylko dzień |
 | T2a | `reads:` po polu stanu, nie tylko komendy | później |
-| S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone |
-| A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem |
+| S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone — **decided 8 October: allowed in every scenario** (#251) |
+| A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem — **decided 7 October: no exception** |
 | M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
 | V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
 | L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie |
@@ -2545,6 +2593,60 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### Before A1 — the user's decision (7 October 2026)
+
+**No exception for a role in `actor_is`** (the recommended default). Only the person the unit names may issue the
+command; a manager who must act on another specialist's visit does so through another command, declared for it.
+Rejected: an exception for a role, `actor_is :specialist_id, unless: :manager`, which would make one command mean
+two things and leave the report unable to tell an override from an ordinary close.
+
+### After wave 3 — the user's decision and the migration note (8 October 2026)
+
+**Wave 3 is closed conditionally** (the user's decision of 8 October). In `main`: T2a with T2b (#242), T2s (#246),
+A1 (#248), A2 (#250), S2 (#254), S3 (#257), and two stages added on the way, P2w (#261) and O1 (#262), agreed with
+EHOS in EmpoweredHouse/eh-os#297. B2, B3 and B4 were dropped on 7 October. **On hold** until E13: the context map
+(M1), which waits for P2h, and the stage-order screen (O2), which waits for P2e. **Next:** the stages of waves 4 and 5
+that nothing blocks, PC1 → PC2, L1, L2, L3. *Rejected:* waiting for E13 to close the wave, which would leave the
+library idle on work that does not depend on it; stopping for the small issues first (#193, the upstream outage
+of #256), which stay open beside the waves. **Open, the user's:** whether an outage one step upstream may excuse a
+promise (#256); how the clinic handles a substitute specialist (#249). **Version tag:** not yet, on the user's word.
+
+**Migration note.** A host upgrading from `main` after wave 2 to `main` after wave 3:
+
+| Change (stage, issue) | What to do | AppUnite's equipment application |
+|---|---|---|
+| The engine's storage is at migration V02, `_commands.inputs` (T2a, #240) | add a migration calling `EhOsContract.Migrations.up(version: 2)` (and `down(version: 2)`); the engine refuses to start on V01 | the migration, before the bump |
+| A command may read an entity the application keeps, `reads:` (T2a) | only for a contract that uses it: `config :eh_os_contract, entities: MyApp.Entities` | none until a contract reads one |
+| A command may require the person a unit names, `actor_is` (A1, #247) | none until a contract declares it | none |
+| A scenario may date a given, `at:`; a process module may carry promise scenarios (S2, #251) | none; a process module that adds scenarios gets a new version | none |
+| The conformance wire carries a process module's report, `?process=<id>`, keyed `process` (P2w, #259) | a reader of v3 tells a report by `contract` or `process` | whatever reads the conformance JSON |
+| A process section has `out_of_order` (O1, #260) | none; the text report can gain a line | none |
+
+`ehos-ledger` takes the same rows. The test material's stages (T2s, A2, S3) change nothing for a host.
+
+### Before wave 3's boundaries — the user's decision (7 October 2026)
+
+**B2, B3 and B4 are dropped from wave 3**, and with them the wave's acceptance check "ten bookings of the same
+slot, one accepted". The next stage is T2a, on a new migration V02.
+
+- **B2, a day bucket in `match:`** (`consults :visit_booked, match: [:specialist_id, scheduled_at: :day]`). The
+  rule the clinic states is "a specialist has no two visits at once"; "look for collisions among the visits of
+  the same day" is how an index finds candidates, and a contract describes the first. The bucket also leaks: a
+  visit from 23:30 to 00:30 lies in two days. Its one reader was one rule of one client, and every key of the DSL
+  costs every reader of a contract, whether it uses it or not. Dynamic consistency boundaries (dcb.events) allow
+  any tag; modelling tools do not describe how a command computes one, so the word would be ours alone.
+- **B3, a boundary with a generated identity.** Its only consumer was B4. Alone it is of no use: a boundary
+  whose identity is new has no events of its own to match, so it would also need `match:` on a command's field
+  outside its identity, and `for:` naming the commands that carry it — part of B2 again.
+- **B4, Rehmed's booking as a boundary.** Rehmed's `Scheduling` contract already leaves the resource rules out on
+  purpose: whether a slot is free is answered by the booking screen before a command exists. B4 would have
+  contradicted that decision of the distillation.
+
+Rejected: B2 as planned (a general mechanism with one bucket built in, and a leak at midnight); booking as an
+aggregate keyed by specialist and day on today's DSL (it works, but contradicts the same decision); a derived tag
+declared on an event, more general than `:day` (a larger design with no second reader yet). They come back with a
+second rule in the material that needs a calendar bucket or uniqueness at creation.
 
 ### Before P2b — the user's decisions (7 October 2026)
 
@@ -3044,6 +3146,41 @@ Plug odrzuca `p1_reported` (T1s, 422), dwie reakcje między kontekstami mają ja
 `ehos-ledger` — tego repozytorium tu nie czytamy; host tej samej klasy: te same wiersze, a manifest bez zmian kształtu
 od #134 (żaden etap fali 1 nie rusza generatora). Bump przypięcia robi się w tamtych repozytoriach, na polecenie
 użytkownika.
+
+### After wave 2 — the user's decision and the migration note (7 October 2026)
+
+**Wave 2 is closed conditionally** (the user's decision of 7 October, option 1). 15 of its 17 stages are in `main`:
+ID1–ID4, P1a–P1e, P2a–P2d, P2f, P2g. **On hold**, waiting for the graph documents and renderer (E13), and continuing
+as a group of their own after them: a process module's picture and page (P2e, #220), which starts once the graph
+documents (E13a, #217) are in `main`; and removing the contract's own `process` block with its columns in the log
+(P2h, #221), which waits for the whole of E13 (#217 and the renderer, #219) and for P2e. The wave's aim stands: a process is a module of its own spanning
+contracts, checked at compile time, with runs, a report, a deployment record and a check, and the test material
+and the library's tests use it. What is missing is its picture and the removal of the old way.
+*Rejected:* waiting for E13 to close the wave, which would hold back this note while AppUnite's application needs it now.
+**Version tag:** not yet, on the user's word only, as after wave 1.
+
+**Migration note.** A host upgrading from wave 1's `32d7137` to `main` after wave 2 does the following. "A host has to
+act" entries of the three changelogs carry the detail.
+
+| Change (stage, issue) | What to do | AppUnite's equipment application |
+|---|---|---|
+| Every contract names its `id:`; an event's type is `"<id>.<event>"` (ID1–ID3, #165, #171, #173) | add `id: "<domain>.<contract>"` to every contract; **reset the engine's schema** before upgrading (`EhOsContract.Migrations.down/up` or a fresh database) | an `id:` on each contract under the domain's new name (see the last row): `appunite-equipment.computers`, `…demands`, `…assignments` in the sandbox's copy; rename the domain and reset in one step |
+| Rows and keys name a contract by its `id:` (ID4, #178) | the same reset covers it; **also clear the tables the host's read models project into**; drain an inbox's old durable consumer and delete it | one reset for ID3 and ID4; clear the read models' tables (inventory, waiting list) |
+| Start-up warnings for undeclared types (#175) and unknown contract names (#179) in the log | none; they name a log written before the reset | none after the reset |
+| The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served (P1a, #183) | a reader of the JSON reads v3 (EHOS: EmpoweredHouse/eh-os#202) | whatever reads the conformance JSON |
+| The dashboard's APIs and graph page name a contract by its id (P1a, P1b; #183, #186) | links and API calls by id; the graph page's LiveView event is `select_contract` | dashboard links, if any |
+| `mix eh_os_contract.graph --contract <id>` (P1a) | call it by id | scripts, if any |
+| A step counts occurrences; a contract's steps are their own block, judged when it recorded an event (P1a) | none; verdicts move, read the report again | none |
+| A capability names a process only when its contract has one (P1b, #186) | a contract that loses its process changes the manifest, which EHOS counts as an authority change: the first deploy needs `ehos.application.register` until EmpoweredHouse/eh-os#92 | applies once its contracts lose their processes (below) |
+| A contract may describe no process; without one, no `stage` groups and no `terminal:` events (P1c, #190) | none required; a contract whose process was invented to satisfy R1 may drop it | `computers` and `demands` had invented processes (the sandbox dropped them in P1d) |
+| `cadence` is removed (P1d, #195) | delete the line; a contract that declared it gets a new version | none |
+| A process may be a module of its own, `use EhOsContract.Process` (P2b–P2d; #205, #210, #213) | optional now, required once P2h lands: move each contract's `process` into a module; its runs are filed under the module's id, so runs before the move are not continued; the manifest change above applies | `assignment` as a module, as the sandbox did (#227); the `Assignments` contract goes |
+| The configuration is one schema, checked at boot (#206) | an unknown key or a wrong shape in `config :eh_os_contract` stops the engine, naming the key | check the config boots |
+| `eh_os_contract_commands` indexed by contract (#185) | none for a reset database; otherwise `CREATE INDEX CONCURRENTLY` as the changelog gives | none after the reset |
+| The domain's `name:` must be the EHOS application's name (#180, #234) | the application in `audience` (`"<application>/<environment>"`) must equal one domain's `name:` exactly, and no other domain may publish; the auth child refuses to start otherwise. A domain named with `_` cannot match, since EHOS never issues `_`: rename it with `-` | **the domain must be renamed**: in the sandbox's copy it is `:appunite_equipment`, which no EHOS name can equal; rename it to the application's name in EHOS (presumably `:"appunite-equipment"`, to be checked in EHOS). The rename changes every contract id and event type, so do it with the ID3 and ID4 reset above, not after it |
+
+`ehos-ledger` takes the same rows; its manifest changes only where a capability loses its process. The bump of
+either pin is done in those repositories, on the user's word.
 
 ### ID1 — co wyszło (6 października)
 

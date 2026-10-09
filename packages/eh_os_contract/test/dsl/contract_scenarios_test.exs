@@ -577,6 +577,34 @@ defmodule EhOsContract.ContractScenariosTest do
                  "scenario names an actor (actor_wrong.ex:38)"
     end
 
+    test "a person named with as: without an actor, and on a reaction (plan DD, A1, #247)" do
+      message =
+        refuse_contract("PersonWrong", """
+        #{@unit}
+          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
+
+          scenario "ktoś zamyka" do
+            as "reception-ola"
+            command :close
+            expect :closed
+          end
+
+          scenario "przypomnienie" do
+            as "reception-ola"
+            on :closed
+            issues :remind
+          end
+        """)
+
+      assert message =~
+               ~s|S7: scenario "ktoś zamyka" (aggregate :visit): as: names a person only beside | <>
+                 "an actor:"
+
+      assert message =~
+               ~s|S7: scenario "przypomnienie" (policy :remind_on_close): only a command's | <>
+                 "scenario names a person with as:"
+    end
+
     test "control: an actor in by: compiles" do
       assert [_, %{actor: :manager}] =
                compile_contract("ActorRight", """

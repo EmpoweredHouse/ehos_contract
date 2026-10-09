@@ -1,14 +1,19 @@
 defmodule EhOsContract.Migrations do
+  # Until 2026-08-21 the tables lived in the host application's
+  # `priv/repo/migrations/`, interleaved with the client tree's own, which made the
+  # storage the host's to maintain. Before 0.3.0 is released, V01 is rewritten in
+  # place (the idempotency index in plan E11f, the append lock's key per schema).
+  # Until 2026-09-30 the version was read from and written to `public` by name,
+  # whatever the path said, and in any other schema the first `up/0` failed on a
+  # `public.eh_os_contract_events` that did not exist (issue #51).
   @moduledoc """
   The tables the engine owns, as a migration a consumer calls.
 
-  Until 2026-08-21 the tables lived in the host application's
-  `priv/repo/migrations/`, interleaved with the client tree's own. That made the
-  storage the host's to maintain, which is exactly backwards: the schemas are in
-  this package, the queries are in this package, and a host that fell a column
-  behind found out from a crash. A library that owns storage ships the migration
-  for it — the precedent is Oban, and this follows its shape deliberately rather
-  than inventing one.
+  The storage is the engine's to maintain, not the host's: the schemas are in this
+  package, the queries are in this package, and a host that had to keep the tables
+  itself would find out from a crash that it fell a column behind. A library that
+  owns storage ships the migration for it — the precedent is Oban, and this follows
+  its shape deliberately rather than inventing one.
 
   ## Usage
 
@@ -24,9 +29,7 @@ defmodule EhOsContract.Migrations do
       end
 
   When a later release raises `current_version/0`, the upgrade is another
-  generated migration and not a rewrite of the one above. Until 0.3.0 is first
-  released, V01 itself is still rewritten in place (the idempotency index in plan
-  E11f, the append lock's key per schema): there is no database it has to upgrade.
+  generated migration and not a rewrite of the one above:
 
       defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV2 do
         use Ecto.Migration
@@ -34,6 +37,9 @@ defmodule EhOsContract.Migrations do
         def up, do: EhOsContract.Migrations.up(version: 2)
         def down, do: EhOsContract.Migrations.down(version: 2)
       end
+
+  Version 2 adds the column that keeps what a command's decision read
+  (`EhOsContract.Entities`).
 
   **The mechanism exists at version 1, when there is nothing to upgrade from.**
   That is the point of building it now: the first schema change is the moment it
@@ -90,16 +96,23 @@ defmodule EhOsContract.Migrations do
   **Ecto's migration prefix is not supported** (`mix ecto.migrate --prefix`,
   `:migration_default_prefix`): `create table` would follow it while the functions,
   the triggers and the version follow the `search_path`. Set the path instead.
-
-  Until 2026-09-30 the version was read from and written to `public` by name,
-  whatever the path said, and in any other schema the first `up/0` failed on a
-  `public.eh_os_contract_events` that did not exist (issue #51).
   """
 
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 1
+  @current_version 2
+
+  # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
+  # match on the path: with `search_path: "ledger, public"` and the tables already
+  # in `public`, that match would be theirs.
+  @version_query """
+  SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
+  FROM pg_class
+  JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+  WHERE pg_class.relname = 'eh_os_contract_events'
+  AND pg_namespace.nspname = current_schema()
+  """
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
@@ -118,7 +131,7 @@ defmodule EhOsContract.Migrations do
 
   Raises on a target this release does not have, and on a database that records a
   version it does not know: one migrated by a newer release, or before 0.3.0, whose
-  versions 2–5 are gone (plan E11c). Left alone, such a database would pass as
+  versions 3–5 are gone. Left alone, such a database would pass as
   current, and a later version of this module would skip what it adds.
   """
   @spec up(keyword()) :: :ok
@@ -161,21 +174,49 @@ defmodule EhOsContract.Migrations do
   it must be current" is the assumption that makes the second version unshippable.
   """
   @spec migrated_version() :: non_neg_integer()
-  def migrated_version do
-    # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
-    # match on the path: with `search_path: "ledger, public"` and the tables already
-    # in `public`, that match would be theirs.
-    query = """
-    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
-    FROM pg_class
-    JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-    WHERE pg_class.relname = 'eh_os_contract_events'
-    AND pg_namespace.nspname = current_schema()
-    """
+  def migrated_version, do: recorded(repo())
 
-    case repo().query(query, [], log: false) do
+  # Refuses to start the engine on a database whose storage is not at
+  # `current_version/0`: below it, every command's row would fail on a column this
+  # release writes and the database lacks (plan DD, T2a, #240). Storage above it is let
+  # through: a node of this release restarting while a newer one rolls out, or the code
+  # rolled back without its migration, runs on columns it does not know, which every
+  # version so far only adds. Called when the engine starts, with the host's repo,
+  # outside any migration. Raises `ArgumentError` naming both versions and what to do,
+  # and a database it cannot ask raises as itself, never as missing storage.
+  @doc false
+  @spec check!(module()) :: :ok
+  def check!(repo) do
+    case recorded!(repo) do
+      0 ->
+        raise ArgumentError,
+              "the database has no eh_os_contract storage in its current schema: add a " <>
+                "migration calling EhOsContract.Migrations.up() and run it"
+
+      recorded when recorded < @current_version ->
+        raise ArgumentError,
+              "the database's eh_os_contract storage is at version #{recorded}, and this " <>
+                "release needs version #{@current_version}: add a migration calling " <>
+                "EhOsContract.Migrations.up(version: #{@current_version}) and run it"
+
+      _current_or_newer ->
+        :ok
+    end
+  end
+
+  defp recorded(repo) do
+    case repo.query(@version_query, [], log: false) do
       {:ok, %{rows: [[version]]}} when is_binary(version) -> String.to_integer(version)
       _ -> 0
+    end
+  end
+
+  # As `recorded/1`, but an error of the database is raised: at boot, a refused
+  # connection read as "no storage" would send the operator to run a migration that ran.
+  defp recorded!(repo) do
+    case repo.query!(@version_query, [], log: false) do
+      %{rows: [[version]]} when is_binary(version) -> String.to_integer(version)
+      _no_table_or_no_comment -> 0
     end
   end
 
@@ -184,8 +225,8 @@ defmodule EhOsContract.Migrations do
           "eh_os_contract_events records version #{recorded}, and this release of " <>
             "eh_os_contract knows versions up to #{@current_version}. If a newer release " <>
             "migrated it, use that release. If it was migrated before 0.3.0, it cannot be " <>
-            "upgraded, since 0.3.0 has a single version 1: drop the database and create it " <>
-            "again, or keep it on 0.2."
+            "upgraded, since 0.3.0 starts again from version 1: drop the database and create " <>
+            "it again, or keep it on 0.2."
   end
 
   defp known!(recorded), do: recorded
@@ -196,7 +237,7 @@ defmodule EhOsContract.Migrations do
     raise ArgumentError,
           "eh_os_contract has migration versions #{@initial_version} to #{@current_version}, " <>
             "and #{inspect(version)} is not one of them. A host migration calling " <>
-            "`up(version: 2..5)` is from before 0.3.0: delete it."
+            "`up(version: 3..5)` is from before 0.3.0: delete it."
   end
 
   defp change(range, direction) do

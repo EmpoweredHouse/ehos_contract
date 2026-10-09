@@ -1,6 +1,7 @@
 defmodule EhOsContract.Store.Postgres do
   @moduledoc """
-  `EhOsContract.Store` on the table migration V01 builds (v2 §10.2–10.4).
+  `EhOsContract.Store` on Postgres, in the `eh_os_contract_events` table the engine's
+  migrations create.
 
   Every append takes `eh_os_contract_append_lock()`, a transaction-scoped advisory
   lock with one key per log, derived from the schema it lives in. The table's own
@@ -14,13 +15,15 @@ defmodule EhOsContract.Store.Postgres do
   A `{:dcb, query, head}` append checks, under the lock, whether anything matching the
   query was appended after `head`. `read_query/2` reads the head first and the matching
   events up to it, so the check is a range over the positions appended since the read,
-  never a scan of history (v2 §10.4).
+  never a scan of history.
 
   The isolation level must be READ COMMITTED. Each statement after the lock then sees
   whatever the previous lock holder committed. Under REPEATABLE READ the snapshot is
   older than the lock, and the version check would read a stale stream. This module
   refuses to append at any other level instead of trusting the configuration.
   """
+
+  # The store of v2 §10.2–10.4, on the table migration V01 builds.
 
   @behaviour EhOsContract.Store
 

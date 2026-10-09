@@ -1,14 +1,13 @@
 defmodule EhOsContract.JsonSchema do
-  @moduledoc """
-  JSON Schema objects for fields of a v2 contract.
-
-  AsyncAPI and OpenAPI share this projection so an `:id`, a domain value or an
-  optional field cannot mean one thing on the event side and another on the HTTP
-  side. The `x-eh-os-contract-type` extension keeps the DSL type where JSON Schema
-  itself collapses distinctions such as `:id` and `:string`, and
-  `x-eh-os-contract-max-bytes` gives an `:id`'s bound in bytes, which JSON Schema counts
-  only in characters.
-  """
+  # JSON Schema objects for fields of a v2 contract.
+  #
+  # AsyncAPI and OpenAPI share this projection so an `:id`, a domain value or an
+  # optional field cannot mean one thing on the event side and another on the HTTP
+  # side. The `x-eh-os-contract-type` extension keeps the DSL type where JSON Schema
+  # itself collapses distinctions such as `:id` and `:string`, and
+  # `x-eh-os-contract-max-bytes` gives an `:id`'s bound in bytes, which JSON Schema counts
+  # only in characters.
+  @moduledoc false
 
   alias EhOsContract.Model
 

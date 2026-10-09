@@ -1,14 +1,14 @@
 defmodule EhOsContract.EffectJob do
   @moduledoc """
-  The Oban job that runs one effect delivered `:at_least_once` on one event (v2 §12).
+  The Oban job that runs one effect delivered `:at_least_once` on one event.
 
   Dispatch inserts it in the transaction that appends the event, so the job exists
   exactly when the event does. **Its arguments are the effect's key, the event's id
   and the dispatched contract's application, and nothing else**: the job reads the
   event from the log when it runs, so no payload ever lands in `oban_jobs`, where the
   queue would keep what erasure means to remove. The application is where dispatch
-  found the effect besides the configured ones, which the key's contract id cannot name
-  (plan DD, ID4, #178).
+  found the effect besides the configured ones, which the key's contract id cannot
+  name.
 
   Oban delivers at least once, so an effect **will** see an event a second time. The
   contract names what makes that harmless (`idempotency:`, rule P3), and the event's
@@ -30,6 +30,9 @@ defmodule EhOsContract.EffectJob do
   insert it otherwise.
   """
 
+  # An `:at_least_once` effect as v2 §12 has it. The application among the arguments:
+  # plan DD, ID4 (#178).
+
   @max_attempts 3
 
   use Oban.Worker, queue: :events, max_attempts: @max_attempts
@@ -39,12 +42,11 @@ defmodule EhOsContract.EffectJob do
 
   alias EhOsContract.{Consumer, Event, Implementations}
 
-  @doc """
-  Oban's backoff over the attempts that ran (plan W1). A snooze raises `attempt` and
-  `max_attempts` by one each, and Oban's default backoff scales `attempt` by
-  `max_attempts` once that passes 20, so a job that waited out a long deploy would
-  retry a real failure after days instead of seconds.
-  """
+  # Oban's backoff over the attempts that ran (plan W1). A snooze raises `attempt` and
+  # `max_attempts` by one each, and Oban's default backoff scales `attempt` by
+  # `max_attempts` once that passes 20, so a job that waited out a long deploy would
+  # retry a real failure after days instead of seconds.
+  @doc false
   @impl Oban.Worker
   @spec backoff(Oban.Job.t()) :: pos_integer()
   def backoff(%Oban.Job{attempt: attempt, max_attempts: max_attempts} = job) do
@@ -52,23 +54,22 @@ defmodule EhOsContract.EffectJob do
     Oban.Worker.backoff(%{job | attempt: max(attempt - snoozed, 1), max_attempts: @max_attempts})
   end
 
-  @doc """
-  The job for `effect`'s key and the event `event_id`, dispatched by a contract of
-  `application`.
-  """
+  # The job for `effect`'s key and the event `event_id`, dispatched by a contract of
+  # `application`.
+  # Called by dispatcher.ex.
+  @doc false
   @spec job(String.t(), Ecto.UUID.t(), atom() | nil) :: Oban.Job.changeset()
   def job(effect, event_id, application \\ nil) do
     args = %{"effect" => effect, "event_id" => event_id}
     new(if application, do: Map.put(args, "application", Atom.to_string(application)), else: args)
   end
 
-  @doc """
-  Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
-  retried, `{:snooze, seconds}` when the event was written by newer code than this node
-  runs (`EhOsContract.NewerSchemaError`), or `{:cancel, reason}` when the wiring the
-  job was enqueued for is gone —
-  no module implements the effect, or it no longer takes the event's type.
-  """
+  # Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
+  # retried, `{:snooze, seconds}` when the event was written by newer code than this node
+  # runs (`EhOsContract.NewerSchemaError`), or `{:cancel, reason}` when the wiring the
+  # job was enqueued for is gone —
+  # no module implements the effect, or it no longer takes the event's type.
+  @doc false
   @impl Oban.Worker
   @spec perform(Oban.Job.t()) ::
           :ok | {:error, term()} | {:snooze, pos_integer()} | {:cancel, String.t()}

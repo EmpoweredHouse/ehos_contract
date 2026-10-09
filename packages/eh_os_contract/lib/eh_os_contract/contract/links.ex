@@ -1,29 +1,28 @@
 defmodule EhOsContract.Contract.Links do
-  @moduledoc """
-  The rules between modules: v2 §6, layer L3.
-
-  A contract names its domain and the sibling contracts it consumes without a
-  compile dependency (v2 §8), so no rule inside one contract (L2) can look them up,
-  and an incremental compile does not revisit a contract when its domain or a
-  sibling changes. These rules therefore run over every compiled module at once, on
-  every compile, from the Mix compiler `compile.eh_os_contract`, which hands
-  `check/1` the project's modules.
-
-  The rules come in groups, one module each, as L2's do:
-
-  - `Links.Domain` — X1–X4 and the parts of D10 and D11 that need the domain.
-  - `Links.Siblings` — X5, X6 and X10, what a contract consumes from a sibling contract.
-  - `Links.System` — X7, X8 and D14's names, unique across the application.
-  - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
-  - `Links.Processes` — X1, X2, X5, X6 and D11 for a process module (plan DD, P2c,
-    #210): its domain, its accountable actor, and the contracts' events it includes.
-
-  A violation points at the declaration at fault. L3 reads the declarations Spark
-  kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
-  with the file and line they were written at; the model (v2 §9) carries no
-  locations, so they reach neither the version nor any digest. What names a whole
-  contract — its domain, its context — points at the contract's `use` line.
-  """
+  # The rules between modules: v2 §6, layer L3.
+  #
+  # A contract names its domain and the sibling contracts it consumes without a
+  # compile dependency (v2 §8), so no rule inside one contract (L2) can look them up,
+  # and an incremental compile does not revisit a contract when its domain or a
+  # sibling changes. These rules therefore run over every compiled module at once, on
+  # every compile, from the Mix compiler `compile.eh_os_contract`, which hands
+  # `check/1` the project's modules.
+  #
+  # The rules come in groups, one module each, as L2's do:
+  #
+  # - `Links.Domain` — X1–X4 and the parts of D10 and D11 that need the domain.
+  # - `Links.Siblings` — X5, X6 and X10, what a contract consumes from a sibling contract.
+  # - `Links.System` — X7, X8 and D14's names, unique across the application.
+  # - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
+  # - `Links.Processes` — X1, X2, X5, X6 and D11 for a process module (plan DD, P2c,
+  #   #210): its domain, its accountable actor, and the contracts' events it includes.
+  #
+  # A violation points at the declaration at fault. L3 reads the declarations Spark
+  # kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
+  # with the file and line they were written at; the model (v2 §9) carries no
+  # locations, so they reach neither the version nor any digest. What names a whole
+  # contract — its domain, its context — points at the contract's `use` line.
+  @moduledoc false
 
   alias EhOsContract.Contract.{Links, Rules}
 
@@ -46,9 +45,8 @@ defmodule EhOsContract.Contract.Links do
 
   @typedoc """
   One process module (`EhOsContract.Process`) as the rules read it: its model, its
-  declarations with their locations (`EhOsContract.Process.Rules.declarations/1`),
-  the location of its `use`, and its domain's model — `nil` when `domain:` names no
-  compiled domain.
+  declarations with their locations, the location of its `use`, and its domain's
+  model — `nil` when `domain:` names no compiled domain.
   """
   @type process :: %{
           module: module(),

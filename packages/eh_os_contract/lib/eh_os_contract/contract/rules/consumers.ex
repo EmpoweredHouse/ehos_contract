@@ -1,31 +1,30 @@
 defmodule EhOsContract.Contract.Rules.Consumers do
-  @moduledoc """
-  P1–P5 of v2 §6: what reacts to events, and what is read.
-
-  - **P1.** A policy, and an effect, handles events of this contract or events it
-    consumes; a policy issues commands of this contract only.
-  - **P2.** An effect that `calls:` an external system cannot run
-    `:in_transaction`: the call cannot be rolled back with the append.
-  - **P3.** A policy or an effect delivered `:at_least_once` names its
-    `idempotency`, what makes a second delivery harmless. A process manager does
-    not: its commands and timers take keys the library derives from the run, so a
-    replay or a second delivery repeats nothing (v2 §17). v2 §4.6 writes one
-    without `idempotency`, and this is why it compiles. `idempotency` names its
-    `key` and its `owner` (plan EP4), and only an effect's owner is `:downstream`:
-    a policy and a process manager issue commands to this engine, never to a
-    system that could keep a key. An effect's owner is never `:infrastructure`:
-    the engine keys the commands a reaction issues, by the event's id, and an
-    effect's call is not one — so `:infrastructure` also keys on `:event_id`.
-  - **P4.** A process manager starts on at least one event and correlates on at
-    least one field: with none, every run would share one record, one state and
-    one set of timers, and the first ending would end it for all. Its triggers are
-    events or its own timers; its `sets:` and `cancels:` name its own timers; a
-    timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
-    one of them; what it issues is a command of this contract; it is delivered
-    `:at_least_once`, since it runs from the log in order.
-  - **P5.** A read model projects events of this contract or events it consumes; a
-    query reads a read model of this contract.
-  """
+  # P1–P5 of v2 §6: what reacts to events, and what is read.
+  #
+  # - **P1.** A policy, and an effect, handles events of this contract or events it
+  #   consumes; a policy issues commands of this contract only.
+  # - **P2.** An effect that `calls:` an external system cannot run
+  #   `:in_transaction`: the call cannot be rolled back with the append.
+  # - **P3.** A policy or an effect delivered `:at_least_once` names its
+  #   `idempotency`, what makes a second delivery harmless. A process manager does
+  #   not: its commands and timers take keys the library derives from the run, so a
+  #   replay or a second delivery repeats nothing (v2 §17). v2 §4.6 writes one
+  #   without `idempotency`, and this is why it compiles. `idempotency` names its
+  #   `key` and its `owner` (plan EP4), and only an effect's owner is `:downstream`:
+  #   a policy and a process manager issue commands to this engine, never to a
+  #   system that could keep a key. An effect's owner is never `:infrastructure`:
+  #   the engine keys the commands a reaction issues, by the event's id, and an
+  #   effect's call is not one — so `:infrastructure` also keys on `:event_id`.
+  # - **P4.** A process manager starts on at least one event and correlates on at
+  #   least one field: with none, every run would share one record, one state and
+  #   one set of timers, and the first ending would end it for all. Its triggers are
+  #   events or its own timers; its `sets:` and `cancels:` name its own timers; a
+  #   timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
+  #   one of them; what it issues is a command of this contract; it is delivered
+  #   `:at_least_once`, since it runs from the log in order.
+  # - **P5.** A read model projects events of this contract or events it consumes; a
+  #   query reads a read model of this contract.
+  @moduledoc false
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules

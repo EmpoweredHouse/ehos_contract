@@ -16,7 +16,7 @@ defmodule EhOsContract.DispatchDcbTest do
   alias BoundaryRig.Enrolment
   alias BoundaryRig.Enrolment.Commands.Subscribe
   alias BoundaryRig.Enrolment.Events.{SeatReleased, StudentSubscribed}
-  alias EhOsContract.{Actor, CommandRecord, Event, Receipt, Rejection}
+  alias EhOsContract.{Actor, CommandRecord, Event, EventRun, Receipt, Rejection}
 
   @capabilities ~w(define_course close_enrolment subscribe) |> Enum.map(&"boundary_rig.#{&1}")
 
@@ -61,7 +61,15 @@ defmodule EhOsContract.DispatchDcbTest do
       assert [event] = subscriptions("course-math")
       assert event.stream_id == nil and event.stream_version == nil
       assert event.tags == ["course_id:course-math", "student_id:student-anna"]
-      assert event.process == "enrolment"
+      # Plan DD, P2g (#228): the course's run is a process module's, in the index of runs.
+      assert event.process == nil
+
+      assert Repo.all(
+               from(r in EventRun,
+                 where: r.position == ^event.position,
+                 select: {r.process, r.instance_id}
+               )
+             ) == [{"boundary_rig.enrolment_run", "boundary_rig.enrolment_run|course-math"}]
 
       # The sibling's event is among what the decision read.
       assert row("subscribe").given_types == ["boundary_rig.courses.course_defined"]

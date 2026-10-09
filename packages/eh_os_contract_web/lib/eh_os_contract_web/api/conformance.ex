@@ -1,28 +1,35 @@
 defmodule EhOsContract.Web.Api.Conformance do
-  @moduledoc """
-  The conformance report, as data, for one contract.
-
-  `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
-
-  The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
-  the shape a consumer compares version to version is part of what the engine
-  promises, and a transport that owned it would make that promise a property of
-  whichever web package happened to serve it.
-
-  ## What this exposes, said out loud
-
-  `report.deployment.in_log` carries per-version event counts with timestamps —
-  volume data about the client's business, which is on the other side of the line
-  `EhOsContract.Conformance`'s own moduledoc draws between paths and companies. It is not
-  redacted here, because a package deciding how sensitive a client's data is would
-  be the package knowing that client's domain. It is named here so a host's
-  resolver can decide.
-
-  `Jason.encode_to_iodata!/1` directly rather than `Phoenix.Controller.json/2`: the
-  latter reads `config :phoenix, :json_library`, which is host configuration a
-  mountable package has no business assuming — the same argument this package's
-  router already makes about `Plug.Parsers`.
-  """
+  # The conformance report, as data, for one contract or one process module.
+  #
+  # `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
+  # `GET <mount>/conformance?process=<process id>&since=…&until=…`
+  #
+  # Both at once is a bad request: the report has exactly one of the two keys, and an
+  # answer to either would leave the other question unanswered (plan DD, P2w, #259,
+  # agreed with EHOS in EmpoweredHouse/eh-os#297).
+  #
+  # The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
+  # the shape a consumer compares version to version is part of what the engine
+  # promises, and a transport that owned it would make that promise a property of
+  # whichever web package happened to serve it.
+  #
+  # ## What this exposes, said out loud
+  #
+  # A process module's report carries no `in_log`, but its runs and the counts of its
+  # durations and promises are the same kind of volume.
+  #
+  # `report.deployment.in_log` carries per-version event counts with timestamps —
+  # volume data about the client's business, which is on the other side of the line
+  # `EhOsContract.Conformance`'s own moduledoc draws between paths and companies. It is not
+  # redacted here, because a package deciding how sensitive a client's data is would
+  # be the package knowing that client's domain. It is named here so a host's
+  # resolver can decide.
+  #
+  # `Jason.encode_to_iodata!/1` directly rather than `Phoenix.Controller.json/2`: the
+  # latter reads `config :phoenix, :json_library`, which is host configuration a
+  # mountable package has no business assuming — the same argument this package's
+  # router already makes about `Plug.Parsers`.
+  @moduledoc false
 
   @behaviour Plug
 
@@ -40,7 +47,7 @@ defmodule EhOsContract.Web.Api.Conformance do
     else
       conn = fetch_query_params(conn)
 
-      with {:ok, contract} <- contract(conn.params["contract"]),
+      with {:ok, contract} <- subject(conn.params["contract"], conn.params["process"]),
            {:ok, since} <- at(conn.params["since"], "since"),
            {:ok, until} <- at(conn.params["until"], "until") do
         body = EhOsContract.Conformance.as_data(contract, since: since, until: until)
@@ -49,6 +56,30 @@ defmodule EhOsContract.Web.Api.Conformance do
         {:error, detail} ->
           json(conn, 400, %{"error" => "bad_request", "detail" => detail})
       end
+    end
+  end
+
+  # An empty parameter is one not given, so a client that always sends both keys and
+  # leaves one blank asks about the other.
+  @spec subject(term(), term()) :: {:ok, module()} | {:error, String.t()}
+  defp subject("", process), do: subject(nil, process)
+  defp subject(contract, ""), do: subject(contract, nil)
+  defp subject(nil, nil), do: contract(nil)
+  defp subject(contract, nil), do: contract(contract)
+  defp subject(nil, process), do: process(process)
+
+  defp subject(_contract, _process),
+    do: {:error, "name a contract= or a process=, not both"}
+
+  # Resolved against the registry, as a contract is below, so a parameter can name only
+  # a process module this application registered.
+  @spec process(term()) :: {:ok, module()} | {:error, String.t()}
+  defp process(id) when not is_binary(id), do: {:error, "process= takes one process id"}
+
+  defp process(id) do
+    case EhOsContract.Registry.process(id) do
+      nil -> {:error, "unknown process #{id}"}
+      process -> {:ok, process}
     end
   end
 

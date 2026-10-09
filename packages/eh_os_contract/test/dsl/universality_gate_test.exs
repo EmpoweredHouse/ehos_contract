@@ -16,6 +16,8 @@ defmodule EhOsContract.UniversalityGateTest do
   alias EhOsContract.Model
 
   @contract UniversalityGate.TreatmentEpisode
+  # Its run, a process module since plan DD, P2g (#228).
+  @run UniversalityGate.TreatmentEpisodeRun
 
   test "the shapes TaxVision does not have survive the translation" do
     model = Model.fetch(@contract)
@@ -30,17 +32,19 @@ defmodule EhOsContract.UniversalityGateTest do
              [:episode_id, :session_no, :performed_at]
 
     # Run identity from a single field.
-    assert model.process.correlate == [:episode_id]
-    assert model.process.deadline == %{amount: 30, unit: :day, unverified: true}
+    run = Model.process(@run)
+    assert run.correlate == [:episode_id]
+    assert run.deadline == %{amount: 30, unit: :day, unverified: true}
   end
 
   test "the stages keep v1's order, and every event sits in one" do
     model = Model.fetch(@contract)
 
-    assert Enum.map(model.process.stages, & &1.name) ==
+    assert Enum.map(Model.process(@run).stages, & &1.name) ==
              [:qualification, :plan, :treatment, :closing]
 
-    assert Enum.all?(model.events, &(&1.stage != nil))
+    assert Enum.map(Model.process_events(@run), & &1.name) == Enum.map(model.events, & &1.name)
+    assert Enum.all?(Model.process_events(@run), &(&1.stage != nil))
   end
 
   test "the rule became an invariant with a rejected scenario, the examples scenarios" do
@@ -49,8 +53,14 @@ defmodule EhOsContract.UniversalityGateTest do
     assert [%{invariants: [%{name: :treatment_starts_only_on_confirmed_eligibility}]}] =
              model.units
 
-    assert Enum.map(model.scenarios, & &1.rejected) ==
-             [nil, nil, :treatment_starts_only_on_confirmed_eligibility]
+    # The second, an active payer naming no scope, since the property tests found the
+    # decision confirmed one without it (plan DD, PC2, #266).
+    assert Enum.map(model.scenarios, & &1.rejected) == [
+             nil,
+             :treatment_starts_only_on_confirmed_eligibility,
+             nil,
+             :treatment_starts_only_on_confirmed_eligibility
+           ]
   end
 
   test "everything the contract names, its domain declares" do
@@ -60,7 +70,7 @@ defmodule EhOsContract.UniversalityGateTest do
 
     actors =
       Enum.flat_map(contract.commands, & &1.by) ++
-        Enum.flat_map(contract.events, & &1.recorded_by) ++ [contract.process.accountable]
+        Enum.flat_map(contract.events, & &1.recorded_by) ++ [Model.process(@run).accountable]
 
     fields =
       Enum.flat_map(contract.commands ++ contract.events, & &1.fields) ++

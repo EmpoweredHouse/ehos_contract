@@ -1,22 +1,21 @@
 defmodule EhOsContract.Lifecycle do
-  @moduledoc """
-  An aggregate's status, computed from its stream (plan LC2, #99).
-
-  A contract declares the lifecycle (`lifecycle do status …; initial …; transition …
-  end`, checked by T1–T4); the engine computes where one aggregate stands from the
-  names of the events in its stream alone, in order, and nothing else sets it:
-
-  - before any event the status is `nil`; an `initial` event starts it;
-  - a declared transition out of the current status moves it;
-  - any other event leaves it where it is — an event no transition names, or one
-    recorded (`recorded_by:`) that does not fit, which happened all the same.
-
-  Dispatch and `EhOsContract.ScenarioCase` read it through the same functions, so a
-  scenario holds the implementation to what dispatch will do. A command's `from:`
-  is checked against the status before the decision (`admits?/2`); what a decision
-  emits is checked after it (`decided!/4`), where an event the graph does not allow
-  is a defect, as one outside `emits:` is.
-  """
+  # An aggregate's status, computed from its stream (plan LC2, #99).
+  #
+  # A contract declares the lifecycle (`lifecycle do status …; initial …; transition …
+  # end`, checked by T1–T4); the engine computes where one aggregate stands from the
+  # names of the events in its stream alone, in order, and nothing else sets it:
+  #
+  # - before any event the status is `nil`; an `initial` event starts it;
+  # - a declared transition out of the current status moves it;
+  # - any other event leaves it where it is — an event no transition names, or one
+  #   recorded (`recorded_by:`) that does not fit, which happened all the same.
+  #
+  # Dispatch and `EhOsContract.ScenarioCase` read it through the same functions, so a
+  # scenario holds the implementation to what dispatch will do. A command's `from:`
+  # is checked against the status before the decision (`admits?/2`); what a decision
+  # emits is checked after it (`decided!/4`), where an event the graph does not allow
+  # is a defect, as one outside `emits:` is.
+  @moduledoc false
 
   @typedoc "A unit's lifecycle as the model holds it."
   @type t :: %{statuses: [map()], initial: [map()], transitions: [map()]}

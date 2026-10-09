@@ -26,12 +26,25 @@ defmodule EhOsContract.Deployment do
   The price is that provenance is only as good as the record: a log written
   before this table existed has no deployment covering it.
 
-  Both hashes now come from `EhOsContract.Digest`, so neither depends on term encoding,
-  module load order or OTP release. That was originally true here and not of
-  `version/0`, which used `:erlang.term_to_binary/1` — an OTP upgrade could have
-  reclassified the whole log as belonging to an older agreement. Fixed by moving
-  both to one canonical form rather than by hardening one of them.
+  ## A process module
+
+  A process module (`use EhOsContract.Process`) gets a row of its own too, so a
+  promise's verdict can be read against the version it was made under. Its `contract`
+  column is `"process:<id>"`: a process module may share its `id:` with a contract
+  (X7 refuses only two processes, or two contracts, with one), and the two must not
+  share rows, while a colon is in no contract's id. Its version is the module's; its
+  events are the ones it includes, by their names in it; it has no steps, so no edges;
+  and its wiring is the stored types those events resolve to, which is what the code
+  decides and the declarations do not say — a contract renamed under the same module
+  moves it.
+
+  Both hashes are taken over one canonical form of the declarations, so neither
+  depends on term encoding, module load order or OTP release: the same agreement
+  hashes the same way on every machine, and an OTP upgrade does not reclassify the
+  log as belonging to an older agreement.
   """
+
+  # A process module's own row: plan DD, P2d (#213).
 
   use Ecto.Schema
 
@@ -70,7 +83,8 @@ defmodule EhOsContract.Deployment do
         }
 
   @doc """
-  Records the currently deployed wiring for every registered contract.
+  Records the currently deployed wiring for every registered contract, and the
+  version of every registered process module.
 
   Idempotent: booting the same code twice leaves one row, so `first_seen_at` is
   the first time this wiring ran rather than the last time the node restarted.
@@ -78,7 +92,9 @@ defmodule EhOsContract.Deployment do
   """
   @spec record!(DateTime.t()) :: :ok
   def record!(now \\ DateTime.utc_now()) do
-    rows = for contract <- EhOsContract.Registry.contracts(), do: row(contract, now)
+    rows =
+      for(contract <- EhOsContract.Registry.contracts(), do: row(contract, now)) ++
+        for process <- EhOsContract.Registry.processes(), do: process_row(process, now)
 
     # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
     # once: the first boot after the column exists meets a row recorded before it,
@@ -123,12 +139,7 @@ defmodule EhOsContract.Deployment do
           module <- modules,
           do: "#{kind}:#{name}=#{inspect(module)}"
 
-    process = Model.process(model)
-
-    promises =
-      for promise <- (process && process.promises) || [],
-          into: %{},
-          do: {"promise:#{promise.name}", promise_digest(promise)}
+    promises = promise_digests(Model.process(model))
 
     %{
       id: Ecto.UUID.generate(),
@@ -142,21 +153,48 @@ defmodule EhOsContract.Deployment do
     }
   end
 
-  @doc """
-  A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
-  `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
-  changes no run's verdict, so it must not draw a boundary that stops judging the
-  runs before it. Public for its test.
-  """
+  # A process module's row; see the moduledoc.
+  @spec process_row(module(), DateTime.t()) :: map()
+  defp process_row(module, now) do
+    model = Model.fetch(module)
+    events = Model.process_events(model)
+
+    %{
+      id: Ecto.UUID.generate(),
+      contract: key(model),
+      contract_version: model.version,
+      wiring_version: events |> Enum.map(& &1.type) |> Enum.sort() |> EhOsContract.Digest.hash(),
+      events: events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
+      edges: [],
+      declaration_digests: Map.merge(model.digests, promise_digests(Model.process(model))),
+      first_seen_at: now
+    }
+  end
+
+  defp promise_digests(process) do
+    for promise <- (process && process.promises) || [],
+        into: %{},
+        do: {"promise:#{promise.name}", promise_digest(promise)}
+  end
+
+  # What a row names: a contract's `id:`, or a process module's under `process:`.
+  @spec key(map()) :: String.t()
+  defp key(%{kind: :process, id: id}), do: "process:" <> id
+  defp key(%{id: id}), do: id
+
+  # A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
+  # `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
+  # changes no run's verdict, so it must not draw a boundary that stops judging the
+  # runs before it. Public for its test.
+  @doc false
   @spec promise_digest(map()) :: String.t()
   def promise_digest(promise),
     do: promise |> Map.take([:from, :eventually, :within, :or_else]) |> EhOsContract.Digest.hash()
 
-  @doc """
-  A v2 contract's declared steps as the labels a deployment records:
-  `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
-  a timer and an effect.
-  """
+  # A v2 contract's declared steps as the labels a deployment records:
+  # `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
+  # a timer and an effect.
+  @doc false
   @spec edge_labels(module()) :: [String.t()]
   def edge_labels(contract) do
     for step <- EhOsContract.Paths.declared(contract) do
@@ -166,10 +204,10 @@ defmodule EhOsContract.Deployment do
     end
   end
 
-  @doc "Every recorded deployment of a contract, oldest first."
+  @doc "Every recorded deployment of a contract or a process module, oldest first."
   @spec all(module()) :: [t()]
   def all(contract) do
-    name = Model.fetch(contract).id
+    name = contract |> Model.fetch() |> key()
 
     repo().all(
       from(d in __MODULE__,
@@ -179,23 +217,23 @@ defmodule EhOsContract.Deployment do
     )
   end
 
-  @doc """
-  What changed between two recorded deployments.
-
-  Paths are reported separately from events because they move independently: a
-  reaction can add a path without an event being added or removed.
-
-  `declarations` is the part event names and edges could never show. A promise
-  whose `within` moved, an event whose field became `personal:`, a process whose
-  `correlate` moved, a field type that changed — all of them move
-  `contract_version` and none of them adds or removes an event or a path, so
-  until this key existed the diff reported a change to the agreement as four
-  empty lists.
-
-  It is `:not_recorded` when either side predates the column. "Compared, nothing
-  moved" and "could not be compared" are different statements, and collapsing
-  them would put a false negative exactly where the mechanism is meant to speak.
-  """
+  # What changed between two recorded deployments.
+  #
+  # Paths are reported separately from events because they move independently: a
+  # reaction can add a path without an event being added or removed.
+  #
+  # `declarations` is the part event names and edges could never show. A promise
+  # whose `within` moved, an event whose field became `personal:`, a process whose
+  # `correlate` moved, a field type that changed — all of them move
+  # `contract_version` and none of them adds or removes an event or a path, so
+  # until this key existed the diff reported a change to the agreement as four
+  # empty lists.
+  #
+  # It is `:not_recorded` when either side predates the column. "Compared, nothing
+  # moved" and "could not be compared" are different statements, and collapsing
+  # them would put a false negative exactly where the mechanism is meant to speak.
+  # Called by `report/2` in this module.
+  @doc false
   @spec diff(t(), t()) :: change()
   def diff(%__MODULE__{} = old, %__MODULE__{} = new) do
     %{
@@ -223,19 +261,19 @@ defmodule EhOsContract.Deployment do
     }
   end
 
-  @doc """
-  When each declaration last changed, for one contract.
-
-  The answer `EhOsContract.Conformance` needs in order to stop folding runs judged under a
-  superseded promise into the same counts as runs judged under the current one.
-
-  Three exclusions, each of which would otherwise be a lie. Rows with no recorded
-  digests drop out **before** pairing, so the day the column arrived does not read
-  as "every declaration changed at once". A key absent from the older row is a
-  birth rather than a change, because no run can have been judged under a rule
-  that did not yet exist. And a later change overwrites an earlier one, so the
-  value is the *last* time this declaration moved, not the first.
-  """
+  # When each declaration last changed, for one contract or process module.
+  #
+  # The answer `EhOsContract.Conformance` needs in order to stop folding runs judged under a
+  # superseded promise into the same counts as runs judged under the current one.
+  #
+  # Three exclusions, each of which would otherwise be a lie. Rows with no recorded
+  # digests drop out **before** pairing, so the day the column arrived does not read
+  # as "every declaration changed at once". A key absent from the older row is a
+  # birth rather than a change, because no run can have been judged under a rule
+  # that did not yet exist. And a later change overwrites an earlier one, so the
+  # value is the *last* time this declaration moved, not the first.
+  # Called by conformance.ex.
+  @doc false
   @spec declaration_boundaries(module()) :: %{String.t() => DateTime.t()}
   def declaration_boundaries(contract) do
     contract
@@ -252,19 +290,66 @@ defmodule EhOsContract.Deployment do
     end)
   end
 
-  @doc """
-  The fourth question, assembled for one contract: what is deployed, since when,
-  which versions the log holds, and what the last change was.
-
-  `since` is the first time an event was seen under the deployed wiring, not a
-  deploy timestamp — the engine is not told about deploys, it observes them. A
-  deployment that has emitted nothing yet has `since: nil`, which is honest: it
-  is deployed and unproven.
-  """
+  # The fourth question, assembled for one contract: what is deployed, since when,
+  # which versions the log holds, and what the last change was.
+  #
+  # `since` is the first time an event was seen under the deployed wiring, not a
+  # deploy timestamp — the engine is not told about deploys, it observes them. A
+  # deployment that has emitted nothing yet has `since: nil`, which is honest: it
+  # is deployed and unproven.
+  #
+  # A process module stamps no event with its version, so nothing in the log can say
+  # when it came into force: its `since` is when the deployment that carries its version
+  # was first recorded, `nil` when none was, and it has no versions in the log (plan DD,
+  # P2d, #213).
+  # Called by conformance.ex.
+  @doc false
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []) do
+    case Model.fetch(contract) do
+      %{kind: :process} = model -> process_report(model)
+      _contract -> contract_report(contract, opts)
+    end
+  end
+
+  defp process_report(model) do
+    recorded = all(model.module)
+    current = current(recorded, model.version)
+
+    %{
+      process: model.id,
+      deployed: %{
+        version: model.version,
+        wiring_version: current && current.wiring_version,
+        since: current && current.first_seen_at
+      },
+      changed: version_change(recorded)
+    }
+  end
+
+  # The row of the deployed version that was recorded last. A version runs under one
+  # wiring at a time, and a new wiring under the same version is a new row: the oldest
+  # row would name a wiring no longer deployed, and date the version by it. A version
+  # deployed again after another (A, B, A) finds its first row again, since a row is
+  # unique by version and wiring and booting the same code adds none; when it returned
+  # is not recorded, so its `since` is still when it was first seen.
+  defp current(recorded, version) do
+    recorded |> Enum.filter(&(&1.contract_version == version)) |> List.last()
+  end
+
+  # A process module's last change of version. A new wiring under the same version —
+  # a contract it includes moved its events' types — changes no declaration of the
+  # module, so it is no change of version to report.
+  defp version_change(recorded) do
+    case Enum.take(recorded, -2) do
+      [%{contract_version: same}, %{contract_version: same}] -> nil
+      _other -> last_change(recorded)
+    end
+  end
+
+  defp contract_report(contract, opts) do
     recorded = all(contract)
-    current = Enum.find(recorded, &(&1.contract_version == Model.version(contract)))
+    current = current(recorded, Model.version(contract))
     in_log = versions_in_log(contract, opts)
 
     %{

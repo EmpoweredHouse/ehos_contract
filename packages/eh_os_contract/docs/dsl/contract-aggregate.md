@@ -55,11 +55,12 @@ An intention an actor or a reaction issues to a unit.
 | `rejects` | `atom \| list(atom)` |  | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | `creates` | `boolean` |  | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | `scope` | `atom` |  |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| `reads` | `keyword` |  | `[]` | The entities the decision reads, `[service: :service_id]`: the name each row arrives under in the decision's third argument, and the command's field, typed `{:id, entity}`, that names it. |
 | `source` | `String.t` |  |  | Where the command comes from in the material. |
 | `from` | `atom \| list(atom)` |  | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
 | `or_rejects` | `atom` |  |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
 
-Inside it: [`field`](#contract-aggregate-command-field), [`constraint`](#contract-aggregate-command-constraint).
+Inside it: [`field`](#contract-aggregate-command-field), [`constraint`](#contract-aggregate-command-constraint), [`actor_is`](#contract-aggregate-command-actor_is).
 
 <a id="contract-aggregate-command-field"></a>
 
@@ -113,6 +114,29 @@ A rule a command's data, a query or a reaction keeps, as the business states it.
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `source` | `String.t` |  |  | Where the rule comes from in the material. |
+
+
+<a id="contract-aggregate-command-actor_is"></a>
+
+## aggregate.command.actor_is
+
+```elixir
+actor_is field
+```
+
+The person who must issue the command: the one a field of the unit's state names. Anyone else with the credential is refused on the invariant.
+
+**Arguments**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `field` | `atom` | yes |  | The field of the unit's state, a non-personal `:id` an earlier event fills, that names the person. |
+
+**Options**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `or_rejects` | `atom` | yes |  | The invariant of the unit, in the command's `rejects:`, it is refused on otherwise. |
 
 
 <a id="contract-aggregate-state"></a>

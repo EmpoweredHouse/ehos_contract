@@ -1,16 +1,23 @@
 defmodule Mix.Tasks.EhOsContract.Report do
-  @shortdoc "The conformance report for a period — four questions, one page"
+  @shortdoc "Prints the conformance report for a period: what the code did against what the contracts say"
 
   @moduledoc """
-  Assembles the screen's four questions into one artifact.
+  Prints the conformance report of the application for a period: a section for each
+  contract, then one for each process module, if there are any.
 
-  Moved here from `taxvision.report` (6 August) when rendering moved into the
-  engine: the report stopped being a client-tree concern, so it sits beside
-  `eh_os_contract.check` and `eh_os_contract.graph` rather than in `taxvision.*`.
+  Each contract's section answers four questions about it: which declared paths were
+  never taken, which transitions happened that the contract does not declare, which
+  promises were broken, and which version of the contract was deployed, and since
+  when. Around them it shows what explains the answers: steps in progress or
+  failing, scenarios never observed, declarations that changed, and events written
+  under earlier versions.
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
+      mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md
 
-  Every contract the registry finds (plan E7c), one section each.
+  `--since` and `--until` take ISO 8601 times with an offset (`Z`), and either may
+  be left out. The task starts the application, since the report reads the log
+  through its repo. `--output` writes the report to a file.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -32,7 +39,7 @@ defmodule Mix.Tasks.EhOsContract.Report do
     period = [since: at(opts[:since]), until: at(opts[:until])]
 
     text =
-      EhOsContract.Registry.contracts()
+      (EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes())
       |> Enum.map(
         &(&1
           |> EhOsContract.Conformance.report(period)

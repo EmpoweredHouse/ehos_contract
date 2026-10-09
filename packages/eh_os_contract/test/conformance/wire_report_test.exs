@@ -12,13 +12,18 @@ defmodule EhOsContract.Conformance.WireReportTest do
   Each contract is walked in a state that puts something in the keys most likely to
   carry such a value: a promise whose declaration moved (a `DateTime`), a confirmed
   deadline (a duration), a rig with scenarios and a process manager.
+
+  Since plan DD, P2g (#228) the promise and the deadline are process modules',
+  `ProcessShapes.Handling` and `ProcessShapes.Timing`: their reports are walked through
+  the same projection, `EhOsContract.Conformance.Wire.encode/1`, which `as_data/2`
+  puts every report through, a process module's too since plan DD, P2w (#259).
   """
 
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment}
-  alias ProcessShapes.Promised
-  alias ProcessShapes.Seed
+  alias EhOsContract.Conformance.Wire
+  alias ProcessShapes.{Handling, Promised, Seed}
 
   @clerk EhOsContract.Actor.credential("u-1", ["dispatch_rig.open_account"])
 
@@ -52,8 +57,8 @@ defmodule EhOsContract.Conformance.WireReportTest do
     Seed.request("r-1", :request_refused)
 
     Repo.insert!(%Deployment{
-      contract: EhOsContract.Model.fetch(Promised).id,
-      contract_version: Promised.__eh_os_contract_model__().version,
+      contract: "process:process_shapes.handling",
+      contract_version: Handling.__eh_os_contract_model__().version,
       wiring_version: "wiring-earlier",
       events: [],
       edges: [],
@@ -76,9 +81,19 @@ defmodule EhOsContract.Conformance.WireReportTest do
 
       assert_json_only(data)
 
+      process =
+        Handling
+        |> Conformance.report(
+          since: ~U[2026-01-01 00:00:00.000000Z],
+          until: ~U[2027-01-01 00:00:00.000000Z]
+        )
+        |> Wire.encode()
+
+      assert_json_only(process)
+
       # The control: the state above did reach the keys it was set up for, so the walk
       # met a `DateTime` and a waiting step rather than a report with nothing in it.
-      [p] = data["report"]["processes"]
+      [p] = process["processes"]
       [promise] = p["promises"]
       assert {:ok, _, _} = DateTime.from_iso8601(promise["declaration_changed_at"])
       assert [_waiting] = data["report"]["paths"]["in_flight"]
@@ -92,7 +107,14 @@ defmodule EhOsContract.Conformance.WireReportTest do
 
       assert_json_only(data)
 
-      [p] = data["report"]["processes"]
+      process =
+        ProcessShapes.Timing
+        |> Conformance.report(now: ~U[2026-09-01 12:00:00.000000Z])
+        |> Wire.encode()
+
+      assert_json_only(process)
+
+      [p] = process["processes"]
       assert p["duration"]["deadline"] == %{"count" => 1, "unit" => "hour"}
     end
 
@@ -128,7 +150,7 @@ defmodule EhOsContract.Conformance.WireReportTest do
     end
 
     test "a duration is named, not positional" do
-      [p] = Conformance.as_data(Promised)["report"]["processes"]
+      [p] = Handling |> Conformance.report() |> Wire.encode() |> Map.fetch!("processes")
       [promise] = p["promises"]
 
       assert promise["within"] == %{"count" => 2, "unit" => "day"}

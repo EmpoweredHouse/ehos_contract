@@ -1,4 +1,6 @@
 defmodule EhOsContract.Conformance do
+  # A step counts occurrences since plan DD, P1a (#183); until then the rule for no
+  # activity read "zero runs". Process modules: plan DD, P2d (#213).
   @moduledoc """
   The answers to the screen's four questions, computed from the contract and the log.
 
@@ -7,18 +9,17 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  A step counts its **occurrences**, since plan DD, P1a (#183): a step is the
-  contract's, and a contract may have no process to count runs of. A process's
-  promises and durations are judged per **run**. And the report has to avoid lying in
-  the three situations where lying is easy:
+  A step counts its **occurrences**: a step is the contract's, and a contract may have
+  no process to count runs of. A process's promises and durations are judged per
+  **run**. And the report has to avoid lying in the three situations where lying is
+  easy:
 
   **Nothing happening is no basis for a verdict, not three untraversed paths.** A
   contract nobody used has every step untraversed — and listing them as findings
   turns "no data" into "we have three problems". This is the same rule promise
   evaluation rests on: with no `from` there is nothing to judge. So with no activity
   — no event recorded in the period — the list of untraversed steps is **empty**, while
-  what waits and what fails is still listed. Until plan DD, P1a (#183), the rule read
-  "zero runs".
+  what waits and what fails is still listed.
 
   **Work waiting in a queue is "not yet", not "never".** A step whose event will be
   produced by queued work is listed as in flight rather than as untraversed, and so
@@ -34,13 +35,41 @@ defmodule EhOsContract.Conformance do
 
   ## The shape
 
-  A path is a step of `EhOsContract.Paths`, so the command is a node, and what
-  waits and what fails is split by source; the assertions are the process's
-  `promises` (v2 §13, plan E7c). An aggregate that declares its lifecycle adds the
-  first two questions for its transitions, under `lifecycles` (plan LC3). `as_data/2`
-  names the shape `eh_os_contract.conformance.v3`: from plan DD, P1a (#183), the steps
-  are the contract's (`activity`, `paths`) and `contract` is its `id:`, with `module`
-  beside it. v2 is not served.
+  A path is one step the contract declares, and the command is a node of its own:
+
+  | Step | from | via | to |
+  | --- | --- | --- | --- |
+  | a command emits | the command | — | the event |
+  | a reaction issues | the event | the policy or process manager | the command |
+  | a policy issues on a received event | another application's event | the policy | the command |
+  | a timer issues | the timer | the process manager | the command |
+  | an effect acts | the event | the effect | — |
+
+  Each end is `%{kind, name, label}`. A step says how often it was `taken`, counted
+  in occurrences whatever run, if any, each falls in. An effect leaves nothing in the
+  log when it acts, so its `taken` is `nil`: it is never untraversed, only waiting or
+  failing.
+
+  What waits (`in_flight`) and what fails (`failing`) are split by source, because
+  each goes to a different person. Waiting: events an ordered consumer has not reached
+  yet (`lag`), timers scheduled and not fired (`timers`), effect jobs not run yet
+  (`effects`). Failing: commands that failed where the step runs (`commands`), the
+  consumer's subscription stopped at an event it cannot apply (`subscription`), effect
+  jobs Oban discarded (`effects`). A command that failed in its decision, or in a read
+  model's projection, fails every step it emits. A step a policy takes on another
+  application's event is never waiting or failing: a delivery its policy fails on is
+  rolled back and delivered again by the transport, so a path that always fails there
+  reads as untraversed.
+
+  The assertions are the process's `promises`. Beside them, `out_of_order` counts the
+  runs that entered a later stage before an earlier one, with the pairs of stages
+  (`EhOsContract.StageOrder`): a claim about the process, kept apart from a contract's
+  undeclared transitions. An aggregate that declares its
+  lifecycle adds the first two questions for its transitions, under `lifecycles`.
+  `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
+  contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
+  it. A process module's report has `process`, its `id:`, in the place of `contract`,
+  and only its process; a report has exactly one of the two. v2 is not served.
 
   ## The boundary
 
@@ -72,26 +101,40 @@ defmodule EhOsContract.Conformance do
   measured. A false metric is worse than a missing one when it is the metric the
   product sells. `EhOsContract.Trace.evaluate/3` still evaluates an unconfirmed
   promise; the report is the only thing that omits it.
+
+  ## A process module
+
+  A process module (`use EhOsContract.Process`) gets the process section of a contract's
+  report, and only that, under `processes`: its runs, its confirmed declarations, its
+  duration against its `deadline` and its promises' verdicts, and its deployment. It has
+  no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
+  keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
   """
   @spec report(module(), keyword()) :: map()
-  def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
+  def report(module, opts \\ []), do: module |> Model.fetch() |> from_model(opts)
 
+  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS in
+  # EmpoweredHouse/eh-os#297; until then it stayed off by the decision on #213.
   @doc """
   The same report, projected onto values that survive JSON.
 
   Separate from `report/2` rather than replacing it: everything in this package
   reads the Elixir shape, and a transport is the only caller that needs the other
   one. See `EhOsContract.Conformance.Wire` for what each mapping is and why.
+
+  A contract's report and a process module's share the schema,
+  `eh_os_contract.conformance.v3`, and each has exactly one of `"contract"` and
+  `"process"` under `"report"`, which tells a reader which it is.
   """
   @spec as_data(module(), keyword()) :: map()
-  def as_data(contract, opts \\ []) do
+  def as_data(module, opts \\ []) do
     %{
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
       # inside the report itself and is deliberately not repeated here.
       "schema" => "eh_os_contract.conformance.v3",
       "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
-      "report" => contract |> report(opts) |> EhOsContract.Conformance.Wire.encode()
+      "report" => module |> report(opts) |> EhOsContract.Conformance.Wire.encode()
     }
   end
 
@@ -99,16 +142,31 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report of the contract `model` (`EhOsContract.Model.fetch/1`), as `report/2`
-  gives it. The four questions: a path is a step of `EhOsContract.Paths` — from, via,
-  to, each `%{kind, name, label}` — with how often it was taken and each source of
-  waiting and failing apart, and the steps are the contract's whether or not it has a
-  process (plan DD, P1a, #183); the assertions are a process's promises, judged by
+  gives it. The four questions: a path is a step — from, via, to, each
+  `%{kind, name, label}` — with how often it was taken and each source of waiting and
+  failing apart (see "The shape" above), and the steps are the contract's whether or
+  not it has a process; the assertions are a process's promises, judged by
   `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
   left out: a declaration or a promise the owner has not confirmed, and every untaken
   step when nothing happened in the contract.
+
+  The model of a process module gives its own report; see `report/2`.
   """
   @spec from_model(map(), keyword()) :: map()
-  def from_model(model, opts \\ []) do
+  def from_model(model, opts \\ [])
+
+  def from_model(%{kind: :process} = model, opts) do
+    %{
+      process: model.id,
+      module: model.module,
+      engine: EhOsContract.version(),
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: Deployment.report(model.module, opts),
+      processes: [process(model, opts)]
+    }
+  end
+
+  def from_model(model, opts) do
     deployment = Deployment.report(model.module, opts)
     activity = EhOsContract.Paths.activity(model, opts)
 
@@ -149,15 +207,15 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report of `model`'s process: its runs, confirmed declarations, durations and
-  promises. Its steps are the contract's, in `from_model/2`'s `paths` (plan DD, P1a,
-  #183). `model` has a process; for one without, there is no process to report and
-  this raises.
+  promises. Its steps are the contract's, in `from_model/2`'s `paths`. `model` has a
+  process; for one without, there is no process to report and this raises. A process
+  module is one, and its runs are filed under its `id:`.
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do
     %{} = process = Model.process(model)
 
-    runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
+    runs = EhOsContract.Paths.runs_of(model, to_string(process.name), opts)
 
     %{
       process: process.name,
@@ -169,7 +227,9 @@ defmodule EhOsContract.Conformance do
           %{key: :deadline, value: {value.amount, value.unit}}
         end,
       duration: duration(model, opts),
-      promises: promises(model, opts)
+      promises: promises(model, opts),
+      # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
+      out_of_order: EhOsContract.StageOrder.evaluate(model, opts)
     }
   end
 
@@ -363,8 +423,8 @@ defmodule EhOsContract.Conformance do
 
   @doc """
   The report's `lifecycles` alone, for `contract` over a period (`:since`, `:until`):
-  what a lifecycle's diagram lays over its transitions (plan LC4b) without computing
-  the rest of the report.
+  what a lifecycle's diagram lays over its transitions without computing the rest of
+  the report.
   """
   @spec lifecycles(module() | map(), keyword()) :: [map()]
   def lifecycles(contract, opts) when is_atom(contract),

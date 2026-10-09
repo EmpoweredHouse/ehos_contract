@@ -1,53 +1,52 @@
 defmodule EhOsContract.Codec do
-  @moduledoc """
-  Field values against their declared types, and their form in the log (v2 §5,
-  §11): what the compiler cannot check, since a struct can be built with any value
-  in any field.
-
-  **Types.** `:string` is text and `:id` non-empty text, where text is valid UTF-8 with no
-  NUL: the log's JSON cannot carry invalid UTF-8, and Postgres holds a NUL neither in `jsonb`
-  nor in `text`, so such a value does not fit, rather than failing the write. A sealed
-  personal value, opened when the log is read back with `open:`, is not asked again:
-  what is read back was written, and its ciphertext holds what was let in before the
-  rule. `:integer` and `:boolean` what they
-  say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
-  `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
-  domain value is its own type: an alias of a type (`value :money, :integer`), or a
-  map of its fields.
-
-  **Bounds.** A value that enters the log is bounded where what holds it is: an `:id`
-  is at most 255 bytes, which an index entry keys with room for the rest of a key; an
-  `:integer` is a signed 64-bit integer, what a `bigint` column holds; a `:decimal` is
-  finite, its exponent and coefficient of at most a thousand digits, so its log form
-  can be written; a `:date` and a `:timestamp` are within the years 1 to 9999, which
-  Postgres keeps. Past one a value does not fit its type, wherever it comes from — a
-  request, another application's published event, a command a reaction issues, an
-  event a decider emits. Reading the log back asks none of them, so what was written
-  before them still reads; written again, it is held to them.
-
-  **The log's form is JSON's.** A decimal is written as a string of digits, so no
-  float ever stands between two sums; a date and a timestamp as ISO 8601; an enum
-  member as its name. Reading back never creates an atom: a member is found among
-  the declared ones, and a name the contract no longer declares does not fit.
-
-  **Invariants** (plan EL2b). Given the domain, `problems/4` also holds a value that
-  fits its type to the invariants of its domain value, through the value's
-  implementation (`EhOsContract.Value`): the ones of what it is made of first — the
-  items of a list, the fields of a value with fields, the value an alias stands for —
-  and then its own. The first one broken is the field's problem,
-  `{field, {:invariant, name}}`. Decoding never asks: what is read back was written.
-
-  **Problems name the field and what is wrong, never the value** (v2 §17): they
-  travel to logs, telemetry and HTTP callers, and a value may be personal data.
-
-  **Personal fields** (v2 §14) — `personal: :patient_id`, at any depth of a domain
-  value — are where the codec hands a value to someone else: `encode/4` to a
-  function that seals it, `decode/4` to one that opens it, both given by
-  `EhOsContract.Personal`. The codec only knows where they are and whose they are:
-  the subject is the one the named sibling field identifies. A personal field may
-  hold `EhOsContract.Erased`, which is what a sealed one reads back as once its
-  subject's key is gone.
-  """
+  # Field values against their declared types, and their form in the log (v2 §5,
+  # §11): what the compiler cannot check, since a struct can be built with any value
+  # in any field.
+  #
+  # **Types.** `:string` is text and `:id` non-empty text, where text is valid UTF-8 with no
+  # NUL: the log's JSON cannot carry invalid UTF-8, and Postgres holds a NUL neither in `jsonb`
+  # nor in `text`, so such a value does not fit, rather than failing the write. A sealed
+  # personal value, opened when the log is read back with `open:`, is not asked again:
+  # what is read back was written, and its ciphertext holds what was let in before the
+  # rule. `:integer` and `:boolean` what they
+  # say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
+  # `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
+  # domain value is its own type: an alias of a type (`value :money, :integer`), or a
+  # map of its fields.
+  #
+  # **Bounds.** A value that enters the log is bounded where what holds it is: an `:id`
+  # is at most 255 bytes, which an index entry keys with room for the rest of a key; an
+  # `:integer` is a signed 64-bit integer, what a `bigint` column holds; a `:decimal` is
+  # finite, its exponent and coefficient of at most a thousand digits, so its log form
+  # can be written; a `:date` and a `:timestamp` are within the years 1 to 9999, which
+  # Postgres keeps. Past one a value does not fit its type, wherever it comes from — a
+  # request, another application's published event, a command a reaction issues, an
+  # event a decider emits. Reading the log back asks none of them, so what was written
+  # before them still reads; written again, it is held to them.
+  #
+  # **The log's form is JSON's.** A decimal is written as a string of digits, so no
+  # float ever stands between two sums; a date and a timestamp as ISO 8601; an enum
+  # member as its name. Reading back never creates an atom: a member is found among
+  # the declared ones, and a name the contract no longer declares does not fit.
+  #
+  # **Invariants** (plan EL2b). Given the domain, `problems/4` also holds a value that
+  # fits its type to the invariants of its domain value, through the value's
+  # implementation (`EhOsContract.Value`): the ones of what it is made of first — the
+  # items of a list, the fields of a value with fields, the value an alias stands for —
+  # and then its own. The first one broken is the field's problem,
+  # `{field, {:invariant, name}}`. Decoding never asks: what is read back was written.
+  #
+  # **Problems name the field and what is wrong, never the value** (v2 §17): they
+  # travel to logs, telemetry and HTTP callers, and a value may be personal data.
+  #
+  # **Personal fields** (v2 §14) — `personal: :patient_id`, at any depth of a domain
+  # value — are where the codec hands a value to someone else: `encode/4` to a
+  # function that seals it, `decode/4` to one that opens it, both given by
+  # `EhOsContract.Personal`. The codec only knows where they are and whose they are:
+  # the subject is the one the named sibling field identifies. A personal field may
+  # hold `EhOsContract.Erased`, which is what a sealed one reads back as once its
+  # subject's key is gone.
+  @moduledoc false
 
   alias EhOsContract.Erased
 

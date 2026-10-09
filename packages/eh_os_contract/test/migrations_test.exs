@@ -9,8 +9,9 @@ end
 
 defmodule EhOsContract.MigrationsTest do
   @moduledoc """
-  v2 plan, E11c: **the engine's storage is one version, V01, in its final shape** —
-  created from nothing, dropped to nothing, and created again.
+  v2 plan, E11c: **the engine's storage is V01, in its final shape** — created from
+  nothing, dropped to nothing, and created again — and since plan DD, T2a (#240), a
+  second version, V02, which a host runs as a migration of its own.
 
   Runs against `EhOsContract.CommitRepo`, because migrations commit and the sandbox
   would roll them back. Rolling back the package's first migration rolls back every
@@ -80,10 +81,17 @@ defmodule EhOsContract.MigrationsTest do
     )
   end
 
-  test "V01 is the only version, and it creates the whole store" do
+  test "V01 creates the whole store, and V02 adds what a decision read" do
     assert EhOsContract.Migrations.initial_version() == 1
-    assert EhOsContract.Migrations.current_version() == 1
-    assert version() == "1"
+    assert EhOsContract.Migrations.current_version() == 2
+    assert version() == "2"
+
+    # Plan DD, T2a (#240).
+    assert one("""
+           SELECT data_type FROM information_schema.columns
+           WHERE table_name = 'eh_os_contract_commands' AND column_name = 'inputs'
+           """) == "jsonb"
+
     assert tables() == @tables
     assert functions() == @functions
 
@@ -138,9 +146,32 @@ defmodule EhOsContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "1"
+    assert version() == "2"
     assert tables() == @tables
     assert functions() == @functions
+  end
+
+  # The host's second migration, `up(version: 2)` (plan DD, T2a, #240).
+  @upgrade_to_v2 20_261_007_120_000
+
+  defp inputs? do
+    one("""
+    SELECT count(*) FROM information_schema.columns
+    WHERE table_name = 'eh_os_contract_commands' AND column_name = 'inputs'
+    """) == 1
+  end
+
+  test "a host's upgrade to V02 rolls back to V01 alone, and runs again" do
+    migrate(:down, to: @upgrade_to_v2)
+
+    assert version() == "1"
+    refute inputs?()
+    assert tables() == @tables
+
+    migrate(:up, all: true)
+
+    assert version() == "2"
+    assert inputs?()
   end
 
   # A version no migration file in the test database has, so running it touches
@@ -179,8 +210,8 @@ defmodule EhOsContract.MigrationsTest do
   end
 
   test "a version this release does not have is refused as a target" do
-    assert_raise ArgumentError, ~r/and 2 is not one of them/, fn ->
-      EhOsContract.Migrations.up(version: 2)
+    assert_raise ArgumentError, ~r/and 3 is not one of them/, fn ->
+      EhOsContract.Migrations.up(version: 3)
     end
 
     assert_raise ArgumentError, ~r/and 0 is not one of them/, fn ->

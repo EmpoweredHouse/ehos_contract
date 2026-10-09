@@ -1,32 +1,31 @@
 defmodule EhOsContract.Pages do
-  @moduledoc """
-  A domain and its contracts as Markdown pages, one per element, linked to each
-  other (ESDM's `documentation`; plan EL3). `mix eh_os_contract.pages --output <dir>`
-  writes them.
-
-      index.md                                    the domain, with its tree
-      values/money.md                             a value: its type, invariants, examples
-      entities/<name>.md                          an entity
-      settlement/index.md                         a context: glossary, relations, contracts
-      settlement/visit_settlement/index.md        a contract: its process and declarations
-      settlement/visit_settlement/commands/record_payment.md
-      settlement/visit_settlement/events/payment_recorded.md
-      settlement/visit_settlement/aggregates/visit_settlement.md
-      …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
-      graph/rehmed.settlement.json  a contract's graph.v1 document, by its id
-
-  A contract's directory is its module's last segment, underscored. Each kind has a
-  directory of its own, since a contract's namespaces overlap: a read model may share
-  a unit's name. Every link is relative, so the pages read the same wherever the
-  directory goes — a repository, ExDoc's `extras`, a file browser.
-
-  The words around the model are the library's, in English; labels, terms,
-  definitions and scenario descriptions are the client's, printed as declared.
-  Everything comes in declaration order, as every reader of the model prints (v2 §9).
-  Each page starts with `marker/1` of its domain, which is how the task tells the
-  pages it wrote for that domain from files it must leave alone — a person's, or
-  another domain's pages in the same directory.
-  """
+  # A domain and its contracts as Markdown pages, one per element, linked to each
+  # other (ESDM's `documentation`; plan EL3). `mix eh_os_contract.pages --output <dir>`
+  # writes them.
+  #
+  #     index.md                                    the domain, with its tree
+  #     values/money.md                             a value: its type, invariants, examples
+  #     entities/<name>.md                          an entity
+  #     settlement/index.md                         a context: glossary, relations, contracts
+  #     settlement/visit_settlement/index.md        a contract: its process and declarations
+  #     settlement/visit_settlement/commands/record_payment.md
+  #     settlement/visit_settlement/events/payment_recorded.md
+  #     settlement/visit_settlement/aggregates/visit_settlement.md
+  #     …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
+  #     graph/rehmed.settlement.json  a contract's graph.v1 document, by its id
+  #
+  # A contract's directory is its module's last segment, underscored. Each kind has a
+  # directory of its own, since a contract's namespaces overlap: a read model may share
+  # a unit's name. Every link is relative, so the pages read the same wherever the
+  # directory goes — a repository, ExDoc's `extras`, a file browser.
+  #
+  # The words around the model are the library's, in English; labels, terms,
+  # definitions and scenario descriptions are the client's, printed as declared.
+  # Everything comes in declaration order, as every reader of the model prints (v2 §9).
+  # Each page starts with `marker/1` of its domain, which is how the task tells the
+  # pages it wrote for that domain from files it must leave alone — a person's, or
+  # another domain's pages in the same directory.
+  @moduledoc false
 
   alias EhOsContract.Model
   alias EhOsContract.Contract.Doc

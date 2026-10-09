@@ -1,8 +1,9 @@
 defmodule EhOsContract.Vault do
   @moduledoc """
-  The master keys that wrap the subjects' data keys (v2 §14). A data key is 32
-  random bytes per subject, stored in `eh_os_contract_subject_keys` only wrapped:
-  the database alone cannot decrypt a personal field.
+  The master keys that wrap the subjects' data keys.
+
+  A data key is 32 random bytes per subject, stored in `eh_os_contract_subject_keys`
+  only wrapped: the database alone cannot decrypt a personal field.
 
   **The default is `EhOsContract.Vault.Local`**, which takes the master keys from
   configuration:
@@ -17,9 +18,19 @@ defmodule EhOsContract.Vault do
   **Another implementation** — a KMS — is named in `config :eh_os_contract, vault:
   MyApp.KmsVault` and implements this behaviour.
 
-  **Rotation.** The first key wraps every new data key; the others only unwrap.
-  `mix eh_os_contract.rewrap` rewraps every data key a retired master key still
-  wraps, after which that key can leave the list. No event is rewritten.
+  **Rotation.** The first key wraps every new data key; the others only unwrap. A
+  node whose list does not hold a key cannot unwrap what it wrapped, so a key is
+  rotated in three deploys:
+
+  1. add the new key **after** the current one, and deploy, so that every node can
+     unwrap what the new key will wrap;
+  2. move it first, and deploy;
+  3. run `mix eh_os_contract.rewrap`, which rewraps every data key the old master
+     key still wraps, then drop the old key and deploy.
+
+  Putting the new key first in one step leaves the nodes still on the old list
+  unable to read what the new ones write, until the rollout ends. No event is
+  rewritten.
 
   **At boot** the engine refuses to start when a contract it runs declares personal
   fields and the vault is not ready: without a master key, the first such command
@@ -48,26 +59,32 @@ defmodule EhOsContract.Vault do
   """
   @callback check() :: :ok | {:error, String.t()}
 
-  @doc "The configured implementation: `config :eh_os_contract, vault:`, `EhOsContract.Vault.Local` by default."
+  # The configured implementation: `config :eh_os_contract, vault:`, `EhOsContract.Vault.Local` by default.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:vault)
 
-  @doc "Wraps `key` through the configured vault (`c:wrap/2`)."
+  # Wraps `key` through the configured vault (`c:wrap/2`).
+  # Called by personal.ex.
+  @doc false
   @spec wrap(binary(), binary()) :: {kek_id(), binary()}
   def wrap(key, context), do: impl().wrap(key, context)
 
-  @doc "Unwraps through the configured vault (`c:unwrap/3`)."
+  # Unwraps through the configured vault (`c:unwrap/3`).
+  # Called by personal.ex.
+  @doc false
   @spec unwrap(kek_id(), binary(), binary()) :: {:ok, binary()} | :error
   def unwrap(kek_id, wrapped, context), do: impl().unwrap(kek_id, wrapped, context)
 
-  @doc "The configured vault's current master key (`c:current/0`)."
+  # The configured vault's current master key (`c:current/0`).
+  # Called by eh_os_contract.rewrap.ex, personal.ex.
+  @doc false
   @spec current() :: kek_id()
   def current, do: impl().current()
 
-  @doc """
-  Raises when `contracts` — v2 models — declare a personal field and the configured
-  vault is not ready. What the engine runs at boot.
-  """
+  # Raises when `contracts` — v2 models — declare a personal field and the configured
+  # vault is not ready. What the engine runs at boot.
+  @doc false
   @spec check!([map()]) :: :ok
   def check!(models) do
     case Enum.filter(models, &EhOsContract.Personal.declares?/1) do

@@ -50,6 +50,12 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   @visit %{visit_id: "visit-anna"}
+  @booking %{
+    patient_id: "patient-anna",
+    service_id: "service-physiotherapy",
+    specialist_id: "specialist-ewa",
+    scheduled_at: "2026-10-05T09:00:00Z"
+  }
   @payer_period %{payer_id: "payer-luxmed", period_id: "2026-09"}
   @close %{
     visit_id: "visit-anna",
@@ -65,12 +71,7 @@ defmodule Rehmed.AuthorizationTest do
   # door answers 404 for it (the last test).
   defp entries do
     commands = %{
-      "rehmed.book_visit" => %{
-        patient_id: "patient-anna",
-        service_id: "service-physiotherapy",
-        specialist_id: "specialist-ewa",
-        scheduled_at: "2026-10-05T09:00:00Z"
-      },
+      "rehmed.book_visit" => @booking,
       "rehmed.cancel_visit" => @visit,
       "rehmed.record_no_show" => @visit,
       "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
@@ -155,22 +156,40 @@ defmodule Rehmed.AuthorizationTest do
     assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
   end
 
-  test "what the host supplies is refused from the caller, and given by the host" do
-    # Plan T1s: whether the service is reported to P1 decides whether the codes are
-    # required, so a specialist who could send `false` could close without them.
-    specialist = credential("u-specialist", ["rehmed.close_visit_clinically"])
+  test "only the specialist the visit is booked with closes it, by the flag of its booking" do
+    # Plan DD, A2 (#249): the specialist reception booked the visit with closes it
+    # (`AGG-02` invariant 3), and whether the codes are required is the booking's flag.
+    # Both specialists hold the role's whole permission, as the clinic grants it.
+    specialist = ["rehmed.visit_completed", "rehmed.close_visit_clinically"]
+    reception = credential("u-reception", ["rehmed.book_visit"])
+    ewa = credential("specialist-ewa", specialist)
+    ola = credential("specialist-ola", specialist)
 
-    sent =
-      command(specialist, "rehmed.close_visit_clinically", Map.put(@close, :p1_reported, false))
+    booked =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> reception)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("idempotency-key", "booking-anna")
+      |> post("/api/rehmed/commands/rehmed.book_visit", Jason.encode!(@booking))
 
-    assert {sent.status, Jason.decode!(sent.resp_body)} ==
-             {422, %{"invalid" => %{"p1_reported" => "supplied"}}}
+    %{"identity" => %{"visit_id" => visit}} = Jason.decode!(booked.resp_body)
+    close = %{@close | visit_id: visit}
 
-    assert Repo.all(from(e in Event, select: e.type)) == []
+    # A colleague who records the patient leaving is still not the one the visit is
+    # booked with, and is refused, as the business refuses it.
+    assert record(ola, "rehmed.visit_completed", %{visit_id: visit}).status == 200
+    other = command(ola, "rehmed.close_visit_clinically", close)
 
-    # The control: without it, the host's answer for visit-anna is what was decided.
-    closed = command(specialist, "rehmed.close_visit_clinically", @close)
-    assert closed.status == 200
+    assert {other.status, Jason.decode!(other.resp_body)} ==
+             {422, %{"rejected" => "closed_by_its_specialist"}}
+
+    # Physiotherapy is reported, by its booking: without the codes it does not close.
+    uncoded = command(ewa, "rehmed.close_visit_clinically", Map.drop(close, [:icd10, :icd9]))
+
+    assert {uncoded.status, Jason.decode!(uncoded.resp_body)} ==
+             {422, %{"rejected" => "codes_before_clinical_close"}}
+
+    assert command(ewa, "rehmed.close_visit_clinically", close).status == 200
 
     assert [%{"p1_reported" => true}] =
              Repo.all(
@@ -179,16 +198,58 @@ defmodule Rehmed.AuthorizationTest do
                  select: e.payload
                )
              )
+  end
 
-    # A visit the host does not know is the host's to answer, not the caller's fault,
-    # and nothing of the refused request is written.
-    written = Repo.aggregate(Event, :count)
-
-    unknown =
-      command(specialist, "rehmed.close_visit_clinically", %{@close | visit_id: "visit-zofia"})
+  test "a visit the host does not price is the host's to answer, and nothing is written" do
+    # Plan T1s: the settlement's total is the host's; a visit it has no price for is a
+    # 503, not the caller's fault.
+    reception = credential("u-reception", ["rehmed.close_settlement"])
+    unknown = command(reception, "rehmed.close_settlement", %{visit_id: "visit-zofia"})
 
     assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
              {503, %{"error" => "not_supplied"}}
+
+    assert Repo.aggregate(Event, :count) == 0
+  end
+
+  test "a booking reads its service from the catalogue, and the visit keeps its P1 flag" do
+    # Plan DD, T2s (#245): whether the visit is reported to P1 is the catalogue's to say,
+    # as it stood when the visit was booked (`AGG-15`).
+    reception = credential("u-reception", ["rehmed.book_visit"])
+
+    # A booking creates the visit, so it carries an idempotency key.
+    book = fn service ->
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> reception)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("idempotency-key", "booking-" <> service)
+      |> post(
+        "/api/rehmed/commands/rehmed.book_visit",
+        Jason.encode!(%{@booking | service_id: service})
+      )
+    end
+
+    for {service, reported} <- [{"service-physiotherapy", true}, {"service-fitness", false}] do
+      booked = book.(service)
+      assert booked.status == 200
+
+      assert [%{"p1_reported" => ^reported}] =
+               Repo.all(
+                 from(e in Event,
+                   where: e.type == "rehmed.scheduling.visit_booked",
+                   where: fragment("?->>'service_id' = ?", e.payload, ^service),
+                   select: e.payload
+                 )
+               )
+    end
+
+    # A service the catalogue does not have names nothing: refused as the field's
+    # problem, and nothing is written.
+    written = Repo.aggregate(Event, :count)
+    unknown = book.("service-yoga")
+
+    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
+             {422, %{"invalid" => %{"service_id" => "unknown"}}}
 
     assert Repo.aggregate(Event, :count) == written
   end

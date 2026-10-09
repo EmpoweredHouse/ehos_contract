@@ -150,6 +150,7 @@ jobs:
             !packages/*/_build/*/lib/eh_os_contract*
             !sandbox/_build/*/consolidated
             !packages/*/_build/*/consolidated
+            !packages/*/_build/*/doc
           key: build-${{ steps.image.outputs.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock', 'sandbox/config/**', 'packages/*/config/**') }}
 
       - name: Drop the repository's own compiled applications

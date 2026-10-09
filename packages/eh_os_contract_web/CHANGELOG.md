@@ -41,6 +41,18 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   its `id:`, as the other APIs name it, and a module's name is an unknown contract; a domain, which has no id, by its
   module. What the registry does not hold is `404`, and an overlay whose `since` is after its `until` is `400`. The
   dashboard's screens are unchanged.
+- **`<mount>/conformance?process=<id>` serves a process module's report** (plan DD, P2w, eh-os-contract#259, agreed
+  with EHOS in EmpoweredHouse/eh-os#297). The report keeps the schema `eh_os_contract.conformance.v3` and has
+  `"process"` where a contract's has `"contract"`. An unknown process is 400, and so is naming a contract and a
+  process at once. A request with neither, or with `contract=`, answers as before.
+
+- **The dashboard and the API work mounted in a scope with a path of its own, or with an alias.** Mounted in
+  `scope "/admin"`, `/admin/dashboard` redirected to `/dashboard/contract`, a 404, and the screens linked outside
+  the prefix; in `scope "/admin", MyAppWeb`, every route named `MyAppWeb.EhOsContract.Web.…` and failed. The
+  redirect, the links and the `base_path` the resolver is given now carry every scope's prefix, and no trailing
+  slash. **What a resolver receives changes** for a host mounted under a prefix: `base_path` was `"/dashboard"`
+  and is `"/admin/dashboard"`, and the API's `"/admin/api"`; a resolver matching the old value refuses until it is
+  updated. Mounted in `scope "/"`, nothing changes. A router may now mount the dashboard more than once.
 
 - **The graph page selects a contract, by its id, whether or not it has a process** (plan DD, P1b,
   eh-os-contract#186). A contract without a process could not be opened there. The selector lists each contract's

@@ -1,42 +1,41 @@
 defmodule EhOsContract.ProcessManager do
-  @moduledoc """
-  A process manager steering its runs (v2 §12): fed from the log in order by
-  `EhOsContract.Subscription`, one event a step, each step one transaction.
-
-  A step takes the run the event belongs to — its correlation values, joined by
-  `EhOsContract.Key` — and its row in `eh_os_contract_process_managers`:
-
-  - **An event it starts on** starts a run that has no row: its state begins with the
-    correlation fields. **An event it reacts on** reaches a running run. Anything
-    else — a reaction for a run that never started, or an event after its end — is
-    taken and changes nothing.
-  - **The reaction's callback**, when the reaction issues, is called with the event
-    and the state before it, as `EhOsContract.ScenarioCase` calls it; what it issues
-    is dispatched at once, as the process manager's actor, keyed
-    `"pm:<contract id>:<name>:<event id>:<index>"`, so a second delivery appends
-    nothing. Then `evolve/2` folds the event into the state.
-  - **Timers** are what the reaction declares: `sets:` schedules a
-    `EhOsContract.TimerJob` — after `wait:` from the event's time, or `at:` a
-    timestamp of the state — whose token is the event's id, and `cancels:` forgets
-    the token, so a job already queued finds nothing to fire. **An `ends_on` event**
-    ends the run and forgets every timer.
-  - **A timer's firing** is an `eh_os_contract.timer_elapsed` event in the run's
-    stream (`EhOsContract.TimerJob`). A firing whose token is still the run's calls
-    the timer's callback with the state, applies the `on` reactions to the timer, and
-    forgets the token; any other firing is ignored, so a timer fired twice dispatches
-    once.
-
-  **A run that would start with a key over `EhOsContract.Key.budget/0`** — its timer
-  stream, the manager's key and the correlation escaped — raises
-  `EhOsContract.Key.TooLongError` before anything is written, in place of Postgres
-  refusing the entry: the subscription stops at that event until someone skips it
-  (issue #98). An event no run takes is taken whatever its key's length, as before.
-
-  **Replay.** A process manager being rebuilt takes the whole log again with its
-  reactions suppressed: states and timers are recomputed, nothing is dispatched and no
-  job is scheduled. At the head of the log every pending timer is scheduled again,
-  once (`TimerJob` is unique on its arguments), and one already due fires at once.
-  """
+  # A process manager steering its runs (v2 §12): fed from the log in order by
+  # `EhOsContract.Subscription`, one event a step, each step one transaction.
+  #
+  # A step takes the run the event belongs to — its correlation values, joined by
+  # `EhOsContract.Key` — and its row in `eh_os_contract_process_managers`:
+  #
+  # - **An event it starts on** starts a run that has no row: its state begins with the
+  #   correlation fields. **An event it reacts on** reaches a running run. Anything
+  #   else — a reaction for a run that never started, or an event after its end — is
+  #   taken and changes nothing.
+  # - **The reaction's callback**, when the reaction issues, is called with the event
+  #   and the state before it, as `EhOsContract.ScenarioCase` calls it; what it issues
+  #   is dispatched at once, as the process manager's actor, keyed
+  #   `"pm:<contract id>:<name>:<event id>:<index>"`, so a second delivery appends
+  #   nothing. Then `evolve/2` folds the event into the state.
+  # - **Timers** are what the reaction declares: `sets:` schedules a
+  #   `EhOsContract.TimerJob` — after `wait:` from the event's time, or `at:` a
+  #   timestamp of the state — whose token is the event's id, and `cancels:` forgets
+  #   the token, so a job already queued finds nothing to fire. **An `ends_on` event**
+  #   ends the run and forgets every timer.
+  # - **A timer's firing** is an `eh_os_contract.timer_elapsed` event in the run's
+  #   stream (`EhOsContract.TimerJob`). A firing whose token is still the run's calls
+  #   the timer's callback with the state, applies the `on` reactions to the timer, and
+  #   forgets the token; any other firing is ignored, so a timer fired twice dispatches
+  #   once.
+  #
+  # **A run that would start with a key over `EhOsContract.Key.budget/0`** — its timer
+  # stream, the manager's key and the correlation escaped — raises
+  # `EhOsContract.Key.TooLongError` before anything is written, in place of Postgres
+  # refusing the entry: the subscription stops at that event until someone skips it
+  # (issue #98). An event no run takes is taken whatever its key's length, as before.
+  #
+  # **Replay.** A process manager being rebuilt takes the whole log again with its
+  # reactions suppressed: states and timers are recomputed, nothing is dispatched and no
+  # job is scheduled. At the head of the log every pending timer is scheduled again,
+  # once (`TimerJob` is unique on its arguments), and one already due fires at once.
+  @moduledoc false
 
   import Ecto.Query
 

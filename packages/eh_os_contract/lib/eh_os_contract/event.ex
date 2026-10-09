@@ -1,12 +1,14 @@
 defmodule EhOsContract.Event do
   @moduledoc """
-  The event log (notes §3). Append-only.
+  The event log. Append-only.
 
   `contract_version` is what keeps the report honest: the contract describes the
   code deployed now, while the log spans every version since the first deploy.
   An event removed last month is legitimate history, not drift. Cheap now,
   impossible to add later.
   """
+
+  # The log of notes §3.
 
   use Ecto.Schema
 

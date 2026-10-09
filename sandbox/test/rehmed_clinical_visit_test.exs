@@ -2,8 +2,9 @@ defmodule Rehmed.ClinicalVisitTest do
   @moduledoc """
   The clinical visit across three contracts, dispatched in the host (v2 plan, E9a):
   booked in scheduling, closed in documentation, reported in statutory reporting,
-  and judged by `:clinical_visit`'s promise — P1 within two days of the patient
-  leaving (Dz.U. 2025 poz. 866).
+  and judged by the promise of `Rehmed.Processes.ClinicalVisit` — P1 within two days
+  of the patient leaving (Dz.U. 2025 poz. 866). Its runs are filed under the module's
+  id, `"rehmed.clinical_visit"` (plan DD, P2f, #222).
 
   E9's acceptance asks for the promise kept through `or_else` on a seeded run; the
   run here is seeded the way a clinic would make it, by people with credentials and
@@ -13,7 +14,7 @@ defmodule Rehmed.ClinicalVisitTest do
   use Taxvision.DataCase, async: false
 
   alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
-  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling, StatutoryReporting}
+  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling}
   alias Rehmed.Contracts.ClinicalDocumentation.Commands.CloseVisitClinically
   alias Rehmed.Contracts.Scheduling.Commands.BookVisit
   alias Rehmed.Contracts.Scheduling.Events.{PatientArrived, VisitCompleted}
@@ -34,14 +35,16 @@ defmodule Rehmed.ClinicalVisitTest do
     :ok
   end
 
-  # A visit booked, the patient arrived, and left the room at `@left`.
-  defp visit(patient) do
+  # A visit booked for `service`, the patient arrived, and left the room at `@left`. The
+  # booking records whether the service is reported to P1 (plan DD, T2s (#245)), so a
+  # visit later closed as not reported is booked for a service that is not.
+  defp visit(patient, service \\ "service-physiotherapy") do
     {:ok, booked} =
       EhOsContract.dispatch(
         Scheduling,
         %BookVisit{
           patient_id: patient,
-          service_id: "service-physiotherapy",
+          service_id: service,
           specialist_id: "specialist-ewa",
           scheduled_at: ~U[2026-09-01 09:00:00Z]
         },
@@ -55,12 +58,17 @@ defmodule Rehmed.ClinicalVisitTest do
 
     {:ok, _} =
       Clock.at(@left, fn ->
-        EhOsContract.record(Scheduling, %VisitCompleted{visit_id: id}, actor: @specialist)
+        EhOsContract.record(
+          Scheduling,
+          %VisitCompleted{visit_id: id},
+          actor: @specialist
+        )
       end)
 
     id
   end
 
+  # The codes a reported service needs; whether it is reported is the booking's.
   defp close(id, reported?, at) do
     codes = if reported?, do: %{icd10: "M54.5", icd9: "93.39"}, else: %{}
 
@@ -73,8 +81,7 @@ defmodule Rehmed.ClinicalVisitTest do
             visit_id: id,
             patient_id: "patient-anna",
             pesel: "85010112345",
-            practitioner_number: "practitioner-ewa",
-            p1_reported: reported?
+            practitioner_number: "practitioner-ewa"
           })
         ),
         actor: @specialist
@@ -82,14 +89,14 @@ defmodule Rehmed.ClinicalVisitTest do
     end)
   end
 
-  defp verdicts(opts \\ []), do: Trace.evaluate(StatutoryReporting, @promise, opts)
+  defp verdicts(opts \\ []), do: Trace.evaluate(Rehmed.Processes.ClinicalVisit, @promise, opts)
 
   # An event's type is its contract's id and its own name (D1, amended by plan DD, ID3,
   # #173): statutory reporting's events are `rehmed.statutory_reporting.*`.
   defp types, do: Repo.all(from(e in Event, order_by: e.position, select: e.type))
 
-  test "a massage closed clinically keeps the promise the other way: nothing is owed to P1" do
-    id = visit("patient-anna")
+  test "a fitness visit closed clinically keeps the promise the other way: nothing is owed to P1" do
+    id = visit("patient-anna", "service-fitness")
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
     # The policy takes another context's event, so it runs after the close's
@@ -136,7 +143,7 @@ defmodule Rehmed.ClinicalVisitTest do
   end
 
   test "the chase ends with the clinical close, and creates no task" do
-    id = visit("patient-anna")
+    id = visit("patient-anna", "service-fitness")
     {:ok, _} = close(id, false, DateTime.add(@left, 3600))
 
     Clock.at(DateTime.add(@left, 25 * 3600), fn -> Testing.drain() end)

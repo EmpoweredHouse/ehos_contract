@@ -4,9 +4,9 @@ defmodule AppuniteEquipment do
   one to the sale, as one person runs them today in a spreadsheet and in Notion.
 
   Like `lib/rehmed/`, this tree is **contracts and the code they need to run**: a
-  domain, three contracts — the computer, the assignment, the demand — and the
-  decisions, policies and projections they need, so that the contracts' scenarios
-  run. No screen and no integration.
+  domain, two contracts — the computer and the demand — a process module for the
+  assignment (plan DD, P2f, #222), and the decisions, policies and projections they
+  need, so that the contracts' scenarios run. No screen and no integration.
 
   It is here for the shape no earlier case had. A visit or an accounting month is a
   run with a start and an end; a computer lives for years and goes round the same

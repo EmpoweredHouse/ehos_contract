@@ -13,7 +13,7 @@ defmodule UniversalityGate.TreatmentEpisode do
   | --- | --- |
   | An event arriving without a command | `referral_received`, `recorded_by: :referral_intake` (D6) |
   | The same event many times in one run | `session_completed`, many times in one episode's stream |
-  | Run identity from a single field | `identity :episode_id`, `correlate :episode_id` |
+  | Run identity from a single field | `identity :episode_id`, and `correlate :episode_id` in `UniversalityGate.TreatmentEpisodeRun` |
 
   **What the translation changed, and why.**
 
@@ -37,6 +37,9 @@ defmodule UniversalityGate.TreatmentEpisode do
     `:string`.
   - *The external and the accountable role moved to the domain*, where v2 keeps
     both.
+
+  The run from referral to closing, its stages, promises and deadline are a process
+  module's since plan DD, P2g (#228): `UniversalityGate.TreatmentEpisodeRun`.
   """
 
   use EhOsContract.Contract,
@@ -66,92 +69,52 @@ defmodule UniversalityGate.TreatmentEpisode do
       field :payer_scope, :string, optional: true
     end
 
-    stage :qualification do
-      event :referral_received, "Referral received", recorded_by: :referral_intake do
-        field :patient_id, :id, subject: :patient
-        field :referral_code, :id
-        field :received_at, :timestamp
-      end
-
-      event :patient_identity_confirmed, "Patient identity confirmed" do
-        field :patient_id, :id, subject: :patient
-        field :document_type, {:enum, [:id_card]}
-      end
-
-      event :payer_eligibility_checked, "Eligibility checked against the payer's registry",
-        depends_on: :payer_registry do
-        field :checked_at, :timestamp
-      end
-
-      event :payer_eligibility_confirmed, "Eligibility confirmed" do
-        field :scope, :string
-      end
-
-      event :payer_eligibility_denied, "Eligibility denied", terminal: true do
-        field :reason, :string
-      end
+    event :referral_received, "Referral received", recorded_by: :referral_intake do
+      field :patient_id, :id, subject: :patient
+      field :referral_code, :id
+      field :received_at, :timestamp
     end
 
-    stage :plan do
-      event :treatment_plan_approved, "Treatment plan approved",
-        recorded_by: :attending_physician do
-        field :session_count, :integer
-        field :approved_by, :id
-      end
+    event :patient_identity_confirmed, "Patient identity confirmed" do
+      field :patient_id, :id, subject: :patient
+      field :document_type, {:enum, [:id_card]}
     end
 
-    stage :treatment do
-      event :session_completed, "Session delivered", recorded_by: :therapist do
-        field :session_no, :integer
-        field :performed_at, :timestamp
-      end
-
-      event :session_missed, "Patient did not attend", recorded_by: :therapist do
-        field :session_no, :integer
-        field :noted_at, :timestamp
-      end
+    event :payer_eligibility_checked, "Eligibility checked against the payer's registry",
+      depends_on: :payer_registry do
+      field :checked_at, :timestamp
     end
 
-    stage :closing do
-      event :episode_closed, "Treatment episode closed",
-        recorded_by: :attending_physician,
-        terminal: true do
-        field :outcome, :outcome
-      end
-
-      event :episode_abandoned, "Treatment episode abandoned",
-        recorded_by: :attending_physician,
-        terminal: true do
-        field :reason, :string
-      end
-    end
-  end
-
-  process :treatment_episode, "Treatment episode: from referral to closing" do
-    correlate :episode_id
-    accountable :attending_physician
-
-    stage :qualification
-    stage :plan
-    stage :treatment
-    stage :closing
-
-    # Everything here is invented, and the deadline is the one declaration that
-    # pretends to be a number from reality; unverified, so no report counts it.
-    deadline {30, :day}, unverified: true
-
-    promise :referral_reaches_a_decision do
-      from :referral_received
-      eventually :payer_eligibility_confirmed
-      within {3, :day}
-      or_else :payer_eligibility_denied
+    event :payer_eligibility_confirmed, "Eligibility confirmed" do
+      field :scope, :string
     end
 
-    promise :episode_reaches_an_end do
-      from :treatment_plan_approved
-      eventually :episode_closed
-      within {90, :day}
-      or_else :episode_abandoned
+    event :payer_eligibility_denied, "Eligibility denied" do
+      field :reason, :string
+    end
+
+    event :treatment_plan_approved, "Treatment plan approved",
+      recorded_by: :attending_physician do
+      field :session_count, :integer
+      field :approved_by, :id
+    end
+
+    event :session_completed, "Session delivered", recorded_by: :therapist do
+      field :session_no, :integer
+      field :performed_at, :timestamp
+    end
+
+    event :session_missed, "Patient did not attend", recorded_by: :therapist do
+      field :session_no, :integer
+      field :noted_at, :timestamp
+    end
+
+    event :episode_closed, "Treatment episode closed", recorded_by: :attending_physician do
+      field :outcome, :outcome
+    end
+
+    event :episode_abandoned, "Treatment episode abandoned", recorded_by: :attending_physician do
+      field :reason, :string
     end
   end
 
@@ -172,6 +135,22 @@ defmodule UniversalityGate.TreatmentEpisode do
     expect :patient_identity_confirmed
     expect :payer_eligibility_checked
     expect :payer_eligibility_confirmed
+  end
+
+  scenario "eligibility active and no scope named — the command is rejected" do
+    given :referral_received, %{
+      patient_id: "p-1",
+      referral_code: "r-1",
+      received_at: "2026-09-01T08:00:00Z"
+    }
+
+    command :qualify_referral, %{
+      patient_id: "p-1",
+      identity_confirmed: true,
+      payer_status: :active
+    }
+
+    rejected :treatment_starts_only_on_confirmed_eligibility
   end
 
   scenario "eligibility expired — a denial instead of qualification" do

@@ -1,23 +1,22 @@
 defmodule EhOsContract.Contract.Links.Scenarios do
-  @moduledoc """
-  X9 of v2 §6: scenario values fit their types, where L2 could not tell.
-
-  S3 checks a scenario's data against the fields this contract declares, and a
-  value of a built-in type against its type. Two things are left here:
-
-  - **a value of a domain type**, anywhere a scenario gives one: one member of an
-    enum, a value of the type a value names, a map of the fields a value with
-    fields declares — in lists too (`EhOsContract.Contract.Data.problems/3`);
-  - **a query's parameters and the rows its scenario answers**, whose fields are
-    this contract's, for the values of domain types among them;
-  - **the examples of a domain service's rule** (plan EL2b), for the arguments and
-    results of domain types, whose shape S9 has checked;
-  - **the data of an event consumed from a sibling contract**, whose fields are the
-    sibling's: every key a field of the sibling's event, every required field given
-    where S3 requires one (a `given` and the trigger, not what is expected or
-    issued), each value of its type. The sibling's identity is filled in by
-    `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
-  """
+  # X9 of v2 §6: scenario values fit their types, where L2 could not tell.
+  #
+  # S3 checks a scenario's data against the fields this contract declares, and a
+  # value of a built-in type against its type. Two things are left here:
+  #
+  # - **a value of a domain type**, anywhere a scenario gives one: one member of an
+  #   enum, a value of the type a value names, a map of the fields a value with
+  #   fields declares — in lists too (`EhOsContract.Contract.Data.problems/3`);
+  # - **a query's parameters and the rows its scenario answers**, whose fields are
+  #   this contract's, for the values of domain types among them;
+  # - **the examples of a domain service's rule** (plan EL2b), for the arguments and
+  #   results of domain types, whose shape S9 has checked;
+  # - **the data of an event consumed from a sibling contract**, whose fields are the
+  #   sibling's: every key a field of the sibling's event, every required field given
+  #   where S3 requires one (a `given` and the trigger, not what is expected or
+  #   issued), each value of its type. The sibling's identity is filled in by
+  #   `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
+  @moduledoc false
 
   alias EhOsContract.Model
   alias EhOsContract.Contract.{Data, Links, Rules}
@@ -88,7 +87,25 @@ defmodule EhOsContract.Contract.Links.Scenarios do
       for {issues, at} <- Enum.zip(model.issues, declaration.issues),
           do: command(c, issues.command, issues.data, at, false)
 
-    Enum.reject(givens ++ trigger ++ expected ++ issued ++ answered, &is_nil/1)
+    entities =
+      for {given, at} <-
+            Enum.zip(Map.get(model, :given_entities, []), declaration.given_entities),
+          do: entity(c, given.entity, given.data, at)
+
+    Enum.reject(givens ++ entities ++ trigger ++ expected ++ issued ++ answered, &is_nil/1)
+  end
+
+  # Plan DD, T2a (#240): an entity's row, against the fields its domain declares, its
+  # identity among them, every one given: the scenario's command finds the row by it.
+  defp entity(c, name, data, at) do
+    case c.domain && Enum.find(c.domain.entities, &(&1.name == name)) do
+      %{fields: fields} ->
+        {"given_entity #{inspect(name)}, ", {:sibling, fields, []}, data, Links.at(at), true}
+
+      # D6 names an entity the domain does not declare, on the command's field.
+      _ ->
+        nil
+    end
   end
 
   defp params(c, name, data, at) do
@@ -152,7 +169,14 @@ defmodule EhOsContract.Contract.Links.Scenarios do
 
   defp problems({:local, fields}, data, values, _required?), do: typed(fields, data, values)
 
-  defp problems({:sibling, fields, identity}, data, values, required?) do
+  defp problems({:sibling, fields, identity}, data, values, required?),
+    do: sibling_problems(fields, identity, data, values, required?)
+
+  @doc false
+  # What is wrong with `data` as an event whose fields another module declares: a
+  # sibling's here, a contract's in a process module's scenario (plan DD, S2, #251).
+  @spec sibling_problems([map()], [atom()], map(), map(), boolean()) :: [String.t()]
+  def sibling_problems(fields, identity, data, values, required?) do
     declared = MapSet.new(fields, & &1.name)
 
     unknown =

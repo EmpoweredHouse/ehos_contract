@@ -11,7 +11,8 @@ defmodule EhOsContract.Contract.Dsl do
   the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
-  Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
+  Options may stand beside a `do` block, as in `command :record_payment, "…", by:
+  :reception do … end`.
 
   The structs this module defines are what Spark builds from each declaration. They stay inside the
   extension: readers get plain data from `EhOsContract.Model`, never these structs.
@@ -46,15 +47,20 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Command do
     @moduledoc false
     defstruct [:name, :label, :source, :scope, :or_rejects, by: [], emits: [], rejects: []] ++
-                [fields: [], constraints: [], creates: false, from: [], __spark_metadata__: nil]
+                [fields: [], constraints: [], creates: false, from: [], reads: []] ++
+                [actor_is: [], __spark_metadata__: nil]
+  end
+
+  defmodule ActorIs do
+    @moduledoc false
+    defstruct [:field, :or_rejects, __spark_metadata__: nil]
   end
 
   defmodule Generated do
-    @moduledoc """
-    `identity :booking_id, generated: :uuid` in an aggregate (plan EM3): the identity,
-    and that the library gives each new aggregate one. Spark's option takes one
-    argument, so this two-argument form sets the two options it stands for.
-    """
+    # `identity :booking_id, generated: :uuid` in an aggregate (plan EM3): the identity,
+    # and that the library gives each new aggregate one. Spark's option takes one
+    # argument, so this two-argument form sets the two options it stands for.
+    @moduledoc false
 
     @doc "Sets the aggregate's `identity` and how a new one is `generated`."
     defmacro identity(fields, opts) do
@@ -237,7 +243,12 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Given do
     @moduledoc false
-    defstruct [:event, data: %{}, __spark_metadata__: nil]
+    defstruct [:event, :at, data: %{}, __spark_metadata__: nil]
+  end
+
+  defmodule GivenEntity do
+    @moduledoc false
+    defstruct [:entity, data: %{}, __spark_metadata__: nil]
   end
 
   defmodule Trigger do
@@ -272,7 +283,17 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Scenario do
     @moduledoc false
-    defstruct [:description, :target, :actor, :rejected, ended: false, given: [], trigger: []] ++
+    defstruct [
+                :description,
+                :target,
+                :actor,
+                :as,
+                :rejected,
+                ended: false,
+                given: [],
+                trigger: []
+              ] ++
+                [given_entities: []] ++
                 [illustrates: []] ++
                 [
                   expect: [],
@@ -372,12 +393,36 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan DD, A1 (#247): the person who must issue the command, as a field of the unit's
+  # state names them.
+  @actor_is %Spark.Dsl.Entity{
+    name: :actor_is,
+    describe:
+      "The person who must issue the command: the one a field of the unit's state names. " <>
+        "Anyone else with the credential is refused on the invariant.",
+    target: ActorIs,
+    args: [:field],
+    schema: [
+      field: [
+        type: :atom,
+        required: true,
+        doc:
+          "The field of the unit's state, a non-personal `:id` an earlier event fills, that names the person."
+      ],
+      or_rejects: [
+        type: :atom,
+        required: true,
+        doc: "The invariant of the unit, in the command's `rejects:`, it is refused on otherwise."
+      ]
+    ]
+  }
+
   @command %Spark.Dsl.Entity{
     name: :command,
     describe: "An intention an actor or a reaction issues to a unit.",
     target: Command,
     args: [:name, :label],
-    entities: [fields: [@field], constraints: [@constraint]],
+    entities: [fields: [@field], constraints: [@constraint], actor_is: [@actor_is]],
     schema: [
       name: [type: :atom, required: true, doc: "The command's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
@@ -402,6 +447,16 @@ defmodule EhOsContract.Contract.Dsl do
         type: :atom,
         doc:
           "The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`."
+      ],
+      # Plan DD, T2a (#240): what the decision reads besides the command and the
+      # unit's history, an entity the application keeps, asked of the host.
+      reads: [
+        type: :keyword_list,
+        default: [],
+        doc:
+          "The entities the decision reads, `[service: :service_id]`: the name each row arrives " <>
+            "under in the decision's third argument, and the command's field, typed " <>
+            "`{:id, entity}`, that names it."
       ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]
@@ -1034,7 +1089,31 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:event, {:optional, :data}],
     schema: [
       event: [type: :atom, required: true, doc: "The event."],
-      data: [type: :map, default: %{}, doc: "Its fields."]
+      data: [type: :map, default: %{}, doc: "Its fields."],
+      at: [
+        type: :string,
+        doc:
+          "When it happened, an ISO 8601 timestamp with an offset; by default a minute " <>
+            "after the given before it."
+      ]
+    ]
+  }
+
+  @doc false
+  # The given, as a process module's scenario writes it too (plan DD, S2, #251).
+  @spec given() :: Spark.Dsl.Entity.t()
+  def given, do: @given
+
+  # Plan DD, T2a (#240): the row of an entity a command reads, as the application keeps it
+  # when the command arrives.
+  @given_entity %Spark.Dsl.Entity{
+    name: :given_entity,
+    describe: "The row of an entity the scenario's command reads, as the application keeps it.",
+    target: GivenEntity,
+    args: [:entity, {:optional, :data}],
+    schema: [
+      entity: [type: :atom, required: true, doc: "The entity of the domain."],
+      data: [type: :map, default: %{}, doc: "Its fields, its identity among them."]
     ]
   }
 
@@ -1126,11 +1205,12 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # A process manager's state in a scenario: plan EP4.
   @expected_state %Spark.Dsl.Entity{
     name: :state,
     describe:
       "What the process manager's run holds after the trigger: the givens and the " <>
-        "delivered event folded, compared on the fields named (plan EP4).",
+        "delivered event folded, compared on the fields named.",
     target: ExpectedState,
     args: [:data],
     schema: [data: [type: :map, required: true, doc: "Fields of the state it must hold."]]
@@ -1143,6 +1223,7 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:description],
     entities: [
       given: [@given],
+      given_entities: [@given_entity],
       trigger: [@scenario_command, @scenario_on, @scenario_query],
       expect: [@expect],
       issues: [@issues],
@@ -1158,6 +1239,12 @@ defmodule EhOsContract.Contract.Dsl do
         doc: "The unit or reaction the case is about, when the trigger does not say which."
       ],
       actor: [type: :atom, doc: "The actor who issues the command."],
+      as: [
+        type: :string,
+        doc:
+          "The person issuing the command, as their credential's subject; beside `actor:`, for a " <>
+            "command whose `actor_is` names who must issue it."
+      ],
       rejected: [type: :atom, doc: "The invariant the command is refused on."],
       illustrates: [
         type: {:wrap_list, :atom},

@@ -1,18 +1,18 @@
 # EhOsContract.Auth
 
 Verifies the credentials EHOS issues, for an application built on
-[EhOsContract](../eh_os_contract). It checks the signature locally, against keys it keeps in the
+[EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract). It checks the signature locally, against keys it keeps in the
 application's own database, so the application goes on accepting credentials while EHOS is
 down, and after a restart while EHOS is down.
 
 The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credential's actor may
-do, and this package is the implementation for EHOS's credentials (contract v2 §16, D14; `eh-os`
-D-33, D-34). The engine does not depend on it.
+do, and this package is the implementation for EHOS's credentials. The engine does not depend on it.
 
-Five parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
+Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
-front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest, and
-`EhOsContract.Auth.Testing` for a host's tests.
+front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
+`EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
+company's people, and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -66,15 +66,16 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-EHOS deploys an image with its `ehos.manifest/v2` (`eh-os` D-52): the application's `ehos.yaml`, which
-says what the workload needs, extended with what its contracts offer. In CI, beside the image:
+EHOS deploys an image with its `ehos.manifest/v2`, or `v3` for an `ehos.yaml/v3`: the
+application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
+offer. In CI, beside the image:
 
 ```bash
 mix eh_os_contract.manifest --output ehos.manifest.json
 # --ehos-yaml deploy/ehos.yaml when the file is not ehos.yaml in the project's directory
 ```
 
-`ehos.yaml` is EHOS's format alone (`eh-os` D-51, `docs/ehos-yaml.md` there), and the task reads it as
+`ehos.yaml` is EHOS's format alone, and the task reads it as
 EHOS reads it: YAML 1.2's core schema, no anchor, alias, tag or repeated key, validated against
 EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's reader or schema would
 refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
@@ -108,15 +109,15 @@ is filled in. The task adds:
   digits and dashes, so a domain named with `_` is refused, with a name to use when there is one EHOS
   takes;
 - `offers`, the capabilities of the commands, queries and recordings a human actor may make, each naming its
-  declaration as `command`, `query` or `record` (`eh-os` D-73), and the human actors that hold at least one of
-  them, as roles. An EHOS before D-73 refuses a manifest that offers a query or a recording. System actors,
+  declaration as `command`, `query` or `record`, and the human actors that hold at least one of
+  them, as roles. An EHOS too old to know these kinds refuses a manifest that offers a query or a recording. System actors,
   actors who hold nothing, scopes and publications are absent: the manifest has no field for them yet, and
   EHOS refuses a field it does not know;
 - `engine`, the `eh_os_contract` version that wrote it.
 
 **An application that signs people in through EHOS** writes `ehos.yaml/v2`, which is v1 and one more
-key, `sign_in` (`eh-os` D-69). Its presence is what makes EHOS give the workload its client
-(`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, D-68), and the manifest carries it as written, `{}`
+key, `sign_in`. Its presence is what makes EHOS give the workload its client
+(`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`), and the manifest carries it as written, `{}`
 included:
 
 ```yaml
@@ -141,13 +142,12 @@ of `ehos.yaml` as written, a `migrate` argument too; what the workload needs at 
 its environment, below.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
-with any edit, so a new label would ask for `ehos.application.register` at every deploy (`eh-os`
-issue #92). yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
+with any edit, so a new label would ask for `ehos.application.register` at every deploy. yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
 neither.
 
 ## Configuration from EHOS's environment
 
-EHOS starts the workload with its settings in the environment (`eh-os` D-56), and the package reads no
+EHOS starts the workload with its settings in the environment, and the package reads no
 variable itself. `config/runtime.exs` and the supervision tree map them:
 
 ```elixir
@@ -165,12 +165,12 @@ auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
 children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 ```
 
-`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` (`eh-os` D-64, D-68) are for
+`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` are for
 signing people in to the application in a browser, through EHOS: "Signing people in" below.
 
 ## Signing people in
 
-A person signs in to the application's pages through EHOS, with OpenID Connect (`eh-os` D-64). The
+A person signs in to the application's pages through EHOS, with OpenID Connect. The
 application is EHOS's client, and `EhOsContract.Auth.SignIn` holds it:
 
 ```elixir
@@ -190,12 +190,12 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.SignI
 
 The child checks this at boot and refuses to start otherwise:
 
-- the key file is one private Ed25519 JWK, exactly as `eh-os` D-68 says the operator writes it, and a PEM is
+- the key file is one private Ed25519 JWK, exactly as EHOS's operator writes it, and a PEM is
   refused;
 - `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
   trailing slash;
-- no address in `applications` is `address`: they are the other applications (`eh-os` D-69);
-- the issuer is `https://<host>[:port]` alone, as every parser reads it (#89);
+- no address in `applications` is `address`: they are the other applications;
+- the issuer is `https://<host>[:port]` alone, as every parser reads it;
 - `secret_key_base` has at least 64 bytes.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
@@ -219,10 +219,10 @@ signed in with what is held. It refuses, naming each thing that fails, a documen
 
 It also refuses a document that names a symmetric algorithm or `none` for ID tokens. `oidcc` would quietly do
 without each of these, or accept such a token. A document whose endpoints are not at the issuer's own origin,
-or not read alike by every parser (#89), is not held at all: nobody can sign in until EHOS serves one that is,
+or not read alike by every parser, is not held at all: nobody can sign in until EHOS serves one that is,
 and the log says which endpoints it refused.
 
-**Where a signed-in person is kept.** Version 3 of the package's tables holds them (`eh-os` D-64, S2 and S3).
+**Where a signed-in person is kept.** Version 3 of the package's tables holds them.
 A host that migrated earlier versions adds one migration, as for every version:
 
 ```elixir
@@ -297,7 +297,7 @@ Nothing renews unless a request asks.
   - A response that cannot be used: the session ends, since EHOS has rotated the refresh token.
 
 **Other applications.** `Session.credential/3` is the person's credential for an application named in
-`applications:`, issued by EHOS for that application's address (`resource`, `eh-os` D-64, D-68) and renewed
+`applications:`, issued by EHOS for that application's address (`resource`) and renewed
 like the application's own, under the same lease. It is handed out as EHOS issued it, not verified here: its
 `aud` is that application's, which verifies it. Send it from the server and keep it there: a LiveView's assigns
 or a page would hand it to the browser, which the session otherwise keeps EHOS's tokens from.
@@ -308,15 +308,72 @@ or a page would hand it to the browser, which the session otherwise keeps EHOS's
   again on every page. The refresh token is kept, and the session goes on for this application and every other.
 - **The other refusals** are `actor/2`'s: `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
 
-What the package decides beside D-64 is in [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
+Why signing in and the session work this way is recorded in [`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/browser-session.md).
+
+**A person's key is `sub`.** The `sub` of a person signed in is their `id` in EHOS: it never
+changes, and it is the `id` the people API below answers for the same person. Store it, never the
+email, which can change and later be given to someone else.
+
+## Reading the company's people
+
+A form that offers an employee, instead of a text field someone types a name into, reads EHOS's
+people as the application itself (`eh-os` D-81). The application asks for it in its
+`ehos.yaml/v3`; EHOS then gives its workload `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, whether
+or not it signs people in, and answers only once someone who manages people agrees, for that
+environment.
+
+```yaml
+schema: ehos.yaml/v3
+needs:
+  people: read
+```
+
+```elixir
+# config/runtime.exs, beside issuer:
+config :eh_os_contract_auth,
+  people: [
+    client_id: System.fetch_env!("EHOS_CLIENT_ID"),
+    client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE")
+  ]
+
+# the supervision tree; cacertfile: as for EhOsContract.Auth
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.People]
+```
+
+```elixir
+{:ok, %{people: people, next: next}} = EhOsContract.Auth.People.list(q: "ad", limit: 50)
+{:ok, more} = EhOsContract.Auth.People.list(after: next)   # the cursor carries q: and limit:
+{:ok, person} = EhOsContract.Auth.People.get(id)
+# %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
+```
+
+The process takes a credential of its own at EHOS's token endpoint with the client credentials
+grant, signed with the client key, keeps it for its ten minutes and takes another before it
+expires; callers that need one at once wait for one request, and a refusal or an outage is
+answered for five seconds without asking again. Nothing is fetched at start, so the host starts
+while EHOS is down. `list/1` takes `q:`, `state:` (`:invited`, `:joined`) and `limit:` (1 to
+500), or `after:` alone; an option EHOS would refuse raises `ArgumentError` before EHOS is asked. Store a person's
+`id`; show the email beside the name, which two people can share.
+
+A call that answers no people says why, for the page to say it in words:
+
+| Error | When |
+| --- | --- |
+| `:not_agreed` | No people manager has agreed for this environment, or the agreement was withdrawn |
+| `:not_found` | `get/2` of an id that is no one's |
+| `:not_asked` | The deployment does not ask `needs.people: read` |
+| `:rate_limited` | EHOS's limits: 60 credentials a minute, 600 calls a minute |
+| `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
+
+The list is never copied into the application: while EHOS cannot answer, the call fails and the
+page says so, and the rest of the application goes on.
 
 ## Deciding, and recording every decision
 
 `EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
 that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2` alone — the
 capability in `cap`, a scoped value among the values in `scp` — and writes one row to
-`eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance (`eh-os`
-D-34): who, which capability, which contract and version, the scope value asked for, `allowed` or
+`eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance: who, which capability, which contract and version, the scope value asked for, `allowed` or
 `refused`, and the reason. A scope value the table cannot hold (invalid UTF-8, a NUL), one past 256
 bytes, or one that starts `sha256:` is recorded as `sha256:` and its hex digest, so a crafted value is
 refused like any other instead of failing the request.
@@ -329,8 +386,8 @@ the call.
 
 **What it costs.** Every command and query that arrives with a credential writes that row: one
 `INSERT`, committed on its own before the engine's transaction starts, and for a query the only write
-the call makes. `eh-os` D-34 asks for exactly this — a refusal recorded as carefully as an acceptance,
-and a refusal cannot be written inside a transaction that never starts. Budget for one extra write per
+the call makes. A refusal is recorded as carefully as an acceptance, and a refusal cannot be written
+inside a transaction that never starts. Budget for one extra write per
 call; the table carries no index beyond `decided_at` and `(subject, decided_at)`.
 
 **How long rows are kept is the application's decision.** Nothing here deletes them. The index on
@@ -452,7 +509,17 @@ EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS i
 application), `jwks_url` only if the JWKS is not at the issuer's well-known path, and the authority
 above if it is not a public one.
 
-**Rotation** is manual in v1 and happens on EHOS's side (`eh-os` D-33):
+**The application in `audience` is a domain's name.** Every name the application publishes, and
+every contract id it stores, begins with its domain's `name:`, and EHOS lets an application publish
+only under the name it registered. So `audience` must be `<application>/<environment>` with both
+parts present, its application must equal the `name:` of one domain with contracts exactly
+(`audience: "my-shop/prod"` for `name: :"my-shop"`; a domain named `:my_shop` does not match, since
+EHOS never names an application with `_`, and the manifest generator refuses it too), and any other
+domain with contracts in the same application must declare no `publish`, since it would publish
+under a name that is not the application's. Otherwise `EhOsContract.Auth` refuses to start, naming
+what it found and how to fix it.
+
+**Rotation** is manual in v1 and happens on EHOS's side:
 
 1. `current` moves to `previous`, and a new `current` is added;
 2. EHOS is rolled out. It signs with the new key, and the JWKS publishes both;
@@ -462,7 +529,7 @@ The application does nothing. A credential signed with the new key names a `kid`
 which triggers an early fetch, and the refresh every five minutes drops `previous` once the JWKS no
 longer has it.
 
-**How the key store behaves** (`EhOsContract.Auth.Keys`, `eh-os` D-34):
+**How the key store behaves** (`EhOsContract.Auth.Keys`):
 
 - at start it loads the last good key set from its table, then fetches the JWKS;
 - it fetches again every five minutes, so a key removed from the JWKS, a compromised one for
@@ -484,8 +551,7 @@ function plug handed to Req.
 ## The credential
 
 A JWT, `alg: "Ed25519"` and nothing else, with `iss`, `sub`, `aud` (one string), `iat`, `exp`,
-`jti`, `cap` (the capabilities, sorted), and `scp` when a capability is scoped (`eh-os` D-33,
-D-40):
+`jti`, `cap` (the capabilities, sorted), and `scp` when a capability is scoped:
 
 ```json
 {"sub": "u-81", "aud": "rehmed/production", "cap": ["rehmed.open_visits_for_clinic"],
@@ -497,3 +563,21 @@ credential whose `exp` is more than fifteen minutes away — EHOS's ten, and fiv
 disagree — is refused as `:bad_signature`, whoever signed it, so a key that leaked cannot mint a
 credential that lives for a year; so is one whose header carries `crit`. `exp`
 is measured by `EhOsContract.Clock`, so a test moves time with `EhOsContract.Clock.at/2`.
+
+<!-- Decisions behind this page:
+contract v2 §16, D14 (docs/adr/contract-v2.md): the contract declares who may act; a separate package, this one, verifies who is acting.
+eh-os D-33: the credential, a ten-minute Ed25519 JWT with the key's thumbprint as kid; manual key rotation.
+eh-os D-34: keys kept in the application's own table; every decision recorded, a refusal as carefully as an acceptance.
+eh-os D-40: the claims cap and scp, scope values carried in the credential.
+eh-os D-51: ehos.yaml is EHOS's format, versioned by JSON Schema (docs/ehos-yaml.md in eh-os).
+eh-os D-52: ehos.manifest/v2, ehos.yaml extended with what the contracts offer.
+eh-os D-56: EHOS hands the workload its settings in the environment.
+eh-os D-64: signing a person in through EHOS with OpenID Connect; the callback address.
+eh-os D-68: the client key as a JWK, addresses as exact strings, an application's address as resource.
+eh-os D-69: sign_in in ehos.yaml/v2, and applications naming only the others.
+eh-os D-73: a capability names its declaration's kind, command, query or record.
+eh-os issue #92: contracts left out of the manifest, so an edit does not ask for registration.
+S2 (docs/adr/browser-session.md): the browser holds a random token, the row its SHA-256; the cookie session encrypted.
+S3 (docs/adr/browser-session.md): EHOS's tokens encrypted, each bound to its row and column.
+#89: the issuer and every address read alike by every parser.
+-->

@@ -1,10 +1,14 @@
 defmodule EhOsContract.Relay do
+  # At least once, never zero times: the notes of 1 October 2026 in v2 §16. An event of
+  # newer code waits: plan W1. `publish/2` returns within seconds: a decision of
+  # 1 October 2026, recorded in `PLAN.md`.
   @moduledoc """
-  What carries a `publish` out of the application (v2 §16, D11): one ordered
-  subscription over the log per publication, which hands what it reads to
-  `EhOsContract.Bus`. The log is the outbox; there is no outbox table.
+  What carries a `publish` out of the application: one ordered subscription over the
+  log per publication, which hands what it reads to `EhOsContract.Bus`. The log is
+  the outbox; there is no outbox table.
 
-  A relay is a consumer like a policy (`EhOsContract.Subscription`), with its row in
+  A relay is a consumer fed from the log like a policy delivered `:at_least_once`,
+  listed by `mix eh_os_contract.subscriptions`, with its row in
   `eh_os_contract_subscriptions` under `"<contract id>:relay:<name>"`, and it differs
   in what it does with a batch:
 
@@ -13,15 +17,14 @@ defmodule EhOsContract.Relay do
     `EhOsContract.Bus.publish/1`; the position advances in the same transaction, on
     `:ok`. A relay that stops between the two publishes the batch again, under the
     same ids, so a message can arrive twice at a consumer subscribed when it was
-    published, never zero times, and never without its fact (the notes of 1 October
-    2026 in v2 §16).
+    published, never zero times, and never without its fact.
   - **An unreachable transport is not a failure of the event.** `{:error, reason}`
     leaves the position where it was, counts no attempt, and the runner tries again
     later: an outage of the broker must not stop a relay for a person to restart. A
     raise is a defect and is a failure like a policy's: three, and the relay is
     `failing` at that position until someone decides. Skipping the event is that
     decision, and it means the event never leaves.
-  - **An event written by newer code waits** (plan W1): one whose fields are of a
+  - **An event written by newer code waits**: one whose fields are of a
     newer version than this node declares is not published. The events before it in
     the batch go, one at a time, and the relay stops at it, counting no attempt, until
     the node runs the newer code.
@@ -30,7 +33,7 @@ defmodule EhOsContract.Relay do
     since, rather than starting over at the head.
   - **It starts at the head of the log**, as a policy does: what is in the log when a
     `publish` is first deployed is history, and nothing publishes it by itself.
-    `EhOsContract.Subscription.rebuild/2` moves it back to position 0, and it
+    `mix eh_os_contract.subscriptions --reset` moves it back to position 0, and it
     publishes the whole log again under the same ids — a person's decision.
   - **A batch that raises goes again one event at a time**, so the failure lands on
     the event at fault and what comes before it leaves.
@@ -39,7 +42,7 @@ defmodule EhOsContract.Relay do
 
   - **It holds a pooled connection while it publishes**, one per relay per node, for
     as long as `c:EhOsContract.Bus.publish/2` takes, which is why that callback has to
-    return within seconds (a decision of 1 October 2026, `PLAN.md`).
+    return within seconds.
   - **Its row is keyed by the `publish`'s name, not its `as:`.** Renaming the
     declaration makes a new relay at the head of the log, and what the old one had
     not yet published — behind an outage, or with no bus configured — never leaves;
@@ -60,24 +63,26 @@ defmodule EhOsContract.Relay do
 
   alias EhOsContract.{Bus, Event}
 
-  @doc "How many events one step of a relay reads and publishes at most."
+  # How many events one step of a relay reads and publishes at most.
+  # Called by subscription.ex.
+  @doc false
   @spec batch() :: pos_integer()
   def batch, do: 100
 
-  @doc """
-  The message a relay publishes for `event`: its id is `<event id>/<name>`, where
-  `name` is the versioned name the publication declares, its correlation the
-  event's, and its payload the declared `fields` of the event, as stored, and nothing
-  else. A field the event does not carry is `nil`.
-
-  Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
-  the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
-  same values — a fact recorded twice, or a log moved under new ids — has the key of
-  the first. Without such fields, or with one of them `nil`, the key is the id.
-
-  It takes the payload as stored, so the relay holds each event to the version its
-  fields were written with before it builds the message (plan W1).
-  """
+  # The message a relay publishes for `event`: its id is `<event id>/<name>`, where
+  # `name` is the versioned name the publication declares, its correlation the
+  # event's, and its payload the declared `fields` of the event, as stored, and nothing
+  # else. A field the event does not carry is `nil`.
+  #
+  # Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
+  # the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
+  # same values — a fact recorded twice, or a log moved under new ids — has the key of
+  # the first. Without such fields, or with one of them `nil`, the key is the id.
+  #
+  # It takes the payload as stored, so the relay holds each event to the version its
+  # fields were written with before it builds the message (plan W1).
+  # Called by subscription.ex.
+  @doc false
   @spec message(map(), Event.t()) :: Bus.Message.t()
   def message(%{publication: publication}, %Event{} = event) do
     stored = event.payload || %{}

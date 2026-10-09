@@ -1,18 +1,17 @@
 defmodule EhOsContract.Web.Api.AsyncAPI do
-  @moduledoc """
-  The generated AsyncAPI document for one contract, or the index of all of them.
-
-  `GET <mount>/asyncapi` — every contract, with its version and document digest.
-  `GET <mount>/asyncapi/<contract id>` — that contract's document.
-
-  The digest is served twice, in `info["x-eh-os-contract-digest"]` and as the `ETag`. Not
-  redundant: a consumer comparing what an instance claims against what its build
-  recorded can do it with a `HEAD` and no body at all.
-
-  **Authenticated, like the report.** A document naming every event, every field
-  and every label in the client's own words is a map of their business, not "just a
-  schema", and the same `EhOsContract.Web.Resolver` decides who sees it.
-  """
+  # The generated AsyncAPI document for one contract, or the index of all of them.
+  #
+  # `GET <mount>/asyncapi` — every contract, with its version and document digest.
+  # `GET <mount>/asyncapi/<contract id>` — that contract's document.
+  #
+  # The digest is served twice, in `info["x-eh-os-contract-digest"]` and as the `ETag`. Not
+  # redundant: a consumer comparing what an instance claims against what its build
+  # recorded can do it with a `HEAD` and no body at all.
+  #
+  # **Authenticated, like the report.** A document naming every event, every field
+  # and every label in the client's own words is a map of their business, not "just a
+  # schema", and the same `EhOsContract.Web.Resolver` decides who sees it.
+  @moduledoc false
 
   @behaviour Plug
 

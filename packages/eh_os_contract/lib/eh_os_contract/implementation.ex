@@ -1,7 +1,8 @@
 defmodule EhOsContract.Implementation do
+  # The implementation layer, L4 (v2 §5, §6); a domain's value bound as plan EL2b has it.
   @moduledoc """
-  How code binds to a v2 contract, and what the contract checks in it while it
-  compiles (v2 §5, layer L4).
+  How code binds to a contract, and what the contract checks in it while it
+  compiles.
 
       defmodule Rehmed.Settlement.VisitSettlement do
         use Rehmed.Contracts.VisitSettlement, aggregate: :visit_settlement
@@ -15,8 +16,8 @@ defmodule EhOsContract.Implementation do
   `read_model:`, `query:`, `domain_service:` — names exactly one declaration of the
   contract `C`, and brings in:
 
-  - `@behaviour` of the module `C` generated for it (`EhOsContract.Contract.Callbacks`
-    says which callbacks);
+  - `@behaviour` of the module `C` generated for it, whose callbacks are listed
+    below;
   - aliases for the structs it touches: a unit's commands, events and `State`; a
     reaction's events and the commands it issues; a read model's events and `Row`; a
     query's parameters and rows. An event consumed from a sibling under a new name
@@ -27,10 +28,31 @@ defmodule EhOsContract.Implementation do
     `evolve/2` handles every event its state is kept from.
 
   The dependency runs one way: the implementation compiles against the contract and
-  the structs it expands, and the contract names no implementation (v2 §8).
+  the structs it expands, and the contract names no implementation.
 
-  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`
-  (plan EL2b): the behaviour is `Rehmed.Domain.Values.Money`, with one function per
+  ## The callbacks
+
+  | Kind | Callbacks |
+  | --- | --- |
+  | aggregate, dcb | one per command, `(command, state) :: decision`, or `(command, state, reads) :: decision` for a command that `reads:` entities; `evolve/2` when the unit declares a state |
+  | policy | one per handled event, `(event) :: issued` |
+  | effect | one per handled event, `(event) :: :ok \\| {:error, term}` |
+  | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
+  | read model | one per projected event, `(event) :: :ok` |
+  | query | one, named after it, `(params, ctx) :: rows` |
+  | domain service | one per function, `(arguments…) :: result`, typed as declared |
+  | value, of a domain | one per invariant, `(value) :: boolean` |
+
+  `reads` holds each entity the command reads under the name its `reads:` gives it,
+  as the host's `EhOsContract.Entities` returned it: `%{service: %{service_id: "s-1",
+  p1_reported: true}}`.
+
+  A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
+  issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
+  unit's own, a boundary's consulted ones too, and a process manager's triggers.
+
+  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`:
+  the behaviour is `Rehmed.Domain.Values.Money`, with one function per
   invariant the value declares, and I1 and I2 hold as they do for a contract. There
   is nothing to alias and nothing to emit.
 
@@ -41,7 +63,7 @@ defmodule EhOsContract.Implementation do
         def not_negative(amount), do: amount >= 0
       end
 
-  **The rules** (v2 §6, L4), each a `CompileError` at the call site, or at the
+  **The rules**, each a `CompileError` at the call site, or at the
   `use` line for the ones checked before the module compiles:
 
   - **I1.** `use C, …` names one declaration that exists; a misspelling gets a
@@ -62,7 +84,7 @@ defmodule EhOsContract.Implementation do
     only in a policy or a process manager, and none of them in an effect, a read
     model or a query.
 
-  What stays at run time (v2 §5): field values against their types, capabilities,
+  What stays at run time: field values against their types, capabilities,
   and the backstop that what a decision returns is within its declaration.
   """
 
@@ -242,10 +264,9 @@ defmodule EhOsContract.Implementation do
   defp a(kind) when kind in [:aggregate, :effect], do: "an #{human(kind)}"
   defp a(kind), do: "a #{human(kind)}"
 
-  @doc """
-  The structs an implementation of the declaration touches, each with the alias it
-  gets: `{module, alias}`.
-  """
+  # The structs an implementation of the declaration touches, each with the alias it
+  # gets: `{module, alias}`.
+  @doc false
   @spec aliases(map(), atom(), atom()) :: [{module(), module()}]
   def aliases(model, kind, name) do
     behaviour = Model.module_for(model, kind, name)
@@ -330,7 +351,7 @@ defmodule EhOsContract.Implementation do
   end
 
   @doc """
-  A command refused on an invariant, or on one of its constraints (plan EL2):
+  A command refused on an invariant, or on one of its constraints:
   `{:error, %EhOsContract.Rejection{}}`. Takes an atom literal among what the command
   rejects on (I5, I7).
   """

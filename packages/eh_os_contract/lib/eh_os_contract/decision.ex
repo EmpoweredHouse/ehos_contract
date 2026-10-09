@@ -1,28 +1,68 @@
 defmodule EhOsContract.Decision do
-  @moduledoc """
-  What a decision has to be for the engine to append it (plan W4): the rules dispatch
-  holds a decision to, in one place, so that the code that checks a decision outside
-  dispatch — a scenario, later a property test — calls them rather than a copy.
-
-  Dispatch holds a decision to `held!/6`. `EhOsContract.ScenarioCase` holds it to
-  `admitted/4` and `lifecycle!/4` only: a scenario does not yet check that an event is
-  about the unit that decided it, or that its fields fit, so a decision can pass its
-  scenario and still be refused by dispatch.
-
-  A decision is code, and code can build a struct the contract's macros never saw
-  (v2 §5). So after it returns, everything it produced is held to its declaration:
-
-  - `admitted/4` — each struct produced is one the declaration allows: an event among
-    the command's `emits`, a command among a reaction's `issues`;
-  - `held!/6` — everything dispatch requires of a command's events before it appends
-    them: admitted, about the unit that decided them, with fields that fit, and allowed
-    by the unit's lifecycle from where it stood.
-
-  None of these is a business outcome. A decision that breaks one is a defect, and
-  nothing is appended.
-  """
+  # What a decision has to be for the engine to append it (plan W4): the rules dispatch
+  # holds a decision to, in one place, so that the code that checks a decision outside
+  # dispatch — a scenario, later a property test — calls them rather than a copy.
+  #
+  # Dispatch holds a decision to `held!/6`. `EhOsContract.ScenarioCase` holds it to
+  # `admitted/4` and `lifecycle!/4` only: a scenario does not yet check that an event is
+  # about the unit that decided it, or that its fields fit, so a decision can pass its
+  # scenario and still be refused by dispatch.
+  #
+  # A decision is code, and code can build a struct the contract's macros never saw
+  # (v2 §5). So after it returns, everything it produced is held to its declaration:
+  #
+  # - `admitted/4` — each struct produced is one the declaration allows: an event among
+  #   the command's `emits`, a command among a reaction's `issues`;
+  # - `held!/6` — everything dispatch requires of a command's events before it appends
+  #   them: admitted, about the unit that decided them, with fields that fit, and allowed
+  #   by the unit's lifecycle from where it stood;
+  # - `folded/7` — the state a unit decides over, folded from its stream as dispatch folds
+  #   it, so a scenario and a property test fold the same way.
+  #
+  # None of these is a business outcome. A decision that breaks one is a defect, and
+  # nothing is appended.
+  @moduledoc false
 
   alias EhOsContract.{Codec, Lifecycle, Model}
+
+  @doc """
+  A unit's state after `events`, as dispatch folds a stream: from `state`, through the
+  implementation's `evolve/2` when it has one, and, for a unit with a lifecycle, with the
+  status before each event (`befores`, in order) put into the state first and `status`
+  after the last. `step` runs one `evolve/2`, given the state, the event and its index:
+  dispatch wraps it to name the stage that failed, a test to fail naming the event. The
+  one fold of a deciding unit's stream in dispatch, `EhOsContract.ScenarioCase` and
+  `EhOsContract.PropertyCase`; a process manager's run is folded apart.
+  """
+  @spec folded(
+          map(),
+          module(),
+          struct(),
+          [struct()],
+          [Lifecycle.status()],
+          Lifecycle.status(),
+          (struct(), struct(), non_neg_integer() -> struct())
+        ) :: struct()
+  def folded(unit, impl, state, events, befores, status, step) do
+    lifecycle? = Lifecycle.of(unit) != nil
+    put = fn state, status -> if lifecycle?, do: %{state | status: status}, else: state end
+
+    state =
+      if function_exported?(impl, :evolve, 2) do
+        befores = if lifecycle?, do: befores, else: List.duplicate(nil, length(events))
+
+        events
+        |> Enum.zip(befores)
+        |> Enum.with_index()
+        |> Enum.reduce(state, fn {{event, before}, index}, state ->
+          step.(put.(state, before), event, index)
+        end)
+      else
+        state
+      end
+
+    put.(state, status)
+  end
 
   @typedoc "Why a struct produced is not one the declaration allows."
   @type refusal :: {:not_a_struct, term()} | {:not_allowed, struct()}
@@ -134,4 +174,19 @@ defmodule EhOsContract.Decision do
 
   defp describe(%module{}), do: "%#{inspect(module)}{}"
   defp describe(other), do: inspect(other)
+
+  @doc """
+  The invariant `command` is refused on when `person`, the subject of whoever issues it,
+  is not the one its `actor_is` field of `state` holds (plan DD, A1, #247); `nil` when
+  they are, or when the command names nobody who must issue it. A field still empty, or
+  an empty subject, names nobody, so it is refused. Dispatch asks it for a credential;
+  a scenario, for the person it names with `as`.
+  """
+  @spec not_the_person(map(), map(), String.t() | nil) :: atom() | nil
+  def not_the_person(%{actor_is: %{field: field, or_rejects: invariant}}, state, person) do
+    value = Map.get(state, field)
+    if is_binary(person) and value == person, do: nil, else: invariant
+  end
+
+  def not_the_person(_command, _state, _person), do: nil
 end

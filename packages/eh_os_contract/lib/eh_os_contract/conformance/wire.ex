@@ -1,4 +1,5 @@
 defmodule EhOsContract.Conformance.Wire do
+  # The log's rows name a contract by its id since plan DD, ID4 (#178).
   @moduledoc """
   The conformance report as values that survive JSON, and nothing else.
 
@@ -10,6 +11,21 @@ defmodule EhOsContract.Conformance.Wire do
   what a consumer compares against, version to version, so it is part of what this
   package promises. A projection written in whichever web package happens to serve
   it would make the promise a property of the transport.
+
+  ## What a reader may rely on
+
+  The document names its shape in `"schema"`, `eh_os_contract.conformance.v3`, and
+  every reader may hold it to these rules:
+
+  - **A key a reader does not know is ignored.** A new key that a reader may ignore
+    is added to the same schema.
+  - **A key an older reader must not ignore comes with a new schema name**, as v3 replaced
+    v2.
+  - **A report has exactly one of `"contract"` and `"process"`.** A contract's report
+    is keyed by the contract's id and has its paths, lifecycles and scenarios; a
+    process module's is keyed by the process's id and has only its process. A reader
+    tells the two apart by that key, never by which other keys are missing: a
+    contract's keys were never promised in every v3 report, only in a contract's.
 
   ## Why not a `Jason.Encoder` implementation
 
@@ -23,7 +39,7 @@ defmodule EhOsContract.Conformance.Wire do
 
   | From | To | Because |
   | --- | --- | --- |
-  | module | `inspect/1` | a module is the code's name for itself; the report names the contract by its `id:` (`contract`), as every row of the log does since plan DD, ID4 (#178), and puts its module in `module` |
+  | module | `inspect/1` | a module is the code's name for itself; the report names the contract by its `id:` (`contract`), as every row of the log does, and puts its module in `module` |
   | atom | `to_string/1` | JSON has no atoms |
   | map key | `to_string/1` | JSON has no atom keys either |
   | `{n, unit}` | `%{"count" => n, "unit" => "day"}` | a two-element array would make the reader guess which slot is which |
@@ -34,10 +50,10 @@ defmodule EhOsContract.Conformance.Wire do
   meaning nobody can reconstruct.
   """
 
-  @doc """
-  The report, projected onto strings, numbers, booleans, `nil`, lists and
-  string-keyed maps.
-  """
+  # The report, projected onto strings, numbers, booleans, `nil`, lists and
+  # string-keyed maps.
+  # Called by conformance.ex.
+  @doc false
   @spec encode(term()) :: term()
   def encode(%DateTime{} = at), do: DateTime.to_iso8601(at)
 

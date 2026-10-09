@@ -236,6 +236,7 @@ defmodule EhOsContract.DomainInvariantsTest do
             invariant :"small\n", "G", violated_by: [-6], satisfied_by: [5]
             invariant true, "H", violated_by: [-7], satisfied_by: [6]
             invariant :supplied, "I", violated_by: [-8], satisfied_by: [7]
+            invariant :unknown, "J", violated_by: [-9], satisfied_by: [8]
           end
         """)
 
@@ -250,6 +251,7 @@ defmodule EhOsContract.DomainInvariantsTest do
       assert message =~ "would define module_info/1, which every module defines already"
       assert message =~ "invariant :type of value :money is named like a refusal of a field"
       assert message =~ "invariant :supplied of value :money is named like a refusal of a field"
+      assert message =~ "invariant :unknown of value :money is named like a refusal of a field"
     end
 
     test "points at the invariant" do

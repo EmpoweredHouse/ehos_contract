@@ -1,17 +1,16 @@
 defmodule EhOsContract.Implementations do
-  @moduledoc """
-  Which module implements which declaration of a v2 contract, found in the binary
-  that runs (v2 §10.5).
-
-  A contract names no implementation (v2 §8), so dispatch looks them up: every
-  module of the host's applications — `config :eh_os_contract, applications: [...]`,
-  and the contract's own — whose `__eh_os_implementation__/0` names a declaration.
-  The scan runs once per set of applications and is kept in `:persistent_term`; a
-  module added to a running node is found after a restart.
-
-  Two implementations of one declaration fail the lookup, as they fail the compile
-  (X8): which one ran would depend on the order of a scan.
-  """
+  # Which module implements which declaration of a v2 contract, found in the binary
+  # that runs (v2 §10.5).
+  #
+  # A contract names no implementation (v2 §8), so dispatch looks them up: every
+  # module of the host's applications — `config :eh_os_contract, applications: [...]`,
+  # and the contract's own — whose `__eh_os_implementation__/0` names a declaration.
+  # The scan runs once per set of applications and is kept in `:persistent_term`; a
+  # module added to a running node is found after a restart.
+  #
+  # Two implementations of one declaration fail the lookup, as they fail the compile
+  # (X8): which one ran would depend on the order of a scan.
+  @moduledoc false
 
   @doc """
   The module implementing `kind` `name` of the contract `model`. Raises when there
@@ -357,12 +356,11 @@ defmodule EhOsContract.Implementations do
   # into an inbox, never this log (D12), so its runs are not written here.
   #
   # A process module names each event by its contract, and its runs are filed under
-  # its id. An include the node cannot resolve — a contract it cannot load, an event
-  # that contract does not declare, a contract of another domain — is left out, as the
-  # rules between modules refuse it at compile time (X5). Those rules run per project,
-  # and a process module of a dependency listed in `:applications` is scanned here
-  # too, so the domain is checked again: another application's process gets no runs
-  # filed for this application's events.
+  # its id. Which includes count is `EhOsContract.Model.process_events/1`'s rule, the
+  # one the check and the deployment record read too: an include the node cannot
+  # resolve, or of a contract of another domain, is left out, so another application's
+  # process module listed in `:applications` gets no runs filed for this application's
+  # events.
   @doc false
   @spec runs_of([map()], [map()]) :: %{optional(String.t()) => [map()]}
   def runs_of(contracts, processes) do
@@ -374,23 +372,13 @@ defmodule EhOsContract.Implementations do
 
     of_modules =
       for process <- processes,
-          %{includes: includes} <- process.stages,
-          %{contract: contract, event: name} <- includes,
-          %{events: events, domain: domain} <- [loaded(contract)],
-          domain == process.domain,
-          %{type: type} <- [Enum.find(events, &(&1.name == name))],
+          %{type: type} <- EhOsContract.Model.process_events(process),
           do: {type, %{name: process.id, correlate: process.correlate}}
 
     (of_contracts ++ of_modules)
     |> Enum.uniq()
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Map.new(fn {type, runs} -> {type, Enum.sort(runs)} end)
-  end
-
-  defp loaded(contract) do
-    if Code.ensure_loaded?(contract) and
-         function_exported?(contract, :__eh_os_contract_model__, 0),
-       do: contract.__eh_os_contract_model__()
   end
 
   @doc """

@@ -17,9 +17,12 @@ defmodule EhOsContract.Web.TestHost.Resolver do
   end
 
   @impl true
-  def resolve_access(roles, _base_path) when is_list(roles) do
+  def resolve_access(roles, base_path) when is_list(roles) do
     cond do
       "eh_os_contract_admin" in roles -> :all
+      # Granted only where the host mounted things under `/admin`: what proves the
+      # resolver is given the path a client sees, the scope's prefix included.
+      "admin_area" in roles and String.starts_with?(base_path, "/admin/") -> :read_only
       "eh_os_contract_read" in roles -> :read_only
       true -> {:forbidden, "/"}
     end

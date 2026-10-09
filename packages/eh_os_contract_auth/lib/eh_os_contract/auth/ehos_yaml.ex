@@ -1,6 +1,7 @@
 defmodule EhOsContract.Auth.EhosYaml do
+  # The format and its versions as JSON Schemas: `eh-os` D-51. The rules of `sign_in`: D-69.
   @moduledoc """
-  Reads an application's `ehos.yaml` as EHOS reads it (`eh-os` D-51).
+  Reads an application's `ehos.yaml` as EHOS reads it.
 
   `ehos.yaml` says what a workload needs in order to run, and EHOS alone defines its
   format. `mix eh_os_contract.manifest` carries every key of it into the manifest
@@ -15,8 +16,8 @@ defmodule EhOsContract.Auth.EhosYaml do
   `schema` names, EHOS's own file, copied unchanged into this package's
   `priv/schemas/`; `versions/0` lists the versions there. The rules EHOS checks beside
   its schema, such as unique names and ports in `serves`, are left to EHOS, which
-  refuses them when the manifest is deployed, but for the two of `ehos.yaml/v2`'s
-  `sign_in` (`eh-os` D-69), which adding `sign_in` alone breaks: it needs an entry of
+  refuses them when the manifest is deployed, but for the two of `sign_in`, from
+  `ehos.yaml/v2` on, which adding `sign_in` alone breaks: it needs an entry of
   `serves` named `web` with `public: true`, where sign-in returns, and its
   `applications` never name the `application` the file names.
 

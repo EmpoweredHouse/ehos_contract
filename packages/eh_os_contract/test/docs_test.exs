@@ -13,13 +13,19 @@ defmodule EhOsContract.DocsTest do
       library refuses with, each of which a test in `test/dsl/` asserts;
     * every section, entity, argument and option of both DSLs says what it is, since
       the generated reference prints nothing else;
-    * every relative link between the pages leads to a page, and no two pages share
-      the basename ExDoc names a page after.
+    * every relative link between the pages leads to a page, and every anchor it
+      names is there; no two pages share the basename ExDoc names a page after;
+    * a refusal code in a prose page links to its family's table, and each family
+      has one;
+    * every page ExDoc builds is generated or prose, and every such page is built;
+    * every top-level entity and rule is covered by some prose page.
+
+  `MAINTAINING-DOCS.md` says what each failure asks of whoever changes the library.
   """
 
   use EhOsContract.DslCase, async: false
 
-  @pages ["README.md", "docs/contract.md", "docs/authorization.md"]
+  @pages EhOsContract.Docs.prose()
 
   defp read(path), do: File.read!(path)
 
@@ -136,6 +142,56 @@ defmodule EhOsContract.DocsTest do
     assert Enum.sort(untested) == []
   end
 
+  # A reader meets a code in prose and needs its row: each links to its family's table.
+  # Examples, headings and the refusal rows themselves are left as they are; a code is
+  # found with or without backticks, since `**X10**` reads as one too.
+  test "a refusal code in a prose page links to its family in the table" do
+    codes = codes_in_table()
+
+    problems =
+      for page <- @pages,
+          line <- page |> read() |> EhOsContract.Docs.Prose.outside_fences(),
+          not String.starts_with?(line, "#"),
+          not Regex.match?(~r/^\| `[A-Z]+[0-9]+` \|/u, line),
+          problem <- code_problems(line, codes),
+          do: "#{page}: #{problem}"
+
+    assert problems == []
+  end
+
+  # A link whose text is a code goes to that code's family, in contract.md or on it; any
+  # other mention of a code, a link's text taken out, is bare.
+  defp code_problems(line, codes) do
+    links =
+      for [code, family, target] <-
+            Regex.scan(~r/\[`?(([A-Z]+)[0-9]+)`?\]\(([^)]*)\)/u, line, capture: :all_but_first),
+          Map.has_key?(codes, code) or target =~ "#refusals-",
+          not Map.has_key?(codes, code) or
+            not Regex.match?(~r/(\A|contract\.md)#refusals-#{String.downcase(family)}\z/u, target),
+          do: "#{code} links to #{target}"
+
+    bare =
+      for [code] <-
+            Regex.scan(~r/\b([A-Z]+[0-9]+)\b/u, Regex.replace(~r/\[[^\]]*\]\([^)]*\)/u, line, ""),
+              capture: :all_but_first
+            ),
+          Map.has_key?(codes, code),
+          do: "#{code} is not a link"
+
+    links ++ bare
+  end
+
+  test "every family of refusal codes has its table's anchor" do
+    families = codes_in_table() |> Map.keys() |> Enum.map(&String.replace(&1, ~r/[0-9]+/u, ""))
+
+    missing =
+      for family <- Enum.uniq(families),
+          not (read("docs/contract.md") =~ ~s(<a id="refusals-#{String.downcase(family)}"></a>)),
+          do: family
+
+    assert missing == []
+  end
+
   # Every section and entity of an extension, with where it sits.
   defp declarations(extension) do
     Enum.flat_map(extension.sections(), &section([], &1))
@@ -242,5 +298,34 @@ defmodule EhOsContract.DocsTest do
           do: page
 
     assert missing == []
+  end
+
+  # A page about something renamed or removed is found the day it happens (#141).
+  test "what a prose page says it covers exists" do
+    names = EhOsContract.Docs.Prose.names()
+
+    unknown =
+      for page <- EhOsContract.Docs.prose(),
+          name <- EhOsContract.Docs.Prose.unknown(read(page), names),
+          do: "#{page}: #{name}"
+
+    assert unknown == []
+  end
+
+  # Otherwise a new hand-written page would be held to nothing.
+  test "every page ExDoc builds is generated, prose, or the changelog" do
+    generated = Enum.map(EhOsContract.Docs.generated(), &elem(&1, 0))
+    # `docs/rules.md` is the rules task's, `mix eh_os_contract.rules`.
+    known = generated ++ EhOsContract.Docs.prose() ++ ["docs/rules.md", "CHANGELOG.md"]
+
+    assert extras() -- known == []
+    # And the other way: a page the manifest lists but `mix.exs` leaves out is never built.
+    assert known -- extras() == []
+  end
+
+  # A new top-level entity or rule needs a page that explains it, beside its reference
+  # row: name it in a page's `<!-- covers: -->`, or write the page.
+  test "every top-level entity and every rule is covered by a prose page" do
+    assert EhOsContract.Docs.Prose.uncovered(Enum.map(@pages, &read/1)) == []
   end
 end

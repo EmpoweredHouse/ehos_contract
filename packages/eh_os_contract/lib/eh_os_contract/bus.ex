@@ -1,7 +1,7 @@
 defmodule EhOsContract.Bus do
   @moduledoc """
-  How an integration event leaves one application and reaches another (v2 §16, D11 and
-  D12): the seam between the engine and a transport.
+  How an integration event leaves one application and reaches another: the seam
+  between the engine and a transport.
 
   The engine is on both sides of it. The relay publishes what a `publish` declares,
   from the log, and advances its checkpoint when `c:publish/2` returns `:ok`; the
@@ -16,8 +16,8 @@ defmodule EhOsContract.Bus do
   ## What an adapter promises
 
   `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-  it. It cannot see the absence of an order, nor how a relay treats an error, which is
-  E12b's.
+  it. It cannot see the absence of an order, nor how a relay treats an error, which
+  `EhOsContract.Relay` describes.
 
   - **`:ok` from `c:publish/2` means the transport holds every message of the batch.**
     An error means it may hold some of them: the relay publishes the whole batch again,
@@ -28,8 +28,7 @@ defmodule EhOsContract.Bus do
     consumer that stops with a message in hand, get it again later. A consumer that
     comes back under the same name gets what was published while it was down.
   - **No order.** Messages may arrive in any order, and a redelivered one after a later
-    one. The relay publishes in log order, but nothing downstream may rely on it
-    (v2 §16, the note of 1 October 2026).
+    one. The relay publishes in log order, but nothing downstream may rely on it.
   - **No deduplication is required.** A message published twice may arrive twice. The
     inbox drops the second one by its key, so a transport that deduplicates (JetStream's
     `Nats-Msg-Id`) saves work and changes no result.
@@ -44,7 +43,7 @@ defmodule EhOsContract.Bus do
 
   Who may consume a name is not the engine's question either. The subscriber's
   `subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
-  and the transport adapter routes by the grant (`eh-os` D-41). An adapter that cannot
+  and the transport adapter routes by the grant. An adapter that cannot
   refuse an ungranted consumer grants every one.
 
   ## A message
@@ -68,12 +67,13 @@ defmodule EhOsContract.Bus do
   @typedoc """
   A durable consumer: its `name`, unique on the transport and kept across restarts; the
   message names it takes; and the handler each delivery goes to. The engine names an
-  inbox's consumer `"<contract id>:inbox:<name>"`, with the dots of the id in it (plan
-  DD, ID4, #178); an adapter whose transport takes fewer characters in a consumer's name
-  (JetStream's durable names take no `.`) maps it, the same way every time and never two
-  names to one: `shop.stock` and `shop_stock` sharing a durable consumer would each get
-  only part of the messages.
+  inbox's consumer `"<contract id>:inbox:<name>"`, with the dots of the id in it; an
+  adapter whose transport takes fewer characters in a consumer's name (JetStream's
+  durable names take no `.`) maps it, the same way every time and never two names to
+  one: `shop.stock` and `shop_stock` sharing a durable consumer would each get only part
+  of the messages.
   """
+  # A consumer's name carries the contract's id, dots and all (plan DD, ID4, #178).
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
   @doc """
@@ -108,7 +108,7 @@ defmodule EhOsContract.Bus do
   **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
   one inbox after another, so a start that waits on a transport that does not answer
   holds the host's boot for as long. A transport that is down is an error at once; the
-  engine starts the child again later (`EhOsContract.Inbox.Keeper`).
+  engine starts the child again later.
 
   **Its state and its exit reasons carry no credentials.** What OTP reports of a
   process that stops — its last state and its reason, in the log — is the adapter's,
@@ -117,10 +117,10 @@ defmodule EhOsContract.Bus do
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 
-  @doc """
-  The configured adapter and its options, from `config :eh_os_contract, bus:` — a
-  module or `{module, opts}` — or `nil` when there is none.
-  """
+  # The configured adapter and its options, from `config :eh_os_contract, bus:` — a
+  # module or `{module, opts}` — or `nil` when there is none.
+  # Called by subscription.ex, supervisor.ex.
+  @doc false
   @spec adapter() :: {module(), keyword()} | nil
   def adapter do
     case EhOsContract.Config.get(:bus) do

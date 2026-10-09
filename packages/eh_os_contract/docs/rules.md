@@ -177,8 +177,8 @@ Nothing reacts to or reads an event.
 
 No policy, effect or process manager takes it, no read model projects it, no boundary consults
 it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, one
-marked `terminal: true`, or one a unit's lifecycle starts on or moves on, has a reader: the
-conformance report. The unit's own `evolve` does not count, as ESDM's aggregate does not.
+marked `terminal: true`, one a unit's lifecycle starts on or moves on, or one a process module
+includes, has a reader: the conformance report. The unit's own `evolve` does not count, as ESDM's aggregate does not.
 
 ## `read-model-without-query`
 
@@ -296,7 +296,7 @@ no effect `calls:` it and no event `depends_on:` it.
 
 An operation of an external system is called by no effect.
 
-The external declares what it does (plan EP5a, ESDM's `capabilities`), and no effect of the
+The external declares what it does (ESDM's `capabilities`), and no effect of the
 domain's contracts `calls:` this operation. Either the operation is left over, or the effect
 that asks for it is not written yet. Asked only of a system some effect calls: one no effect
 calls says nothing of its operations, and `orphan-external-system` says it when nothing else

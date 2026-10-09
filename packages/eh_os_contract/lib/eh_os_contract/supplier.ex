@@ -1,7 +1,6 @@
 defmodule EhOsContract.Supplier do
   @moduledoc """
-  Where the values of the fields a contract declares `supplied_by: :host` come from
-  (plan T1).
+  Where the values of the fields a contract declares `supplied_by: :host` come from.
 
       config :eh_os_contract, supplier: MyApp.Supplier
 
@@ -37,7 +36,7 @@ defmodule EhOsContract.Supplier do
   `dispatch/3` and `record/3` from the application's own code are not asked: the
   struct it builds is trusted, as everything else in it is. A node with a contract
   declaring a supplied field does not start without an implementation configured,
-  one that is loaded and exports `supply/2` (`check!/1`, at the engine's boot); the
+  one that is loaded and exports `supply/2` (checked at the engine's boot); the
   Mix tasks that only read contracts do not ask.
   """
 
@@ -68,20 +67,18 @@ defmodule EhOsContract.Supplier do
   @doc "The values of `request.fields`, or why the host cannot give them."
   @callback supply(Actor.t(), Request.t()) :: {:ok, %{atom() => term()}} | {:error, term()}
 
-  @doc """
-  The configured implementation, `config :eh_os_contract, supplier: MySupplier`, or
-  `nil` when there is none.
-  """
+  # The configured implementation, `config :eh_os_contract, supplier: MySupplier`, or
+  # `nil` when there is none.
+  @doc false
   @spec impl() :: module() | nil
   def impl, do: EhOsContract.Config.get(:supplier)
 
-  @doc """
-  Refuses to go on when a contract of `models` declares a field `supplied_by: :host`
-  and the configured implementation is missing, not loaded, or does not export
-  `supply/2`: every request carrying the field would fail. Called when the engine
-  starts, so the configuration shows at deployment. Raises `ArgumentError` naming the
-  contract, the declaration and the fields.
-  """
+  # Refuses to go on when a contract of `models` declares a field `supplied_by: :host`
+  # and the configured implementation is missing, not loaded, or does not export
+  # `supply/2`: every request carrying the field would fail. Called when the engine
+  # starts, so the configuration shows at deployment. Raises `ArgumentError` naming the
+  # contract, the declaration and the fields.
+  @doc false
   @spec check!([map()]) :: :ok
   def check!(models) do
     impl = impl()
@@ -109,19 +106,21 @@ defmodule EhOsContract.Supplier do
   defp missing(impl),
     do: "the configured supplier #{inspect(impl)} is not a module that exports supply/2"
 
-  @doc "The fields of `fields` declared `supplied_by: :host`, in order."
+  # The fields of `fields` declared `supplied_by: :host`, in order.
+  # Called by dispatcher.ex.
+  @doc false
   @spec fields([map()]) :: [map()]
   def fields(fields), do: Enum.filter(fields, &(Map.get(&1, :supplied_by) == :host))
 
-  @doc """
-  Asks `impl` for `request`'s fields and holds the answer to their declarations
-  (`declared`, the fields as the model declares them; `values`, the domain's values by
-  name).
-
-  Raises `ArgumentError` when there is no implementation, when the answer is neither
-  `{:ok, map}` nor `{:error, reason}`, when it names other fields than were asked
-  for, and when a value does not fit its field — naming the field, never the value.
-  """
+  # Asks `impl` for `request`'s fields and holds the answer to their declarations
+  # (`declared`, the fields as the model declares them; `values`, the domain's values by
+  # name).
+  #
+  # Raises `ArgumentError` when there is no implementation, when the answer is neither
+  # `{:ok, map}` nor `{:error, reason}`, when it names other fields than were asked
+  # for, and when a value does not fit its field — naming the field, never the value.
+  # Called by dispatcher.ex.
+  @doc false
   @spec run(Actor.t(), Request.t(), [map()], map(), module() | nil, module() | nil) ::
           {:ok, %{atom() => term()}} | {:error, {:not_supplied, term()}}
   def run(actor, %Request{} = request, declared, values, domain, impl \\ impl()) do

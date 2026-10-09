@@ -93,11 +93,12 @@ defmodule EhOsContract.Dependency do
   observation only through the first (`EhOsContract.Trace`), so an observation about
   an external only an effect calls suspends nothing. It is recorded all the same,
   because the adapter that makes the call is the one wrapped in `observe/3`, and
-  refusing there would crash the effect in the middle of the outage it reports
-  (decided by the user, 29 September 2026, in the review of plan E11a).
+  refusing there would crash the effect in the middle of the outage it reports.
 
   A domain, or any module that is not a contract, is refused by name.
   """
+  # Recording an observation about an external only an effect calls was decided by the
+  # user, 29 September 2026, in the review of plan E11a.
   @spec unavailable!(module(), atom()) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil, DateTime.t()) :: t()
@@ -131,13 +132,13 @@ defmodule EhOsContract.Dependency do
     end
   end
 
-  @doc """
-  The moments each dependency of a contract was seen unavailable, by dependency name.
-
-  One query for the whole evaluation, then filtered per run in memory: a promise is
-  evaluated once per run, and a query per run would make the report's cost grow with the
-  client's traffic.
-  """
+  # The moments each dependency of a contract was seen unavailable, by dependency name.
+  #
+  # One query for the whole evaluation, then filtered per run in memory: a promise is
+  # evaluated once per run, and a query per run would make the report's cost grow with the
+  # client's traffic.
+  # Called by trace.ex.
+  @doc false
   @spec observations_by_external(module(), keyword()) :: %{String.t() => [DateTime.t()]}
   def observations_by_external(contract, opts \\ []) do
     name = EhOsContract.Model.fetch(contract).id

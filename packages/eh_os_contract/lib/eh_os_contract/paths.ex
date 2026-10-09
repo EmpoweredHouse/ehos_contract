@@ -1,50 +1,37 @@
 defmodule EhOsContract.Paths do
-  @moduledoc """
-  The declared paths of a v2 contract, and what the log says about each (v2 §13,
-  plan E7c).
-
-  A contract makes the command a node of its own, so a path is one **step** of
-  these kinds:
-
-  | Step | from | via | to |
-  | --- | --- | --- | --- |
-  | a command emits | the command | — | the event |
-  | a reaction issues | the event | the policy or process manager | the command |
-  | a policy issues on a received event | another application's event | the policy | the command |
-  | a timer issues | the timer | the process manager | the command |
-  | an effect acts | the event | the effect | — |
-
-  Each end is `%{kind, name, label}`, which is what `EhOsContract.Conformance`
-  hands on as `conformance.v3`, and what the graph draws.
-
-  ## Taken, waiting, failing
-
-  **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
-  P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
-  row names the command's row (`command_id`); a reaction issued a command when a row
-  of `eh_os_contract_commands` names its actor and, as its cause, an event of the
-  step's type. Another application's event never enters this log (D12): a policy on
-  it issued a command when the row names, as its cause, a row of
-  `eh_os_contract_inbox` that the policy's inbox took, bounded by when it took it.
-  Such a step is never failing or waiting: a delivery its policy fails on is rolled
-  back and delivered again by the transport, and leaves nothing here, so a path that
-  always fails reads as untraversed (#65).
-  An effect leaves nothing in the log when it acts, so whether it was
-  taken is not known, and its `taken` is `nil`: never untraversed, only waiting or
-  failing.
-
-  **Waiting** — "not yet", never "never" — has three sources, each counted apart
-  because each goes to a different person: events an ordered consumer has not
-  reached yet (`lag`), timers scheduled and not fired (`timers`), and effect jobs
-  not run yet (`effects`).
-
-  **Failing** has three too: commands that failed where the step runs, attributed
-  through the row's `failed_in` (`commands`, each failed command once); the consumer's subscription
-  stopped at an event it cannot apply (`subscription`); effect jobs Oban discarded
-  (`effects`). A command that failed in its decision, or in a read model's
-  projection, fails every step it emits: which of them it would have taken is not
-  known.
-  """
+  # The declared paths of a v2 contract, and what the log says about each (v2 §13,
+  # plan E7c).
+  #
+  # The steps, their ends and what taken, waiting and failing mean, as a host reads
+  # them in `report.paths`, are published in `EhOsContract.Conformance`'s moduledoc
+  # ("The shape"): change it with what is computed here. How each is counted:
+  #
+  # **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
+  # P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
+  # row names the command's row (`command_id`); a reaction issued a command when a row
+  # of `eh_os_contract_commands` names its actor and, as its cause, an event of the
+  # step's type. Another application's event never enters this log (D12): a policy on
+  # it issued a command when the row names, as its cause, a row of
+  # `eh_os_contract_inbox` that the policy's inbox took, bounded by when it took it.
+  # Such a step is never failing or waiting: a delivery its policy fails on is rolled
+  # back and delivered again by the transport, and leaves nothing here, so a path that
+  # always fails reads as untraversed (#65).
+  # An effect leaves nothing in the log when it acts, so whether it was
+  # taken is not known, and its `taken` is `nil`: never untraversed, only waiting or
+  # failing.
+  #
+  # **Waiting** — "not yet", never "never" — has three sources, each counted apart
+  # because each goes to a different person: events an ordered consumer has not
+  # reached yet (`lag`), timers scheduled and not fired (`timers`), and effect jobs
+  # not run yet (`effects`).
+  #
+  # **Failing** has three too: commands that failed where the step runs, attributed
+  # through the row's `failed_in` (`commands`, each failed command once); the consumer's subscription
+  # stopped at an event it cannot apply (`subscription`); effect jobs Oban discarded
+  # (`effects`). A command that failed in its decision, or in a read model's
+  # projection, fails every step it emits: which of them it would have taken is not
+  # known.
+  @moduledoc false
 
   import Ecto.Query
 

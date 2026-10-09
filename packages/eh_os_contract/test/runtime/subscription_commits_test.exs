@@ -46,7 +46,6 @@ defmodule EhOsContract.SubscriptionCommitsTest do
               type: "dispatch_rig.ledger.deposited",
               contract: "dispatch_rig.ledger",
               contract_version: "commits",
-              process: "ledger",
               actor: "system:commits",
               correlation_id: Ecto.UUID.generate(),
               occurred_at: DateTime.utc_now(),

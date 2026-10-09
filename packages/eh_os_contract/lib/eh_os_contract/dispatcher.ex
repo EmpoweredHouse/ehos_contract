@@ -1,7 +1,7 @@
 defmodule EhOsContract.Dispatcher do
   @moduledoc """
-  A command to a contract, from the actor who issues it to the events in the log
-  (v2 §11). `EhOsContract.dispatch/3` is how a host calls it.
+  A command to a contract, from the actor who issues it to the events in the log.
+  `EhOsContract.dispatch/3` is how a host calls it.
 
       EhOsContract.dispatch(Rehmed.Contracts.VisitSettlement,
         %RecordPayment{visit_id: "w-1", method: :card, amount: 20_000},
@@ -14,19 +14,19 @@ defmodule EhOsContract.Dispatcher do
      names in `by:`; a reaction's, one whose `issues:` names the command. A refusal
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
-  2. **What.** The command's fields against their types (`EhOsContract.Codec`), and
-     each value against the invariants of its domain value (plan EL2b):
+  2. **What.** The command's fields against their declared types, and each value
+     against the invariants of its domain value:
      `{:error, {:invalid, [{field, :required | :type | {:invariant, name}}]}}`,
      before anything is decided or written. A command that `creates:`
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
-     `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
+     `{:error, :idempotency_key_required}` without an idempotency key.
      An idempotency key, a caller's or a reaction's, is printable ASCII (`0x21`–`0x7E`)
-     of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
-     need, so a key never depends on what a text column, `jsonb` and an index entry
+     of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the
+     key's columns need, so a key never depends on what a text column, `jsonb` and an index entry
      happen to hold. An aggregate's stream id, its name and its identity escaped
      (`EhOsContract.Key`), is at most `EhOsContract.Key.budget/0` bytes, or
-     `{:error, :key_too_long}` (issue #98).
+     `{:error, :key_too_long}`.
   3. **Once.** A key belongs to the actor who sent it: another actor's command
      with the same key is its own, and never sees the first one's receipt. An
      idempotency key the actor already had accepted for the same command returns
@@ -37,12 +37,14 @@ defmodule EhOsContract.Dispatcher do
   4. **Decide.** What the unit decides over is read and folded through `evolve/2`,
      and the implementation decides with the command, its `__meta__` set. An
      aggregate reads its stream. A dynamic consistency boundary reads a query over
-     the log (v2 §10.1): its own events carrying its identity, and every event it
+     the log: its own events carrying its identity, and every event it
      `consults` — on the fields it `match`es, or every one of that type when it
      consults by `where:` alone — each decoded by the contract that declares it, in
      the log's order. Only what `evolve/2` folds is decoded, when its one catch-all
      is `def evolve(state, _), do: state`, and a boundary reads, and conflicts on,
-     those types alone (plan E11f-5).
+     those types alone. A command whose `actor_is` names a field of the state is
+     refused on its invariant before the decision when a credential's subject is not
+     the one that field holds; a `:system` actor and a reaction pass.
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit — their types, or the invariants of their values — raises: that is a
@@ -57,9 +59,9 @@ defmodule EhOsContract.Dispatcher do
      `EhOsContract.Key.budget/0`, the process's name and the instance id an event
      belongs to, home or included: `{:error, :key_too_long}`, with no row, in place
      of Postgres refusing the entry.
-  7. **Inside the transaction** (v2 §12): every read model delivered
-     `:in_transaction` projects the appended events, in order, then every such
-     policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
+  7. **Inside the transaction**: every read model delivered `:in_transaction`
+     projects the appended events, in order, then every such policy reacts, then
+     every such effect acts. What a
      policy issues is dispatched at once, in the same transaction, as the policy's
      own actor, with the event as its cause and a key derived from it,
      `"policy:<contract id>:<name>:<event id>:<index>"` — the contract too, since the
@@ -85,6 +87,9 @@ defmodule EhOsContract.Dispatcher do
   the exception it would have recorded.
   """
 
+  # Dispatch as v2 §11 has it. A boundary's read is the query over the log of v2 §10.1;
+  # decoding, and conflicting on, only the types `evolve/2` folds is plan E11f-5.
+
   import Ecto.Query
 
   require Logger
@@ -98,6 +103,7 @@ defmodule EhOsContract.Dispatcher do
     Consumer,
     Decision,
     EffectJob,
+    Entities,
     Event,
     Implementations,
     Key,
@@ -116,11 +122,21 @@ defmodule EhOsContract.Dispatcher do
 
   @attempts 3
 
+  @typedoc """
+  What is wrong with one field of a command: missing, not of its type, breaking an
+  invariant of its domain value, brought by the caller when the engine generates
+  it (`:generated`) or the host supplies it (`:supplied`), or naming an entity the
+  command reads that the host does not have (`:unknown`).
+  """
+  @type problem ::
+          {field :: atom(),
+           :required | :type | {:invariant, atom()} | :generated | :supplied | :unknown}
+
   @typedoc "What dispatch refuses a command with, before or instead of deciding."
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem() | {atom(), :generated | :supplied}]}
+          | {:invalid, [problem()]}
           | :idempotency_key_reused
           | :idempotency_key_required
           | :idempotency_key_invalid
@@ -130,16 +146,8 @@ defmodule EhOsContract.Dispatcher do
           | :key_too_long
           | {:not_supplied, term()}
 
-  @doc """
-  Dispatches `command`, a struct a v2 contract generated, to `contract`.
-
-  `opts`: `actor:` (an `EhOsContract.Actor`, required), `idempotency_key:` (opaque,
-  never personal data), `correlation_id:` (a UUID; a new one when missing) and
-  `causation_id:`. `supply: true`, which `call/3` sets, asks the
-  `EhOsContract.Supplier` for the fields declared `supplied_by: :host` once the actor
-  is authorized (plan T1); the application's own code leaves it out, and then fills
-  those fields itself — its struct is trusted, and checked as every other field is.
-  """
+  # Documented on `EhOsContract.dispatch/3`, which delegates here.
+  @doc false
   @spec dispatch(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, Rejection.t() | refusal()}
   def dispatch(contract, %module{} = command, opts) do
@@ -160,33 +168,17 @@ defmodule EhOsContract.Dispatcher do
          job = job(:command, model, declaration, command, ctx, values),
          {:ok, command} <- supplied(job),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
-         :ok <- stream_fits(model, declaration, command) do
-      run(%{job | command: command}, repo())
+         :ok <- stream_fits(model, declaration, command),
+         {:ok, reads} <- read_entities(%{job | command: command}) do
+      run(Map.merge(job, %{command: command, reads: reads}), repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
       refused -> refused
     end
   end
 
-  @doc """
-  Records `event`, which the contract declares `recorded_by:` — an observation, or
-  an integration's answer — without a decision (v2 §11, D6).
-
-  A credential's actor is asked of the `EhOsContract.Authorizer` for the event's
-  capability, `<domain>.<event>` (`EhOsContract.Model.capabilities/1`), as a
-  command's is — a person who saw something, reception marking the patient's
-  arrival. An event only `:system` actors record has no capability, and a
-  credential is refused `:missing_capability`. A `:system` actor records it when the
-  event's `recorded_by:` names it: an integration writing down what a system
-  answered. Until E9a a credential was
-  refused, because no capability named a recording. Otherwise it goes as a command
-  does — the fields checked, the
-  idempotency key honoured, the unit's stream version as the append's condition,
-  the consumers in the transaction run, the `accepted` row written with the type
-  `"record:<event>"` — only without a decider. An event of an aggregate whose
-  identity is generated is recorded only for one a command created:
-  `{:error, :not_created}` otherwise.
-  """
+  # Documented on `EhOsContract.record/3`, which delegates here.
+  @doc false
   @spec record(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, refusal() | :not_created}
   def record(contract, %module{} = event, opts) do
@@ -224,27 +216,8 @@ defmodule EhOsContract.Dispatcher do
     }
   end
 
-  @doc """
-  Asks a query of a v2 contract, and returns what its implementation answers (v2
-  §11, D10). Nothing is written: a read is not a fact.
-
-  A credential's actor is asked of the `EhOsContract.Authorizer` for the query's
-  capability, and for a scoped query with the value of the scope parameter, so a
-  value outside the grant is refused before the implementation runs. A `:system`
-  actor the query's `by:` names is the application's own code, and is not narrowed.
-
-  **Every row is checked again**: for a credential's actor, a row whose scope field
-  is not among the values the credential grants raises
-  `EhOsContract.Authorizer.OutsideScopeError`, so a wrong `where` cannot hand one
-  clinic another's rows. So do rows that are not the read model's.
-
-  **Read your writes** (v2 §11): `min_position:` — the `position` of a dispatch's
-  receipt — waits until the read model the query reads has taken that position,
-  polling its subscription row for up to `wait:` milliseconds (5000), and then
-  refuses with `{:error, :not_caught_up}` rather than answer from before the write.
-  A read model delivered in the transaction has taken every committed event, unless
-  it is being rebuilt.
-  """
+  # Documented on `EhOsContract.query/3`, which delegates here.
+  @doc false
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, refusal()}
   def query(contract, %module{} = params, opts) do
@@ -303,13 +276,13 @@ defmodule EhOsContract.Dispatcher do
   @typedoc "What `call/3` is asked: a command, a recording or a query, by its capability."
   @type call :: {:command | :record | :query, String.t()}
 
-  @doc """
-  The contract and the declaration `capability` names among `contracts`: a command,
-  a recording or a query, as `kind` says, under the name EHOS grants it by
-  (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
-  them declares as that kind — `<name>.subscribe` among them, which no caller
-  calls.
-  """
+  # The contract and the declaration `capability` names among `contracts`: a command,
+  # a recording or a query, as `kind` says, under the name EHOS grants it by
+  # (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
+  # them declares as that kind — `<name>.subscribe` among them, which no caller
+  # calls.
+  # Called by plug.ex.
+  @doc false
   @spec route([module()], :command | :record | :query, String.t()) ::
           {:ok, Model.t(), map()} | {:error, :not_found}
   def route(contracts, kind, capability) do
@@ -333,40 +306,8 @@ defmodule EhOsContract.Dispatcher do
     end)
   end
 
-  @doc """
-  The one way in for what arrives from outside the application's code: a capability's
-  name and the data as a caller sent it, with the credential it came with
-  (plan E12d). `EhOsContract.Plug` is one door onto it; a form, or a job that carries
-  a person's credential, is another.
-
-      EhOsContract.call(
-        {:command, "rehmed.record_payment"},
-        %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
-        actor: actor, idempotency_key: "req-81"
-      )
-
-  **Whether the caller may is answered first.** Data that is not a map, fields that do
-  not decode against the declaration, a correlation id that is not a UUID: each is
-  asked of the `EhOsContract.Authorizer` as the call would have been, so a caller
-  without the capability is refused whatever it sent, and learns nothing about the
-  declaration's fields; one with it is told what is wrong. Then it goes through
-  `dispatch/3`, `record/3` or `query/3`, so everything they check is checked here
-  the same way.
-
-  `input` is a map with string keys, as JSON decodes; a query's values may come as
-  text, as a query string carries them. `opts`: `actor:`, a credential's
-  `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
-  which dispatches structs; `contracts:`, the contracts this door serves (every
-  registered one by default); for a command or a recording `idempotency_key:` and
-  `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
-  to read a write, as `query/3` takes them — set by the door's own code, an integer
-  each, never taken from the caller: `wait:` bounds how long the call polls.
-
-  Besides what those three answer: `{:error, :not_found}` for a capability none of
-  the contracts declares as that kind, `{:error, :no_actor}` without a credential,
-  and, once the caller may, `{:error, :not_an_object}` and
-  `{:error, :correlation_id_is_not_a_uuid}`.
-  """
+  # Documented on `EhOsContract.call/3`, which delegates here.
+  @doc false
   @spec call(call(), term(), keyword() | map()) ::
           {:ok, Receipt.t() | [struct()] | struct() | nil}
           | {:error,
@@ -714,12 +655,11 @@ defmodule EhOsContract.Dispatcher do
   defp keyed(%{idempotency_key: key}),
     do: if(idempotency_key?(key), do: :ok, else: {:error, :idempotency_key_invalid})
 
-  @doc """
-  Whether `key` is an idempotency key the log holds: printable ASCII (`0x21`–`0x7E`) of 1 to
-  255 bytes, what a text column, `jsonb` and a btree entry all take. A command with any other
-  key is refused with `:idempotency_key_invalid`. `EhOsContract.Consumer.reaction_key/5`
-  holds the keys the library derives to it too.
-  """
+  # Whether `key` is an idempotency key the log holds: printable ASCII (`0x21`–`0x7E`) of 1 to
+  # 255 bytes, what a text column, `jsonb` and a btree entry all take. A command with any other
+  # key is refused with `:idempotency_key_invalid`. The keys the library derives for the
+  # commands a reaction issues hold to it too.
+  @doc false
   # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
   @spec idempotency_key?(term()) :: boolean()
   def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/
@@ -770,6 +710,24 @@ defmodule EhOsContract.Dispatcher do
         end
     end
   end
+
+  # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
+  # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
+  # host's lookup does not hold the transaction open. No reaction issues such a command
+  # (A8), so none is asked inside dispatch's own transaction, after its append lock; one
+  # the host dispatches inside a transaction of its own is asked inside that. As for supplied fields, a
+  # retry of a command already accepted under its key gets its receipt without asking: a
+  # row deleted since would turn the receipt into a refusal.
+  defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
+    with :new <- idempotent(repo(), job) do
+      Entities.read(job.model, job.declaration, job.command, job.ctx.actor)
+    else
+      {:ok, receipt} -> {:replayed, receipt}
+      refused -> refused
+    end
+  end
+
+  defp read_entities(_job), do: {:ok, %{}}
 
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do
@@ -867,7 +825,15 @@ defmodule EhOsContract.Dispatcher do
 
       if Lifecycle.admits?(declaration, status) do
         state = fold(job, unit, impl, folded_only(recorded, model, unit, folded), before, status)
-        decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
+
+        case person_named(declaration, state, ctx.actor) do
+          :ok ->
+            decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
+
+          {:refused, invariant} ->
+            write_row!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
+            {:error, %Rejection{invariant: invariant}}
+        end
       else
         # Plan LC2: outside the statuses its `from:` names, the command is refused on
         # its `or_rejects:` before the decision, as the decision would have refused it.
@@ -877,9 +843,29 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # Plan DD, A1 (#247): a command whose `actor_is` names a field of the state is issued
+  # only by the person that field holds, compared with the credential's subject, and is
+  # refused on its invariant before the decision otherwise, as a lifecycle's
+  # precondition is. A `:system` actor and a reaction act for the application, and pass.
+  # A field still empty names nobody, so every person is refused.
+  defp person_named(declaration, state, %Actor{kind: :credential, subject: subject}) do
+    case Decision.not_the_person(declaration, state, subject) do
+      nil -> :ok
+      invariant -> {:refused, invariant}
+    end
+  end
+
+  defp person_named(_declaration, _state, _actor), do: :ok
+
   defp decide(job, unit, impl, state, status, command, repo) do
     %{model: model, declaration: declaration} = job
-    decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
+    # A command that reads entities is decided with them (plan DD, T2a, #240).
+    args =
+      if Map.has_key?(declaration, :reads),
+        do: [command, state, job.reads],
+        else: [command, state]
+
+    decision = stage("decider", fn -> apply(impl, declaration.name, args) end)
 
     case decision do
       {:ok, events} when is_list(events) ->
@@ -1170,23 +1156,19 @@ defmodule EhOsContract.Dispatcher do
         Map.new(unit.identity, &{&1, Map.fetch!(job.command, &1)})
       )
 
-    state =
+    {events, befores} =
       if function_exported?(impl, :evolve, 2) do
         # Reading the stream back — its keys too — is part of evolving, for the failed row.
         rows = Enum.sort_by(recorded, & &1.position)
         events = stage("evolve", fn -> decode_all!(job, recorded) end)
-
-        rows
-        |> Enum.zip(events)
-        |> Enum.reduce(state, fn {row, event}, state ->
-          state = with_status(state, unit, Map.get(before, row.position))
-          stage("evolve", fn -> state!(impl.evolve(state, event), state, impl) end)
-        end)
+        {events, Enum.map(rows, &Map.get(before, &1.position))}
       else
-        state
+        {[], []}
       end
 
-    with_status(state, unit, status)
+    Decision.folded(unit, impl, state, events, befores, status, fn state, event, _index ->
+      stage("evolve", fn -> state!(impl.evolve(state, event), state, impl) end)
+    end)
   end
 
   # `evolve/2` returns the unit's state. Anything else is a defect, named without the
@@ -1207,10 +1189,6 @@ defmodule EhOsContract.Dispatcher do
     rows = Enum.sort_by(rows, & &1.position)
     {befores, status} = Lifecycle.walk(lifecycle, Enum.map(rows, &Map.get(names, &1.type)))
     {Map.new(Enum.zip(Enum.map(rows, & &1.position), befores)), status}
-  end
-
-  defp with_status(state, unit, status) do
-    if Lifecycle.of(unit), do: %{state | status: status}, else: state
   end
 
   # A boundary reads events of the sibling contracts it consults too, and each is
@@ -1336,7 +1314,12 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  defp run_key(process, struct) do
+  # The key of the run of `process` an event belongs to, or nil when it lacks a
+  # correlation field. Called by scenario_case.ex too, which files a promise scenario's
+  # givens as dispatch files events (plan DD, S2, #251).
+  @doc false
+  @spec run_key(map(), struct()) :: String.t() | nil
+  def run_key(process, struct) do
     values = Enum.map(process.correlate, &Map.get(struct, &1))
     if Enum.all?(values, &(&1 != nil)), do: Key.join([process.name | values])
   end
@@ -1390,7 +1373,8 @@ defmodule EhOsContract.Dispatcher do
             # whole history of a type, and coverage asks only which types were there.
             given_types: job |> Map.get(:given, []) |> Enum.map(& &1.type) |> Enum.uniq(),
             process: process_name(model),
-            instance_id: instance(model, job.command)
+            instance_id: instance(model, job.command),
+            inputs: Entities.recorded(model, job.declaration, Map.get(job, :reads, %{}))
           },
           fields
         )

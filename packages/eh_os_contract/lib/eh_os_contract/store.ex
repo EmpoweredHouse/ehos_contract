@@ -1,6 +1,6 @@
 defmodule EhOsContract.Store do
   @moduledoc """
-  Where events are appended and read back (v2 §10.1).
+  Where events are appended and read back.
 
   It isolates the SQL, not the transaction model. **Every call runs inside the
   caller's Ecto transaction**, so an append commits or rolls back together with
@@ -12,7 +12,7 @@ defmodule EhOsContract.Store do
     a reader has to wait for. A reader that follows `position > checkpoint` therefore
     never skips a row that commits late. Holes left by rolled-back appends are
     permanent and harmless. `EhOsContract.Store.Postgres` gets this from one
-    transaction-scoped advisory lock (v2 §10.2).
+    transaction-scoped advisory lock.
   - **A stream's versions have no gaps.** `{:stream, id, expected}` appends only when
     the stream's highest version is `expected` (`0`: the stream must not exist yet).
     The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
@@ -20,7 +20,7 @@ defmodule EhOsContract.Store do
     no stream: the condition does.
   - **`{:dcb, query, after_position}` appends only when nothing matching `query` was
     appended after `after_position`** — the head `c:read_query/2` returned with what it
-    read (v2 §10.4). Otherwise `{:error, :condition_failed}`, and nothing is written.
+    read. Otherwise `{:error, :condition_failed}`, and nothing is written.
     Such an append carries no stream: a consistency boundary is a query over the log,
     not a stream of its own.
   - **`:none` appends without a condition**, and then no entry may carry a stream.
@@ -69,7 +69,7 @@ defmodule EhOsContract.Store do
   `recorded_at`, which the store assigns. `id` is generated when missing.
 
   `runs` lists the runs the event belongs to besides its home run, as
-  `{process, instance_id}`: the processes of the contracts that `include` it (D7).
+  `{process, instance_id}`: the processes of the contracts that `include` it.
   The store writes every run as an `EhOsContract.EventRun` in the same append, the
   home run from the entry's `process` and `instance_id` when it has both.
   """
@@ -78,7 +78,8 @@ defmodule EhOsContract.Store do
   @typedoc "Events of any of `types` carrying all of `tags`; the items of a query are OR-ed."
   @type query_item :: %{types: [String.t(), ...], tags: [String.t()]}
 
-  @typedoc "What a consistency boundary reads: the items are OR-ed (v2 §10.1)."
+  # A consistency boundary's query, v2 §10.1.
+  @typedoc "What a consistency boundary reads: the items are OR-ed."
   @type query :: [query_item()]
 
   @typedoc "What must hold for an append to happen."
@@ -115,10 +116,9 @@ defmodule EhOsContract.Store do
               types :: [String.t()] | :all
             ) :: [Event.t()]
 
-  @doc """
-  The configured implementation: `config :eh_os_contract, store: MyStore`, and
-  `EhOsContract.Store.Postgres` when nothing is configured.
-  """
+  # The configured implementation: `config :eh_os_contract, store: MyStore`, and
+  # `EhOsContract.Store.Postgres` when nothing is configured.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:store)
 
@@ -126,20 +126,28 @@ defmodule EhOsContract.Store do
   @spec lock(module()) :: :ok
   def lock(repo), do: impl().lock(repo)
 
-  @doc "`c:append/3` on the configured implementation."
+  # `c:append/3` on the configured implementation.
+  # Called by dispatcher.ex, personal.ex, timer_job.ex.
+  @doc false
   @spec append(module(), [entry()], condition()) :: {:ok, [Event.t()]} | {:error, conflict()}
   def append(repo, entries, condition), do: impl().append(repo, entries, condition)
 
-  @doc "`c:read_query/2` on the configured implementation."
+  # `c:read_query/2` on the configured implementation.
+  # Called by dispatcher.ex.
+  @doc false
   @spec read_query(module(), query()) :: {[Event.t()], non_neg_integer()}
   def read_query(repo, query), do: impl().read_query(repo, query)
 
-  @doc "`c:read_stream/3` on the configured implementation."
+  # `c:read_stream/3` on the configured implementation.
+  # Called by dispatcher.ex, timer_job.ex.
+  @doc false
   @spec read_stream(module(), String.t(), non_neg_integer()) :: [Event.t()]
   def read_stream(repo, stream_id, after_version \\ 0),
     do: impl().read_stream(repo, stream_id, after_version)
 
-  @doc "`c:read_all/4` on the configured implementation."
+  # `c:read_all/4` on the configured implementation.
+  # Called by subscription.ex.
+  @doc false
   @spec read_all(module(), non_neg_integer(), pos_integer(), [String.t()] | :all) :: [Event.t()]
   def read_all(repo, after_position, limit, types \\ :all),
     do: impl().read_all(repo, after_position, limit, types)

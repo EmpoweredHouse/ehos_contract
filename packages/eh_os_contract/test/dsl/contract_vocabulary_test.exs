@@ -34,7 +34,7 @@ defmodule EhOsContract.ContractVocabularyTest do
     :supplied_by
   ]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
-  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :source]
+  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :reads, :source]
 
   defp unit(kind) do
     %{
@@ -46,6 +46,8 @@ defmodule EhOsContract.ContractVocabularyTest do
       [kind, :command, :field] => @field,
       # Plan EL2: ESDM's constraint, checked as an invariant is.
       [kind, :command, :constraint] => [:name, :label, :source],
+      # Plan DD, A1 (#247): the person who must issue it.
+      [kind, :command, :actor_is] => [:field, :or_rejects],
       [kind, :event] => @event,
       [kind, :event, :field] => @field,
       [kind, :stage] => [:name],
@@ -116,8 +118,9 @@ defmodule EhOsContract.ContractVocabularyTest do
           :unverified,
           :source
         ],
-        [:scenario] => [:description, :target, :actor, :rejected, :illustrates, :ended],
-        [:scenario, :given] => [:event, :data],
+        [:scenario] => [:description, :target, :actor, :as, :rejected, :illustrates, :ended],
+        [:scenario, :given] => [:event, :data, :at],
+        [:scenario, :given_entity] => [:entity, :data],
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],
         [:scenario, :query] => [:name, :data],

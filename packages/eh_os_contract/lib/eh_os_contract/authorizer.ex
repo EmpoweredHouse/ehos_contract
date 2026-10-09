@@ -1,14 +1,13 @@
 defmodule EhOsContract.Authorizer do
   @moduledoc """
-  The question dispatch and query ask about a credential's actor: may it do this
-  (v2 §11, D14)?
+  The question dispatch and query ask about a credential's actor: may it do this?
 
       config :eh_os_contract, authorizer: MyApp.Authorizer
 
   The engine asks it about every command, query and recorded event that arrives
   with a credential, before anything else runs. It is not asked about the
   application's own code — a `:system` actor or a reaction — which the contract
-  holds to its declarations instead (v2 §11, the note of 26 September 2026).
+  holds to its declarations instead.
 
   **The decision is `check/2`**, and it reads nothing but the actor and the request:
 
@@ -18,7 +17,7 @@ defmodule EhOsContract.Authorizer do
       grant nobody finished, and it is refused;
     * `{:error, :outside_scope}` — the value asked for is not among them.
 
-  Values are compared as the strings the credential carries (`eh-os` D-40), so a
+  Values are compared as the strings the credential carries, so a
   granted value that is not of the field's type matches nothing.
 
   **An implementation may narrow what a credential grants, and never widen it.**
@@ -29,19 +28,21 @@ defmodule EhOsContract.Authorizer do
   fails loudly instead of letting a call through. It follows that grants travel in
   the credential, as EHOS issues them.
 
-  A refusal writes nothing, neither to the log nor to `_commands`: the row that
+  A refusal writes nothing, neither to the log nor to the table of commands
+  (`eh_os_contract_commands`): the row that
   records it belongs to the implementation.
   """
 
   alias EhOsContract.Actor
 
   defmodule Request do
+    # A scoped command: plan E9c. Rows keyed by the contract's `id:`: plan DD, ID4 (#178).
     @moduledoc """
     What an actor asks to do: the capability, under the name EHOS grants it by
-    (`EhOsContract.Model.capabilities/1`), and for a scoped query or command (plan E9c) the dimension and the
-    value asked for, both as strings, in the form a credential's `scp` carries them.
-    `contract` is the contract's module and `contract_id` its `id:`, the name a record of
-    the decision stores, as every row of the engine does (plan DD, ID4, #178).
+    (`EhOsContract.Model.capabilities/1`), and for a scoped query or command the
+    dimension and the value asked for, both as strings, in the form a credential's
+    `scp` carries them. `contract` is the contract's module and `contract_id` its
+    `id:`, the name a record of the decision stores, as every row of the engine does.
     """
 
     @enforce_keys [:kind, :capability, :contract, :contract_id, :version]
@@ -105,10 +106,10 @@ defmodule EhOsContract.Authorizer do
     end
   end
 
-  @doc """
-  The values `actor`'s credential grants `capability` along `dimension`, or `[]`.
-  What a query's rows are checked against.
-  """
+  # The values `actor`'s credential grants `capability` along `dimension`, or `[]`.
+  # What a query's rows are checked against.
+  # Called by dispatcher.ex.
+  @doc false
   @spec granted(Actor.t(), String.t(), String.t()) :: [String.t()]
   def granted(%Actor{scopes: scopes}, capability, dimension) do
     case scopes do
@@ -117,10 +118,9 @@ defmodule EhOsContract.Authorizer do
     end
   end
 
-  @doc """
-  The configured implementation: `config :eh_os_contract, authorizer: MyAuthorizer`,
-  and `EhOsContract.Authorizer.Default` when nothing is configured.
-  """
+  # The configured implementation: `config :eh_os_contract, authorizer: MyAuthorizer`,
+  # and `EhOsContract.Authorizer.Default` when nothing is configured.
+  @doc false
   @spec impl() :: module()
   def impl, do: EhOsContract.Config.get(:authorizer)
 

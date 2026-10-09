@@ -1,15 +1,14 @@
 defmodule EhOsContract.Personal do
   @moduledoc """
-  Personal data in the log (v2 §14): each subject's data key, and the personal
+  Personal data in the log: each subject's data key, and the personal
   fields of events sealed with it.
 
   **A key per subject.** A subject — a person whose data may be erased, `subject
   :patient` in the domain — gets a data key, 32 random bytes, the first time an
   event carries its personal data. The key is stored in
   `eh_os_contract_subject_keys` only wrapped by `EhOsContract.Vault`. It is made
-  and wrapped before the append lock and stored under it (`prepare/2`,
-  `for_writing/2`), so two dispatches never create two and no writer waits on the
-  vault. Deleting a
+  and wrapped before the append lock and stored under it, so two dispatches never
+  create two and no writer waits on the vault. Deleting a
   subject's keys is what erases it: every personal field sealed with them reads
   back as `EhOsContract.Erased`.
 
@@ -63,26 +62,29 @@ defmodule EhOsContract.Personal do
   @typedoc "Data keys for writing: the newest version of each subject's key."
   @type current_keys :: %{{String.t(), String.t()} => {pos_integer(), binary()}}
 
-  @doc "Whether `model`, a contract's, declares an event with a personal field, at any depth."
+  # Whether `model`, a contract's, declares an event with a personal field, at any depth.
+  @doc false
   @spec declares?(map()) :: boolean()
   def declares?(model) do
     values = Codec.values(model.domain)
     Enum.any?(model.events, &Codec.personal?(&1.fields, values))
   end
 
-  @doc "The type of the event `erase/3` appends."
+  # The type of the event `erase/3` appends.
+  # Called by consumer.ex, implementations.ex, undeclared_types.ex.
+  @doc false
   @spec erased_type() :: String.t()
   def erased_type, do: @erased
 
-  @doc """
-  The contract name the event `erase/3` appends is filed under: the library's own, as
-  its type begins with, since no contract declares it (plan DD, ID4, #178).
-  """
+  # The contract name the event `erase/3` appends is filed under: the library's own, as
+  # its type begins with, since no contract declares it (plan DD, ID4, #178).
+  # Called by undeclared_types.ex.
+  @doc false
   @spec erased_contract() :: String.t()
   def erased_contract, do: "eh_os_contract"
 
   @typedoc """
-  What `prepare/2` read and wrapped before the append lock: the subjects' newest
+  What dispatch read and wrapped before the append lock: the subjects' newest
   keys, and a new key, already wrapped, for each subject that has none.
   """
   @type prepared :: %{
@@ -93,12 +95,12 @@ defmodule EhOsContract.Personal do
           }
         }
 
-  @doc """
-  The first half of `for_writing/2`, before the append lock: reads and unwraps the
-  subjects' keys, and makes and wraps a key for each subject without one. Every
-  call to the vault — a KMS's network round trip — happens here, so no writer
-  waits on it.
-  """
+  # The first half of `for_writing/2`, before the append lock: reads and unwraps the
+  # subjects' keys, and makes and wraps a key for each subject without one. Every
+  # call to the vault — a KMS's network round trip — happens here, so no writer
+  # waits on it.
+  # Called by dispatcher.ex.
+  @doc false
   @spec prepare(module(), [subject()]) :: prepared()
   def prepare(repo, subjects) do
     existing =
@@ -134,13 +136,13 @@ defmodule EhOsContract.Personal do
     %{subjects: subjects, existing: existing, created: created}
   end
 
-  @doc """
-  The second half, under the append lock: stores the keys `prepare/2` made, and
-  returns the newest key of each subject. Creating them here is what keeps two
-  dispatches from creating two keys for one subject. `{:error, :subject_erased}`
-  when one of the subjects is erased, and then nothing is stored: asked under the
-  lock, so no erasure commits between the answer and the append.
-  """
+  # The second half, under the append lock: stores the keys `prepare/2` made, and
+  # returns the newest key of each subject. Creating them here is what keeps two
+  # dispatches from creating two keys for one subject. `{:error, :subject_erased}`
+  # when one of the subjects is erased, and then nothing is stored: asked under the
+  # lock, so no erasure commits between the answer and the append.
+  # Called by dispatcher.ex.
+  @doc false
   @spec for_writing(module(), prepared()) :: {:ok, current_keys()} | {:error, :subject_erased}
   def for_writing(repo, prepared) do
     if MapSet.size(erased_among(repo, prepared.subjects)) == 0,
@@ -180,27 +182,8 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  Erases `subject` `id` (see the moduledoc), and says what it found:
-  `{:ok, :erased}` when it deleted the subject's data key, `{:ok, :no_data}` when no
-  key was there for that id — nothing personal was written for it, or its keys went
-  some other way; recorded all the same, so none is written later, but perhaps a
-  mistyped id, which the host can report — and `{:ok, :already_erased}` when it was
-  erased before, and then nothing is appended again. Never `{:error, _}`, so a request
-  can be repeated (the user's decision of 27 September 2026). `opts`: `actor:`, an
-  `EhOsContract.Actor`, required — who asked, recorded with the erasure and as the
-  event's actor. The event starts a correlation of its own: it continues no command.
-  Who may erase is the host's to decide: the engine asks no `EhOsContract.Authorizer`.
-
-  It reaches the read models of the configured applications,
-  `config :eh_os_contract, applications:`, as the registry and the subscriptions do:
-  a contract dispatched from outside them has read models `erase/3` does not know.
-  A read model fed after the transaction that is moved past the erasure by
-  `mix eh_os_contract.subscriptions --skip` keeps its copy; `--reset` rebuilds it,
-  and the replay forgets. Calling `erase/3` again appends nothing.
-
-  Raises when no domain of the host's contracts declares `subject`.
-  """
+  # Documented on `EhOsContract.erase/3`, which delegates here.
+  @doc false
   @spec erase(atom(), String.t(), keyword() | map()) ::
           {:ok, :erased | :no_data | :already_erased}
   def erase(subject, id, opts) when is_atom(subject) and is_binary(id) do
@@ -326,10 +309,10 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  The event `erase/3` appended, as a read model's `forget/2` is handed it:
-  `%EhOsContract.Erased{}` naming the subject.
-  """
+  # The event `erase/3` appended, as a read model's `forget/2` is handed it:
+  # `%EhOsContract.Erased{}` naming the subject.
+  # Called by consumer.ex.
+  @doc false
   #
   # A type no domain declares any more has no atom, and no read model holds its data:
   # it stays a string, so a replay goes past the event instead of stopping at it.
@@ -345,11 +328,10 @@ defmodule EhOsContract.Personal do
     %Erased{subject: subject, id: id}
   end
 
-  @doc """
-  Raises when a read model that projects personal data defines no `forget/2`: it
-  would keep an erased subject's data in the host's tables. What the engine runs at
-  boot, on every consumer of the host's contracts.
-  """
+  # Raises when a read model that projects personal data defines no `forget/2`: it
+  # would keep an erased subject's data in the host's tables. Called by the engine's
+  # supervisor at boot, on every consumer of the host's contracts.
+  @doc false
   @spec check_forgetting!([Implementations.consumer()]) :: :ok
   def check_forgetting!(consumers) do
     missing =
@@ -371,10 +353,10 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  Every data key of `subjects`, every version, in one query. A subject without keys
-  is absent: its sealed fields read back as `EhOsContract.Erased`.
-  """
+  # Every data key of `subjects`, every version, in one query. A subject without keys
+  # is absent: its sealed fields read back as `EhOsContract.Erased`.
+  # Called by consumer.ex.
+  @doc false
   @spec for_reading(module(), [subject()]) :: keys()
   def for_reading(_repo, []), do: %{}
 
@@ -403,10 +385,10 @@ defmodule EhOsContract.Personal do
     end)
   end
 
-  @doc """
-  The subjects among `subjects` that are erased, as `{type, id}` strings: the ones
-  whose missing key means `EhOsContract.Erased`. One query, none for no subjects.
-  """
+  # The subjects among `subjects` that are erased, as `{type, id}` strings: the ones
+  # whose missing key means `EhOsContract.Erased`. One query, none for no subjects.
+  # Called by consumer.ex.
+  @doc false
   @spec erased_among(module(), [subject()]) :: MapSet.t({String.t(), String.t()})
   def erased_among(_repo, []), do: MapSet.new()
 
@@ -445,10 +427,10 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  The function `EhOsContract.Codec.encode/4` seals the personal fields of an event
-  of `type` with, taking each subject's key from `keys`.
-  """
+  # The function `EhOsContract.Codec.encode/4` seals the personal fields of an event
+  # of `type` with, taking each subject's key from `keys`. Called by the dispatcher
+  # when it appends.
+  @doc false
   @spec sealer(current_keys(), String.t()) :: Codec.seal()
   def sealer(keys, type) do
     # Neither failure may say more than the field: `Map.fetch!/2` would print every
@@ -483,13 +465,13 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  @doc """
-  The function `EhOsContract.Codec.decode/4` opens the sealed fields of an event of
-  `type` with. A subject `keys` has no key for opens as `:erased` when it is among
-  `erased` (`erased_among/2`), and raises otherwise: a key that is gone without an
-  erasure is a key store that is not the log's — a partial restore, another
-  database — and reading on would turn good data into erased data for good.
-  """
+  # The function `EhOsContract.Codec.decode/4` opens the sealed fields of an event of
+  # `type` with. A subject `keys` has no key for opens as `:erased` when it is among
+  # `erased` (`erased_among/2`), and raises otherwise: a key that is gone without an
+  # erasure is a key store that is not the log's — a partial restore, another
+  # database — and reading on would turn good data into erased data for good. Called
+  # by `EhOsContract.Consumer` when it decodes a row of the log.
+  @doc false
   @spec opener(keys(), String.t(), MapSet.t({String.t(), String.t()})) :: Codec.open()
   def opener(keys, type, erased \\ MapSet.new()) do
     fn

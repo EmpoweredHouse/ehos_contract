@@ -1,86 +1,86 @@
 defmodule EhOsContract.Domain.Rules do
-  @moduledoc """
-  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D7.
-
-  **D5**, since plan EL2: an end of a directed relation may be an external system, the
-  other end then a context; **D1** refuses a name that is both a context and an
-  external.
-
-  **D1**, since plan EP5a: an external's operations are snake_case and named once
-  within it; since plan EP5b, so are an actor's responsibilities.
-
-  **D5**, since plan EP5b: a relation's `terms` are pairs, the word of its first end
-  and of its second, and each word of a context end is a term of that context's
-  glossary.
-
-  **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
-  value's, entity's and external's name is snake_case, as an actor's is (D4) and a
-  contract's (N1). The names become a value's module — `value :"a/b"` was
-  `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
-  map, where `context :"front desk"` broke the diagram, page paths, which refused such
-  a name only when the pages were generated, and the type a subject's key is stored
-  under. Two values whose names camelize alike, `:money_amount` and `:money_amount_` or
-  `:money__amount`, would be one module of invariants, `Values.MoneyAmount`, so they
-  are refused as two of one name, invariants or not. A value is not named after a type
-  Elixir builds in, `:map` or `:integer`, whose `@type` it could not define, nor after a
-  built-in field type, `:date`, which a field of that type would mean instead.
-
-  **D3** and **D6**, since the review of the domain's names: a value's and an
-  entity's field is snake_case and named once — a value's fields were not checked
-  for either, and one declared twice gave the JSON Schema the later definition with
-  the earlier one's `required`.
-
-  **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
-  contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
-  EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
-  system's is named in `by:` as a person's is.
-
-  **D1**, since the review of #139: a label given and blank, empty or only
-  whitespace, is refused on every declaration of the domain that has one, a field's
-  included (`EhOsContract.DslRules.blank_labels/2`), and **D3** refuses an enum
-  member's blank label. A label is what a page, a glossary and a report print in
-  place of the name.
-
-  **D8** (plan EL2): a field's `issued_by:` names an external of this domain, and so does
-  an entity's, which gives its injected identity (plan N1).
-
-  **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
-  once in its value, never clashing with what Elixir defines, as N2 holds a
-  contract's names, and never `:required`, `:type`, `:generated` or `:supplied`, the words a
-  refusal already puts where an invariant's name goes — and shows itself on
-  examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
-  plain data of the value's type, none is in both and none is in one twice, since
-  each names its test. And no example that keeps an invariant is one another
-  invariant breaks, of the value or of what it is made of, by its own
-  `violated_by:`.
-
-  **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
-  `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
-
-  **D6** (plan EM2): an entity belongs to a context this domain declares, and is
-  identified by its `identity`, a snake_case name the library injects as a required,
-  non-personal `:id` (plan N1), so no field of its own takes that name. Its fields are
-  well formed and named once, as a value's are, each `subject:` a declared subject,
-  and none is personal, nor of a value that holds personal data: an entity's rows are
-  the application's, outside the log, where erasure cannot reach them. Every
-  `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
-
-  **D13** (plan W2): the domain's `time_zone:` is a zone the time zone database
-  Elixir is configured with knows, since dispatch tags a timestamp's day there.
-
-  **D11** (plan, after #50): the domain's `name:` is the application's namespace, the
-  first segment of every name its contracts publish (`EhOsContract.Contract.Rules.Boundaries`)
-  and of every capability, so it is such a segment: lowercase letters, digits, `_` and
-  `-`, starting with a letter and not ending with a dash. A dot would put the domain's
-  publications inside another application's namespace — `:"acme.billing"` publishes
-  under `acme.` — and a name no publication could start with would be refused only at
-  each publication. The underscore stays, as it does in a publication's name: EHOS
-  names an application with a DNS label, which has none, but `:dispatch_rig` is a
-  domain the library's own tests publish from. The refusal points at `use`.
-
-  A transformer, not a verifier, and every violation is reported at once, in one
-  error that names each declaration's file and line (`EhOsContract.DslRules`).
-  """
+  # The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D7.
+  #
+  # **D5**, since plan EL2: an end of a directed relation may be an external system, the
+  # other end then a context; **D1** refuses a name that is both a context and an
+  # external.
+  #
+  # **D1**, since plan EP5a: an external's operations are snake_case and named once
+  # within it; since plan EP5b, so are an actor's responsibilities.
+  #
+  # **D5**, since plan EP5b: a relation's `terms` are pairs, the word of its first end
+  # and of its second, and each word of a context end is a term of that context's
+  # glossary.
+  #
+  # **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
+  # value's, entity's and external's name is snake_case, as an actor's is (D4) and a
+  # contract's (N1). The names become a value's module — `value :"a/b"` was
+  # `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
+  # map, where `context :"front desk"` broke the diagram, page paths, which refused such
+  # a name only when the pages were generated, and the type a subject's key is stored
+  # under. Two values whose names camelize alike, `:money_amount` and `:money_amount_` or
+  # `:money__amount`, would be one module of invariants, `Values.MoneyAmount`, so they
+  # are refused as two of one name, invariants or not. A value is not named after a type
+  # Elixir builds in, `:map` or `:integer`, whose `@type` it could not define, nor after a
+  # built-in field type, `:date`, which a field of that type would mean instead.
+  #
+  # **D3** and **D6**, since the review of the domain's names: a value's and an
+  # entity's field is snake_case and named once — a value's fields were not checked
+  # for either, and one declared twice gave the JSON Schema the later definition with
+  # the earlier one's `required`.
+  #
+  # **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
+  # contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
+  # EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
+  # system's is named in `by:` as a person's is.
+  #
+  # **D1**, since the review of #139: a label given and blank, empty or only
+  # whitespace, is refused on every declaration of the domain that has one, a field's
+  # included (`EhOsContract.DslRules.blank_labels/2`), and **D3** refuses an enum
+  # member's blank label. A label is what a page, a glossary and a report print in
+  # place of the name.
+  #
+  # **D8** (plan EL2): a field's `issued_by:` names an external of this domain, and so does
+  # an entity's, which gives its injected identity (plan N1).
+  #
+  # **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
+  # once in its value, never clashing with what Elixir defines, as N2 holds a
+  # contract's names, and never `:required`, `:type`, `:generated`, `:supplied` or `:unknown`
+  # (plan DD, T2a, #240), the words a
+  # refusal already puts where an invariant's name goes — and shows itself on
+  # examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
+  # plain data of the value's type, none is in both and none is in one twice, since
+  # each names its test. And no example that keeps an invariant is one another
+  # invariant breaks, of the value or of what it is made of, by its own
+  # `violated_by:`.
+  #
+  # **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
+  # `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
+  #
+  # **D6** (plan EM2): an entity belongs to a context this domain declares, and is
+  # identified by its `identity`, a snake_case name the library injects as a required,
+  # non-personal `:id` (plan N1), so no field of its own takes that name. Its fields are
+  # well formed and named once, as a value's are, each `subject:` a declared subject,
+  # and none is personal, nor of a value that holds personal data: an entity's rows are
+  # the application's, outside the log, where erasure cannot reach them. Every
+  # `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
+  #
+  # **D13** (plan W2): the domain's `time_zone:` is a zone the time zone database
+  # Elixir is configured with knows, since dispatch tags a timestamp's day there.
+  #
+  # **D11** (plan, after #50): the domain's `name:` is the application's namespace, the
+  # first segment of every name its contracts publish (`EhOsContract.Contract.Rules.Boundaries`)
+  # and of every capability, so it is such a segment: lowercase letters, digits, `_` and
+  # `-`, starting with a letter and not ending with a dash. A dot would put the domain's
+  # publications inside another application's namespace — `:"acme.billing"` publishes
+  # under `acme.` — and a name no publication could start with would be refused only at
+  # each publication. The underscore stays, as it does in a publication's name: EHOS
+  # names an application with a DNS label, which has none, but `:dispatch_rig` is a
+  # domain the library's own tests publish from. The refusal points at `use`.
+  #
+  # A transformer, not a verifier, and every violation is reported at once, in one
+  # error that names each declaration's file and line (`EhOsContract.DslRules`).
+  @moduledoc false
 
   use Spark.Dsl.Transformer
 
@@ -938,7 +938,7 @@ defmodule EhOsContract.Domain.Rules do
 
   # What `EhOsContract.Codec` already reports for a field in the place an invariant's
   # name takes in `{:invalid, …}` and in a 422's body.
-  @refusals [:required, :type, :generated, :supplied]
+  @refusals [:required, :type, :generated, :supplied, :unknown]
 
   defp d9(entities, _domain) do
     values = Map.new(for(%Value{} = value <- entities, do: {value.name, value}))

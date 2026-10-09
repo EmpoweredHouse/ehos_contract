@@ -11,6 +11,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand
   from `ehos_yaml/accepted/sign_in.yaml`, an `ehos.yaml/v2` that signs people in
   (`eh-os` D-69, issue #83).
+
+  `test/fixtures/manifests/ledger_people.v3.json` is that ledger written by hand from
+  `ehos_yaml/accepted/people.yaml`, an `ehos.yaml/v3` that reads the company's people
+  (`eh-os` D-81, issue #252).
   """
 
   use ExUnit.Case, async: true
@@ -300,6 +304,34 @@ defmodule EhOsContract.Auth.ManifestTest do
       assert_raise ArgumentError,
                    ~r/sign_in\.applications names ledger, the application this manifest is of/,
                    fn -> Manifest.build(file, [Ledger], [Entries]) end
+    end
+  end
+
+  describe "needs.people, from ehos.yaml/v3" do
+    test "makes an ehos.manifest/v3, carried as written, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_people.v3.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/people.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # A manifest keeps the meaning EHOS accepted it with: v2 never reads needs.people.
+    test "is the only thing that makes a v3: a v1 or v2 file still makes a v2" do
+      for version <- ["ehos.yaml/v1", "ehos.yaml/v2"] do
+        manifest =
+          Manifest.build(%{"schema" => version, "health" => @health}, [Ledger], [Entries])
+
+        assert manifest["schema"] == "ehos.manifest/v2"
+      end
+
+      file = %{"schema" => "ehos.yaml/v3", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v3"
     end
   end
 

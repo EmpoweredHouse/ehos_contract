@@ -1,20 +1,19 @@
 defmodule EhOsContract.Contract.Doc do
-  @moduledoc """
-  The documentation a generated behaviour carries (plan EP3): what the contract says of
-  each callback, where whoever writes the implementation reads it — `h`, the editor,
-  and a model generating the code.
-
-  A callback's `@doc` gives its declaration's label and source, what it may produce
-  (the events a command emits, the commands a reaction issues), the rules that hold
-  there and the scenarios it runs. Each rule says which rung of the contract's ladder
-  it stands on: a scenario shows it (it refuses on it, or it `illustrates:` it), or it
-  is prose alone. A behaviour's `@moduledoc` adds the declaration's label, source and
-  rules to the sentence that says how it is bound.
-
-  The text is built from the contract's model, and only from it, so the contract stays
-  the one place each sentence is written. Labels are quoted as declared, in the
-  client's language; the sentences around them are the engine's, in English.
-  """
+  # The documentation a generated behaviour carries (plan EP3): what the contract says of
+  # each callback, where whoever writes the implementation reads it — `h`, the editor,
+  # and a model generating the code.
+  #
+  # A callback's `@doc` gives its declaration's label and source, what it may produce
+  # (the events a command emits, the commands a reaction issues), the rules that hold
+  # there and the scenarios it runs. Each rule says which rung of the contract's ladder
+  # it stands on: a scenario shows it (it refuses on it, or it `illustrates:` it), or it
+  # is prose alone. A behaviour's `@moduledoc` adds the declaration's label, source and
+  # rules to the sentence that says how it is bound.
+  #
+  # The text is built from the contract's model, and only from it, so the contract stays
+  # the one place each sentence is written. Labels are quoted as declared, in the
+  # client's language; the sentences around them are the engine's, in English.
+  @moduledoc false
 
   @doc """
   The `@moduledoc` of the behaviour of the declaration `name` of `kind`: `intro`,
@@ -44,6 +43,7 @@ defmodule EhOsContract.Contract.Doc do
       "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
       list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
       issued_in(command),
+      issued_by_person(command),
       rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
       scenarios(own)
     ])
@@ -176,6 +176,15 @@ defmodule EhOsContract.Contract.Doc do
 
   defp issued_in(_command), do: nil
 
+  # Plan DD, A1 (#247): the person who must issue it, whom the engine compares before
+  # this callback runs — the callback never sees the credential, so it cannot.
+  defp issued_by_person(%{actor_is: %{field: field, or_rejects: invariant}}) do
+    "Issued only by the person `state.#{field}` names: anyone else is refused on " <>
+      "`#{invariant}` by the engine before this callback runs."
+  end
+
+  defp issued_by_person(_command), do: nil
+
   defp declaration(model, kind, name) when kind in [:aggregate, :dcb],
     do: Enum.find(model.units, &(&1.name == name and &1.kind == kind))
 
@@ -236,10 +245,14 @@ defmodule EhOsContract.Contract.Doc do
 
   defp rules(_model, _kind, _declaration), do: []
 
+  # The engine's own refusal on an `actor_is` invariant is not the callback's to make.
   defp command_rules(model, kind, unit, command) do
+    engine = for %{or_rejects: invariant} <- [Map.get(command, :actor_is)], do: invariant
+
     for(
       i <- unit.invariants,
       i.name in command.rejects,
+      i.name not in engine,
       do: {"invariant", i, refused_in(model, kind, unit, nil, i)}
     ) ++
       for k <- Map.get(command, :constraints, []),

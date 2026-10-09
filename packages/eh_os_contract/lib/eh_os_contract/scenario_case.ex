@@ -1,13 +1,17 @@
 defmodule EhOsContract.ScenarioCase do
+  # Scenarios as tests (v2 §4.5). The successor of `EhOsContract.ContractExample`, and
+  # in `lib/` for the reason that one was; its assertions keep that one's semantics.
+  # A process manager's `state` is plan EP4's; a domain's examples and a domain
+  # service's rules are plan EL2b's. A contract without code is legal (v2 D3).
   @moduledoc """
-  One test per scenario of a v2 contract, run against its implementation (v2 §4.5):
+  One test per scenario of a contract, run against its implementation:
 
       defmodule Rehmed.VisitSettlementScenariosTest do
         use EhOsContract.ScenarioCase, contract: Rehmed.Contracts.VisitSettlement
       end
 
-  The successor of `EhOsContract.ContractExample`, and in `lib/` for the reason that
-  one is: a consumer's suite has to be able to call it.
+  It is in `lib/`, not in a test support directory, because a consumer's suite has
+  to be able to call it.
 
   **What a scenario runs.** For a command to a unit, the unit's state starts from
   its defaults and folds every `given` through `evolve/2`; the command's callback
@@ -15,22 +19,22 @@ defmodule EhOsContract.ScenarioCase do
   event; to a process manager, its state folds the givens and the reaction's
   callback, or the timer's, is called with it. `sets`, `cancels` and `ended` are the
   declaration's, which S6 has already compared with the scenario when the contract
-  compiled; what runs is what the code decides. A process manager's `state` (plan
-  EP4) is the run after the step, as the engine keeps it: the delivered event folded
-  through `evolve/2` after the reaction decided, and after a timer the state as it
-  was. It holds the fields the scenario names, and any others. Only a step the engine
+  compiled; what runs is what the code decides. A process manager's `state` is the
+  run after the step, as the engine keeps it: the delivered event folded through
+  `evolve/2` after the reaction decided, and after a timer the state as it was. It
+  holds the fields the scenario names, and any others. Only a step the engine
   would take holds a state: a run starts on a `starts_on` event and takes nothing
   after an `ends_on` one, so a given before the start, or a trigger after the end,
   fails the scenario. Any process manager's scenario whose events name two runs in
   their correlation fails too, before anything is folded.
 
-  **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
-  expects, and the commands it says are issued, **appear among those produced, in
-  that order — a subsequence, not equality**; each with the fields its data names,
-  and any others. Pinning every event made an example of one rule break whenever
-  the flow grew by one event. `rejected` asserts the rejection on exactly that
-  invariant. Whatever a decision returns is also held to its declaration: an event
-  the command does not emit fails the scenario, whatever it expects.
+  **What it asserts.** The events a scenario expects, and the commands it says are
+  issued, **appear among those produced, in that order — a subsequence, not equality**;
+  each with the fields its data names, and any others. Pinning every event would break a
+  scenario of one rule whenever the flow grew by one event. `rejected` asserts the
+  rejection on exactly that invariant. Whatever a decision returns is also held to its
+  declaration: an event the command does not emit fails the scenario, whatever it
+  expects.
 
   **A query's scenario** (ESDM's read model scenario) projects every `given`
   through the implementation of the read model the query reads, asks the query with
@@ -43,17 +47,21 @@ defmodule EhOsContract.ScenarioCase do
   test module with a query's scenario checks out an Ecto sandbox connection when the
   repo's pool is the sandbox.
 
-  **Data.** Scenario data is plain data (`EhOsContract.Contract.Data`): an ISO
-  8601 string becomes the `DateTime` or `Date` of a `:timestamp` or `:date` field
+  **Data.** Scenario data is plain data, as everything a contract compiles to is:
+  a timestamp is written as an ISO 8601 string with an offset,
+  `"2026-09-01T09:00:00Z"`, a date as an ISO 8601 date, `"2026-09-01"`, and a decimal
+  as an integer or a string of digits, never as a struct. An ISO 8601 string becomes
+  the `DateTime` or `Date` of a `:timestamp` or `:date` field
   here, and a digit string or an integer the `Decimal` of a `:decimal`, including
   inside a domain value. The unit's identity is the scenario's own: the value a
   scenario gives it anywhere, or `"scenario"`. Every given, and then the trigger,
   gets `__meta__` with `occurred_at` a minute after the one before, from
-  2026-01-01 09:00 UTC, and the command its scenario's `actor`. A given also has an
+  2026-01-01 09:00 UTC, unless the given says when it happened, `at:
+  "2026-09-07T09:00:00Z"`; the command gets its scenario's `actor`. A given also has an
   `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
   log has.
 
-  **A domain's examples** (plan EL2b). `use EhOsContract.ScenarioCase, domain:
+  **A domain's examples.** `use EhOsContract.ScenarioCase, domain:
   Rehmed.Domain` writes one test per example of every value's invariant, against the
   module bound with `use Rehmed.Domain, value: :name`: the invariant's function
   answers `false` for each of its `violated_by:`, and every invariant of the value
@@ -61,22 +69,29 @@ defmodule EhOsContract.ScenarioCase do
   as dispatch asks them — since a value that keeps one invariant and breaks another
   is no example of a value. An example is plain data, cast as a scenario's is.
 
-  **A domain service's rules** (plan EL2b). Every example of a rule,
+  **A domain service's rules.** Every example of a rule,
   `examples: [{[1, 3], 0}]`, is a test too: the function, called through the module
   the contract generates, returns the example's result — compared as values, so a
   decimal `2.50` is `2.5`.
 
+  **A process's promise.** `use EhOsContract.ScenarioCase, process:
+  Rehmed.Processes.ClinicalVisit` writes one test per scenario of the process module,
+  each judging its promise from the givens at the trigger's moment, with the
+  scenario's outages, and asserting the verdict and the route it names
+  (`judge/2`). No implementation runs: a promise is judged on events, whoever decided
+  them.
+
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
-  one fails its scenario with that reason: a contract without code is legal (D3), and
+  one fails its scenario with that reason: a contract without code is legal, and
   a scenario test of one is not.
   """
 
   import ExUnit.Assertions
 
   alias EhOsContract.{Decision, Lifecycle, Meta, Model, Rejection}
-  alias EhOsContract.Contract.{Callbacks, Data}
+  alias EhOsContract.Contract.{Callbacks, Data, Rules}
 
   @epoch ~U[2026-01-01 09:00:00Z]
 
@@ -85,7 +100,37 @@ defmodule EhOsContract.ScenarioCase do
 
   @doc false
   defmacro __using__(opts) do
-    if Keyword.has_key?(opts, :domain), do: domain_case(opts), else: contract_case(opts)
+    cond do
+      Keyword.has_key?(opts, :domain) -> domain_case(opts)
+      Keyword.has_key?(opts, :process) -> process_case(opts)
+      true -> contract_case(opts)
+    end
+  end
+
+  # Plan DD, S2 (#251).
+  defp process_case(opts) do
+    process = Keyword.fetch!(opts, :process)
+
+    unless match?(%{kind: :process}, EhOsContract.Model.fetch(Macro.expand(process, __ENV__))),
+      do:
+        raise(
+          ArgumentError,
+          "process: #{inspect(process)} is not a process module, `use EhOsContract.Process`; " <>
+            "a contract's scenarios run with contract:"
+        )
+
+    async = Keyword.get(opts, :async, true)
+
+    quote do
+      use ExUnit.Case, async: unquote(async)
+
+      for scenario <- Map.get(EhOsContract.Model.fetch(unquote(process)), :scenarios, []) do
+        @eh_os_contract_scenario scenario
+        test "scenario: #{scenario.description}" do
+          EhOsContract.ScenarioCase.judge(unquote(process), @eh_os_contract_scenario)
+        end
+      end
+    end
   end
 
   defp domain_case(opts) do
@@ -159,7 +204,8 @@ defmodule EhOsContract.ScenarioCase do
           result: term()
         }
 
-  @doc "Every example of every rule of `contract`'s domain services, in declaration order."
+  # Every example of every rule of `contract`'s domain services, in declaration order.
+  @doc false
   @spec rule_examples(module()) :: [rule_example()]
   def rule_examples(contract) do
     for service <- Model.fetch(contract).domain_services,
@@ -176,12 +222,11 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  @doc """
-  Runs one example of a domain service's rule of `contract`: calls the function
-  through the module the contract generates — so its arguments and result are held
-  to their types and invariants, as a decision's call is — with the implementation
-  found as a scenario's is, and asserts it returns the example's result.
-  """
+  # Runs one example of a domain service's rule of `contract`: calls the function
+  # through the module the contract generates — so its arguments and result are held
+  # to their types and invariants, as a decision's call is — with the implementation
+  # found as a scenario's is, and asserts it returns the example's result.
+  @doc false
   @spec run_rule_example(module(), rule_example(), [module()] | nil) :: true
   def run_rule_example(contract, example, implementations \\ nil) do
     model = Model.fetch(contract)
@@ -240,7 +285,8 @@ defmodule EhOsContract.ScenarioCase do
           data: term()
         }
 
-  @doc "Every example of every invariant of `domain`'s values, in declaration order."
+  # Every example of every invariant of `domain`'s values, in declaration order.
+  @doc false
   @spec examples(module()) :: [example()]
   def examples(domain) do
     for value <- Model.fetch(domain).values,
@@ -250,7 +296,8 @@ defmodule EhOsContract.ScenarioCase do
         do: %{value: value.name, invariant: invariant.name, kind: kind, data: data}
   end
 
-  @doc "The name of an example's test: a value's invariant's, or a rule's."
+  # The name of an example's test: a value's invariant's, or a rule's.
+  @doc false
   @spec describe(example() | rule_example()) :: String.t()
   def describe(%{rule: rule} = example) do
     "rule #{inspect(rule)} of #{example.service}.#{example.function}: #{call(example)} returns " <>
@@ -264,11 +311,10 @@ defmodule EhOsContract.ScenarioCase do
       "#{shown(example.data)} #{verb} it"
   end
 
-  @doc """
-  Runs one example of a value's invariant of `domain` against the value's
-  implementation. `implementations`, when given, is where it is looked for instead
-  of the domain's application.
-  """
+  # Runs one example of a value's invariant of `domain` against the value's
+  # implementation. `implementations`, when given, is where it is looked for instead
+  # of the domain's application.
+  @doc false
   @spec run_example(module(), example(), [module()] | nil) :: true
   def run_example(domain, example, implementations \\ nil) do
     model = Model.fetch(domain)
@@ -331,11 +377,10 @@ defmodule EhOsContract.ScenarioCase do
     {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
   end
 
-  @doc """
-  Checks out an Ecto sandbox connection of `config :eh_os_contract, :repo` for the
-  test, when that repo's pool is the sandbox: a query's scenario projects into the
-  host's tables.
-  """
+  # Checks out an Ecto sandbox connection of `config :eh_os_contract, :repo` for the
+  # test, when that repo's pool is the sandbox: a query's scenario projects into the
+  # host's tables.
+  @doc false
   @spec checkout() :: :ok
   def checkout do
     with repo when repo != nil <- EhOsContract.Config.get(:repo),
@@ -357,8 +402,14 @@ defmodule EhOsContract.ScenarioCase do
     model = Model.fetch(contract)
     implementation = implementation!(model, scenario.target, implementations)
     identity = identity(scenario)
-    times = Stream.iterate(@epoch, &DateTime.add(&1, 60)) |> Enum.take(length(scenario.given) + 1)
-    {given_times, [now]} = Enum.split(times, length(scenario.given))
+    # S3 has refused an `at:` that is no timestamp, so every moment is one.
+    given_times = Rules.Scenarios.moments(scenario.given)
+
+    now =
+      case List.last(given_times) do
+        nil -> @epoch
+        last -> DateTime.add(last, 60)
+      end
 
     # A given is an event read back from a log, as dispatch hands one to its consumers:
     # with an id and a position, in the order the scenario lists them.
@@ -369,6 +420,94 @@ defmodule EhOsContract.ScenarioCase do
       end
 
     run(model, scenario, implementation, identity, givens, now, implementations)
+  end
+
+  @doc """
+  Judges one scenario of a process module's promise, and asserts the verdict it says,
+  and the route when it names one.
+
+  Each given is built as the event of the contract that declares it, dated as the
+  scenario dates it, and filed into its run by the process's `correlate`, as dispatch
+  files it; a given without every correlation field belongs to no run. The promise is
+  judged by `EhOsContract.Trace.judge/3` at the trigger's moment, with the scenario's
+  outages: the verdict the conformance report would give these events. Nothing reads
+  the database. The givens make exactly one judged run, or the scenario fails saying
+  how many; the compiler has made sure that one of them opens the promise and that
+  each carries the process's correlation fields.
+  """
+  @spec judge(module(), map()) :: true
+  def judge(process, scenario) do
+    model = Model.fetch(process)
+    run = Model.process(model)
+    trace = EhOsContract.Trace.trace(model, scenario.promise.name)
+    data = Enum.map(scenario.given, & &1.data)
+    identity = fn field -> Enum.find_value(data, &Map.get(&1, field)) end
+
+    occurrences =
+      for {given, at} <- Enum.zip(scenario.given, Rules.Scenarios.moments(scenario.given)),
+          {contract, declaration} = Model.declaring(model, given.event),
+          event =
+            message(Model.fetch(contract), :event, given.event, given.data, identity, at, nil),
+          instance_id = EhOsContract.Dispatcher.run_key(run, event),
+          instance_id != nil do
+        %{
+          instance_id: instance_id,
+          type: declaration.type,
+          occurred_at: at,
+          payload: payload(trace, event)
+        }
+      end
+
+    verdicts =
+      EhOsContract.Trace.judge(trace, occurrences,
+        now: timestamp!(scenario.promise.at),
+        outages: Enum.map(scenario.outages, &timestamp!(&1.at))
+      )
+
+    case verdicts do
+      [verdict] ->
+        expected =
+          [verdict: scenario.verdict] ++ if(scenario.via, do: [via: scenario.via], else: [])
+
+        got = Enum.map(expected, fn {key, _} -> {key, Map.fetch!(verdict, key)} end)
+
+        assert got == expected,
+               "promise #{inspect(scenario.promise.name)}, judged at #{scenario.promise.at}, " <>
+                 "is #{shown_verdict(verdict)}, and the scenario says #{shown_verdict(Map.new(expected))}; " <>
+                 "its window opened at #{DateTime.to_iso8601(verdict.from_at)}" <>
+                 if(verdict.deadline_at,
+                   do: " and closes at #{DateTime.to_iso8601(verdict.deadline_at)}",
+                   else: " and never closes"
+                 )
+
+      many ->
+        flunk(
+          "the givens make #{length(many)} judged runs, " <>
+            "#{inspect(Enum.map(many, & &1.instance_id))}, and a scenario of a promise is " <>
+            "about one"
+        )
+    end
+  end
+
+  defp shown_verdict(%{verdict: verdict} = v) do
+    case Map.get(v, :via) do
+      nil -> inspect(verdict)
+      via -> "#{inspect(verdict)} via #{inspect(via)}"
+    end
+  end
+
+  # What pairs an occurrence with its item, for a promise made per item: the identity
+  # fields, keyed by strings as the log stores them. One encoding on both sides is all
+  # pairing needs.
+  defp payload(%{identity: nil}, _event), do: %{}
+
+  defp payload(%{identity: identity}, event),
+    do: Map.new(identity, &{&1, Map.get(event, String.to_existing_atom(&1))})
+
+  # The compiler has refused a moment that is no timestamp.
+  defp timestamp!(at) do
+    {:ok, at, _offset} = DateTime.from_iso8601(at)
+    at
   end
 
   defp run(model, %{target: %{kind: :query}} = scenario, impl, _identity, givens, _now, found) do
@@ -426,6 +565,65 @@ defmodule EhOsContract.ScenarioCase do
   defp run(model, scenario, impl, identity, givens, now, _found),
     do: run(model, scenario, impl, identity, givens, now)
 
+  # Plan DD, T2a (#240): a command that reads entities is decided with their rows, as
+  # dispatch decides it: each the scenario's `given_entity` of that entity whose identity
+  # is the value the command names, its fields cast as the host's row would be.
+  defp reads(model, %{reads: [_ | _] = reads} = declaration, command, scenario) do
+    domain = Model.fetch(model.domain)
+
+    rows =
+      Map.new(reads, fn {name, field} ->
+        %{refers_to: entity} = Enum.find(declaration.fields, &(&1.name == field))
+        declared = Enum.find(domain.entities, &(&1.name == entity))
+        id = Map.fetch!(command, field)
+
+        given =
+          Enum.find(
+            Map.get(scenario, :given_entities, []),
+            &(&1.entity == entity and Map.get(&1.data, declared.identity) == id)
+          ) ||
+            flunk(
+              "command #{inspect(declaration.name)} reads #{inspect(entity)} " <>
+                "#{inspect(id)}, and the scenario gives no given_entity #{inspect(entity)} " <>
+                "with #{inspect(declared.identity)}: #{inspect(id)}"
+            )
+
+        {name, row!(model, declared, given.data)}
+      end)
+
+    [rows]
+  end
+
+  defp reads(_model, _declaration, _command, _scenario), do: []
+
+  # The invariant a command is refused on when the person a scenario names with `as` is
+  # not the one its `actor_is` field of the state holds, by the rule dispatch applies to a
+  # credential (`Decision.not_the_person/3`). A scenario that names nobody is one of a
+  # `:system` actor, which dispatch does not compare; a person's actor must name someone
+  # (X2) (plan DD, A1, #247).
+  defp not_the_person(declaration, state, person) when is_binary(person),
+    do: EhOsContract.Decision.not_the_person(declaration, state, person)
+
+  defp not_the_person(_declaration, _state, nil), do: nil
+
+  # The row as dispatch hands it over: every declared field, `nil` where the scenario
+  # leaves an optional one out, and each value held to its domain value's invariants.
+  defp row!(model, declared, data) do
+    cast = cast_data(declared.fields, data, domain(model))
+    row = Map.new(declared.fields, &{&1.name, Map.get(cast, &1.name)})
+
+    case EhOsContract.Codec.problems(declared.fields, row, domain(model), model.domain) do
+      [] ->
+        row
+
+      problems ->
+        flunk(
+          "given_entity #{inspect(declared.name)}: the row does not fit its declaration: " <>
+            inspect(problems)
+        )
+    end
+  end
+
   # Every expected row matches a different answered row, trying each pairing: a row
   # that names fewer fields may match several, and the first fit need not be the one
   # that lets the others fit.
@@ -465,7 +663,15 @@ defmodule EhOsContract.ScenarioCase do
             status
           )
 
-        apply(impl, command, [decided, state])
+        # As dispatch does (plan DD, A1, #247): the person the scenario names with `as:`
+        # issues it only when the state names them; without `as:`, nobody is compared.
+        case not_the_person(declaration, state, Map.get(scenario, :as)) do
+          nil ->
+            apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
+
+          invariant ->
+            {:error, %Rejection{invariant: invariant}}
+        end
       else
         {:refused_in, status, declaration.or_rejects}
       end
@@ -698,24 +904,13 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  # The fold, with the status put into the state before each given event and after the
-  # last, as dispatch puts it.
+  # The fold dispatch does (`Decision.folded/7`): for a unit with a lifecycle, the status
+  # put into the state before each given event and after the last. A process manager's
+  # run is folded by `fold/3`, as the engine folds it apart from a unit's stream.
   defp fold_status(unit, impl, state, givens, befores, status) do
-    if Lifecycle.of(unit) do
-      evolve? = function_exported?(impl, :evolve, 2)
-
-      state =
-        givens
-        |> Enum.zip(befores)
-        |> Enum.reduce(state, fn {event, before}, state ->
-          state = %{state | status: before}
-          if evolve?, do: evolved!(impl, state, event), else: state
-        end)
-
-      %{state | status: status}
-    else
-      fold(impl, state, givens)
-    end
+    Decision.folded(unit, impl, state, givens, befores, status, fn state, event, _index ->
+      evolved!(impl, state, event)
+    end)
   end
 
   # As dispatch: what `evolve/2` returns is the state, and the message names no value.
@@ -871,18 +1066,26 @@ defmodule EhOsContract.ScenarioCase do
 
   # --- finding the implementation ---------------------------------------------------
 
-  defp implementation!(model, %{kind: kind, name: name}, implementations) do
+  @doc false
+  # The modules that implement `kind` `name` of `model`: among `implementations` when
+  # given, else among the modules of the contract's application. Called by
+  # property_case.ex too, which finds an implementation as a scenario does.
+  @spec implementations(map(), atom(), atom(), [module()] | nil) :: [module()]
+  def implementations(model, kind, name, implementations) do
     candidates = implementations || modules(model.module)
 
-    found =
-      for module <- candidates,
-          Code.ensure_loaded?(module),
-          function_exported?(module, :__eh_os_implementation__, 0),
-          match?(
-            %{contract: c, kind: ^kind, name: ^name} when c == model.module,
-            module.__eh_os_implementation__()
-          ),
-          do: module
+    for module <- candidates,
+        Code.ensure_loaded?(module),
+        function_exported?(module, :__eh_os_implementation__, 0),
+        match?(
+          %{contract: c, kind: ^kind, name: ^name} when c == model.module,
+          module.__eh_os_implementation__()
+        ),
+        do: module
+  end
+
+  defp implementation!(model, %{kind: kind, name: name}, implementations) do
+    found = implementations(model, kind, name, implementations)
 
     case found do
       [one] ->

@@ -39,6 +39,13 @@ Given a green gate, three things are closed:
   right thing is not (below).
 - **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
   `packages/eh_os_contract/docs/contract.md`'s examples and refusal table against the code (`test/docs_test.exs`).
+- **The docs are complete and most of their references resolve**: every public function of each package's
+  `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
+  a `@doc false` function is not held to a `@spec`, though `CLAUDE.md` still asks for one); and no doc
+  references a missing or hidden function of an existing module, a hidden module, a module outside `lib/`
+  or a missing page (`docs --warnings-as-errors`). Two things stay open (below): whether a doc is *true*,
+  and a reference to a module that does not exist at all, which ExDoc renders as plain code without a
+  word.
 
 ## 2 — Where attention earns its cost
 
@@ -115,13 +122,23 @@ gets a line. A verdict is anything the conformance report prints as a number or 
 mechanical enforces it, and this list of files that trigger the question lives here and only here:
 
 `packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
-`run.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`, `dependency.ex`, `digest.ex`,
-`contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
+`run.ex`, `stage_order.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`,
+`dependency.ex`, `digest.ex`, `contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
 `report.ex`, `report/`, `graph.ex`, `graph/` — and, where the change touches runs, keys or failure
 labels, `store/postgres.ex`, `key.ex` and `dispatcher.ex`.
 
 A diff touching one of these without a CHANGELOG entry goes back, or its author writes in the pull
 request why it cannot move a verdict. That answer is often right; it should be written, not assumed.
+
+### A doc that no longer describes its function
+
+The gate holds that every documented public function has a `@spec` and that a doc's references to
+existing modules resolve; it cannot hold that the doc is still true. When a pull request changes what a
+public function returns, refuses or writes, read its `@doc` (and the generated page it feeds,
+`docs/cli.md`, `docs/behaviours.md`, `docs/dsl/`) against the new code, and send back a doc that
+describes the old behaviour or carries a stage or `§` code a host cannot read
+(`.claude/skills/write-docs/SKILL.md`). A new reference to a module is followed on the built page
+(`MIX_ENV=dev mix docs`): a misspelt module name passes the gate as plain code.
 
 ### Diff size
 

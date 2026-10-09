@@ -82,6 +82,83 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   under "Removed" below). `mix eh_os_contract.pages` writes each contract's document beside the pages as `graph/<contract id>.json`, linked from
   the contract's page, and treats those files as its own when it overwrites, checks or deletes
   (`EhOsContract.Pages.graph?/3`). The HTTP routes are `eh_os_contract_web`'s.
+- **A unit's code is tested on legal histories of its contract** (plan DD, stage PC2, #266).
+  `use EhOsContract.PropertyCase, contract: C, max_runs: 50` writes, for every aggregate with an implementation,
+  a property that `evolve/2` folds every legal history (events with `__meta__`, personal fields sometimes
+  erased), one per command that its decision returns only what dispatch would append, or a rejection it
+  declares, in a status its `from:` admits, and, when the implementation defines `holds?(invariant, state)`, one
+  that every invariant holds after each decided command. `fold/4`, `decide/5`, `walk/4`, `decisions/3` and
+  `walks/2` are public. It compiles only where StreamData is. Moves no verdict.
+- **A contract produces valid examples of its data** (plan DD, stage PC1, #264). `EhOsContract.Generators` gives
+  StreamData generators of a contract's commands (`command/3`) and events (`event/3`), of a domain entity's row
+  (`entity_row/3`), and of a unit's history in an order its lifecycle allows (`history/3`), every value within what
+  the engine stores and a domain value with invariants drawn from its `satisfied_by:` examples; `fields:`
+  fixes or narrows a field. The module compiles only where StreamData is, `{:stream_data, "~> 1.1"}`, an optional
+  dependency of the package. Moves no verdict.
+- **The report counts the runs whose stages happened out of order — can move a verdict** (plan DD, stage O1,
+  #260, agreed with EHOS in EmpoweredHouse/eh-os#297). Each process section of
+  `EhOsContract.Conformance.report/2` has `out_of_order: %{runs: n, pairs: [%{earlier:, later:, runs:,
+  earlier_label:, later_label:}]}` (`EhOsContract.StageOrder`): the runs that entered a later stage before an
+  earlier one they also entered, by position in the log, a stage entered by its first event, a run in the
+  period by its first event and judged on all of them. On the wire it is a new key of v3, and the text report
+  prints "Stages out of order in n runs" with a line per pair, only when there is one. It never names a run. The
+  dashboard does not show it yet.
+- **A process module's report is on the conformance wire** (plan DD, stage P2w, #259, agreed with EHOS in
+  EmpoweredHouse/eh-os#297). `EhOsContract.Conformance.as_data/2` no longer refuses a process module: its report
+  keeps the schema `eh_os_contract.conformance.v3` and has `"process"`, its id, where a contract's has
+  `"contract"`; a report has exactly one of the two. `EhOsContract.Conformance.Wire` states the rule every reader may
+  rely on: an unknown key is ignored, and a key an older reader must not ignore comes with a new schema name. Moves
+  no verdict.
+- **A process's promise can be shown and tested with a scenario** (plan DD, stage S2, #251). A process module
+  takes `scenario "…", verdict: :satisfied, via: :eventually do … end`, with `given :event, %{…}, at:
+  "2026-09-07T09:00:00Z"`, `outage :external, at: "…"` and the trigger `promise :name, at: "…"`, the moment the
+  promise is judged. `use EhOsContract.ScenarioCase, process: MyApp.Processes.Visit` writes a test per scenario
+  (`EhOsContract.ScenarioCase.judge/2`): it builds each given as the event its contract declares, files it into
+  its run and judges the promise through `EhOsContract.Trace.judge/3`, without a database. New compile refusals:
+  the scenario's shape (S11), and S1, S2, S3, X4 and X9 extended to a process module's scenario. Any scenario,
+  a contract's too, may date a given with `at:`; one without it keeps its moment, a minute after the given
+  before it, and an `at:` earlier than the given before it is refused (S3). A process module with scenarios gets
+  a `scenarios` key in its model and a new version; one without them, and every contract, keeps its version.
+  Moves no verdict.
+
+- **A command can name the person who must issue it** (plan DD, stage A1, #247). Inside a command, `actor_is
+  :specialist_id, or_rejects: :invariant` says a credential's subject must be the one that field of the unit's
+  state holds (a new compile refusal, A9, for the unit's identity, which the caller fills, a field outside the
+  state, not an `:id` or personal, an invariant outside `rejects:`, a command that `creates:` or has no `by:`;
+  and X2, for a `by:` without a person). Dispatch checks it after folding the state and
+  before the decision, and refuses anyone else on the invariant with a `rejected` row, which the report counts as
+  any rejection; a `:system` actor and a reaction pass. A scenario names the person with `as "…"` beside its
+  `actor`, and must when the actor is a person (S7, X2). Nothing changes for a contract that does not declare it.
+
+- **A command can read an entity the application keeps before it is decided** (plan DD, stage T2a, #240). A
+  command declares `reads: [service: :service_id]`, naming a required field of its own typed `{:id, entity}`
+  and issued only by an actor, never a policy or a process manager (a new compile refusal, A8); its decision
+  takes a third argument, the rows read by name. The host gives them through a new behaviour,
+  `EhOsContract.Entities` (`config :eh_os_contract, entities: MyApp.Entities`, `fetch(actor, domain, entity,
+  id)`), asked once per command before its transaction, as the actor who issued it; a row not found refuses the
+  command with `{:invalid, [{field, :unknown}]}`, a 422, and a row that does not fit its entity, or is another
+  one than asked for, raises `EhOsContract.Entities.UnfitRowError`. What was read is kept in a new column,
+  `inputs`, of `eh_os_contract_commands`. A scenario gives a row with `given_entity` (S12, and X9 for its
+  fields). A value invariant may no longer be named `:unknown` (D9). **A host has to act:** add a migration
+  calling `EhOsContract.Migrations.up(version: 2)` (and `down(version: 2)`), since the storage is now at
+  version 2 and **the engine no longer starts on storage missing or older** than the version it needs; and
+  configure `entities:` once a contract declares `reads:`, or the node does not start.
+
+- **The report, the deployment record and the check show a process module** (plan DD, stage P2d, #213).
+  `EhOsContract.Registry` finds process modules beside contracts (`processes/0`, `process/1` by id).
+  `EhOsContract.Conformance.report/2` of a process module gives the process section a contract's process gets
+  — its runs, its duration against `deadline`, its promises' verdicts and its confirmed declarations — with its
+  deployment, and `mix eh_os_contract.report` prints process modules after the contracts.
+  `EhOsContract.Deployment.record!/1` writes a row per process module, under `"process:<id>"`, with its
+  version and the digests of its promises, so a promise's verdict is read against the version it was made
+  under. `mix eh_os_contract.check` counts an event a process module includes as read
+  (`event-without-consumer`) and applies `process-without-accountable`, `unverified-declaration` and
+  `promise-without-within` to process modules. `EhOsContract.Model.process/1`, `process_events/1` and
+  `declaring/2` answer for a process module. The dashboard does not list process modules yet, and until
+  P2w (above) `Conformance.as_data/2` refused one. No verdict of a contract
+  moves. One correction for contracts too: the deployment the report shows for a version is the row recorded
+  last, so after the wiring changes under the same version the report shows the new wiring and its date, where
+  it showed the first row's, and no "since the previous version" line for a wiring-only change.
 - **A process module is checked against its domain and its contracts, and gets runs** (plan DD, stage P2c,
   #210). The rules between modules refuse a process module whose `domain:` is not a compiled domain (X1), whose
   `id:` is outside the domain's `name:` (D11), whose `accountable` is no actor of the domain (X2), whose
@@ -168,6 +245,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **`event-without-consumer` counts an event a unit's lifecycle starts on or moves on as read** (plan DD, P1b,
   #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
   no verdict of the report moves.
+
+### Fixed
+
+- **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
+  dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
+  (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
 
 ### Fixed — can move a verdict
 
@@ -1361,7 +1444,7 @@ The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — 
   way by `V01`/`V02` with no upgrade path), the AsyncAPI extensions
   (`x-eh-os-contract-*`) and the report schema (`eh_os_contract.conformance.v1`).
 - `docs/contract.md`, the DSL reference, ships inside the package;
-  `mix eh_os_contract.docs` is tooling for developing the package and is no longer
+  the `eh_os_contract.docs` task is tooling for developing the package and is no longer
   compiled into consumers.
 
 - **Every contract's `version/0` moved once, deliberately.** A seventh declaration
