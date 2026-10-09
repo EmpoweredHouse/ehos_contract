@@ -52,7 +52,10 @@ defmodule EhOsContract.PropertyCaseTest do
             {LifecycleRig.Visits, :visit, :admit_patient},
             {LifecycleRig.Visits, :visit, :close_visit},
             {DispatchRig.Ledger, :account, :withdraw},
-            {ValueRig.Till, :till, :pay_in}
+            {ValueRig.Till, :till, :pay_in},
+            # An active payer without a scope is refused, where the decision once emitted
+            # a confirmation without the scope it requires.
+            {UniversalityGate.TreatmentEpisode, :episode, :qualify_referral}
           ] do
         decides(contract, unit, command, 50)
       end

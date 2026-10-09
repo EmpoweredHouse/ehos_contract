@@ -137,6 +137,22 @@ defmodule UniversalityGate.TreatmentEpisode do
     expect :payer_eligibility_confirmed
   end
 
+  scenario "eligibility active and no scope named — the command is rejected" do
+    given :referral_received, %{
+      patient_id: "p-1",
+      referral_code: "r-1",
+      received_at: "2026-09-01T08:00:00Z"
+    }
+
+    command :qualify_referral, %{
+      patient_id: "p-1",
+      identity_confirmed: true,
+      payer_status: :active
+    }
+
+    rejected :treatment_starts_only_on_confirmed_eligibility
+  end
+
   scenario "eligibility expired — a denial instead of qualification" do
     given :referral_received, %{
       patient_id: "p-1",

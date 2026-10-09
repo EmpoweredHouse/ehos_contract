@@ -15,13 +15,54 @@ defmodule EhOsContract.Decision do
   #   the command's `emits`, a command among a reaction's `issues`;
   # - `held!/6` — everything dispatch requires of a command's events before it appends
   #   them: admitted, about the unit that decided them, with fields that fit, and allowed
-  #   by the unit's lifecycle from where it stood.
+  #   by the unit's lifecycle from where it stood;
+  # - `folded/7` — the state a unit decides over, folded from its stream as dispatch folds
+  #   it, so a scenario and a property test fold the same way.
   #
   # None of these is a business outcome. A decision that breaks one is a defect, and
   # nothing is appended.
   @moduledoc false
 
   alias EhOsContract.{Codec, Lifecycle, Model}
+
+  @doc """
+  A unit's state after `events`, as dispatch folds a stream: from `state`, through the
+  implementation's `evolve/2` when it has one, and, for a unit with a lifecycle, with the
+  status before each event (`befores`, in order) put into the state first and `status`
+  after the last. `step` runs one `evolve/2`, given the state, the event and its index:
+  dispatch wraps it to name the stage that failed, a test to fail naming the event. The
+  one fold of a deciding unit's stream in dispatch, `EhOsContract.ScenarioCase` and
+  `EhOsContract.PropertyCase`; a process manager's run is folded apart.
+  """
+  @spec folded(
+          map(),
+          module(),
+          struct(),
+          [struct()],
+          [Lifecycle.status()],
+          Lifecycle.status(),
+          (struct(), struct(), non_neg_integer() -> struct())
+        ) :: struct()
+  def folded(unit, impl, state, events, befores, status, step) do
+    lifecycle? = Lifecycle.of(unit) != nil
+    put = fn state, status -> if lifecycle?, do: %{state | status: status}, else: state end
+
+    state =
+      if function_exported?(impl, :evolve, 2) do
+        befores = if lifecycle?, do: befores, else: List.duplicate(nil, length(events))
+
+        events
+        |> Enum.zip(befores)
+        |> Enum.with_index()
+        |> Enum.reduce(state, fn {{event, before}, index}, state ->
+          step.(put.(state, before), event, index)
+        end)
+      else
+        state
+      end
+
+    put.(state, status)
+  end
 
   @typedoc "Why a struct produced is not one the declaration allows."
   @type refusal :: {:not_a_struct, term()} | {:not_allowed, struct()}

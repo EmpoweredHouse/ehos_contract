@@ -53,8 +53,14 @@ defmodule EhOsContract.UniversalityGateTest do
     assert [%{invariants: [%{name: :treatment_starts_only_on_confirmed_eligibility}]}] =
              model.units
 
-    assert Enum.map(model.scenarios, & &1.rejected) ==
-             [nil, nil, :treatment_starts_only_on_confirmed_eligibility]
+    # The second, an active payer naming no scope, since the property tests found the
+    # decision confirmed one without it (plan DD, PC2, #266).
+    assert Enum.map(model.scenarios, & &1.rejected) == [
+             nil,
+             :treatment_starts_only_on_confirmed_eligibility,
+             nil,
+             :treatment_starts_only_on_confirmed_eligibility
+           ]
   end
 
   test "everything the contract names, its domain declares" do
