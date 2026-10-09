@@ -2119,6 +2119,30 @@ the Graph screen shows no declared shape for the sandbox's clients, as P2f (#222
 Nor its scenarios, its stage order (O1, #260) or its runs; the renderer's fixtures keep the contract processes
 they were taken with.
 
+### E13 — pushed, `main` merged again, and an audit against `main`'s conventions (9 October)
+
+The user's word: push. Before it `main` had moved again — the glossary joined to the code (L1, #269, #270) and
+wave 4 closed (#271) — so it was merged a second time, the engine's CHANGELOG the one conflict, and the gate run
+again. `graph/e13a-document` was fast-forwarded to E13b, which marked #219 merged, and the merge pushed onto it:
+#217 now carries all of E13.
+
+Then, at the user's request, a check that nothing of `main` was lost, overwritten or ignored. Every line `main`
+added since E13 branched and the merged tree lacks is in 22 files, each an intended replacement: the Mermaid
+modules and tests E13 removes, whose one new capability on `main`, drawing a process module by its id, no task
+or screen used and is P2e's (#220); prose E13 rewrote. An audit of E13's code against `main`'s conventions found,
+and the following commits settle:
+
+1. **The dashboard's bundle carried dagre and d3 without attribution**: E13b took Mermaid's section out of its
+   `NOTICE` and left only the fonts.
+2. Small: a published moduledoc citing the working plan, `MAINTAINING-DOCS.md` on three packages, a process
+   name read with `Atom.to_string/1` where `main` reads a module's string id, two test contracts with one id.
+3. **Functions only the library calls are hidden** — *the user's decision, documentation only*:
+   `Model.json_data/1`, `Conformance.waiting?/1` and `failing?/1`, the renderer's seven per-picture functions of
+   `View`. `Conformance.steps/2` stays published, as `main` kept `lifecycles/2`.
+4. **A term's word in code** in the domain's document and the context's panel — *the user's decision*: L1 left
+   it to E13 and L4.
+5. **The changelogs say what a host gets from `main`** — *the user's decision* — not E13's batches.
+
 ### Wobec programu DD
 
 DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
