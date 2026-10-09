@@ -38,8 +38,9 @@ defmodule EhOsContract.Graph.Overlay do
   facts; its numbers sit on the relation that ends it: a command's `emits`, a
   reaction's `issues` (a manager's with the step's event as its `on`), a timer's
   `fires`, and an effect's `handled_by`. A step's numbers are the report's reading of
-  it: `waits` and `fails` say whether the report lists it as waiting or failing
-  (`EhOsContract.Conformance.waiting?/1`, `EhOsContract.Conformance.failing?/1`),
+  it: `waits` says whether the report lists it as in flight — an event its consumer has
+  not reached, a timer not fired, an effect not run — and `fails` whether it lists it
+  as failing — a command that failed, an effect discarded, a consumer stopped;
   `untraversed` is the report's "never" — the step listed as untraversed — and
   `pending` its "not yet". They sit on a relation in one of two ways:
 

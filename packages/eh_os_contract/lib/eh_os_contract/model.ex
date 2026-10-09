@@ -196,11 +196,11 @@ defmodule EhOsContract.Model do
     Map.put(body, "digest", EhOsContract.Digest.document_hash(body))
   end
 
-  @doc """
-  `value` as JSON-ready data, the one projection every export of the engine shares
-  (`to_data/1`, `EhOsContract.Graph.Document`): atom keys and values become strings,
-  a module loses its `Elixir.` prefix, a tuple becomes a list, and `nil` stays `nil`.
-  """
+  # `value` as JSON-ready data, the one projection every export of the engine shares
+  # (`to_data/1`, `EhOsContract.Graph.Document`): atom keys and values become strings,
+  # a module loses its `Elixir.` prefix, a tuple becomes a list, and `nil` stays `nil`.
+  # Called by model.ex, graph/document.ex, graph/overlay.ex.
+  @doc false
   @spec json_data(term()) :: term()
   def json_data(nil), do: nil
   def json_data(value) when is_boolean(value) or is_binary(value) or is_number(value), do: value

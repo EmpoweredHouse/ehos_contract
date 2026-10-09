@@ -266,11 +266,10 @@ defmodule EhOsContract.Conformance do
   # What the step starts from is still on its way.
   defp behind?(step, pending), do: MapSet.member?(pending, step.from)
 
-  @doc """
-  Whether anything waits at `step`, one of `steps/2`'s: an event its ordered consumer
-  has not reached, a timer not fired, an effect job not run. The report lists such a
-  step as in flight.
-  """
+  # Whether anything waits at `step`, one of `steps/2`'s: an event its ordered consumer
+  # has not reached, a timer not fired, an effect job not run. The report lists such a
+  # step as in flight. Called by conformance.ex, graph/overlay.ex.
+  @doc false
   @spec waiting?(map()) :: boolean()
   def waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
 
@@ -294,11 +293,10 @@ defmodule EhOsContract.Conformance do
     if MapSet.size(more) == 0, do: reached, else: close(MapSet.union(reached, more), steps)
   end
 
-  @doc """
-  Whether anything fails at `step`, one of `steps/2`'s: a command that failed where it
-  runs, an effect job discarded, its consumer's subscription stopped. The report lists
-  such a step as failing.
-  """
+  # Whether anything fails at `step`, one of `steps/2`'s: a command that failed where it
+  # runs, an effect job discarded, its consumer's subscription stopped. The report lists
+  # such a step as failing. Called by conformance.ex, graph/overlay.ex.
+  @doc false
   @spec failing?(map()) :: boolean()
   def failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
 

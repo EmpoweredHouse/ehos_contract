@@ -13,14 +13,14 @@ defmodule EhOsContract.GraphRenderer.View do
   **The views are the six pictures the engine drew before this package**, each chosen
   here from the graph of facts rather than built by the engine:
 
-  | View | What it shows |
+  | View (`t:spec/0`) | What it shows |
   | --- | --- |
-  | `contract/1` | a contract's full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
-  | `declared/1` | a process's declared shape: its stages in order, the events in them, its promises with their windows, the systems its events rest on |
-  | `unit/2` | one unit's state, commands, events and rules, and how many scenarios pin each path |
-  | `lifecycle/2` | an aggregate's statuses and the events that move it between them |
-  | `context_map/1` | a domain's subdomains, contexts, external systems and their relations |
-  | `system/1` | a domain's contracts in their contexts, what one consumes from another, and its publications |
+  | `:contract` | a contract's full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
+  | `:declared` | a process's declared shape: its stages in order, the events in them, its promises with their windows, the systems its events rest on |
+  | `{:unit, id}` | one unit's state, commands, events and rules, and how many scenarios pin each path |
+  | `{:lifecycle, id}` | an aggregate's statuses and the events that move it between them |
+  | `:context_map` | a domain's subdomains, contexts, external systems and their relations |
+  | `:system` | a domain's contracts in their contexts, what one consumes from another, and its publications |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation
@@ -31,7 +31,7 @@ defmodule EhOsContract.GraphRenderer.View do
   sets is, and two arrows of one type between the same two cards — a timer set as a run
   starts and again during it — say which is which.
 
-  `all/1`, every node and every relation, stays as the drawing layer's test bed.
+  `:all`, every node and every relation, stays as the drawing layer's test bed.
   `build/3` builds the view a `t:spec/0` names, with what an overlay observed that
   the document does not declare; `views/1` lists the views a document has.
   """
@@ -136,11 +136,11 @@ defmodule EhOsContract.GraphRenderer.View do
   defp view(document, :context_map), do: context_map(document)
   defp view(document, :system), do: system(document)
 
-  @doc """
-  Every node and every relation of `document`, kinds and types in name order and each
-  group in the document's order, so the same document gives the same view and the
-  same layout. Each relation says its type.
-  """
+  # Every node and every relation of `document`, kinds and types in name order and each
+  # group in the document's order, so the same document gives the same view and the
+  # same layout. Each relation says its type.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec all(map()) :: t()
   def all(%{"nodes" => nodes, "relations" => relations}) do
     cards = for {kind, group} <- Enum.sort(nodes), node <- group, do: card(kind, node)
@@ -160,15 +160,15 @@ defmodule EhOsContract.GraphRenderer.View do
   @always ~w(command policy process_manager effect timer read_model query)
   @flow ~w(emits handled_by starts ends issues sets cancels fires)
 
-  @doc """
-  The full graph of a contract's `document`, left to right: each unit's commands and
-  events in a group of the unit's own, the events it includes, and the policies,
-  process managers, effects and timers between them; its read models with the events
-  they project and the queries over them; the actors who issue, record or ask, and the
-  external systems an effect calls, an event rests on, a system actor is backed by, or
-  a field takes its value from. A policy, a process manager and a query say how many
-  scenarios pin them, "0 scenarios" included, and a timer when it fires.
-  """
+  # The full graph of a contract's `document`, left to right: each unit's commands and
+  # events in a group of the unit's own, the events it includes, and the policies,
+  # process managers, effects and timers between them; its read models with the events
+  # they project and the queries over them; the actors who issue, record or ask, and the
+  # external systems an effect calls, an event rests on, a system actor is backed by, or
+  # a field takes its value from. A policy, a process manager and a query say how many
+  # scenarios pin them, "0 scenarios" included, and a timer when it fires.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec contract(map()) :: t()
   def contract(document) do
     by_id = index(document)
@@ -338,16 +338,16 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- a process's declared shape ---------------------------------------------------------
 
-  @doc """
-  The declared shape of the process in a contract's `document`, top to bottom: its
-  stages as boxes in their order, an arrow from each to the next, the events in them —
-  those that end it in a colour of their own — each promise as a heavy arrow from the
-  event that opens it to the one that keeps it, with its window, and a dotted one to
-  the event that keeps it the other way, and the external systems its events rest on.
-  A stage with more than one event says on its title that it claims no order inside.
-  Without stages every event of the process is drawn; with them, those in a stage.
-  Empty without a process.
-  """
+  # The declared shape of the process in a contract's `document`, top to bottom: its
+  # stages as boxes in their order, an arrow from each to the next, the events in them —
+  # those that end it in a colour of their own — each promise as a heavy arrow from the
+  # event that opens it to the one that keeps it, with its window, and a dotted one to
+  # the event that keeps it the other way, and the external systems its events rest on.
+  # A stage with more than one event says on its title that it claims no order inside.
+  # Without stages every event of the process is drawn; with them, those in a stage.
+  # Empty without a process.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec declared(map()) :: t()
   def declared(document) do
     case nodes(document, "process") do
@@ -442,14 +442,14 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- one unit ---------------------------------------------------------------------------
 
-  @doc """
-  Unit `id` of a contract's `document`, left to right: its state as a card listing its
-  fields, its commands and the events they emit, the events of other contracts a
-  boundary consults, its invariants and its commands' constraints. An arrow a command
-  may take — an event it emits, a rule it may be refused on — says how many of the
-  unit's scenarios pin it, and says nothing where none does. An aggregate's events
-  build its state; a boundary's consulted events say by which fields.
-  """
+  # Unit `id` of a contract's `document`, left to right: its state as a card listing its
+  # fields, its commands and the events they emit, the events of other contracts a
+  # boundary consults, its invariants and its commands' constraints. An arrow a command
+  # may take — an event it emits, a rule it may be refused on — says how many of the
+  # unit's scenarios pin it, and says nothing where none does. An aggregate's events
+  # build its state; a boundary's consulted events say by which fields.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec unit(map(), String.t()) :: t()
   def unit(document, id) do
     case Enum.find(nodes(document, "unit"), &(&1["id"] == id)) do
@@ -547,13 +547,13 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- an aggregate's lifecycle -----------------------------------------------------------
 
-  @doc """
-  The lifecycle of aggregate `id` in a contract's `document`, top to bottom: a dot where
-  a new one starts, its statuses — an end drawn heavier — and an arrow for each move,
-  named by the event that makes it. The dot is the unit's, so a move the lifecycle does
-  not allow from where the aggregate stood in no status yet starts there. Empty when
-  the unit declares no lifecycle.
-  """
+  # The lifecycle of aggregate `id` in a contract's `document`, top to bottom: a dot where
+  # a new one starts, its statuses — an end drawn heavier — and an arrow for each move,
+  # named by the event that makes it. The dot is the unit's, so a move the lifecycle does
+  # not allow from where the aggregate stood in no status yet starts there. Empty when
+  # the unit declares no lifecycle.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec lifecycle(map(), String.t()) :: t()
   def lifecycle(document, id) do
     unit = Enum.find(nodes(document, "unit"), &(&1["id"] == id))
@@ -589,13 +589,13 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- a domain's context map and system --------------------------------------------------
 
-  @doc """
-  The context map of a domain's `document`, left to right: its subdomains as groups of
-  their contexts, every external system of the domain — one no relation reaches too —
-  and the relations between them, each named by its pattern: one with a direction an
-  arrow from its upstream to its downstream, a symmetric one a line, `separate_ways` a
-  dotted one.
-  """
+  # The context map of a domain's `document`, left to right: its subdomains as groups of
+  # their contexts, every external system of the domain — one no relation reaches too —
+  # and the relations between them, each named by its pattern: one with a direction an
+  # arrow from its upstream to its downstream, a symmetric one a line, `separate_ways` a
+  # dotted one.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec context_map(map()) :: t()
   def context_map(document) do
     contexts = for c <- nodes(document, "context"), do: card("context", c, group: c["subdomain"])
@@ -624,13 +624,13 @@ defmodule EhOsContract.GraphRenderer.View do
     finish("LR", contexts ++ externals, arrows, groups)
   end
 
-  @doc """
-  The system of a domain's `document`, left to right: its contracts in groups of their
-  contexts, each named by its module's last segment and its process, an arrow from a
-  contract to one that consumes its events, carrying their names, and the publications
-  on the wire, with an arrow from the contract that publishes one and to the one that
-  subscribes.
-  """
+  # The system of a domain's `document`, left to right: its contracts in groups of their
+  # contexts, each named by its module's last segment and its process, an arrow from a
+  # contract to one that consumes its events, carrying their names, and the publications
+  # on the wire, with an arrow from the contract that publishes one and to the one that
+  # subscribes.
+  # Called by `build/3`; public for its tests.
+  @doc false
   @spec system(map()) :: t()
   def system(document) do
     by_id = index(document)
