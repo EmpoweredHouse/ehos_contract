@@ -616,7 +616,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
-| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ◐ `dd/266-property-case` | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
+| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☐ | — |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
