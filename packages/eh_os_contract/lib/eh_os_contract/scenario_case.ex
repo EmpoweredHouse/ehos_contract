@@ -904,8 +904,9 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  # The fold dispatch does (`Decision.folded/7`), with the status put into the state
-  # before each given event and after the last.
+  # The fold dispatch does (`Decision.folded/7`): for a unit with a lifecycle, the status
+  # put into the state before each given event and after the last. A process manager's
+  # run is folded by `fold/3`, as the engine folds it apart from a unit's stream.
   defp fold_status(unit, impl, state, givens, befores, status) do
     Decision.folded(unit, impl, state, givens, befores, status, fn state, event, _index ->
       evolved!(impl, state, event)

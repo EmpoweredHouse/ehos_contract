@@ -191,6 +191,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
   no verdict of the report moves.
 
+### Fixed
+
+- **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
+  dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
+  (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
+
 ### Fixed — can move a verdict
 
 - **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or

@@ -31,7 +31,8 @@ defmodule EhOsContract.Decision do
   status before each event (`befores`, in order) put into the state first and `status`
   after the last. `step` runs one `evolve/2`, given the state, the event and its index:
   dispatch wraps it to name the stage that failed, a test to fail naming the event. The
-  one fold of dispatch, `EhOsContract.ScenarioCase` and `EhOsContract.PropertyCase`.
+  one fold of a deciding unit's stream in dispatch, `EhOsContract.ScenarioCase` and
+  `EhOsContract.PropertyCase`; a process manager's run is folded apart.
   """
   @spec folded(
           map(),
