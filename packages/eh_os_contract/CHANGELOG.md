@@ -27,6 +27,35 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A contract and a domain as `graph.v1` documents** (plan E13, #217). `EhOsContract.Graph.Document.contract/1`
+  gives a contract's document and `domain/2` a domain's: a graph of facts, every declaration a relation can end at
+  as a node grouped by kind and every link between them as a relation grouped by type, and a contract's scenarios
+  grouped by the kind of their target, each with the relations it exercises (`covers`). Each node carries what a
+  panel shows of it: a field's type, whether it is required, its default, whose personal data it is and what keeps
+  its value about a person (`kept`), the subject, value or entity it names, the system that issues it; a
+  command's capability, scope, what its decision reads (`reads`) and the one person who may issue it
+  (`actor_is`); delivery and idempotency, windows, terminal and final events, a unit's state, a query's
+  parameters, an actor's role, an external's operations, a context's terms with each term's word in code
+  (`code`, in the domain's `code_language`). A unit's scenario says the person issuing its command (`as`), the
+  rows the command reads (`given_entities`) and when each given happened (`at`). Every id is stable and opaque,
+  scoped to the contract's `id:` or the domain's module. A document holds no pictures and nothing from the log;
+  its examples and defaults are redacted as `EhOsContract.Model.to_data/1` redacts them; it says `"schema":
+  "eh_os_contract.graph.v1"` and carries a `"digest"`, and `Document.encode/2` writes it with every object's keys
+  in order, so the same declarations give the same bytes and the digest is a sound `ETag`. Its JSON Schema ships
+  in `priv/schema/graph.v1.json` (`Document.schema_path/0`). Moves no verdict.
+- **What the log says over a graph document, as a document of its own** (plan E13, #217).
+  `EhOsContract.Graph.Overlay.contract/2` and `domain/3` give `eh_os_contract.graph_overlay.v1` (its schema in
+  `priv/schema/graph_overlay.v1.json`): the period, the version and the digest of the document it joins, and maps
+  from that document's ids to the numbers the conformance report computes — an event's occurrences, a process's
+  runs, how often a step was taken, whether the report lists it as waiting or failing (`waits`, `fails`) and
+  whether it counts it as never taken or not yet, a transition's count, the events between two contracts, and a
+  move a lifecycle does not allow. A process manager that issues one command on one event both as the event
+  starts a run and during it gets no numbers on those two relations, since the log does not record the phase.
+  `EhOsContract.Conformance.steps/2` gives every step with the report's reading of it. Moves no verdict.
+- **`mix eh_os_contract.graph` gives the graph documents** (plan E13, #217): `--contract <id>` a contract's,
+  `--domain <name>` a domain's (left out where the application has one), with `--overlay [--since]` what the
+  log says over it, as JSON, `--output` to a file. `eh_os_contract_web` serves the same documents over HTTP. The
+  pictures it drew are under "Removed" below. Moves no verdict.
 - **The glossary is joined to the code** (plan DD, stage L1, #269). `use EhOsContract.Domain` takes
   `code_language:`, English by default, and a term's word in code is its translation into it.
   `mix eh_os_contract.glossary` lists, under each term, the declarations named with that word, and
@@ -203,6 +232,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
   dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
   (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
+- **`EhOsContract.Model.to_data/1` redacts the rows a scenario gives with `given_entity`.** A field the domain's
+  entity declares `personal:` was published as written; it is `null` now, as in a given event, and a row of an
+  entity the domain does not declare has its values dropped. The model document of a contract whose scenarios
+  give such a row changes its digest. Moves no verdict.
 
 ### Fixed — can move a verdict
 
@@ -215,6 +248,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **`mix eh_os_contract.pages` writes each contract's graph document beside its pages, and no diagram** (plan
+  E13, #217). `graph/<contract id>.json` holds the contract's `graph.v1` document, linked from its page, and the
+  task treats those files as its own when it overwrites, checks or deletes. The domain's context map and each
+  unit's Mermaid diagram are gone from the pages. **A host that commits the pages and checks them with `--check`**
+  runs the task once. Moves no verdict.
 - **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
   user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
@@ -362,6 +400,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed — a host has to act
 
+- **The Mermaid pictures** (plan E13, #217). `EhOsContract.Graph` is gone, with `declared_to_mermaid/2`,
+  `contract_to_mermaid/2`, `unit_to_mermaid/2`, `lifecycle_to_mermaid/3`, `context_map_to_mermaid/1` and
+  `system_to_mermaid/3`, and `mix eh_os_contract.graph` draws nothing: `--contract <id>` gives the contract's
+  `graph.v1` document as JSON where it gave a Mermaid diagram, and `--process`, `--mermaid`, `--unit`,
+  `--lifecycle`, `--map` and `--system` are refused as unknown options. **A host that drew a picture** with them
+  mounts the dashboard (`eh_os_contract_web`), whose Graph screen draws the same six pictures, or renders the
+  documents with `eh_os_contract_graph`. Moves no verdict.
 - **A process has no `cadence`** (plan DD, P1d, #195; the user's decision). It said how often a run is due
   (`cadence {1, :month}`), and nothing acted on it: the report printed "Due: every …" among the process's
   confirmed declarations, the pages "Cadence: every …", and the check noted an unconfirmed one

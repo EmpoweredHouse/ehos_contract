@@ -1,0 +1,336 @@
+{
+  "schema": "eh_os_contract.graph.v1",
+  "kind": "contract",
+  "contract": "messaging",
+  "module": "Messaging.Contract",
+  "domain": "Messaging.Domain",
+  "context": "context:Messaging.Domain:lending",
+  "version": "made-by-hand",
+  "digest": "0000000messaging",
+  "nodes": {
+    "context": [
+      {
+        "id": "context:Messaging.Domain:lending",
+        "name": "lending",
+        "label": "Lending",
+        "source": null
+      }
+    ],
+    "subject": [
+      {
+        "id": "subject:Messaging.Domain:reader",
+        "name": "reader",
+        "label": "Reader",
+        "source": null
+      }
+    ],
+    "unit": [
+      {
+        "id": "unit:messaging:copy",
+        "name": "copy",
+        "label": "Copy",
+        "source": null,
+        "unit_kind": "aggregate",
+        "identity": [
+          "copy_id"
+        ],
+        "state": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "command": [
+      {
+        "id": "command:messaging:lend",
+        "name": "lend",
+        "label": "Lend a copy",
+        "source": null,
+        "unit": "unit:messaging:copy",
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ],
+        "capability": "messaging.lend"
+      },
+      {
+        "id": "command:messaging:release_hold",
+        "name": "release_hold",
+        "label": "Release the hold",
+        "source": null,
+        "unit": "unit:messaging:copy",
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ]
+      },
+      {
+        "id": "command:messaging:remind",
+        "name": "remind",
+        "label": "Remind the reader",
+        "source": null,
+        "unit": "unit:messaging:copy",
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "event": [
+      {
+        "id": "event:messaging:lent",
+        "name": "lent",
+        "label": "Copy lent",
+        "source": null,
+        "unit": "unit:messaging:copy",
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ],
+        "type": "messaging.lent",
+        "schema_version": 1
+      },
+      {
+        "id": "event:messaging:returned",
+        "name": "returned",
+        "label": "Copy returned",
+        "source": null,
+        "unit": "unit:messaging:copy",
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ],
+        "type": "messaging.returned",
+        "schema_version": 1
+      },
+      {
+        "id": "event:messaging:copy_lent",
+        "name": "copy_lent",
+        "label": "A copy lent elsewhere",
+        "source": null,
+        "fields": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ],
+        "capability": "messaging.copy_lent.subscribe"
+      }
+    ],
+    "publication": [
+      {
+        "id": "publication:Messaging.Domain:library.copy_lent",
+        "name": "library.copy_lent",
+        "label": null,
+        "source": null
+      }
+    ],
+    "policy": [
+      {
+        "id": "policy:messaging:release_hold",
+        "name": "release_hold",
+        "label": "Release the hold when lent elsewhere",
+        "source": null,
+        "delivery": "in_transaction"
+      }
+    ],
+    "process_manager": [
+      {
+        "id": "process_manager:messaging:loan",
+        "name": "loan",
+        "label": "A loan",
+        "source": null,
+        "state": [
+          {
+            "name": "copy_id",
+            "label": null,
+            "type": "id",
+            "required": true
+          }
+        ],
+        "correlate": [
+          "copy_id"
+        ],
+        "delivery": "at_least_once",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "self"
+        }
+      }
+    ],
+    "timer": [
+      {
+        "id": "timer:messaging:loan:due",
+        "name": "due",
+        "label": "Due back",
+        "source": null,
+        "process_manager": "process_manager:messaging:loan",
+        "wait": {
+          "amount": 14,
+          "unit": "day"
+        }
+      }
+    ],
+    "read_model": [
+      {
+        "id": "read_model:messaging:borrowers",
+        "name": "borrowers",
+        "label": "Borrowers",
+        "source": null,
+        "delivery": "in_transaction",
+        "fields": [
+          {
+            "name": "reader_id",
+            "label": null,
+            "type": "id",
+            "required": true,
+            "subject": "subject:Messaging.Domain:reader"
+          },
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "string",
+            "required": true,
+            "personal_of": "reader_id",
+            "kept": "rows_forgotten"
+          }
+        ]
+      }
+    ]
+  },
+  "relations": {
+    "emits": [
+      {
+        "id": "emits:command:messaging:lend:event:messaging:lent",
+        "from": "command:messaging:lend",
+        "to": "event:messaging:lent"
+      }
+    ],
+    "builds": [
+      {
+        "id": "builds:event:messaging:lent:unit:messaging:copy",
+        "from": "event:messaging:lent",
+        "to": "unit:messaging:copy"
+      },
+      {
+        "id": "builds:event:messaging:returned:unit:messaging:copy",
+        "from": "event:messaging:returned",
+        "to": "unit:messaging:copy"
+      }
+    ],
+    "published_as": [
+      {
+        "id": "published_as:event:messaging:lent:publication:Messaging.Domain:library.copy_lent:copy_lent",
+        "from": "event:messaging:lent",
+        "to": "publication:Messaging.Domain:library.copy_lent",
+        "name": "copy_lent",
+        "fields": [
+          "copy_id"
+        ],
+        "idempotent_on": [
+          "copy_id"
+        ]
+      }
+    ],
+    "received_as": [
+      {
+        "id": "received_as:publication:Messaging.Domain:library.copy_lent:event:messaging:copy_lent",
+        "from": "publication:Messaging.Domain:library.copy_lent",
+        "to": "event:messaging:copy_lent"
+      }
+    ],
+    "handled_by": [
+      {
+        "id": "handled_by:event:messaging:copy_lent:policy:messaging:release_hold",
+        "from": "event:messaging:copy_lent",
+        "to": "policy:messaging:release_hold",
+        "via_inbox": true
+      }
+    ],
+    "issues": [
+      {
+        "id": "issues:policy:messaging:release_hold:command:messaging:release_hold",
+        "from": "policy:messaging:release_hold",
+        "to": "command:messaging:release_hold"
+      }
+    ],
+    "starts": [
+      {
+        "id": "starts:event:messaging:lent:process_manager:messaging:loan",
+        "from": "event:messaging:lent",
+        "to": "process_manager:messaging:loan"
+      }
+    ],
+    "ends": [
+      {
+        "id": "ends:event:messaging:returned:process_manager:messaging:loan",
+        "from": "event:messaging:returned",
+        "to": "process_manager:messaging:loan"
+      }
+    ],
+    "sets": [
+      {
+        "id": "sets:process_manager:messaging:loan:timer:messaging:loan:due:event:messaging:lent:start",
+        "from": "process_manager:messaging:loan",
+        "to": "timer:messaging:loan:due",
+        "on": "event:messaging:lent",
+        "phase": "start"
+      }
+    ],
+    "cancels": [
+      {
+        "id": "cancels:process_manager:messaging:loan:timer:messaging:loan:due:event:messaging:returned:run",
+        "from": "process_manager:messaging:loan",
+        "to": "timer:messaging:loan:due",
+        "on": "event:messaging:returned",
+        "phase": "run"
+      }
+    ],
+    "fires": [
+      {
+        "id": "fires:timer:messaging:loan:due:command:messaging:remind",
+        "from": "timer:messaging:loan:due",
+        "to": "command:messaging:remind"
+      }
+    ],
+    "projected_into": [
+      {
+        "id": "projected_into:event:messaging:lent:read_model:messaging:borrowers",
+        "from": "event:messaging:lent",
+        "to": "read_model:messaging:borrowers"
+      }
+    ]
+  },
+  "scenarios": {
+    "unit": [],
+    "policy": [],
+    "process_manager": [],
+    "query": []
+  }
+}

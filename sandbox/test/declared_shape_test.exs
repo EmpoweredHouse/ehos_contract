@@ -16,8 +16,8 @@ defmodule EhOsContract.DeclaredShapeTest do
   then it read the picture `EhOsContract.Graph.declared_to_mermaid/2` drew of the
   contract's process; a process module has no picture until #220, so it reads the
   model. What only the picture showed — lanes, arrows, a dependency's line — goes
-  untested for the clinic until process modules are drawn (#220); the library's
-  `graph_test` keeps the renderer's own cases.
+  untested for the clinic until process modules are drawn (#220); the renderer's own
+  cases are in `eh_os_contract_graph`'s tests.
   """
 
   use ExUnit.Case, async: true

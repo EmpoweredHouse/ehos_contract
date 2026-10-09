@@ -253,6 +253,34 @@ defmodule EhOsContract.Paths do
     |> repo().one()
   end
 
+  @doc """
+  How often each event the contract records, and each its process includes, happened
+  in the period: `%{name => occurrences}`, by the name the event has in this contract,
+  whatever run, if any, it falls in (plan DD, P1a, #183). A contract with no process
+  counts its own events; an included event its sibling does not declare is left out.
+  """
+  @spec occurrences(map(), keyword()) :: %{atom() => non_neg_integer()}
+  def occurrences(model, opts \\ []) do
+    by_type =
+      Map.new(model.events, &{&1.type, &1.name})
+      |> Map.merge(
+        for(%{included: true} = e <- Model.process_events(model), into: %{}, do: {e.type, e.name})
+      )
+
+    types = Map.keys(by_type)
+
+    from(e in Event,
+      as: :event,
+      where: e.type in ^types,
+      group_by: e.type,
+      # `position`, not `id`: without a period the `(type, position)` index answers it alone.
+      select: {e.type, count(e.position)}
+    )
+    |> bounded(opts)
+    |> repo().all()
+    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+  end
+
   # --- declarations --------------------------------------------------------------------
 
   defp reaction(model, kind, consumer, event, type, command, label) do

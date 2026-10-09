@@ -69,21 +69,13 @@ defmodule EhOsContract.Web.MixProject do
       ],
       # Run by whoever edits assets/js/app.js or assets/css/app.css; the
       # committed output under priv/static/ is what everyone else —
-      # including `mix check` — uses. The vendored Mermaid build is a
-      # straight copy, not an esbuild input: it needs to execute as a
-      # classic global script (see app.js's own comment on why), which
-      # esbuild's bundling would break. The fonts are copied from
+      # including `mix check` — uses. The fonts are copied from
       # `ehos_design` beside the built stylesheet, whose relative url()s
       # name them there.
       "assets.build": [
         "esbuild eh_os_contract_web",
         "esbuild eh_os_contract_web_css",
         fn _args ->
-          File.cp!(
-            Path.expand("assets/js/vendor/mermaid.min.js", __DIR__),
-            Path.expand("priv/static/assets/mermaid.min.js", __DIR__)
-          )
-
           fonts =
             Path.expand(
               "deps/ehos_design/packages/ehos_design/priv/static/ehos_design/fonts",
@@ -101,9 +93,10 @@ defmodule EhOsContract.Web.MixProject do
     ]
   end
 
-  # **Metadata now; publication held.** `priv/static/assets/mermaid.min.js` is a
-  # vendored third-party build (Mermaid, MIT), so a tarball of this package
-  # redistributes somebody else's code. That needs an attribution line a lawyer would
+  # **Metadata now; publication held.** `priv/static/assets/fonts/` holds
+  # third-party fonts (OFL), and `priv/static/assets/app.js` bundles the graph
+  # renderer's dagre (MIT) and d3 (ISC, BSD), so a tarball of this package
+  # redistributes somebody else's work. That needs an attribution line a lawyer would
   # accept, not just a comment in a source file, and publishing is irreversible in a
   # way editing is not. `NOTICE` carries the attribution; the decision to actually
   # push is a separate one and has not been made.
@@ -160,6 +153,15 @@ defmodule EhOsContract.Web.MixProject do
     end
   end
 
+  # The renderer, the same way as the engine above.
+  defp eh_os_contract_graph_dep do
+    if File.exists?(Path.expand("../eh_os_contract_graph/mix.exs", __DIR__)) do
+      {:eh_os_contract_graph, path: "../eh_os_contract_graph"}
+    else
+      {:eh_os_contract_graph, git: @git_url, sparse: "packages/eh_os_contract_graph"}
+    end
+  end
+
   defp deps do
     [
       # Declared rather than inherited. It reaches here today only through
@@ -170,6 +172,9 @@ defmodule EhOsContract.Web.MixProject do
       {:jason, "~> 1.4"},
       # The engine, whose report and graph the screens render.
       eh_os_contract_dep(),
+      # The renderer the graph is drawn with (plan E13b), its script and stylesheet bundled
+      # into this package's own by `mix assets.build`.
+      eh_os_contract_graph_dep(),
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.1"},
       {:phoenix_html, "~> 4.0"},

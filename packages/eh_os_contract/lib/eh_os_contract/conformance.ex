@@ -200,15 +200,7 @@ defmodule EhOsContract.Conformance do
     failing = Enum.filter(steps, &failing?/1)
     pending = downstream_of(in_flight, steps)
 
-    untraversed =
-      if activity.events > 0,
-        do:
-          Enum.filter(
-            steps,
-            &(&1.taken == 0 and not waiting?(&1) and not failing?(&1) and
-                not MapSet.member?(pending, &1.from))
-          ),
-        else: []
+    untraversed = Enum.filter(steps, &untraversed?(&1, activity, pending))
 
     %{steps: steps, untraversed: untraversed, in_flight: in_flight, failing: failing}
   end
@@ -241,7 +233,45 @@ defmodule EhOsContract.Conformance do
     }
   end
 
-  defp waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
+  @doc """
+  Every step of `contract`, in the shape this module's "The shape" describes, `opts` as
+  `report/2` takes them, with how the report reads it: `untraversed`, the report's
+  "never" — an event the contract recorded in the period and the step not taken, with
+  nothing waiting or failing there and nothing it starts from still on its way — and
+  `pending`, not taken and held back from "never" because what it starts from is still
+  on its way. What the report lists as untraversed is exactly the steps marked so here.
+  """
+  @spec steps(module() | map(), keyword()) :: [map()]
+  def steps(contract, opts \\ []) do
+    model = Model.fetch(contract)
+    steps = EhOsContract.Paths.observe(model, opts)
+    activity = EhOsContract.Paths.activity(model, opts)
+    pending = downstream_of(Enum.filter(steps, &waiting?/1), steps)
+
+    for step <- steps do
+      Map.merge(step, %{
+        untraversed: untraversed?(step, activity, pending),
+        pending: idle?(step) and behind?(step, pending)
+      })
+    end
+  end
+
+  # "Never": with no event recorded in the period there is no basis for it.
+  defp untraversed?(step, activity, pending),
+    do: activity.events > 0 and idle?(step) and not behind?(step, pending)
+
+  # Not taken, with nothing waiting or failing at the step itself.
+  defp idle?(step), do: step.taken == 0 and not waiting?(step) and not failing?(step)
+
+  # What the step starts from is still on its way.
+  defp behind?(step, pending), do: MapSet.member?(pending, step.from)
+
+  # Whether anything waits at `step`, one of `steps/2`'s: an event its ordered consumer
+  # has not reached, a timer not fired, an effect job not run. The report lists such a
+  # step as in flight. Called by conformance.ex, graph/overlay.ex.
+  @doc false
+  @spec waiting?(map()) :: boolean()
+  def waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
 
   # What a waiting step leads to, and what that leads to in turn: a step starting there
   # has not been taken *yet*, since what it starts from is still on its way. Without
@@ -263,7 +293,12 @@ defmodule EhOsContract.Conformance do
     if MapSet.size(more) == 0, do: reached, else: close(MapSet.union(reached, more), steps)
   end
 
-  defp failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
+  # Whether anything fails at `step`, one of `steps/2`'s: a command that failed where it
+  # runs, an effect job discarded, its consumer's subscription stopped. The report lists
+  # such a step as failing. Called by conformance.ex, graph/overlay.ex.
+  @doc false
+  @spec failing?(map()) :: boolean()
+  def failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
 
   # The role, as the domain names the actor the process is addressed to.
   defp actor_label(_model, nil), do: nil

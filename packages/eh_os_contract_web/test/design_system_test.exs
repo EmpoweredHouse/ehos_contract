@@ -19,6 +19,8 @@ defmodule EhOsContract.Web.DesignSystemTest do
   @layer Path.join(@root, "assets/css/app.css")
   @built Path.join(@root, "priv/static/assets/app.css")
   @script Path.join(@root, "assets/js/app.js")
+  # The graph renderer's stylesheet, which the build imports into the dashboard's (plan E13b).
+  @renderer Application.app_dir(:eh_os_contract_graph, "priv/static/eh_os_contract_graph.css")
   @fonts Path.join(@root, "priv/static/assets/fonts")
   @package_tokens Path.join(
                     @root,
@@ -61,11 +63,11 @@ defmodule EhOsContract.Web.DesignSystemTest do
 
   test "every token the dashboard's styles and scripts read is one the build defines" do
     # A new version of ehos_design that renames a token breaks nothing loudly: CSS falls back to
-    # nothing, and the diagrams' theme gives up. This is where the rename shows.
+    # nothing. This is where the rename shows.
     defined = @built |> File.read!() |> defined_properties()
 
     read =
-      for path <- [@layer, @script],
+      for path <- [@layer, @script, @renderer],
           [name] <-
             Regex.scan(~r/(?:var\(|["'])(--[a-z0-9-]+)/, File.read!(path),
               capture: :all_but_first
@@ -155,7 +157,7 @@ defmodule EhOsContract.Web.DesignSystemTest do
   end
 
   # EHOS serves `default-src 'self'` (plan EG3), which refuses every inline style.
-  # What the server sends; the diagrams are drawn in the browser, and the test below is about them.
+  # What the server sends; what the renderer draws in the browser is its own package's test.
   test "no page carries an inline style as the server sends it" do
     for path <- ["/dashboard/contract", "/dashboard/graph"] do
       document =
@@ -167,21 +169,6 @@ defmodule EhOsContract.Web.DesignSystemTest do
 
       assert Enum.empty?(LazyHTML.query(document, "style")), "#{path}: a <style> element"
       assert Enum.empty?(LazyHTML.query(document, "[style]")), "#{path}: a style attribute"
-    end
-  end
-
-  # What Mermaid returns carries a `<style>` and `style` attributes, which the policy blocks on
-  # the page; `mermaid.run` puts them there as they are. The hook draws with `render` and hands
-  # both to the CSSOM, which the policy leaves alone. The browser is where this is seen; this
-  # keeps the hook from going back.
-  test "the diagrams reach the page with their styles through the CSSOM, not inline" do
-    for path <- [@script, Path.join(@root, "priv/static/assets/app.js")] do
-      js = File.read!(path)
-
-      refute js =~ "mermaid.run(", "#{path} lets Mermaid put its styles on the page"
-      assert js =~ "mermaid.render(", path
-      assert js =~ "adoptedStyleSheets", path
-      assert js =~ ".style.cssText", path
     end
   end
 

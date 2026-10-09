@@ -219,6 +219,38 @@ defmodule EhOsContract.ModelTest do
       assert data.member_id == "member-1"
     end
 
+    # Plan DD, T2a (#240): a scenario gives the rows its command reads, and the domain's
+    # entity says which of their fields are personal; an entity it does not declare
+    # has its row's values dropped.
+    test "on a given entity's row, by the fields its entity declares" do
+      model =
+        update_scenario(PersonalExport, 0, fn scenario ->
+          Map.put(scenario, :given_entities, [
+            %{entity: :member_card, data: %{member_id: "member-1", holder: "Ada Example"}},
+            %{entity: :ghost, data: %{member_id: "member-1"}}
+          ])
+        end)
+
+      domain =
+        Map.put(Model.fetch(ShreddingRig.Domain), :entities, [
+          %{
+            name: :member_card,
+            fields: [
+              %{name: :member_id, type: :id},
+              %{name: :holder, type: :string, personal: :member_id}
+            ]
+          }
+        ])
+
+      {redacted, _domain} = EhOsContract.Model.Export.redact(model, domain)
+      [first | rest] = redacted.scenarios
+      [card, ghost] = first.given_entities
+
+      assert card.data == %{member_id: "member-1", holder: nil}
+      assert ghost.data == %{member_id: nil}
+      refute Enum.any?(rest, &Map.has_key?(&1, :given_entities))
+    end
+
     # Plan EP4: a process manager's scenario says the state its run holds, and the run's
     # fields say which are personal; a key the state does not declare is dropped.
     test "on a process manager's expected state" do

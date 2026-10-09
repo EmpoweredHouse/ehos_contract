@@ -104,6 +104,23 @@ defmodule EhOsContract.Report.Sentence do
   def accountable(nil), do: nil
   def accountable(role), do: "Accountable: #{role}."
 
+  @doc """
+  What one run of a process is, by the fields that tell its runs apart (its
+  `correlate`), as the clause that follows a count of runs: `one per visit_id`, `one
+  per payer_id and period_id`. `nil` without fields.
+  """
+  @spec runs_per([atom() | String.t()]) :: String.t() | nil
+  def runs_per([]), do: nil
+
+  def runs_per(fields) do
+    names = Enum.map(fields, &to_string/1)
+
+    case names do
+      [one] -> "one per #{one}"
+      many -> "one per #{Enum.join(Enum.drop(many, -1), ", ")} and #{List.last(many)}"
+    end
+  end
+
   @doc "A confirmed process declaration, as a sentence."
   @spec declaration(map()) :: String.t()
   def declaration(%{key: :deadline, value: value}),

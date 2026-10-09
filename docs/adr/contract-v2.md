@@ -87,6 +87,16 @@ In the product owner's words, turned into requirements:
 > `terminal:` event. Two processes in one contract stay refused: requirement 8 combines contracts, not
 > processes inside one. ([#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190))
 
+> *Changed 8 October 2026, plan E13 (E13a and E13b).* **Requirement 6: a contract's graph is generated as data,
+> and drawn elsewhere.** The engine drew each picture itself, as a Mermaid diagram — what was shown together,
+> how it looked and what the log said over it, in one module per picture — so a second reader, EHOS Console, could
+> only have the pictures by depending on the engine. Now a contract and a domain are generated as a `graph.v1`
+> document, a graph of facts with a JSON Schema, and what the log says as a second document joined on its ids;
+> both leave the engine through a function, HTTP and `mix eh_os_contract.graph`. Which facts are drawn together,
+> and how, is `eh_os_contract_graph`'s, a package that does not depend on the engine, so the dashboard and the
+> Console draw the same pictures from the same bytes. The engine draws nothing. The renderer chosen, and the two
+> set aside: `graph-renderer.md`. ([#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219))
+
 ## 4. The DSL
 
 ### 4.1 Two modules

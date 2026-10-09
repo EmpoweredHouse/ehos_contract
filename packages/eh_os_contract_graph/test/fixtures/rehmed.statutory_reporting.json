@@ -1,0 +1,703 @@
+{
+  "context": "context:Rehmed.Domain:statutory_reporting",
+  "contract": "rehmed.statutory_reporting",
+  "digest": "a5dc485adc90",
+  "domain": "Rehmed.Domain",
+  "kind": "contract",
+  "module": "Rehmed.Contracts.StatutoryReporting",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:manager",
+        "label": "Manager gabinetu",
+        "name": "manager",
+        "responsibilities": [
+          {
+            "label": "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
+            "name": "overdue_reports",
+            "source": "P-25"
+          }
+        ],
+        "role": "rehmed.manager",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "system",
+        "context": "context:Rehmed.Domain:statutory_reporting",
+        "id": "actor:Rehmed.Domain:p1_integration",
+        "label": "Integracja z rejestrem P1",
+        "name": "p1_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "patient_id",
+            "required": true,
+            "subject": "subject:Rehmed.Domain:patient",
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "pesel",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "icd10",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "icd9",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "practitioner_number",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.statutory_reporting:queue_p1_report",
+        "label": "Zakolejkuj zgłoszenie do P1",
+        "name": "queue_p1_report",
+        "source": "P-07",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.statutory_reporting:waive_p1_report",
+        "label": "Pomiń zgłoszenie usługi niezgłaszanej do P1",
+        "name": "waive_p1_report",
+        "source": "P-07, warunek: usługa raportowana (AGG-15)",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      }
+    ],
+    "constraint": [
+      {
+        "id": "constraint:rehmed.statutory_reporting:policy:report_on_clinical_close:only_reported_services",
+        "label": "Do P1 zgłaszamy tylko zamknięcia usług raportowanych do P1; pozostałe pomijamy",
+        "name": "only_reported_services",
+        "of": "policy:rehmed.statutory_reporting:report_on_clinical_close",
+        "source": "P-07"
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Rehmed.Domain:statutory_reporting",
+        "label": "Zgodność i sprawozdawczość",
+        "name": "statutory_reporting",
+        "source": "CTX-04"
+      }
+    ],
+    "domain_service": [],
+    "effect": [
+      {
+        "delivery": "at_least_once",
+        "id": "effect:rehmed.statutory_reporting:send_p1_report",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "downstream"
+        },
+        "label": "Wyślij zgłoszenie do rejestru P1",
+        "name": "send_p1_report",
+        "source": null
+      }
+    ],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "kept": "log_clear",
+            "label": null,
+            "name": "patient_id",
+            "required": true,
+            "subject": "subject:Rehmed.Domain:patient",
+            "type": "id"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "pesel",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "icd10",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "icd9",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "practitioner_number",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:p1_report_queued",
+        "label": "Zgłoszenie P1 zakolejkowane",
+        "name": "p1_report_queued",
+        "schema_version": 1,
+        "source": "AGG-10",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
+        "type": "rehmed.statutory_reporting.p1_report_queued",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:p1_report_sent",
+        "label": "Wysłano informację do systemu P1",
+        "name": "p1_report_sent",
+        "schema_version": 1,
+        "source": "E-54",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
+        "terminal": true,
+        "type": "rehmed.statutory_reporting.p1_report_sent",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:p1_report_failed",
+        "label": "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
+        "name": "p1_report_failed",
+        "schema_version": 1,
+        "source": "AGG-10",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
+        "type": "rehmed.statutory_reporting.p1_report_failed",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "label": "Usługa nie podlega zgłoszeniu do P1",
+        "name": "p1_reporting_not_required",
+        "schema_version": 1,
+        "source": "H21, DEC-20",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
+        "terminal": true,
+        "type": "rehmed.statutory_reporting.p1_reporting_not_required",
+        "unit": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "declared_as": "event:rehmed.scheduling:visit_completed",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:visit_completed",
+        "included": true,
+        "label": "Pacjent wyszedł z gabinetu",
+        "name": "visit_completed",
+        "schema_version": 1,
+        "source": "E-51",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:departure",
+        "type": "rehmed.scheduling.visit_completed"
+      },
+      {
+        "declared_as": "event:rehmed.clinical_documentation:visit_closed_clinically",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "kept": "log_clear",
+            "label": null,
+            "name": "patient_id",
+            "required": true,
+            "subject": "subject:Rehmed.Domain:patient",
+            "type": "id"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "pesel",
+            "personal_of": "patient_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "icd10",
+            "personal_of": "patient_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "icd9",
+            "personal_of": "patient_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "practitioner_number",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "p1_reported",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "id": "event:rehmed.statutory_reporting:visit_closed_clinically",
+        "included": true,
+        "label": "Zamknięto wizytę przez specjalistę",
+        "name": "visit_closed_clinically",
+        "schema_version": 1,
+        "source": "E-52",
+        "stage": "stage:rehmed.statutory_reporting:clinical_visit:closing",
+        "type": "rehmed.clinical_documentation.visit_closed_clinically"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Rehmed.Domain:p1",
+        "label": "Rejestr zdarzeń medycznych P1",
+        "name": "p1",
+        "operations": [
+          {
+            "label": "Przyjmij zgłoszenie zdarzenia medycznego",
+            "name": "submit_report",
+            "source": "X-01, AGG-10"
+          }
+        ],
+        "source": "X-01",
+        "unavailable_looks_like": "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany"
+      }
+    ],
+    "invariant": [],
+    "policy": [
+      {
+        "delivery": "at_least_once",
+        "id": "policy:rehmed.statutory_reporting:report_on_clinical_close",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "infrastructure"
+        },
+        "label": "Zamknięcie kliniczne — zgłoszenie do P1 albo jego pominięcie",
+        "name": "report_on_clinical_close",
+        "source": "P-07"
+      }
+    ],
+    "process": [
+      {
+        "correlate": [
+          "visit_id"
+        ],
+        "id": "process:rehmed.statutory_reporting:clinical_visit",
+        "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
+        "name": "clinical_visit",
+        "source": null
+      }
+    ],
+    "process_manager": [],
+    "promise": [
+      {
+        "id": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
+        "label": null,
+        "name": "medical_event_reported_within_statutory_window",
+        "process": "process:rehmed.statutory_reporting:clinical_visit",
+        "source": "Dz.U. 2025 poz. 866",
+        "within": {
+          "amount": 2,
+          "unit": "day"
+        }
+      }
+    ],
+    "publication": [],
+    "query": [],
+    "read_model": [],
+    "stage": [
+      {
+        "id": "stage:rehmed.statutory_reporting:clinical_visit:departure",
+        "label": null,
+        "name": "departure",
+        "process": "process:rehmed.statutory_reporting:clinical_visit",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.statutory_reporting:clinical_visit:closing",
+        "label": null,
+        "name": "closing",
+        "process": "process:rehmed.statutory_reporting:clinical_visit",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
+        "label": null,
+        "name": "reporting",
+        "process": "process:rehmed.statutory_reporting:clinical_visit",
+        "source": null
+      }
+    ],
+    "status": [],
+    "subject": [
+      {
+        "id": "subject:Rehmed.Domain:patient",
+        "label": "Pacjent",
+        "name": "patient",
+        "source": "A-01"
+      }
+    ],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:rehmed.statutory_reporting:p1_report",
+        "identity": [
+          "visit_id"
+        ],
+        "label": "Zgłoszenie P1",
+        "name": "p1_report",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": []
+  },
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Rehmed.Domain:manager",
+        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.statutory_reporting:clinical_visit",
+        "to": "process:rehmed.statutory_reporting:clinical_visit"
+      }
+    ],
+    "allowed_in": [],
+    "backed_by": [
+      {
+        "from": "actor:Rehmed.Domain:p1_integration",
+        "id": "backed_by:actor:Rehmed.Domain:p1_integration:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      }
+    ],
+    "builds": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_queued",
+        "id": "builds:event:rehmed.statutory_reporting:p1_report_queued:unit:rehmed.statutory_reporting:p1_report",
+        "to": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "builds:event:rehmed.statutory_reporting:p1_report_sent:unit:rehmed.statutory_reporting:p1_report",
+        "to": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_failed",
+        "id": "builds:event:rehmed.statutory_reporting:p1_report_failed:unit:rehmed.statutory_reporting:p1_report",
+        "to": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "id": "builds:event:rehmed.statutory_reporting:p1_reporting_not_required:unit:rehmed.statutory_reporting:p1_report",
+        "to": "unit:rehmed.statutory_reporting:p1_report"
+      }
+    ],
+    "calls": [
+      {
+        "from": "effect:rehmed.statutory_reporting:send_p1_report",
+        "id": "calls:effect:rehmed.statutory_reporting:send_p1_report:external:Rehmed.Domain:p1:submit_report",
+        "operation": "submit_report",
+        "to": "external:Rehmed.Domain:p1"
+      }
+    ],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_sent:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_failed",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_failed:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      }
+    ],
+    "emits": [
+      {
+        "from": "command:rehmed.statutory_reporting:queue_p1_report",
+        "id": "emits:command:rehmed.statutory_reporting:queue_p1_report:event:rehmed.statutory_reporting:p1_report_queued",
+        "to": "event:rehmed.statutory_reporting:p1_report_queued"
+      },
+      {
+        "from": "command:rehmed.statutory_reporting:waive_p1_report",
+        "id": "emits:command:rehmed.statutory_reporting:waive_p1_report:event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "to": "event:rehmed.statutory_reporting:p1_reporting_not_required"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "fulfils": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "fulfils:event:rehmed.statutory_reporting:p1_report_sent:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ],
+    "handled_by": [
+      {
+        "from": "event:rehmed.statutory_reporting:visit_closed_clinically",
+        "id": "handled_by:event:rehmed.statutory_reporting:visit_closed_clinically:policy:rehmed.statutory_reporting:report_on_clinical_close",
+        "to": "policy:rehmed.statutory_reporting:report_on_clinical_close"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_queued",
+        "id": "handled_by:event:rehmed.statutory_reporting:p1_report_queued:effect:rehmed.statutory_reporting:send_p1_report",
+        "to": "effect:rehmed.statutory_reporting:send_p1_report"
+      }
+    ],
+    "issues": [
+      {
+        "from": "policy:rehmed.statutory_reporting:report_on_clinical_close",
+        "id": "issues:policy:rehmed.statutory_reporting:report_on_clinical_close:command:rehmed.statutory_reporting:queue_p1_report",
+        "to": "command:rehmed.statutory_reporting:queue_p1_report"
+      },
+      {
+        "from": "policy:rehmed.statutory_reporting:report_on_clinical_close",
+        "id": "issues:policy:rehmed.statutory_reporting:report_on_clinical_close:command:rehmed.statutory_reporting:waive_p1_report",
+        "to": "command:rehmed.statutory_reporting:waive_p1_report"
+      }
+    ],
+    "may_ask": [],
+    "may_issue": [],
+    "may_record": [
+      {
+        "from": "actor:Rehmed.Domain:p1_integration",
+        "id": "may_record:actor:Rehmed.Domain:p1_integration:event:rehmed.statutory_reporting:p1_report_sent",
+        "to": "event:rehmed.statutory_reporting:p1_report_sent"
+      },
+      {
+        "from": "actor:Rehmed.Domain:p1_integration",
+        "id": "may_record:actor:Rehmed.Domain:p1_integration:event:rehmed.statutory_reporting:p1_report_failed",
+        "to": "event:rehmed.statutory_reporting:p1_report_failed"
+      }
+    ],
+    "opens": [
+      {
+        "from": "event:rehmed.statutory_reporting:visit_completed",
+        "id": "opens:event:rehmed.statutory_reporting:visit_completed:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ],
+    "or_else": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "id": "or_else:event:rehmed.statutory_reporting:p1_reporting_not_required:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ],
+    "projected_into": [],
+    "published_as": [],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [
+      {
+        "covers": [
+          "handled_by:event:rehmed.statutory_reporting:visit_closed_clinically:policy:rehmed.statutory_reporting:report_on_clinical_close",
+          "issues:policy:rehmed.statutory_reporting:report_on_clinical_close:command:rehmed.statutory_reporting:queue_p1_report"
+        ],
+        "description": "fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1",
+        "event": {
+          "data": {
+            "icd10": null,
+            "icd9": null,
+            "p1_reported": true,
+            "patient_id": "patient-anna",
+            "pesel": null,
+            "practitioner_number": "practitioner-ewa"
+          },
+          "event": "event:rehmed.statutory_reporting:visit_closed_clinically"
+        },
+        "id": "scenario:rehmed.statutory_reporting:fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1",
+        "illustrates": [
+          "constraint:rehmed.statutory_reporting:policy:report_on_clinical_close:only_reported_services"
+        ],
+        "issues": [
+          {
+            "command": "command:rehmed.statutory_reporting:queue_p1_report",
+            "data": {
+              "icd10": null,
+              "pesel": null
+            }
+          }
+        ],
+        "target": "policy:rehmed.statutory_reporting:report_on_clinical_close"
+      },
+      {
+        "covers": [
+          "handled_by:event:rehmed.statutory_reporting:visit_closed_clinically:policy:rehmed.statutory_reporting:report_on_clinical_close",
+          "issues:policy:rehmed.statutory_reporting:report_on_clinical_close:command:rehmed.statutory_reporting:waive_p1_report"
+        ],
+        "description": "masaż zamknięty klinicznie — do P1 nic nie idzie",
+        "event": {
+          "data": {
+            "p1_reported": false,
+            "patient_id": "patient-anna",
+            "pesel": null,
+            "practitioner_number": "practitioner-ewa"
+          },
+          "event": "event:rehmed.statutory_reporting:visit_closed_clinically"
+        },
+        "id": "scenario:rehmed.statutory_reporting:masaż zamknięty klinicznie — do P1 nic nie idzie",
+        "illustrates": [
+          "constraint:rehmed.statutory_reporting:policy:report_on_clinical_close:only_reported_services"
+        ],
+        "issues": [
+          {
+            "command": "command:rehmed.statutory_reporting:waive_p1_report",
+            "data": {}
+          }
+        ],
+        "target": "policy:rehmed.statutory_reporting:report_on_clinical_close"
+      }
+    ],
+    "process_manager": [],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:rehmed.statutory_reporting:queue_p1_report",
+          "data": {
+            "icd10": null,
+            "icd9": null,
+            "patient_id": "patient-anna",
+            "pesel": null,
+            "practitioner_number": "practitioner-ewa"
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.statutory_reporting:queue_p1_report:event:rehmed.statutory_reporting:p1_report_queued"
+        ],
+        "description": "zgłoszenie kolejkowane z ładunkiem zamknięcia",
+        "expect": [
+          {
+            "data": {
+              "pesel": null
+            },
+            "event": "event:rehmed.statutory_reporting:p1_report_queued"
+          }
+        ],
+        "given": [],
+        "id": "scenario:rehmed.statutory_reporting:zgłoszenie kolejkowane z ładunkiem zamknięcia",
+        "target": "unit:rehmed.statutory_reporting:p1_report"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.statutory_reporting:waive_p1_report",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:rehmed.statutory_reporting:waive_p1_report:event:rehmed.statutory_reporting:p1_reporting_not_required"
+        ],
+        "description": "usługa niezgłaszana — zgłoszenie pominięte",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.statutory_reporting:p1_reporting_not_required"
+          }
+        ],
+        "given": [],
+        "id": "scenario:rehmed.statutory_reporting:usługa niezgłaszana — zgłoszenie pominięte",
+        "target": "unit:rehmed.statutory_reporting:p1_report"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "143bc8aaea91"
+}

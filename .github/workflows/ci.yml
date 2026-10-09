@@ -106,6 +106,14 @@ jobs:
           path: packages/eh_os_contract_auth/deps
           key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
+      # The graph renderer (plan E13b), same shape: its gate runs as a separate Mix
+      # project via package_test_graph/1 in sandbox/mix.exs.
+      - name: Cache graph renderer deps
+        uses: actions/cache@v4
+        with:
+          path: packages/eh_os_contract_graph/deps
+          key: eh-os-contract-graph-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+
       # Compiled dependencies, one cache per project. Without it every run
       # compiled ecto, postgrex, oban, plug and the rest from scratch four times
       # over — about three and a half of the five minutes `mix check` took. The
@@ -137,6 +145,7 @@ jobs:
             packages/eh_os_contract/_build
             packages/eh_os_contract_web/_build
             packages/eh_os_contract_auth/_build
+            packages/eh_os_contract_graph/_build
             !sandbox/_build/*/lib/eh_os_contract*
             !packages/*/_build/*/lib/eh_os_contract*
             !sandbox/_build/*/consolidated
@@ -166,6 +175,10 @@ jobs:
 
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth
+        run: mix deps.get
+
+      - name: Install graph renderer deps
+        working-directory: packages/eh_os_contract_graph
         run: mix deps.get
 
       # No `mix ecto.setup` before this: `mix check` runs under MIX_ENV=test

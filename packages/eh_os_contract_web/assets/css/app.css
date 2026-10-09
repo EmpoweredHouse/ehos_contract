@@ -12,6 +12,10 @@
 /* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
 @import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";
 
+/* The graph renderer's cards, arrows and panel (plan E13b), from the package beside this one. It defines
+   only --eh-os-contract-graph-* and reads the tokens above. */
+@import "../../../eh_os_contract_graph/priv/static/eh_os_contract_graph.css";
+
 /* Fonts, served beside this stylesheet by the Plug.Static line the host already has. Relative
    URLs, so they follow wherever that line mounts the assets; the build leaves them as written
    (--external in config/config.exs). Weights 400 and 500 only, which is all the design system
@@ -140,6 +144,13 @@ main {
   padding: 0 28px 48px;
   max-width: 60rem;
   margin: 0 auto;
+}
+
+/* A page with graphs on it takes the window's width, a graph being read across, with a margin on each side. A
+   graph's panel lies over the page's right side rather than narrowing it, so no graph is resized by it. */
+main:has(.ehg) {
+  max-width: none;
+  padding-inline: clamp(24px, 3vw, 56px);
 }
 
 /* No edge-to-edge bar: nav sits inside the same padded column as everything else. The page being
@@ -324,29 +335,6 @@ select:focus-visible {
   color: var(--eh-os-contract-text-muted);
   font-size: var(--caption-size);
   margin-top: 2px;
-}
-
-/* The Mermaid hook replaces this element's content with an SVG once it runs — the scroll container
-   is needed before that happens too, since a diagram wider than the column is the common case, not
-   the exception. Its colours are the diagram's own background, set from the same tokens by
-   assets/js/app.js. */
-pre.mermaid {
-  overflow-x: auto;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin: 8px 0;
-  background: var(--eh-os-contract-bg-muted);
-  color: var(--text-tertiary);
-  font-family: var(--mono);
-  font-size: var(--record-size);
-}
-
-/* Mermaid 11 wraps each label in a <p>, which the page's own `p` rule would otherwise reach: a
-   node's text colour is the diagram's (the theme, or the engine's classDef), not body text's. */
-pre.mermaid p {
-  margin: 0;
-  color: inherit;
 }
 
 @media (max-width: 640px) {
