@@ -636,7 +636,7 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
 | E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository; 9 October: the architecture reviewed, five points open ("E13b — the architecture review (9 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1977,6 +1977,54 @@ Batch 1 needs no views: it is what every view is drawn with.
   documentation diagrams above; (3) step 7 outside this repository — an issue in `eh-os` (a screen of processes in
   the Console, and how the Console authenticates to `/graph`) and a pull request in `ehos-tools` (the template
   mounts the dashboard, decision 6) — on the user's word.
+
+### E13b — the architecture review (9 October)
+
+The user asked for a review before calling E13's architecture closed, so that what is left (decision 8's table,
+the Console reading `/graph`, the template mounting the dashboard) is added without changing it. An agent reviewed
+the division of responsibility, the architecture, Mermaid's leftovers and duplicated functionality over the whole
+branch against `main`; its findings were checked in the code before they went to the user. **Holds:** the
+renderer does not depend on the engine; the engine holds no look; the dashboard builds no graph content; every
+number from the log has one source; Mermaid is gone from the code (the CHANGELOGs, and diagrams of the
+documentation, are left); no two dashboards and no two graph tools — `Brief` is gone, and `view`, `glossary`,
+`report` and the pages answer other questions for other readers. **Open, each to be explained to the user and
+decided one at a time:**
+
+1. **What "additive" means for a reader of `graph.v1`.** The schemas close every object and require every node
+   kind and relation type, and `schema` stays `eh_os_contract.graph.v1`, so a reader holding an older schema
+   refuses a newer document with one key more, and nothing says what may change inside v1. It does not matter
+   while the engine and the renderer come from one commit, as in the dashboard; it does once a reader on
+   another commit reads `/graph` — the Console, reading applications pinned to different engines. *The user's
+   decision (9 October): later.* To do before the Console is pointed at `/graph` (step 7's issue in `eh-os`): a
+   rule in the schemas' descriptions, the engine's README and the CHANGELOG — v1 changes only by addition
+   (optional keys, new node kinds, relation types, scenario kinds, overlay keys), a reader ignores what it does
+   not know and does not assume a new key is there, and removing or changing the meaning of anything is v2 — and
+   a renderer test drawing a document with an unknown node kind, an unknown relation type and an extra key.
+2. **What depends on an event is decided twice, by two rules.** The panel's "What depends on it" is the
+   renderer's own list of relation types (`panel.ex`, around line 185), with the unit's own fold (`builds`) in
+   it and the sibling contracts that consume the event out of it, since a contract's document does not say who
+   consumes its events (the domain's does). `event-without-consumer` in `mix eh_os_contract.check` counts the
+   siblings and not the fold. On the sandbox (9 October): the check warns of 18 events; the panel shows 14 of
+   them as depended on, by their unit's fold alone, and agrees on 4 (a boundary's events, with no fold); and
+   Scheduling's `visit_completed`, which two contracts consume, shows only its unit's fold. Decision 8's table
+   has this as its main column. The fix the review proposes: the engine says, on each event, what depends on it,
+   by the check's own predicate, the siblings included — an addition to v1 — and the panel and the table show
+   it.
+3. **A process is part of a contract's document, and P2h takes it out of the contract.** `View.declared/1` draws
+   the first process, `View.views/1` lists `:declared` without a process id, and the renderer decides which
+   events belong to a run (`unit != nil or included`, `view.ex`), which is `Model.process_events/1`'s rule.
+   Cheap now: `{:declared, process_id}`, the run's membership as a field the engine gives, and P2e adding a
+   document of `kind: "process"` to `graph.v1` (an addition).
+4. **Smaller:** what happens to personal data is worded by the renderer from a node's kind where the engine's rule
+   depends on more (`forget/2`, the delivery); "waiting" and "failing" are read from the overlay's raw maps in
+   three places rather than given as the report's booleans; a promise's window reads "within day" on its arrow
+   and "kept within 1 day" in its panel; stale text in `marks.ex` (views "not specified yet"), the task's
+   moduledoc (pictures "the dashboard's"), `graph_live.ex`'s moduledoc (a task moduledoc that is gone), this
+   plan's DD paragraph on comparing `graph --json`; `docs/adr/dashboard-design-system.md` still describes the
+   Mermaid theme and needs a dated amendment.
+5. **`/model` and `/graph`** are two JSON exports of one contract, and the dashboard's README gives them the same
+   readers (the Console, CI, a renderer); neither has a reader in `eh-os`. For the user: name `/model`'s own
+   reader (the DSL as written) and point the Console at `/graph`, or retire `/model`.
 
 ### Wobec programu DD
 
