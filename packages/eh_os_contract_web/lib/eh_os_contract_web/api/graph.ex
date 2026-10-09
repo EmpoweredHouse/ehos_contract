@@ -117,12 +117,13 @@ defmodule EhOsContract.Web.Api.Graph do
   end
 
   # Whether the request already holds this version: any tag of its `If-None-Match`,
-  # compared weakly as RFC 9110 says for that header, or `*`.
+  # compared weakly as RFC 9110 says for that header, or `*`. A tag is read whole, quotes
+  # and all, since a comma may stand inside one.
   defp held?(conn, etag) do
     conn
     |> get_req_header("if-none-match")
-    |> Enum.flat_map(&String.split(&1, ","))
-    |> Enum.map(&(&1 |> String.trim() |> String.replace_prefix("W/", "")))
+    |> Enum.flat_map(&Regex.scan(~r/\*|(?:W\/)?"[^"]*"/u, &1))
+    |> Enum.map(fn [tag] -> String.replace_prefix(tag, "W/", "") end)
     |> Enum.any?(&(&1 in [etag, "*"]))
   end
 

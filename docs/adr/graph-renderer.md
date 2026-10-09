@@ -313,6 +313,16 @@ on `:root`, written on every frame, cost Chrome too — every element inherits i
 by a rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
 [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
 
+## Amendment, 9 October 2026: the dependencies' licences
+
+The decision gave C "two MIT dependencies, and no attribution". Both halves were wrong. dagre, with the
+graphlib it carries, is MIT; d3-zoom and the d3 modules it imports are ISC, and d3-ease BSD-3-Clause. All three
+licences ask that their notice travel with the code. The renderer's `NOTICE` has carried them since the package
+was built. The dashboard's `NOTICE` has carried them since 9 October: its `app.js` bundles the renderer's script,
+and it had named only the fonts. Neither fact moves the choice, since all three licences are permissive.
+Recorded in `PLAN.md`, "E13 — pushed, `main` merged again, and an audit against `main`'s conventions (9 October)";
+[#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with

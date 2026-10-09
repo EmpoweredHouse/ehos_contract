@@ -232,6 +232,35 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
     defp page(view), do: view |> render() |> LazyHTML.from_fragment()
 
+    # A host may build a document by hand, without a digest: it is drawn, and the panel's
+    # joins are made for each such document rather than kept from the one before.
+    test "a document without a digest is drawn, and the next one's panel is its own", %{
+      view: view,
+      document: document
+    } do
+      first = Map.delete(document, "digest")
+      assert draw(first) |> LazyHTML.query(".ehg-canvas") |> Enum.count() == 1
+
+      send(view.pid, {:document, first})
+      send(view.pid, {:document, first})
+      view |> element(~s(button[data-ehg-node="unit:edge_cases:1st"])) |> render_click()
+      refute page(view) |> LazyHTML.query(".ehg-panel") |> LazyHTML.text() =~ "Later"
+
+      # The unit's events are the panel's joins: an event the next document adds to it
+      # is listed only if they are made again.
+      later = %{
+        "id" => "event:edge_cases:later",
+        "name" => "later",
+        "label" => "Later",
+        "source" => nil,
+        "fields" => [],
+        "unit" => "unit:edge_cases:1st"
+      }
+
+      send(view.pid, {:document, update_in(first, ["nodes", "event"], &(&1 ++ [later]))})
+      assert page(view) |> LazyHTML.query(".ehg-panel") |> LazyHTML.text() =~ "Later"
+    end
+
     test "a click on a card selects it, marks what touches it, and opens its panel", %{view: view} do
       view |> element(~s(button[data-ehg-node="unit:edge_cases:1st"])) |> render_click()
       html = page(view)

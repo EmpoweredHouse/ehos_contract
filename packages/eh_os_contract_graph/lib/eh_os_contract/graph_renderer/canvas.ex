@@ -81,11 +81,15 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     view = View.build(document, spec, overlay)
     selected = socket.assigns.selected
 
-    # The panel's joins, made once a document.
+    # The panel's joins, made once a document: reused only for the same digest, so a
+    # document without one — a host may build one by hand — gets its own each time.
+    digest = document["digest"]
+
     lookup =
-      if socket.assigns[:lookup_of] == document["digest"],
-        do: socket.assigns.lookup,
-        else: Lookup.new(document)
+      if digest != nil and socket.assigns[:lookup] != nil and
+           socket.assigns[:lookup_of] == digest,
+         do: socket.assigns.lookup,
+         else: Lookup.new(document)
 
     {:ok,
      assign(socket,

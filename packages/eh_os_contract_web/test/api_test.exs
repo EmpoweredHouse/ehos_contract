@@ -287,19 +287,21 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert cached.status == 304
 
-      for held <- [~s("other", W/"#{document["digest"]}"), "*"] do
+      for held <- [
+            ~s("other", W/"#{document["digest"]}"),
+            ~s("a,b", "#{document["digest"]}"),
+            "*"
+          ] do
         conn =
           conn |> put_req_header("if-none-match", held) |> get("/api/graph/#{id}")
 
         assert conn.status == 304, held
       end
 
-      stale =
-        conn
-        |> put_req_header("if-none-match", ~s("other"))
-        |> get("/api/graph/#{id}")
-
-      assert stale.status == 200
+      for stale <- [~s("other"), ~s("other,#{String.slice(document["digest"], 0, 8)}")] do
+        conn = conn |> put_req_header("if-none-match", stale) |> get("/api/graph/#{id}")
+        assert conn.status == 200, stale
+      end
     end
 
     test "a contract's overlay says its period; a bad one is refused", %{conn: conn} do
