@@ -8,39 +8,27 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- **E13b, batch 5: Mermaid is gone.** The dashboard serves no `mermaid.min.js`, its root layout loads `app.js`
-  alone, and `app.js` connects the socket with the renderer's hook and nothing else: the `MermaidRender` hook, the
-  diagrams' theme and their way past the policy are gone, and so is the preview, `<mount>/graph/preview`. A host
-  that linked to the preview links to `<mount>/graph`; one that served `mermaid.min.js` from these assets has
-  nothing more to serve. Every page now works under `default-src 'self'` with no exception. `NOTICE` names the
-  fonts alone.
-- **E13b, batch 4: the Graph screen draws with the renderer.** Each picture of the screen — a domain's context map
-  and system, a contract's declared shape, full graph, units and lifecycles — is the renderer's view of the engine's
-  `graph.v1` document, with the log over the same pictures as before, read once connected. A click opens the
-  renderer's panel, a sidebar at the right of the window that lies over the page. A domain's actors are a table
-  under its map, a row opening the actor's panel. A page with graphs on it takes the window's
-  width, with a margin on each side. Contract status says what one run of a process is beside the count of runs
-  ("Runs in this period: 3, one per visit_id."), from the process's `correlate`. No Mermaid is left on the screen; the preview keeps its Mermaid
-  diagrams until Mermaid is cut.
-- **E13b, batch 3: the preview draws the views.** `<mount>/graph/preview` picks one view of the document —
-  `?view=` the full graph, the declared shape, a unit, a lifecycle, the context map, the system, or `all` — and
-  draws under it the Mermaid diagram of the same picture, as the Graph screen draws it, to compare the two. The
-  Graph and Contract status screens are unchanged.
-- **E13b, batch 1: the dashboard depends on `eh_os_contract_graph`, the graph renderer.** Its script and stylesheet
-  are bundled into the dashboard's own `app.js` and `app.css`, so a host serves nothing new and registers nothing.
-  A temporary screen, `<mount>/graph/preview` and not in the nav, draws one document of the registry with it, every
-  node and relation, with the overlay once connected, so the drawing layer can be looked at under the host's
-  policy. The Graph and Contract status screens are unchanged; the preview goes when the Graph screen moves onto the
-  renderer. A host fetching this package from git gets the renderer the same way it gets the engine.
-
-- **E13a: the graph as an API.** `eh_os_contract_api/2` serves `GET <mount>/graph` (an index of contracts — each
-  `contract`, its id, with its `module` — and domains, with their versions and digests),
-  `<mount>/graph/rehmed.settlement` (the contract's `graph.v1` document, its digest as the `ETag`, `304` on
-  `If-None-Match`), `<mount>/graph/rehmed.settlement/overlay?since=…&until=…` (what the log says over it), and
-  `<mount>/graph/domain/Rehmed.Domain` with its overlay, behind the same resolver as `/model`. A contract is named by
-  its `id:`, as the other APIs name it, and a module's name is an unknown contract; a domain, which has no id, by its
-  module. What the registry does not hold is `404`, and an overlay whose `since` is after its `until` is `400`. The
-  dashboard's screens are unchanged.
+- **The Graph screen draws with `eh_os_contract_graph`, and no Mermaid is left** (plan E13, #217). Each picture of
+  the screen — a domain's context map and system, a contract's declared shape, full graph, units and lifecycles —
+  is the renderer's view of the engine's `graph.v1` document, with the log over the same pictures as before, read
+  once connected. A click on a card or an arrow opens a panel at the right of the window that says what it is,
+  from the document alone; a domain's actors are a table under its map, a row opening the actor's panel; a page
+  with graphs takes the window's width. Contract status says what one run of a process is beside the count of
+  runs ("Runs in this period: 3, one per visit_id."), from the process's `correlate`. The dashboard serves no
+  `mermaid.min.js`, and every page works under `default-src 'self'` with no exception. **The dashboard depends on
+  `eh_os_contract_graph`**, which a host fetching from git gets as it gets the engine; its script and stylesheet
+  are bundled into the dashboard's `app.js` and `app.css`, so a host serves and registers nothing new, but the
+  bundled script reads the markup the renderer's component renders: **update the two together**
+  (`mix deps.update eh_os_contract_web eh_os_contract_graph`). `NOTICE` names the renderer's dagre and d3, which
+  the bundle carries. Moves no verdict.
+- **The graph documents over HTTP** (plan E13, #217). `eh_os_contract_api/2` serves `GET <mount>/graph` (an index
+  of contracts — each `contract`, its id, with its `module` — and domains, with their versions and digests),
+  `<mount>/graph/<contract id>` (the contract's `graph.v1` document, its digest as the `ETag`, `304` on
+  `If-None-Match`), `<mount>/graph/<contract id>/overlay?since=…&until=…` (what the log says over it), and
+  `<mount>/graph/domain/<domain module>` with its overlay, behind the same resolver as `/model`. A contract is
+  named by its `id:`, as the other APIs name it, and a module's name is an unknown contract; a domain, which has
+  no id, by its module. What the registry does not hold is `404`, and an overlay whose `since` is after its
+  `until` is `400`. Moves no verdict.
 - **`<mount>/conformance?process=<id>` serves a process module's report** (plan DD, P2w, eh-os-contract#259, agreed
   with EHOS in EmpoweredHouse/eh-os#297). The report keeps the schema `eh_os_contract.conformance.v3` and has
   `"process"` where a contract's has `"contract"`. An unknown process is 400, and so is naming a contract and a
