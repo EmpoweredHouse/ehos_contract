@@ -1156,23 +1156,19 @@ defmodule EhOsContract.Dispatcher do
         Map.new(unit.identity, &{&1, Map.fetch!(job.command, &1)})
       )
 
-    state =
+    {events, befores} =
       if function_exported?(impl, :evolve, 2) do
         # Reading the stream back — its keys too — is part of evolving, for the failed row.
         rows = Enum.sort_by(recorded, & &1.position)
         events = stage("evolve", fn -> decode_all!(job, recorded) end)
-
-        rows
-        |> Enum.zip(events)
-        |> Enum.reduce(state, fn {row, event}, state ->
-          state = with_status(state, unit, Map.get(before, row.position))
-          stage("evolve", fn -> state!(impl.evolve(state, event), state, impl) end)
-        end)
+        {events, Enum.map(rows, &Map.get(before, &1.position))}
       else
-        state
+        {[], []}
       end
 
-    with_status(state, unit, status)
+    Decision.folded(unit, impl, state, events, befores, status, fn state, event, _index ->
+      stage("evolve", fn -> state!(impl.evolve(state, event), state, impl) end)
+    end)
   end
 
   # `evolve/2` returns the unit's state. Anything else is a defect, named without the
@@ -1193,10 +1189,6 @@ defmodule EhOsContract.Dispatcher do
     rows = Enum.sort_by(rows, & &1.position)
     {befores, status} = Lifecycle.walk(lifecycle, Enum.map(rows, &Map.get(names, &1.type)))
     {Map.new(Enum.zip(Enum.map(rows, & &1.position), befores)), status}
-  end
-
-  defp with_status(state, unit, status) do
-    if Lifecycle.of(unit), do: %{state | status: status}, else: state
   end
 
   # A boundary reads events of the sibling contracts it consults too, and each is

@@ -904,24 +904,12 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  # The fold, with the status put into the state before each given event and after the
-  # last, as dispatch puts it.
+  # The fold dispatch does (`Decision.folded/7`), with the status put into the state
+  # before each given event and after the last.
   defp fold_status(unit, impl, state, givens, befores, status) do
-    if Lifecycle.of(unit) do
-      evolve? = function_exported?(impl, :evolve, 2)
-
-      state =
-        givens
-        |> Enum.zip(befores)
-        |> Enum.reduce(state, fn {event, before}, state ->
-          state = %{state | status: before}
-          if evolve?, do: evolved!(impl, state, event), else: state
-        end)
-
-      %{state | status: status}
-    else
-      fold(impl, state, givens)
-    end
+    Decision.folded(unit, impl, state, givens, befores, status, fn state, event, _index ->
+      evolved!(impl, state, event)
+    end)
   end
 
   # As dispatch: what `evolve/2` returns is the state, and the message names no value.

@@ -162,51 +162,40 @@ if Code.ensure_loaded?(StreamData) do
       fold_from(model, impl, declaration, identity_from(declaration, List.first(events)), events)
     end
 
-    # As dispatch folds a stream: from the default state named by `identity`, through
-    # `evolve/2` when the implementation has one, and for a unit with a lifecycle with the
-    # status put into the state before each event and after the last.
+    # As dispatch folds a stream (`Decision.folded/7`): from the default state named by
+    # `identity`, the status before each event from the lifecycle's walk, and a step that
+    # fails naming the event and the history.
     defp fold_from(model, impl, unit, identity, events) do
       module = state_module(model, unit.name)
-      lifecycle = Lifecycle.of(unit)
-      status = fn names -> if lifecycle, do: Lifecycle.status(lifecycle, names) end
-
-      with_status = fn state, names ->
-        if lifecycle, do: %{state | status: status.(names)}, else: state
-      end
-
       all = names(model, events)
 
-      state =
-        if function_exported?(impl, :evolve, 2) do
-          events
-          |> Enum.with_index()
-          |> Enum.reduce(struct(module, identity), fn {event, index}, state ->
-            state = with_status.(state, Enum.take(all, index))
-
-            folded =
-              try do
-                impl.evolve(state, event)
-              rescue
-                error ->
-                  flunk(
-                    "#{inspect(impl)}.evolve/2 raised on #{name_of(model, event)}, event " <>
-                      "#{index + 1} of the history #{inspect(all)}:\n" <>
-                      Exception.format(:error, error, __STACKTRACE__)
-                  )
-              end
-
-            assert is_struct(folded, module),
-                   "#{inspect(impl)}.evolve/2 returned #{inspect(folded)} for " <>
-                     "#{name_of(model, event)}, and it returns the unit's state, " <>
-                     "%#{inspect(module)}{}"
-
-            folded
-          end)
-        else
-          struct(module, identity)
+      {befores, status} =
+        case Lifecycle.of(unit) do
+          nil -> {[], nil}
+          lifecycle -> Lifecycle.walk(lifecycle, all)
         end
 
-      with_status.(state, all)
+      Decision.folded(unit, impl, struct(module, identity), events, befores, status, fn
+        state, event, index ->
+          folded =
+            try do
+              impl.evolve(state, event)
+            rescue
+              error ->
+                flunk(
+                  "#{inspect(impl)}.evolve/2 raised on #{name_of(model, event)}, event " <>
+                    "#{index + 1} of the history #{inspect(all)}:\n" <>
+                    Exception.format(:error, error, __STACKTRACE__)
+                )
+            end
+
+          assert is_struct(folded, module),
+                 "#{inspect(impl)}.evolve/2 returned #{inspect(folded)} for " <>
+                   "#{name_of(model, event)}, and it returns the unit's state, " <>
+                   "%#{inspect(module)}{}"
+
+          folded
+      end)
     end
 
     # --- deciding ---------------------------------------------------------------------

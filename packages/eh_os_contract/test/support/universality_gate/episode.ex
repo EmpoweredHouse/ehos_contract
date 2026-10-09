@@ -22,6 +22,12 @@ defmodule UniversalityGate.Episode do
   def qualify_referral(%QualifyReferral{identity_confirmed: false}, _state),
     do: reject(:treatment_starts_only_on_confirmed_eligibility)
 
+  # An active payer that names no scope has confirmed nothing a treatment could start
+  # on, and the confirmation it would emit requires one: found by the property tests
+  # (plan DD, PC2, #266), where the decision emitted it without.
+  def qualify_referral(%QualifyReferral{payer_status: :active, payer_scope: nil}, _state),
+    do: reject(:treatment_starts_only_on_confirmed_eligibility)
+
   # `emit/1` takes literals, so what both outcomes share is written in each.
   def qualify_referral(%QualifyReferral{episode_id: id, __meta__: meta} = command, _state) do
     checked_at = checked_at(meta)
