@@ -103,7 +103,10 @@ defmodule EhOsContract.Graph.Facts do
       event: Enum.map(events, & &1.node),
       read_model:
         for rm <- model.read_models do
-          node(:read_model, c, rm, fields: fields(rm.fields, ctx), delivery: rm.delivery)
+          node(:read_model, c, rm,
+            fields: fields(rm.fields, ctx, :read_model),
+            delivery: rm.delivery
+          )
         end,
       query:
         for q <- model.queries do
@@ -210,7 +213,7 @@ defmodule EhOsContract.Graph.Facts do
           stage: stage_id(model, stage),
           included: include != nil,
           declared_as: e.from,
-          fields: fields(declared.fields, ctx),
+          fields: fields(declared.fields, ctx, if(not e.received, do: :event)),
           terminal: terminal,
           type: declared[:type],
           schema_version: declared[:schema_version],
@@ -1046,10 +1049,12 @@ defmodule EhOsContract.Graph.Facts do
             _ -> {r.upstream, r.downstream}
           end
 
+        # A pattern declared `between:` two contexts is symmetric: neither is upstream.
         {r.type,
          relation(end_id.(from), end_id.(to),
            terms: r.terms != [] && r.terms,
-           source: r[:source]
+           source: r[:source],
+           symmetric: match?(%{between: [_, _]}, r)
          )}
       end
 
@@ -1196,14 +1201,15 @@ defmodule EhOsContract.Graph.Facts do
   defp declaration_kind(:record), do: :event
   defp declaration_kind(kind), do: kind
 
-  defp fields(fields, ctx), do: Enum.map(fields || [], &field(&1, ctx))
+  defp fields(fields, ctx, held \\ nil), do: Enum.map(fields || [], &field(&1, ctx, held))
 
   # A field in the one shape every panel shows: name, label, type, whether it is
   # required, and what applies of its default, whose personal data it is, the subject
   # it points at, the domain value its type is, the entity it identifies, the external
   # that issues it — its own `issued_by:` or its entity's identity's — and whether the
-  # host supplies it.
-  defp field(f, ctx) do
+  # host supplies it — and what keeps a value about a person, where the declaration
+  # holding the field is `held` in the log (`:event`) or in a read model's rows.
+  defp field(f, ctx, held \\ nil) do
     issuer = Map.get(f, :issued_by) || issued_through(f, ctx.entities)
 
     for {key, value} <- [
@@ -1213,7 +1219,8 @@ defmodule EhOsContract.Graph.Facts do
           value: value_of(f.type, ctx),
           refers_to: Map.get(f, :refers_to) && id(:entity, ctx.d, f.refers_to),
           issued_by: issuer && id(:external, ctx.d, issuer),
-          supplied_by: Map.get(f, :supplied_by)
+          supplied_by: Map.get(f, :supplied_by),
+          kept: kept(f, held)
         ],
         value != nil,
         into: %{
@@ -1224,6 +1231,24 @@ defmodule EhOsContract.Graph.Facts do
         },
         do: {key, value}
   end
+
+  # What keeps a field's value about a person (v2 §14, `EhOsContract.Personal`): an
+  # event's personal data is sealed in the log with its subject's key, which erasing the
+  # subject destroys, and its pointer at the subject stays in the log in the clear; a
+  # read model's personal data is in its rows, which it forgets when the subject is
+  # erased — the engine does not start a read model that projects personal data and
+  # cannot forget (`Personal.check_forgetting!/1`). A command, a unit's state, a
+  # manager's and a received event's keep nothing of it in the log, so it is left out.
+  defp kept(f, :event) do
+    cond do
+      Map.get(f, :personal) -> "log_sealed"
+      Map.get(f, :subject) -> "log_clear"
+      true -> nil
+    end
+  end
+
+  defp kept(f, :read_model), do: if(Map.get(f, :personal), do: "rows_forgotten")
+  defp kept(_f, nil), do: nil
 
   # A type as data: a built-in's or a domain value's name, `%{list: type}`, or an
   # inline enum with each member's label.

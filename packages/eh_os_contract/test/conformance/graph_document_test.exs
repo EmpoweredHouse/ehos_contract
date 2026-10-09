@@ -85,6 +85,9 @@ defmodule EhOsContract.GraphDocumentTest do
 
   defp node(document, kind, id), do: Enum.find(document["nodes"][kind], &(&1["id"] == id))
 
+  defp node_named(document, kind, name),
+    do: Enum.find(document["nodes"][kind], &(&1["name"] == name))
+
   # What a contract declares is scoped to its `id:` (plan DD, ID3, #173).
   defp scope(contract), do: Model.fetch(contract).id
 
@@ -684,6 +687,35 @@ defmodule EhOsContract.GraphDocumentTest do
                node(d, "entity", domain.(:entity, :service))
     end
 
+    test "a field says what keeps its value about a person, where something does" do
+      d = Document.contract(ShreddingRig.Members)
+
+      fields = fn kind, name ->
+        Map.new(node_named(d, kind, name)["fields"], &{&1["name"], &1})
+      end
+
+      # An event's personal data is sealed in the log, and its pointer stays in the clear.
+      joined = fields.("event", "joined")
+      assert joined["name"]["kept"] == "log_sealed"
+      assert joined["member_id"]["kept"] == "log_clear"
+      refute Map.has_key?(joined["plan"], "kept")
+
+      # A read model's personal data is in its rows, forgotten on erasure; its pointer
+      # says nothing more.
+      members = fields.("read_model", "members")
+      assert members["name"]["kept"] == "rows_forgotten"
+      refute Map.has_key?(members["member_id"], "kept")
+
+      # A command's and a state's keep nothing of it.
+      visits = Document.contract(EhOsContract.GraphDocumentTest.Visits)
+      pay = Map.new(node_named(visits, "command", "pay")["fields"], &{&1["name"], &1})
+      refute Map.has_key?(pay["name"], "kept")
+      refute Map.has_key?(pay["patient_id"], "kept")
+
+      for f <- node_named(visits, "unit", "visit")["state"],
+          do: refute(Map.has_key?(f, "kept"), f["name"])
+    end
+
     test "no personal value is in a document, in a scenario or anywhere else", %{d: d} do
       domain =
         Document.domain(EhOsContract.GraphDocumentTest.Clinic, [
@@ -983,6 +1015,31 @@ defmodule EhOsContract.GraphDocumentTest do
             do: assert(Enum.any?(d["relations"]["projected_into"], &(&1["id"] == p)))
       end
     end
+  end
+
+  test "a context-mapping pattern declared between two contexts says it is symmetric" do
+    compile(
+      """
+      defmodule EhOsContract.GraphDocumentTest.Mapped do
+        use EhOsContract.Domain, name: :graph_mapped, language: :en
+
+        subdomain :core, "Core", type: :core
+        context :front, "Front", subdomain: :core
+        context :back, "Back", subdomain: :core
+        context :books, "Books", subdomain: :core
+
+        relation :partnership, between: [:front, :back]
+        relation :customer_supplier, upstream: :front, downstream: :books
+      end
+      """,
+      "graph_mapped.ex"
+    )
+
+    d = Document.domain(EhOsContract.GraphDocumentTest.Mapped, [])
+    assert [%{"symmetric" => true}] = d["relations"]["partnership"]
+    assert [supplier] = d["relations"]["customer_supplier"]
+    refute Map.has_key?(supplier, "symmetric")
+    assert JSV.validate(d, @schema) |> elem(0) == :ok
   end
 
   describe "a process's shape" do

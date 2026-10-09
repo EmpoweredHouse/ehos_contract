@@ -27,6 +27,15 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E13b, after the review: what a renderer would otherwise have to work out is in the documents.** A step's
+  overlay entry says whether the report lists it as waiting or failing (`waits`, `fails`), from
+  `EhOsContract.Conformance.waiting?/1` and `failing?/1`, public now; the numbers between two contracts use the
+  same predicate. A field of an event or a read model says what keeps its value about a person (`kept`:
+  `log_sealed`, an event's personal data, encrypted in the log with its subject's key; `log_clear`, an event's
+  pointer at its subject; `rows_forgotten`, a read model's personal data, forgotten when the subject is erased).
+  A context-mapping pattern declared `between:` two contexts says `symmetric: true`. All three are additions to
+  `graph.v1` and its overlay; no verdict moves.
+
 - **E13a: a contract and a domain as `graph.v1` documents — graphs of facts.**
   `EhOsContract.Graph.Document.contract/1` gives a contract's document and `Document.domain/2` a domain's: every
   declaration a relation can end at as a node, grouped by kind (`command`, `event`, `policy`, `timer`, `status`,

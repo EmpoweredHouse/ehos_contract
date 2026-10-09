@@ -857,6 +857,14 @@
         "supplied_by": {
           "const": "host",
           "description": "The host gives it, not the caller."
+        },
+        "kept": {
+          "enum": [
+            "log_sealed",
+            "log_clear",
+            "rows_forgotten"
+          ],
+          "description": "What keeps its value about a person, where something does: log_sealed, an event's personal data, encrypted in the log with its subject's key, which erasing the subject destroys; log_clear, an event's pointer at its subject, in the log in the clear; rows_forgotten, a read model's personal data, in its rows, which it forgets when the subject is erased. Absent where nothing keeps it: a command's, a state's, a received event's."
         }
       }
     },
@@ -2473,6 +2481,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -2614,6 +2626,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -2739,6 +2755,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -3043,6 +3063,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -3123,6 +3147,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -3222,6 +3250,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -3355,6 +3387,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },
@@ -3426,6 +3462,10 @@
         },
         "source": {
           "type": "string"
+        },
+        "symmetric": {
+          "const": true,
+          "description": "Declared between: two ends, neither upstream of the other; absent for a pattern with an upstream and a downstream."
         }
       }
     },

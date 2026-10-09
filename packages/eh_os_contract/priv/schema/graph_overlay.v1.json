@@ -258,11 +258,13 @@
     },
     "step_numbers": {
       "type": "object",
-      "description": "A step of the contract, on the relation that ends it: how often it was taken in the period (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
+      "description": "A step of the contract, on the relation that ends it: how often it was taken in the period (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, whether the report lists it as waiting or failing, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
       "required": [
         "taken",
         "waiting",
         "failing",
+        "waits",
+        "fails",
         "untraversed",
         "pending"
       ],
@@ -348,6 +350,14 @@
             }
           }
         },
+        "waits": {
+          "type": "boolean",
+          "description": "Whether the report lists the step as waiting: anything in waiting is above zero."
+        },
+        "fails": {
+          "type": "boolean",
+          "description": "Whether the report lists the step as failing: a command or an effect job failed there, or its consumer's subscription stopped."
+        },
         "untraversed": {
           "type": "boolean",
           "description": "The conformance report's reading of the step: true exactly when the report lists it as never traversed in the period."
@@ -360,7 +370,7 @@
     },
     "step_by_trigger": {
       "type": "object",
-      "description": "A relation several steps end at — a policy handling several events, drawn as one issues: each step's numbers under the id of the event it starts from. No total, as the report gives none. An entry is this or step_numbers, never both.",
+      "description": "A relation several steps end at — a policy handling several events, held as one issues relation: each step's numbers under the id of the event it starts from. No total, as the report gives none. An entry is this or step_numbers, never both.",
       "required": [
         "by_trigger"
       ],

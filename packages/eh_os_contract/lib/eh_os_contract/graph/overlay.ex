@@ -4,8 +4,8 @@ defmodule EhOsContract.Graph.Overlay do
   its own, joined onto the graph of facts by id and never copied into it, so the
   facts keep their digest whatever the log holds.
 
-  It carries **only the numbers the pictures and the report compute today** (the
-  user's decision 2 before batch 4): an event's occurrences, a process's runs, how
+  It carries **only the numbers the conformance report computes** (the user's
+  decision 2 before batch 4), and its readings of them, so a reader recounts nothing: an event's occurrences, a process's runs, how
   often a step was taken, what waits and what fails there and whether the report
   counts it as never taken or not yet; a lifecycle transition's
   count, "not yet" and "never", and an aggregate's count; between contracts, the
@@ -35,15 +35,16 @@ defmodule EhOsContract.Graph.Overlay do
   A step of `EhOsContract.Paths` is one arrow or two in the facts; its numbers sit
   on the relation that ends it: a command's `emits`, a reaction's `issues` (a
   manager's with the step's event as its `on`), a timer's `fires`, and an effect's
-  `handled_by`. A step's numbers are the report's reading of it: `untraversed` is
-  the report's "never" — the step listed as untraversed — and `pending` its "not
-  yet". They sit on a relation in one of two ways (plan E13a, the user's decisions
+  `handled_by`. A step's numbers are the report's reading of it: `waits` and `fails`
+  say whether the report lists it as waiting or failing (`Conformance.waiting?/1`,
+  `failing?/1`), `untraversed` is the report's "never" — the step listed as
+  untraversed — and `pending` its "not yet". They sit on a relation in one of two ways (plan E13a, the user's decisions
   of 6 and 7 October):
 
   - **One step, one relation:** the step's numbers, flat — `taken`, `waiting`,
-    `failing`, `untraversed`, `pending`.
+    `failing`, `waits`, `fails`, `untraversed`, `pending`.
   - **Several steps, one relation** — a policy handling several events, which the
-    facts draw as one `issues`: `%{by_trigger: %{event id => numbers}}`, each step's
+    facts hold as one `issues`: `%{by_trigger: %{event id => numbers}}`, each step's
     numbers under the id of the event it starts from, as the report has one line per
     step, and no total, which the report does not give either. An entry is flat or
     `by_trigger`, never both.
@@ -224,10 +225,7 @@ defmodule EhOsContract.Graph.Overlay do
     %{
       events: types |> Enum.map(&Map.get(counts, &1, 0)) |> Enum.sum(),
       waiting: steps |> Enum.map(&Enum.sum(Map.values(&1.in_flight))) |> Enum.sum(),
-      failing:
-        Enum.any?(steps, fn %{failing: f} ->
-          f.commands > 0 or f.effects > 0 or f.subscription != nil
-        end)
+      failing: Enum.any?(steps, &Conformance.failing?/1)
     }
   end
 
@@ -326,6 +324,8 @@ defmodule EhOsContract.Graph.Overlay do
       taken: step.taken,
       waiting: step.in_flight,
       failing: step.failing,
+      waits: Conformance.waiting?(step),
+      fails: Conformance.failing?(step),
       untraversed: step.untraversed,
       pending: step.pending
     }

@@ -16,7 +16,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   application has one. The bytes are the ones the API serves, every object's keys in
   order, so two of them compare with `diff`. A document holds every fact of its
   contract or domain, whatever a renderer draws of them; the pictures are the
-  dashboard's (`eh_os_contract_web`).
+  renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
   every label of a document is written in the client's language. Without it the

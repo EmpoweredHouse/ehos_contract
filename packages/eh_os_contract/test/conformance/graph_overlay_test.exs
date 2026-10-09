@@ -141,6 +141,9 @@ defmodule EhOsContract.GraphOverlayTest do
     assert notify["waiting"]["lag"] + notify["waiting"]["effects"] + notify["waiting"]["timers"] ==
              1
 
+    # The report's reading comes with the numbers: it waits, and nothing fails.
+    assert %{"waits" => true, "fails" => false} = notify
+
     # What the waiting command would emit is behind it: not yet, and not never.
     behind =
       o["relations"][
@@ -330,6 +333,8 @@ defmodule EhOsContract.GraphOverlayTest do
     assert entry["taken"] == step.taken, where
     assert entry["waiting"] == Model.json_data(step.in_flight), where
     assert entry["failing"] == Model.json_data(step.failing), where
+    assert entry["waits"] == Conformance.waiting?(step), where
+    assert entry["fails"] == Conformance.failing?(step), where
     assert entry["untraversed"] == step.untraversed, where
     assert entry["pending"] == step.pending, where
   end
