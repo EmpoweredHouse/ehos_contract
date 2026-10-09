@@ -40,6 +40,10 @@ defmodule EhOsContract.CheckCodeWordsTest do
           term "Płatnik", definition: "Kto płaci za wizytę" do
             translation :en, "Payer", definition: "Who pays for a visit"
           end
+
+          term "Data wizyty", definition: "Dzień, za który płatnik płaci" do
+            translation :en, "Visit date", definition: "The day the payer pays for"
+          end
         end
 
         actor :reception, :human, "Recepcja"
@@ -74,6 +78,8 @@ defmodule EhOsContract.CheckCodeWordsTest do
 
           command :charge_visit, "Obciąż płatnika", by: :reception, emits: :visit_charged do
             field :visit_ref, :string, label: "Wizyta"
+            field :visit_id, :id, label: "Wizyta"
+            field :visit_date, :date, label: "Data wizyty"
             field :service, {:id, :service}, label: "Usługa"
           end
 
@@ -114,18 +120,28 @@ defmodule EhOsContract.CheckCodeWordsTest do
     assert {message, _at} =
              Enum.find(found("word-without-term"), fn {m, _} -> m =~ "context :payers" end)
 
-    assert message =~ "most used first: ref (1), visit (1)"
+    # `visit` of `visit_date` is the payers' own "Visit date"; of `visit_ref` and
+    # `visit_id`, it is not.
+    assert message =~ "most used first: visit (2), ref (1)"
     refute message =~ "payer ("
   end
 
-  test "term-of-another-context: a field saying another context's term; control: a reference to an entity" do
+  test "term-of-another-context: one finding per name; control: an entity, another unit's identity, an own longer term" do
+    # `visit_ref` is in a command and an event, so it is reported once, at the first.
+    # Control: `service` refers to an entity, `visit_id` is the identity of scheduling's
+    # visit, and `visit_date` is the payers' own "Visit date".
     assert [
-             {"EhOsContract.CheckCodeWordsTest.Payers: field :visit_ref of command :charge_visit " <>
+             {"EhOsContract.CheckCodeWordsTest.Payers: field :visit_ref (in 2 declarations) " <>
                 ~s|says "visit", the word in code of "Wizyta" of :scheduling, which context | <>
-                ":payers has no term for", _},
-             {"EhOsContract.CheckCodeWordsTest.Payers: field :visit_ref of event :visit_charged" <>
-                _, _}
-           ] = Enum.sort(found("term-of-another-context"))
+                ":payers has no term for", {"clinic.ex", 59}}
+           ] = found("term-of-another-context")
+  end
+
+  test "an empty sequence of words covers nothing" do
+    assert EhOsContract.CodeWords.covers(["visit", "id"], []) == MapSet.new()
+
+    assert EhOsContract.CodeWords.covers(["visit", "date"], ["visit", "date"]) ==
+             MapSet.new([0, 1])
   end
 
   test "a context written in the code's language is its own word in code" do
@@ -174,7 +190,7 @@ defmodule EhOsContract.CheckCodeWordsTest do
     refute Glossary.render(@domain) =~ "In code"
   end
 
-  test "code_language moves a domain's version only when it is not English" do
+  test "code_language moves no version, and is in the model only when it is not English" do
     source = fn name, option ->
       """
       defmodule EhOsContract.CheckCodeWordsTest.#{name} do
@@ -192,7 +208,13 @@ defmodule EhOsContract.CheckCodeWordsTest do
       &EhOsContract.Model.fetch(Module.concat(EhOsContract.CheckCodeWordsTest, &1)).version
 
     assert version.(Plain) == version.(English)
-    refute version.(Plain) == version.(Polish)
-    assert EhOsContract.Model.fetch(EhOsContract.CheckCodeWordsTest.Plain).code_language == :en
+    assert version.(Plain) == version.(Polish)
+
+    refute Map.has_key?(
+             EhOsContract.Model.fetch(EhOsContract.CheckCodeWordsTest.English),
+             :code_language
+           )
+
+    assert EhOsContract.Model.fetch(EhOsContract.CheckCodeWordsTest.Polish).code_language == :pl
   end
 end

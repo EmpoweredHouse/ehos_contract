@@ -173,9 +173,14 @@ defmodule EhOsContract.Domain.Build do
     # kept out where it is UTC, the default, so no domain written without it moves.
     own = %{name: name, language: language}
     own = if time_zone == "Etc/UTC", do: own, else: Map.put(own, :time_zone, time_zone)
-    # `code_language` too (plan DD, L1), since it decides which word of a term the code
-    # is held to; kept out where it is English, the default, as `time_zone` is.
-    own = if code_language == :en, do: own, else: Map.put(own, :code_language, code_language)
+
+    # `code_language` (plan DD, L1 (#269)) only says which word of a term `check` holds
+    # the code to: it is in the model where it is not English, the default, and in no
+    # digest, so setting it moves no version.
+    collections =
+      if code_language == :en,
+        do: collections,
+        else: Map.put(collections, :code_language, code_language)
 
     Map.merge(collections, %{
       format: 1,
@@ -184,7 +189,6 @@ defmodule EhOsContract.Domain.Build do
       name: name,
       language: language,
       time_zone: time_zone,
-      code_language: code_language,
       version:
         Digest.hash_groups(
           [domain: [own]] ++

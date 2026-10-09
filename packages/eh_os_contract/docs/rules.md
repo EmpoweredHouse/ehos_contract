@@ -380,10 +380,11 @@ most needs, or the ones the code should not use.
 A name uses a term of another context that its own context's glossary lacks.
 
 A unit, a read model or a field of a contract is named with the word in code of a term another
-context declares, and the contract's own context declares no term with that word. Each context
-has its own language: either the word means something here too, and the context's glossary
-should say what, or the name borrows the other context's meaning. A field typed `{:id, entity}`
-is not read: it refers to what another declaration owns, under that declaration's name.
+context declares, and no term of the contract's own context covers it. Each context has its own
+language: either the word means something here too, and the context's glossary should say what,
+or the name borrows the other context's meaning. One finding per name of a contract. A field
+typed `{:id, entity}`, or named like the identity of another context's unit (`visit_id`), is
+not read: it refers to that declaration, under its name.
 
 ## `external-direction-contradicted`
 

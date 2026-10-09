@@ -743,7 +743,8 @@ defmodule EhOsContract.Check.Completeness do
       Finding.new(
         "word-without-term",
         "context #{inspect(context.name)} of #{inspect(model.module)} names things with words " <>
-          "no term of its glossary has in #{inspect(model.code_language)}, most used first: " <>
+          "no term of its glossary has in #{inspect(EhOsContract.CodeWords.code_language(model))}, " <>
+          "most used first: " <>
           listed <> more,
         at(declared.contexts, context.name)
       )
@@ -762,10 +763,7 @@ defmodule EhOsContract.Check.Completeness do
 
     names
     |> Enum.flat_map(fn words ->
-      covered =
-        Enum.reduce(terms, MapSet.new(), fn {_term, sequence}, covered ->
-          MapSet.union(covered, EhOsContract.CodeWords.covers(words, sequence))
-        end)
+      covered = own_coverage(terms, words)
 
       for {word, position} <- Enum.with_index(words),
           not MapSet.member?(covered, position),
@@ -778,30 +776,55 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # A name of a thing that says a term another context has and its own does not: a
-  # word of another context's language in this one's code. The same word as a term of
-  # both is the context's own, as "Visit" is of every context of Rehmed that has it.
+  # word of another context's language in this one's code. A word the context's own
+  # terms cover is its own, as "Visit" is of every context of Rehmed that has it, and
+  # so is one inside a longer term of its own ("Visit date"). A field named like the
+  # identity of a unit of another context refers to that unit, as a field typed
+  # `{:id, entity}` refers to an entity, and is not read. One finding per name of a
+  # contract, at its first declaration.
   defp terms_of_other_contexts(model, contracts) do
     by_context = Map.new(model.contexts, &{&1.name, EhOsContract.CodeWords.terms(model, &1.name)})
 
+    identities =
+      for c <- contracts, id <- EhOsContract.CodeWords.identities(c), do: {id, c.model.context}
+
     for c <- contracts,
         own = Map.get(by_context, c.model.context, []),
-        name <- EhOsContract.CodeWords.names(c),
-        name.thing?,
-        {sequence, others} <- elsewhere(by_context, c.model.context, name.words),
-        not Enum.any?(own, fn {_term, mine} -> mine == sequence end),
-        uniq: true do
+        names = EhOsContract.CodeWords.names(c),
+        {{kind, name}, [first | _] = all} <-
+          Enum.group_by(Enum.filter(names, & &1.thing?), &{&1.kind, &1.name}),
+        not (kind == :field and reference?(identities, name, c.model.context)),
+        covered = own_coverage(own, first.words),
+        {sequence, others} <- elsewhere(by_context, c.model.context, first.words),
+        not MapSet.subset?(EhOsContract.CodeWords.covers(first.words, sequence), covered) do
       where =
         Enum.map_join(others, " and ", fn {context, term} ->
           "#{inspect(term)} of #{inspect(context)}"
         end)
 
+      what =
+        case all do
+          [_one] -> first.what
+          _many -> "#{kind} #{inspect(name)} (in #{length(all)} declarations)"
+        end
+
       Finding.new(
         "term-of-another-context",
-        "#{inspect(c.module)}: #{name.what} says #{inspect(Enum.join(sequence, " "))}, the " <>
+        "#{inspect(c.module)}: #{what} says #{inspect(Enum.join(sequence, " "))}, the " <>
           "word in code of #{where}, which context #{inspect(c.model.context)} has no term for",
-        name.at
+        first.at
       )
     end
+  end
+
+  defp reference?(identities, name, own) do
+    Enum.any?(identities, fn {id, context} -> id == name and context != own end)
+  end
+
+  defp own_coverage(own, words) do
+    Enum.reduce(own, MapSet.new(), fn {_term, sequence}, covered ->
+      MapSet.union(covered, EhOsContract.CodeWords.covers(words, sequence))
+    end)
   end
 
   # The words of other contexts' terms that stand in `words`, each with the contexts
@@ -814,6 +837,7 @@ defmodule EhOsContract.Check.Completeness do
       {sequence, {context, term}}
     end
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.map(fn {sequence, others} -> {sequence, Enum.sort(others)} end)
     |> Enum.sort()
   end
 

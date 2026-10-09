@@ -68,7 +68,7 @@ defmodule EhOsContract.Domain do
         required: true,
         doc: "The language labels and terms are written in."
       ],
-      # The glossary joined to the code (plan DD, L1).
+      # The glossary joined to the code (plan DD, L1 (#269)).
       code_language: [
         type: :atom,
         default: :en,

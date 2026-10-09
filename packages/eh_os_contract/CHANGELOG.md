@@ -32,8 +32,8 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `mix eh_os_contract.glossary` lists, under each term, the declarations named with that word, and
   `mix eh_os_contract.check` has two new rules: `word-without-term` (a notice per context, ranking the words of
   its units', read models' and fields' names that no term covers) and `term-of-another-context` (a warning for
-  a name that says another context's term and none of its own). A domain that sets `code_language:` to
-  anything but `:en` gets a new version. Moves no verdict.
+  a name that says another context's term and none of its own). `code_language:` is in the domain's model
+  only when it is not `:en`, and in no digest, so it moves no version. Moves no verdict.
 - **A unit's code is tested on legal histories of its contract** (plan DD, stage PC2, #266).
   `use EhOsContract.PropertyCase, contract: C, max_runs: 50` writes, for every aggregate with an implementation,
   a property that `evolve/2` folds every legal history (events with `__meta__`, personal fields sometimes

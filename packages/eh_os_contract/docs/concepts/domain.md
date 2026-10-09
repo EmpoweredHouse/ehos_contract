@@ -86,9 +86,10 @@ fields — both ways:
   the most names first. Words of one or two letters (`id`, `at`) are left out, and so are names of commands
   and events, whose verbs are inflected ("returned") where a term is not ("Return").
 - **`term-of-another-context`** (warning): a name says the word in code of a term another context declares,
-  and its own context declares no term with that word: either the word means something here too and the
-  glossary should say what, or the name borrows the other context's meaning. A field typed `{:id, entity}` is
-  not read, since it refers to a declaration under that declaration's name.
+  and no term of its own context covers it: either the word means something here too and the glossary should
+  say what, or the name borrows the other context's meaning. One finding per name. A field typed
+  `{:id, entity}`, or named like the identity of another context's unit (`loan_id`), is not read, since it
+  refers to that declaration under its name.
 
 ## Relations between contexts
 

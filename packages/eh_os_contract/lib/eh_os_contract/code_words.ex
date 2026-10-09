@@ -1,5 +1,5 @@
 defmodule EhOsContract.CodeWords do
-  # The glossary joined to the code (plan DD, L1): which word of a term the code is
+  # The glossary joined to the code (plan DD, L1 (#269)): which word of a term the code is
   # held to, and the names of a contract read as words.
   #
   # A term's word in code is its text in the domain's `code_language:`: the term
@@ -18,17 +18,25 @@ defmodule EhOsContract.CodeWords do
   alias EhOsContract.Contract.Rules
 
   @typedoc """
-  A name of a contract: what it names, the name, its words, where it was written, and
-  whether it names a thing (`true`: a unit, a read model, a field) or an action (a
-  command, an event).
+  A name of a contract: what it names, its kind, the name, its words, where it was
+  written, and whether it names a thing (`true`: a unit, a read model, a field) or an
+  action (a command, an event).
   """
   @type name :: %{
           what: String.t(),
+          kind: :unit | :read_model | :command | :event | :field,
           name: atom(),
           words: [String.t()],
           at: term(),
           thing?: boolean()
         }
+
+  @doc """
+  The language of the domain `model`'s identifiers: its `code_language:`, which the
+  model carries only when it is not English.
+  """
+  @spec code_language(map()) :: atom()
+  def code_language(model), do: Map.get(model, :code_language, :en)
 
   @doc "The words of a name or a term, lowercase."
   @spec words(atom() | String.t()) :: [String.t()]
@@ -49,8 +57,9 @@ defmodule EhOsContract.CodeWords do
 
       context ->
         for term <- context.terms,
-            text = in_code(term, context.language || model.language, model.code_language),
-            words = words(text || ""),
+            text = in_code(term, context.language || model.language, code_language(model)),
+            text != nil,
+            words = words(text),
             words != [],
             do: {term.text, words}
     end
@@ -81,17 +90,18 @@ defmodule EhOsContract.CodeWords do
   def names(%{declarations: d}) do
     units =
       for u <- d.units do
-        name("#{u.kind} #{inspect(u.name)}", u.name, u, true)
+        name("#{u.kind} #{inspect(u.name)}", :unit, u.name, u)
       end
 
     read_models =
-      for r <- d.read_models, do: name("read model #{inspect(r.name)}", r.name, r, true)
+      for r <- d.read_models,
+          do: name("read model #{inspect(r.name)}", :read_model, r.name, r)
 
     actions =
       for u <- d.units,
-          {what, declaration} <-
-            Enum.map(u.commands, &{"command", &1}) ++ Enum.map(Rules.events(u), &{"event", &1}) do
-        name("#{what} #{inspect(declaration.name)}", declaration.name, declaration, false)
+          {kind, declaration} <-
+            Enum.map(u.commands, &{:command, &1}) ++ Enum.map(Rules.events(u), &{:event, &1}) do
+        name("#{kind} #{inspect(declaration.name)}", kind, declaration.name, declaration)
       end
 
     fields =
@@ -99,19 +109,36 @@ defmodule EhOsContract.CodeWords do
           kind == :state or kind == :command or kind == :row or match?({:event, _}, kind),
           field <- fields,
           not match?({:id, _}, field.type) do
-        name("field #{inspect(field.name)} of #{where}", field.name, field, true)
+        name("field #{inspect(field.name)} of #{where}", :field, field.name, field)
       end
 
     units ++ read_models ++ actions ++ fields
   end
 
-  defp name(what, name, declaration, thing?),
-    do: %{what: what, name: name, words: words(name), at: Links.at(declaration), thing?: thing?}
+  defp name(what, kind, name, declaration) do
+    %{
+      what: what,
+      kind: kind,
+      name: name,
+      words: words(name),
+      at: Links.at(declaration),
+      thing?: kind not in [:command, :event]
+    }
+  end
+
+  @doc """
+  The identity fields of the units of `contract`: a field of another contract named
+  like one refers to that unit by its identity.
+  """
+  @spec identities(map()) :: [atom()]
+  def identities(%{declarations: d}), do: Enum.flat_map(d.units, &List.wrap(&1.identity))
 
   @doc """
   The positions of `words` that `sequence` covers, wherever it stands in them whole.
   """
   @spec covers([String.t()], [String.t()]) :: MapSet.t(non_neg_integer())
+  def covers(_words, []), do: MapSet.new()
+
   def covers(words, sequence) do
     size = length(sequence)
 

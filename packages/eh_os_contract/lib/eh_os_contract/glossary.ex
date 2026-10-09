@@ -10,7 +10,7 @@ defmodule EhOsContract.Glossary do
   # definitions and words to avoid are the client's, printed as declared.
   #
   # Given the contracts, each term also says its word in code and the declarations of
-  # its context's contracts named with it (plan DD, L1): the names
+  # its context's contracts named with it (plan DD, L1 (#269)): the names
   # `EhOsContract.CodeWords` reads, which the check's two rules about words read too.
   #
   # Contexts and terms come in the order the domain declares them, as every reader of
@@ -37,7 +37,7 @@ defmodule EhOsContract.Glossary do
       for module <- Keyword.get(opts, :contracts, []),
           %{model: %{domain: domain}} = c <- [EhOsContract.Contract.Links.contract(module)],
           domain == model.module,
-          do: {c.model.context, c}
+          do: {c.model.context, c.module, EhOsContract.CodeWords.names(c)}
 
     code = if Keyword.has_key?(opts, :contracts), do: names, else: nil
     sections = Enum.map(contexts, &context(&1, model, wanted, code))
@@ -57,7 +57,13 @@ defmodule EhOsContract.Glossary do
           for term <- terms do
             across =
               across(model, context.name, term.text) ++
-                in_code(term, context.name, language, model.code_language, code)
+                in_code(
+                  term,
+                  context.name,
+                  language,
+                  EhOsContract.CodeWords.code_language(model),
+                  code
+                )
 
             if wanted in [nil, language],
               do: term(term, across),
@@ -104,23 +110,21 @@ defmodule EhOsContract.Glossary do
   defp in_code(_term, _context, _language, _code_language, nil), do: []
 
   defp in_code(term, context, language, code_language, code) do
-    case EhOsContract.CodeWords.in_code(term, language, code_language) do
-      nil ->
+    text = EhOsContract.CodeWords.in_code(term, language, code_language)
+
+    case EhOsContract.CodeWords.words(text || "") do
+      # No translation, or one with no letter or digit, which no name could say.
+      [] ->
         ["_No word in code: no translation into #{code_language}._"]
 
-      text ->
-        sequence = EhOsContract.CodeWords.words(text)
+      sequence ->
         word = Enum.join(sequence, "_")
 
         named =
-          for {^context, c} <- code,
-              names =
-                Enum.filter(
-                  EhOsContract.CodeWords.names(c),
-                  &EhOsContract.CodeWords.contains?(&1.words, sequence)
-                ),
+          for {^context, module, names} <- code,
+              names = Enum.filter(names, &EhOsContract.CodeWords.contains?(&1.words, sequence)),
               names != [] do
-            "- `#{inspect(c.module)}`: " <> declarations(names)
+            "- `#{inspect(module)}`: " <> declarations(names)
           end
 
         case named do
@@ -130,8 +134,12 @@ defmodule EhOsContract.Glossary do
     end
   end
 
+  defp kind(%{kind: :unit, what: what}), do: what |> String.split(" ") |> hd()
+  defp kind(%{kind: :read_model}), do: "read model"
+  defp kind(%{kind: kind}), do: Atom.to_string(kind)
+
   defp declarations(names) do
-    {fields, others} = Enum.split_with(names, &String.starts_with?(&1.what, "field "))
+    {fields, others} = Enum.split_with(names, &(&1.kind == :field))
 
     fields =
       fields
@@ -142,7 +150,7 @@ defmodule EhOsContract.Glossary do
         {name, count} -> "field `#{inspect(name)}` (in #{count} declarations)"
       end)
 
-    others = for n <- others, do: String.replace(n.what, ~r/:(\S+)$/u, "`:\\1`")
+    others = for n <- others, do: "#{kind(n)} `#{inspect(n.name)}`"
     Enum.join(Enum.uniq(others) ++ fields, ", ")
   end
 
