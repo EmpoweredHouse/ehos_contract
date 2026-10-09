@@ -656,8 +656,8 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”) |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository; 9 October: the architecture reviewed, five points open ("E13b — the architecture review (9 October)") |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository; 9 October: the architecture reviewed, five points open ("E13b — the architecture review (9 October)"); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -2082,6 +2082,40 @@ The user went through the review's points one at a time; what was decided and bu
    The dashboard's README says so.
 6. **The two Mermaid blocks in `packages/eh_os_contract/docs/authorization.md`** — *the user's decision:* they
    stay, an exception to *Odbiór E13b*: diagrams of the documentation, which GitHub draws, not the library's.
+
+### E13 — `main` merged, and what it asked of the graph (9 October)
+
+The user's decision: E13a and E13b go to `main` together, after `main` is merged into them, and nothing is
+pushed until the user says so, since every push starts a CodeRabbit review. `main` was 165 commits ahead (DD
+waves 2 and 3). Merged, not rebased: 65 commits replayed over `PLAN.md` and the CHANGELOGs would have met one
+conflict dozens of times, and both pull requests are open. The merge commit only resolves conflicts; what
+`main` asked of the graph came after it, a commit each:
+
+1. **The tests of a process's shape and runs** read two invented contracts with a process of their own, as
+   `main`'s graph tests did: P2g (#228) moved the rigs' processes into process modules, and a contract may
+   still declare one until #221.
+2. **`main`'s rules for published docs** (#141): `Graph.Facts` hidden as `main`'s other graph builders,
+   plan stages out of `Graph.Document`'s and `Graph.Overlay`'s docs, no reference to a hidden module, the
+   dashboard's `Api.Graph` hidden as the other API plugs.
+3. **What `main`'s DSL added**, in `graph.v1` and the panel — *the user's decision, before `graph.v1` has a
+   reader outside the dashboard:* a command's `reads` (T2a, #240) and `actor_is` (A1, #247), a unit
+   scenario's `as` and `given_entities`, a given's `at` (S2, #251). Optional keys; no id moves.
+4. **`Model.to_data/1` redacts a scenario's `given_entity` rows** by the entity's personal fields, which it
+   published as written: a gap of T2a, found while adding the rows to the graph, which redacts as the export
+   does.
+5. **The renderer's docs are held as the other packages'** — *the user's decision:* `docs
+   --warnings-as-errors`, the doc coverage test, `Lookup`, `Panel`, `Marks` and `Words` hidden, the package in
+   the docs build.
+
+CodeRabbit's review of E13a: its point on two edges with one id was on the pictures' `edge/4`, which E13b
+removed with them, and the graph of facts already tells such relations apart; its nitpick asked a published doc
+for `logs_to_stderr/1`, which `main`'s rule keeps `@doc false` with a comment naming its callers. Its review of
+E13b had no points.
+
+**Not done here, as decided on 9 October:** a process module has no `graph.v1` document yet, so after the merge
+the Graph screen shows no declared shape for the sandbox's clients, as P2f (#222) said it would until P2e (#220).
+Nor its scenarios, its stage order (O1, #260) or its runs; the renderer's fixtures keep the contract processes
+they were taken with.
 
 ### Wobec programu DD
 
