@@ -220,13 +220,13 @@ defmodule Rehmed.Contracts.Settlement do
     param :business_date, :date
   end
 
-  # VLW 00:19:58: an unpaid penalty is collected with the next visit, "pay 200 zł at
-  # once, not 150". A 150 zł visit and a 50 zł penalty are 200 zł.
   scenario "korekta przed rozliczeniem wizyty — odrzucona" do
     command :book_correction, %{delta: -1_000}
     rejected :only_a_settled_visit_is_corrected
   end
 
+  # VLW 00:19:58: an unpaid penalty is collected with the next visit, "pay 200 zł at
+  # once, not 150". A 150 zł visit and a 50 zł penalty are 200 zł.
   scenario "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka" do
     given :payment_recorded, %{method: :card, amount: 20_000}
     command :close_settlement, %{total: 20_000}

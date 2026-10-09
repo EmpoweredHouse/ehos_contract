@@ -86,7 +86,8 @@ defmodule Rehmed.Settlement.VisitSettlement do
   def book_correction(%BookCorrection{visit_id: id, delta: d}, %State{closed_on: day}),
     do: emit(%SettlementCorrected{visit_id: id, delta: d, business_date: day})
 
-  # Anything but a correction after the close is marked, so `holds?/2` can say so.
+  # A service line, a payment or a second close after the close changes what was
+  # settled, and is marked so `holds?/2` can say so; a handover changes no amount.
   @impl true
   def evolve(state, %ServiceLineAdded{}), do: after_close(%{state | scope_changed: true}, state)
   def evolve(state, %VisitHandedOver{}), do: %{state | handed_over: true}
@@ -116,12 +117,15 @@ defmodule Rehmed.Settlement.VisitSettlement do
   def holds?(:changed_scope_handed_over_before_settlement, state),
     do: state.closed_on == nil or not state.scope_changed or state.handed_over
 
-  # Zero payments is a legitimate close (the moduledoc); any other sum is the total.
+  # Payments summing to nothing close without payment, as the decider reads them (the
+  # moduledoc); any other sum is the total.
   def holds?(:payment_lines_sum_to_total, state),
-    do: state.closed_on == nil or state.payments == [] or Enum.sum(state.payments) == state.total
+    do: state.closed_on == nil or Enum.sum(state.payments) in [0, state.total]
 
   def holds?(:closed_settlement_changes_only_by_correction, state),
     do: not state.changed_after_close
 
+  # The state keeps no correction, so nothing here to check: the decision refuses one
+  # before a close, which its scenario and the decision's property show.
   def holds?(:only_a_settled_visit_is_corrected, _state), do: true
 end

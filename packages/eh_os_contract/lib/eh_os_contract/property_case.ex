@@ -34,7 +34,14 @@ if Code.ensure_loaded?(StreamData) do
     The functions behind the properties, `fold/4`, `decide/5` and `walk/4`, with the
     generators `decisions/3` and `walks/2`, are public, for a host's own `check all`.
 
-    The module exists only when StreamData is a dependency of the application.
+    A failure prints the history and, for an invariant, the state it reached, which may
+    hold a unit's personal fields: generated here, but a host calling `walk/4` with its
+    own data prints that.
+
+    The module exists only when StreamData is a dependency of the application. One that
+    adds StreamData to a build compiled without it recompiles this package,
+    `mix deps.compile eh_os_contract --force`, since the module's presence is decided
+    when the package compiles.
     """
 
     import ExUnit.Assertions
@@ -56,9 +63,10 @@ if Code.ensure_loaded?(StreamData) do
         use ExUnit.Case, async: unquote(async)
         use ExUnitProperties
 
-        for {unit, commands, holds?} <-
+        for {unit, commands, holds?, found} <-
               EhOsContract.PropertyCase.plan(unquote(contract), unquote(implementations)) do
           @eh_os_contract_unit unit
+          @eh_os_contract_found found
 
           property "#{unit} folds every legal history" do
             check all(
@@ -70,7 +78,7 @@ if Code.ensure_loaded?(StreamData) do
                 unquote(contract),
                 @eh_os_contract_unit,
                 events,
-                implementations: unquote(implementations)
+                implementations: @eh_os_contract_found
               )
             end
           end
@@ -93,7 +101,7 @@ if Code.ensure_loaded?(StreamData) do
                   @eh_os_contract_unit,
                   events,
                   {command, rows},
-                  implementations: unquote(implementations)
+                  implementations: @eh_os_contract_found
                 )
               end
             end
@@ -110,7 +118,7 @@ if Code.ensure_loaded?(StreamData) do
                   unquote(contract),
                   @eh_os_contract_unit,
                   commands,
-                  implementations: unquote(implementations)
+                  implementations: @eh_os_contract_found
                 )
               end
             end
@@ -120,16 +128,20 @@ if Code.ensure_loaded?(StreamData) do
     end
 
     @doc false
-    # Every aggregate of `contract` with one implementation, its commands, and whether
-    # the implementation defines `holds?/2`.
-    @spec plan(module(), [module()] | nil) :: [{atom(), [atom()], boolean()}]
+    # Every aggregate of `contract` with an implementation, its commands, whether the
+    # implementation defines `holds?/2`, and the implementations found, looked up once
+    # for the module rather than once per case. One with two is kept, so that its
+    # properties fail naming them, as dispatch refuses it; one with none is left out, as
+    # a contract without code is legal.
+    @spec plan(module(), [module()] | nil) :: [{atom(), [atom()], boolean(), [module()]}]
     def plan(contract, implementations) do
       model = Model.fetch(contract)
 
       for %{kind: :aggregate, name: unit} <- model.units,
-          [impl] <- [ScenarioCase.implementations(model, :aggregate, unit, implementations)] do
+          found = ScenarioCase.implementations(model, :aggregate, unit, implementations),
+          found != [] do
         commands = for c <- model.commands, c.unit == unit, do: c.name
-        {unit, commands, function_exported?(impl, :holds?, 2)}
+        {unit, commands, Enum.any?(found, &function_exported?(&1, :holds?, 2)), found}
       end
     end
 
@@ -233,6 +245,7 @@ if Code.ensure_loaded?(StreamData) do
         true ->
           state = fold_from(model, impl, unit, identity_from(unit, command), events)
           read = if rows == %{}, do: [], else: [rows]
+          command = issued(command, length(events))
 
           result =
             try do
@@ -359,7 +372,7 @@ if Code.ensure_loaded?(StreamData) do
               state =
                 fold_from(model, impl, declaration, identity_from(declaration, command), events)
 
-              for invariant <- invariants, not impl.holds?(invariant, state) do
+              for invariant <- invariants, not holds?(impl, invariant, state) do
                 flunk(
                   "invariant #{inspect(invariant)} of #{inspect(unit)} does not hold after the " <>
                     "commands #{inspect(issued)}, which left the history " <>
@@ -379,34 +392,85 @@ if Code.ensure_loaded?(StreamData) do
 
     @doc """
     A generator of what `walk/4` takes: up to #{@max_walk} commands of the unit `unit`,
-    of one identity, each with the rows it reads. A command that creates its aggregate
-    is left out: the engine gives it an identity of its own.
+    of one identity, each with the rows it reads. A unit one of whose commands creates
+    it starts with that command, given the identity the engine would give it, and the
+    others follow.
     """
     @spec walks(module(), atom()) :: StreamData.t([{struct(), map()}])
     def walks(contract, unit) do
       model = Model.fetch(contract)
       identity = Enum.find(model.units, &(&1.name == unit)).identity
 
-      commands =
-        for c <- model.commands, c.unit == unit, not Map.get(c, :creates, false), do: c
+      {creating, others} =
+        model.commands
+        |> Enum.filter(&(&1.unit == unit))
+        |> Enum.split_with(&Map.get(&1, :creates, false))
 
-      if commands == [] do
-        constant([])
-      else
-        bind(identity_of(identity), fn ids ->
-          commands
-          |> Enum.map(fn declaration ->
-            contract
-            |> Generators.command(declaration.name, fields: Enum.to_list(ids))
-            |> bind(&with_rows(model, declaration, &1))
-          end)
-          |> one_of()
-          |> list_of(max_length: @max_walk)
-        end)
-      end
+      bind(identity_of(identity), fn ids ->
+        fixed = Enum.to_list(ids)
+
+        start =
+          case creating do
+            [] ->
+              constant([])
+
+            _ ->
+              creating
+              |> Enum.map(fn declaration ->
+                contract
+                |> Generators.command(declaration.name)
+                |> map(&struct!(&1, ids))
+                |> bind(&with_rows(model, declaration, &1))
+              end)
+              |> one_of()
+              |> map(&[&1])
+          end
+
+        rest =
+          case others do
+            [] ->
+              constant([])
+
+            _ ->
+              others
+              |> Enum.map(fn declaration ->
+                contract
+                |> Generators.command(declaration.name, fields: fixed)
+                |> bind(&with_rows(model, declaration, &1))
+              end)
+              |> one_of()
+              |> list_of(max_length: @max_walk)
+          end
+
+        map({start, rest}, fn {start, rest} -> start ++ rest end)
+      end)
+    end
+
+    defp holds?(impl, invariant, state) do
+      impl.holds?(invariant, state)
+    rescue
+      FunctionClauseError ->
+        flunk(
+          "#{inspect(impl)}.holds?/2 says nothing of invariant #{inspect(invariant)}; it " <>
+            "answers for every invariant of the unit"
+        )
     end
 
     # --- helpers ----------------------------------------------------------------------
+
+    # A command as dispatch hands it to the decision: with `__meta__`, a minute after the
+    # history's last event.
+    defp issued(%{__meta__: nil} = command, after_events) do
+      %{
+        command
+        | __meta__: %Meta{
+            id: Ecto.UUID.generate(),
+            occurred_at: DateTime.add(@epoch, 60 * (after_events + 1))
+          }
+      }
+    end
+
+    defp issued(command, _after_events), do: command
 
     defp unit!(contract, unit, opts) do
       model = Model.fetch(contract)

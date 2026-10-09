@@ -93,8 +93,11 @@ defmodule EhOsContract.PropertyCaseTest do
       @impl true
       def book_visit(%BookVisit{visit_id: id}, _state), do: emit(%Booked{visit_id: id})
       @impl true
-      def admit_patient(%AdmitPatient{visit_id: id}, _state),
-        do: emit(%PatientArrived{visit_id: id})
+      def admit_patient(
+            %AdmitPatient{visit_id: id, __meta__: %{occurred_at: %DateTime{}}},
+            _state
+          ),
+          do: emit(%PatientArrived{visit_id: id})
 
       @impl true
       def cancel_visit(%CancelVisit{visit_id: id}, _state), do: emit(%Cancelled{visit_id: id})
@@ -149,9 +152,42 @@ defmodule EhOsContract.PropertyCaseTest do
     end
   end
 
+  describe "as dispatch decides" do
+    property "a command reaches its decision with __meta__, as dispatch hands it over" do
+      check all(
+              {events, command, rows} <-
+                PropertyCase.decisions(LifecycleRig.Visits, :visit, :admit_patient)
+            ) do
+        PropertyCase.decide(LifecycleRig.Visits, :visit, events, {command, rows})
+        assert command.__meta__ == nil
+      end
+
+      # The decision itself sees one: `HoldsVisit` admits a patient only by a command that
+      # says when it was issued, and raises on one that does not.
+      check all(
+              {events, command, rows} <-
+                PropertyCase.decisions(LifecycleRig.Visits, :visit, :admit_patient)
+            ) do
+        PropertyCase.decide(LifecycleRig.Visits, :visit, events, {command, rows},
+          implementations: [EhOsContract.PropertyCaseTest.HoldsVisit]
+        )
+      end
+    end
+
+    property "a unit a command creates starts its walk with that command, and its identity" do
+      check all(commands <- PropertyCase.walks(BoundaryRig.Waitlist, :entry), max_runs: 50) do
+        assert [{%BoundaryRig.Waitlist.Commands.JoinWaitlist{entry_id: id}, _} | rest] = commands
+        assert is_binary(id)
+        assert Enum.all?(rest, fn {command, _} -> command.entry_id == id end)
+      end
+    end
+  end
+
   describe "the case" do
     test "plans a property per command of every aggregate with an implementation" do
-      assert [{:visit, commands, false}] = PropertyCase.plan(LifecycleRig.Visits, nil)
+      assert [{:visit, commands, false, [LifecycleRig.Visit]}] =
+               PropertyCase.plan(LifecycleRig.Visits, nil)
+
       assert :reopen_visit in commands
     end
 
