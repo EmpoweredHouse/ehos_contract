@@ -523,6 +523,8 @@ Opis E13 niżej zostaje jako zapis; tam, gdzie się różnią, rację ma ten dop
    wszystkich zdarzeń z kolumną „co od tego zależy” (pusta na czerwono) i obietnice zdaniami. *Odrzucone:* ekran
    Contract status — `Brief` odpowiadał na „czy to jest ten proces” bez logu, a Contract status na „czy kod robi to,
    co mówi proces” z logu (moduledoc `Brief`: inne pytanie, inny czytelnik, inny moment). Najwyżej przeniesiemy.
+   *9 October — unconfirmed:* the user has not confirmed this view's shape — its columns, the red, a tab or a part
+   of the Graph screen. It is an idea to be specified and approved before it is built, not a decision.
 9. **Renderer rozstrzyga prototyp** (krok 1 E13b), wybór zatwierdza użytkownik.
 
 **Otwarte — strony modelu** (`mix eh_os_contract.pages`), do decyzji przed E13b. *Rozstrzygnięte 6 października: (b) — niżej, „E13a, batch 2”.* Użytkownik: mogą się przydać jako
@@ -2007,7 +2009,7 @@ decided one at a time:**
    siblings and not the fold. On the sandbox (9 October): the check warns of 18 events; the panel shows 14 of
    them as depended on, by their unit's fold alone, and agrees on 4 (a boundary's events, with no fold); and
    Scheduling's `visit_completed`, which two contracts consume, shows only its unit's fold. Decision 8's table
-   has this as its main column. The fix the review proposes: the engine says, on each event, what depends on it,
+   (its shape unconfirmed, above) was to have such a column. The fix the review proposes: the engine says, on each event, what depends on it,
    by the check's own predicate, the siblings included — an addition to v1 — and the panel and the table show
    it.
 3. **A process is part of a contract's document, and P2h takes it out of the contract.** `View.declared/1` draws
@@ -2025,6 +2027,42 @@ decided one at a time:**
 5. **`/model` and `/graph`** are two JSON exports of one contract, and the dashboard's README gives them the same
    readers (the Console, CI, a renderer); neither has a reader in `eh-os`. For the user: name `/model`'s own
    reader (the DSL as written) and point the Console at `/graph`, or retire `/model`.
+
+### E13b — the review's points settled (9 October)
+
+The user went through the review's points one at a time; what was decided and built:
+
+1. **"Additive" in v1** — later, as recorded above: before the Console reads `/graph`.
+2. **What depends on an event** — *the user's decision:* the renderer judges nothing; whether an event is used is
+   `mix eh_os_contract.check`'s to say. The panel's "What depends on it", with its red "Nothing depends on it",
+   is gone: what follows from an event is on the views' arrows. One thing only that section said: which
+   publication an event leaves as, which the system's picture shows from the contract and the publication's
+   panel names. Nothing is added to the engine for it: who consumes an event from another contract is in the
+   domain's document, and a graph of every contract at once, explored and filtered, is an idea of the user's
+   for later — *not now, the user's word*; the documents already join on ids (checked 9 October: 53 ids shared
+   between the sandbox's 14 documents, each one declaration with complementary keys, no value in conflict; 14
+   consumed events tied to their originals by `declared_as`).
+3. **A process in a contract's document** — *the user's decision:* wait for DD. P2e (#220) builds a process's
+   picture on `graph.v1` once E13a is in `main`; it must move the renderer's `View.declared/1`, the `:declared`
+   of `View.views/1` (no process id) and the rule of which events make a run (`view.ex`: `unit != nil or
+   included`, `Model.process_events/1`'s), and give a process a document of its own (`kind: "process"`, an
+   addition). Known for the merge of `main`: P2f moved the sandbox's processes into modules, so the Graph screen
+   shows no declared shape for the sandbox until P2e, as P2f says; `main`'s `sandbox/test/declared_shape_test.exs`
+   (reading the process module) replaces this branch's.
+4. **Smaller, built:** the overlay says whether the report lists a step as waiting or failing (`waits`, `fails`,
+   from `Conformance.waiting?/1` and `failing?/1`, public now), and `Marks` and the panel read them; a field of
+   an event or a read model says what keeps its value about a person (`kept`) — *the user's choice: the engine
+   gives it as a fact* — and the panel words it from that; a promise's window reads `within 1 day` on its arrow as
+   in its panel; the "after the transaction" rule is one function in the views; a context-mapping pattern is a
+   relation between two contexts or a context and an external, and says `symmetric` — the renderer lists no
+   patterns; stale text in `marks.ex`, the task's moduledoc, `graph_live.ex`, the overlay's moduledoc and
+   schema, the DD paragraph above; a dated amendment in `docs/adr/dashboard-design-system.md`. The renderer's
+   fixtures taken from the sandbox were taken again: only `kept`, `symmetric` and the digests moved.
+5. **`/model` and `/graph`** — *the user's decision:* `/model` stays, named for its own reader (the declarations
+   themselves: a code generator, a diff of two versions); a graph or a picture — the Console — reads `/graph`.
+   The dashboard's README says so.
+6. **The two Mermaid blocks in `packages/eh_os_contract/docs/authorization.md`** — *the user's decision:* they
+   stay, an exception to *Odbiór E13b*: diagrams of the documentation, which GitHub draws, not the library's.
 
 ### Wobec programu DD
 
@@ -2468,6 +2506,8 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - Refaktory bez zmiany zachowania (W3, W4, P2a): `mix eh_os_contract.report` i `graph --overlay --mermaid` sandboxa
   bajt w bajt przed i po (skrypt w scratchpadzie).
   *5 października (E13):* po E13b Mermaida nie ma — porównuje się dokument `graph --json` i jego nakładkę.
+  *9 October:* the flag is gone; the document is `mix eh_os_contract.graph --contract <id>` (or `--domain <name>`),
+  its overlay the same with `--overlay`.
 - PR-y przesuwające werdykty (P1a, P2d, P2h, O1, X1): diff raportu i `check`; zmieniają się tylko zamierzone linie;
   każde nowe ostrzeżenie wyjaśnione.
 - Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
