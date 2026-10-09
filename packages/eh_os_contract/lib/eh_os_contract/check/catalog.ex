@@ -317,6 +317,32 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "core-command-never-refuses",
+      level: :info,
+      esdm: nil,
+      summary: "A command of a core context rejects nothing.",
+      text: """
+      The context belongs to a subdomain of `type: :core`, where the business's rules are meant to
+      live, and the command's `rejects:` is empty, so every request is accepted. A command a policy or
+      a process manager issues is not reported, since it follows from an event already decided.
+      Either the command has a rule the contract does not declare yet, or it records a fact, which an
+      event `recorded_by:` an actor says more plainly. Some core commands legitimately always
+      succeed, so this is a notice.
+      """
+    },
+    %{
+      id: "core-unit-records-only",
+      level: :warn,
+      esdm: nil,
+      summary: "A unit of a core context decides nothing.",
+      text: """
+      No command of the unit can be refused — none has `rejects:`, or it has no commands and its
+      events are only `recorded_by:` — and its context belongs to a subdomain of `type: :core`. A
+      unit that only records keeps a log; the decisions the core is for are somewhere else, or the
+      context is not core. Its page says "Records only" wherever it is.
+      """
+    },
+    %{
       id: "orphan-actor",
       level: :warn,
       esdm: "esdm/modeling/orphan-actor",

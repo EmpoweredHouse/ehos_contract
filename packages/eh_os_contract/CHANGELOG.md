@@ -27,6 +27,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The core is where things are decided** (plan DD, stage L2, #272). `mix eh_os_contract.check` has two new
+  rules for contracts of a context in a subdomain of `type: :core`: `core-command-never-refuses` (a notice for a
+  command with empty `rejects:` that no policy or process manager issues) and `core-unit-records-only` (a
+  warning for a unit none of whose commands can be refused). A unit's page from `mix eh_os_contract.pages` says
+  "Records only" when no command it takes can be refused. Moves no verdict.
 - **The glossary is joined to the code** (plan DD, stage L1, #269). `use EhOsContract.Domain` takes
   `code_language:`, English by default, and a term's word in code is its translation into it.
   `mix eh_os_contract.glossary` lists, under each term, the declarations named with that word, and

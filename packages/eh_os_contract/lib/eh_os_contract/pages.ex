@@ -836,7 +836,13 @@ defmodule EhOsContract.Pages do
     events = Enum.filter(model.events, &(&1.unit == u.name))
 
     [
-      facts(["Identity: #{Enum.map_join(u.identity, ", ", &code/1)}."]),
+      facts([
+        "Identity: #{Enum.map_join(u.identity, ", ", &code/1)}.",
+        # Plan DD, L2 (#272): derived, never declared.
+        if(EhOsContract.Refusals.records_only?(model, u),
+          do: "Records only: no command it takes can be refused."
+        )
+      ]),
       # The unit as a picture (plan EG1). GitHub draws the block; a host that puts the
       # pages in ExDoc's `extras` adds Mermaid's script to its ExDoc configuration.
       [

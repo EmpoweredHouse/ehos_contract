@@ -30,7 +30,9 @@ defmodule EhOsContractHost.E10OutputsTest do
     # Plan DD, A2 (#249): scheduling's visit_booked has a reader now, the boundary of
     # the visit's documentation, which consults it for the P1 flag.
     # Plan DD, L1 (#269): a notice per context naming its words no term covers.
-    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 19 notices"
+    # Plan DD, L2 (#272): three core commands that reject nothing — booking a visit,
+    # coding a diagnosis, ingesting a bank statement.
+    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 22 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
