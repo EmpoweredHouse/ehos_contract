@@ -86,7 +86,7 @@
         },
         "contract": {
           "type": "string",
-          "description": "The contract's id: (plan DD, ID3), which names it outside the code; every id of what the contract declares is scoped to it."
+          "description": "The contract's id:, which names it outside the code; every id of what the contract declares is scoped to it."
         },
         "module": {
           "type": "string",

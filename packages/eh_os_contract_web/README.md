@@ -7,8 +7,9 @@ Two screens and nothing else: the contract's conformance status, and the graphs 
 each domain's context map and system, and per contract its process's declared shape,
 its full graph with the log laid over it, and its units and their lifecycles.
 
-The graphs are drawn by [`eh_os_contract_graph`](../eh_os_contract_graph), the renderer of
-the engine's `graph.v1` documents (plan E13b); a click on anything drawn opens a panel
+The graphs are drawn by
+[`eh_os_contract_graph`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_graph),
+the renderer of the engine's `graph.v1` documents; a click on anything drawn opens a panel
 that says what it is.
 
 ## Installation

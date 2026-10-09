@@ -14,12 +14,12 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   host decides whether to commit them, add them to ExDoc's `extras`, or only read
   them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
   document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
-  longer has is deleted — only a file that starts with the marker line of the
-  domain's pages, or a contract's graph document of the domain at the path the task
-  gives it (`EhOsContract.Pages.graph?/3`), so another domain's pages in the same
-  directory stay — and a page is never written over a file without it, nor
-  through a symbolic link: then nothing is written, and the task names what is in
-  the way. Nothing outside `--output` is read or touched.
+  longer has is deleted — only a file that starts with the marker line of the domain's
+  pages, or a `graph.v1` document of one of the domain's contracts at the path the
+  task gives that contract, so another domain's pages in the same directory stay — and
+  a page is never written over a file without it, nor through a symbolic link: then
+  nothing is written, and the task names what is in the way. Nothing outside
+  `--output` is read or touched.
 
   `--check` writes nothing, and fails naming every page that is missing, differs or
   is left over.

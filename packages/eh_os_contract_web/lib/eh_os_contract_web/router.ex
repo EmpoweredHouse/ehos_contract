@@ -128,9 +128,11 @@ defmodule EhOsContract.Web.Router do
   | `<path>/graph/domain/<module>` | the domain's graph document |
   | `<path>/graph/domain/<module>/overlay?since=<ISO 8601>&until=<ISO 8601>` | what the log says over the domain's graph document |
 
-  A document carries its digest in `info["x-eh-os-contract-digest"]` (the model in
-  `"digest"`) and as its `ETag`, so a consumer compares what an instance serves with
-  what its build recorded with a `HEAD` and no body. A contract id not registered is
+  A document carries its digest in `info["x-eh-os-contract-digest"]` (the model and a
+  graph document in `"digest"`) and as its `ETag`, so a consumer compares what an
+  instance serves with what its build recorded with a `HEAD` and no body. An overlay
+  has neither: the log moves under it, and one whose `since` is after its `until` is
+  400. A contract id not registered is
   404 with `{"error": "not_found", "detail": ...}` on the document routes. On
   `conformance`, an unknown contract or process, both named at once, or a parameter that does not parse, is 400 with
   `{"error": "bad_request", "detail": ...}`.

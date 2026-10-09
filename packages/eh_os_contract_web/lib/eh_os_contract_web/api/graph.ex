@@ -1,32 +1,31 @@
 defmodule EhOsContract.Web.Api.Graph do
-  @moduledoc """
-  The `graph.v1` documents and their overlays (plan E13a): what a renderer draws, in
-  the dashboard or in EHOS Console, as the engine gives it.
-
-      GET <mount>/graph                                       contracts and domains, with versions and digests
-      GET <mount>/graph/rehmed.settlement                     a contract's document, its digest as the ETag
-      GET <mount>/graph/rehmed.settlement/overlay?since=…&until=…   what the log says over it
-      GET <mount>/graph/domain/Rehmed.Domain                  a domain's document
-      GET <mount>/graph/domain/Rehmed.Domain/overlay?since=…&until=…
-
-  A contract is named by its `id:`, as the model and conformance APIs name it (plan
-  DD, P1a, #183); a module's name is an unknown contract. A domain has no `id:` and
-  is named by its module. A contract or a domain the registry does not hold is 404,
-  never an empty graph. A
-  document is the same bytes for the same declarations — every object's keys in
-  order (`EhOsContract.Graph.Document.encode/2`) — so its digest is a sound `ETag`,
-  and a request that already holds it (`If-None-Match`) gets 304. An overlay has no
-  ETag: the log moves under it, and a period whose `since` is after its `until` is
-  400.
-
-  The index (`eh_os_contract.graph_index.v1`) has no JSON Schema file: it is a list
-  of contracts (`contract`, the id, `module`, `version`, `digest`) and domains (`domain`, `name`,
-  `version`, `digest`), each digest the one its document carries.
-
-  Authenticated through the same resolver as the model and AsyncAPI: the documents
-  carry the client's domain language and authorization surface, the overlays volume
-  data about its business.
-  """
+  # The `graph.v1` documents and their overlays (plan E13a): what a renderer draws, in
+  # the dashboard or in EHOS Console, as the engine gives it.
+  #
+  #     GET <mount>/graph                                       contracts and domains, with versions and digests
+  #     GET <mount>/graph/rehmed.settlement                     a contract's document, its digest as the ETag
+  #     GET <mount>/graph/rehmed.settlement/overlay?since=…&until=…   what the log says over it
+  #     GET <mount>/graph/domain/Rehmed.Domain                  a domain's document
+  #     GET <mount>/graph/domain/Rehmed.Domain/overlay?since=…&until=…
+  #
+  # A contract is named by its `id:`, as the model and conformance APIs name it (plan
+  # DD, P1a, #183); a module's name is an unknown contract. A domain has no `id:` and
+  # is named by its module. A contract or a domain the registry does not hold is 404,
+  # never an empty graph. A
+  # document is the same bytes for the same declarations — every object's keys in
+  # order (`EhOsContract.Graph.Document.encode/2`) — so its digest is a sound `ETag`,
+  # and a request that already holds it (`If-None-Match`) gets 304. An overlay has no
+  # ETag: the log moves under it, and a period whose `since` is after its `until` is
+  # 400.
+  #
+  # The index (`eh_os_contract.graph_index.v1`) has no JSON Schema file: it is a list
+  # of contracts (`contract`, the id, `module`, `version`, `digest`) and domains (`domain`, `name`,
+  # `version`, `digest`), each digest the one its document carries.
+  #
+  # Authenticated through the same resolver as the model and AsyncAPI: the documents
+  # carry the client's domain language and authorization surface, the overlays volume
+  # data about its business.
+  @moduledoc false
 
   @behaviour Plug
 

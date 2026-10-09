@@ -234,12 +234,12 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  Every step of `contract` (`EhOsContract.Paths.observe/2`, `opts` as there) with how
-  the report reads it: `untraversed`, the report's "never" — an event the contract
-  recorded in the period and the step not taken, with nothing waiting or failing
-  there and nothing it starts from still on its way — and `pending`, not taken and
-  held back from "never" because what it starts from is still on its way. What the
-  report lists as untraversed is exactly the steps marked so here.
+  Every step of `contract`, in the shape this module's "The shape" describes, `opts` as
+  `report/2` takes them, with how the report reads it: `untraversed`, the report's
+  "never" — an event the contract recorded in the period and the step not taken, with
+  nothing waiting or failing there and nothing it starts from still on its way — and
+  `pending`, not taken and held back from "never" because what it starts from is still
+  on its way. What the report lists as untraversed is exactly the steps marked so here.
   """
   @spec steps(module() | map(), keyword()) :: [map()]
   def steps(contract, opts \\ []) do
@@ -267,9 +267,9 @@ defmodule EhOsContract.Conformance do
   defp behind?(step, pending), do: MapSet.member?(pending, step.from)
 
   @doc """
-  Whether anything waits at `step`, one of `EhOsContract.Paths.observe/2`'s: an event
-  its ordered consumer has not reached, a timer not fired, an effect job not run. The
-  report lists such a step as in flight.
+  Whether anything waits at `step`, one of `steps/2`'s: an event its ordered consumer
+  has not reached, a timer not fired, an effect job not run. The report lists such a
+  step as in flight.
   """
   @spec waiting?(map()) :: boolean()
   def waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
@@ -295,9 +295,9 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  Whether anything fails at `step`, one of `EhOsContract.Paths.observe/2`'s: a command
-  that failed where it runs, an effect job discarded, its consumer's subscription
-  stopped. The report lists such a step as failing.
+  Whether anything fails at `step`, one of `steps/2`'s: a command that failed where it
+  runs, an effect job discarded, its consumer's subscription stopped. The report lists
+  such a step as failing.
   """
   @spec failing?(map()) :: boolean()
   def failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil

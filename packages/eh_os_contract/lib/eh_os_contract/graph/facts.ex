@@ -1,43 +1,43 @@
 defmodule EhOsContract.Graph.Facts do
-  @moduledoc """
-  A contract or a domain as a graph of facts (plan E13a, "the document as a graph of
-  facts"): every declaration a relation can end at is a node, every link between two
-  of them a relation, each with a stable id. What `EhOsContract.Graph.Document` hands
-  a renderer is made of this.
-
-  **Facts, not pictures.** Nothing here chooses what is shown together: the
-  pictures the dashboard draws — a contract's full graph, a process's declared
-  shape, a unit, a lifecycle, a domain's context map and its system — are views over
-  these facts, and views are the renderer's (`eh_os_contract_graph`). A fact is what
-  is true of the contract whatever is drawn and takes the DSL's meaning to know — that a timer of a process manager
-  issues a command, that a consumed event is the sibling's under another name.
-
-  Nodes are grouped by kind and relations by type, each list in declaration order;
-  the kind or type is the group's key, not repeated in the element. An element is
-  `%{id, name, label, source}` for a node, `%{id, from, to}` for a relation, and adds
-  what it alone has. **Ownership is a field naming the owner's id** (`unit`, `stage`,
-  `process`, `process_manager`, `of`, `context`, `subdomain`, `contract`): an event
-  sits in a unit and in a stage, so it is not one tree, and every other link is a
-  relation.
-
-  A relation's id is its type, its two ends and what tells it apart from another of
-  that type between them (`@discriminators`), so what the log says of it later joins
-  on it.
-
-  **A node carries what its panel shows** (plan E13a, batch 4): a declaration's
-  fields in one shape (`field/2`), what a person needs to be granted to use it, its
-  delivery and idempotency, its windows. A `label` is the client's words or `nil`,
-  never the name put in their place: which to show is the renderer's choice. What
-  holds example or default data — scenarios, defaults, a domain service's rule
-  examples, a value's invariant examples — is redacted first, as
-  `EhOsContract.Model.to_data/1` redacts it, so no personal value leaves in a
-  document.
-
-  **Scenarios** are neither nodes nor relations: a contract's are grouped by the
-  kind of their target (`unit`, `policy`, `process_manager`, `query`), each naming
-  its `target` and the ids of the relations it exercises (`covers`), which the
-  engine computes so a count on an arrow and the list behind it come from one place.
-  """
+  # A contract or a domain as a graph of facts (plan E13a, "the document as a graph of
+  # facts"): every declaration a relation can end at is a node, every link between two
+  # of them a relation, each with a stable id. What `EhOsContract.Graph.Document` hands
+  # a renderer is made of this.
+  #
+  # **Facts, not pictures.** Nothing here chooses what is shown together: the pictures
+  # the dashboard draws — a contract's full graph, a process's declared shape, a unit, a
+  # lifecycle, a domain's context map and its system — are views over these facts, and
+  # views are the renderer's (`eh_os_contract_graph`). A fact is what is true of the
+  # contract whatever is drawn and takes the DSL's meaning to know — that a timer of a
+  # process manager issues a command, that a consumed event is the sibling's under
+  # another name.
+  #
+  # Nodes are grouped by kind and relations by type, each list in declaration order;
+  # the kind or type is the group's key, not repeated in the element. An element is
+  # `%{id, name, label, source}` for a node, `%{id, from, to}` for a relation, and adds
+  # what it alone has. **Ownership is a field naming the owner's id** (`unit`, `stage`,
+  # `process`, `process_manager`, `of`, `context`, `subdomain`, `contract`): an event
+  # sits in a unit and in a stage, so it is not one tree, and every other link is a
+  # relation.
+  #
+  # A relation's id is its type, its two ends and what tells it apart from another of
+  # that type between them (`@discriminators`), so what the log says of it later joins
+  # on it.
+  #
+  # **A node carries what its panel shows** (plan E13a, batch 4): a declaration's
+  # fields in one shape (`field/2`), what a person needs to be granted to use it, its
+  # delivery and idempotency, its windows. A `label` is the client's words or `nil`,
+  # never the name put in their place: which to show is the renderer's choice. What
+  # holds example or default data — scenarios, defaults, a domain service's rule
+  # examples, a value's invariant examples — is redacted first, as
+  # `EhOsContract.Model.to_data/1` redacts it, so no personal value leaves in a
+  # document.
+  #
+  # **Scenarios** are neither nodes nor relations: a contract's are grouped by the
+  # kind of their target (`unit`, `policy`, `process_manager`, `query`), each naming
+  # its `target` and the ids of the relations it exercises (`covers`), which the
+  # engine computes so a count on an arrow and the list behind it come from one place.
+  @moduledoc false
 
   alias EhOsContract.{Lifecycle, Model}
   alias EhOsContract.Graph.Document

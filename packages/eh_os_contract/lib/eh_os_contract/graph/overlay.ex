@@ -1,45 +1,47 @@
 defmodule EhOsContract.Graph.Overlay do
+  # Plan E13a, batch 5. Only the report's numbers is the user's decision 2 before
+  # batch 4; the shape, decisions 3 to 5; where a step's numbers sit, the user's
+  # decisions of 6 and 7 October (`PLAN.md`, "E13a").
   @moduledoc """
-  What the log says over a `graph.v1` document (plan E13a, batch 5): a document of
-  its own, joined onto the graph of facts by id and never copied into it, so the
-  facts keep their digest whatever the log holds.
+  What the log says over a `graph.v1` document: a document of its own, joined onto
+  the graph of facts by id and never copied into it, so the facts keep their digest
+  whatever the log holds.
 
-  It carries **only the numbers the conformance report computes** (the user's
-  decision 2 before batch 4), and its readings of them, so a reader recounts nothing: an event's occurrences, a process's runs, how
-  often a step was taken, what waits and what fails there and whether the report
-  counts it as never taken or not yet; a lifecycle transition's
-  count, "not yet" and "never", and an aggregate's count; between contracts, the
-  events the log holds and what waits or fails at the consumer, and each contract's
-  runs. They come from `EhOsContract.Paths` and `EhOsContract.Conformance`; between
-  contracts, from the consumer's steps and one count of the consumed events.
+  It carries **only the numbers the conformance report computes**, and its readings
+  of them, so a reader recounts nothing: an event's occurrences, a process's runs,
+  how often a step was taken, what waits and what fails there and whether the report
+  counts it as never taken or not yet; a lifecycle transition's count, "not yet" and
+  "never", and an aggregate's count; between contracts, the events the log holds and
+  what waits or fails at the consumer, and each contract's runs. They are counted as
+  `EhOsContract.Conformance.report/2` counts them; between contracts, from the
+  consumer's steps and one count of the consumed events.
 
   Its JSON Schema is at `schema_path/0`, beside the document's.
 
   ## The shape
 
-  `nodes` and `relations` are maps from an id of the facts document to its numbers
-  (decision 3). The overlay says what it was computed against (decision 4): its
-  period (`since`, `until`), the contract's or domain's `version`, and
+  `nodes` and `relations` are maps from an id of the facts document to its numbers.
+  The overlay says what it was computed against: its period (`since`, `until`), the contract's or domain's `version`, and
   `document_digest`, the digest of the facts document — the ids change with the
   declarations and with how the engine makes them, and only that digest moves every
   time they do, so a reader joins an overlay only onto the document it names.
 
   **A move a lifecycle does not allow** exists only with the log, so the overlay
-  defines it (decision 5) in the facts' own shape, under `observed`: `%{relations:
+  defines it in the facts' own shape, under `observed`: `%{relations:
   %{undeclared: [%{id, from, to, event}]}}`, from and to the status the aggregate
   stood in and stayed in — the unit itself where it stood in none yet — and its count
   sits in `relations` with every other relation's.
 
   ## Where a step's numbers sit
 
-  A step of `EhOsContract.Paths` is one arrow or two in the facts; its numbers sit
-  on the relation that ends it: a command's `emits`, a reaction's `issues` (a
-  manager's with the step's event as its `on`), a timer's `fires`, and an effect's
-  `handled_by`. A step's numbers are the report's reading of it: `waits` and `fails`
-  say whether the report lists it as waiting or failing (`Conformance.waiting?/1`,
-  `failing?/1`), `untraversed` is the report's "never" — the step listed as
-  untraversed — and `pending` its "not yet". They sit on a relation in one of two ways (plan E13a, the user's decisions
-  of 6 and 7 October):
+  A step of the report (`EhOsContract.Conformance.steps/2`) is one arrow or two in the
+  facts; its numbers sit on the relation that ends it: a command's `emits`, a
+  reaction's `issues` (a manager's with the step's event as its `on`), a timer's
+  `fires`, and an effect's `handled_by`. A step's numbers are the report's reading of
+  it: `waits` and `fails` say whether the report lists it as waiting or failing
+  (`EhOsContract.Conformance.waiting?/1`, `EhOsContract.Conformance.failing?/1`),
+  `untraversed` is the report's "never" — the step listed as untraversed — and
+  `pending` its "not yet". They sit on a relation in one of two ways:
 
   - **One step, one relation:** the step's numbers, flat — `taken`, `waiting`,
     `failing`, `waits`, `fails`, `untraversed`, `pending`.

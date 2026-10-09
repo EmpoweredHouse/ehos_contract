@@ -5,7 +5,7 @@ defmodule EhOsContract.Web do
   Two screens: each contract's conformance (the four questions the report answers) and
   the graphs (each domain's context map and system, and per contract its declared shape
   with the log laid over it). Beside them, a read-only JSON API serves the conformance
-  report and the generated model, OpenAPI and AsyncAPI documents.
+  report and the generated model, OpenAPI, AsyncAPI and graph documents.
 
     * `EhOsContract.Web.Router.eh_os_contract_dashboard/2` mounts the screens, and
       `EhOsContract.Web.Router.eh_os_contract_api/2` the JSON API.
