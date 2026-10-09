@@ -71,7 +71,8 @@ defmodule EhOsContract.Graph.Document do
   The document of `domain`: its graph of facts over `contracts`, leaving out those of
   another domain, with the
   domain's `name` — the prefix of every role and capability — `language`,
-  `time_zone` and `version`, and the document's `digest`. The order of `contracts`
+  `code_language`, the language its identifiers are written in, `time_zone` and
+  `version`, and the document's `digest`. The order of `contracts`
   does not matter.
   """
   @spec domain(module() | map(), [module() | map()]) :: map()
@@ -85,6 +86,7 @@ defmodule EhOsContract.Graph.Document do
       "domain" => Model.json_data(model.module),
       "name" => Model.json_data(model.name),
       "language" => Model.json_data(model.language),
+      "code_language" => Model.json_data(EhOsContract.CodeWords.code_language(model)),
       "time_zone" => model.time_zone,
       "version" => model.version,
       "nodes" => Model.json_data(facts.nodes),

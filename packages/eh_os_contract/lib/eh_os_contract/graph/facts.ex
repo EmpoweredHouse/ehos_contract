@@ -979,6 +979,7 @@ defmodule EhOsContract.Graph.Facts do
     d = domain.module
     ctx = context(d, domain, %{})
     contexts = MapSet.new(domain.contexts, & &1.name)
+    code = EhOsContract.CodeWords.code_language(domain)
 
     models =
       contracts
@@ -1106,7 +1107,7 @@ defmodule EhOsContract.Graph.Facts do
           node(:context, d, c,
             subdomain: id(:subdomain, d, c.subdomain),
             language: c.language,
-            terms: Enum.map(c.terms, &term/1)
+            terms: Enum.map(c.terms, &term(&1, c.language || domain.language, code))
           )
         end,
       # A contract has no words of its own in the DSL; its process has.
@@ -1397,9 +1398,13 @@ defmodule EhOsContract.Graph.Facts do
   defp duration({amount, unit}), do: %{amount: amount, unit: unit}
   defp duration(other), do: other
 
-  # A term of a context's glossary, whole: its definition, what to avoid and why, and
-  # its translations.
-  defp term(t) do
+  # A term of a context's glossary, whole: its definition, what to avoid and why, its
+  # translations, and its word in code where it has one — its text in the domain's
+  # `code_language:`, written in the context's language `own` (plan DD, L1, #269), as
+  # the glossary and the check read it.
+  defp term(t, own, code) do
+    word = EhOsContract.CodeWords.in_code(t, own, code)
+
     %{
       text: t.text,
       definition: t.definition,
@@ -1415,6 +1420,7 @@ defmodule EhOsContract.Graph.Facts do
           }
         end
     }
+    |> then(&if(word, do: Map.put(&1, :code, word), else: &1))
   end
 
   defp avoid(items), do: for(a <- items, do: %{text: a.text, reason: a.reason})

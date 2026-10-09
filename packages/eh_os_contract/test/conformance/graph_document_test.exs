@@ -1127,6 +1127,44 @@ defmodule EhOsContract.GraphDocumentTest do
     assert JSV.validate(d, @schema) |> elem(0) == :ok
   end
 
+  # A term's word in code (plan DD, L1, #269): its text in the domain's `code_language:`
+  # — the term itself in a context written in that language, its translation into it
+  # otherwise, none without one — as the glossary and the check read it.
+  test "a domain says the language of its code, and a term its word in code" do
+    compile(
+      """
+      defmodule EhOsContract.GraphDocumentTest.Coded do
+        use EhOsContract.Domain, name: :graph_coded, language: :en, code_language: :de
+
+        subdomain :core, "Core", type: :core
+
+        context :front, "Front", subdomain: :core do
+          term "Visit", definition: "A held slot" do
+            translation :de, "Besuch", definition: "Ein gehaltener Termin"
+          end
+
+          term "Payer", definition: "Who pays"
+        end
+
+        context :books, "Books", subdomain: :core, language: :de do
+          term "Buch", definition: "Ein Buch"
+        end
+      end
+      """,
+      "graph_coded.ex"
+    )
+
+    d = Document.domain(EhOsContract.GraphDocumentTest.Coded, [])
+    assert d["code_language"] == "de"
+
+    terms =
+      for c <- d["nodes"]["context"], t <- c["terms"], into: %{}, do: {t["text"], t["code"]}
+
+    assert terms == %{"Visit" => "Besuch", "Payer" => nil, "Buch" => "Buch"}
+    assert JSV.validate(d, @schema) |> elem(0) == :ok
+    assert Document.domain(DispatchRig.Domain, [])["code_language"] == "en"
+  end
+
   # What main's plan DD added to a command and a scenario: what the decision reads
   # (T2a, #240), the one person who may issue it (A1, #247), and a given's moment (S2,
   # #251).

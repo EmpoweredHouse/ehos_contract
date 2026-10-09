@@ -358,6 +358,24 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "p1_reported Raportowana do P1 boolean · required"
     end
 
+    # A term's word in code, as the engine gives it since main's L1 (#269); the fixture was
+    # taken before, so it is added here as the engine writes it.
+    test "a context's term says its word in code, where it has one" do
+      document =
+        update_in(Fixtures.document("domain.rehmed"), ["nodes", "context"], fn contexts ->
+          for c <- contexts do
+            update_in(c, ["terms"], fn terms ->
+              for t <- terms || [],
+                  do: if(t["text"] == "Wizyta", do: Map.put(t, "code", "Visit"), else: t)
+            end)
+          end
+        end)
+
+      text = open(document, "context:Rehmed.Domain:scheduling", :context_map)
+      assert text =~ "en: Visit — A held slot with resources In code: Visit"
+      refute text =~ "Pacjent wyszedł z gabinetu In code"
+    end
+
     test "an external system: its outage, its operations" do
       text = open("domain.rehmed", "external:Rehmed.Domain:p1", :context_map)
 

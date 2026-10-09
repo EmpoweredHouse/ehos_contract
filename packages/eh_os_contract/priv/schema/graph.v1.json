@@ -594,6 +594,10 @@
         "language": {
           "type": "string"
         },
+        "code_language": {
+          "type": "string",
+          "description": "The language the domain's identifiers are written in (code_language:), English unless it says otherwise."
+        },
         "time_zone": {
           "type": "string"
         },
@@ -1420,6 +1424,10 @@
                     }
                   }
                 }
+              },
+              "code": {
+                "type": "string",
+                "description": "The term's word in code: its text in the domain's code_language — the term itself in a context written in that language, its translation into it otherwise; absent without such a translation."
               }
             }
           }

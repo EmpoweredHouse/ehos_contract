@@ -636,6 +636,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
             <span :for={t <- term["translations"] || []} class="ehg-translation">
               {t["language"]}: {t["text"]}{if t["definition"], do: " — #{t["definition"]}"}
             </span>
+            <span :if={term["code"]} class="ehg-translation">In code: <code>{term["code"]}</code></span>
           </dd>
         <% end %>
       </dl>
