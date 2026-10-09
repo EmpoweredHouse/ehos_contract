@@ -251,6 +251,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
   dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
   (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
+- **`EhOsContract.Model.to_data/1` redacts the rows a scenario gives with `given_entity`.** A field the domain's
+  entity declares `personal:` was published as written; it is `null` now, as in a given event, and a row of an
+  entity the domain does not declare has its values dropped. The model document of a contract whose scenarios
+  give such a row changes its digest. Moves no verdict.
 
 ### Fixed — can move a verdict
 
