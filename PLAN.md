@@ -883,7 +883,7 @@ with `holds?/2` in the sandbox.
 #### Fala 5 — język i rdzeń
 
 **L1 — the glossary is joined to the code** (#269; tightened 9 October 2026). `use EhOsContract.Domain,
-code_language: :en` (the default, in the digest only when it is not `:en`); a term's word in code is its
+code_language: :en` (the default; in the model only when it is not `:en`, and in no digest); a term's word in code is its
 translation into that language. `mix eh_os_contract.glossary` lists, under each term, the declarations named with
 it; `check` gets `word-without-term` (a notice per context ranking uncovered words of names of units, read models
 and fields) and `term-of-another-context` (a warning, one per name; a field typed `{:id, entity}` or named like
