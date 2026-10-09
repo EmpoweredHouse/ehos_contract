@@ -27,6 +27,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A contract produces valid examples of its data** (plan DD, stage PC1, #264). `EhOsContract.Generators` gives
+  StreamData generators of a contract's commands (`command/3`) and events (`event/3`), of a domain entity's row
+  (`entity_row/3`), and of a unit's history in an order its lifecycle allows (`history/3`), every value within what
+  the engine stores and a domain value with invariants drawn from its `satisfied_by:` examples; `fields:`
+  fixes or narrows a field. The module compiles only where StreamData is, `{:stream_data, "~> 1.1"}`, an optional
+  dependency of the package. Moves no verdict.
 - **The report counts the runs whose stages happened out of order — can move a verdict** (plan DD, stage O1,
   #260, agreed with EHOS in EmpoweredHouse/eh-os#297). Each process section of
   `EhOsContract.Conformance.report/2` has `out_of_order: %{runs: n, pairs: [%{earlier:, later:, runs:,
