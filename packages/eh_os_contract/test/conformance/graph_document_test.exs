@@ -88,6 +88,13 @@ defmodule EhOsContract.GraphDocumentTest do
       correlate :branch_id
       include :account_opened
     end
+
+    scenario "a branch is noted again" do
+      actor :auditor
+      given :branch_noted, %{branch_id: "b-1"}, at: "2026-09-07T09:00:00+02:00"
+      command :note_branch, %{branch_id: "b-1"}
+      expect :branch_noted, %{branch_id: "b-1"}
+    end
   end
 
   # The registry's, and this file's two with a process of their own, so that a stage,
@@ -1118,6 +1125,67 @@ defmodule EhOsContract.GraphDocumentTest do
     assert [supplier] = d["relations"]["customer_supplier"]
     refute Map.has_key?(supplier, "symmetric")
     assert JSV.validate(d, @schema) |> elem(0) == :ok
+  end
+
+  # What main's plan DD added to a command and a scenario: what the decision reads
+  # (T2a, #240), the one person who may issue it (A1, #247), and a given's moment (S2,
+  # #251).
+  describe "a command's reads and its person, and a scenario's rows, person and moments" do
+    test "a command says what its decision reads, by name, field and entity" do
+      d = Document.contract(ReadRig.Orders)
+      place = node(d, "command", Document.id([:command, scope(ReadRig.Orders), :place_order]))
+      entity = Document.id([:entity, ReadRig.Domain, :product])
+
+      assert place["reads"] == [
+               %{"name" => "product", "field" => "product_id", "entity" => entity}
+             ]
+
+      assert node(d, "entity", entity)
+
+      cancel = node(d, "command", Document.id([:command, scope(ReadRig.Orders), :cancel_order]))
+      refute Map.has_key?(cancel, "reads")
+    end
+
+    test "a unit's scenario gives the rows its command reads" do
+      d = Document.contract(ReadRig.Orders)
+      entity = Document.id([:entity, ReadRig.Domain, :product])
+
+      scenario =
+        Enum.find(d["scenarios"]["unit"], &(&1["description"] =~ "totals the price"))
+
+      assert [%{"entity" => ^entity, "data" => %{"product_id" => "product-tea"} = row}] =
+               scenario["given_entities"]
+
+      assert row["price"] == 4
+    end
+
+    test "a command names the field of the one person who may issue it, and the rule it refuses others on" do
+      d = Document.contract(PersonRig.Desk)
+      c = scope(PersonRig.Desk)
+      resolve = Document.id([:command, c, :resolve_ticket])
+      rule = Document.id([:invariant, c, :unit, :ticket, :only_its_assignee_resolves])
+
+      assert node(d, "command", resolve)["actor_is"] == "assignee_id"
+      assert %{"actor_is" => true} = relation(d, "refused_on", resolve, rule)
+      refute Map.has_key?(relation(d, "refused_on", resolve, rule), "outside_from")
+
+      assign = node(d, "command", Document.id([:command, c, :assign_ticket]))
+      refute Map.has_key?(assign, "actor_is")
+
+      as = for s <- d["scenarios"]["unit"], s["as"], into: %{}, do: {s["description"], s["as"]}
+      assert as["the clerk it is assigned to resolves it"] == "clerk-ada"
+      assert as["another clerk does not"] == "clerk-bo"
+    end
+
+    test "a given keeps the moment the scenario dates it at" do
+      d = Document.contract(Openings)
+      [scenario] = d["scenarios"]["unit"]
+
+      assert [%{"at" => "2026-09-07T09:00:00+02:00"}] = scenario["given"]
+      assert [expected] = scenario["expect"]
+      refute Map.has_key?(expected, "at")
+      assert JSV.validate(d, @schema) |> elem(0) == :ok
+    end
   end
 
   describe "a process's shape" do

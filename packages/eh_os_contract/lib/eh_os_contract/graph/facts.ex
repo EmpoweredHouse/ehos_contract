@@ -97,6 +97,8 @@ defmodule EhOsContract.Graph.Facts do
             fields: fields(cmd.fields, ctx),
             scope: cmd[:scope],
             creates: cmd[:creates],
+            reads: reads(cmd, ctx),
+            actor_is: cmd[:actor_is] && cmd.actor_is.field,
             capability: ctx.grants[{:command, cmd.name}]
           )
         end,
@@ -395,11 +397,28 @@ defmodule EhOsContract.Graph.Facts do
       for cmd <- model.commands, r <- cmd.rejects do
         {:refused_on,
          relation(id(:command, c, cmd.name), refusal(c, units[cmd.unit], cmd.name, r),
-           outside_from: cmd[:or_rejects] == r || nil
+           outside_from: cmd[:or_rejects] == r || nil,
+           actor_is: (cmd[:actor_is] && cmd.actor_is.or_rejects == r) || nil
          )}
       end
 
     typed(emits ++ allowed ++ refused)
+  end
+
+  # What a command's decision reads before it runs (plan DD, T2a, #240): each row by the
+  # name the decision gets it under, the field of the command holding its id, and the
+  # entity it is a row of — the one the field's type names. Left out where it reads none.
+  defp reads(cmd, ctx) do
+    case Map.get(cmd, :reads, []) do
+      [] ->
+        nil
+
+      reads ->
+        for {name, field} <- reads do
+          refers_to = Enum.find_value(cmd.fields, &(&1.name == field && Map.get(&1, :refers_to)))
+          %{name: name, field: field, entity: refers_to && id(:entity, ctx.d, refers_to)}
+        end
+    end
   end
 
   # The rule a command is refused on: an invariant of its unit, or else a constraint of
@@ -629,6 +648,12 @@ defmodule EhOsContract.Graph.Facts do
       for(e <- s.expect, do: find.(:emits, command, id(:event, c, e.event), [])) ++
         [rule && find.(:refused_on, command, rule, [])]
 
+    # The rows its command reads and the person issuing it (plan DD, T2a, #240, and A1,
+    # #247), where the scenario gives them; the rows redacted as the model's export does.
+    entities =
+      for row <- Map.get(s, :given_entities, []),
+          do: %{entity: id(:entity, model.domain, row.entity), data: row.data}
+
     {with_attrs(
        %{
          given: happened(c, s.given),
@@ -636,6 +661,8 @@ defmodule EhOsContract.Graph.Facts do
          expect: happened(c, s.expect)
        },
        actor: s.actor && id(:actor, model.domain, s.actor),
+       as: s[:as],
+       given_entities: if(entities != [], do: entities),
        rejected: rule
      ), covers}
   end
@@ -736,8 +763,10 @@ defmodule EhOsContract.Graph.Facts do
      ), covers}
   end
 
+  # A given's moment where the scenario dates it (plan DD, S2, #251).
   defp happened(c, events),
-    do: for(e <- events, do: %{event: id(:event, c, e.event), data: e.data})
+    do:
+      for(e <- events, do: with_attrs(%{event: id(:event, c, e.event), data: e.data}, at: e[:at]))
 
   defp issued(c, commands),
     do: for(i <- commands, do: %{command: id(:command, c, i.command), data: i.data})

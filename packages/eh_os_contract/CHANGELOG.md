@@ -27,6 +27,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E13, after main: `graph.v1` says what main's DSL added to a command and a scenario.** A command node has
+  `reads`, what its decision reads before it runs (each row's `name`, the command's `field` holding its id, and
+  the `entity` it is a row of), and `actor_is`, the field of its unit's state naming the one person who may
+  issue it; its `refused_on` relation to that rule says `actor_is: true`. A unit's scenario has `as`, the person
+  issuing the command, and `given_entities`, the rows its command reads, redacted as given events are; a given
+  event has `at` where the scenario dates it. All are optional additions to the schema; no verdict moves.
 - **E13b, after the review: what a renderer would otherwise have to work out is in the documents.** A step's
   overlay entry says whether the report lists it as waiting or failing (`waits`, `fails`), from
   `EhOsContract.Conformance.waiting?/1` and `failing?/1`, public now; the numbers between two contracts use the

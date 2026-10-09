@@ -17,7 +17,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   | Selected | The panel shows |
   | --- | --- |
-  | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers), its scope, the statuses it is allowed in, the rules it may be refused on |
+  | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers, and the one person its unit's state names, where it says so), its scope, what its decision reads, the statuses it is allowed in, the rules it may be refused on |
   | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on |
   | a policy, a process manager | what it takes and issues, its rules, delivery and idempotency, its scenarios — a manager's by what triggers them |
   | an effect | the event it handles, the system and the operation it calls, its rules, delivery and idempotency |
@@ -154,8 +154,17 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <.refs relations={@reactions} side="from" then={:phase} ctx={@ctx} />
       <.refs relations={@timers} side="from" then={:fires} ctx={@ctx} />
       <p :if={@node["capability"]}>EHOS grants it as <code>{@node["capability"]}</code>.</p>
+      <p :if={@node["actor_is"]}>
+        Only the person its unit's <code>{@node["actor_is"]}</code> names; anyone else is refused.
+      </p>
       <p :if={@people == [] and @reactions == [] and @timers == []} class="ehg-empty">
         Nothing in the contract issues it.
+      </p>
+    </.part>
+    <.part :if={@node["reads"]} title="Reads before deciding">
+      <p :for={r <- @node["reads"]}>
+        <.ref :if={r["entity"]} id={r["entity"]} ctx={@ctx} />
+        <span :if={!r["entity"]}>{r["name"]}</span>, the row its <code>{r["field"]}</code> names
       </p>
     </.part>
     <.part :if={@node["scope"]} title="Scope">
@@ -944,6 +953,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
         type == "consulted_by" && sentence(consulted_words(facts)),
         type == "refused_on" && facts["outside_from"] &&
           "Refused on it outside the statuses the command is allowed in.",
+        type == "refused_on" && facts["actor_is"] &&
+          "Refused on it " <> not_the_person(facts, lookup) <> ".",
         type == "published_as" &&
           "Published as #{facts["name"]}, with #{Enum.join(facts["fields"] || [], ", ")}.",
         type == "publishes" && facts["event"] && "From #{Lookup.title(lookup, facts["event"])}.",
@@ -952,6 +963,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
       ],
       &(&1 in [nil, false])
     )
+  end
+
+  # The refusal of a command that one person alone may issue: the field naming them is
+  # the command's, which the relation leaves from.
+  defp not_the_person(relation, lookup) do
+    field = (Lookup.node(lookup, relation["from"]) || %{})["actor_is"]
+    "when the one issuing it is not the person its unit's #{field} names"
   end
 
   # --- parts --------------------------------------------------------------------------------
@@ -1026,8 +1044,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp after_ref(:fires, _r, _lookup), do: ", when it fires"
   defp after_ref(:inbox, r, _lookup), do: if(r["via_inbox"], do: ", through the inbox")
 
-  defp after_ref(:outside, r, _lookup),
-    do: if(r["outside_from"], do: " — outside the statuses it is allowed in")
+  defp after_ref(:outside, r, lookup) do
+    cond do
+      r["outside_from"] -> " — outside the statuses it is allowed in"
+      r["actor_is"] -> " — " <> not_the_person(r, lookup)
+      true -> nil
+    end
+  end
 
   defp after_ref(:operation, r, lookup),
     do: if(r["operation"], do: ": " <> operation_title(r, lookup))
@@ -1278,8 +1301,14 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <article class="ehg-scenario">
       <p class="ehg-scenario-title">{@scenario["description"]}</p>
       <.happened title="Given" list={@scenario["given"] || []} ctx={@ctx} />
+      <div :if={@scenario["given_entities"]}>
+        <p class="ehg-step">The application keeps</p>
+        <.with_data :for={r <- @scenario["given_entities"]} id={r["entity"]} data={r["data"]} ctx={@ctx} />
+      </div>
       <p class="ehg-step">When</p>
-      <p :if={@scenario["actor"]}><.ref id={@scenario["actor"]} ctx={@ctx} /> issues</p>
+      <p :if={@scenario["actor"]}>
+        <.ref id={@scenario["actor"]} ctx={@ctx} />{if @scenario["as"], do: " #{@scenario["as"]}"} issues
+      </p>
       <.with_data id={@scenario["command"]["command"]} data={@scenario["command"]["data"]} ctx={@ctx} />
       <p class="ehg-step">Then</p>
       <p :if={@scenario["rejected"]} class="ehg-refused">
@@ -1351,7 +1380,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <div :if={@list != []}>
       <p class="ehg-step">{@title}</p>
-      <.with_data :for={e <- @list} id={e["event"]} data={e["data"]} ctx={@ctx} />
+      <.with_data :for={e <- @list} id={e["event"]} data={e["data"]} at={e["at"]} ctx={@ctx} />
     </div>
     """
   end
@@ -1379,12 +1408,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   attr :id, :string, required: true
   attr :data, :map, required: true
+  attr :at, :string, default: nil, doc: "When it happened, where a scenario dates it."
   attr :ctx, :map, required: true
 
   defp with_data(assigns) do
     ~H"""
     <div class="ehg-happened">
-      <.ref id={@id} ctx={@ctx} />
+      <.ref id={@id} ctx={@ctx} />{if @at, do: ", at #{@at}"}
       <.data data={@data || %{}} />
     </div>
     """

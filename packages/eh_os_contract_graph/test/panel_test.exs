@@ -20,11 +20,14 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
   end
 
   # What a reader sees in the panel `id` opens in `spec`, through a canvas.
-  defp open(name, id, spec \\ :all) do
+  defp open(name_or_document, id, spec \\ :all) do
+    document =
+      if is_map(name_or_document),
+        do: name_or_document,
+        else: Fixtures.document(name_or_document)
+
     {:ok, live, _html} =
-      live_isolated(build_conn(), TestLive,
-        session: %{"document" => Fixtures.document(name), "view" => spec}
-      )
+      live_isolated(build_conn(), TestLive, session: %{"document" => document, "view" => spec})
 
     live |> with_target("#graph") |> render_click("select", %{"id" => id})
     live |> element(".ehg-panel") |> render() |> text()
@@ -187,6 +190,93 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       text = open("rehmed.settlement", id, {:unit, "unit:rehmed.settlement:visit_settlement"})
       assert text =~ "zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone"
       assert text =~ "refused on"
+    end
+  end
+
+  # What a command's decision reads, the one person who may issue it, and a scenario's
+  # rows, person and moments, as `graph.v1` has them since main's plan DD (T2a, A1,
+  # S2). No fixture's contract declares them, so the settlement's document is given
+  # them here as the engine writes them.
+  describe "what a command reads, who alone may issue it, a scenario's rows and moments" do
+    defp with_main_keys do
+      c = "rehmed.settlement"
+      hand_over = "command:#{c}:hand_over_visit"
+      add_line = "command:#{c}:add_service_line"
+      rule = "invariant:#{c}:unit:visit_settlement:handover_only_after_scope_change"
+      described = "specjalista dodał usługę — przekazuje wizytę do rozliczenia"
+      service = "entity:Rehmed.Domain:service"
+
+      Fixtures.document(c)
+      |> update_in(["nodes", "command"], fn commands ->
+        for command <- commands do
+          case command["id"] do
+            ^hand_over ->
+              Map.put(command, "actor_is", "specialist_id")
+
+            ^add_line ->
+              Map.put(command, "reads", [
+                %{"name" => "service", "field" => "service_id", "entity" => service}
+              ])
+
+            _ ->
+              command
+          end
+        end
+      end)
+      |> update_in(["relations", "refused_on"], fn relations ->
+        for r <- relations do
+          if r["from"] == hand_over and r["to"] == rule, do: Map.put(r, "actor_is", true), else: r
+        end
+      end)
+      |> update_in(["scenarios", "unit"], fn scenarios ->
+        for s <- scenarios do
+          if s["description"] == described do
+            s
+            |> Map.merge(%{"actor" => "actor:Rehmed.Domain:specialist", "as" => "specialist-ewa"})
+            |> Map.put("given_entities", [
+              %{"entity" => service, "data" => %{"service_id" => "service-ultrasound"}}
+            ])
+            |> update_in(
+              ["given"],
+              &Enum.map(&1, fn g -> Map.put(g, "at", "2026-10-05T09:00:00+02:00") end)
+            )
+          else
+            s
+          end
+        end
+      end)
+    end
+
+    test "a command says what it reads before deciding, and who alone may issue it" do
+      document = with_main_keys()
+
+      assert open(document, "command:rehmed.settlement:add_service_line") =~
+               "Reads before deciding Usługa entity, the row its service_id names"
+
+      text = open(document, "command:rehmed.settlement:hand_over_visit")
+      assert text =~ "Only the person its unit's specialist_id names; anyone else is refused."
+
+      assert text =~
+               "when the one issuing it is not the person its unit's specialist_id names"
+    end
+
+    test "a refusal of anyone but the person says so" do
+      id =
+        "refused_on:command:rehmed.settlement:hand_over_visit:invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change"
+
+      assert open(with_main_keys(), id) =~
+               "Refused on it when the one issuing it is not the person its unit's specialist_id names."
+    end
+
+    test "a unit's scenario shows the rows the application keeps, the person, and when a given happened" do
+      id =
+        "emits:command:rehmed.settlement:hand_over_visit:event:rehmed.settlement:visit_handed_over"
+
+      text = open(with_main_keys(), id, {:unit, "unit:rehmed.settlement:visit_settlement"})
+
+      assert text =~ ", at 2026-10-05T09:00:00+02:00"
+      assert text =~ "The application keeps Usługa entity service_id service-ultrasound"
+      assert text =~ "specialist-ewa issues"
     end
   end
 

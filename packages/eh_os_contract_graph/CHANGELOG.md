@@ -4,6 +4,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13, after main: what a command reads, the one person who may issue it, a scenario's rows and moments.** A
+  command's panel lists the entities its decision reads, under "Reads before deciding", and says when only the
+  person a field of its unit's state names may issue it; a refusal on that rule says why. A unit's scenario
+  shows the rows the application keeps, the person who issues the command beside the actor, and the moment a
+  given event happened where the scenario dates it.
 - **E13b, after the review: the renderer judges nothing and recounts nothing.** An event's panel no longer has
   "What depends on it", nor its red "Nothing depends on it": whether an event is used is
   `mix eh_os_contract.check`'s to say (`event-without-consumer`), by a rule the panel did not share, and what

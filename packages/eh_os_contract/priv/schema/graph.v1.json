@@ -890,6 +890,10 @@
           },
           "data": {
             "$ref": "#/$defs/data"
+          },
+          "at": {
+            "type": "string",
+            "description": "When it happened, as the scenario dates it: an ISO 8601 timestamp with an offset."
           }
         }
       }
@@ -1060,6 +1064,39 @@
         "creates": {
           "const": true,
           "description": "It creates its aggregate."
+        },
+        "reads": {
+          "type": "array",
+          "minItems": 1,
+          "description": "What its decision reads before it runs: each row by the name the decision gets it under, the command's field holding its id, and the id of the entity it is a row of.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "field",
+              "entity"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              },
+              "entity": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The entity's id; null where the field's type names none."
+              }
+            }
+          }
+        },
+        "actor_is": {
+          "type": "string",
+          "description": "The field of its unit's state naming the one person who may issue it; anyone else is refused on the rule its refused_on relation marks actor_is."
         },
         "capability": {
           "type": "string",
@@ -3351,6 +3388,10 @@
         "outside_from": {
           "const": true,
           "description": "The rule a command outside its statuses is refused on (or_rejects)."
+        },
+        "actor_is": {
+          "const": true,
+          "description": "The rule a command is refused on when the person issuing it is not the one its actor_is field names."
         }
       }
     },
@@ -3799,8 +3840,34 @@
         "actor": {
           "type": "string"
         },
+        "as": {
+          "type": "string",
+          "description": "The person issuing the command, as the credential names them."
+        },
         "given": {
           "$ref": "#/$defs/happened"
+        },
+        "given_entities": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The rows of the entities the command reads, as the application keeps them; redacted as the given events are.",
+          "items": {
+            "type": "object",
+            "required": [
+              "entity",
+              "data"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "entity": {
+                "type": "string",
+                "description": "The entity's id."
+              },
+              "data": {
+                "$ref": "#/$defs/data"
+              }
+            }
+          }
         },
         "command": {
           "type": "object",
