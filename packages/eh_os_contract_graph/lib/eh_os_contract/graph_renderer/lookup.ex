@@ -1,17 +1,16 @@
 defmodule EhOsContract.GraphRenderer.Lookup do
-  @moduledoc """
-  The joins a panel makes over a `graph.v1` document: a node by its id, the relations
-  into and out of it, the nodes whose owner field names it, and the scenarios about it
-  or covering one of its relations.
-
-  Each is a join on ids and nothing more (plan E13, decision 2): who may issue a command
-  is the `may_issue` relations into it, what a reaction issues the relations out of it,
-  which scenarios pin an arrow those whose `covers` names it. Whatever takes the
-  DSL's meaning the engine has already computed into the document.
-
-  A relation and a scenario come back as the document has them, with the type of their
-  group under `"type"`, since the document keys each group by it.
-  """
+  # The joins a panel makes over a `graph.v1` document: a node by its id, the relations
+  # into and out of it, the nodes whose owner field names it, and the scenarios about it
+  # or covering one of its relations.
+  #
+  # Each is a join on ids and nothing more (plan E13, decision 2): who may issue a command
+  # is the `may_issue` relations into it, what a reaction issues the relations out of it,
+  # which scenarios pin an arrow those whose `covers` names it. Whatever takes the
+  # DSL's meaning the engine has already computed into the document.
+  #
+  # A relation and a scenario come back as the document has them, with the type of their
+  # group under `"type"`, since the document keys each group by it.
+  @moduledoc false
 
   defstruct nodes: %{},
             kinds: %{},

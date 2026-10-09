@@ -129,9 +129,9 @@ table of `docs/contract.md` to it, and what a prose page says it covers (`<!-- c
 --warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
 `test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`),
-`packages/eh_os_contract_web` and
-`packages/eh_os_contract_auth` (each with its own `docs --warnings-as-errors` and `test/doc_coverage_test.exs`),
-and `packages/eh_os_contract_graph`. **It has to pass.** Separate invocations, not an umbrella, so that each package
+`packages/eh_os_contract_web`,
+`packages/eh_os_contract_auth` and `packages/eh_os_contract_graph` (each with its own `docs --warnings-as-errors`
+and `test/doc_coverage_test.exs`). **It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
 listens on **5433**.

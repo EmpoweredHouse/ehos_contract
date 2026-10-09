@@ -24,16 +24,15 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   group a box with its title, and each relation a label, all rendered here in HEEx;
   the hook (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads
   them from the page, lays them out in the view's direction and draws the arrows, each
-  with the line and the head its label names. The overlay's marks
-  (`EhOsContract.GraphRenderer.Marks`) are a count on the card or the label and a
-  class per state, which the hook copies onto the arrow.
+  with the line and the head its label names. The overlay's marks are a count on the
+  card or the label and a class per state, which the hook copies onto the arrow.
 
   **A click** on a card, a group's title, a label or an arrow selects it: the card, the
   title and the label are buttons with `phx-click`, the arrow is pushed by the hook,
   and both reach
   `handle_event("select", %{"id" => id}, …)` here. The selected element and what
   touches it are classes on the cards and the labels, everything else is drawn
-  faint, and the panel (`EhOsContract.GraphRenderer.Panel`) says what it is.
+  faint, and the panel says what it is.
   Clicking it again, the panel's close button, or Escape clears the selection.
 
   **The panel is a sidebar** at the right of the window, as tall as it, whose left

@@ -1,36 +1,35 @@
 defmodule EhOsContract.GraphRenderer.Panel do
-  @moduledoc """
-  The panel of a graph, a sidebar at the right of the window: what the selected node,
-  group or relation is, read from the `graph.v1` document it belongs to (plan E13b,
-  batch 4: the points of the user's working plan for the Graph screen, in `PLAN.md`,
-  that a click answers, and the way it shows a field).
-
-  Everything here is the document's: a node's own facts, and the joins over relations
-  and scenarios `EhOsContract.GraphRenderer.Lookup` makes — who may issue a command is
-  the `may_issue` relations into it, what a reaction issues the relations out of it,
-  the scenarios behind an arrow those whose `covers` names it. Nothing is derived from
-  the DSL's meaning; that is the engine's, and it is in the document already.
-
-  The client's words — labels, terms, rules, scenario descriptions — are shown as the
-  client wrote them; the sentences around them are the renderer's, in English. A node
-  named in a panel is a button that shows it, whether or not the view draws it.
-
-  | Selected | The panel shows |
-  | --- | --- |
-  | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers, and the one person its unit's state names, where it says so), its scope, what its decision reads, the statuses it is allowed in, the rules it may be refused on |
-  | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on |
-  | a policy, a process manager | what it takes and issues, its rules, delivery and idempotency, its scenarios — a manager's by what triggers them |
-  | an effect | the event it handles, the system and the operation it calls, its rules, delivery and idempotency |
-  | a read model, a query | what builds it and its fields; the query's parameters, who may ask, what it reads and returns, its scenarios |
-  | a context, an external system, an actor | the context's terms, relations, contracts and entities; the system's operations, outage and who uses it; the actor's role, responsibilities and what the role may do |
-  | a relation | its two ends, what it says, and the scenarios that cover it |
-
-  A field is shown the same way everywhere it appears: its name, label, type, whether
-  it is required, its default, and what it says of a person (personal data, or a
-  pointer to one), of a domain value (its members or unit), of an entity and of the
-  system that gives its value. What keeps a value about a person is the document's word
-  (`kept`): sealed or in the clear in the log, or in a read model's rows.
-  """
+  # The panel of a graph, a sidebar at the right of the window: what the selected node,
+  # group or relation is, read from the `graph.v1` document it belongs to (plan E13b,
+  # batch 4: the points of the user's working plan for the Graph screen, in `PLAN.md`,
+  # that a click answers, and the way it shows a field).
+  #
+  # Everything here is the document's: a node's own facts, and the joins over relations
+  # and scenarios `EhOsContract.GraphRenderer.Lookup` makes — who may issue a command is
+  # the `may_issue` relations into it, what a reaction issues the relations out of it,
+  # the scenarios behind an arrow those whose `covers` names it. Nothing is derived from
+  # the DSL's meaning; that is the engine's, and it is in the document already.
+  #
+  # The client's words — labels, terms, rules, scenario descriptions — are shown as the
+  # client wrote them; the sentences around them are the renderer's, in English. A node
+  # named in a panel is a button that shows it, whether or not the view draws it.
+  #
+  # | Selected | The panel shows |
+  # | --- | --- |
+  # | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers, and the one person its unit's state names, where it says so), its scope, what its decision reads, the statuses it is allowed in, the rules it may be refused on |
+  # | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on |
+  # | a policy, a process manager | what it takes and issues, its rules, delivery and idempotency, its scenarios — a manager's by what triggers them |
+  # | an effect | the event it handles, the system and the operation it calls, its rules, delivery and idempotency |
+  # | a read model, a query | what builds it and its fields; the query's parameters, who may ask, what it reads and returns, its scenarios |
+  # | a context, an external system, an actor | the context's terms, relations, contracts and entities; the system's operations, outage and who uses it; the actor's role, responsibilities and what the role may do |
+  # | a relation | its two ends, what it says, and the scenarios that cover it |
+  #
+  # A field is shown the same way everywhere it appears: its name, label, type, whether
+  # it is required, its default, and what it says of a person (personal data, or a
+  # pointer to one), of a domain value (its members or unit), of an entity and of the
+  # system that gives its value. What keeps a value about a person is the document's word
+  # (`kept`): sealed or in the clear in the log, or in a read model's rows.
+  @moduledoc false
 
   use Phoenix.Component
 

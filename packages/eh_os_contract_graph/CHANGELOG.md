@@ -4,6 +4,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13, after main: the package's docs are held as the other packages' are.** `mix check` builds them with
+  `--warnings-as-errors`, and `test/doc_coverage_test.exs` fails on a public function without a `@doc` or a
+  `@spec` and on a published doc citing the design record. Only what a host renders is published —
+  `EhOsContract.GraphRenderer.Canvas`, `Actors` and `View` — and `Lookup`, `Panel`, `Marks` and `Words` are hidden,
+  their text kept as comments. The docs build of the repository includes the package.
 - **E13, after main: what a command reads, the one person who may issue it, a scenario's rows and moments.** A
   command's panel lists the entities its decision reads, under "Reads before deciding", and says when only the
   person a field of its unit's state names may issue it; a refusal on that rule says why. A unit's scenario

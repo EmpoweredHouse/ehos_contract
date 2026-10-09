@@ -1,7 +1,7 @@
 # EhOsContract.GraphRenderer
 
-Draws [EhOsContract](../eh_os_contract)'s `graph.v1` documents in a Phoenix LiveView: a card per node, an
-arrow per relation, the overlay's numbers from the log on them, and a panel for what is clicked.
+Draws [EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract)'s
+`graph.v1` documents in a Phoenix LiveView: a card per node, an arrow per relation, the overlay's numbers from the log on them, and a panel for what is clicked.
 
 The engine says what is in a contract or a domain; this package says how it is drawn. At run time it needs
 `phoenix_live_view` (and `phoenix`, which that needs anyway), and `boundary` and `esbuild` come with it as
@@ -9,7 +9,7 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress** (plan E13b). It draws six views — a contract's full graph, its process's declared shape,
+**Work in progress.** It draws six views — a contract's full graph, its process's declared shape,
 a unit, an aggregate's lifecycle, a domain's context map and its system — and, as a test bed, every node and
 relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and where it comes from, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and

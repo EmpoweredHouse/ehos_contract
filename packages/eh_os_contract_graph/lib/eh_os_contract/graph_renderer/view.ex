@@ -1,4 +1,5 @@
 defmodule EhOsContract.GraphRenderer.View do
+  # The six pictures are plan E13b, batch 3, the user's decision of 8 October.
   @moduledoc """
   Which facts of a document are drawn together, and how they read: a view is the
   nodes one picture shows, the groups they sit in, the relations between them with
@@ -9,9 +10,8 @@ defmodule EhOsContract.GraphRenderer.View do
   the drawing layer takes, and keeps a relation only when both of its ends are in the
   view, so that no arrow points at nothing.
 
-  **The views are the six pictures the engine drew before this package** (plan E13b,
-  batch 3, the user's decision of 8 October), each chosen here from the graph of
-  facts rather than built by the engine:
+  **The views are the six pictures the engine drew before this package**, each chosen
+  here from the graph of facts rather than built by the engine:
 
   | View | What it shows |
   | --- | --- |

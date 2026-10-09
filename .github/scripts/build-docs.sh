@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the documentation of the three packages into one directory: ExDoc's HTML,
+# Builds the documentation of the four packages into one directory: ExDoc's HTML,
 # the Markdown it is made from, and an index linking them. Run by
 # .github/workflows/docs.yml, and by hand from anywhere in the repository:
 #
@@ -50,10 +50,11 @@ version() {
 engine_version="$(version eh_os_contract)"
 web_version="$(version eh_os_contract_web)"
 auth_version="$(version eh_os_contract_auth)"
+graph_version="$(version eh_os_contract_graph)"
 
 # Each package under the short name the archive uses.
-names=(engine web auth)
-packages=(eh_os_contract eh_os_contract_web eh_os_contract_auth)
+names=(engine web auth graph)
+packages=(eh_os_contract eh_os_contract_web eh_os_contract_auth eh_os_contract_graph)
 
 for i in "${!names[@]}"; do
   name="${names[$i]}"
@@ -92,6 +93,7 @@ cat > "$out/index.html" <<HTML
   <li><a href="html/engine/index.html">eh_os_contract</a> ${engine_version}: the engine, its guides and the DSL reference</li>
   <li><a href="html/web/index.html">eh_os_contract_web</a> ${web_version}: the dashboard</li>
   <li><a href="html/auth/index.html">eh_os_contract_auth</a> ${auth_version}: EHOS credentials and sign-in</li>
+  <li><a href="html/graph/index.html">eh_os_contract_graph</a> ${graph_version}: the graph renderer</li>
 </ul>
 <p>The Markdown the pages are made from, as committed, is in <code>markdown/</code>.</p>
 </body>

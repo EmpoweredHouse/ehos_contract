@@ -1,8 +1,7 @@
 defmodule EhOsContract.GraphRenderer.Words do
-  @moduledoc """
-  The words the views and the panel share: a declaration's kind or a relation's type as
-  the reader sees it, a field's type, a count, a duration.
-  """
+  # The words the views and the panel share: a declaration's kind or a relation's type as
+  # the reader sees it, a field's type, a count, a duration.
+  @moduledoc false
 
   @doc "A kind or a type as the reader sees it: the name, spaced."
   @spec words(String.t()) :: String.t()

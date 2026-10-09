@@ -47,7 +47,14 @@ defmodule EhOsContract.GraphRenderer.MixProject do
 
   defp aliases do
     [
-      check: ["format --check-formatted", "compile --force --warnings-as-errors", "test"],
+      check: [
+        "format --check-formatted",
+        "compile --force --warnings-as-errors",
+        # A reference in a doc to a module, a function or a page that is not there,
+        # or is hidden, fails here rather than becoming a dead link on hexdocs.
+        "docs -f html --warnings-as-errors --output _build/test/doc",
+        "test"
+      ],
       # Run by whoever edits assets/; the committed output under priv/static/ is what
       # everyone else — `mix check` and every host — uses. The libraries are vendored
       # under assets/vendor/ (NOTICE says what each is and how it was taken), so the
@@ -70,8 +77,30 @@ defmodule EhOsContract.GraphRenderer.MixProject do
   end
 
   defp docs do
-    [main: "readme", extras: ["README.md", "CHANGELOG.md"], source_ref: "v#{@version}"]
+    [
+      main: "readme",
+      extras: ["README.md", "CHANGELOG.md"],
+      # The changelog names what a release removed, and the names resolve nowhere
+      # after it, as they should.
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+      # Only what hexdocs publishes: `mix check` builds the docs in `:test`, which also
+      # compiles `test/support/` (the engine's `mix.exs` says why it matters).
+      filter_modules: &lib_module?/2,
+      # The package is a directory of its repository, so a source link names it. A build
+      # of the docs for a commit (.github/scripts/build-docs.sh) links there; a release,
+      # to its version tag.
+      source_ref: source_ref(),
+      source_url_pattern:
+        "#{@source_url}/blob/#{source_ref()}/packages/eh_os_contract_graph/%{path}#L%{line}"
+    ]
   end
+
+  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "v#{@version}")
+
+  @lib Path.join(__DIR__, "lib") <> "/"
+
+  defp lib_module?(module, _metadata),
+    do: String.starts_with?(to_string(module.module_info(:compile)[:source]), @lib)
 
   defp deps do
     [
@@ -82,6 +111,8 @@ defmodule EhOsContract.GraphRenderer.MixProject do
       # refuses `only: :test` for a dependency another declares without it.
       {:phoenix, "~> 1.8"},
       {:boundary, "~> 0.10", runtime: false},
+      # `mix docs`, which `mix check` runs to hold the references in the docs.
+      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
       # phoenix_live_view's test helpers parse the rendered HTML with it.
       {:lazy_html, ">= 0.1.0", only: :test},
       # Builds assets/ into the bundle committed under priv/static/, as in
