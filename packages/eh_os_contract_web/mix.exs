@@ -94,9 +94,11 @@ defmodule EhOsContract.Web.MixProject do
   end
 
   # **Metadata now; publication held.** `priv/static/assets/fonts/` holds
-  # third-party fonts (OFL), so a tarball of this package redistributes somebody
-  # else's work. That needs an attribution line a lawyer would accept, not just a
-  # comment in a source file, and publishing is irreversible in a way editing is not. `NOTICE` carries the attribution; the decision to actually
+  # third-party fonts (OFL), and `priv/static/assets/app.js` bundles the graph
+  # renderer's dagre (MIT) and d3 (ISC, BSD), so a tarball of this package
+  # redistributes somebody else's work. That needs an attribution line a lawyer would
+  # accept, not just a comment in a source file, and publishing is irreversible in a
+  # way editing is not. `NOTICE` carries the attribution; the decision to actually
   # push is a separate one and has not been made.
   defp package do
     [

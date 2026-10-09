@@ -145,9 +145,10 @@ This package is not published. Two reasons, both recorded rather than pending:
 
 - it depends on `eh_os_contract`, which is not on Hex either, and a published package
   may depend only on published ones;
-- `priv/static/assets/fonts/` holds two third-party fonts, so a tarball redistributes
-  somebody else's work. `NOTICE` carries the attribution, and the decision to
-  actually publish is a separate one.
+- `priv/static/assets/fonts/` holds two third-party fonts, and `priv/static/assets/app.js`
+  bundles the graph renderer's dagre and d3, so a tarball redistributes somebody else's
+  work. `NOTICE` carries the attribution, and the decision to actually publish is a
+  separate one.
 
 ## Licence
 
