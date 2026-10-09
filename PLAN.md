@@ -73,8 +73,10 @@ which adds a key to the conformance wire EHOS reads; process modules are not on 
 of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w merged in #261 (issue #259) puts process modules on
 the wire, keyed `process`, and O1 merged in #262 (issue #260) counts runs whose stages happened out of order. **Wave 3
 closed conditionally** (8 October; migration note in "After wave 3 — the user's decision and the migration note"); M1
-and O2 wait for E13 with P2h and P2e. **Next: the stages of waves 4 and 5 that nothing blocks**, PC1 → PC2, L1, L2,
-L3; V1–V5 and L4 wait for P2h and P2e.
+and O2 wait for E13 with P2h and P2e. **Wave 4:** PC1 merged in #265 (issue #264), PC2 in #267 (issue #266), and a
+shared fold of a unit's stream after them in #268. **Wave 4 closed conditionally** (9 October; migration note in "After
+wave 4 — the user's decision and the migration note"); V1–V5 wait for P2h. **Next: wave 5's L1, L2, L3**; L4 waits
+for P2e.
 
 ### Stan repozytorium
 
@@ -988,6 +990,26 @@ promise (#256); how the clinic handles a substitute specialist (#249). **Version
 | A process section has `out_of_order` (O1, #260) | none; the text report can gain a line | none |
 
 `ehos-ledger` takes the same rows. The test material's stages (T2s, A2, S3) change nothing for a host.
+
+### After wave 4 — the user's decision and the migration note (9 October 2026)
+
+**Wave 4 is closed conditionally** (the user's decision of 9 October). In `main`: PC1 (#265), PC2 (#267), and a
+follow-up outside the stages, one fold of a unit's stream for dispatch, scenarios and properties (#268). **On hold**
+until P2h, which waits for E13: the declarative and callback upcasts (V1, V2), the schema lock and its check against
+upcasts (V3, V4), and the agreement's version beside the text's (V5). **Next:** wave 5's L1, L2 and L3; L4 waits for
+P2e. *Rejected:* waiting for E13 to close the wave, as with wave 3, which would leave wave 5 idle on work that does
+not depend on it. **Open, the user's,** unchanged: an outage one step upstream (#256), a substitute specialist
+(#249). **Version tag:** not yet, on the user's word.
+
+**Migration note.** A host upgrading from `main` after wave 3 to `main` after wave 4:
+
+| Change (stage, issue) | What to do | AppUnite's equipment application |
+|---|---|---|
+| Generators of a contract's data, `EhOsContract.Generators` (PC1, #264) | only to use them: `{:stream_data, "~> 1.1", only: :test}`; the module compiles only where StreamData is | none |
+| Property tests of a unit's code, `use EhOsContract.PropertyCase, contract: C` (PC2, #266) | none until a test uses it; it needs StreamData as above | none; worth a test per contract |
+| A scenario of a unit without a lifecycle fails when `evolve/2` returns anything but the state (#268) | fix an `evolve/2` that returns something else; dispatch already refused it | run the scenarios before the bump |
+
+`ehos-ledger` takes the same rows.
 
 ### Before wave 3's boundaries — the user's decision (7 October 2026)
 
