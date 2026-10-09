@@ -7,7 +7,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   Everything here is the document's: a node's own facts, and the joins over relations
   and scenarios `EhOsContract.GraphRenderer.Lookup` makes — who may issue a command is
-  the `may_issue` relations into it, what depends on an event the relations out of it,
+  the `may_issue` relations into it, what a reaction issues the relations out of it,
   the scenarios behind an arrow those whose `covers` names it. Nothing is derived from
   the DSL's meaning; that is the engine's, and it is in the document already.
 
@@ -18,7 +18,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
   | Selected | The panel shows |
   | --- | --- |
   | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers), its scope, the statuses it is allowed in, the rules it may be refused on |
-  | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on, everything that depends on it, where it leaves for other applications |
+  | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on |
   | a policy, a process manager | what it takes and issues, its rules, delivery and idempotency, its scenarios — a manager's by what triggers them |
   | an effect | the event it handles, the system and the operation it calls, its rules, delivery and idempotency |
   | a read model, a query | what builds it and its fields; the query's parameters, who may ask, what it reads and returns, its scenarios |
@@ -28,8 +28,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
   A field is shown the same way everywhere it appears: its name, label, type, whether
   it is required, its default, and what it says of a person (personal data, or a
   pointer to one), of a domain value (its members or unit), of an entity and of the
-  system that gives its value. What it says of a person depends on where the field is:
-  an event's are kept in the log, a read model's in its rows, a command's nowhere.
+  system that gives its value. What keeps a value about a person is the document's word
+  (`kept`): sealed or in the clear in the log, or in a read model's rows.
   """
 
   use Phoenix.Component
@@ -182,17 +182,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
     {id, l} = {assigns.node["id"], assigns.ctx.lookup}
     received = Lookup.into(l, id, "received_as")
 
-    depends =
-      Lookup.out(l, id, ~w(handled_by starts ends projected_into builds consulted_by
-                           opens fulfils or_else enters published_as)) ++
-        Enum.filter(Lookup.relations(l, "transition"), &(&1["event"] == id))
-
     assigns =
       assign(assigns,
         people: Lookup.into(l, id, "may_record"),
         received: received,
-        rests: Lookup.out(l, id, "depends_on"),
-        depends: depends
+        rests: Lookup.out(l, id, "depends_on")
       )
 
     ~H"""
@@ -224,12 +218,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <p :if={@node["terminal"]} class="ehg-strong">It ends the run.</p>
     <.part :if={@rests != []} title="Rests on">
       <.refs relations={@rests} side="to" ctx={@ctx} />
-    </.part>
-    <.part :if={!@node["contract"]} title="What depends on it">
-      <ul :if={@depends != []} class="ehg-list">
-        <li :for={r <- @depends}><.depends relation={r} ctx={@ctx} /></li>
-      </ul>
-      <p :if={@depends == [] and !@node["terminal"]} class="ehg-empty">Nothing depends on it.</p>
     </.part>
     """
   end
@@ -1091,8 +1079,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
     l = assigns.ctx.lookup
 
     mapped =
-      for(r <- Lookup.out(l, assigns.of, patterns()), do: {r, r["to"], standing(r, "upstream")}) ++
-        for r <- Lookup.into(l, assigns.of, patterns()),
+      for(
+        r <- Lookup.out(l, assigns.of),
+        mapping?(l, r["to"]),
+        do: {r, r["to"], standing(r, "upstream")}
+      ) ++
+        for r <- Lookup.into(l, assigns.of),
+            mapping?(l, r["from"]),
             do: {r, r["from"], standing(r, "downstream")}
 
     assigns = assign(assigns, mapped: mapped)
@@ -1108,8 +1101,12 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
-  defp standing(%{"type" => type}, side) do
-    if symmetric?(type), do: words(type) <> " with", else: "#{side} (#{words(type)}) of"
+  # A context or an external on the other end: a relation between two of them is a
+  # context-mapping pattern, the only kind the domain's document holds between them.
+  defp mapping?(lookup, id), do: Lookup.kind(lookup, id) in ["context", "external"]
+
+  defp standing(%{"type" => type} = r, side) do
+    if r["symmetric"], do: words(type) <> " with", else: "#{side} (#{words(type)}) of"
   end
 
   attr :relation, :map, required: true
@@ -1121,66 +1118,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
     </ul>
     """
   end
-
-  attr :relation, :map, required: true
-  attr :ctx, :map, required: true
-
-  # One thing that depends on an event, in a sentence.
-  defp depends(%{relation: %{"type" => "transition"}} = assigns) do
-    ~H"""
-    moves <.ref id={unit_of(@ctx.lookup, @relation["from"])} ctx={@ctx} /> from
-    <.ref id={@relation["from"]} ctx={@ctx} /> to <.ref id={@relation["to"]} ctx={@ctx} />
-    """
-  end
-
-  defp depends(%{relation: %{"type" => "published_as"}} = assigns) do
-    ~H"""
-    leaves for other applications as <.ref id={@relation["to"]} ctx={@ctx} />
-    """
-  end
-
-  defp depends(%{relation: %{"type" => "enters"}} = assigns) do
-    ~H"""
-    a new <.ref id={unit_of(@ctx.lookup, @relation["to"])} ctx={@ctx} /> starts in
-    <.ref id={@relation["to"]} ctx={@ctx} />
-    """
-  end
-
-  defp depends(assigns) do
-    ~H"""
-    {depends_words(@relation["type"])} <.ref id={@relation["to"]} ctx={@ctx} />{depends_after(
-      @relation,
-      @ctx.lookup
-    )}
-    """
-  end
-
-  defp depends_words("handled_by"), do: "handled by"
-  defp depends_words("starts"), do: "starts a run of"
-  defp depends_words("ends"), do: "ends the run of"
-  defp depends_words("projected_into"), do: "projected into"
-  defp depends_words("builds"), do: "builds the state of"
-  defp depends_words("consulted_by"), do: "consulted by"
-  defp depends_words("opens"), do: "opens the promise"
-  defp depends_words("fulfils"), do: "keeps the promise"
-  defp depends_words("or_else"), do: "keeps the other way the promise"
-  defp depends_words(other), do: words(other)
-
-  defp depends_after(%{"type" => "handled_by", "via_inbox" => true}, _lookup),
-    do: ", through the inbox"
-
-  defp depends_after(%{"type" => type} = r, lookup) when type in ~w(handled_by starts ends) do
-    case (Lookup.node(lookup, r["to"]) || %{})["delivery"] do
-      "at_least_once" -> ", after the transaction"
-      "in_transaction" -> ", in the transaction"
-      _ -> nil
-    end
-  end
-
-  defp depends_after(%{"type" => "consulted_by"} = r, lookup),
-    do: after_ref(:consulted, r, lookup)
-
-  defp depends_after(_relation, _lookup), do: nil
 
   attr :of, :string, required: true
   attr :ctx, :map, required: true
@@ -1271,10 +1208,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
     end)
   end
 
-  # Whose personal data a field is, and what keeps it: an event's the log, encrypted with a
-  # key erasing the person destroys; a read model's its rows, which erasing the person
-  # forgets; anything else nothing.
-  defp personal(field, siblings, of, lookup) do
+  # Whose personal data a field is, and what keeps it, as the document says (`kept`).
+  defp personal(field, siblings, _of, lookup) do
     holder = Enum.find(siblings, &(&1["name"] == field["personal_of"])) || %{}
 
     whose =
@@ -1283,17 +1218,22 @@ defmodule EhOsContract.GraphRenderer.Panel do
         subject -> Lookup.title(lookup, subject)
       end
 
-    case of do
-      "event" -> "Personal data of #{whose} — encrypted in the log, gone once they are erased."
-      "read_model" -> "Personal data of #{whose} — forgotten once they are erased."
-      _ -> "Personal data of #{whose}."
+    case field["kept"] do
+      "log_sealed" ->
+        "Personal data of #{whose} — encrypted in the log, gone once they are erased."
+
+      "rows_forgotten" ->
+        "Personal data of #{whose} — forgotten once they are erased."
+
+      _ ->
+        "Personal data of #{whose}."
     end
   end
 
-  defp pointer(field, of, lookup) do
+  defp pointer(field, _of, lookup) do
     whom = Lookup.title(lookup, field["subject"])
 
-    if of == "event",
+    if field["kept"] == "log_clear",
       do: "Points at #{whom} — in the log in the clear.",
       else: "Points at #{whom}."
   end
@@ -1531,32 +1471,32 @@ defmodule EhOsContract.GraphRenderer.Panel do
           "Not yet taken: an aggregate still stands where it can be taken.",
         entry["pending"] == true && !transition? &&
           "Not yet taken: work is still on its way to it.",
-        waiting(entry["waiting"]),
-        failing(entry["failing"])
+        waiting(entry),
+        failing(entry)
       ],
       &(&1 in [nil, false])
     )
   end
 
-  defp waiting(%{"lag" => lag, "timers" => timers, "effects" => effects})
-       when lag + timers + effects > 0,
-       do:
-         "Waiting: #{lag} not reached yet, #{timers} timers not fired, #{effects} effect jobs not run."
+  # A step says whether it waits or fails (`waits`, `fails`, the report's reading) and
+  # by how much; traffic between contracts gives a count waiting and whether any fails.
+  defp waiting(%{"waits" => true, "waiting" => w}),
+    do:
+      "Waiting: #{w["lag"]} not reached yet, #{w["timers"]} timers not fired, " <>
+        "#{w["effects"]} effect jobs not run."
 
-  defp waiting(n) when is_integer(n) and n > 0, do: "#{n} waiting at the consumer."
-  defp waiting(_none), do: nil
+  defp waiting(%{"waiting" => n}) when is_integer(n) and n > 0,
+    do: "#{n} waiting at the consumer."
 
-  defp failing(%{"commands" => commands, "effects" => effects} = failing) do
-    subscription = failing["subscription"]
+  defp waiting(_entry), do: nil
 
-    if commands + effects > 0 or subscription != nil do
-      "Failing: #{commands} commands, #{effects} effect jobs" <>
-        if(subscription, do: ", the subscription #{shown(subscription)}.", else: ".")
-    end
+  defp failing(%{"fails" => true, "failing" => f}) do
+    "Failing: #{f["commands"]} commands, #{f["effects"]} effect jobs" <>
+      if(f["subscription"], do: ", the subscription #{shown(f["subscription"])}.", else: ".")
   end
 
-  defp failing(true), do: "Failing at the consumer."
-  defp failing(_none), do: nil
+  defp failing(%{"failing" => true}), do: "Failing at the consumer."
+  defp failing(_entry), do: nil
 
   # --- words --------------------------------------------------------------------------------
 
@@ -1671,7 +1611,6 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp capability(lookup, id), do: (Lookup.node(lookup, id) || %{})["capability"]
 
   # The unit a status is of.
-  defp unit_of(lookup, status), do: (Lookup.node(lookup, status) || %{})["unit"]
 
   defp times(1), do: "once"
   defp times(n), do: "#{n} times"

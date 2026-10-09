@@ -1,7 +1,7 @@
 {
   "context": "context:AppuniteEquipment.Domain:equipment",
   "contract": "appunite_equipment.demands",
-  "digest": "63276d37aaf1",
+  "digest": "a42d6aee8e53",
   "domain": "AppuniteEquipment.Domain",
   "kind": "contract",
   "module": "AppuniteEquipment.Contracts.Demands",
@@ -124,6 +124,7 @@
             "type": "id"
           },
           {
+            "kept": "log_clear",
             "label": null,
             "name": "employee_id",
             "required": true,
@@ -221,6 +222,7 @@
             "type": "id"
           },
           {
+            "kept": "log_clear",
             "label": null,
             "name": "employee_id",
             "required": true,
@@ -269,6 +271,7 @@
             "type": "id"
           },
           {
+            "kept": "log_clear",
             "label": null,
             "name": "employee_id",
             "required": true,

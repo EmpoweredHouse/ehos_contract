@@ -91,30 +91,31 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "May be refused on Rejestry sprawdza się tylko dla firmy z kompletem danych"
     end
 
-    test "an event: who records it, the system it rests on, whether it ends the run, what depends on it" do
+    test "an event: who records it, the system it rests on, whether it ends the run" do
       text = open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:p1_report_sent")
 
       assert text =~ "Recorded by Integracja z rejestrem P1 actor"
       assert text =~ "It ends the run."
       assert text =~ "Rests on Rejestr zdarzeń medycznych P1 external"
-      assert text =~ "keeps the promise medical_event_reported_within_statutory_window"
       refute text =~ "Source:"
-
-      text =
-        open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:p1_report_queued")
-
-      assert text =~ "handled by Wyślij zgłoszenie do rejestru P1 effect, after the transaction"
     end
 
-    test "an event of another contract says so, and one nothing depends on says that" do
+    test "an event of another contract says so, and no panel judges what depends on an event" do
       text =
         open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:visit_completed")
 
       assert text =~ "Declared in another contract and consumed here."
-      assert text =~ "opens the promise"
 
-      text = open("rehmed.settlement", "event:rehmed.settlement:settlement_corrected")
-      assert text =~ "builds the state of Rozliczenie wizyty unit"
+      # Whether an event is used is `mix eh_os_contract.check`'s to say (event-without-consumer);
+      # what follows from it is on the graph's arrows.
+      for {contract, event} <- [
+            {"rehmed.statutory_reporting", "visit_completed"},
+            {"rehmed.settlement", "settlement_corrected"},
+            {"rehmed.external_payers", "visit_excluded_from_invoice"}
+          ] do
+        text = open(contract, "event:#{contract}:#{event}")
+        refute text =~ "depends on", event
+      end
     end
   end
 
@@ -403,19 +404,12 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       text = open("messaging", "event:messaging:copy_lent")
       assert text =~ "Received from another application as library.copy_lent publication."
       assert text =~ "The application takes it with messaging.copy_lent.subscribe."
-      assert text =~ "handled by Release the hold when lent elsewhere policy, through the inbox"
 
       text = open("messaging", "policy:messaging:release_hold")
       assert text =~ "Takes A copy lent elsewhere event, through the inbox"
 
       assert text =~
                "An event received from another application reaches it through the inbox, after the transaction, whatever its delivery."
-    end
-
-    test "an event that leaves for another application and starts a run" do
-      text = open("messaging", "event:messaging:lent")
-      assert text =~ "leaves for other applications as library.copy_lent publication"
-      assert text =~ "starts a run of A loan process manager, after the transaction"
     end
 
     test "a manager that ends, and a timer it sets and cancels" do

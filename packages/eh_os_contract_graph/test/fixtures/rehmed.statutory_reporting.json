@@ -1,7 +1,7 @@
 {
   "context": "context:Rehmed.Domain:statutory_reporting",
   "contract": "rehmed.statutory_reporting",
-  "digest": "a75b96d3cf4c",
+  "digest": "a5dc485adc90",
   "domain": "Rehmed.Domain",
   "kind": "contract",
   "module": "Rehmed.Contracts.StatutoryReporting",
@@ -142,6 +142,7 @@
             "type": "id"
           },
           {
+            "kept": "log_clear",
             "label": null,
             "name": "patient_id",
             "required": true,
@@ -149,6 +150,7 @@
             "type": "id"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "pesel",
             "personal_of": "patient_id",
@@ -156,6 +158,7 @@
             "type": "string"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "icd10",
             "personal_of": "patient_id",
@@ -163,6 +166,7 @@
             "type": "string"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "icd9",
             "personal_of": "patient_id",
@@ -270,6 +274,7 @@
             "type": "id"
           },
           {
+            "kept": "log_clear",
             "label": null,
             "name": "patient_id",
             "required": true,
@@ -277,6 +282,7 @@
             "type": "id"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "pesel",
             "personal_of": "patient_id",
@@ -284,6 +290,7 @@
             "type": "string"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "icd10",
             "personal_of": "patient_id",
@@ -291,6 +298,7 @@
             "type": "string"
           },
           {
+            "kept": "log_sealed",
             "label": null,
             "name": "icd9",
             "personal_of": "patient_id",

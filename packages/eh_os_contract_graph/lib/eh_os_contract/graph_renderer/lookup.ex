@@ -5,8 +5,8 @@ defmodule EhOsContract.GraphRenderer.Lookup do
   or covering one of its relations.
 
   Each is a join on ids and nothing more (plan E13, decision 2): who may issue a command
-  is the `may_issue` relations into it, what depends on an event the relations out of
-  it, which scenarios pin an arrow those whose `covers` names it. Whatever takes the
+  is the `may_issue` relations into it, what a reaction issues the relations out of it,
+  which scenarios pin an arrow those whose `covers` names it. Whatever takes the
   DSL's meaning the engine has already computed into the document.
 
   A relation and a scenario come back as the document has them, with the type of their
@@ -77,6 +77,14 @@ defmodule EhOsContract.GraphRenderer.Lookup do
   @doc "Every relation of `type`, in the document's order."
   @spec relations(t(), String.t()) :: [map()]
   def relations(%__MODULE__{by_type: by_type}, type), do: Map.get(by_type, type, [])
+
+  @doc "Every relation that ends at `id`, whatever its type."
+  @spec into(t(), String.t()) :: [map()]
+  def into(%__MODULE__{into: into}, id), do: Map.get(into, id, [])
+
+  @doc "Every relation that starts at `id`, whatever its type."
+  @spec out(t(), String.t()) :: [map()]
+  def out(%__MODULE__{out: out}, id), do: Map.get(out, id, [])
 
   @doc "The relations of `types` that end at `id`, in the document's order within each type."
   @spec into(t(), String.t(), String.t() | [String.t()]) :: [map()]

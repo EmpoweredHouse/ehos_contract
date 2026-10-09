@@ -1,12 +1,8 @@
 defmodule EhOsContract.GraphRenderer.Words do
   @moduledoc """
   The words the views and the panel share: a declaration's kind or a relation's type as
-  the reader sees it, a field's type, a count, and the context-mapping patterns.
+  the reader sees it, a field's type, a count, a duration.
   """
-
-  @patterns ~w(partnership shared_kernel separate_ways customer_supplier conformist
-               anticorruption_layer open_host_service published_language)
-  @symmetric ~w(partnership shared_kernel separate_ways)
 
   @doc "A kind or a type as the reader sees it: the name, spaced."
   @spec words(String.t()) :: String.t()
@@ -36,12 +32,4 @@ defmodule EhOsContract.GraphRenderer.Words do
   def fires(%{"wait" => %{} = wait}), do: "after #{duration(wait)}"
   def fires(%{"at" => at}) when is_binary(at), do: "at #{at}"
   def fires(_timer), do: nil
-
-  @doc "The relation types of the eight context-mapping patterns."
-  @spec patterns() :: [String.t()]
-  def patterns, do: @patterns
-
-  @doc "Whether a pattern is symmetric, with neither end upstream."
-  @spec symmetric?(String.t()) :: boolean()
-  def symmetric?(type), do: type in @symmetric
 end

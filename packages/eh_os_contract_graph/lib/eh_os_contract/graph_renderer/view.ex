@@ -197,7 +197,7 @@ defmodule EhOsContract.GraphRenderer.View do
     projected =
       for r <- relations(document, "projected_into") do
         model = by_id[r["to"]]
-        delivered(arrow("projected_into", r), model && model["delivery"] != "in_transaction")
+        delivered(arrow("projected_into", r), async?(r, model))
       end
 
     reads = for r <- relations(document, "reads"), do: arrow("reads", r, words: "reads")
@@ -298,7 +298,6 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # An arrow after the transaction is dotted and says so.
   defp delivered(arrow, false), do: arrow
-  defp delivered(arrow, nil), do: arrow
   defp delivered(arrow, true), do: %{arrow | line: "dotted", words: join([arrow.words, "async"])}
 
   # An external gives a field of a command or an event its value: a field's `issued_by`.
@@ -423,7 +422,7 @@ defmodule EhOsContract.GraphRenderer.View do
   # a reader opens from a name.
   defp promise(document, p) do
     at = fn type -> for r <- relations(document, type), r["to"] == p["id"], do: r end
-    window = if p["within"], do: "within #{humanize(p["within"])}", else: "eventually"
+    window = if p["within"], do: "within #{duration(p["within"])}", else: "eventually"
 
     for opens <- at.("opens"),
         {type, r} <-
@@ -440,10 +439,6 @@ defmodule EhOsContract.GraphRenderer.View do
       }
     end
   end
-
-  # As the engine words a duration (`EhOsContract.Duration.humanize/1`).
-  defp humanize(%{"amount" => 1, "unit" => unit}), do: unit
-  defp humanize(%{"amount" => n, "unit" => unit}), do: "#{n} #{unit}s"
 
   # --- one unit ---------------------------------------------------------------------------
 
@@ -610,12 +605,19 @@ defmodule EhOsContract.GraphRenderer.View do
       for s <- nodes(document, "subdomain"),
           do: group("subdomain", s, "#{title(s)} · #{s["type"]}")
 
+    # A relation between two contexts, or a context and an external, is a pattern: the
+    # only kind the domain's document holds between them. One declared `between:` its
+    # ends is symmetric, and has no head.
+    mapped = MapSet.new(contexts ++ externals, & &1.id)
+
     arrows =
-      for type <- patterns(), r <- relations(document, type) do
+      for {type, group} <- document["relations"] || %{},
+          r <- group,
+          MapSet.member?(mapped, r["from"]) and MapSet.member?(mapped, r["to"]) do
         arrow(type, r,
           words: words(type),
           line: if(type == "separate_ways", do: "dotted", else: "solid"),
-          head: not symmetric?(type)
+          head: r["symmetric"] != true
         )
       end
 

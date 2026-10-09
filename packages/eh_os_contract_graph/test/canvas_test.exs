@@ -183,6 +183,8 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
             "taken" => 0,
             "waiting" => %{"lag" => 0, "timers" => 0, "effects" => 0},
             "failing" => %{"commands" => 1, "effects" => 0, "subscription" => nil},
+            "waits" => false,
+            "fails" => true,
             "untraversed" => true,
             "pending" => false
           }

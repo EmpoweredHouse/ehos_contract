@@ -1,5 +1,5 @@
 {
-  "digest": "97bf6106045d",
+  "digest": "62d07b609c81",
   "domain": "Rehmed.Domain",
   "kind": "domain",
   "language": "pl",
@@ -602,6 +602,7 @@
       {
         "from": "context:Rehmed.Domain:scheduling",
         "id": "partnership:context:Rehmed.Domain:scheduling:context:Rehmed.Domain:clinical_documentation",
+        "symmetric": true,
         "terms": [
           [
             "Wizyta",

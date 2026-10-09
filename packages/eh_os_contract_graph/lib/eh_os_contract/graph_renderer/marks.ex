@@ -9,14 +9,14 @@ defmodule EhOsContract.GraphRenderer.Marks do
   | Entry | Count | States |
   | --- | --- | --- |
   | an event's `occurrences`, a process's `runs`, a unit's `aggregates` | that number | — |
-  | a step (`taken`, `waiting`, `failing`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting` where anything waits, `:failing` where anything fails |
+  | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
   | a lifecycle's transition | `count` | `:untraversed`, `:pending` |
   | a move the lifecycle does not allow | `count` | `:undeclared` |
   | traffic between two contracts | `events` | `:waiting`, `:failing` |
   | a relation several steps end at (`by_trigger`) | none | none |
 
-  The last row is left empty on purpose: which trigger's numbers a picture shows is
-  a view's choice, and the views are not specified yet (plan E13b, batch 2).
+  The last row is left empty on purpose: a relation several steps end at has a number
+  for each trigger, and the panel lists them; no one number stands for the relation.
   """
 
   @type state :: :untraversed | :pending | :waiting | :failing | :undeclared
@@ -50,8 +50,8 @@ defmodule EhOsContract.GraphRenderer.Marks do
             flags(
               untraversed: step["untraversed"],
               pending: step["pending"],
-              waiting: waiting?(step["waiting"]),
-              failing: failing?(step["failing"])
+              waiting: step["waits"],
+              failing: step["fails"]
             )
         }
 
@@ -68,12 +68,6 @@ defmodule EhOsContract.GraphRenderer.Marks do
         @none
     end
   end
-
-  defp waiting?(%{"lag" => lag, "timers" => timers, "effects" => effects}),
-    do: lag + timers + effects > 0
-
-  defp failing?(%{"commands" => commands, "effects" => effects, "subscription" => subscription}),
-    do: commands + effects > 0 or subscription != nil
 
   defp flags(flags), do: for({state, true} <- flags, do: state)
 end

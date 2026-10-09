@@ -4,6 +4,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E13b, after the review: the renderer judges nothing and recounts nothing.** An event's panel no longer has
+  "What depends on it", nor its red "Nothing depends on it": whether an event is used is
+  `mix eh_os_contract.check`'s to say (`event-without-consumer`), by a rule the panel did not share, and what
+  follows from an event is on the views' arrows. A step's waiting and failing states are the overlay's `waits` and
+  `fails`, no longer summed from its numbers; what keeps a field's value about a person is the document's `kept`,
+  no longer guessed from the kind of the declaration; a context-mapping pattern is any relation between two
+  contexts or a context and an external, symmetric when the document says `symmetric`, so the eight patterns are
+  no longer listed here. A promise's window reads the same on its arrow and in its panel (`within 1 day`).
 - **E13b, batch 5: this package is the one that draws.** The engine's Mermaid pictures are gone, and with them
   the table the palette was copied from: the colours of the kinds and their looks are this package's own.
 - **E13b, batch 4: the panels.** `EhOsContract.GraphRenderer.Panel` says what is selected, from the document

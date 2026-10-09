@@ -539,7 +539,7 @@
   font-weight: 600;
 }
 
-/* Something missing: an event nothing depends on, a command nothing issues, a move the lifecycle does not
+/* Something missing: a command nothing issues, a stage no event sits in, a move the lifecycle does not
    allow. */
 .ehg-empty,
 .ehg-refused {

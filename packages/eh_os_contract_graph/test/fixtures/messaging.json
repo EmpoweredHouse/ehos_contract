@@ -217,7 +217,8 @@
             "label": "Name",
             "type": "string",
             "required": true,
-            "personal_of": "reader_id"
+            "personal_of": "reader_id",
+            "kept": "rows_forgotten"
           }
         ]
       }

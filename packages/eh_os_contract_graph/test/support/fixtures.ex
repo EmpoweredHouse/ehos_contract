@@ -1,6 +1,7 @@
 defmodule EhOsContract.GraphRenderer.Fixtures do
   @moduledoc false
-  # Documents as the engine gave them on 7 and 8 October 2026 (`mix eh_os_contract.graph
+  # Documents as the engine gave them on 7 and 8 October 2026, refreshed on 9 October with
+  # what a field keeps and which patterns are symmetric (`mix eh_os_contract.graph
   # --contract <id>` in sandbox/), committed so that this package's tests need no engine: five
   # contracts and a domain of the sandbox's test material — an aggregate with a read side,
   # a process manager with a timer, a process with stages and a promise, a boundary, and a

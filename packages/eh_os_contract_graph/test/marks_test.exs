@@ -9,6 +9,8 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
         "taken" => 3,
         "waiting" => %{"lag" => 0, "timers" => 0, "effects" => 0},
         "failing" => %{"commands" => 0, "effects" => 0, "subscription" => nil},
+        "waits" => false,
+        "fails" => false,
         "untraversed" => false,
         "pending" => false
       },
@@ -37,20 +39,22 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
     assert relation(step(%{"pending" => true})).states == [:pending]
     assert relation(step(%{"taken" => nil})).count == nil
 
-    assert relation(step(%{"waiting" => %{"lag" => 0, "timers" => 1, "effects" => 0}})).states ==
-             [:waiting]
+    waiting = %{"waiting" => %{"lag" => 0, "timers" => 1, "effects" => 0}, "waits" => true}
+    assert relation(step(waiting)).states == [:waiting]
 
-    assert relation(
-             step(%{"failing" => %{"commands" => 0, "effects" => 2, "subscription" => nil}})
-           ).states ==
-             [:failing]
+    failing = %{"failing" => %{"commands" => 0, "effects" => 2, "subscription" => nil}}
+    assert relation(step(Map.put(failing, "fails", true))).states == [:failing]
+  end
 
-    stopped = %{"stopped_at" => 12, "failure" => "boom"}
+  test "a step's states are the overlay's reading of it, not a sum of its numbers" do
+    # The overlay says whether the report lists a step as waiting or failing; the numbers
+    # beside it are for the panel's sentences, and nothing here adds them up again.
+    numbers = %{
+      "waiting" => %{"lag" => 4, "timers" => 0, "effects" => 0},
+      "failing" => %{"commands" => 2, "effects" => 0, "subscription" => nil}
+    }
 
-    assert relation(
-             step(%{"failing" => %{"commands" => 0, "effects" => 0, "subscription" => stopped}})
-           ).states ==
-             [:failing]
+    assert relation(step(numbers)).states == []
   end
 
   test "a transition, a move the lifecycle does not allow, and traffic between contracts" do
