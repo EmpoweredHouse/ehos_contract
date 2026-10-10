@@ -127,8 +127,8 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
 2. Read the generated page of what you changed, not only the source: a doc that reads well beside the
    code can read badly alone.
 3. The gate: `docs --warnings-as-errors` and `test/doc_coverage_test.exs` run inside each package's
-   `mix check`, the engine's, `eh_os_contract_web`'s and `eh_os_contract_auth`'s alike. The latter two
-   publish only what a host calls or implements; a module the host never names (a LiveView, a plug its
+   `mix check`, the engine's, `eh_os_contract_web`'s, `eh_os_contract_auth`'s and `eh_os_contract_graph`'s
+   alike. The other three publish only what a host calls or implements; a module the host never names (a LiveView, a plug its
    router mounts) is `@moduledoc false`, its text kept as a comment.
 
 ## Not this skill

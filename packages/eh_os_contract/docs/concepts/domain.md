@@ -39,9 +39,9 @@ subdomain :cataloguing, "Cataloguing", type: :supporting
 ```
 
 A subdomain holds nothing itself. Contexts name the subdomain they belong to, and a context naming a
-subdomain the domain does not declare does not compile ([`D7`](../contract.md#refusals-d)). The context map,
-`mix eh_os_contract.graph --map <domain>`, draws each subdomain as a group of its contexts, with its kind; nothing at
-run time reads the kind.
+subdomain the domain does not declare does not compile ([`D7`](../contract.md#refusals-d)). The domain's graph
+document, `mix eh_os_contract.graph --domain <domain>`, holds each subdomain with its kind, and the dashboard's
+context map draws it as a group of its contexts; nothing at run time reads the kind.
 
 ## Contexts and their glossary
 

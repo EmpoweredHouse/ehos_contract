@@ -299,6 +299,46 @@ defmodule EhOsContract.ProcessManagerTest do
     end
   end
 
+  describe "an event a run both starts and ends on" do
+    # `PhaseRig`'s manager starts on a close and ends on it: a close with no run open
+    # starts the run and ends it in the same step, and a close during a run ends it.
+    # Drained before each command too, so the manager is deployed before the first.
+    @visits "phase_rig.visits:process_manager:watch"
+
+    defp visit(command, id) do
+      Testing.drain()
+      clerk = Actor.credential("u-1", ~w(phase_rig.book phase_rig.close))
+      command = struct(Module.concat([PhaseRig.Visits.Commands, command]), visit_id: id)
+      {:ok, _} = EhOsContract.dispatch(PhaseRig.Visits, command, actor: clerk)
+      %{failing: []} = Testing.drain()
+    end
+
+    defp visit_run(id), do: Repo.get_by(ProcessManagerRecord, name: @visits, correlation: id)
+
+    test "with no run yet, starts the run and ends it in one step" do
+      visit(Close, "v-1")
+      [closed] = of("phase_rig.visits.closed")
+
+      assert %ProcessManagerRecord{completed_at: completed_at, timers: timers} = visit_run("v-1")
+      assert completed_at == closed.occurred_at
+      assert timers == %{}
+
+      # The run ended: a booking after it starts none, and nothing is noted.
+      visit(Book, "v-1")
+      assert visit_run("v-1").completed_at == completed_at
+      assert of("phase_rig.visits.noted") == []
+    end
+
+    test "during a run, ends it" do
+      visit(Book, "v-2")
+      assert %ProcessManagerRecord{completed_at: nil} = visit_run("v-2")
+
+      visit(Close, "v-2")
+      assert %ProcessManagerRecord{completed_at: %DateTime{}} = visit_run("v-2")
+      assert length(of("phase_rig.visits.noted")) == 1
+    end
+  end
+
   describe "a replay" do
     test "rebuilds the runs without dispatching, and schedules no timer twice" do
       open()

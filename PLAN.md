@@ -134,6 +134,9 @@ for P2e.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
+- **E13 — graf jako API i renderer — w toku** (decyzja użytkownika z 5 października, równolegle z DD): E13a
+  (`graph/e13a-document`) i E13b (`graph/e13b-renderer`), plan, decyzje, otwarte pytanie o strony modelu i tabela
+  „Postęp E13” — „Dopisek 5 października (3) — E13”.
 - **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
   wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
 - **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
@@ -333,6 +336,20 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
+- **One grant for two versions of one publication** (6 October, E13a final review). `Model.capabilities/1` keeps
+  one `<publication less its version>.subscribe` grant, named after one of the names it is received under, so a
+  contract receiving `x.v1` and `x.v2` under two names has one grant (meant: the grant takes the event whichever
+  version). The graph document finds a received event's grant by its publication, so the other version's name
+  shows none. Fixing it needs the model to say which publications a grant covers — a change to
+  `Model.capabilities/1` or a helper beside it, not made in E13a. No fixture or client tree has the shape.
+- **The contract does not say which command uses a domain service** (6 October, found in E9c-2 on 28 September,
+  moved out of E13 by the user's decision). A decision calls `C.DomainServices.<Name>` in its code; no DSL key says
+  so, so no graph can draw the edge without reading the implementation, which the graph document must not do. EM2
+  never decided it either way — a gap, not a design. Possible: (a) a key on the command, as `emits:` is, e.g.
+  `uses: [:pairing]`, checked by the compiler and perhaps refused at run time when an undeclared command calls the
+  service (to be checked); (b) a key on the unit (less precise); (c) leave it. Until then the service is in the
+  graph document as a node with its functions and rules, without an edge — "E13a — the document as a graph of
+  facts", "Hooks".
 - *Rozstrzygnięte 3 października (#66): skrót zamiast wartości, której tabela nie utrzyma.* Opis sprzed decyzji:
   **Surowa wartość zakresu w decyzjach auth** — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66) (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
   idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
@@ -455,6 +472,1683 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
+
+**Skąd.** Zadanie dla użytkownika: silnik ma wystawiać graf kontraktu jako API (JSON), a obok ma powstać
+biblioteka, która ten dokument rysuje — przy developmencie, żeby deweloper widział kontrakt w formie graficznej, i
+w EHOS Console, żeby CTO widział wszystkie procesy, jak w EventCatalogu. To jest E13 („Graf jako API i osobny
+renderer”, niżej w „Po E8”), dotąd bez miejsca w kolejności. Równolegle użytkownik spisał na gałęzi
+`web/dashboard-model-details` (`997bb0a`, plik roboczy `contract-web-improvement.md`) dwanaście usprawnień ekranu
+Graph, uzgodnionych przy przeglądaniu go na Rehmedzie — zanim wiedział o E13. Ten dopisek łączy jedno z drugim:
+**sposób prezentacji z planu roboczego, mechanizm z E13.** Treść planu roboczego jest niżej („Szczegóły ekranu”);
+plik nie trafia do `main`.
+
+Opis E13 niżej zostaje jako zapis; tam, gdzie się różnią, rację ma ten dopisek.
+
+### Sprawdzone przed planem (5 października)
+
+- **Grafów jest sześć, nie cztery.** Opis E13 wymienia pełny graf kontraktu, jednostkę, mapę kontekstów i system.
+  Doszły po nim diagram cyklu życia (`Graph.Lifecycle`, LC4b) i kształt zadeklarowany procesu
+  (`Graph.declared_to_mermaid/2`), którego lista wycinanego Mermaida nie wymienia.
+- **Szablon aplikacji nie montuje dashboardu.** `ehos_app` (`ehos-tools`) dokłada `eh_os_contract`,
+  `eh_os_contract_auth` i `ehos_design`, bez `eh_os_contract_web`; deweloper aplikacji z szablonu ma dziś obrazek
+  tylko przez `mix eh_os_contract.graph` → `.mmd`.
+- **`eh-os` nie zależy od `eh_os_contract`**, a Console jest na `phoenix_live_view ~> 1.1` — założenie E13, że
+  renderer to komponent LiveView wspólny dla dashboardu i Console, się trzyma.
+- **Console nie ma ekranu kontraktów, a roadmapa `eh-os` go nie przewiduje** (etapy 1–9 i „After that”). Jak
+  Console uwierzytelni się wobec `/graph` aplikacji — niezaprojektowane; endpointy są za tym samym `Resolver`em co
+  `/model`. Do zgłoszenia w `eh-os` po E13b (jak #91–#96).
+- **Strony modelu nie mają dziś czytelnika:** nie generuje ich szablon, nie czyta ich `eh-os`, w żadnym repozytorium
+  nie leżą wygenerowane strony. Mermaid jest w nich w dwóch miejscach: mapa kontekstów w `index.md` domeny i graf
+  jednostki na stronie agregatu.
+
+### Decyzje użytkownika (5 października)
+
+1. **Podział odpowiedzialności — jeden pakiet emituje, drugi prezentuje.**
+
+   | Pakiet | Odpowiada za | Nie wie o |
+   |---|---|---|
+   | `eh_os_contract` | **co** jest w grafie: węzły z rodzajem, krawędzie z rodzajem relacji, grupy, szczegóły węzłów do paneli, nakładka z logu; format `graph.v1` i jego JSON Schema | kolorach, kształtach, liniach, układzie |
+   | `eh_os_contract_web` | ekrany (Graph, Contract status), wybór kontraktu i procesu, autoryzacja (`Resolver`), endpointy HTTP; woła silnik i oddaje dokument komponentowi | tym, jak się rysuje |
+   | `eh_os_contract_graph` (nowy) | dokument (+ nakładka) → interaktywny graf i panele; paleta rodzajów, karty, układ | silniku — nie zależy od niego |
+
+   Format danych należy do silnika, bo to on go publikuje; wygląd — do renderera. *Odrzucone:* renderer w `eh-os`
+   (dashboard musiałby zależeć od platformy); renderer w `eh_os_contract_web` (Console ściągałaby przez web cały
+   silnik — Ecto, Oban, migracje — żeby narysować obrazek); osobny renderer w każdym z nich (ten sam graf w dwóch
+   implementacjach).
+   *6 października:* „co” znaczy *jakie fakty*, nie *jakie obrazki* — widoki (który kawałek grafu pokazać razem)
+   należą do renderera, a „grupy” to pola przynależności — „E13a — the document as a graph of facts”.
+2. **Panele biorą treść wyłącznie z `graph.v1`.** Szczegóły węzła liczy silnik, renderer ich nie wyprowadza.
+   *Odrzucone:* panel czytający `/model` — renderer rozumiałby drugi format, a Console robiłaby dwa wywołania.
+   *6 października:* renderer idzie po relacjach (`id`) — „kto może wydać” to relacje wchodzące do komendy; to
+   złączenie, nie wyprowadzanie. Wszystko, co wymaga znaczenia DSL-a, liczy silnik — „E13a — the document as a graph
+   of facts”.
+3. **Budowa na dzisiejszym `main`, bez zakładania DD.** Recenzja ma działać na tym, co jest; konflikty z DD —
+   przy merge'u. Gałąź startuje z `main` po N3, W1 i W2 (#139, #142, #143), więc etykieta timera już jest. Skutek
+   znany z góry: `id` węzłów zmienią się raz, przy ID3 (`graph.v1` nie jest nigdzie opublikowany, więc to nic nie kosztuje). *Odrzucone:* zakładać DD
+   zrobione (fale 2–5 to tygodnie, a recenzja nie miałaby czego uruchomić); czekać na DD.
+4. **Dwie gałęzie, dwa PR-y**: E13a — dokument i API, E13b — renderer i ekran (niżej). *Odrzucone:* jedna gałąź z
+   jednym PR-em (dane i obraz w jednym przeglądzie); PR na każdy krok kolejności E13 (0–5) — za drobno, żeby jedna
+   osoba trzymała całość w głowie.
+5. **Mermaid wypada też z `mix eh_os_contract.graph`** — task wypisuje dokument `graph.v1` (CI, porównania przed i
+   po, podgląd tego, co dostanie Console). *Odrzucone:* Mermaid z dokumentu tylko dla taska — trzecia droga do
+   obrazka obok dashboardu, a `mermaid.live` to wklejanie treści kontraktu na obcą stronę.
+6. **Obrazek dla dewelopera aplikacji z szablonu: szablon montuje dashboard** — zmiana w `ehos_app`, osobny PR w
+   `ehos-tools` po E13b. *Odrzucone:* `--html` z taska (task silnika nie może zależeć od renderera); nic do
+   pierwszej prośby.
+7. **Jeden widok dla wszystkich.** `delivery` i `idempotency` są w panelach, jak w planie roboczym; widok
+   właściciela (DD L4) kiedyś ukryje je w rendererze, bo dane i tak są w dokumencie. *Odrzucone:* przełącznik
+   deweloper / właściciel teraz.
+8. **Części dawnego `Brief`, których panele nie dają, idą na ekran Graph**, przy kształcie zadeklarowanym: tabela
+   wszystkich zdarzeń z kolumną „co od tego zależy” (pusta na czerwono) i obietnice zdaniami. *Odrzucone:* ekran
+   Contract status — `Brief` odpowiadał na „czy to jest ten proces” bez logu, a Contract status na „czy kod robi to,
+   co mówi proces” z logu (moduledoc `Brief`: inne pytanie, inny czytelnik, inny moment). Najwyżej przeniesiemy.
+   *9 October — unconfirmed:* the user has not confirmed this view's shape — its columns, the red, a tab or a part
+   of the Graph screen. It is an idea to be specified and approved before it is built, not a decision.
+9. **Renderer rozstrzyga prototyp** (krok 1 E13b), wybór zatwierdza użytkownik.
+
+**Otwarte — strony modelu** (`mix eh_os_contract.pages`), do decyzji przed E13b. *Rozstrzygnięte 6 października: (b) — niżej, „E13a, batch 2”.* Użytkownik: mogą się przydać jako
+„LLM wiki”, więc zostają i mają działać. Do wyboru: (a) Mermaid w Markdownie — `Graph.Mermaid` przepisany na
+dokument i przeniesiony pod strony (np. `EhOsContract.Pages.Mermaid`), kilka godzin; koszt: paleta w dwóch
+miejscach i wyjątek od „Mermaid wypada” zapisany z datą (E13 odrzuciło to samo dla `Brief`: „Mermaid w silniku dla
+jednego czytelnika”); (b) `graph.v1` jako osobne pliki obok stron (`docs/model/graph/<kontrakt>.json`, bez nakładki,
+z redakcją jak w API) i link ze strony — prawie zero kodu, Mermaid znika w całości, ale człowiek na GitHubie nie
+widzi rysunku; (c) strony bez rysunku.
+
+### Szczegóły ekranu Graph (plan roboczy użytkownika, 4 października)
+
+Źródła: `sandbox/lib/rehmed/domain.ex` i `sandbox/lib/rehmed/contracts/*.ex`. Mechanizm „flaga w `graph/*.ex`
+tylko dla webu” z planu roboczego (punkty 3, 5, 9) zastępuje decyzja 2: treść jest w dokumencie zawsze, renderer
+wybiera, co pokazać. Kliknięcia obsługuje komponent, nie Mermaid.
+
+**Pole — tak samo w każdym panelu, gdzie są pola** (komenda, zdarzenie, odpowiedź query, read model, stan): nazwa,
+typ, etykieta, wymagane, wartość domyślna; **dane osobowe** — „dane osobowe pacjenta — w logu szyfrowane, znikają
+po jego usunięciu” (`personal:`) albo „wskazuje pacjenta — w logu jawnie” (`subject:`), typ osoby z `subject` w
+domenie, zamiast osobnej listy danych osobowych domeny; **typ będący wartością domeny** — lista wartości z
+etykietami („Karta / Gotówka / Przelew / Bon”) i jednostka („Kwota, w groszach”) z `value`; **pole wskazujące
+encję** — „identyfikator: Usługa” z `{:id, :service}` i `entity`.
+
+| # | Gdzie i co | Źródło w kontrakcie lub domenie |
+|---|---|---|
+| 1 | **Mapa kontekstów — klik w kontekst** → panel: etykieta, poddomena, `source`; pojęcia (definicja, czego unikać i dlaczego, tłumaczenia); relacje z parami słów; kontrakty kontekstu; encje (np. „Usługa” z polem „Raportowana do P1”). **Klik w system zewnętrzny** → kierunek, jak wygląda niedostępność, operacje | `context`, `term`, `relation … terms:`, `entity`, `external`; `context:` kontraktu |
+| 2 | **Sekcja „Aktorzy” pod mapą** — tabela, ludzie i systemy osobno: aktor, rola w EHOS (`rehmed.reception`), za co odpowiada, `source`; system: za czym stoi i kontekst. Klik w wiersz albo w aktora na grafie procesu → panel: co rola może, po kontraktach (komendy, query, zapisywane fakty), nazwy uprawnień jak w EHOS-ie, procesy, za które odpowiada | `actor` (`responsibility`, `backed_by`); `by:`, `recorded_by:`, `accountable:` |
+| 3 | **Graf systemu — etykieta zdarzenia na strzałce** („Pacjent wyszedł z gabinetu” zamiast `visit_completed`) — jedyny tekst tego grafu, którego właściciel procesu nie przeczyta | etykieta `event` nadawcy; strzałka z subskrypcji odbiorcy |
+| 4 | **Contract status — co jest jednym przebiegiem**, obok „Runs in this period”: „one run = one visit (`visit_id`)”, „= payer × period”. Objaśnia odpowiedź, nie dodaje piątego pytania | `correlate` procesu |
+| 5 | **Pełny automat na grafie procesu:** strzałka „uruchamia” od zdarzenia startowego do process managera; pod zdarzeniem kończącym linijka „ends «…»” (bez strzałki wstecz); na pigułce zegara etykieta (N3) i czas — „documentation_due · after 24 h”, dla `at:` „next_month · at check_at”; każdy zegar osobno | `starts_on`, `ends_on`, `timer :name, "etykieta", wait:` / `at:` |
+| 6 | **Klik w komendę** → kto może wydać i nazwa uprawnienia w EHOS-ie (`rehmed.close_visit_clinically`), `scope:`, pola. **Klik w zdarzenie** → pola, kto je zapisuje, czy kończy przebieg, od jakiego systemu zależy, kto je odbiera, czy wychodzi do innej aplikacji. Bez `source`, bez listy `emits` (są strzałki), bez scenariuszy | `command` (`by:`, `scope:`); `event` (`recorded_by:`, `final`, `depends_on:`, `publish`), subskrypcje i reakcje |
+| 7 | **Polskie etykiety etapów w danych sandboxa** (`stage :documentation, "Dokumentacja"`), żeby „Declared shape” pokazywał „Wyjście pacjenta / Dokumentacja / Zamknięcie”. Silnik już pokazuje etykietę etapu | dane testowe |
+| 8 | **Klik w „N scenarios” na grafie jednostki** → scenariusze tej ścieżki z treścią: stan wyjściowy (zdarzenia z danymi), komenda z danymi, wynik (zdarzenia z danymi albo „odrzucone: <reguła>”). Przypisanie scenariuszy do ścieżki liczy silnik (dziś `graph/unit.ex`) i podaje w dokumencie, żeby liczba i lista się nie rozjechały | `scenario` |
+| 9 | **Process manager i polityka** — linijka „N scenarios” (także „0 scenarios”); klik → reguły (`constraint`, przy automacie też `invariant`, np. „Do P1 zgłaszamy tylko zamknięcia usług raportowanych do P1…”), dostarczenie i idempotencja jedną linijką (w transakcji czy później; po czym rozpoznaje powtórkę i kto pilnuje), scenariusze z treścią — automat pogrupowany po wyzwalaczu (start, zegar, zdarzenie w trakcie): stan, wynik (komenda z danymi / zegar nastawiony albo skasowany / koniec / co pamięta); polityka: zdarzenie z danymi → komenda z danymi albo nic, reguła, którą ilustruje. Scenariuszy reakcji nie ma dziś nigdzie | `process_manager`, `policy` (`delivery:`, `idempotency: [key:, owner:]`), `scenario` z celem na reakcji |
+| 10 | **Klik w query** (z „N scenarios”) → parametry (nazwa, typ, wymagany), kto może pytać i nazwa uprawnienia, z jakiego read modelu czyta, lista czy jeden wiersz, zawężenie, pola odpowiedzi (jak wyżej), scenariusze: parametry → oczekiwane wiersze. Parametry query nie są osobowe | `query` (`params`, `by:`, `reads:`, `returns:`, `scope:`) |
+| 11 | **Klik w efekt** → na jakie zdarzenie reaguje, który system i **którą operację** woła (`submit_report` w P1), reguły, dostarczenie i idempotencja. Efekt nie ma scenariuszy | `effect` (`handles:`, `calls:`, `idempotency:`, `delivery:`), operacje `external` |
+| 12 | **Klik w read model** → z jakich zdarzeń się buduje, pola, które query z niego czytają, dostarczenie | `read_model` (`projects:`, `field`, `delivery:`), `query … reads:` |
+
+Do tego z E13: krawędzie usług domenowych (dziś nie ma ich na żadnym grafie — „E9c-2 — co wyszło”) i z `Brief` (decyzja 8):
+dla każdego zdarzenia „co od niego zależy” — kończy proces; otwiera, spełnia albo zamyka zapasowo obietnicę; kto
+reaguje; od jakiego systemu zależy — oraz obietnice jako dane (`from`, `eventually`, `or_else`, `within`).
+
+### E13a — dokument i API (gałąź `graph/e13a-document`)
+
+Cel: każdy graf, który dziś rysuje Mermaid, i treść paneli istnieją jako dokument JSON ze schemą, dostępny z
+funkcji, przez HTTP i z taska. **Mermaid dalej rysuje dashboard** — ekran wygląda jak przed zmianą.
+*6 października:* dokument to graf faktów, z którego każdy z tych obrazków da się zbudować, a nie same obrazki;
+dashboard nie musi zostać jak był (nowy wejdzie naraz), ale zostaje, bo tak jest mniejszy diff; kolejność batchy i
+haczyki — „E13a — the document as a graph of facts”.
+
+1. **Neutralny model grafu** (np. `EhOsContract.Graph.Document`): typy węzła, krawędzi i grupy z
+   `graph/mermaid.ex`; stabilne `id` z jednej funkcji (`<rodzaj>:<kontrakt>:<nazwa>`, po ID3 z `id:` kontraktu), z
+   regułą na zderzenie nazw klienta (`visit.settled` i `visit_settled` — powód dzisiejszego `unique_ids/2`).
+2. **Rodzaj relacji zamiast wyglądu** w `build/*` (`contract.ex`, `unit.ex`, `system.ex`, `context_map.ex`,
+   `lifecycle.ex`, `graph.ex`): `emits`, `issues`, `subscribes`, `records`, `reads`, `projects`, `calls`,
+   `backed_by`, `gives`, `starts`, `ends`, `sets_timer` … — dokładna lista przy budowie, nazwy za DSL-em (`subscribe`
+   po N2, `final` po N1). `line` i `head` znikają z danych; `Graph.Mermaid` dostaje tymczasową tabelę „rodzaj →
+   linia i grot”, usuwaną w E13b.
+3. **Treść**: punkty 1–3, 5, 6, 8–12 i „Pole”; `correlate` procesu (punkt 4); „co od zdarzenia zależy” i obietnice
+   (`Brief`); krawędzie usług domenowych. **Scenariusze z danymi przechodzą tę samą redakcję danych osobowych co
+   `Model.to_data/1`** — test, że żaden dokument sandboxa nie niesie wartości osobowych Rehmedu.
+   *6 października:* krawędzi usług domenowych kontrakt nie deklaruje (woła je implementacja) — usługa wchodzi jako
+   węzeł z treścią, krawędź wypada z E13 (decyzja użytkownika) do „Otwartych pytań” — „E13a — the document as a
+   graph of facts”, „Hooks”.
+4. **Nakładka jako osobny dokument** — liczby z logu kluczowane tymi samymi `id`: przebiegi i wystąpienia, co czeka
+   i pada, ścieżki nigdy nieprzejechane. Dokument opisu nie zależy od bazy: ten sam kontrakt → te same bajty.
+5. **Schema** `priv/schema/graph.v1.json` i schema nakładki; test walidujący każdy dokument każdego kontraktu i
+   domeny sandboxa.
+6. **Endpointy w webie**, wzorem `/model` i `/asyncapi`, za tym samym `Resolver`em: `GET <mount>/graph` (indeks:
+   domeny z mapą kontekstów, systemem i aktorami), `GET <mount>/graph/:contract` z digestem w `ETag`,
+   `…/overlay?since=…`, odpowiedniki dla domeny; kontrakt spoza rejestru → 404, nie pusty graf.
+7. **Task**: `mix eh_os_contract.graph … --json`; flagi Mermaida zostają do E13b.
+8. **Dane sandboxa**: etykiety etapów (punkt 7), `responsibility` aktorów Rehmedu (dziś ma ją tylko Manager).
+9. Zapisy: CHANGELOG, README (API), „E13a — co wyszło”.
+
+*Odbiór E13a:* dokumenty i nakładki przechodzą schemę dla każdego kontraktu i domeny sandboxa; ten sam digest przed
+i po restarcie; dokument z `/graph/:contract` równy dokumentowi z funkcji; dashboard bez zmian; brama EXIT=0.
+
+### E13b — renderer i ekran (gałąź `graph/e13b-renderer`, z E13a)
+
+1. **Prototyp renderera** (½–1 dnia, niecommitowany): pełny graf jednego kontraktu Rehmedu w sandboxie w dwóch
+   wariantach — `@eventcatalog/visualiser` oraz `@xyflow/react` z dagre albo ELK i własnymi kartami; rozmiar
+   bundla, zero naruszeń CSP pod `default-src 'self'`. Wybór zatwierdza użytkownik.
+2. **Pakiet `packages/eh_os_contract_graph`**, zależny tylko od `phoenix_live_view`: LiveComponent (dokument +
+   nakładka → kontener z `phx-update="ignore"` i panel), **panele w HEEx** (klik w JS → zdarzenie do serwera),
+   paleta rodzajów w jednej tabeli (dzisiejsze `@classes` z `graph/mermaid.ex`, na tokenach `ehos_design`), hook JS,
+   bundle zbudowany esbuildem i commitowany w `priv/static`; testy na dokumentach-fiksturach, bez silnika. Brama
+   woła jego `mix check`. *6 października:* tu mieszkają też **widoki** — sześć dzisiejszych obrazków (pełny graf,
+   kształt zadeklarowany, jednostka, cykl życia, mapa kontekstów, system) jako wybór z grafu faktów, z testami na
+   fiksturach — „E13a — the document as a graph of facts”.
+3. **Ekran Graph** na komponencie: punkty 1–3, 5, 6, 8–12, cykl życia, nakładka odróżniająca ścieżki
+   nieprzejechane; tabela zdarzeń i obietnice zdaniami (decyzja 8). **Contract status**: punkt 4.
+4. **Mermaid wycięty**: `graph/mermaid.ex` i każde `to_mermaid` / `*_to_mermaid`, `mermaid.min.js` i `NOTICE`, hook
+   `MermaidRender`, obejście CSP z EG3, motyw Mermaida, reset `pre.mermaid p`, zdanie o `style-src` w README, flagi
+   taska, asercje Mermaida w testach silnika, weba i sandboxa — z wyjątkiem stron, jeśli decyzja o nich wybierze (a).
+5. Strony modelu według decyzji.
+6. Weryfikacja w przeglądarce na hoście sandboxa (`:4010/dashboard/graph`, pod polityką EHOS-a), zrzuty; ten sam
+   ekran z dokumentu z funkcji i z dokumentu pobranego z `/graph/:contract`.
+7. Zapisy: CHANGELOG (host ma do zrobienia: nowa zależność), README pakietu, dopiski z datą w
+   `docs/adr/technology-notes.md` §12 i `docs/adr/contract-v2.md` §3, „E13b — co wyszło”; issue w `eh-os` o ekranie
+   procesów i uwierzytelnieniu Console wobec `/graph`; PR w `ehos-tools` (decyzja 6).
+
+*Odbiór E13b:* odbiór z opisu E13 („Po E8”) — `grep -ri mermaid packages sandbox` czysty poza `CHANGELOG.md` (i
+stronami, jeśli (a)) — oraz panele 1–12 działające na trzech domenach sandboxa.
+
+Szacunek (zgrubny, sprzed prototypu): E13a ~4–6 dni, E13b ~6–9 dni. *6 października:* E13a +1 dzień (graf faktów
+przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
+
+### Postęp E13
+
+| Etap | Zakres | Gałąź | Status |
+|---|---|---|---|
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository; 9 October: the architecture reviewed, five points open ("E13b — the architecture review (9 October)"); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
+
+**E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
+(1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
+zadeklarowany jako dane, schema i walidator w testach (kroki 1, 5); (3) treść paneli (krok 3); (4) nakładka jako
+osobny dokument (krok 4); (5) endpointy, `--json`, dane sandboxa, zapisy (kroki 6–9).
+*6 października: sześć batchy* — (3) i (4) zastępuje graf faktów i jego treść, nakładka to (5), endpointy (6);
+„E13a — the document as a graph of facts”.
+
+### E13a, batch 1 — co wyszło (5 października)
+
+- **`EhOsContract.Graph.Document`**: typy węzła, krawędzi i grupy oraz `id/1`. `id` to rodzaj, moduł, do którego
+  należy nazwa, i nazwy, które wskazują deklarację, sklejone `:` — `event:Rehmed.Contracts.Scheduling:visit_booked`,
+  `constraint:<kontrakt>:<komenda>:<nazwa>`, `status:<kontrakt>:<agregat>:<status>`, `invariant:<kontrakt>:<jednostka>:<nazwa>`;
+  aktor, system zewnętrzny, kontekst, poddomena i publikacja — z modułem domeny. **Zdarzenie konsumowane albo
+  włączone należy na grafie kontraktu do tego kontraktu, pod nazwą lokalną** (rename może ją zmienić), więc to samo
+  zdarzenie ma inne `id` na grafie kontraktu, który je deklaruje — do pamiętania przy nakładce (batch 4), jeśli
+  ma łączyć się między grafami. Nazwa klienta nie jest
+  slugowana, więc `visit.settled` i `visit_settled` się nie spotykają i `unique_ids/2` zniknął z danych. `id` jest
+  nieprzezroczyste: nazwa może mieć `:`, więc nikt go nie rozbiera. Zmieni się raz przy ID3 (decyzja 3).
+- **Relacje** (decyzja asystenta, lista z kodu), czytane w kierunku krawędzi — „źródło *relacja* cel”: `emits`,
+  `handled_by` (zdarzenie → reakcja, od `handles:`), `issues` (aktor i reakcja → komenda), `fires` (zegar →
+  komenda), `sets_timer`, `records`, `asks`, `projected_into` (zdarzenie → read model), `reads`, `calls`,
+  `depends_on`, `backed_by`, `gives` (z `field`), `refused_on` (komenda → reguła), `builds` (zdarzenie → stan
+  agregatu), `consulted_by` (z `match`), `transition`, `undeclared`, `consumed_by` (kontrakt → konsument, z
+  `events`), `publishes`, `subscribed_by` (publikacja → kontrakt), i osiem wzorców mapy kontekstów pod własnymi
+  nazwami, od upstream do downstream. Pierwsza wersja miała `projects`, `consumes`, `subscribes`, `consulted`,
+  `may_refuse` — trzy czytały się wstecz wobec definicji; zmienione po przeglądzie, przed batchem 2, który
+  zamraża nazwy w schemie. `delivery: :inline | :async` zamiast stylu linii.
+- **Wygląd tylko w `Graph.Mermaid`**: tabela „relacja → linia, grot, słowa”, karta stanu z pól (`fields`), etykiety
+  grup, końcowy status (`final`) jako klasa `status_end`, mermaidowe `id` z rodzaju i nazwy jak dotąd. Publiczne
+  zostały `render/2` i `escape/1`.
+- **Nakładka w `build(…, overlay: true)` jest liczbami** (`overlay: %{runs, of_runs, waiting, failing}` na kroku,
+  `%{events, waiting, failing}` między kontraktami, `%{count, pending, untraversed}` na przejściu cyklu życia,
+  `runs` na kontrakcie) — wyjęcie do osobnego dokumentu to batch 4.
+- **Sprawdzone:** 227 diagramów sandboxa (każdy kontrakt z nakładką i bez, `since:`, kształty zadeklarowane,
+  jednostki, cykle życia z nakładką, mapy, systemy, strony z `Pages.render/2`) — przed i po identyczne bajt w bajt;
+  nakładki na danych z sześciu komend AppUnite w transakcji wycofanej po zrzucie. Dwa testy zmienione, bo czytały
+  dane Mermaida: karta stanu (to samo wyjście, wejście z `fields`) i zderzenie nazw w systemie (mermaidowe `id`
+  sprawdzane teraz na diagramie, dokumentowe — w danych). Nowe testy: na każdym grafie każdego kontraktu i domeny
+  (pełny, jednostki, cykle życia, mapa, system) `id` węzłów są unikalne, każda krawędź kończy się na węźle (to
+  pilnuje nowego `Map.fetch!` w Mermaidzie), a drugi `build` daje ten sam graf; dwie jednostki z niezmiennikiem
+  o jednej nazwie mają dwa `id`.
+- **Jedyna możliwa zmiana bajtu poza sandboxem:** mermaidowe `id` ograniczeń przechodzą teraz przez numerowanie,
+  więc para zmyślona (komenda `a_b` z ograniczeniem `c` i komenda `a` z `b_c`), dotąd sklejana w jeden węzeł, daje
+  dwa. Poprawka, nie regres.
+- **Przegląd przed commitem** (agent, diff batcha): podział i obietnica trzymają się; poprawione kierunki nazw
+  relacji, opis reguły `id` dla zdarzeń konsumowanych i słabe asercje nowego testu.
+
+### E13a, batch 2 — what came out (6 October)
+
+- **The user's decision on the model pages (6 October): option (b).** The pages lose their diagrams and get the
+  contract's `graph.v1` document written beside them, linked from the page; Mermaid is not kept there. Built in
+  batch 5, with the other ways the document leaves the engine (HTTP, `--json`), when it already carries the panels'
+  content. *Rejected:* (a), Mermaid kept for the pages — the palette in two places and an exception to "Mermaid
+  goes"; doing it in this batch — a larger diff for a document that is not complete yet.
+- **The user's decision on granularity (6 October): one document per contract, one per domain.** The contract's
+  holds every picture the Graph screen shows of it — full graph, the process's declared shape, each unit, each
+  lifecycle — so a renderer switches between them and opens panels without another request; the domain's holds the
+  context map and the system (actors come in batch 3). Units and lifecycles are keyed by the id of the unit's group
+  on the full graph, so a reader goes from the group it was shown to the unit's pictures by the id it already has.
+  *Rejected:* a document per graph — more requests and an index of graphs for nothing; to be revisited if a reader
+  needs it.
+- **The contract between the engine and the renderer is the JSON format, not a function**: the dashboard gets the
+  document from a function in the same process, Console will get the same bytes over HTTP, and the renderer
+  (E13b) sees no difference. So the schema written here is that contract.
+- **The declared shape is data** (`EhOsContract.Graph.Declared`): each stage a group, in the process's order; that
+  order an edge `precedes` from one stage's group to the next — the only edge on any graph that ends at a group,
+  which the schema and the tests allow for that relation alone; an event with its `stage` and `terminal`; a
+  promise an edge `eventually` (with `within`) and `or_else`, both naming the promise; `depends_on` to the domain's
+  external. Included events have the id they have on the contract's full graph. Everything about the look — empty
+  lane placeholder, "no order claimed inside", the classes — moved to `Graph.Mermaid.declared/1`.
+- **The document** (`Document.contract/1`, `Document.domain/2`): `schema: "eh_os_contract.graph.v1"`, `kind`, what
+  it is of, the contract's `version`, `graphs`, and `digest` over the rest with `EhOsContract.Digest`, as the model
+  export and AsyncAPI do. Nothing from the log: the documents are built without `overlay:`, and the schema closes
+  every object, so a key of the overlay fails it. `undeclared` (a move the lifecycle does not allow, seen in the
+  log) is left out of the schema's relations — it exists only with the log, so batch 4 decides where it goes.
+  `Model.json_data/1` became public, so both exports share one projection to JSON.
+- **The schema** `packages/eh_os_contract/priv/schema/graph.v1.json` (JSON Schema 2020-12) ships with the package
+  (`files:` now carries `priv/schema`, and nothing else of `priv/`); node kinds, group kinds and relations are
+  enums, and a few kinds require what they alone have (a state its fields, a constraint its command, a promise edge
+  its promise). It describes what exists today; batch 3 extends it with the panels' content, still as v1, since
+  nothing reads it yet.
+- **Tests**: the package holds every fixture's document to the schema with JSV (`only: :test`, the version
+  `eh_os_contract_auth` uses), checks it is JSON as it stands, its digest, that two builds are equal, that every
+  edge ends where its relation allows, and that the schema refuses an overlay key, a look and an unknown relation;
+  the sandbox holds every TaxVision, Rehmed and AppUnite document to it. The sandbox declares JSV `runtime: false`,
+  not `only: :test`: Mix refuses to narrow a dependency `eh_os_contract_auth` declares for every environment.
+- **Checked:** the 216 sandbox diagrams and pages (every contract with and without the log, declared shapes,
+  units, lifecycles with and without the log, maps, systems, `Pages.render/2`) are byte for byte what they were
+  before the batch.
+- **Not yet:** byte-stable JSON encoding for `ETag` and "the same bytes after a restart" — Jason writes small maps
+  in key order, but the endpoint (batch 5) should encode with sorted keys rather than rely on it.
+- **Review before commit** (an agent, on the batch's diff; the user asked whether it holds to "defining the graph
+  apart from drawing it"). The separation holds: no wording, layout or look in the data or the schema. Taken:
+  - **every edge has an id** — its relation, its two ends and what tells it apart from another edge of that
+    relation between them (`event`, `promise`, `field`, `as`); the overlay (batch 4) puts the numbers of a step or a
+    transition on edges, so without an id the overlay and the renderer would each invent a composite key. Unique
+    on every graph of every fixture and client tree (tested);
+  - **a domain's document does not depend on the order of the contracts given** — `Graph.System.build` draws in
+    input order, so the dashboard and an HTTP caller listing them differently got two digests; `Document.domain/2`
+    sorts them (tested by reversing the list);
+  - tests that could not fail replaced: a relabelled node moves the digest, the reversed list gives the same
+    document; a golden digest rejected — it moves with every deliberate change to a graph and says nothing then;
+  - the schema tightened: `within.unit` an enum of `EhOsContract.Duration`'s units (a renderer words the window
+    without the engine), `name` and `label` null only on a lifecycle's start, `stage` and `terminal` only on an
+    event, an event in no stage said in `stage`'s description, a `$id` (`urn:eh-os-contract:schema:graph.v1`) for
+    the copy the renderer will carry.
+- **Open before batch 3 — where panel content lives.** The reviewer's point: the same event id is a node on up to
+  four graphs of one document (full graph, declared shape, unit, and as a consulted event elsewhere), and panel
+  content (fields, personal data, `by:`, scenarios) attached to each node would be copied that many times, leaving
+  the renderer to pick a copy. The alternative: a top-level `declarations` map keyed by id with the panel content,
+  graph nodes staying structural (`id`, `kind`, `name`, `label`, and what is placement on that graph, like
+  `stage`). To decide with the user when batch 3 starts. *Settled 6 October, further than either: no pictures in
+  the document at all — "E13a — the document as a graph of facts" below.*
+- **Left as it is, known:** an included event's external is scoped to this contract's domain, as on the full graph
+  (batch 1) — wrong only if a contract could include an event from another domain's contract; and the system's
+  contract node takes the module's last segment as its label (batch 1), a fallback rather than a look.
+
+### E13a — the document as a graph of facts (decisions, 6 October)
+
+**Where from.** Batch 3 was to put the panels' content on the nodes of batch 2's document. Settling where that
+content lives (the open point above) showed that the document was the wrong thing: it was **six pictures** — full
+graph, declared shape, unit, lifecycle, context map, system — each a choice of what is shown together, with a
+lifecycle's "start" node that is pure drawing. Batch 1 took the look out of the data; the choice of what goes on
+which picture stayed in, and it decides what is rendered as much as a colour does. Emil's brief for E13 ("from the
+information about the graph we generate an API with JSON, which something consumes and renders", "a client that
+understands that API", the CTO seeing every process "as in EventCatalog") asks for the graph, not for pictures.
+
+**Decisions (the user's, 6 October; the shape worked out with the assistant):**
+
+1. **The engine gives facts; the renderer makes views.** A fact is true of the contract whatever is drawn, and
+   knowing it takes the DSL's meaning — that a command emits an event, that a timer of a process manager issues a
+   command, that an included event sits in a stage, which scenarios cover which path, a declaration's capability
+   name, which contract takes which one's events. A view is which facts are shown together (today's six pictures),
+   a drawing-only node, layout, words and look. The test: *can it be changed without reading the DSL's docs?* Then
+   it is the renderer's. This sharpens decision 1 ("what is in the graph" means which facts) and decision 2: the
+   renderer follows relations by id — who may issue a command is the relations into it — which is a join, not an
+   interpretation. *Rejected:* pictures from the engine (batch 2's document) — a new or changed view would be an
+   engine and schema change; the renderer reading `/model` — it would have to know the DSL (decision 2).
+2. **A graph, not a copy of the contract.** The contract file and `/model` say what the author wrote, in the DSL's
+   shape, with links as names scattered over declarations (`handles:`, `by:`, `projects:`, `starts_on`, a consumed
+   event under its `as:`). The document has them resolved into relations with stable ids, the derived facts nobody
+   wrote down, personal data redacted, and nothing left to interpret. The overlap in content is intended.
+3. **Three top-level maps, each grouped by type:** `nodes` by kind (`command`, `event`, `policy`, …),
+   `relations` by type (`emits`, `handled_by`, …), `scenarios` by the kind of their target. Every key is always
+   there, empty or not; lists are in declaration order; the kind is the key alone, not repeated in the element; an
+   id is unique across the document, so a reference never names the group. The sets are closed — enums in the
+   schema. Relation types are described there with their category (flow, access, data and state, rules, lifecycle,
+   process, outside world, between contracts, context map), not tagged on each relation, since the type gives it;
+   `issues` splits into an actor's and a reaction's, so each type has one category. *Rejected:* a collection per
+   kind at the top level (relations and scenarios among the kinds, a new top-level key per kind); one flat `nodes`
+   list with a `kind` (each kind's shape by `if`/`then`, scenarios carrying half their keys empty); a node per
+   picture (the same declaration copied up to four times, the renderer picking a copy). Flattening for a graph
+   library is one line in the renderer.
+4. **Node, nested or relation.** Anything a relation can end at is a node with an id. What nothing ends at is nested
+   in its declaration: fields, scenario data, terms, a system's operations, a domain service's functions and rule
+   examples. **Ownership is a field naming the owner's id, named for what it is** (`unit`, `stage`,
+   `process_manager`, and the owner of a rule) — not one `in`: an event sits in a unit and in a stage, an included
+   event in a stage alone, so ownership is not one tree. Every other link between nodes is a relation. A reference
+   from nested content (a field's domain value, a scenario's events) is an id, not a relation.
+5. **A scenario is neither a node nor a relation.** It has one target and one trigger (S1) and touches many things
+   at once — an aggregate's scenario expecting two events covers two arrows — so it is its own entity, typed by its
+   target, which fixes its shape: `unit` (command, optional actor → events or a refusal on a rule), `policy` (event →
+   commands, rules illustrated), `process_manager` (event or timer → commands, timers set or cancelled, ended, state
+   after; rules illustrated), `query` (parameters → rows). No other: an effect and a read model are no scenario's
+   target (S6). It names its `target` and what it `covers` — the ids of the relations it exercises, which the engine
+   computes (a unit's: the `emits` to each expected event, or the `refused_on` to its rule; a reaction's: the relation
+   that delivers the event to it, and each command issued and timer set; a timer's: its `fires`; a query's: its
+   `reads` and the projections of its given events). "2 scenarios" on an arrow and the list behind it come from one
+   place. Its id is made from its description, unique in the contract (S1); a reworded description is a new scenario.
+   Its data passes `Model.to_data/1`'s redaction. *Rejected:* scenarios on the node or on the edge — copied onto
+   every arrow they cover.
+6. **A field has one shape everywhere** (command, event, state, read model, query parameter): name, label, type,
+   required, default, `personal_of` (the field holding the id of the person whose data it is), and as ids:
+   `subject` (the person it points at), `value` (the domain value its type is), `refers_to` (the entity it
+   identifies). Facts, not sentences: `delivery:
+   "at_least_once"`, `within: {amount, unit}`.
+7. **Two documents, as decided in batch 2.** A contract's carries the actors, externals and values it touches, with
+   their content, so its views need no second request. A domain's carries subdomains, contexts with their terms,
+   entities, values, subjects, actors with responsibilities and their capabilities per contract, externals,
+   contracts, the events that cross contracts (so the system's arrow has its label, point 3), and the relations
+   between them. Copies between the two documents, never within one.
+
+**What changes in what is built.** Batch 2's document format and schema go: graphs keyed by picture, units and
+lifecycles keyed by the unit's group, groups, `precedes` ending at a group (a stage is a node now). Nothing reads
+them, and batch 2's record stays as it is. What stays: the ids (batch 1), the relation names (with additions —
+`starts`, `ends`, the two `issues`, an event entering a status), `EhOsContract.Digest` over the document, JSV in the
+tests. The builders of the six pictures stay as `Graph.Mermaid`'s input until E13b cuts them; the dashboard need not
+stay as it was (the user: the new one replaces it at once), but leaving it is the smaller diff.
+
+**Hooks (checked 6 October):**
+
+- **A domain service has no declared edge.** Which command uses it is in the implementation (`C.DomainServices.X`
+  called from a decision), not in the contract: no DSL key says it. **The user's decision (6 October):** the service
+  is in the API as a node with its functions, arguments, result and rules with examples — a DSL element is not left
+  out of the API without a reason, and EM2 said its rules are read by the docs and the graphs; **the edge is out of
+  E13** and noted as a gap of the contract in "Otwarte pytania". *Rejected:* reading the edge from the code's calls
+  (the document would depend on the implementation); leaving the service out of the API.
+- **Is everything a picture shows in the facts — answered on paper before the code.** Today's pictures are the lower
+  bound, not the target: the graph is richer by the panels' content. So batch 3 starts with **a catalogue of the
+  document**, reviewed by the user before implementation: each node kind with its fields; each relation type with
+  its ends, attributes and category; each scenario type with its shape and its `covers` rule; and two checking
+  tables — (i) every element of the six pictures → where it comes from in the facts, (ii) every item of panels 1–12
+  and "Pole" → where it lies in the document. A test then holds the first table in code: every node and edge of
+  each picture, for every contract and domain of the sandbox and the fixtures, has its counterpart in the document
+  — except what is drawing only (a lifecycle's start, the unit's state card, which is the unit).
+- **A process manager's relations carry their trigger.** It declares what it does on each way in — the event that
+  starts it (`starts_on`), each event during the run (`on`), the one that ends it (`ends_on`): commands issued,
+  timers set or cancelled. Today's picture has one "sets timer" arrow per timer and no "cancels" at all, so in
+  TaxVision's `monthly_registry_check` "on start, set `next_month`" and "on a later confirmation, set it again" —
+  the same event both times — are one arrow; the manager's panel cannot group by trigger (point 9) and a scenario
+  cannot point at the exact fact it covers. Its `issues`, sets-timer and cancels-timer relations carry the event and
+  whether it starts the run or comes during it, and both go into the relation's id. A policy has nothing to carry:
+  it declares the events it handles and the commands it issues, not which yields which.
+- **The overlay (batch 5)** joins on node and relation ids; a move the lifecycle does not allow exists only with the
+  log, so the overlay carries it as its own relation.
+- **Size:** today's documents are 3–55 KB and `/model` 7–53 KB (largest: AppUnite `Computers`); with fields and
+  scenarios the document should stay within twice the model, ~100 KB at the largest. One request is right.
+- Unchanged: byte-stable JSON for `ETag` (batch 6), the ids changing once at ID3 (decision 3), model pages as (b).
+
+**Batches of E13a, now six:** (1) and (2) done; **(3) the graph of facts** — first the catalogue below, reviewed by
+the user; then nodes and relations grouped by type, ownership, ids, both documents' structure, the schema rewritten,
+the coverage test; **(4) the panels'
+content** — fields, capabilities, rules, delivery and idempotency, scenarios with `covers` and redaction, what
+depends on an event, the domain's content; (5) the overlay; (6) endpoints, `--json`, sandbox data, pages (b),
+records. E13b gains the views (step 2).
+
+### E13a — catalogue of `graph.v1` (draft for the user's review, 6 October)
+
+Read from the generated DSL references (`docs/dsl/`), the models of all eleven sandbox contracts and their
+domains, and the six builders; checked for completeness against both DSL references, option by option, by a
+review agent the same day, and corrected by its findings (listed at the end). `<C>` is the contract module, `<D>`
+the domain module; ids stay opaque to readers.
+
+*7 October, at the rebase onto `main` (decision B):* `<C>` in every id below is the contract's `id:`
+(`command:rehmed.settlement:close_settlement`), `<D>` stays the domain's module. The contract's envelope says
+`contract` (its id) and `module` where it said `contract` (module) and `contract_id`; the domain's `contract` node
+is named by the id, with `module` beside it, and has no `contract_id`. A process has no `cadence` (P1d), and an
+event's `type` is `"<id>.<event>"` in every contract, with or without a process (ID3) — absent only for a received
+event. The overlay counts occurrences, not runs (P1a). What changed and why: "E13a — rebased onto `main`, ids from
+the contract's `id:` (7 October)". Every node has `id`, `name`, `label` (the client's words, or the
+name), and `source` where the DSL has one. A duration is `{amount, unit}` everywhere.
+
+**Envelopes.** A contract's document: `schema`, `kind: "contract"`, `contract` (module), `contract_id` (the
+contract's `id:`, null until it has one), `domain` (module), `context` (the id of its context node), `version`,
+`digest`. A domain's document: `schema`, `kind: "domain"`, `domain` (module), `name` (the prefix of every role and
+capability), `language`, `time_zone`, `version`, `digest`.
+
+**Every id in a document resolves to a node of that document**, except `declared_as` (an event's id in the
+sibling contract's document) and `declaration` on a domain actor's capability (an id in the contract's document),
+which the schema marks as references into another document.
+
+**Nodes of a contract's document** (owner fields in *italics*):
+
+| Kind | Id | Fields |
+|---|---|---|
+| `process` | `process:<C>:<name>` | `correlate` (field names), `deadline` and `cadence` (`{amount, unit, unverified}` or null) |
+| `stage` | `stage:<C>:<process>:<name>` | *`process`*; listed in the process's order |
+| `promise` | `promise:<C>:<process>:<name>` | *`process`*; `within` (`{amount, unit}` or null), `unverified` |
+| `unit` | `unit:<C>:<name>` | `unit_kind` (`aggregate`, `dcb`), `identity`, `generated` (`uuid` or null), `state` (fields) |
+| `status` | `status:<C>:<unit>:<name>` | *`unit`*; `final` |
+| `invariant` | `invariant:<C>:<owner kind>:<owner>:<name>` | *`of`* (a unit or a process manager) |
+| `constraint` | `constraint:<C>:<owner kind>:<owner>:<name>` | *`of`* (a command, policy, process manager, query or effect) |
+| `command` | `command:<C>:<name>` | *`unit`*; `fields`, `scope` (a field name or null), `creates`, `capability` (null where no person may issue it) |
+| `event` | `event:<C>:<name here>` | *`unit`* (null for one consumed, included or received), *`stage`* (null outside every stage); `included` (the process includes it — tells an included event from a merely consumed one when the process has no stages), `fields`, `terminal`, `type` (the log's; null in a contract without a process), `schema_version`, `declared_as` (the sibling's event id, under its name there — `consumes … as:` may rename it; null for the contract's own and for a received one), `capability` (a person's `recorded_by:`; for a received event the `<name>.subscribe` grant when a policy handles it; else null). A consumed event carries the sibling's label, fields, type, schema version and `depends_on`, and no `capability` |
+| `policy` | `policy:<C>:<name>` | `delivery` (`in_transaction`, `at_least_once`), `idempotency` (`{key, owner}` or null) |
+| `process_manager` | `process_manager:<C>:<name>` | `state` (fields), `correlate`, `delivery`, `idempotency` |
+| `timer` | `timer:<C>:<process manager>:<name>` | *`process_manager`*; `wait` (`{amount, unit}` or null), `at` (a state field or null) |
+| `effect` | `effect:<C>:<name>` | `delivery`, `idempotency` |
+| `read_model` | `read_model:<C>:<name>` | `fields`, `delivery` |
+| `query` | `query:<C>:<name>` | `params` (`{name, label, type, required, value}`, never personal), `returns` (`many`, `one`), `scope`, `capability` |
+| `domain_service` | `domain_service:<C>:<name>` | `functions`: `{name, label, arguments: [{name, label, type, required, value}], returns: {type, required, value}, rules: [{name, label, source, examples: [{arguments, result}]}]}` — no relation (the edge is in "Otwarte pytania") |
+| `publication` | `publication:<D>:<wire name>` | the name on the wire |
+| `actor` | `actor:<D>:<name>` | *`context`*; `actor_kind` (`human`, `system`), `role` (`<domain>.<name>`, a person's), `scope`, `responsibilities` (`{name, label, source}`) |
+| `external` | `external:<D>:<name>` | `direction`, `unavailable_looks_like`, `expected_latency` (a duration or null), `operations` (`{name, label, source}`) |
+| `value` | `value:<D>:<name>` | *`context`*; `type` (a type as below: a built-in, an enum with its labels, or null when the value has fields), `unit`, `fields`, `invariants` (`{name, label, source, satisfied_by, violated_by}`) |
+| `entity` | `entity:<D>:<name>` | *`context`*; `identity`, `fields` (the DSL's `issued_by` on an entity is its identity field's) |
+| `subject` | `subject:<D>:<name>` | — |
+| `context` | `context:<D>:<name>` | in a contract's document only its label — the full context is the domain's |
+
+A contract's document carries the actors, externals, publications, values, entities and subjects its
+declarations name, and every context those name — nothing else of the domain.
+
+**A field** (command, event, state, read model, entity, value): `{name, label, type, required, default,
+personal_of, subject, value, refers_to, issued_by, supplied_by}`. `personal_of` is the *name of the field* holding
+the id of the person whose data this is (`personal:`); `subject` the subject's id when the field identifies a
+person; `value`, `refers_to` the ids of the domain value and the entity; `issued_by` the id of the external that
+gives the field its value — **resolved by the engine**, from the field's own `issued_by:` or from the identity of
+the entity it refers to; `supplied_by` `"host"` or null.
+
+**A type** is a built-in's name (`"integer"`, `"id"`, `"date"`, …), a domain value's name (with `value` = its id),
+`{"list": <type>}`, or `{"enum": [{"value", "label"}]}` — a field's inline enum carries its labels, which the
+"Pole" panel shows. `{:id, entity}` is `"id"` with `refers_to`.
+
+**Redaction.** Everything that holds example or default data — scenario data, a field's `default`, a domain
+service's rule examples, a value invariant's `satisfied_by` and `violated_by` — passes `Model.Export.redact/2`, in
+both documents; the test that no document holds a Rehmed personal value covers all four.
+
+**Relations of a contract's document**, read "from *type* to":
+
+| Category | Type | From → to | Attributes |
+|---|---|---|---|
+| flow | `emits` | command → event | |
+| flow | `handled_by` | event → policy, effect, process manager (during its run) | `via_inbox: true` from a received event: it runs after the transaction, through the inbox, whatever the policy's `delivery` (D12) |
+| flow | `starts` / `ends` | event → process manager | |
+| flow | `issues` | policy, process manager → command | a manager's: `on` (an event's or one of its timers' id), `phase` (`start`, `run`; `run` for a timer) |
+| flow | `sets` / `cancels` | process manager → timer | `on`, `phase` |
+| flow | `fires` | timer → command | |
+| access | `may_issue` / `may_record` / `may_ask` | actor → command / event / query | |
+| access | `accountable_for` | actor → process | |
+| data | `builds` | event → unit (an aggregate's own events) | |
+| data | `consulted_by` | event → unit (a boundary) | `match` (fields) or `where` (prose) |
+| data | `projected_into` | event → read model | |
+| data | `reads` | query → read model | |
+| rules | `refused_on` | command → invariant, constraint | `outside_from` (true for `or_rejects:`) |
+| lifecycle | `enters` | event → status (an initial one) | `source` |
+| lifecycle | `transition` | status → status (one per `from` status) | `event` (id), `source` |
+| lifecycle | `allowed_in` | command → status (`from:`) | |
+| process | `opens` / `fulfils` / `or_else` | event → promise | |
+| outside | `depends_on` | event → external | |
+| outside | `calls` | effect → external | `operation` (name, or absent) |
+| outside | `backed_by` | actor → external | |
+| between | `published_as` | event → publication | `name` (the `publish` declaration's), `fields`, `idempotent_on` |
+| between | `received_as` | publication → event | |
+
+A relation's id is its type, its ends and its discriminators (`event`, `on`, `phase`, `operation`, `name`).
+What a step's `delivery` was on batch 1's edges is the reaction's and the read model's own field: one place.
+Batch 1's `gives` (external → command or event, `field`) is gone: it repeated the field's `issued_by`, which now
+holds the resolved external on every kind of field, so the arrow is a join over fields.
+
+**Scenarios**, id `scenario:<C>:<description>`, data redacted as in `Model.to_data/1`, each with `description`,
+`target` and `covers`:
+
+| Type | Shape | `covers` (the engine computes) |
+|---|---|---|
+| `unit` | `actor`, `given` `[{event, data}]`, `command {command, data}`, `expect` `[{event, data}]`, `rejected` (rule id or null) | each expected event's `emits`, or the `refused_on` to the rule |
+| `policy` | `event {event, data}`, `issues` `[{command, data}]`, `illustrates` | the `handled_by` to it, each issued command's `issues` |
+| `process_manager` | `given`, `trigger {event or timer, data}`, `phase`, `issues`, `sets`, `cancels`, `ended`, `state`, `illustrates` | an event: the phase's relation (`starts` for a start, `handled_by` for one during the run, where declared), plus `ends` when the event is in `ends_on` — one delivery may start or run and end; a timer: its `fires`. Then each `issues`, `sets`, `cancels` whose `on` and `phase` are the trigger's |
+| `query` | `given`, `params`, `answers` (rows, a row or null), `illustrates` | its `reads`, and each given event's `projected_into` that read model |
+
+**Nodes of a domain's document:** `subdomain` (`type`), `context` (*`subdomain`*; `language`, null when it is
+the domain's; `terms`: `{text, definition, source, avoid: [{text, reason}], translations: [{language, text,
+definition, avoid: [{text, reason}]}]}`), `contract` (*`context`*; the module, `contract_id`, `process` `{name,
+label}` or null, `correlate`), `event` (those that cross a contract's edge — consumed by a sibling or published
+to another application: *`contract`*, label — point 3), `publication`, `actor` (as above, plus `capabilities`
+`[{capability, kind, contract, declaration}]`), `external`, `value`, `entity`, `subject`. **Relations:** the eight
+context-mapping patterns (context or external, upstream → downstream or in `between`'s order; `terms`, `source`),
+`consumed_by` (contract → contract, one per pair, every `consumes` of that sibling merged; `events` `[{event,
+as}]` — the sibling's event id and the name it has in the consumer), `publishes` (contract → publication;
+`event`, an event node's id), `subscribed_by` (publication → contract; `as`, and `capability`, the
+`<name>.subscribe` grant — the application's, never a person's), `backed_by`, `accountable_for` (actor →
+contract).
+
+**(i) Today's pictures → the facts**
+
+| Picture | Element | In the document |
+|---|---|---|
+| full graph | unit group | `unit` node; `unit` on commands and events |
+| full graph | command, event, policy, effect, process manager, timer, read model, query, actor, external | the node of that kind |
+| full graph | included event | `event` with `included`, `stage` and `declared_as` |
+| full graph | `emits`, `handled_by`, `fires`, `projected_into`, `reads`, `calls`, `depends_on`, `backed_by` | same type |
+| full graph | `gives` | a field's resolved `issued_by` |
+| full graph | a received event's `handled_by` drawn async | `handled_by` with `via_inbox` |
+| full graph | `issues` (reaction), `sets_timer` | `issues`, `sets` with `on` and `phase` |
+| full graph | `issues`, `records`, `asks` (actor) | `may_issue`, `may_record`, `may_ask` |
+| full graph | `delivery` on an edge | the reaction's or read model's `delivery` |
+| full graph | counts | the overlay (batch 5) |
+| declared shape | stage group, its label | `stage` node; `stage` on the event |
+| declared shape | `precedes` | the order of the `stage` list |
+| declared shape | `stage`, `terminal` on an event | the event's fields |
+| declared shape | `eventually`, `or_else` with `promise`, `within` | `promise` node; `opens`, `fulfils`, `or_else` |
+| unit | state card | the `unit` node (`state`, `identity`) — drawing only as a card |
+| unit | invariant, constraint | the nodes, with `of` |
+| unit | `emits`, `refused_on` with a scenario count | the relation; the count is the `unit` scenarios covering it |
+| unit | `builds`, `consulted_by` with `match` | same |
+| unit | an event from elsewhere | the `event` node, `declared_as` |
+| declared shape | an included event's `depends_on` | the consumed event's `depends_on`, carried from the sibling |
+| lifecycle | start node | drawing only, from `enters` |
+| lifecycle | status, `final` | `status` |
+| lifecycle | `transition` with `event` and `label` | `transition` with `event`; the label is the event's |
+| lifecycle | `undeclared`, counts | the overlay (batch 5) |
+| context map | subdomain group, `type` | `subdomain`; `subdomain` on the context |
+| context map | context, external, the eight patterns | same |
+| system | context group | `context`; `context` on the contract |
+| system | contract (module's last segment, process label) | `contract` with `process` — the short name is drawing |
+| system | publication, `consumed_by`, `publishes`, `subscribed_by` | same; the events as `event` nodes |
+
+**(ii) The panels → the document**
+
+| Panel | In the document |
+|---|---|
+| Field | the field's shape; a value's labels and unit from its `value` node, an entity's label from `refers_to` |
+| 1 context | `context` (label, `subdomain`, source, terms); patterns into and out of it with `terms`; contracts and entities with `context` = it. External: `external` |
+| 2 actors | domain `actor`: kind, role, responsibilities, source, `backed_by`, `context`; what the role may do by contract: `capabilities`; processes it answers for: `accountable_for` |
+| 3 system arrow label | `consumed_by`'s `events` → domain `event` nodes |
+| 4 one run | `process.correlate`; the domain's `contract.correlate` |
+| 5 the automaton | `starts`, `ends`; a timer's label, `wait` or `at`, one node per timer |
+| 6 command | `may_issue` into it, `capability`, `scope`, `fields`; event: `fields`, `may_record` into it, `terminal`, `depends_on`, out: `handled_by`, `starts`, `ends`, `projected_into`, `published_as` |
+| 7 stage labels | sandbox data (batch 6) |
+| 8 unit scenarios | `unit` scenarios covering the clicked `emits` or `refused_on` |
+| 9 policy, manager | scenarios with that `target` (a manager's grouped by `trigger` and `phase`); rules with `of` = it; `delivery`, `idempotency` |
+| 10 query | `params`, `may_ask` into it, `capability`, `reads`, `returns`, `scope`, the read model's `fields`, its scenarios |
+| 11 effect | `handled_by` into it, `calls` with `operation`, rules with `of` = it, `delivery`, `idempotency` |
+| 12 read model | `projected_into` into it, `fields`, `reads` into it, `delivery` |
+| `Brief` | what depends on an event: `terminal`, `opens`/`fulfils`/`or_else`, `handled_by`/`starts`/`ends`, `depends_on`; promises: `promise` nodes |
+
+**What the catalogue changes against batch 1–2** (found writing it):
+- A rule's id gains its owner's kind: a command and a policy may share a name, and so may a unit and a process
+  manager. A timer's id gains its manager's name.
+- `delivery` leaves the edges for the reaction and the read model; `precedes` leaves for the order of the stages.
+- The actor's relations become `may_issue`, `may_record`, `may_ask`, so `issues` is a reaction's alone.
+- New facts no picture has: `starts`, `ends`, `cancels`, `allowed_in`, `enters`, `accountable_for`, `opens`,
+  `fulfils`, `published_as`, `received_as`, `calls` with its operation, stages and promises as nodes, the domain
+  service.
+- To settle in the code, not on paper: a manager's scenario's `phase` must be read the way `ScenarioCase` and
+  dispatch decide whether an event starts a run or arrives in one.
+
+**Taken from the completeness review (6 October)**, each checked in the code: the envelopes, with every id
+resolving inside its document but two marked references (the contract's document named contexts and a sibling it
+did not hold, and lost `domain:`, `context:`, `id:`, `version`; the domain's lost `name`, `language`,
+`time_zone`); redaction of defaults, rule examples and value examples, not only scenarios (`Model.Export.redact/2`
+does all four); a manager's `on` naming one of its timers (`ProcessManager` issues both the timer's commands and
+the `on`'s) and a delivery that starts or runs and also ends (`ends_on` runs the `on` reactions first); `declared_as`
+instead of `declared_in`, so a renamed consumed event still joins its sibling; `included` on events; the subscribe
+capability; `gives` dropped as a repeat of `issued_by`; a type's JSON shape with an inline enum's labels (there was
+none — only Mermaid's wording); `published_as`'s `name`; `source` on `enters`, `transition` and the patterns; the
+term's full shape; `value` on arguments, results and params; `via_inbox`; what a consumed event carries;
+`consumed_by` merged per pair. Not verified by the review: whether two `consumes` of one sibling in one contract
+are refused — merging them per pair makes it not matter.
+
+### E13a, batch 3 — what came out (6 October)
+
+- **`EhOsContract.Graph.Facts`** builds both graphs of facts from the model; `Document.contract/1` and
+  `Document.domain/2` wrap them in the envelopes of the catalogue. Batch 2's pictures-in-a-document are gone from
+  the API; the six builders stay as Mermaid's input. The engine itself — dispatch, log, DSL, model, conformance —
+  is untouched: the user asked mid-batch, and the answer is that the document is an export like `/model` and
+  AsyncAPI, in the engine's package because decision 1 gives it the format.
+- **Skeleton, as batch 3 promised:** every node kind and relation type of the catalogue, ids, ownership fields
+  (`unit`, `stage`, `process`, `process_manager`, `of`, `context`, `subdomain`, `contract`), `included`,
+  `declared_as`, and the attributes that tell relations apart or are the relation's own (`on`, `phase`,
+  `via_inbox`, `outside_from`, `event`, `source`, `operation`, `name`, `fields`, `idempotent_on`, `match`,
+  `where`, `terms`, `events`, `as`). **Batch 4** adds the nodes' content (fields, capabilities, delivery,
+  idempotency, windows, terminal, …), scenarios with `covers` and redaction. The schema closes every object, so
+  batch 4 opens it where it adds.
+- **The schema** (`priv/schema/graph.v1.json`) was generated once by a throwaway script, so twenty-odd node and
+  thirty-odd relation definitions share one shape; it is edited by hand from here on.
+- **The coverage test** (`EhOsContract.GraphCoverage`, test support): for every node, group and edge of each of the
+  six pictures, the fact it is — a state card is the unit, a start node is drawing, `precedes` is the stages'
+  order, `eventually` is `opens` and `fulfils` on the promise — and it fails on a document with a relation type cut
+  out (tested). It runs in the gate over the package's fixtures; **over the sandbox's eleven contracts and three
+  domains it was run once by hand and found nothing missing** — the sandbox cannot load the package's test support.
+  `gives` is skipped until fields carry `issued_by` (batch 4). It goes with the pictures in E13b.
+- **Found by the sandbox's test, fixed:** a consumed event took its sibling's stage (`Assignments` consumes
+  `Computers`' `issued`, which sits in `Computers`' stage `use`) and pointed at a stage of a process that is not
+  this one. A stage is this process's: a consumed event sits in one only where an `include` puts it.
+- **Sizes:** 3–48 KB per contract document, 6–8 KB per domain.
+- **Review before commit** (an agent, on the batch's diff; correctness and "defining the graph apart from drawing
+  it"). It found the core facts right and the separation holding but in one place. Taken, each checked in the code:
+  - **relations to an actor or external the domain does not declare ended at no node** — a contract may name a
+    domain that does not exist (v2 §8), and only Mix's compiler checks the names against an existing one (L3).
+    Such an actor or external is now a node by its name, as a context already was (tested with a contract whose
+    domain does not exist);
+  - **an id collision was dropped silently** (`uniq_by`); the same fact reached twice is still one element, but two
+    different elements with one id now raise — the ids are wrong then, and losing one of them hid it;
+  - the coverage test checks each group's members carry the group in their owner field (a unit's commands and
+    events, a stage's events, a subdomain's contexts, a context's contracts), and fails on a cut node kind, a cut
+    owner and a cut domain relation too;
+  - ids a relation holds besides its ends (`on`, `event`, `events[].event`) are held to resolve; a manager's `on`
+    naming its own timer is tested (no fixture had one);
+  - **a drawing choice in the facts**: the domain's contract node was labelled with the module's last segment; it is
+    the module now, and shortening is the renderer's;
+  - values, entities and subjects in the domain's order, not the order fields found them; publications gathered
+    without iterating a map; `relation/3` private; the schema's lists held equal to `Facts.kinds/1`; the schema
+    tightened (`sets`/`cancels` require `on` and `phase`, `issues` both or neither, `published_as` its lists,
+    `consulted_by` `match` or `where`, a domain's context its subdomain); `Graph.Document`'s moduledoc rewritten.
+  - **Settled against the catalogue:** an owner or attribute that does not apply is **absent, not null** — `unit` on
+    a consumed event, `stage` outside every stage, `included` when false. The catalogue's "null" wording reads as
+    absent from here on.
+
+### E13a, before batches 4–6 — the user's decisions (6 October)
+
+1. **A process manager's scenario starts the run or arrives in it by the rule `ScenarioCase` and dispatch already
+   use**: it starts when its trigger is in `starts_on` and no `given` has started a run; otherwise it arrives during
+   it. *Rejected:* a key in the scenario (a DSL change for what the DSL already says); covering both phases (a false
+   "covered").
+2. **The overlay carries only the numbers the pictures and the report compute today** — runs and occurrences, a
+   step's runs, waiting and failing, a transition's count, "not yet" and "never", traffic between contracts, a
+   process's runs — and no new measure (the screen's four questions). Open to change later by its own decision.
+   *Rejected:* new measures now; raw counts with "untraversed" left to the renderer (that takes the report's
+   meaning, decision 2).
+3. **The overlay is maps keyed by id** — `nodes` and `relations`, id → numbers: it is joined onto the graph, never
+   listed. *Rejected:* lists with an `id` (an index rebuilt on every refresh); numbers written into a copy of the
+   facts (the facts document would lose its stable digest).
+4. **The overlay says its period, the contract version and the digest of the document it was computed against.**
+   The digest guards the join: ids change with the declarations and also with how the engine makes them — at ID3
+   they come from the contract's `id:`, which (ID1) moves no version, and a module rename moves ids too — so only
+   the digest changes whenever the ids do. The version is there for people and the report, which speak in versions.
+   A new contract version cuts the old overlay off, since it always moves the digest. Ids are built from the same
+   parts the log identifies rows by (contract module, kind, name), and the engine translates log rows to ids when it
+   computes the overlay; the renderer never sees the log's identities, which cover only events, commands and
+   reactions. *Rejected:* the version alone (misses an engine-side change of ids); the period alone.
+5. **A move a lifecycle does not allow is defined in the overlay in the facts' own shape** — grouped by type, each
+   with `id`, `from`, `to` and its event — and its numbers sit in the overlay's `relations` map with every other
+   relation's. *Rejected:* adding it to the facts document (the document would depend on the database); a map entry
+   carrying its own definition (two kinds of entry in one map); a list of its own shape.
+6. **No sandbox contract or domain is edited in E13a.** No stage of any sandbox process has a label (all 30 are
+   names alone), and of the actors only Rehmed's manager and TaxVision's accountant have responsibilities; adding
+   them moves the contracts' and domains' versions — a contract change the user did not plan for test data. Item 7 of
+   the user's working plan (Polish stage labels) moves to E13b's check in the browser, with responsibilities, if the
+   screen shows they are needed. An actor's panel is not empty without them: only that one list is.
+   **And a node's `label` is the client's words or null — never the name put in its place** (the user's correction):
+   every node carries `name` and `label`; "the label, or the name where there is none" is the renderer's rule,
+   since only the renderer chooses what to show. The same for kinds the DSL gives no label (a promise, a
+   publication, a contract on the domain's document): `label: null`, not the name or the module. Batch 3 put the
+   name in, and the module on a contract — fixed first in batch 4. This is no exception to "absent, not null": a
+   label applies to every node; null says it was declared without words.
+7. **E13a ends at the push of batch 6.** Merging `main` (DD has moved on, #174 among others), `pre-pr-review` and the
+   pull request are done with the user, after their approval.
+
+### E13a, batch 4 — what came out (6 October)
+
+- **Labels first (decision 6):** every node has `name` and `label`, the label the client's words or `null` — a stage,
+  status or rule without words, a promise, a publication, the domain document's contract and anything known by name
+  alone. The schema's `label` is nullable everywhere.
+- **The panels' content, per the catalogue:** fields in one shape (`name`, `label`, `type`, `required`, and only what
+  applies of `default`, `personal_of`, `subject`, `value`, `refers_to`, `issued_by`, `supplied_by`), a type as
+  JSON (a name, `{list}`, `{enum: [{value, label}]}`), `issued_by` resolved through an entity's identity;
+  capabilities (a person's grant on a command, query or recorded event; the application's `<name>.subscribe` on a
+  received event a policy handles, and on `subscribed_by`); scope, creates, delivery, idempotency, wait/at, within,
+  deadline, cadence, terminal (an included event's from its `include`), final, unit kind, identity, generated,
+  state, query params and returns, domain service functions, an actor's role, scope and responsibilities, an
+  external's direction, operations and latency, a value's type, unit, fields and invariants, an entity's identity
+  and fields; in the domain's document a subdomain's type, a context's language and whole terms, a contract's
+  `contract_id`, `process` and `correlate`, and each actor's `capabilities` by contract. A consumed event carries
+  its sibling's label, fields, type and schema version.
+- **Scenarios**, grouped `unit`, `policy`, `process_manager`, `query`, each with `target` and `covers`. A manager's
+  scenario starts the run when its event is a `starts_on` one and no given started a run (decision 1); a timer's
+  covers its `fires` to each command the scenario issues — not every `fires` of the timer, which would count a
+  command the case does not show. The domain's document has no `scenarios` key: it holds no declaration a scenario
+  targets.
+- **Redaction:** the whole model and domain pass `Model.Export.redact/2` before anything is read, and a consumed
+  event's sibling too; a domain's document passes `Model.Export.redact_domain/1` (new, `@doc false`). Tested on
+  a fixture with personal data in a scenario, a state default, a domain service's example and a value's
+  invariant examples, in both documents (and the test fails with redaction cut out), and on every sandbox
+  document for Rehmed's PESEL and codes.
+- **Coverage check** (`GraphCoverage`) now holds `gives` to a field's `issued_by`, the unit picture's scenario
+  counts to the `unit` scenarios covering each arrow, an event's `terminal`, a promise's window and a state card's
+  fields. Run once by hand over the sandbox: nothing missing.
+- **Review before commit** (an agent, on the batch's diff). Taken, each checked: a domain service returning
+  `{:id, entity}` kept its tuple (`Dsl.Returns` has no name, so the model never rewrites it) — rewritten as a
+  field is; a value typed as another value, or as an entity's id, now names it (`value`, `refers_to`,
+  `issued_by`) and the value it names is in the document; `expected_latency` is any duration the DSL takes (no rule
+  narrows it), so the schema gives it its own looser shape; content tests against the model for every fixture
+  (delivery, idempotency, timers, queries, commands, events, units, statuses, the process), the received event's
+  grant and a publication's null label. *Rejected:* `capabilities` on the contract document's actor — the catalogue
+  puts them on the domain's, and the contract's has `may_issue` with each declaration's `capability`; a redacted
+  default staying as `null` rather than absent — it reads as "no default", which is all a reader may know of it.
+  *Left as known:* a scenario whose givens start and end the run, with a starting trigger, reads `run` and covers
+  nothing — what the runtime would do too.
+
+### E13a, batch 5 — what came out (6 October)
+
+- **`EhOsContract.Graph.Overlay`**: `contract/2` and `domain/3` give what the log says over a document, as a document
+  of its own (`schema: "eh_os_contract.graph_overlay.v1"`, its JSON Schema in `priv/schema/graph_overlay.v1.json`).
+  It says its period (`since`, `until`, ISO 8601 or null), the contract's or domain's `version`, and
+  `document_digest`, the digest of the facts document it joins (decision 4). `nodes` and `relations` are maps from
+  the facts' ids to numbers (decision 3).
+- **Only today's numbers** (decision 2), none counted anew: an event's occurrences and runs (moved from
+  `Graph.Contract` to `Paths.occurrences/2`), a process's runs, an aggregate count per lifecycle; per step its runs
+  and `of_runs`, waiting and failing by source, and the report's `untraversed` ("never") and `pending` ("not yet",
+  behind work still on its way) from the new `Conformance.steps/2`, which `process_report` now shares its predicate
+  with — the report is unchanged; a transition's count, `pending` and `untraversed` from `Conformance.lifecycles/2`;
+  between contracts, `Graph.System`'s overlay (events, waiting, failing) and each contract's runs.
+- **Where a step's numbers sit (decided here):** on the relation that ends the step — a command's `emits`, a
+  reaction's `issues` (a manager's by its `on`), a timer's `fires`, an effect's `handled_by` from its event —
+  **where step and relation match one to one.** Two shapes the DSL allows break that, and neither appears in any
+  fixture or client tree: a policy handling several events reaches one `issues` by several steps, and a manager
+  issuing one command on one event both as it starts a run and during it ends one step at two `issues` the log
+  cannot tell apart. Those relations get no numbers rather than numbers that belong to something else. *Rejected:*
+  the same numbers on both of a manager's phases (it overstates, and a sum per command counts twice); a policy step's
+  numbers on its `handled_by` when the policy issues one command (a rule that depends on the counts of a
+  declaration). **Open for the user:** whether these shapes need numbers — which would take a discriminator on a
+  policy's `issues` (batch 3 decided a policy says nothing of which event yields which) or a refusal of the shape.
+  *Resolved 6 October:* "E13a — overlay numbers for one relation with several steps, and for a manager's phases";
+  *corrected 7 October:* a policy's relation gets `by_trigger`, a manager's two phases stay without numbers —
+  "E13a — fixes after the final review (7 October)".
+- **A move the lifecycle does not allow** (decision 5) is defined under `observed.relations.undeclared` as `{id,
+  from, to, event}`, from and to the status the aggregate stood in — the unit's id where it stood in none yet — and
+  its `count` is in `relations` with the rest.
+- **Tests:** schema and join for every fixture's and client tree's overlay; the facts document equal before and after
+  the log is written; numbers checked against `Paths` and the report, every step's numbers on its one relation, a
+  manager's and a policy's shared shapes left without numbers, "not yet" and "never" on real steps, the period
+  (`since` and `until`), a lifecycle with an undeclared move, a domain's traffic.
+- **Review before commit** (an agent). Taken: the symmetric rule above (the first version gave both of a manager's
+  phases the step's numbers); the domain's `consumed_by` id looked up in the document, not composed; tests for
+  every step's relation, for `pending: true`, for the period's other numbers and `until`; the sandbox test joins
+  `observed` ids too; the domain overlay's `undeclared` held empty by the schema. *Rejected:* `propertyNames`
+  patterns on the maps — ids are opaque, and the join test checks every key.
+
+### E13a, batch 6 — what came out (6 October)
+
+- **HTTP** (`eh_os_contract_web`, `EhOsContract.Web.Api.Graph`, in `eh_os_contract_api/2` behind the same resolver as
+  `/model`): `GET <mount>/graph` (contracts and domains with version and digest), `/graph/My.Contract` (the document,
+  its digest as the `ETag`, `304` on `If-None-Match`, weak tags, lists and `*` included), `/graph/My.Contract/overlay
+  ?since=…&until=…`, `/graph/domain/My.Domain` and its overlay; outside the registry `404`. A domain is addressed by
+  its module, as a contract is; the task takes the domain's name, as it always has.
+- **Byte-stable JSON:** `Graph.Document.encode/2` writes every object's keys in order at every depth (Jason keeps a
+  map of more than 32 keys in hash order). The endpoint, the task and the pages all write through it, so the
+  document served is the function's byte for byte (tested).
+- **Task:** `mix eh_os_contract.graph --json --contract M | --system NAME [--overlay [--since AT]]`; refused with
+  `--unit`, `--lifecycle`, `--process`, `--mermaid` (a document holds every picture). Mermaid flags stay to E13b.
+- **Model pages, decision (b):** `mix eh_os_contract.pages` writes each contract's document, without the log, as
+  `graph/<Contract>.json` and links it from the contract's page. The pages keep their Mermaid diagrams until E13b
+  (the user's decision after the final review, "E13a — final review and the user's decisions"). Such a file cannot carry the pages' marker, so the
+  task takes one as its own only by content and place — a `graph.v1` contract document of this domain at the path
+  the task gives that contract (`Pages.graph?/3`) — so a copy a person saved elsewhere under `graph/` stays.
+- **Plan step 8 skipped** (decision 6): no sandbox contract or domain was edited; stage labels and responsibilities go
+  to E13b's check in the browser.
+- **Review before commit** (an agent). Taken: the pages task claimed any graph document of the domain under `graph/`
+  (now only at its own path, tested with a stale contract's document deleted, a person's copy and JSON kept, a
+  person's file at the path in the way); `If-None-Match` with weak tags, lists and `*`; stale docs of `render/2` and
+  the task; encoder tests that could not fail replaced by one with a map of more than 32 keys nested in a list;
+  `until` tests. *Left as known:* `--since` without `--overlay` is ignored, as it was for the Mermaid pictures; the
+  task reads a time without an offset as UTC while the API refuses it, as `eh_os_contract.report` and the
+  conformance route already differ; the index builds every document per request, as `/model` does.
+
+### E13a — what came out (6 October)
+
+E13a is built on `graph/e13a-document` in six batches (above). The engine gives each contract and each domain as a
+`graph.v1` document — a graph of facts, not of pictures: nodes by kind, relations by type with stable ids, the
+content of every panel of the Graph screen, scenarios with the relations they cover, every example and default
+redacted — and what the log says over it as a separate overlay document joined by id, which names the digest of the
+document it joins. Both have JSON Schemas in `priv/schema`. They leave the engine through functions
+(`Graph.Document`, `Graph.Overlay`), HTTP (`eh_os_contract_web`), `mix eh_os_contract.graph --json` and the model
+pages. The dashboard still draws the six Mermaid pictures from the old builders, which a coverage test holds to the
+facts; E13b replaces them with the renderer.
+
+Against *Odbiór E13a*: documents and overlays pass their schemas for every contract and domain of the sandbox and
+the fixtures; the same declarations give the same bytes (the digest moves only with the content, and the encoding
+sorts keys); the document from `/graph/:contract` is the function's byte for byte; the dashboard is unchanged; the
+gate is EXIT=0. Not done in E13a: plan step 8 (sandbox data, decision 6). **Open for the user:** numbers for the
+two step shapes the overlay leaves without them (batch 5; *resolved 6 October*, see "E13a — overlay numbers for one
+relation with several steps, and for a manager's phases", *corrected 7 October*); the domain-service edge (in "Otwarte pytania" since
+batch 3). Remaining with the user (decision 7): merging `main`, `pre-pr-review`, the pull request.
+
+### E13a — final review and the user's decisions (6 October)
+
+**The final review** (an agent, over the whole branch against `main`) confirmed: no conformance verdict moves (the
+report is unchanged, `Conformance.steps/2` shares its predicate); redaction holds in every document and overlay;
+every graph route goes through the resolver; the same declarations give the same bytes. Fixed after it:
+
+1. **Two relations of one type between the same two nodes, in shapes the compiler accepts, had one id**, and
+   `Document.contract/1` and `domain/2` raised — so `GET <mount>/graph` (the index builds every document), every
+   graph route, `mix eh_os_contract.pages` and `graph --json` failed: a DCB consulting one event twice (`match:` or
+   `where:` apart), and a contract receiving one publication under two `as:` names (`subscribed_by` on the domain's
+   document). What tells them apart is now in the id: `as`, `match` as its field names joined, `where` as a
+   16-character hash of its prose. Both shapes are a test (`graph_document_test.exs`). The overlay's ids are not
+   affected: it puts no numbers on either relation, and an undeclared move is one per status and event.
+2. **The application's grant on the second name a publication is received under was missing**:
+   `Model.capabilities/1` keeps one grant per publication, named after one of its names, so the graph found it by
+   the name and the other name got none. The graph now finds it by the publication (contract and domain
+   documents); `Model.capabilities/1` is unchanged. Left: two *versions* of one publication received under two
+   names share one grant in `Model.capabilities/1`, and the graph cannot tell which publications it covers without
+   repeating the model's rule — "Otwarte pytania".
+3. **A non-string `since` or `until`** (`?since[]=x`) raised in the web package's graph API — now `400` like any
+   bad time (tested). The conformance route has its own copy of the parser with the same gap; it is not the same
+   helper, so it is left and noted here.
+4. **Stale text:** the CHANGELOG said `Graph.Mermaid` keeps only `render/2` and `escape/1` (`declared/1` is public
+   too); the moduledoc of `mix eh_os_contract.graph` opened as Mermaid-only and said a document "holds every
+   picture" — now every fact.
+5. **A test that could not fail** (`documents() == documents()`, two builds compared as maps) removed: the
+   encoder's test with a map of more than 32 keys nested in a list already holds byte stability. In its place every
+   real document is read back in the order written and every object's keys are checked in order.
+
+*Left as known:* the overlay without a period walks the whole log, as `/conformance` does; the index builds every
+document per request; `Paths.runs_of` is called again in the overlay for a process's runs; the sandbox coverage
+check (`GraphCoverage`) is run by hand only.
+
+**The user's decisions:**
+
+*7 October:* asked about the decisions below and in the next section, recorded by another session as theirs, the
+user did not recognise them. Asked again, the user **confirmed** the three in this list — the model pages keep
+Mermaid until E13b; node ids switch to the contract's `id:` at the rebase onto `main`, in the same PR, before it is
+opened; the PR says `No issue: E13 is planned and tracked in PLAN.md` — and **rejected** the split of a manager's
+step by phase (next section). What was decided instead: "E13a — fixes after the final review (7 October)".
+
+- **The model pages keep their Mermaid diagrams until E13b**, which cuts Mermaid everywhere at once (E13b, steps
+  4–5). Batch 2's "the pages lose their diagrams" is done there, not in E13a; the pages already carry the
+  document beside them.
+- **ID3 is in `main`** (#172, #174: every contract has `id:`, event types `<id>.<event>`). The switch of node ids to
+  the contract's `id:` (decision 3) is **deferred to the rebase onto `main` right before the pull request**, which
+  the user does separately.
+- **No GitHub issue for E13.** The pull request says `No issue: E13 is planned and tracked in PLAN.md` (the
+  template takes one of `Closes`, `Part of` or `No issue`).
+- ~~**Still open, awaiting the user:** numbers in the overlay for the two step shapes that get none (a policy
+  handling several events; a manager issuing one command on one event as it starts a run and during it) —
+  batch 5.~~ *Resolved 6 October:* the next section.
+
+**Before the PR:**
+
+- rebase onto `main` and resolve the conflicts (`main` changed `graph_contract_test.exs` and
+  `graph_domain_test.exs`);
+- switch node ids to the contract's `id:` (decision 3);
+- `pre-pr-review`;
+- the pull request, with `No issue: E13 is planned and tracked in PLAN.md`.
+
+### E13a — overlay numbers for one relation with several steps, and for a manager's phases (6 October)
+
+*7 October — not the user's decisions as written.* The user did not recognise the two decisions below as theirs.
+Asked again: **decision 1 (`by_trigger`) stands; decision 2 (the split by phase) is rejected and removed**, and with
+it everything "How it is built" describes — `phases:` in `Paths.observe/2`, the per-phase reading in
+`Conformance.steps/2`, `ProcessManager.take/3`, `arrivals/2` and `correlation/2`. A manager's two phase relations
+get no numbers, as batch 5 had them. Why, and what replaces it later: "E13a — fixes after the final review
+(7 October)". The text below is the record of what was built and removed.
+
+**The problem.** Batch 5 put a step's numbers on the relation that ends it only where step and relation match one
+to one, and left two shapes the compiler accepts without numbers: a policy handling several events (`handles: [:e1,
+:e2], issues: :c`) has one `issues` relation in the facts and one step per triggering event in the report; a process
+manager issuing one command on one event both as the event starts a run (`starts_on`) and during it (`on`) has two
+`issues` relations (`phase` start and run) and one step in the report.
+
+**The user's decisions:**
+
+1. **Several steps, one relation: keep the one relation, and give it `by_trigger`** — a map from the triggering
+   event's id (the facts document's) to exactly the numbers the report already computes for that step (`runs`,
+   `of_runs`, `waiting`, `failing`, `pending`, `untraversed`). The rule, general to any relation several steps end
+   at (a policy handling `[e1, e2]` and issuing `[c1, c2]` gives each `issues` its `by_trigger`): **an entry is flat
+   when the relation is exactly one step, `by_trigger` when it is several — never both**, which the schema holds
+   with `oneOf`. **No total of runs:** a sum counts twice a run that took both steps, and distinct runs per
+   relation are not computed today. Within decision 2.
+2. **One step, two relations: the engine splits the step by phase** — each relation gets its own numbers, in the
+   same keys. **A dated deviation from decision 2** (6 October), approved by the user: the split is no new measure,
+   but it is new computation. *The user's reason:* the per-path "never traversed" answer needs it — a phase never
+   taken must read as never — and only the engine has the per-command data before aggregation; a renderer cannot
+   split an aggregate.
+
+**How it is built.** `Paths.observe/2` with `phases: true` (only the overlay asks for it) gives such a step
+`phases: %{start: %{runs, in_flight}, run: …}`: each command the manager issued, and each event still waiting for an
+ordered manager, counts in the phase its event arrives in. **The phase comes from the runtime's own rule**:
+`ProcessManager.take/3`, which `handle!/5` now applies (an event in `starts_on` with no run starts one; any event
+reaches a running run; an `ends_on` event ends the run after its reactions; nothing reaches a run that ended — a
+later start event does **not** start a new one for the same correlation; a timer's firing is always `run`, and
+its step is not split), folded over the log from its first event by `ProcessManager.arrivals/2` with the
+subscription's decoding (`Consumer.decode_all!/3`) and `ProcessManager.correlation/2` — as a replay takes it,
+whatever the period, since a run may have started before it (tested with a period that starts during a run).
+The fold stops at the first event that does not decode — a row of newer code, say — as the subscription stops there:
+what comes after it has no phase yet, and the overlay answers rather than failing where the report says the
+subscription is failing (tested). A test dispatches real events through a fixture
+(`PhaseRig`) whose manager notes the phase its own state shows, and holds the fold to it command by command.
+`Conformance.steps/2` reads each phase for "never" and "not yet" by the report's own predicate, against the pending
+set of the whole step list, so a phase never taken is "never" while the report's step was taken (tested). A step
+the overlay finds at no relation, or at more than its phases', raises: no accepted shape reaches it, and batch 5
+skipped it silently. `failing` is the manager's (a failure in its stage is attributed to the consumer, not to
+an event), so each phase carries it whole. `sets`/`cancels` carry no numbers (batch 5), so no split there.
+
+**Per-phase numbers need not add up to the report's step:** a run that issued the command at its start and during it
+is one run there and one in each phase. **The report itself does not change:** `Paths.observe/2` and
+`Conformance.steps/2` without the option are what they were, and a test holds them equal, the option's `phases`
+dropped, for every fixture. The facts document and its schema are untouched, and so its digest. A test over every
+fixture and a compiled contract with both shapes holds that every relation a step of the report ends at has numbers
+— flat, `by_trigger` or by phase — and no other relation has a step's.
+
+*Left as known:* the fold decodes every event the manager takes, from the first, each time an overlay is computed —
+only for a manager with the shape, which no fixture but `PhaseRig` and no client tree has; a manager inside the
+dispatch transaction deployed onto history starts at the head without a replay, so until it is rebuilt the fold
+may read a run it never saw; a manager's callback may issue on start a command only its `on` declares (dispatch
+checks the union of both reactions), which then counts on the `on` relation — not split, as before.
+
+### E13a — fixes after the final review (7 October)
+
+**The user's decisions (7 October),** after not recognising those recorded on 6 October (notes above):
+
+- **A.** The model pages keep their Mermaid diagrams until E13b — confirmed.
+- **B.** Node ids switch to the contract's `id:` (ID3, in `main`) when the branch is rebased onto `main`, in the same
+  PR, before it is opened — confirmed; done with the user, not here.
+- **C.** The PR says `No issue: E13 is planned and tracked in PLAN.md` — confirmed.
+- **D. No split of a process manager's step by phase.** Kept: `by_trigger` for one relation several steps end at (a
+  policy handling several events) — one entry per step, as the report has one line per step. **The one shape where a
+  manager issues one command on one event both as the event starts a run and during it** (two `issues`, `phase`
+  start and run, one step in the report) **gets no numbers on either relation**; the overlay's moduledoc, its
+  schema and the CHANGELOG say so. *Why:* the log does not record the phase. Reconstructing it by replaying history
+  took a refactor of the running engine (`ProcessManager.take/3`, `arrivals/2`, `correlation/2`, which `handle!/5`
+  then used), decrypted personal data on every overlay request, and could be silently wrong after an operator's
+  skip of a row (`Subscription.skip/2`) or during a rolling deploy — for a shape no real contract has (only the
+  `PhaseRig` fixture). *Rejected:* the replay (above); a `phase` column on the commands table (null for most rows —
+  commands of people and policies).
+
+**A later stage, not built: record where a process manager's run started.** Agreed with the user: one field on the
+process managers' runs table (`eh_os_contract_process_managers`, one row per run, exactly one start each) — the log
+position of the event that started the run, written by the engine when it creates the run's row. A command whose
+cause is that event was issued at the start; any other cause of the same run, during it. The overlay can then split
+such a step by phase from the log alone: always known for runs started after the change, "unknown" for older ones;
+no replay, no decryption. It needs a library migration that hosts run (CHANGELOG, "a host has to act"). Done when the
+user decides — e.g. when a real contract has the shape.
+
+**What changed:**
+
+1. **The phase split removed** (D). `process_manager.ex`, `paths.ex` and `conformance.ex` are back to their state
+   before it, byte for byte (`git diff 6d5bcb9` on them is empty), so dispatch's process-manager path is as it was.
+   `Graph.Overlay` keeps `by_trigger`; a manager's two phase relations get nothing. `PhaseRig` stays, simplified (no
+   state, no phase in its note): it holds a policy with two triggers and the ambiguous manager step, and now a
+   manager that starts and ends a run on one event, for the runtime's test below. The report is unchanged:
+   checked by dumping every fixture's report and step list, after the same seeded log, on 564f2d5 and on this
+   change — equal, but for `PhaseRig`'s contract version, since the fixture changed. A test now holds the
+   overlay's `untraversed` to the report's untraversed lines for every fixture.
+2. **A step that ends at no relation, or at two that are not a manager's phases,** raised in the overlay (a 500 on
+   the HTTP route). It now gets no numbers and a warning is logged; the test over every fixture and a compiled
+   contract with both shapes fails on such a step, so a new DSL shape is noticed.
+3. **CHANGELOG:** the new return shape of the public `build/*` (`Graph.Contract`, `Unit`, `Lifecycle`,
+   `ContextMap`, `System`) moved under "a host has to act", with what a host calling them does; they stay public
+   until E13b removes them (chosen over `@doc false`: a host may call them today). The overlay's entry says what
+   `untraversed` is (the report's reading of the step) and that the ambiguous shape has no numbers; the schema's
+   `untraversed`, `pending` and `relations` say the same.
+4. **The graph index's schema name** is `eh_os_contract.graph_index.v1` (was `graph-index`, unlike the others); the
+   web module's doc says it has no schema file and what it holds.
+5. **Tests:** a test said the log is not in a document "even where the contract has run" without writing the log
+   (a `DslCase`), so it could not fail for its reason — removed; `GraphOverlayTest` writes the log and builds the
+   document again. Web: every graph route shape (five) is 403 without a resolver's grant, and the four with a name
+   404 outside the registry. A runtime test: an event in both `starts_on` and `ends_on` with no run yet starts the
+   run and ends it in one step, and a later start event starts none (`ProcessManagerTest`).
+6. **`node_event.unit`** in `graph.v1.json` is absent for an event consumed from a sibling or received from another
+   application — not "included" (an own event a process includes keeps its unit).
+7. **The overlay route refuses `since` after `until`** with 400. The task takes no `--until`, so it has nothing to
+   refuse.
+8. **`mix eh_os_contract.graph` without `--output`** puts only the diagram or the document on stdout: the default log
+   handler writes to stderr for the run — the one running and the one `app.start` adds when it restarts Logger
+   (from `config :logger, :default_handler`) — and is put back after it, so the application's start-up logs (a relay
+   without a bus, JWKS) no longer land inside the JSON (seen in the sandbox, checked there after the fix). Mix's own compile output still precedes the
+   task on a first run; the moduledoc says so, and `--output` remains the advice. `@usage` lists `--json --map`.
+9. **`mix eh_os_contract.pages`** no longer fails on a file under `graph/` it cannot read, or one whose `contract`
+   is not a string (`Pages.graph?/3`); such a file is not taken as its own.
+
+**Review of these fixes** (an agent, on the diff before commit). Taken: the domain overlay's `relations` description
+had been given the contract overlay's text (now: `consumed_by` traffic); the web CHANGELOG names the 400; the log
+juggling no longer turns on a console the host left out of `:backends`, keeps a legacy `:console` level, never
+hides what the task raised behind a failed restore, and says a `runtime.exs` that sets `:default_handler` still
+wins; a test restarts Logger inside the juggling, as `app.start` does, and fails without it; the overlay test fails
+if the manager's phases are logged as an unknown shape (checked by inverting the condition); a timer step's
+`by_trigger` key would have been a three-part id (unreachable today, fixed); the overlay's moduledoc says a manager
+whose `starts_on` and `on` of one event issue different commands is read by its declarations (a command issued in
+the other phase counts on the relation that declares it — known since batch 5). *Rejected:* a test for a step at no
+relation (no shape the compiler accepts gives one; the fixture-wide test fails on it); the unreadable-file test is
+vacuous as root, and kept for a non-root run.
+
+**Gone with D** (checked in the code): an unknown `contract` module raising inside the replay; phases differing from
+the runtime after `Subscription.skip/2` or an undecodable row; personal data decrypted on every overlay request; the
+new public runtime API (`take/3`, `arrivals/2`, `correlation/2`); per-phase "never" against the report's line.
+
+### E13a — rebased onto `main`, ids from the contract's `id:` (7 October)
+
+The branch was rebased onto `main` at `4b8d826` (the merge of #211, after P2c's #212), from `083b7b9`. `main` had
+moved by the whole of wave 2 up to P2c. The rules the user set for the rebase: everything that is not E13a's stays
+as `main` has it, E13a adapts to `main`'s shapes, and decision B is done here.
+
+**Conflicts** were only where E13a and `main` changed the same lines: the graph builders (`Graph.Contract`,
+`Graph.System`, `Graph.Mermaid`, `Graph.declared_to_mermaid/2`), `Conformance`, the graph task and both CHANGELOGs.
+Each kept `main`'s change and put E13a's on top. The phase split and its removal (two commits of the branch) leave
+`process_manager.ex` as `main` has it.
+
+**What `main` changed that E13a adapts to:**
+- **A step counts occurrences, not runs** (P1a, #183). The overlay's step numbers are `taken`, where they were `runs`
+  and `of_runs`; an event's are its `occurrences` alone (`Paths.occurrences/2`, now `main`'s count); a process keeps
+  its `runs`. `Conformance.steps/2` reads "never" as the report now does: when the contract recorded an event in the
+  period (`Paths.activity/2`), not when its process had a run, so it reads a contract with no process too. Its tests
+  hold the overlay's "never" to the report's `paths.untraversed` for every fixture, not only those with a process.
+- **Contracts are named by their `id:` outside the code** (ID3, ID4, P1a). The graph API takes
+  `/graph/rehmed.settlement` and refuses a module's name as an unknown contract; its index gives `contract` (the id)
+  and `module`, as `/model`'s does. `mix eh_os_contract.graph --json --contract` takes the id, as `--contract` already
+  did on `main`. The model pages write a contract's document as `graph/<contract id>.json`. A domain has no id and is
+  still named by its module.
+- **`Model.process/1` and `Model.process_events/1`** (P2a) are how every E13a reader reaches the process; a contract
+  without one (P1c) has no process, stage or promise nodes. **`cadence` is gone** (P1d): from the process node, the
+  schema and the tests.
+- **Test contracts declare a process only when the test is about one** (P1e): `PhaseRig` gets `id:
+  "phase_rig.visits"` and loses its template process; so do six contracts the graph tests compile. The process
+  manager's runtime test reads the new event types and consumer key.
+
+**Decision B (the user's, 7 October): ids follow the contract's `id:`.** What a contract declares is scoped to its
+id — `event:rehmed.scheduling:visit_booked` where it was `event:Rehmed.Contracts.Scheduling:visit_booked` — and
+what a domain declares to the domain's module, as before (`actor:Rehmed.Domain:reception`). ID3 makes `id:`
+required, so no contract is without one and no fallback was needed. A consumed event's `declared_as` names the
+sibling's id; a domain's `contract` node is `contract:<id>`, named by its id, with its `module`. The document's
+envelope names the contract as the wire (v3) and the APIs do: `contract` (the id) and `module`; `contract_id` is
+gone. The builders of the six Mermaid pictures make their ids the same way, which the coverage test needs; the
+Mermaid identifiers stay the module's, so the dashboard is byte for byte `main`'s. The overlay keys on the same ids
+and says `contract` and `module` the same way. Moving a contract's module now moves no id, which is what an overlay
+joining on them needs.
+
+*Left as it is:* a process module (P2b) is in no document: no reader shows one before P2e, which builds the
+process's graph as `graph.v1`.
+
+
+### E13a — pre-PR review and the pull request (7 October)
+
+- **The rebase checked by a second agent:** every E13a change of the pre-rebase branch is present or adapted as the
+  section above says; nothing of `main` is undone (no line of `main`'s PLAN.md, CHANGELOGs or READMEs removed); the
+  coverage check by hand over the sandbox's 11 contracts and 3 domains finds nothing missing; the dashboard's 68
+  pictures are byte for byte `main`'s.
+- **`pre-pr-review`** fixed: a graph JSON path built from an unchecked contract id could leave `--output`, and the
+  pages task accepted any `contract` value when deciding what is its own (the id is held to D11's form in both);
+  `graph --json --since` without `--overlay` ignored `--since` (refused now); wording. Gate EXIT=0.
+- **Known, left by the user's choice (7 October), to optimise when Console calls these routes or in E13b:** a `304`
+  still builds the whole document before comparing the ETag (the digest could be cached per contract and version);
+  the domain overlay reads the log once per consuming contract on every request. Of the same kind as the known
+  "the index builds every document" and "the overlay walks the log". *Rejected for now:* doing it in this pull
+  request, which is large already, with no traffic to measure.
+- **Pull request [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217)**, "No issue: E13 is planned and
+  tracked in PLAN.md" (decision C).
+
+### E13b, step 1 — the renderer (7 October)
+
+- **Who the graph is for, from the design record** (`docs/adr/architecture.md`, decision 2; `contract-v2.md` §3;
+  DD L4): the developer and the reviewer of a change (the contract as a picture, no log), the process owner
+  (rules, scenarios and promises in the client's words), whoever watches for drift (the overlay, later), and the
+  CTO in the Console (every process together). It is **for viewing only**.
+- **The views are not approved.** The six pictures inherited from Mermaid and panels 1–12 of the working plan
+  ("Szczegóły ekranu Graph") are a starting point, not the scope: the user has other needs voiced and wants
+  the views specified, and approved or edited, before they are built. Steps 2 (the views part) and 3 wait for
+  that specification, written on paper first, as E13a's catalogue was.
+- **The renderer, prototyped three ways** on the sandbox host under `default-src 'self'`, not committed: React
+  Flow (A), JointJS (B) and cards in HEEx with our own drawing layer (C), on the same 14 documents, the same
+  dagre layout, card CSS and HEEx panel. `@eventcatalog/visualiser`, named in the plan, turned out to be React
+  Flow with EventCatalog's kinds and Mermaid bundled, so it is A, not a fourth option. The record, with the
+  numbers and the candidates set aside: [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md).
+- **Recommended: C** (status proposed, for the user to confirm). The user ruled out zoom buttons, a minimap,
+  keyboard access and editing, and what is wanted beyond the basics was cheap in C: clickable arrows with HEEx
+  labels (about 50 lines) and animated arrows (five lines of CSS). *Rejected:* B, whose routes around cards
+  cost 1.2 to 2 s on the largest document and put labels on cards; A, whose ready interaction is not needed and
+  which puts the cards in JSX and the selection in React.
+- **Found by the prototype, for step 2:** LiveView resets a position kept in a `style` attribute, and its
+  `JS.ignore_attributes` restores it through `setAttribute`, which the CSP refuses, so positions live in a
+  constructed stylesheet, with a test; two styling defects (an arrow's click area cut by its dash, and drawn
+  black without `fill: none`) passed every numeric check and showed only on screen, so each change to the
+  drawing layer is looked at in a browser. JointJS's paper injects a `<style>`, which a scan of its bundle had
+  missed.
+
+### E13b — C accepted, and the batches (7 October)
+
+The user accepted C (`docs/adr/graph-renderer.md` is *accepted*) and the split of the rest of E13b into five
+batches on the one branch and pull request (#219), in order:
+
+1. **The package and its drawing layer**: `packages/eh_os_contract_graph`, depending on `phoenix_live_view`
+   only, with a component that turns a document and its overlay into cards and arrow labels in HEEx; the hook
+   (measuring, dagre, arrows in SVG, `d3-zoom`); positions in a constructed stylesheet, with a test that
+   nothing sets a `style` attribute; a click on a card or an arrow as an event to the server; the palette of
+   kinds in one table; the bundle built by esbuild and committed; tests on fixture documents, without the
+   engine; its `mix check` in the gate. It draws one **temporary view, everything in the document**, as a
+   test bed, and a raw panel. The dashboard's screens stay as they are; Mermaid stays.
+2. **The views, specified on paper** for the user's review, from the needs the user has not yet written
+   down (step 1 above). Can run beside batch 1.
+3. **The views in the package**, on fixtures.
+4. **The Graph screen** on the component: panels, the lifecycle, the overlay, the table of events and the
+   promises in sentences; on Contract status, what one run is (point 4).
+5. **Mermaid cut**, the model pages as decided (b), the check in a browser, the records.
+
+Batch 1 needs no views: it is what every view is drawn with.
+
+### E13b, batch 1 — what came out (7 October)
+
+- **`packages/eh_os_contract_graph`**, a fifth Mix project, depending on `phoenix_live_view` (and `phoenix`, for
+  its test endpoint) and on no package of this repository. Modules under `EhOsContract.GraphRenderer`, since
+  the engine owns `EhOsContract.Graph`: `Canvas`, the LiveComponent a host renders (document and overlay in;
+  cards, relation labels and a raw panel in HEEx; selection as `is-selected`, `is-near`, `is-far`); `View`,
+  with one view, `all/1`, every node and relation, plus `with_observed/2` for the moves an overlay saw and the
+  document does not declare; `Marks`, what an overlay entry says as a count and states, recounting nothing. An
+  overlay whose `document_digest` is not the document's is not drawn, and the page says so.
+- **The hook** (`assets/js/eh_os_contract_graph.js`, about 280 lines): measures the cards and labels, lays them
+  out with dagre, draws each arrow as a visible line and a wide invisible one for the click, copies a label's
+  `is-*` classes onto its arrow, fits the graph whenever its cards are other cards and keeps the reader's zoom
+  otherwise. Positions, sizes and the zoom are in two constructed stylesheets; it writes no `style` and no
+  markup. The one style anything sets is d3-zoom's tap highlight on a touch device, through the CSSOM, which the
+  policy allows. A plain wheel
+  scrolls the page, Ctrl or ⌘ with the wheel (and a trackpad's pinch) zooms, a drag pans, and a press that moves
+  more than 4 px is not a click.
+- **dagre and d3-zoom are vendored**, so the build stays esbuild alone: dagre's published `dist/dagre.esm.js`
+  unmodified, and d3-zoom with the eight modules it imports bundled once into one ES module from their
+  unmodified sources, with the command that rebuilds it at its top. `NOTICE` carries every licence. The
+  package's script is an ES module the host bundles (162 KB, not minified); the dashboard's `app.js` grows from
+  150 to 251 KB minified, 46 to 81 KB gzip — the prototype's +33 KB.
+- **The dashboard** depends on the package (a path beside it, git elsewhere, as for the engine), bundles its script
+  and stylesheet into its own, and has a temporary screen, `<mount>/graph/preview`, not in the nav, that draws one
+  document of the registry with its overlay. The existing screens are unchanged and Mermaid stays.
+- **Tests:** the package's own suite (25) on three documents taken from the sandbox on 7 October and a hand-made
+  one with ids of quotes, backslashes and Polish letters, a `<script>` label, a self-loop and a dangling
+  relation: the cards and labels the hook reads, no `style` attribute, text escaped, the overlay's marks, a stale
+  overlay, selection through a LiveView; the hook's source, the bundle and the stylesheet read for what the
+  policy refuses. The sandbox draws every document of the three client trees and holds the one decoded from the
+  API's JSON to draw the same as the function's. The dashboard's preview has its test, and the design-system test
+  reads the renderer's stylesheet for tokens the build does not define. Gate EXIT=0 on CI's Elixir 1.18.4 and
+  OTP 27.2: sandbox 206, engine 1530, dashboard 64, auth 287, renderer 25.
+- **In a browser**, headless Chrome on the sandbox host under `default-src 'self'`, all 14 documents: no
+  violation, no `style` attribute, no card over a card, no label over a card or a label, no broken path. A click
+  on a card or an arrow opens its panel and moves nothing; the wheel, Ctrl with the wheel and a drag behave as
+  above; a drag that starts on a card selects nothing; both themes. **Found there, fixed:** a card placed
+  absolutely took its width from what was left of the viewport, which has no size until the layout, so it was
+  measured narrow and drawn wide, over its neighbours (up to 18 labels on cards in AppUnite `computers`); cards
+  and labels are now as wide as their content, up to their `max-width`. And the dashboard's `h4` style turned the
+  panel's heading, a client's label, into capitals.
+- **After the review (8 October)**, by an agent given the batch to read against the ADR, the overlay's schema and
+  this repository's conventions:
+  - *A relation from a card to itself was drawn as a zigzag beside the card*, and every move a lifecycle does not
+    allow is one (the overlay gives it `from` and `to` the same status): dagre 3.1.1 centres a loop's points on
+    its label. The hook draws the loop itself, out of the card's side that faces the label and back, stopping
+    short of the label. None of the sandbox's documents has one, so it is checked on the hand-made document in a
+    browser.
+  - *The graph was fitted once per page*, so another document kept the last one's zoom, and a canvas laid out
+    while hidden was never laid out again. It is fitted again when its cards change, and laid out again when the
+    canvas changes its size.
+  - *The check of the hook's source let a style through* an SVG helper given a `style` key; it now refuses the
+    word anywhere in the code.
+  - *An update that names only some attributes* (`send_update/2` with only an overlay) raised or cleared the
+    overlay; what it leaves out stays.
+  - Smaller: `.is-far` scoped to the graph; a determinism test that tested nothing replaced by one over maps
+    large enough to lose their keys' order; two limits written down (an id with a carriage return or a NUL
+    cannot be selected; the dashboard's script and the renderer's markup are updated together); stale text in
+    `mix.exs`, the README and here. The sandbox now also draws the engine's real overlay over every document
+    and holds the three fixtures taken from it to today's schema.
+  - *The dashboard's `NOTICE` does not name dagre and d3*, which its `app.js` now carries. **The user's decision
+    (8 October): no new pattern.** The rule in place since `NOTICE` came in (22 September, `d4c751dc`) is that it
+    names third-party files copied into a package — Mermaid, the fonts — and the renderer's `NOTICE` follows it
+    for its vendored dagre and d3. Code a dependency brings into a bundle is not named: the dashboard's `app.js`
+    has carried Phoenix's (MIT) from the start without it. *Rejected:* the renderer's licences repeated in the
+    dashboard's `NOTICE` (a new pattern, and inconsistent while Phoenix is not there). **Open, for whoever owns
+    the convention:** whether a package that bundles a dependency's code names it — Phoenix today, dagre and d3
+    now. So stays the bundle's comment from dagre's own file pointing at its licence file, which is not
+    vendored. Step 4 above ("`NOTICE` wycięty" with Mermaid) holds for Mermaid's section only: the fonts are in
+    the file since 28 September.
+- **Not done, known:** AppUnite `computers` fitted to the screen is unreadable, as the ADR said: a matter of views.
+  The panel is raw (the node's facts, nested values as JSON) until batch 4. Locally, mise's Elixir 1.20.4 fails
+  the engine's gate on new type warnings in code this batch does not touch (`EhOsContract.Trace`,
+  `EhOsContract.Bus.Local.Consumer`, `test/support/shredding_rig`); CI runs 1.18.4, which passes.
+
+### E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)
+
+- **The user's decision (8 October): the views are the six pictures the Mermaid diagrams draw, drawn with the
+  renderer** — "takie same widoki jak są w mermaidzie, tylko nowymi narzędziami". That is batch 2's
+  specification: each picture's builder in the engine (`Graph.Contract`, `Declared`, `Unit`, `Lifecycle`,
+  `ContextMap`, `System`) is what its view shows, and a test holds the one to the other. *Rejected for now:*
+  specifying new views first (step 1 above) — the needs the user has not written down, the panels and the
+  working plan's points move to batch 4 and after, onto views that already draw what the screen draws today.
+- **`EhOsContract.GraphRenderer.View`** builds them from the graph of facts: `contract/1`, `declared/1`,
+  `unit/2`, `lifecycle/2`, `context_map/1`, `system/1`, with `views/1` listing a document's views in the
+  Graph screen's order and `build/3` laying an overlay's undeclared moves over one; `all/1` stays as the test
+  bed. Each arrow says what its picture said (`async` dotted, a scenario count, `may be refused`, a promise's
+  window on a heavy arrow, `or else`, `gives <field>`, a transition's event label, a pattern's name, the
+  consumed events' names), and a relation that is not a delivery has no head. `Canvas` takes the view as
+  `view`; without it, the test bed.
+- **The drawing layer gains what the pictures need:** groups (units, stages, subdomains, contexts) as dagre
+  clusters, each a box with a title that selects it, a stage with no event a box of its own; a view laid out
+  top to bottom (the declared shape, a lifecycle); an arrow from one group to another (one stage before the
+  next), which dagre does not lay out, so each card of one is held before each card of the other and the arrow
+  is drawn box to box; an arrow's line (solid, dotted, heavy) and head as attributes of its label, which the
+  hook copies; a state card listing its fields, a process's end in green, a lifecycle's end heavier and its
+  start a dot; a label with nothing to say that takes no room.
+- **Where the view is not the picture**, by the facts being finer (*confirmed by the user, 8 October: kept —
+  "teraz ma większy sens"; the two timer arrows kept as two*): a
+  process manager's start, its end and an event it takes during its run are arrows of their own (`starts`,
+  `ends`, `during the run`), where the picture drew a manager's reaction only when it issued a command — so
+  Rehmed's `documentation_chase` had no arrow from the visit's end that starts it, nor TaxVision's
+  `monthly_registry_check` from the confirmation that starts it; a timer a manager cancels is drawn as one it
+  sets is (no sandbox manager cancels one); two arrows of one type between the same two cards say which is which
+  (TaxVision's timer `sets · at start` and `sets · during the run`, one arrow in the picture). And by the
+  renderer, as batch 1 drew it: its cards (kind, label, name) everywhere, where Mermaid drew the label alone,
+  and colours rather than Mermaid's shapes.
+- **The preview** (`<mount>/graph/preview`, temporary) picks a view (`?view=`) and draws under it the Mermaid
+  diagram of the same picture, as the Graph screen draws it, to compare them on one page — with the log over
+  the full graph, a lifecycle and the system, as there. The Graph screen is unchanged (batch 4).
+- **Tests:** the renderer's suite (46) on six documents of the sandbox (three taken today: a process with stages
+  and a promise, a boundary, a lifecycle) and the hand-made one, now with an external giving a field: each view's
+  rules, the views a document lists, the groups and the looks in the markup, a group's title selecting it, no
+  `style` in any view of any fixture. `sandbox/test/graph_views_test.exs` holds every view of every contract and
+  domain of the three client trees to its picture's builder — every card, group and arrow of the picture is in
+  the view, and the view adds only the manager's flow above — and holds the arrows' words where the picture said
+  a number (async, scenarios, a window, a transition's label). It goes with the builders in batch 5.
+- **In a browser**, headless Chrome on the sandbox host, all 48 views of the 14 documents, with the Mermaid
+  diagram stubbed out: no violation of the policy, no `style` attribute, no card over a card, no label over a
+  card or a label, no card outside its group or inside another's, no group title outside its box or over a card,
+  no group over a group, no broken path, no console error. The Mermaid diagram itself breaks the policy on the
+  preview as it does on the Graph screen today (865 refused inline styles there). **Found there, fixed:** a
+  lifecycle's start dot, black, did not show on the dark canvas (now the theme's ink) and carried the log's count
+  of the unit's aggregates, its card being the unit's (the dot shows nothing); an arrow across a stage's title
+  hid it (the title lies over arrows); the preview laid the log over a unit's view, mixing its scenario counts
+  with the log's.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: `mix check` in `sandbox/` failed once on connections, not on code —
+  9 of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside another
+  `phx.server` of the sandbox holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 209,
+  engine 1530, dashboard 65, auth 287, renderer 46.
+- **Not done, known:** the system's arrows carry the consumed events' names, as the picture did, not their
+  labels (working plan, point 3); the panel is raw; AppUnite `computers` fitted to the screen is as unreadable as
+  its Mermaid picture.
+- **Batches 2 and 3 are closed** (the user, 8 October, after checking views on the preview: "wygląda git"). **For
+  batch 4, the user's decision:** first the Graph screen draws the pictures it draws today with these views instead
+  of Mermaid, the panel still raw; then the panels and the rest of batch 4 one point at a time, each described for
+  the user's approval before it is built. *Rejected:* the whole of batch 4 in one go.
+
+### E13b, batch 4 — the Graph screen on the renderer (8 October)
+
+- **The Graph screen draws with the renderer** (`EhOsContract.Web.Live.Graph`): the same sections, headings and
+  order as before — each domain's context map and system, the contract selector, the declared shape, the full
+  graph, each unit and its lifecycle — each a `Canvas` over the engine's `graph.v1` document, with the view of
+  the same picture. The log (`Graph.Overlay`) lies over the full graph, a lifecycle and the system, as it did, and
+  is read once the socket is connected: the first, static render reads none (before, the full graph and the system
+  read it on both renders). A click on a card or an arrow opens the renderer's panel, still raw, beside its
+  picture. No Mermaid is left on the screen.
+- **A canvas is as tall as its picture fitted to its width**, up to `min(72vh, 760px)` as before and at least
+  120 px: in a box of a fixed 760 px most pictures sat small in empty space (AppUnite's context map is 150 px
+  tall), and a page was 7,000 to 8,800 px long; now 3,100 to 5,200. A change in the drawing layer, the hook and its
+  stylesheet; a canvas keeps its height when the window is resized, as it keeps its zoom. *(Superseded the same
+  day, below: a canvas whose width changes is fitted again unless the reader has moved the graph.)*
+- **The preview stays until Mermaid goes** (batch 5), though its moduledoc had it go with this step: it is the one
+  page that draws a view beside its Mermaid diagram. Its text, the dashboard's README and `app.js`'s comments now
+  say the Mermaid diagrams are the preview's.
+- **Tests:** the screen's suite holds each canvas to its view — the cards of the context map, the system, the
+  declared shape, the full graph with the overlay, the unit and the lifecycle are those `View.build/3` gives —
+  and holds the static render to reading no log, every picture to a canvas, and the page to no `pre.mermaid` and
+  no `style`.
+- **In a browser**, headless Chrome on the sandbox host, the Graph screen with each of the 11 contracts selected,
+  8 to 10 canvases a page: no violation of the policy, no `style` attribute, no card over a card, no label over a
+  card or a label, no card outside its group, no group over a group, no broken path, no console error. A click on
+  a card opens its panel and the canvas keeps its height.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: `mix check` in `sandbox/` failed on connections, not on code — 9
+  of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside another
+  `phx.server` of the sandbox holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 209,
+  engine 1530, dashboard 65, auth 287, renderer 46.
+- **Next:** the user's check of the screen; then the panels and the rest of batch 4, one point at a time, each
+  described for the user's approval before it is built.
+
+### E13b, batch 4 — the panels (8 October)
+
+- **The user's decisions (8 October):** the panels are built before the user checks the screen, all at once
+  ("build the panels before I check") — *rejected:* one point at a time, each described for approval first (the
+  decision of the same morning); and the screen takes more room ("without those big margins"), the panel as tall
+  as the canvas beside it and scrolled inside.
+- **`EhOsContract.GraphRenderer.Panel`** says what is selected, from the document alone: each item of the working
+  plan's points 1, 2, 6 and 8 to 12 and "Pole" (catalogue table (ii) of "E13a — catalogue of `graph.v1`") is a
+  node's own facts or a join that **`EhOsContract.GraphRenderer.Lookup`** makes — relations into and out of a
+  node, nodes by an owner field, scenarios by `covers` and by `target`. A panel for every node kind a view draws
+  (command, event, policy, process manager, timer, effect, read model, query, unit, rule, status, actor, external,
+  context, subdomain, process, stage, promise, publication, contract, value, entity) and for every relation, the
+  view's own (`gives`, an undeclared move) among them; anything else shows its facts as the document has them.
+  A field reads the same everywhere: type, required, default, personal data of whom (encrypted, erased with
+  them), a pointer at a person (in the clear), a domain value's members and unit, an entity, the system that
+  gives its value, the host. Scenarios show their data as the document has it, redacted; a manager's are grouped
+  by what triggers them. The log's numbers are sentences. A name in a panel selects that node, drawn or not; one
+  the view does not draw fades nothing.
+- **The actors' table** (point 2): `EhOsContract.GraphRenderer.Actors.table/1`, people and systems apart, under each
+  domain's context map; a row selects its actor in the map's canvas (`phx-target` naming it), whose panel says
+  what the role may do, contract by contract.
+- **"N scenarios"** on a policy's, a process manager's and a query's card in the full graph (points 9 and 10), "0
+  scenarios" included; a unit's arrows say theirs as before.
+- **Room:** a page with graphs takes the window's width (`main:has(.ehg)`); the panel is 300 to 420 px wide, as
+  tall as the canvas (`contain: size`, stretched in the grid) and scrolled inside; with a panel open the canvas is
+  at least `min(420px, 72vh)`, so a small picture does not leave the panel no room. The canvas keeps the reader's
+  zoom when the panel opens and narrows it, as before. *(Superseded the same day, below: the panel is a sidebar
+  over the page, and no canvas changes its size for it.)*
+- **Tests:** the renderer's suite (69): a panel for every element of every view of every fixture, naming only
+  what can be selected; each point's content on the fixtures (who may issue and the grant, what depends on an
+  event, personal data, a value's members, the scenarios behind an arrow, a refusal, a policy's and a manager's
+  scenarios, an effect's operation, a query's answer, a context's terms and relations, an external's outage, the
+  domain actor's capabilities, a system arrow's events by label, the actors' table); a name in the panel selecting
+  a node the view does not draw. The sandbox renders the panel of every element of every view of all 14 documents
+  with their overlays. The dashboard: a row of the actors' table opens the actor's panel beside the map.
+- **In a browser**, headless Chrome on the sandbox host at 1600 px: every card, group and label of every canvas of
+  the Graph screen, for each of the 11 contracts, clicked — 711 panels: each opened, as tall as its canvas and
+  level with it, no `style` attribute, no violation of the policy, no console error. **Found there, fixed:** the
+  panel's parts took the dashboard's `section` frame, and a term's source fell to a line of its own.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2, beside another `phx.server` of the sandbox holding 11 connections,
+  so each project alone, in order, as before: all EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287,
+  renderer 69.
+- **The panel as a sidebar (the user, 8 October, after looking):** a panel taller than its canvas made the canvas
+  grow (the floor of `min(420px, 72vh)` set while a panel was open), so "the panel is a sidebar at the right of
+  the whole screen, attached to no canvas, always the full height, with a handle to make it wider or narrower";
+  and "a small margin on the right and the left". Built: the panel is `position: fixed` at the right of the
+  window, as tall as it, its body scrolled; one for the page — a canvas that opens a panel tells the others on
+  the page to close theirs (a window event between the hooks, no host code), and Escape closes it; its left edge
+  is a grip whose drag sets `--eh-os-contract-graph-panel-width` in a stylesheet the canvases share, kept in
+  `localStorage` (a browser that refuses storage keeps it for the page). The dashboard leaves it room
+  (`main:has(.ehg-panel) { margin-right: … }`) and pads a page with graphs by `clamp(24px, 3vw, 56px)`. The page
+  narrowing as the panel opened cut the pictures at the right, the zoom being kept, so **a canvas whose width
+  changes is fitted to it again, and its height with it, unless the reader has zoomed or panned it** — the
+  reader's view still stays (batch 1's rule), a width they did not choose no longer cuts a picture. Checked in
+  headless Chrome at 1600 px: the panel 420 px wide, the window's height, at its right edge, the page ending at
+  its left; one panel when a second canvas opens one; a drag to 617 px, kept across a reload; Escape; no picture
+  cut with the panel open; no violation of the policy, no console error. Gate: the whole `mix check` in
+  `sandbox/`, with nothing else on Postgres, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 69.
+- **Slow with many cards (the user, 8 October): "the side panel opens slowly, and scrolling the graph stutters",
+  most on AppUnite `computers`; and "let the side panel not resize the canvases".** Measured in headless Chrome
+  at 1600 px on `computers` (9 canvases, 1,251 elements): a click to the panel painted in 10 to 23 ms, the
+  server's round trip included; a pan, a zoom and the page's scroll at 16 ms a frame, at six times slower CPU too.
+  So the work itself is not slow there; what a click did was to narrow the page, which made every canvas of it
+  measure its cards again, fit again and change its height, and the page jump — the slowness seen. And the
+  painting a GPU does on a retina screen, which headless Chrome does not show, is the likely cost of a pan or a
+  zoom with many cards. Built: **the panel lies over the page** (no `margin-right`), so opening it resizes no
+  canvas; **a canvas is contained** (`contain: strict`), so what changes in one is laid out and painted in it
+  alone; **during a pan or a zoom the graph is a layer of its own** (`will-change: transform` in the zoom's
+  stylesheet from d3-zoom's `start` to its `end`), moved by the compositor without painting the cards again,
+  and painted sharp once the gesture ends — checked: `transform` while dragging, `auto` at rest and after.
+  Checked again: no canvas resized by the panel, every view of every contract laid out without a problem, no
+  violation of the policy. Gate: the whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth
+  287, renderer 69. *Not measured:* the effect on the user's own browser; if a pan still stutters, a profile
+  from it is the next step.
+- **A slow drag of the panel's edge (the user, 8 October: "can the resize be faster?").** Measured on AppUnite
+  `computers` with the CPU four times slower: 60 moves of the edge took 0.96 s of style recalculation, 16 ms a
+  move, layout 35 ms in all — the width was a custom property on `:root`, which every element of the page
+  inherits, so each move restyled all 1,251 of them. Now the drag writes a rule on `.ehg-panel` alone (on a
+  screen wider than 720 px; a narrower one has the panel cover it), once an animation frame however many moves
+  the pointer reports, and the last at the drag's end: 0.08 s of style recalculation for the same drag, 0.30 s
+  of work in all where it was 1.29 s. `--eh-os-contract-graph-panel-width` stays as the width the panel opens
+  at, which a host may set. Checked again: the drag, the width kept across a reload, no violation. Gate: the
+  whole `mix check`, EXIT=0, the same counts.
+- **Stutters in Safari, smooth in Chrome (the user, 8 October).** Every frame of a pan or a zoom wrote the zoom to a
+  constructed stylesheet, and every frame of a drag of the panel's edge its width: Chrome restyles only what a
+  changed rule can match, WebKit styles the whole page again whenever a stylesheet changes. Not measured in
+  WebKit — Playwright's headless WebKit hung opening a page on this machine, and real Safari's automation needs
+  the user to enable it; the user chose "fix it, I will check". Now what changes on every frame is a Web
+  Animation (`element.animate`, its keyframes set again each frame, `fill: "forwards"`): neither an attribute nor
+  a stylesheet, so the policy allows it and LiveView's patches keep it, and a change restyles the one element;
+  the panel's width goes to the shared stylesheet once, when the drag ends, and the gesture's layer is a class
+  on the viewport. **The user, in Safari: "it works great now."** A dated amendment in
+  `docs/adr/graph-renderer.md` turns the package's rule into "positions and sizes in a constructed stylesheet,
+  what changes every frame in a Web Animation, never a `style` attribute", and `test/assets_test.exs` holds the
+  zoom and the drag to it (checked to fail when the zoom writes a stylesheet). Gate: the whole `mix check`,
+  EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 70.
+- **Cleaning after the fixes:** stale comments and docs (the panel "beside the graph", the zoom "in constructed
+  stylesheets", a refit only "when the cards are other cards"), an unused attribute of a relation's panel, a
+  helper defined after its first use, a width read three times in `fit()`.
+- **The review (an agent, on the whole batch, 8 October):** joins, the hook's lifecycle, the policy and the
+  boundary exports found clean; 18 findings, all taken, each checked in a browser or a test:
+  - *what a panel said:* a lifecycle's start arrow named no event (an `enters` relation's event is its `from`);
+    the declared shape's promise arrow said nothing of the promise and, carrying the promise's id, hid the
+    promise's own panel — its arrows have ids of their own now; a policy taking a received event was told it
+    runs in the transaction, though the inbox runs it after whatever its delivery; personal data was "encrypted
+    in the log" on a command, a state and a read model too — now by what keeps the field (an event's log, a read
+    model's rows forgotten on erasure, a command nowhere); a transition's "not yet" read as a step's; four small
+    wordings (a new *what* starts, an empty "Fields" on a domain's event, an empty note, "Who may ask" over
+    nothing);
+  - *behaviour:* a name in the panel that named the selected node closed the panel (names send `show` now,
+    which never closes it); a click on a card turned the gesture's layer on and off and could count as the
+    reader's zoom (both wait for the graph to move); a canvas's height was written on every resize callback,
+    its own included (only a new width refits, only a new height is written); a canvas laid out again with the
+    same cards was not refitted; the panel's drag measured against a width with the scrollbar in it; a second
+    canvas's panel stayed up for a round trip (hidden at once now); the actors' table targeted its canvas by a
+    raw `#id` (an attribute selector now, escaped);
+  - *tests:* the check that a panel names only what can be selected could not fail (it now refuses an
+    unresolved name, but edge_cases.json's deliberate one, here and over the sandbox's 14 documents); a second
+    hand-made fixture, `messaging.json`, covers what no client wrote — a publication, a received event and the
+    inbox, a manager that ends and a timer it cancels; the root's `data-selected` and `deselect`;
+  - *records:* stale "beside the map" and "beside the picture", two superseded bullets above marked, Polish
+    quotes in this entry and a moduledoc translated, the ADR's amendment linked to #219.
+- **Readability, from the same review:** `panel.ex` shares one frame for every panel, lists of names with what
+  follows each (`then:`) instead of 25 hand-written lists, one function for a manager's phase, one component
+  for a context's and an external's relations; the words the views and the panels share are in
+  `EhOsContract.GraphRenderer.Words`. 1,770 lines to 1,685. *Rejected:* a table of parts per kind (it would take
+  each panel's sentences out of the template, where a reader sees what the panel says); splitting the module
+  (it moves the reading, it does not shorten it). Checked in a browser after both: all 711 elements of the
+  Graph screen clicked, each panel opened; the layer, the sidebar, the drag and every layout as before. Gate: the
+  whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 78.
+- **The rest of batch 4 — the user's decisions (8 October), on the assistant's recommendation:**
+  - **Built:** what one run is, on Contract status beside the count (point 4): "Runs in this period: 3, one per
+    visit_id." — the sentence in `Report.Sentence.runs_per/1`, the fields from the contract's model, since the
+    report carries no such field and goes to EHOS on the wire unchanged (the text report does not print it);
+    and a timer's card says when it fires (point 5: `after 24 hours`, `at check_at`). Checked on the sandbox host;
+    gate: the whole `mix check`, EXIT=0 — sandbox 210, engine 1530, dashboard 66, auth 287, renderer 78.
+  - **Dropped:** the events' labels on the system's arrows (point 3: long sentences, several to an arrow; the
+    arrow's panel lists them); "ends «…»" under an ending event (point 5: the view draws the `ends` arrow); Polish
+    stage labels in the sandbox (point 7: test data, and every label moves a contract's version).
+  - **Moved to the end of E13b, open:** the table of a process's events with what depends on each, empty in red,
+    and its promises in sentences (decision 8). The user: perhaps a tab of its own rather than a part of the
+    Graph screen — to decide when it is built.
+- **Open, for the user (8 October): every domain on one screen.** The Graph screen draws every domain the registry
+  holds, and its contract selector lists every contract; the sandbox host registers three clients' domains, so
+  they are all on one page. The user: "shouldn't there be only one? … each domain should have a tab or something,
+  so as not to mix everything" — and asked the assistant not to decide it. **The user's decision: leave it as it
+  is.** An application holds one domain in practice — #180 would make the application refuse to start under a
+  domain name EHOS did not give it — so only the sandbox, three clients in one host, mixes them. *Rejected:* a
+  tab per domain on Graph and Contract status (the assistant's recommendation); the sandbox running one client at
+  a time through `exclude:`; one section per domain on one page.
+- **Pushed** to the draft pull request #219 (the user's word).
+
+### E13b, batch 5 — Mermaid cut (8 October)
+
+- **The engine draws nothing.** Gone: `EhOsContract.Graph` (the six `*_to_mermaid` functions and `bounded/2`),
+  `Graph.Mermaid`, the six builders of the pictures (`Graph.Contract`, `Declared`, `Unit`, `Lifecycle`,
+  `ContextMap`, `System`), and `Document.graph_node/4`, `Document.edge/4` with the types they made. What leaves
+  the engine is the `graph.v1` document and its overlay; the pictures are `eh_os_contract_graph`'s.
+- **The numbers between two contracts** (runs per contract; per pair, the consumed events in the log, what waits
+  and whether something fails at the consumer): `Overlay.domain/3` took them from `System.build(…, overlay:
+  true)` and put them on the facts' ids; it computes them itself now, with the same queries (a consumer's steps
+  read once, one count for every pair) and the same sums, on the one relation the facts have per pair. Nothing
+  counted them twice before: the picture counted and the overlay borrowed. The test of its query budget moved
+  with it. *Asked by the user (8 October), answered:* the split stays — the engine owns the facts and every number
+  from the log, the renderer draws and recounts nothing, the dashboard holds the screens; with the picture
+  builders gone the engine no longer holds anything about how a graph looks.
+- **`mix eh_os_contract.graph` gives a document only**: `--contract <id>` or `--domain <name>` (optional with one
+  domain, as `view`, `glossary` and `pages` take it), `--overlay`, `--since`, `--output`. `--json`, `--system` and
+  `--map` gave way to `--domain` (`--json` came with E13a and was never on `main`); `--process`, `--mermaid`,
+  `--unit` and `--lifecycle` are refused as unknown. *Rejected:* `--json` kept as a flag that changes nothing;
+  `--system` kept for the domain's document, which holds the context map and the actors too.
+- **The model pages, decision (b), finished:** the domain's index loses its context map and a unit's page its
+  diagram; a contract's page links its document, as since E13a.
+- **The dashboard:** `mermaid.min.js` (vendored and served), its script tag in the root layout, the
+  `MermaidRender` hook with the diagrams' theme and their way past the policy (EG3), the `pre.mermaid` styles,
+  the preview (`<mount>/graph/preview`) and its test, Mermaid's section of `NOTICE` (the fonts stay, and the
+  comment in `mix.exs` on why publication is held now names them), the README's exception to the policy.
+  `app.js` 256 to 252 KB. The renderer: its documentation alone — the views' table and the palette's comment
+  named the engine's builders and Mermaid's table.
+- **Tests:** the engine's tests of the pictures went with them (`graph_test`, `graph_contract_test`,
+  `graph_domain_test`, `graph_lifecycle_test`, and `test/support/graph_coverage.ex`, which held the facts to the
+  pictures). What they held that the facts still say moved onto the document: a process's shape (its stages in
+  order, a promise's window and its three relations, an included event, a dependency) in `graph_document_test`;
+  the task in `graph_task_test` (the bytes, the overlay, the refusals, `--since` with and without an offset,
+  stdout alone); a contract with no process in `no_process_test`; the pages. The sandbox: `graph_views_test`
+  went with the builders, as batch 3 said; `declared_shape_test`, the review of Rehmed's modelling, reads the
+  renderer's `View.declared/1` over the document where it read Mermaid's text — every assertion kept but the
+  refusal of an undeclared process, which no call makes now; TaxVision's system in `e10_outputs_test` reads the
+  domain's document.
+- **Records:** the CHANGELOGs (the engine's: E13a's entry on the builders returning data replaced by "Removed —
+  the Mermaid pictures", E13a's sentences on the task updated; the dashboard's; the renderer's); dated amendments
+  in `docs/adr/contract-v2.md` §3 (requirement 6) and `docs/adr/technology-notes.md` §12; the root README and the
+  engine's.
+- **Against *Odbiór E13b*:** `grep -ri mermaid packages sandbox` is clean but `CHANGELOG.md` and two ```` ```mermaid
+  ```` blocks in `packages/eh_os_contract/docs/authorization.md` — a sequence diagram and a flowchart of the
+  documentation, which GitHub draws, as in the root README and `docs/adr/architecture.md` outside the grep; not
+  the library's. **Left for the user to decide.** Panels on the three domains: batch 4.
+- **In a browser:** the sandbox host on :4011 with a build path of its own (the user's server held :4010),
+  headless Chrome at 1600 px, under the `default-src 'self'` the host serves, each of the 11 contracts: 8 to 10
+  canvases, no violation of the policy, no console error, no `style` attribute, no card over a card or a label,
+  no broken path; `window.mermaid` undefined, `app.js` the one script, no request for `mermaid.min.js` (404 now),
+  `/dashboard/graph/preview` 404; a click on a card, on an arrow of the system and on a card of the full graph
+  opens its panel; the system's arrows carry the overlay's numbers. The same screen from the function's document
+  and from `/graph/:contract`: the sandbox's renderer test holds it since batch 1.
+- **Gate**, on CI's Elixir 1.18.4 and OTP 27.2: the whole `mix check` in `sandbox/` failed on connections, not on
+  code — 9 of the engine's tests in `SchemaTest` and `AppendLockTest` refused `too_many_connections` beside the
+  user's `phx.server` holding 11 — so each project's gate ran alone, in order, all EXIT=0: sandbox 206 (in the
+  whole run), engine 1484, dashboard 62, auth 287, renderer 78.
+- **Open, for the user:** (1) the table of a process's events with what depends on each, and its promises in
+  sentences (decision 8) — the last of E13b: a tab of its own or a part of the Graph screen; (2) the two
+  documentation diagrams above; (3) step 7 outside this repository — an issue in `eh-os` (a screen of processes in
+  the Console, and how the Console authenticates to `/graph`) and a pull request in `ehos-tools` (the template
+  mounts the dashboard, decision 6) — on the user's word.
+
+### E13b — the architecture review (9 October)
+
+The user asked for a review before calling E13's architecture closed, so that what is left (decision 8's table,
+the Console reading `/graph`, the template mounting the dashboard) is added without changing it. An agent reviewed
+the division of responsibility, the architecture, Mermaid's leftovers and duplicated functionality over the whole
+branch against `main`; its findings were checked in the code before they went to the user. **Holds:** the
+renderer does not depend on the engine; the engine holds no look; the dashboard builds no graph content; every
+number from the log has one source; Mermaid is gone from the code (the CHANGELOGs, and diagrams of the
+documentation, are left); no two dashboards and no two graph tools — `Brief` is gone, and `view`, `glossary`,
+`report` and the pages answer other questions for other readers. **Open, each to be explained to the user and
+decided one at a time:**
+
+1. **What "additive" means for a reader of `graph.v1`.** The schemas close every object and require every node
+   kind and relation type, and `schema` stays `eh_os_contract.graph.v1`, so a reader holding an older schema
+   refuses a newer document with one key more, and nothing says what may change inside v1. It does not matter
+   while the engine and the renderer come from one commit, as in the dashboard; it does once a reader on
+   another commit reads `/graph` — the Console, reading applications pinned to different engines. *The user's
+   decision (9 October): later.* To do before the Console is pointed at `/graph` (step 7's issue in `eh-os`): a
+   rule in the schemas' descriptions, the engine's README and the CHANGELOG — v1 changes only by addition
+   (optional keys, new node kinds, relation types, scenario kinds, overlay keys), a reader ignores what it does
+   not know and does not assume a new key is there, and removing or changing the meaning of anything is v2 — and
+   a renderer test drawing a document with an unknown node kind, an unknown relation type and an extra key.
+2. **What depends on an event is decided twice, by two rules.** The panel's "What depends on it" is the
+   renderer's own list of relation types (`panel.ex`, around line 185), with the unit's own fold (`builds`) in
+   it and the sibling contracts that consume the event out of it, since a contract's document does not say who
+   consumes its events (the domain's does). `event-without-consumer` in `mix eh_os_contract.check` counts the
+   siblings and not the fold. On the sandbox (9 October): the check warns of 18 events; the panel shows 14 of
+   them as depended on, by their unit's fold alone, and agrees on 4 (a boundary's events, with no fold); and
+   Scheduling's `visit_completed`, which two contracts consume, shows only its unit's fold. Decision 8's table
+   (its shape unconfirmed, above) was to have such a column. The fix the review proposes: the engine says, on each event, what depends on it,
+   by the check's own predicate, the siblings included — an addition to v1 — and the panel and the table show
+   it.
+3. **A process is part of a contract's document, and P2h takes it out of the contract.** `View.declared/1` draws
+   the first process, `View.views/1` lists `:declared` without a process id, and the renderer decides which
+   events belong to a run (`unit != nil or included`, `view.ex`), which is `Model.process_events/1`'s rule.
+   Cheap now: `{:declared, process_id}`, the run's membership as a field the engine gives, and P2e adding a
+   document of `kind: "process"` to `graph.v1` (an addition).
+4. **Smaller:** what happens to personal data is worded by the renderer from a node's kind where the engine's rule
+   depends on more (`forget/2`, the delivery); "waiting" and "failing" are read from the overlay's raw maps in
+   three places rather than given as the report's booleans; a promise's window reads "within day" on its arrow
+   and "kept within 1 day" in its panel; stale text in `marks.ex` (views "not specified yet"), the task's
+   moduledoc (pictures "the dashboard's"), `graph_live.ex`'s moduledoc (a task moduledoc that is gone), this
+   plan's DD paragraph on comparing `graph --json`; `docs/adr/dashboard-design-system.md` still describes the
+   Mermaid theme and needs a dated amendment.
+5. **`/model` and `/graph`** are two JSON exports of one contract, and the dashboard's README gives them the same
+   readers (the Console, CI, a renderer); neither has a reader in `eh-os`. For the user: name `/model`'s own
+   reader (the DSL as written) and point the Console at `/graph`, or retire `/model`.
+
+### E13b — the review's points settled (9 October)
+
+The user went through the review's points one at a time; what was decided and built:
+
+1. **"Additive" in v1** — later, as recorded above: before the Console reads `/graph`.
+2. **What depends on an event** — *the user's decision:* the renderer judges nothing; whether an event is used is
+   `mix eh_os_contract.check`'s to say. The panel's "What depends on it", with its red "Nothing depends on it",
+   is gone: what follows from an event is on the views' arrows. One thing only that section said: which
+   publication an event leaves as, which the system's picture shows from the contract and the publication's
+   panel names. Nothing is added to the engine for it: who consumes an event from another contract is in the
+   domain's document, and a graph of every contract at once, explored and filtered, is an idea of the user's
+   for later — *not now, the user's word*; the documents already join on ids (checked 9 October: 53 ids shared
+   between the sandbox's 14 documents, each one declaration with complementary keys, no value in conflict; 14
+   consumed events tied to their originals by `declared_as`).
+3. **A process in a contract's document** — *the user's decision:* wait for DD. P2e (#220) builds a process's
+   picture on `graph.v1` once E13a is in `main`; it must move the renderer's `View.declared/1`, the `:declared`
+   of `View.views/1` (no process id) and the rule of which events make a run (`view.ex`: `unit != nil or
+   included`, `Model.process_events/1`'s), and give a process a document of its own (`kind: "process"`, an
+   addition). Known for the merge of `main`: P2f moved the sandbox's processes into modules, so the Graph screen
+   shows no declared shape for the sandbox until P2e, as P2f says; `main`'s `sandbox/test/declared_shape_test.exs`
+   (reading the process module) replaces this branch's.
+4. **Smaller, built:** the overlay says whether the report lists a step as waiting or failing (`waits`, `fails`,
+   from `Conformance.waiting?/1` and `failing?/1`, public now), and `Marks` and the panel read them; a field of
+   an event or a read model says what keeps its value about a person (`kept`) — *the user's choice: the engine
+   gives it as a fact* — and the panel words it from that; a promise's window reads `within 1 day` on its arrow as
+   in its panel; the "after the transaction" rule is one function in the views; a context-mapping pattern is a
+   relation between two contexts or a context and an external, and says `symmetric` — the renderer lists no
+   patterns; stale text in `marks.ex`, the task's moduledoc, `graph_live.ex`, the overlay's moduledoc and
+   schema, the DD paragraph above; a dated amendment in `docs/adr/dashboard-design-system.md`. The renderer's
+   fixtures taken from the sandbox were taken again: only `kept`, `symmetric` and the digests moved.
+5. **`/model` and `/graph`** — *the user's decision:* `/model` stays, named for its own reader (the declarations
+   themselves: a code generator, a diff of two versions); a graph or a picture — the Console — reads `/graph`.
+   The dashboard's README says so.
+6. **The two Mermaid blocks in `packages/eh_os_contract/docs/authorization.md`** — *the user's decision:* they
+   stay, an exception to *Odbiór E13b*: diagrams of the documentation, which GitHub draws, not the library's.
+
+### E13 — `main` merged, and what it asked of the graph (9 October)
+
+The user's decision: E13a and E13b go to `main` together, after `main` is merged into them, and nothing is
+pushed until the user says so, since every push starts a CodeRabbit review. `main` was 165 commits ahead (DD
+waves 2 and 3). Merged, not rebased: 65 commits replayed over `PLAN.md` and the CHANGELOGs would have met one
+conflict dozens of times, and both pull requests are open. The merge commit only resolves conflicts; what
+`main` asked of the graph came after it, a commit each:
+
+1. **The tests of a process's shape and runs** read two invented contracts with a process of their own, as
+   `main`'s graph tests did: P2g (#228) moved the rigs' processes into process modules, and a contract may
+   still declare one until #221.
+2. **`main`'s rules for published docs** (#141): `Graph.Facts` hidden as `main`'s other graph builders,
+   plan stages out of `Graph.Document`'s and `Graph.Overlay`'s docs, no reference to a hidden module, the
+   dashboard's `Api.Graph` hidden as the other API plugs.
+3. **What `main`'s DSL added**, in `graph.v1` and the panel — *the user's decision, before `graph.v1` has a
+   reader outside the dashboard:* a command's `reads` (T2a, #240) and `actor_is` (A1, #247), a unit
+   scenario's `as` and `given_entities`, a given's `at` (S2, #251). Optional keys; no id moves.
+4. **`Model.to_data/1` redacts a scenario's `given_entity` rows** by the entity's personal fields, which it
+   published as written: a gap of T2a, found while adding the rows to the graph, which redacts as the export
+   does.
+5. **The renderer's docs are held as the other packages'** — *the user's decision:* `docs
+   --warnings-as-errors`, the doc coverage test, `Lookup`, `Panel`, `Marks` and `Words` hidden, the package in
+   the docs build.
+
+CodeRabbit's review of E13a: its point on two edges with one id was on the pictures' `edge/4`, which E13b
+removed with them, and the graph of facts already tells such relations apart; its nitpick asked a published doc
+for `logs_to_stderr/1`, which `main`'s rule keeps `@doc false` with a comment naming its callers. Its review of
+E13b had no points.
+
+**Not done here, as decided on 9 October:** a process module has no `graph.v1` document yet, so after the merge
+the Graph screen shows no declared shape for the sandbox's clients, as P2f (#222) said it would until P2e (#220).
+Nor its scenarios, its stage order (O1, #260) or its runs; the renderer's fixtures keep the contract processes
+they were taken with.
+
+### E13 — pushed, `main` merged again, and an audit against `main`'s conventions (9 October)
+
+The user's word: push. Before it `main` had moved again — the glossary joined to the code (L1, #269, #270) and
+wave 4 closed (#271) — so it was merged a second time, the engine's CHANGELOG the one conflict, and the gate run
+again. `graph/e13a-document` was fast-forwarded to E13b, which marked #219 merged, and the merge pushed onto it:
+#217 now carries all of E13.
+
+Then, at the user's request, a check that nothing of `main` was lost, overwritten or ignored. Every line `main`
+added since E13 branched and the merged tree lacks is in 22 files, each an intended replacement: the Mermaid
+modules and tests E13 removes, whose one new capability on `main`, drawing a process module by its id, no task
+or screen used and is P2e's (#220); prose E13 rewrote. An audit of E13's code against `main`'s conventions found,
+and the following commits settle:
+
+1. **The dashboard's bundle carried dagre and d3 without attribution**: E13b took Mermaid's section out of its
+   `NOTICE` and left only the fonts.
+2. Small: a published moduledoc citing the working plan, `MAINTAINING-DOCS.md` on three packages, a process
+   name read with `Atom.to_string/1` where `main` reads a module's string id, two test contracts with one id.
+3. **Functions only the library calls are hidden** — *the user's decision, documentation only*:
+   `Model.json_data/1`, `Conformance.waiting?/1` and `failing?/1`, the renderer's seven per-picture functions of
+   `View`. `Conformance.steps/2` stays published, as `main` kept `lifecycles/2`.
+4. **A term's word in code** in the domain's document and the context's panel — *the user's decision*: L1 left
+   it to E13 and L4.
+5. **The changelogs say what a host gets from `main`** — *the user's decision* — not E13's batches.
+
+### Wobec programu DD
+
+DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
+jako `graph.v1` i rysuje go komponentem, a nie `Graph.process_to_mermaid/2`; weryfikacja refaktorów (W3, W4, P2a)
+porównuje dokument JSON zamiast `graph --overlay --mermaid`. Etap DD, który wejdzie przed E13a, robi to jeszcze po
+staremu (dokumentu nie ma), a E13b wytnie jego Mermaida razem z resztą.
 
 ## Dopisek 5 października (2) — manifest oferuje query i zapisy (#133, `eh-os` D-73)
 
@@ -925,6 +2619,9 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
   (`DataCase`), scenariusze sandboxa.
 - Refaktory bez zmiany zachowania (W3, W4, P2a): `mix eh_os_contract.report` i `graph --overlay --mermaid` sandboxa
   bajt w bajt przed i po (skrypt w scratchpadzie).
+  *5 października (E13):* po E13b Mermaida nie ma — porównuje się dokument `graph --json` i jego nakładkę.
+  *9 October:* the flag is gone; the document is `mix eh_os_contract.graph --contract <id>` (or `--domain <name>`),
+  its overlay the same with `--overlay`.
 - PR-y przesuwające werdykty (P1a, P2d, P2h, O1, X1): diff raportu i `check`; zmieniają się tylko zamierzone linie;
   każde nowe ostrzeżenie wyjaśnione.
 - Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
@@ -3856,6 +5553,9 @@ dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też
 zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
 pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
 razem z nimi.
+
+*5 października: plan budowy, decyzje i szczegóły ekranu — „Dopisek 5 października (3) — E13”; gdzie się różnią,
+rację ma dopisek.*
 
 **E13 — Graf jako API i osobny renderer, w miejsce Mermaida.** Pomysł użytkownika z 28 września, **bez miejsca w
 kolejności**. To jest ponowne rozważenie, które EG odłożyło („interaktywny `/graph` z JSON-a (…) jak EventCatalog —

@@ -8,21 +8,27 @@ defmodule EhOsContract.Model.Export do
 
     contract =
       model
-      |> redact_scenarios(values)
+      |> redact_scenarios(Map.get(domain, :entities, []), values)
       |> redact_service_examples(values)
       |> redact_contract_defaults(values)
 
     {contract, redact_domain_examples(domain, values)}
   end
 
-  defp redact_scenarios(model, values) do
+  @doc false
+  @spec redact_domain(map()) :: map()
+  def redact_domain(domain),
+    do: redact_domain_examples(domain, Map.new(domain.values, &{&1.name, &1}))
+
+  defp redact_scenarios(model, entities, values) do
     Map.update!(model, :scenarios, fn scenarios ->
-      Enum.map(scenarios, &redact_scenario(&1, model, values))
+      Enum.map(scenarios, &redact_scenario(&1, model, entities, values))
     end)
   end
 
-  defp redact_scenario(scenario, model, values) do
+  defp redact_scenario(scenario, model, entities, values) do
     scenario
+    |> redact_given_entities(entities, values)
     |> update_many(:given, &redact_event(&1, :event, model, values))
     |> update_one(:trigger, &redact_trigger(&1, model, values))
     |> update_many(:expect, &redact_event(&1, :event, model, values))
@@ -30,6 +36,23 @@ defmodule EhOsContract.Model.Export do
     |> redact_answers(model, values)
     |> redact_state(model, values)
   end
+
+  # The rows of the entities a scenario's command reads (plan DD, T2a, #240), by the
+  # fields the domain's entity declares: a personal one is redacted as an event's is.
+  # Kept only where the scenario gives some, so the key is not added to the others.
+  defp redact_given_entities(%{given_entities: rows} = scenario, entities, values) do
+    rows =
+      for row <- rows do
+        case Enum.find(entities, &(&1.name == row.entity)) do
+          %{fields: fields} -> redact_data(row, fields, values)
+          nil -> redact_data(row, :unknown, values)
+        end
+      end
+
+    %{scenario | given_entities: rows}
+  end
+
+  defp redact_given_entities(scenario, _entities, _values), do: scenario
 
   # A process manager's run, as a scenario expects it (plan EP4): its state's fields,
   # correlation included, say which are personal.

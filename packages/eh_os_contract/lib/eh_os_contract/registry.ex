@@ -31,7 +31,7 @@ defmodule EhOsContract.Registry do
 
   **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
   `inspect/1`, to drop from the scan before anything downstream ever sees them.**
-  `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and
+  `mix eh_os_contract.check`, `mix eh_os_contract.report`, the graph documents and
   `EhOsContract.Trace` all read contracts through this one registry, so one config key
   keeps a namespace out of every one of them at once — the alternative would be an
   exception written into each report by hand. Not a DSL word: which binary is running is

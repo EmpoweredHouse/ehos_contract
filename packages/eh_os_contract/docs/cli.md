@@ -100,65 +100,30 @@ The domain is found among the modules of `config :eh_os_contract, applications:`
 
 ## mix eh_os_contract.graph
 
-Draws a process, a contract, a unit or a domain as a Mermaid diagram
+Gives a contract's or a domain's graph.v1 document, or what the log says over it
 
-Draws one picture of the application's contracts as a Mermaid diagram: a process,
-a contract, one unit of it, a lifecycle, the domain's context map, or the system of
-contracts.
+The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
+contract the registry finds — that is, of the binary that runs — or of its domain,
+and with `--overlay` what the log says over it (`EhOsContract.Graph.Overlay`).
 
-Which picture is a flag; with none, the task lists the forms it takes. Use
-`--output` to write the diagram to a file.
+    mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
+    mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
+    mix eh_os_contract.graph --domain rehmed --output rehmed.json
 
-### `--process`: one process, for the person who owns it
+`--contract` names a contract by its `id:`. Without it the task gives the domain's
+document — its context map, its contracts and what flows between them, its actors —
+and `--domain` names the domain by its `name:`, which it may leave out when the
+application has one. The bytes are the ones the API serves, every object's keys in
+order, so two of them compare with `diff`. A document holds every fact of its
+contract or domain, whatever a renderer draws of them; the pictures are the
+renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
-    mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
-
-Draws the process as declared, before any implementation exists: its stages as
-lanes, how it can end, and each promise as an arrow carrying its time window. It
-takes `--mermaid`. With `--overlay` it is drawn as its contract's full graph
-instead, with the log laid over it (below).
-
-### `--contract`, `--unit` and `--lifecycle`: a contract, whole or in part
-
-    mix eh_os_contract.graph --contract rehmed.settlement --output settlement.mmd
-    mix eh_os_contract.graph --contract rehmed.settlement --overlay --output settlement.mmd
-    mix eh_os_contract.graph --contract rehmed.settlement --unit visit_settlement --output unit.mmd
-    mix eh_os_contract.graph --contract appunite_equipment.computers --lifecycle computer --overlay --output computer.mmd
-
-- `--contract` draws the contract's full graph: commands, events, what reacts to
-  them, timers, each in its Event Storming colour, and around them the actors,
-  read models, queries and external systems.
-- `--unit` draws one aggregate or consistency boundary: its state, commands,
-  events and invariants, and how many scenarios cover each path.
-- `--lifecycle` draws an aggregate's lifecycle: where it starts, its statuses and
-  ends, and the transitions between them.
-
-These are Mermaid already, so `--mermaid` is not needed.
-
-### `--map` and `--system`: the domain
-
-    mix eh_os_contract.graph --map rehmed --output map.mmd
-    mix eh_os_contract.graph --system rehmed --overlay --output system.mmd
-
-- `--map` draws the domain's context map: subdomains, their contexts, the external
-  systems, and the relations between them.
-- `--system` draws the contracts in their contexts and what one consumes from
-  another.
-
-Both take the domain's `name:`.
-
-### `--overlay`: the log over the picture
-
-`--overlay` lays what the log holds over `--contract`, `--process`, `--lifecycle`
-and `--system`: on a contract's steps, how many times each happened, and what waits
-or fails there; on a lifecycle, the report's counts per transition; on the system,
-the runs per contract, and per connection the events consumed and what waits or
-fails at the consumer. `--since 2026-07-01T00:00:00Z` counts only what happened
-from that moment on.
-
-A process is always drawn on its own, never as part of one global picture, and
-the system shows contracts and what flows between them, not every event: a
-contract's own steps are `--contract`'s.
+Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
+every label of a document is written in the client's language. Without it the
+document is the only thing the task writes to stdout: what the application logs as
+it starts (`--overlay` starts it) goes to stderr, so `> graph.json` is the document
+alone — once the project is compiled, since Mix prints its compilation to stdout
+before the task runs.
 
 ## mix eh_os_contract.pages
 
@@ -174,11 +139,14 @@ element.
 The domain and its contracts are found among the modules of
 `config :eh_os_contract, applications:`. The pages go where `--output` says: the
 host decides whether to commit them, add them to ExDoc's `extras`, or only read
-them. A page the model no longer has is deleted — only a file that starts with
-the marker line of the domain's pages, so another domain's pages in the same
-directory stay — and a page is never written over a file without it, nor
-through a symbolic link: then nothing is written, and the task names what is in
-the way. Nothing outside `--output` is read or touched.
+them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
+document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
+longer has is deleted — only a file that starts with the marker line of the domain's
+pages, or a `graph.v1` document of one of the domain's contracts at the path the
+task gives that contract, so another domain's pages in the same directory stay — and
+a page is never written over a file without it, nor through a symbolic link: then
+nothing is written, and the task names what is in the way. Nothing outside
+`--output` is read or touched.
 
 `--check` writes nothing, and fails naming every page that is missing, differs or
 is left over.

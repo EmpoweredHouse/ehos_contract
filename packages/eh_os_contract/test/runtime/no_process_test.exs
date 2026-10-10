@@ -13,7 +13,6 @@ defmodule EhOsContract.NoProcessTest do
     Check,
     Conformance,
     EventRun,
-    Graph,
     Model,
     Pages,
     Rejection,
@@ -21,7 +20,7 @@ defmodule EhOsContract.NoProcessTest do
     View
   }
 
-  alias EhOsContract.{AsyncAPI, OpenAPI}
+  alias EhOsContract.{AsyncAPI, Graph, OpenAPI}
   alias LifecycleRig.Rooms
   alias LifecycleRig.Rooms.Commands.{OpenRoom, RetireRoom}
 
@@ -55,12 +54,20 @@ defmodule EhOsContract.NoProcessTest do
     assert is_binary(Report.render(report))
   end
 
-  test "the graphs draw the contract and its unit" do
+  test "the graph document and its overlay hold the contract, its unit and its lifecycle" do
     {:ok, _} = issue(OpenRoom, "r-1")
 
-    assert Graph.contract_to_mermaid(Rooms, overlay: true) =~ "opened"
-    assert Graph.unit_to_mermaid(Rooms, :room) =~ "retire_room"
-    assert Graph.lifecycle_to_mermaid(Rooms, :room) =~ "retired"
+    document = Graph.Document.contract(Rooms)
+    assert document["nodes"]["process"] == []
+    assert [%{"name" => "room"}] = document["nodes"]["unit"]
+
+    assert Enum.any?(
+             document["nodes"]["status"],
+             &(&1["unit"] == "unit:lifecycle_rig.rooms:room")
+           )
+
+    assert Graph.Overlay.contract(Rooms)["nodes"]["event:lifecycle_rig.rooms:opened"] ==
+             %{"occurrences" => 1}
   end
 
   test "the generated documents, the pages, the view and the check read it" do

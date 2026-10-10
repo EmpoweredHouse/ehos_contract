@@ -1,104 +1,73 @@
 defmodule Mix.Tasks.EhOsContract.Graph do
-  @shortdoc "Draws a process, a contract, a unit or a domain as a Mermaid diagram"
+  @shortdoc "Gives a contract's or a domain's graph.v1 document, or what the log says over it"
 
   @moduledoc """
-  Draws one picture of the application's contracts as a Mermaid diagram: a process,
-  a contract, one unit of it, a lifecycle, the domain's context map, or the system of
-  contracts.
+  The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
+  contract the registry finds — that is, of the binary that runs — or of its domain,
+  and with `--overlay` what the log says over it (`EhOsContract.Graph.Overlay`).
 
-  Which picture is a flag; with none, the task lists the forms it takes. Use
-  `--output` to write the diagram to a file.
+      mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
+      mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
+      mix eh_os_contract.graph --domain rehmed --output rehmed.json
 
-  ## `--process`: one process, for the person who owns it
+  `--contract` names a contract by its `id:`. Without it the task gives the domain's
+  document — its context map, its contracts and what flows between them, its actors —
+  and `--domain` names the domain by its `name:`, which it may leave out when the
+  application has one. The bytes are the ones the API serves, every object's keys in
+  order, so two of them compare with `diff`. A document holds every fact of its
+  contract or domain, whatever a renderer draws of them; the pictures are the
+  renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
-      mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
-
-  Draws the process as declared, before any implementation exists: its stages as
-  lanes, how it can end, and each promise as an arrow carrying its time window. It
-  takes `--mermaid`. With `--overlay` it is drawn as its contract's full graph
-  instead, with the log laid over it (below).
-
-  ## `--contract`, `--unit` and `--lifecycle`: a contract, whole or in part
-
-      mix eh_os_contract.graph --contract rehmed.settlement --output settlement.mmd
-      mix eh_os_contract.graph --contract rehmed.settlement --overlay --output settlement.mmd
-      mix eh_os_contract.graph --contract rehmed.settlement --unit visit_settlement --output unit.mmd
-      mix eh_os_contract.graph --contract appunite_equipment.computers --lifecycle computer --overlay --output computer.mmd
-
-  - `--contract` draws the contract's full graph: commands, events, what reacts to
-    them, timers, each in its Event Storming colour, and around them the actors,
-    read models, queries and external systems.
-  - `--unit` draws one aggregate or consistency boundary: its state, commands,
-    events and invariants, and how many scenarios cover each path.
-  - `--lifecycle` draws an aggregate's lifecycle: where it starts, its statuses and
-    ends, and the transitions between them.
-
-  These are Mermaid already, so `--mermaid` is not needed.
-
-  ## `--map` and `--system`: the domain
-
-      mix eh_os_contract.graph --map rehmed --output map.mmd
-      mix eh_os_contract.graph --system rehmed --overlay --output system.mmd
-
-  - `--map` draws the domain's context map: subdomains, their contexts, the external
-    systems, and the relations between them.
-  - `--system` draws the contracts in their contexts and what one consumes from
-    another.
-
-  Both take the domain's `name:`.
-
-  ## `--overlay`: the log over the picture
-
-  `--overlay` lays what the log holds over `--contract`, `--process`, `--lifecycle`
-  and `--system`: on a contract's steps, how many times each happened, and what waits
-  or fails there; on a lifecycle, the report's counts per transition; on the system,
-  the runs per contract, and per connection the events consumed and what waits or
-  fails at the consumer. `--since 2026-07-01T00:00:00Z` counts only what happened
-  from that moment on.
-
-  A process is always drawn on its own, never as part of one global picture, and
-  the system shows contracts and what flows between them, not every event: a
-  contract's own steps are `--contract`'s.
+  Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
+  every label of a document is written in the client's language. Without it the
+  document is the only thing the task writes to stdout: what the application logs as
+  it starts (`--overlay` starts it) goes to stderr, so `> graph.json` is the document
+  alone — once the project is compiled, since Mix prints its compilation to stdout
+  before the task runs.
   """
 
   use Boundary, classify_to: EhOsContract
   use Mix.Task
 
-  @usage """
-  mix eh_os_contract.graph draws one picture; name which:
-
-      mix eh_os_contract.graph --process NAME --mermaid [--overlay [--since AT]]
-      mix eh_os_contract.graph --contract ID [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]
-      mix eh_os_contract.graph --map DOMAIN
-      mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
-
-  and --output PATH to write it to a file.
-  """
-
   @impl Mix.Task
   def run(args) do
     # Erlang keeps stdout in latin1 when the output is not a terminal, so
-    # `mix eh_os_contract.graph > graph.txt` truncates every codepoint to a byte. Event
-    # labels come from the contract and are written in the client's language.
+    # `mix eh_os_contract.graph > graph.json` truncates every codepoint to a byte. Labels
+    # come from the contract and are written in the client's language.
     :io.setopts(:standard_io, encoding: :unicode)
 
-    {opts, _} =
+    {opts, rest} =
       OptionParser.parse!(args,
         strict: [
-          overlay: :boolean,
-          mermaid: :boolean,
-          since: :string,
-          output: :string,
-          process: :string,
           contract: :string,
-          unit: :string,
-          lifecycle: :string,
-          map: :string,
-          system: :string
+          domain: :string,
+          overlay: :boolean,
+          since: :string,
+          output: :string
         ]
       )
 
-    refuse_ignored!(opts)
+    cond do
+      rest != [] ->
+        Mix.raise("unexpected arguments: #{Enum.join(rest, " ")}")
+
+      opts[:contract] && opts[:domain] ->
+        Mix.raise("--contract gives a contract's document, --domain a domain's; pass one of them")
+
+      opts[:since] && !opts[:overlay] ->
+        Mix.raise(
+          "the document is the declarations unless --overlay; --since applies to --overlay"
+        )
+
+      true ->
+        :ok
+    end
+
+    if opts[:output], do: write(opts), else: logs_to_stderr(fn -> write(opts) end)
+  end
+
+  defp write(opts) do
+    alias EhOsContract.Graph.{Document, Overlay}
 
     if opts[:overlay] do
       Mix.Task.run("app.start")
@@ -109,173 +78,106 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
     EhOsContract.Registry.load!()
 
-    cond do
-      opts[:map] -> domain_picture(opts[:map], &EhOsContract.Graph.context_map_to_mermaid/1, opts)
-      opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
-      opts[:contract] -> contract(opts)
-      opts[:process] -> declared(opts)
-    end
-  end
+    period = [since: since(opts)]
+    contracts = EhOsContract.Registry.contracts()
 
-  # The declared shape of one process, for a person who has not read the module.
-  # Deliberately per process rather than global: ADR §9 says navigation is per
-  # process and never global.
-  defp declared(opts) do
-    name = String.to_atom(opts[:process])
+    document =
+      case opts[:contract] do
+        nil ->
+          domain = EhOsContract.Tools.domain!(EhOsContract.Registry.domains(), opts[:domain])
 
-    contract =
-      Enum.find(EhOsContract.Registry.contracts(), fn c ->
-        match?(%{name: ^name}, EhOsContract.Model.process(c))
-      end)
+          if opts[:overlay],
+            do: Overlay.domain(domain, contracts, period),
+            else: Document.domain(domain, contracts)
 
-    cond do
-      not opts[:mermaid] ->
-        Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
+        id ->
+          contract = contract!(id)
 
-      contract && opts[:overlay] ->
-        emit_output(
-          EhOsContract.Graph.contract_to_mermaid(contract, overlay: true, since: since(opts)),
-          opts
-        )
-
-      contract ->
-        emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
-
-      true ->
-        known =
-          for(
-            c <- EhOsContract.Registry.contracts(),
-            %{name: n} <- [EhOsContract.Model.process(c)],
-            do: n
-          )
-          |> Enum.sort()
-          |> Enum.join(", ")
-
-        Mix.raise("no process #{inspect(name)}. Declared: #{known}")
-    end
-  end
-
-  # A flag the picture asked for would not use is refused rather than dropped: a unit
-  # draws no log, and a contract and a process are two different pictures. No picture
-  # at all is refused with the forms the task takes.
-  defp refuse_ignored!(opts) do
-    pictures = for key <- [:map, :system, :contract, :process], opts[key], do: "--#{key}"
-
-    cond do
-      opts[:unit] && !opts[:contract] ->
-        Mix.raise("--unit names a unit of a contract; pass --contract too")
-
-      opts[:unit] && (opts[:overlay] || opts[:since]) ->
-        Mix.raise("--unit draws the declarations only; --overlay and --since apply to --contract")
-
-      opts[:lifecycle] && !opts[:contract] ->
-        Mix.raise("--lifecycle names an aggregate of a contract; pass --contract too")
-
-      opts[:lifecycle] && opts[:since] && !opts[:overlay] ->
-        Mix.raise(
-          "--lifecycle draws the declarations unless --overlay; --since applies to --overlay"
-        )
-
-      opts[:lifecycle] && opts[:unit] ->
-        Mix.raise("--unit and --lifecycle draw different pictures of a unit; pass one of them")
-
-      opts[:map] && (opts[:overlay] || opts[:since]) ->
-        Mix.raise(
-          "--map draws the domain's declarations only; --overlay and --since apply to --system"
-        )
-
-      length(pictures) > 1 ->
-        Mix.raise("#{Enum.join(pictures, " and ")} draw different pictures; pass one of them")
-
-      pictures == [] ->
-        Mix.raise(String.trim_trailing(@usage))
-
-      true ->
-        :ok
-    end
-  end
-
-  # A picture of the domain named `name`, drawn by `draw` from its module.
-  defp domain_picture(name, draw, opts) do
-    domains = EhOsContract.Registry.domains()
-    domain = Enum.find(domains, &(Atom.to_string(EhOsContract.Model.fetch(&1).name) == name))
-
-    unless domain do
-      known = domains |> Enum.map(&EhOsContract.Model.fetch(&1).name) |> Enum.sort()
-      Mix.raise("no domain #{name}. Registered: #{Enum.join(known, ", ")}")
-    end
-
-    emit_output(draw.(domain), opts)
-  end
-
-  defp system(domain, opts) do
-    EhOsContract.Graph.system_to_mermaid(domain, EhOsContract.Registry.contracts(),
-      overlay: opts[:overlay] || false,
-      since: since(opts)
-    )
-  end
-
-  # A v2 contract's full graph, or one of its units.
-  defp contract(opts) do
-    # By the contract's id (plan DD, P1a, #183), as the dashboard's APIs name it.
-    contract = EhOsContract.Registry.contract(opts[:contract])
-
-    unless contract do
-      known =
-        EhOsContract.Registry.contracts()
-        |> Enum.map(&EhOsContract.Model.fetch(&1).id)
-        |> Enum.sort()
-        |> Enum.join(", ")
-
-      Mix.raise("no contract #{opts[:contract]}. Registered: #{known}")
-    end
-
-    text =
-      case {opts[:unit], opts[:lifecycle]} do
-        {nil, nil} ->
-          EhOsContract.Graph.contract_to_mermaid(contract,
-            overlay: opts[:overlay] || false,
-            since: since(opts)
-          )
-
-        {nil, unit} ->
-          with_lifecycle =
-            for u <- EhOsContract.Model.fetch(contract).units,
-                EhOsContract.Lifecycle.of(u),
-                do: Atom.to_string(u.name)
-
-          cond do
-            with_lifecycle == [] ->
-              Mix.raise("#{opts[:contract]} declares no lifecycle")
-
-            unit not in with_lifecycle ->
-              Mix.raise(
-                "#{opts[:contract]} has no aggregate #{unit} with a lifecycle. With one: " <>
-                  Enum.join(with_lifecycle, ", ")
-              )
-
-            true ->
-              :ok
-          end
-
-          EhOsContract.Graph.lifecycle_to_mermaid(contract, String.to_existing_atom(unit),
-            overlay: opts[:overlay] || false,
-            since: since(opts)
-          )
-
-        {unit, nil} ->
-          units = Enum.map(EhOsContract.Model.fetch(contract).units, &Atom.to_string(&1.name))
-
-          unless unit in units,
-            do:
-              Mix.raise(
-                "#{opts[:contract]} has no unit #{unit}. Units: #{Enum.join(units, ", ")}"
-              )
-
-          EhOsContract.Graph.unit_to_mermaid(contract, String.to_existing_atom(unit))
+          if opts[:overlay],
+            do: Overlay.contract(contract, period),
+            else: Document.contract(contract)
       end
 
-    emit_output(text, opts)
+    emit_output(Document.encode(document, pretty: true) <> "\n", opts)
+  end
+
+  # Runs `fun` with the default log handler writing to stderr rather than stdout, and
+  # puts it back after: a host's application logs as it starts (a relay with no bus, a
+  # key set it cannot fetch), and on stdout that would land inside the document. Both
+  # the handler running now and the one `app.start` adds when it restarts Logger, from
+  # `config :logger, :default_handler`, are moved; a console the host turned off stays
+  # off. A `runtime.exs` that sets `:default_handler` itself still wins. Called by
+  # `run/1`; public for its test.
+  @doc false
+  @spec logs_to_stderr((-> result)) :: result when result: term()
+  def logs_to_stderr(fun) do
+    env = Application.fetch_env(:logger, :default_handler)
+    handler = handler_env(env)
+    if handler, do: Application.put_env(:logger, :default_handler, handler)
+    moved? = move_handler(:standard_io, :standard_error) == :ok
+
+    try do
+      fun.()
+    after
+      case env do
+        {:ok, value} -> Application.put_env(:logger, :default_handler, value)
+        :error -> Application.delete_env(:logger, :default_handler)
+      end
+
+      # Putting it back never hides what `fun` raised.
+      if moved?, do: move_handler(:standard_error, :standard_io)
+    end
+  end
+
+  # The `:default_handler` Logger would start with, on stderr; nil where it starts
+  # none, or one that is not a console. Unset, Logger builds it from the legacy
+  # `:console` key, and starts none when `:backends` leaves the console out.
+  defp handler_env({:ok, false}), do: nil
+
+  defp handler_env({:ok, handler}), do: on_stderr(handler)
+
+  defp handler_env(:error) do
+    case Application.fetch_env(:logger, :backends) do
+      {:ok, backends} when is_list(backends) ->
+        if :console in backends, do: legacy_console()
+
+      _unset ->
+        legacy_console()
+    end
+  end
+
+  defp legacy_console do
+    :logger |> Application.get_env(:console, []) |> Keyword.take([:level]) |> on_stderr()
+  end
+
+  defp on_stderr(handler) do
+    config = handler |> Keyword.get(:config, []) |> Map.new()
+
+    if Keyword.get(handler, :module, :logger_std_h) == :logger_std_h and
+         Map.get(config, :type, :standard_io) == :standard_io and not Map.has_key?(config, :file),
+       do: Keyword.put(handler, :config, Map.put(config, :type, :standard_error))
+  end
+
+  # Moves the default handler from one device to the other, if it is on the first.
+  defp move_handler(from, to) do
+    with {:ok, %{module: :logger_std_h, config: %{type: ^from}} = handler} <-
+           :logger.get_handler_config(:default),
+         _synced <- :logger_std_h.filesync(:default),
+         :ok <- :logger.remove_handler(:default) do
+      :logger.add_handler(:default, :logger_std_h, put_in(handler.config.type, to))
+    end
+  end
+
+  # By the contract's id (plan DD, P1a, #183), as the dashboard's APIs name it.
+  defp contract!(id) do
+    EhOsContract.Registry.contract(id) ||
+      Mix.raise(
+        "no contract #{id}. Registered: " <>
+          (EhOsContract.Registry.contracts()
+           |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+           |> Enum.sort()
+           |> Enum.join(", "))
+      )
   end
 
   defp since(opts), do: opts[:since] && at(opts[:since])

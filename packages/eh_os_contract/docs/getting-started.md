@@ -137,7 +137,7 @@ credential from outside enters through `EhOsContract.call/3` instead, and over H
 
 ```
 mix eh_os_contract.check            # what the model may say, but you should hear about
-mix eh_os_contract.graph --contract getting_started.loans --output loans.mmd
+mix eh_os_contract.graph --contract getting_started.loans --output loans.json
 mix eh_os_contract.view             # the domain as a tree
 mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 ```

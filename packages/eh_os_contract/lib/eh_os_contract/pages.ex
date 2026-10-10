@@ -12,6 +12,7 @@ defmodule EhOsContract.Pages do
   #     settlement/visit_settlement/events/payment_recorded.md
   #     settlement/visit_settlement/aggregates/visit_settlement.md
   #     …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
+  #     graph/rehmed.settlement.json  a contract's graph.v1 document, by its id
   #
   # A contract's directory is its module's last segment, underscored. Each kind has a
   # directory of its own, since a contract's namespaces overlap: a read model may share
@@ -53,7 +54,8 @@ defmodule EhOsContract.Pages do
 
   @doc """
   The pages of `domain`, a domain module or its model, and of `contracts`, the v2
-  contract modules or models naming it, as `%{relative path => Markdown}`. Contracts
+  contract modules or models naming it, as `%{relative path => Markdown}`, and beside
+  them each contract's `graph.v1` document as `graph/<contract id>.json`. Contracts
   naming another domain are left out. Raises when two contracts of one context would
   share a directory, when two elements would share a page, and when a name is not
   snake_case, since pages are named after names.
@@ -77,6 +79,43 @@ defmodule EhOsContract.Pages do
     |> Enum.concat(Enum.flat_map(contracts, &contract_pages(site, &1)))
     |> paths!()
     |> Map.new(fn {path, lines} -> {path, page(domain.name, path, lines)} end)
+    |> Map.merge(Map.new(contracts, &{graph_path!(&1), graph(&1)}))
+  end
+
+  # A contract's `graph.v1` document beside its pages (plan E13a, the user's decision
+  # (b) on the model pages): the bytes the API serves, indented, without the log.
+  defp graph(model),
+    do:
+      EhOsContract.Graph.Document.encode(EhOsContract.Graph.Document.contract(model),
+        pretty: true
+      ) <>
+        "\n"
+
+  @doc """
+  Whether `text`, the content of a file at `path` under the pages' directory, is a
+  contract's `graph.v1` document these pages write for `domain` — the one kind of
+  file among them that cannot start with `marker/1`.
+  """
+  @spec graph?(String.t(), String.t(), module()) :: boolean()
+  def graph?(path, text, domain) do
+    name = inspect(domain)
+
+    # Only at the path these pages give that contract: a copy of the document a
+    # person saved elsewhere under `graph/` is theirs.
+    case Jason.decode(text) do
+      {:ok,
+       %{
+         "schema" => "eh_os_contract.graph.v1",
+         "kind" => "contract",
+         "domain" => ^name,
+         "contract" => contract
+       }}
+      when is_binary(contract) ->
+        graph_id?(contract) and path == "graph/#{contract}.json"
+
+      _other ->
+        false
+    end
   end
 
   # A path is made of names. Every name of a domain and a contract is snake_case (D1,
@@ -137,6 +176,25 @@ defmodule EhOsContract.Pages do
   defp entity_path(name), do: "entities/#{name}.md"
   defp context_path(name), do: "#{name}/index.md"
   defp contract_dir(model), do: "#{model.context}/#{slug(model)}"
+
+  # A contract's document is named after its `id:`, which D11 holds to dotted names; a
+  # model built by hand is not held to it, and an id such as `"../x"` would write
+  # outside the directory, as `paths!/1` says of a page.
+  defp graph_path!(model) do
+    unless graph_id?(model.id) do
+      raise ArgumentError,
+            "the graph document of #{inspect(model.module)} would be named after " <>
+              "#{inspect(model.id)}; a contract's document is named after its id:, a dotted name"
+    end
+
+    graph_path(model)
+  end
+
+  defp graph_path(model), do: "graph/#{model.id}.json"
+
+  defp graph_id?(id),
+    do: EhOsContract.Contract.Rules.Boundaries.id_form(%{value: id, at: nil}, "contract") == []
+
   defp contract_path(model), do: "#{contract_dir(model)}/index.md"
   defp slug(model), do: model.module |> Module.split() |> List.last() |> Macro.underscore()
 
@@ -256,14 +314,11 @@ defmodule EhOsContract.Pages do
   defp domain_page(site) do
     d = site.domain
     tree = EhOsContract.View.render(d, site.contracts)
-    map = EhOsContract.Graph.ContextMap.to_mermaid(d)
 
     [
       "# Domain #{code(d.name)}",
       "",
       "Written in #{code(d.language)}. Version #{code(d.version)}.",
-      # The context map (plan EG2), drawn from the block as a unit's diagram is.
-      ["", "## Context map", "", "```mermaid", map, "```"],
       "",
       "## Contexts",
       "",
@@ -615,7 +670,8 @@ defmodule EhOsContract.Pages do
         link("Domain #{code(site.domain.name)}", "index.md"),
         " · context ",
         link(code(model.context), context_path(model.context)),
-        " · version #{code(model.version)}"
+        " · version #{code(model.version)} · ",
+        link("graph", graph_path(model))
       ]),
       process_section(site, model),
       section("Units", model.units, &declaration_bullet(model, :unit, &1)),
@@ -843,16 +899,6 @@ defmodule EhOsContract.Pages do
           do: "Records only: no command it takes can be refused."
         )
       ]),
-      # The unit as a picture (plan EG1). GitHub draws the block; a host that puts the
-      # pages in ExDoc's `extras` adds Mermaid's script to its ExDoc configuration.
-      [
-        "",
-        "## Diagram",
-        "",
-        "```mermaid",
-        EhOsContract.Graph.Unit.to_mermaid(model, u.name),
-        "```"
-      ],
       section("Consults", u.consults, &consults(site, model, &1)),
       section("Invariants", u.invariants, fn i ->
         rejecting = for c <- commands, i.name in c.rejects, do: command_link(model, c.name)

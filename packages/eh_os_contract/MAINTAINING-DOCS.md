@@ -71,9 +71,9 @@ behaviour, not in shape. A behaviour change is the moment to search the prose pa
 4. Link it from the pages that lead to it (`README.md`, the introduction, the page before it).
 5. Run `mix eh_os_contract.docs`; `--coverage` lists what no page covers yet.
 
-## The other two packages
+## The other three packages
 
-`eh_os_contract_web` and `eh_os_contract_auth` have no generated pages and no prose pages beyond their
+`eh_os_contract_web`, `eh_os_contract_auth` and `eh_os_contract_graph` have no generated pages and no prose pages beyond their
 `README.md`. Their `mix check` builds their docs with `--warnings-as-errors` and runs their own
 `test/doc_coverage_test.exs`. They publish only what a host calls or implements; a module the host never names
 is `@moduledoc false`, and why it is built the way it is goes in a comment.
@@ -81,7 +81,7 @@ is `@moduledoc false`, and why it is built the way it is goes in a comment.
 ## Reading the built documentation
 
 The Markdown pages read as they are in the repository. The HTML, with the API reference and search, is built
-by the `docs` workflow (`.github/workflows/docs.yml`) into one archive: the three packages' ExDoc HTML, the
+by the `docs` workflow (`.github/workflows/docs.yml`) into one archive: the four packages' ExDoc HTML, the
 Markdown it is made from, and an `index.html` linking them.
 
 - **By hand**, for any branch, tag or full 40-character commit SHA (a short one is read as a branch): Actions →

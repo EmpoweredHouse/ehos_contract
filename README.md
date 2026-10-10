@@ -169,12 +169,18 @@ mounted at `/dashboard` on this repository's sandbox host the way `oban_web` mou
 app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
 showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
 status (the four questions, per contract), and graph — a domain's context map, its system of contracts and
-what flows between them, and each process's declared shape, over the log — the diagrams
-`mix eh_os_contract.graph` draws, rendered live instead of piped to a file.
+what flows between them, and each contract's full graph, its process's declared shape, its units and their
+lifecycles, over the log — drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the
+`graph.v1` document the engine gives, with a panel for whatever is clicked.
 
 ```bash
 cd sandbox && mix phx.server
 ```
+
+The same answers, and each contract's and domain's graph as a `graph.v1` document with what the log says
+over it, are JSON for any other client — EHOS Console, CI — under the host's `/api` mount: the routes are in
+[the web package's README](packages/eh_os_contract_web/README.md#the-api), and `mix eh_os_contract.graph`
+writes the same documents to a file.
 
 Then open `http://localhost:4010/dashboard`. There is no login: who may see the dashboard is the
 host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and the sandbox
@@ -201,10 +207,9 @@ runs it with `--check`, failing the build if the two drift apart. A reference th
 exact failure mode this project exists to catch in other people's systems, so it doesn't get to have one
 of its own.
 
-`mix eh_os_contract.graph` draws for two readers. `--process <name> --mermaid` is one process's declared
-shape — its stages, where it ends, each promise as an arrow carrying its window — for the process owner,
-before anything is built; `--contract` is a contract's full graph, its steps, actors, read side and external
-systems; either with `--overlay` puts the log over it, for the team that runs it.
+`mix eh_os_contract.graph` gives a contract's or a domain's graph as a `graph.v1` document — every fact a
+picture of it can draw, for the dashboard, EHOS Console or a diff in CI — and with `--overlay` what the log
+says over it, for the team that runs it.
 
 ## Using it in your application
 
@@ -239,9 +244,7 @@ boundaries below would be documentation rather than a check.
 | --- | --- |
 | `mix eh_os_contract.check` | whole-program checks over the contracts and their implementations, each finding under a stable name |
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
-| `mix eh_os_contract.graph --process <name> --mermaid [--overlay]` | one process's declared shape, no code required; with `--overlay`, its contract's full graph over the log |
-| `mix eh_os_contract.graph --contract <Module> [--overlay] [--unit <name> \| --lifecycle <name>]` | a contract's full graph — steps, actors, read side, external systems — one unit of it, or an aggregate's lifecycle (with `--overlay`, the report's counts on its transitions) |
-| `mix eh_os_contract.graph --map <domain>` / `--system <domain> [--overlay]` | a domain's context map, or its contracts and what flows between them |
+| `mix eh_os_contract.graph --contract <id> \| --domain <name> [--overlay [--since …]]` | a contract's or a domain's `graph.v1` document — steps, actors, read side, external systems, stages, promises, lifecycles, the context map — or, with `--overlay`, what the log says over it |
 | `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
 | `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
@@ -255,6 +258,7 @@ boundaries below would be documentation rather than a check.
 | [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — the domain and contract DSLs, dispatch, the event store, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
 | [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
+| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress) |
 | [`sandbox`](sandbox) | a host application around the packages, with the test material below |
 | [`docs`](docs) | the starting assumptions (`docs/adr/`), distillations of the test material, and workshop material |
 

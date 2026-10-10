@@ -150,6 +150,21 @@ Mermaid *injects*. Recorded in `PLAN.md` as its own piece of work.
 > (`EhOsContract.Graph.Mermaid.escape/1`), so no label's text reaches the SVG as markup, and only
 > Mermaid's own stylesheet is taken from it.
 
+## Amendment, 9 October 2026: the graphs are drawn without Mermaid
+
+Plan E13 replaced Mermaid on the graph screen, so three things above no longer hold. **The theming of
+Mermaid** — its variables read from the tokens at render time, and the table of status classes in
+`assets/js/app.js` — is gone with it: the pictures are cards and arrows drawn by `eh_os_contract_graph`, whose
+stylesheet takes the canvas, the cards' text and the panel from the design system's tokens and keeps the
+Event Storming palette of the kinds in one table of its own (`assets/css/eh_os_contract_graph.css`), the
+vocabulary of the workshop as before. **The policy violations left after EG3** are gone too: nothing on the
+graph screen sets an inline style — positions and sizes are in a constructed stylesheet, what moves every frame
+in a Web Animation (`docs/adr/graph-renderer.md`) — so "no CSP error" in the confirmation below now holds for
+the graph screen as well (checked on 8 October in headless Chrome under `default-src 'self'`, every contract of
+the sandbox). The engine draws nothing, so `mix eh_os_contract.graph` has no picture to theme either: it gives
+the `graph.v1` document. Of "Revisit when", the line on a strict policy is done.
+([#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219))
+
 ## Confirmation
 
 `packages/eh_os_contract_web/test/design_system_test.exs`:

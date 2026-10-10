@@ -101,13 +101,14 @@ defmodule EhOsContract.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract/CHANGELOG.md"
       },
-      # Listed explicitly rather than left to the default, which would include
-      # `priv/`. The only thing under `priv/` here is this package's own test
-      # migration — an artifact of testing the migration module against itself, and
-      # nothing a consumer should receive. `LICENSE` is a copy: a package published
-      # from a subdirectory does not pick up the repository's, and `licenses:` above
-      # is metadata rather than a file.
-      files: ~w(lib docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      # Listed explicitly rather than left to the default, which would include all of
+      # `priv/`. Of it only `priv/schema` ships — the JSON Schema of the graph
+      # documents, which a renderer holds them to (plan E13a); `priv/test_repo` is this
+      # package's own test migration, an artifact of testing the migration module
+      # against itself, and nothing a consumer should receive. `LICENSE` is a copy: a
+      # package published from a subdirectory does not pick up the repository's, and
+      # `licenses:` above is metadata rather than a file.
+      files: ~w(lib priv/schema docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 
@@ -212,6 +213,9 @@ defmodule EhOsContract.MixProject do
       # host configures (plan W2); the package's own suite needs one, a host brings its
       # own, so the package does not choose it for them.
       {:tz, "~> 0.28", only: [:dev, :test]},
+      # Every graph document the suite builds is held to `priv/schema/graph.v1.json`
+      # (plan E13a), with the validator and the version `eh_os_contract_auth` uses.
+      {:jsv, "~> 0.25.0", only: :test},
       {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false}
     ]
   end

@@ -1,0 +1,1129 @@
+{
+  "context": "context:Rehmed.Domain:settlement",
+  "contract": "rehmed.settlement",
+  "digest": "20656a790c54",
+  "domain": "Rehmed.Domain",
+  "kind": "contract",
+  "module": "Rehmed.Contracts.Settlement",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:reception",
+        "label": "Recepcja",
+        "name": "reception",
+        "responsibilities": [],
+        "role": "rehmed.reception",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:specialist",
+        "label": "Specjalista",
+        "name": "specialist",
+        "responsibilities": [],
+        "role": "rehmed.specialist",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "capability": "rehmed.add_service_line",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "service_id",
+            "refers_to": "entity:Rehmed.Domain:service",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.settlement:add_service_line",
+        "label": "Dodaj usługę do rozliczenia",
+        "name": "add_service_line",
+        "source": "C-23, aktor A-03",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "capability": "rehmed.hand_over_visit",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.settlement:hand_over_visit",
+        "label": "Przekaż do rozliczenia",
+        "name": "hand_over_visit",
+        "source": "C-68, aktor A-03; K5-20",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "capability": "rehmed.record_payment",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "method",
+            "required": true,
+            "type": "payment_method",
+            "value": "value:Rehmed.Domain:payment_method"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "command:rehmed.settlement:record_payment",
+        "label": "Przyjmij płatność",
+        "name": "record_payment",
+        "source": "C-31, aktor A-02",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "capability": "rehmed.close_settlement",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "supplied_by": "host",
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": false,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": false,
+            "type": "id"
+          }
+        ],
+        "id": "command:rehmed.settlement:close_settlement",
+        "label": "Zamknij wizytę komercyjnie",
+        "name": "close_settlement",
+        "source": "C-30, aktor A-02",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "capability": "rehmed.book_correction",
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "delta",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "command:rehmed.settlement:book_correction",
+        "label": "Zaksięguj korektę",
+        "name": "book_correction",
+        "source": "C-46, aktor A-02",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      }
+    ],
+    "constraint": [
+      {
+        "id": "constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period",
+        "label": "Wizyta na płatnika wskazuje okres rozliczenia, a okres — płatnika",
+        "name": "payer_visit_names_its_period",
+        "of": "command:rehmed.settlement:close_settlement",
+        "source": "AGG-11 niezmiennik 4: płatnik × okres"
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Rehmed.Domain:settlement",
+        "label": "Rozliczenia",
+        "name": "settlement",
+        "source": "CTX-05"
+      },
+      {
+        "id": "context:Rehmed.Domain:configuration",
+        "label": "Konfiguracja i ludzie",
+        "name": "configuration",
+        "source": "CTX-10"
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [
+      {
+        "context": "context:Rehmed.Domain:configuration",
+        "fields": [
+          {
+            "label": null,
+            "name": "service_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": "Raportowana do P1",
+            "name": "p1_reported",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "id": "entity:Rehmed.Domain:service",
+        "identity": "service_id",
+        "label": "Usługa",
+        "name": "service",
+        "source": "AGG-15"
+      }
+    ],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "service_id",
+            "refers_to": "entity:Rehmed.Domain:service",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.settlement:service_line_added",
+        "label": "Dodano dodatkową usługę do rozliczenia",
+        "name": "service_line_added",
+        "schema_version": 1,
+        "source": "E-45",
+        "type": "rehmed.settlement.service_line_added",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.settlement:visit_handed_over",
+        "label": "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
+        "name": "visit_handed_over",
+        "schema_version": 1,
+        "source": "E-115, K5-20",
+        "type": "rehmed.settlement.visit_handed_over",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "method",
+            "required": true,
+            "type": "payment_method",
+            "value": "value:Rehmed.Domain:payment_method"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "event:rehmed.settlement:payment_recorded",
+        "label": "Pacjent opłacił wizytę",
+        "name": "payment_recorded",
+        "schema_version": 1,
+        "source": "E-55",
+        "type": "rehmed.settlement.payment_recorded",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "event:rehmed.settlement:visit_closed_commercially",
+        "label": "Recepcja zamknęła wizytę",
+        "name": "visit_closed_commercially",
+        "schema_version": 1,
+        "source": "E-56",
+        "type": "rehmed.settlement.visit_closed_commercially",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "event:rehmed.settlement:visit_closed_without_payment",
+        "label": "Zamknięto wizytę bez płatności",
+        "name": "visit_closed_without_payment",
+        "schema_version": 1,
+        "source": "E-53, P-08",
+        "type": "rehmed.settlement.visit_closed_without_payment",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "payer_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:rehmed.settlement:visit_charged_to_payer",
+        "label": "Wizyta obciąża płatnika zewnętrznego",
+        "name": "visit_charged_to_payer",
+        "schema_version": 1,
+        "source": "30-contexts.md, CTX-05 → CTX-06",
+        "type": "rehmed.settlement.visit_charged_to_payer",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "delta",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "business_date",
+            "required": true,
+            "type": "date"
+          }
+        ],
+        "id": "event:rehmed.settlement:settlement_corrected",
+        "label": "Zaksięgowano korektę po zamknięciu dnia",
+        "name": "settlement_corrected",
+        "schema_version": 1,
+        "source": "E-84",
+        "type": "rehmed.settlement.settlement_corrected",
+        "unit": "unit:rehmed.settlement:visit_settlement"
+      }
+    ],
+    "external": [],
+    "invariant": [
+      {
+        "id": "invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change",
+        "label": "Specjalista przekazuje wizytę do rozliczenia tylko wtedy, gdy dodał lub zmienił usługę",
+        "name": "handover_only_after_scope_change",
+        "of": "unit:rehmed.settlement:visit_settlement",
+        "source": "K5-20 (54-uwagi-K5, 2026-09-09)"
+      },
+      {
+        "id": "invariant:rehmed.settlement:unit:visit_settlement:changed_scope_handed_over_before_settlement",
+        "label": "Wizytę ze zmienionym zakresem usług recepcja rozlicza dopiero po jej przekazaniu",
+        "name": "changed_scope_handed_over_before_settlement",
+        "of": "unit:rehmed.settlement:visit_settlement",
+        "source": "K5-20, makieta 2026-09-14"
+      },
+      {
+        "id": "invariant:rehmed.settlement:unit:visit_settlement:payment_lines_sum_to_total",
+        "label": "Linie płatności sumują się do wartości rozliczenia",
+        "name": "payment_lines_sum_to_total",
+        "of": "unit:rehmed.settlement:visit_settlement",
+        "source": "W1 02:02:07; AGG-03 niezmiennik 1"
+      },
+      {
+        "id": "invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction",
+        "label": "Rozliczonej wizyty nie zmienia się po cichu — zmiana to korekta",
+        "name": "closed_settlement_changes_only_by_correction",
+        "of": "unit:rehmed.settlement:visit_settlement",
+        "source": "AGG-03 niezmiennik 4"
+      }
+    ],
+    "policy": [],
+    "process": [],
+    "process_manager": [],
+    "promise": [],
+    "publication": [],
+    "query": [
+      {
+        "capability": "rehmed.daily_totals_for",
+        "id": "query:rehmed.settlement:daily_totals_for",
+        "label": "Zestawienie dnia dla recepcji",
+        "name": "daily_totals_for",
+        "params": [
+          {
+            "label": null,
+            "name": "business_date",
+            "required": true,
+            "type": "date"
+          }
+        ],
+        "returns": "many",
+        "source": null
+      }
+    ],
+    "read_model": [
+      {
+        "delivery": "in_transaction",
+        "fields": [
+          {
+            "label": null,
+            "name": "business_date",
+            "required": true,
+            "type": "date"
+          },
+          {
+            "label": null,
+            "name": "method",
+            "required": true,
+            "type": "payment_method",
+            "value": "value:Rehmed.Domain:payment_method"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          }
+        ],
+        "id": "read_model:rehmed.settlement:daily_totals",
+        "label": "Zestawienie dnia per metoda płatności",
+        "name": "daily_totals",
+        "source": null
+      }
+    ],
+    "stage": [],
+    "status": [],
+    "subject": [],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:rehmed.settlement:visit_settlement",
+        "identity": [
+          "visit_id"
+        ],
+        "label": "Rozliczenie wizyty",
+        "name": "visit_settlement",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "visit_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "scope_changed",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "handed_over",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "payments",
+            "required": true,
+            "type": {
+              "list": "money"
+            },
+            "value": "value:Rehmed.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "closed_on",
+            "required": false,
+            "type": "date"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Rehmed.Domain:money",
+        "invariants": [],
+        "label": "Kwota",
+        "name": "money",
+        "source": null,
+        "type": "integer",
+        "unit": "grosze"
+      },
+      {
+        "fields": [],
+        "id": "value:Rehmed.Domain:payment_method",
+        "invariants": [],
+        "label": null,
+        "name": "payment_method",
+        "source": "E-55",
+        "type": {
+          "enum": [
+            {
+              "label": "Karta",
+              "value": "card"
+            },
+            {
+              "label": "Gotówka",
+              "value": "cash"
+            },
+            {
+              "label": "Przelew",
+              "value": "transfer"
+            },
+            {
+              "label": "Bon",
+              "value": "voucher"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "relations": {
+    "accountable_for": [],
+    "allowed_in": [],
+    "backed_by": [],
+    "builds": [
+      {
+        "from": "event:rehmed.settlement:service_line_added",
+        "id": "builds:event:rehmed.settlement:service_line_added:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:visit_handed_over",
+        "id": "builds:event:rehmed.settlement:visit_handed_over:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:payment_recorded",
+        "id": "builds:event:rehmed.settlement:payment_recorded:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:visit_closed_commercially",
+        "id": "builds:event:rehmed.settlement:visit_closed_commercially:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:visit_closed_without_payment",
+        "id": "builds:event:rehmed.settlement:visit_closed_without_payment:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:visit_charged_to_payer",
+        "id": "builds:event:rehmed.settlement:visit_charged_to_payer:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "from": "event:rehmed.settlement:settlement_corrected",
+        "id": "builds:event:rehmed.settlement:settlement_corrected:unit:rehmed.settlement:visit_settlement",
+        "to": "unit:rehmed.settlement:visit_settlement"
+      }
+    ],
+    "calls": [],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [],
+    "emits": [
+      {
+        "from": "command:rehmed.settlement:add_service_line",
+        "id": "emits:command:rehmed.settlement:add_service_line:event:rehmed.settlement:service_line_added",
+        "to": "event:rehmed.settlement:service_line_added"
+      },
+      {
+        "from": "command:rehmed.settlement:hand_over_visit",
+        "id": "emits:command:rehmed.settlement:hand_over_visit:event:rehmed.settlement:visit_handed_over",
+        "to": "event:rehmed.settlement:visit_handed_over"
+      },
+      {
+        "from": "command:rehmed.settlement:record_payment",
+        "id": "emits:command:rehmed.settlement:record_payment:event:rehmed.settlement:payment_recorded",
+        "to": "event:rehmed.settlement:payment_recorded"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_commercially",
+        "to": "event:rehmed.settlement:visit_closed_commercially"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_without_payment",
+        "to": "event:rehmed.settlement:visit_closed_without_payment"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_charged_to_payer",
+        "to": "event:rehmed.settlement:visit_charged_to_payer"
+      },
+      {
+        "from": "command:rehmed.settlement:book_correction",
+        "id": "emits:command:rehmed.settlement:book_correction:event:rehmed.settlement:settlement_corrected",
+        "to": "event:rehmed.settlement:settlement_corrected"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "fulfils": [],
+    "handled_by": [],
+    "issues": [],
+    "may_ask": [
+      {
+        "from": "actor:Rehmed.Domain:reception",
+        "id": "may_ask:actor:Rehmed.Domain:reception:query:rehmed.settlement:daily_totals_for",
+        "to": "query:rehmed.settlement:daily_totals_for"
+      }
+    ],
+    "may_issue": [
+      {
+        "from": "actor:Rehmed.Domain:specialist",
+        "id": "may_issue:actor:Rehmed.Domain:specialist:command:rehmed.settlement:add_service_line",
+        "to": "command:rehmed.settlement:add_service_line"
+      },
+      {
+        "from": "actor:Rehmed.Domain:specialist",
+        "id": "may_issue:actor:Rehmed.Domain:specialist:command:rehmed.settlement:hand_over_visit",
+        "to": "command:rehmed.settlement:hand_over_visit"
+      },
+      {
+        "from": "actor:Rehmed.Domain:reception",
+        "id": "may_issue:actor:Rehmed.Domain:reception:command:rehmed.settlement:record_payment",
+        "to": "command:rehmed.settlement:record_payment"
+      },
+      {
+        "from": "actor:Rehmed.Domain:reception",
+        "id": "may_issue:actor:Rehmed.Domain:reception:command:rehmed.settlement:close_settlement",
+        "to": "command:rehmed.settlement:close_settlement"
+      },
+      {
+        "from": "actor:Rehmed.Domain:reception",
+        "id": "may_issue:actor:Rehmed.Domain:reception:command:rehmed.settlement:book_correction",
+        "to": "command:rehmed.settlement:book_correction"
+      }
+    ],
+    "may_record": [],
+    "opens": [],
+    "or_else": [],
+    "projected_into": [
+      {
+        "from": "event:rehmed.settlement:payment_recorded",
+        "id": "projected_into:event:rehmed.settlement:payment_recorded:read_model:rehmed.settlement:daily_totals",
+        "to": "read_model:rehmed.settlement:daily_totals"
+      }
+    ],
+    "published_as": [],
+    "reads": [
+      {
+        "from": "query:rehmed.settlement:daily_totals_for",
+        "id": "reads:query:rehmed.settlement:daily_totals_for:read_model:rehmed.settlement:daily_totals",
+        "to": "read_model:rehmed.settlement:daily_totals"
+      }
+    ],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:rehmed.settlement:add_service_line",
+        "id": "refused_on:command:rehmed.settlement:add_service_line:invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction"
+      },
+      {
+        "from": "command:rehmed.settlement:hand_over_visit",
+        "id": "refused_on:command:rehmed.settlement:hand_over_visit:invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change"
+      },
+      {
+        "from": "command:rehmed.settlement:record_payment",
+        "id": "refused_on:command:rehmed.settlement:record_payment:invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "refused_on:command:rehmed.settlement:close_settlement:invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "refused_on:command:rehmed.settlement:close_settlement:invariant:rehmed.settlement:unit:visit_settlement:changed_scope_handed_over_before_settlement",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:changed_scope_handed_over_before_settlement"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "refused_on:command:rehmed.settlement:close_settlement:invariant:rehmed.settlement:unit:visit_settlement:payment_lines_sum_to_total",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:payment_lines_sum_to_total"
+      },
+      {
+        "from": "command:rehmed.settlement:close_settlement",
+        "id": "refused_on:command:rehmed.settlement:close_settlement:constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period",
+        "to": "constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [],
+    "process_manager": [],
+    "query": [
+      {
+        "answers": [
+          {
+            "method": "card",
+            "total": 25000
+          },
+          {
+            "method": "cash",
+            "total": 5000
+          }
+        ],
+        "covers": [
+          "reads:query:rehmed.settlement:daily_totals_for:read_model:rehmed.settlement:daily_totals",
+          "projected_into:event:rehmed.settlement:payment_recorded:read_model:rehmed.settlement:daily_totals"
+        ],
+        "description": "dzień: dwie płatności kartą i jedna gotówką — suma per metoda",
+        "given": [
+          {
+            "data": {
+              "amount": 15000,
+              "method": "card",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          },
+          {
+            "data": {
+              "amount": 10000,
+              "method": "card",
+              "visit_id": "visit-ben"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          },
+          {
+            "data": {
+              "amount": 5000,
+              "method": "cash",
+              "visit_id": "visit-anna"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:dzień: dwie płatności kartą i jedna gotówką — suma per metoda",
+        "illustrates": [],
+        "params": {
+          "business_date": "2026-01-01"
+        },
+        "target": "query:rehmed.settlement:daily_totals_for"
+      }
+    ],
+    "unit": [
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "total": 20000
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_commercially"
+        ],
+        "description": "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka",
+        "expect": [
+          {
+            "data": {
+              "total": 20000
+            },
+            "event": "event:rehmed.settlement:visit_closed_commercially"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "amount": 20000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "total": 20000
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_commercially"
+        ],
+        "description": "ta sama kwota w dwóch liniach — split jest poprawny, nie defektem",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.settlement:visit_closed_commercially"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "amount": 15000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          },
+          {
+            "data": {
+              "amount": 5000,
+              "method": "cash"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:ta sama kwota w dwóch liniach — split jest poprawny, nie defektem",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "total": 20000
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:close_settlement:invariant:rehmed.settlement:unit:visit_settlement:payment_lines_sum_to_total"
+        ],
+        "description": "zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 15000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone",
+        "rejected": "invariant:rehmed.settlement:unit:visit_settlement:payment_lines_sum_to_total",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "total": 20000
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_without_payment"
+        ],
+        "description": "nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.settlement:visit_closed_without_payment"
+          }
+        ],
+        "given": [],
+        "id": "scenario:rehmed.settlement:nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "payer_id": "payer-luxmed",
+            "period_id": "2026-09",
+            "total": 18000
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_without_payment",
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_charged_to_payer"
+        ],
+        "description": "wizyta w całości na LuxMed — zamyka się bez płatności i obciąża płatnika za wrzesień",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.settlement:visit_closed_without_payment"
+          },
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09"
+            },
+            "event": "event:rehmed.settlement:visit_charged_to_payer"
+          }
+        ],
+        "given": [],
+        "id": "scenario:rehmed.settlement:wizyta w całości na LuxMed — zamyka się bez płatności i obciąża płatnika za wrzesień",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "payer_id": "payer-luxmed",
+            "period_id": "2026-09",
+            "total": 5000
+          }
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_closed_commercially",
+          "emits:command:rehmed.settlement:close_settlement:event:rehmed.settlement:visit_charged_to_payer"
+        ],
+        "description": "wizyta mieszana — pacjent płaci 50 zł za dodaną usługę, reszta obciąża LuxMed",
+        "expect": [
+          {
+            "data": {
+              "total": 5000
+            },
+            "event": "event:rehmed.settlement:visit_closed_commercially"
+          },
+          {
+            "data": {
+              "payer_id": "payer-luxmed",
+              "period_id": "2026-09"
+            },
+            "event": "event:rehmed.settlement:visit_charged_to_payer"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "service_id": "service-ultrasound"
+            },
+            "event": "event:rehmed.settlement:service_line_added"
+          },
+          {
+            "data": {},
+            "event": "event:rehmed.settlement:visit_handed_over"
+          },
+          {
+            "data": {
+              "amount": 5000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:wizyta mieszana — pacjent płaci 50 zł za dodaną usługę, reszta obciąża LuxMed",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "payer_id": "payer-luxmed",
+            "total": 18000
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:close_settlement:constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period"
+        ],
+        "description": "płatnik bez okresu — rozliczenie odrzucone, zanim płatnik zgubi wizytę",
+        "expect": [],
+        "given": [],
+        "id": "scenario:rehmed.settlement:płatnik bez okresu — rozliczenie odrzucone, zanim płatnik zgubi wizytę",
+        "rejected": "constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:hand_over_visit",
+          "data": {}
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:hand_over_visit:invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change"
+        ],
+        "description": "zakres bez zmian — specjalista nie ma czego przekazywać",
+        "expect": [],
+        "given": [],
+        "id": "scenario:rehmed.settlement:zakres bez zmian — specjalista nie ma czego przekazywać",
+        "rejected": "invariant:rehmed.settlement:unit:visit_settlement:handover_only_after_scope_change",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:hand_over_visit",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:rehmed.settlement:hand_over_visit:event:rehmed.settlement:visit_handed_over"
+        ],
+        "description": "specjalista dodał usługę — przekazuje wizytę do rozliczenia",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:rehmed.settlement:visit_handed_over"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "service_id": "service-ultrasound"
+            },
+            "event": "event:rehmed.settlement:service_line_added"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:specjalista dodał usługę — przekazuje wizytę do rozliczenia",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:close_settlement",
+          "data": {
+            "total": 20000
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:close_settlement:invariant:rehmed.settlement:unit:visit_settlement:changed_scope_handed_over_before_settlement"
+        ],
+        "description": "usługa dodana, wizyta nieprzekazana — recepcja jeszcze nie rozlicza",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "service_id": "service-ultrasound"
+            },
+            "event": "event:rehmed.settlement:service_line_added"
+          },
+          {
+            "data": {
+              "amount": 20000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:usługa dodana, wizyta nieprzekazana — recepcja jeszcze nie rozlicza",
+        "rejected": "invariant:rehmed.settlement:unit:visit_settlement:changed_scope_handed_over_before_settlement",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
+      {
+        "command": {
+          "command": "command:rehmed.settlement:record_payment",
+          "data": {
+            "amount": 5000,
+            "method": "cash"
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:record_payment:invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction"
+        ],
+        "description": "wizyta rozliczona — kolejna płatność odrzucona, zmiana idzie korektą",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 20000,
+              "method": "card"
+            },
+            "event": "event:rehmed.settlement:payment_recorded"
+          },
+          {
+            "data": {
+              "total": 20000
+            },
+            "event": "event:rehmed.settlement:visit_closed_commercially"
+          }
+        ],
+        "id": "scenario:rehmed.settlement:wizyta rozliczona — kolejna płatność odrzucona, zmiana idzie korektą",
+        "rejected": "invariant:rehmed.settlement:unit:visit_settlement:closed_settlement_changes_only_by_correction",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "95315777d1ef"
+}

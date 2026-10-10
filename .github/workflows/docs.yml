@@ -1,6 +1,6 @@
 name: docs
 
-# The documentation of the three packages, as a file to download: ExDoc's HTML, the
+# The documentation of the four packages, as a file to download: ExDoc's HTML, the
 # Markdown it is made from, and an index (.github/scripts/build-docs.sh). Nothing is
 # published: a GitHub Pages site of this private repository would be public on its
 # plan, so the docs stay where the code is (#201, #237).
@@ -93,6 +93,12 @@ jobs:
           path: packages/eh_os_contract_auth/deps
           key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
+      - name: Restore graph renderer deps
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/eh_os_contract_graph/deps
+          key: eh-os-contract-graph-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+
       - name: Install engine deps
         working-directory: packages/eh_os_contract
         run: mix deps.get
@@ -105,6 +111,10 @@ jobs:
 
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth
+        run: mix deps.get
+
+      - name: Install graph renderer deps
+        working-directory: packages/eh_os_contract_graph
         run: mix deps.get
 
       - name: Build the documentation
