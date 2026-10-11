@@ -1,7 +1,7 @@
 defmodule EhOsContract.Web.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   @description "A mountable conformance dashboard for EhOsContract."
