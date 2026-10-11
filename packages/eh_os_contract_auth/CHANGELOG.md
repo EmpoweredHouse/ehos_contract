@@ -1,7 +1,7 @@
 # Changelog
 
 The rule this package follows is the one written in `packages/eh_os_contract/CHANGELOG.md`: a
-change a consumer can see gets a line here, in the same commit.
+change a consumer can see gets a line here, in its own pull request.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -45,7 +45,7 @@ is made is written in eh-os's
   capability for every command, query and recording a human actor may make, each naming its declaration as
   `command`, `query` or `record` (`eh-os` D-73), and the roles hold them all. Until now a deployed application's
   people were refused every query their pages asked (`missing_capability`) and could record nothing.
-  - **Changed:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
+  - **Breaking:** **Changed:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
     deploy EHOS first.
 
 - **EB3b (#78): other applications' credentials.** `Session.credential/3` takes the session (a connection or a
@@ -56,7 +56,7 @@ is made is written in eh-os's
     and EHOS is not asked again until then. The refresh token is kept, the session goes on, and a credential
     held for that application is dropped.
   - **A name `applications` does not have** raises `ArgumentError`.
-  - **Changed:** the sign-in child refuses to start when an address in `applications` is the application's own
+  - **Breaking:** **Changed:** the sign-in child refuses to start when an address in `applications` is the application's own
     `address`, since `credential/3` would hand out its own credential as another's.
 
 - **EB3a (#78, #80): renewal.** `Session.actor/2`, and the plug with `assign_actor: true`, renew a credential
@@ -193,7 +193,7 @@ is made is written in eh-os's
 
 ### Changed
 
-- **eh-os-contract#180: the application refuses to start when no domain of its contracts has its name in EHOS,
+- **Breaking:** **eh-os-contract#180: the application refuses to start when no domain of its contracts has its name in EHOS,
   or when another domain publishes.** `EhOsContract.Auth.child_spec/1` compares the application in the configured
   `audience` (`"clinic/prod"`, the part before the `/`) with the `name:` of the domains that have contracts in
   `config :eh_os_contract, applications:`. One of them must equal it exactly, and every other one must declare no
@@ -209,12 +209,12 @@ is made is written in eh-os's
     or has EHOS register the application under that domain's name; a domain named with `_` has only the rename. A host with a second domain that publishes moves
     that domain's contracts to an application of its own, or removes its `publish`.
 
-- **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
+- **Breaking:** **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
   holds `"rehmed.visit_settlement"` where it held `"Rehmed.Contracts.VisitSettlement"`, as every row of the engine
   does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
   `EhOsContract.Authorizer.Request.contract_id`, new and set by the engine on every request, so this package needs
   an `eh_os_contract` from #178 on: against an older one every `authorize/2` raises.
-  - **Changed:** rows written before name the module. The decisions table is the authorization audit trail and
+  - **Breaking:** **Changed:** rows written before name the module. The decisions table is the authorization audit trail and
     survives the engine's reset (ID3, ID4): keep it, and read the two forms apart, or map each module to its id
     with one `UPDATE` per contract.
 
@@ -309,7 +309,7 @@ is made is written in eh-os's
   - It covers **the PAR endpoint**, which `oidcc` posts the client's assertion to whenever the document names one,
     and which was not checked before.
   - The transport holds every call to the same rule, whichever field its address came from.
-  - **Changed:** such a document is not held, and `SignIn.refresh/2` answers
+  - **Breaking:** **Changed:** such a document is not held, and `SignIn.refresh/2` answers
     `{:error, {:endpoints_refused, names}}` in place of `{:not_https, names}`.
 
 - **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
@@ -322,7 +322,7 @@ is made is written in eh-os's
     given to `verify/2` or a plug is not checked. Sign-in still takes https only;
   - **sign-in's `address` and the addresses in `applications`**.
 
-  **Changed:** an address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:
+  **Breaking:** **Changed:** an address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:
   `URI.parse/1` read its host as `localhost` and passed the loopback exception, while EHOS and a browser read
   its host as `evil.example`. So is an issuer with a path or a trailing slash, which EHOS never publishes. A
   refused address is shown by its scheme, host and port only, as EHOS shows its own, since a user or a query can

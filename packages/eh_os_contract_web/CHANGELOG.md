@@ -85,7 +85,7 @@ is made is written in eh-os's
   contract's graph, its units and its lifecycles show always. The LiveView event is `select_contract` with
   `"contract" => <id>`, where it was `select_process` with `"<module>:<process>"`.
 
-- **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
+- **Breaking:** **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
   eh-os-contract#183). `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/<id>`,
   `<mount>/openapi/<id>` and `<mount>/asyncapi/<id>` take the contract's id; a module's name is an unknown contract,
   and a parameter given as a list or a map is a bad request. The indexes list `"contract"` as the id and add
@@ -124,7 +124,7 @@ is made is written in eh-os's
 
 ### Fixed
 
-- **The dashboard and the API work mounted in a scope with a path of its own, or with an alias.** Mounted in
+- **Breaking:** **The dashboard and the API work mounted in a scope with a path of its own, or with an alias.** Mounted in
   `scope "/admin"`, `/admin/dashboard` redirected to `/dashboard/contract`, a 404, and the screens linked outside
   the prefix; in `scope "/admin", MyAppWeb`, every route named `MyAppWeb.EhOsContract.Web.…` and failed. The
   redirect, the links and the `base_path` the resolver is given now carry every scope's prefix, and no trailing
