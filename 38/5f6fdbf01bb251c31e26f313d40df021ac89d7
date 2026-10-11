@@ -1,5 +1,0 @@
-Review of the commits added to #273 on 11 October: 6e9a2cef (merge of origin/main a3f6c719) and 385f6fdb (L2's changelog line moved under Unreleased).
-
-The two parallel reviews were not run: the merge brings only main's commits, each reviewed in its own pull request (#277-#280), and the only file both main and L2 changed since their merge base 651cb98d is packages/eh_os_contract/CHANGELOG.md. The one authored change moves six lines; checked that the 0.3.0 section and everything below it is byte-identical to the tag v0.3.0, and that Unreleased now holds L2's line under Added.
-
-Gate on OTP 27.1.2 / Elixir 1.18.4 (CI runs 27.2 / 1.18.4): EXIT=0. sandbox 226 tests + 7 properties, check 0/29/22 (unchanged); engine 1664 tests + 10 properties, check 0/77/51; web 77; auth 329 + 1 property + 1 doctest; graph 88. Engine check vs the last recorded 0/72/47 (f252632c, before E13): +5 warnings +4 notices, all from E13's test material phase_rig (domain.ex, visits.ex, 9 lines); this merge changes neither test/support nor check/.
