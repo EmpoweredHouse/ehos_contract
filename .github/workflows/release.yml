@@ -120,11 +120,14 @@ jobs:
       # has no notes, though release.json names its version. A preview shows such a package's
       # lines not released yet, if it has any.
       #
-      # A version is released once. The previous release is the highest `vX.Y.Z` tag reachable from
-      # this commit's parent; a package whose version here, without `-dev`, is the one it had there
-      # was released then. With a section for that version, that is a release pull request that
-      # forgot to move it, and the run stops; with none, the package is not released again and
-      # has no notes. A package that did not exist at the previous release has no version there.
+      # Versions only go up, and each is released once. The previous release is the highest
+      # `vX.Y.Z` tag reachable from this commit's parent, and a tag not higher than it stops the
+      # run. A package whose version here, without `-dev`, is the one it had there was released
+      # then: it was never moved back to its next `-dev` after that release, or a release pull
+      # request did not move it on, and the run stops either way. (Every version a tag carries
+      # has its section, as this job requires and the tags before it had, so such a package
+      # cannot be told apart as "not released again".) A package that did not exist at the
+      # previous release has no version there.
       #
       # GitHub refuses a release whose description is over 125,000 characters, and the engine's
       # first section alone is about that. notes.md, all the sections, is attached to every
@@ -140,6 +143,13 @@ jobs:
           : > "$pointers"
           previous=$(git tag --merged HEAD^ --list 'v*' 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
           echo "The previous release: ${previous:-none}"
+          if [ "$PUBLISH" = "true" ] && [ -n "$previous" ]; then
+            higher=$(printf '%s\n%s\n' "$previous" "$TAG" | sort -V | tail -n 1)
+            if [ "$previous" = "$TAG" ] || [ "$higher" != "$TAG" ]; then
+              echo "::error::$TAG is not higher than $previous, the release before it on main"
+              exit 1
+            fi
+          fi
           for package in eh_os_contract eh_os_contract_auth eh_os_contract_web eh_os_contract_graph; do
             version=$(jq -r --arg p "$package" '.packages[$p]' "$RUNNER_TEMP/release/release.json")
             if [[ "$version" == *-dev ]]; then
@@ -160,12 +170,8 @@ jobs:
               body=""
             fi
             if [ "$section" = "$before" ]; then
-              if [ -n "$body" ]; then
-                echo "::error::$package $version was released at $previous already: move it to its next version, or to its next -dev"
-                exit 1
-              fi
-              echo "$package $version was released at $previous, and is not released again"
-              continue
+              echo "::error::$package $version is the version it had at $previous, where it was released: after a release a package moves back to its next -dev, and to a new version when it is released again"
+              exit 1
             fi
             if [ -z "$body" ]; then
               if [ "$section" = "Unreleased" ]; then
