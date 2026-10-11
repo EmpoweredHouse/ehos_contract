@@ -32,10 +32,10 @@ The rule beside it is every package's in this repository, and EHOS's other repos
 **Every change a user of this package can see gets a line under `## [Unreleased]`, in its own pull
 request.** A user is a host application's developer: what they see is the package's public API, its
 Mix tasks, what it writes, what it verifies, what the dashboard reports and its `docs/`, the DSL
-reference; its tests, README and CI are not. A pull request with no such line says why on a line of its description,
-`No changelog: <why>`, and CI's Changelog check (`.github/workflows/changelog.yml`) fails it
-otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
-`**Breaking:**`, under the subsection it belongs to.
+reference; its tests, README and CI are not. A pull request with no such line says why on a line of
+its description, `No changelog: <why>`, and CI's Changelog check (`.github/workflows/changelog.yml`)
+fails it otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts
+with `**Breaking:**`, under the subsection it belongs to.
 
 The repository's tag, `vX.Y.Z`, is this package's version, and releases every package of the
 repository at its own version. Between releases the version in `mix.exs` ends in `-dev`; at a

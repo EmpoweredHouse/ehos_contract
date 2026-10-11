@@ -47,7 +47,7 @@ and the `ehos-dev:release` skill makes one.
   capability for every command, query and recording a human actor may make, each naming its declaration as
   `command`, `query` or `record` (`eh-os` D-73), and the roles hold them all. Until now a deployed application's
   people were refused every query their pages asked (`missing_capability`) and could record nothing.
-  - **Breaking:** **Changed:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
+  - **Breaking:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
     deploy EHOS first.
 
 - **EB3b (#78): other applications' credentials.** `Session.credential/3` takes the session (a connection or a
@@ -58,7 +58,7 @@ and the `ehos-dev:release` skill makes one.
     and EHOS is not asked again until then. The refresh token is kept, the session goes on, and a credential
     held for that application is dropped.
   - **A name `applications` does not have** raises `ArgumentError`.
-  - **Breaking:** **Changed:** the sign-in child refuses to start when an address in `applications` is the application's own
+  - **Breaking:** the sign-in child refuses to start when an address in `applications` is the application's own
     `address`, since `credential/3` would hand out its own credential as another's.
 
 - **EB3a (#78, #80): renewal.** `Session.actor/2`, and the plug with `assign_actor: true`, renew a credential
@@ -216,7 +216,7 @@ and the `ehos-dev:release` skill makes one.
   does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
   `EhOsContract.Authorizer.Request.contract_id`, new and set by the engine on every request, so this package needs
   an `eh_os_contract` from #178 on: against an older one every `authorize/2` raises.
-  - **Breaking:** **Changed:** rows written before name the module. The decisions table is the authorization audit trail and
+  - **Breaking:** rows written before name the module. The decisions table is the authorization audit trail and
     survives the engine's reset (ID3, ID4): keep it, and read the two forms apart, or map each module to its id
     with one `UPDATE` per contract.
 
@@ -311,10 +311,10 @@ and the `ehos-dev:release` skill makes one.
   - It covers **the PAR endpoint**, which `oidcc` posts the client's assertion to whenever the document names one,
     and which was not checked before.
   - The transport holds every call to the same rule, whichever field its address came from.
-  - **Breaking:** **Changed:** such a document is not held, and `SignIn.refresh/2` answers
+  - **Breaking:** such a document is not held, and `SignIn.refresh/2` answers
     `{:error, {:endpoints_refused, names}}` in place of `{:not_https, names}`.
 
-- **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
+- **Breaking:** **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
   (`Ehos.Credentials.check_issuer/1`, eh-os#118): the address reads back as written (`URI.new/1`, then
   `URI.to_string/1`), with a lowercase DNS name, an IPv4 address in its dotted form or `::1` as the host, a port
   from 1 to 65535, and no user, query or fragment. It holds for:
@@ -324,7 +324,7 @@ and the `ehos-dev:release` skill makes one.
     given to `verify/2` or a plug is not checked. Sign-in still takes https only;
   - **sign-in's `address` and the addresses in `applications`**.
 
-  **Breaking:** **Changed:** an address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:
+  An address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:
   `URI.parse/1` read its host as `localhost` and passed the loopback exception, while EHOS and a browser read
   its host as `evil.example`. So is an issuer with a path or a trailing slash, which EHOS never publishes. A
   refused address is shown by its scheme, host and port only, as EHOS shows its own, since a user or a query can
