@@ -69,10 +69,27 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
 - **The format is Keep a Changelog as written**: one `## [Unreleased]`, `## [X.Y.Z] - YYYY-MM-DD` for a release,
   only the subsections `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`, prose only between a
   version's heading and its first subsection, and no link references at the end.
-- **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it. How a
-  release is made is written once, for the three repositories, in eh-os's
-  [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
-  skill makes one (the `ehos-dev` plugin from ehos-tools, enabled in `.claude/settings.json`).
+- **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it.
+
+How a release is made is written once, for the three repositories, in eh-os's
+[`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
+skill makes one (the `ehos-dev` plugin from ehos-tools, enabled in `.claude/settings.json`). In this repository:
+
+- **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
+  `eh_os_contract_auth` `~> 0.1.0-dev` while the engine is at 0.3.0, and one shared number would break it.
+- **At a release, each package with lines under `## [Unreleased]` moves to its next version**, its lines under
+  `## [X.Y.Z] - YYYY-MM-DD`, in the release's pull request; a package with none stays at its `-dev` and is not
+  released at that tag, though `release.json` names its version.
+- **The tag runs `.github/workflows/release.yml`.** Its Prepare job, which can only read, checks the tag, writes
+  `release.json` (`mix contract.release_file` in `sandbox/`) and takes each released package's section of its
+  changelog; its Publish job, in the environment `release`, creates the GitHub release and has the documentation
+  attached to it (`docs.yml`). Who may approve a release and which tags may be released are that environment's
+  settings.
+- **Preview a release before tagging it**: `gh workflow run release.yml -f ref=main` writes into the run's
+  summary what a release of that commit would publish (a package at `-dev` shows its `## [Unreleased]`), and
+  publishes nothing.
+- **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
+  nothing a host sees, so its description says so on a line `No changelog: <why>`.
 
 ## Following a line back to its reason
 
