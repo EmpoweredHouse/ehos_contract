@@ -30,6 +30,8 @@ jobs:
     permissions:
       # The filter lists the pull request's files through the API, without a checkout.
       pull-requests: read
+      # A changelog is read at the base and at the head, to see its Unreleased section changed.
+      contents: read
     steps:
       - id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -80,10 +82,22 @@ jobs:
           EH_OS_CONTRACT_GRAPH: ${{ steps.filter.outputs.eh_os_contract_graph }}
           EH_OS_CONTRACT_GRAPH_CHANGELOG: ${{ steps.filter.outputs.eh_os_contract_graph_changelog }}
           BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          # A package's `## [Unreleased]` section at a commit, empty where the file is not.
+          unreleased() {
+            { gh api -H "Accept: application/vnd.github.raw" \
+                "repos/$GITHUB_REPOSITORY/contents/packages/$1/CHANGELOG.md?ref=$2" 2>/dev/null || true; } |
+              awk '/^## \[Unreleased\]/ { inside = 1; next } /^## \[/ { inside = 0 } inside'
+          }
           missing=()
+          # A changelog counts only when its Unreleased section changed: a line edited in an older
+          # version's section is not the change's line.
           need() {
-            if [ "$2" = "true" ] && [ "$3" != "true" ]; then
+            if [ "$2" = "true" ] && { [ "$3" != "true" ] ||
+                [ "$(unreleased "$1" "$BASE")" = "$(unreleased "$1" "$HEAD")" ]; }; then
               missing+=("$1")
             fi
           }
