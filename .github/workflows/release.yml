@@ -236,7 +236,8 @@ jobs:
           name: release
           path: ${{ runner.temp }}/release/
           if-no-files-found: error
-          retention-days: 3
+          # Long enough for a release to wait in the environment `release` for its approval.
+          retention-days: 7
 
   publish:
     name: Publish
@@ -274,6 +275,8 @@ jobs:
           # release there, and creating it again would fail. It is this run's only if its
           # release.json names the commit prepared: a release made by hand, or from another
           # commit before the tag moved, stops the run. Any answer but "no such release" stops.
+          # Publish reads Prepare's artifact, kept seven days: past that, re-running Publish alone
+          # fails to download it, and all jobs are re-run instead.
           if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .html_url 2> "$RUNNER_TEMP/view.err"); then
             described=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p release.json -O - | jq -r .commit || true)
             if [ "$described" != "$COMMIT" ]; then
