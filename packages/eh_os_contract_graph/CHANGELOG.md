@@ -21,6 +21,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-11
+
 ### Added
 
 - **The first version: a `graph.v1` document drawn in a LiveView** (plan E13, #217). It does not depend on the

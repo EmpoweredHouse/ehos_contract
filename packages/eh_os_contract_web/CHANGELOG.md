@@ -25,6 +25,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
 ### Added
 
 - **The graph documents over HTTP** (plan E13, #217). `eh_os_contract_api/2` serves `GET <mount>/graph` (an index

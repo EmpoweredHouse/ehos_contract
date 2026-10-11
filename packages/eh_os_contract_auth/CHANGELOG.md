@@ -24,6 +24,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-11
+
 ### Added
 
 - **`EhOsContract.Auth.Manifest.schemas/0` lists the versions of EHOS's manifest the package writes**

@@ -94,7 +94,11 @@ skill makes one (the `ehos-dev` plugin from ehos-tools, once enabled here). In t
   summary what a release of that commit would publish (a package at `-dev` shows its `## [Unreleased]`), and
   publishes nothing.
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
-  nothing a host sees, so its description says so on a line `No changelog: <why>`.
+  nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
+  this repository's `main` (ehos-tools' T-05), that is the next patch's `-dev`, not the next minor's, which
+  eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.3.0-dev` of the engine and
+  `~> 0.1.0-dev` of the verifier, and `0.4.0-dev` or `0.2.0-dev` on `main` would refuse its next
+  `mix deps.update`, and every project `ehosctl` 0.2.0 generates.
 
 ## Following a line back to its reason
 
