@@ -120,6 +120,12 @@ jobs:
       # has no notes, though release.json names its version. A preview shows such a package's
       # lines not released yet, if it has any.
       #
+      # A version is released once. The previous release is the highest `vX.Y.Z` tag reachable from
+      # this commit's parent; a package whose version here, without `-dev`, is the one it had there
+      # was released then. With a section for that version, that is a release pull request that
+      # forgot to move it, and the run stops; with none, the package is not released again and
+      # has no notes. A package that did not exist at the previous release has no version there.
+      #
       # GitHub refuses a release whose description is over 125,000 characters, and the engine's
       # first section alone is about that. notes.md, all the sections, is attached to every
       # release; the description, body.md, is notes.md when it fits, and otherwise each package's
@@ -132,6 +138,8 @@ jobs:
           pointers="$RUNNER_TEMP/pointers.md"
           : > "$notes"
           : > "$pointers"
+          previous=$(git tag --merged HEAD^ --list 'v*' 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          echo "The previous release: ${previous:-none}"
           for package in eh_os_contract eh_os_contract_auth eh_os_contract_web eh_os_contract_graph; do
             version=$(jq -r --arg p "$package" '.packages[$p]' "$RUNNER_TEMP/release/release.json")
             if [[ "$version" == *-dev ]]; then
@@ -143,8 +151,23 @@ jobs:
             else
               section=$version
             fi
-            if ! body=$(parse-changelog "packages/$package/CHANGELOG.md" "$section") \
+            before=""
+            if [ -n "$previous" ]; then
+              before=$(git show "$previous:packages/$package/mix.exs" 2>/dev/null | sed -n 's/^  @version "\(.*\)"$/\1/p' | head -n 1 || true)
+            fi
+            if ! body=$(parse-changelog "packages/$package/CHANGELOG.md" "$section" 2>/dev/null) \
               || ! grep -q '[^[:space:]]' <<<"$body"; then
+              body=""
+            fi
+            if [ "$section" = "$before" ]; then
+              if [ -n "$body" ]; then
+                echo "::error::$package $version was released at $previous already: move it to its next version, or to its next -dev"
+                exit 1
+              fi
+              echo "$package $version was released at $previous, and is not released again"
+              continue
+            fi
+            if [ -z "$body" ]; then
               if [ "$section" = "Unreleased" ]; then
                 echo "$package $version has no lines under Unreleased"
                 continue
