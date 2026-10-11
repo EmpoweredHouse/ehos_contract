@@ -37,9 +37,12 @@ are not. A pull request with no such line says why on a line of its description,
 otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
 `**Breaking:**`, under the subsection it belongs to.
 
-Between releases the version in `mix.exs` ends in `-dev`. How a release is made is written in
-eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
-and the `ehos-dev:release` skill makes one.
+The repository's tag, `vX.Y.Z`, is this package's version, and releases every package of the
+repository at its own version. Between releases the version in `mix.exs` ends in `-dev`; at a
+release, a package with lines under `## [Unreleased]` moves to its next version. How a release is
+made is written in eh-os's
+[`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md), and the
+`ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 

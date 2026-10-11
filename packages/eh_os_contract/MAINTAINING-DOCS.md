@@ -95,6 +95,7 @@ Markdown it is made from, and an `index.html` linking them.
   not an earlier build of its own.
 
 "View source" links to the commit built: `EH_OS_CONTRACT_DOCS_SOURCE_REF`, which the script sets, overrides
-each package's `source_ref`, the version tag otherwise.
+each package's `source_ref`, `main` otherwise. Not a version tag: the repository's tag follows the engine's
+version, each package keeps its own, and a `-dev` version has no tag.
 
 Nothing is published to a site: a GitHub Pages site of this private repository would be public (#201).
