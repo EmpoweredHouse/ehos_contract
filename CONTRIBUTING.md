@@ -58,7 +58,8 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
 - **Every change a user of a package can see gets a line under `## [Unreleased]` in that package's
   `CHANGELOG.md`, in its own pull request.** What a host sees is the package's public API, its Mix tasks, what it
   writes (the manifest, the pages, the graph documents, its tables), what it verifies and what the dashboard
-  reports. Its tests, its docs, `sandbox/` and CI are not.
+  reports, and the engine's `docs/`, the DSL reference a host writes contracts by. Its tests, its README,
+  `sandbox/` and CI are not.
 - **A pull request with no such line says why** on a line of its description: `No changelog: <why>`. The
   Changelog check (`.github/workflows/changelog.yml`) fails a pull request that changes a package's code with
   neither, naming each package; it does not judge the line.
