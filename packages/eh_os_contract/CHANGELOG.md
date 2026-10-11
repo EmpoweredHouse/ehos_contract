@@ -48,6 +48,15 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The core is where things are decided** (plan DD, stage L2, #272). `mix eh_os_contract.check` has two new
+  rules for contracts of a context in a subdomain of `type: :core`: `core-command-never-refuses` (a notice for a
+  command with empty `rejects:`, unless only a policy or a process manager issues it) and
+  `core-unit-records-only` (a warning for a unit with events none of whose commands can be refused). A unit's
+  page from `mix eh_os_contract.pages` says "Records only" when that holds. Moves no verdict; a host running the
+  check with `--warnings-as-errors` may see the new warning on an unchanged contract.
+
 ## [0.3.0] - 2026-10-11
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
@@ -60,12 +69,6 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
-- **The core is where things are decided** (plan DD, stage L2, #272). `mix eh_os_contract.check` has two new
-  rules for contracts of a context in a subdomain of `type: :core`: `core-command-never-refuses` (a notice for a
-  command with empty `rejects:`, unless only a policy or a process manager issues it) and
-  `core-unit-records-only` (a warning for a unit with events none of whose commands can be refused). A unit's
-  page from `mix eh_os_contract.pages` says "Records only" when that holds. Moves no verdict; a host running the
-  check with `--warnings-as-errors` may see the new warning on an unchanged contract.
 - **A contract and a domain as `graph.v1` documents** (plan E13, #217). `EhOsContract.Graph.Document.contract/1`
   gives a contract's document and `domain/2` a domain's: a graph of facts, every declaration a relation can end at
   as a node grouped by kind and every link between them as a relation grouped by type, and a contract's scenarios
