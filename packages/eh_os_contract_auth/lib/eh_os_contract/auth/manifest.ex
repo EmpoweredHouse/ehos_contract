@@ -85,6 +85,19 @@ defmodule EhOsContract.Auth.Manifest do
           "build/3 takes ehos.yaml as EhOsContract.Auth.EhosYaml.read/1 returns it, with its schema"
   end
 
+  @doc """
+  The versions of EHOS's manifest `build/3` can write, oldest first: what this package
+  produces, and what an EHOS has to accept for every manifest it writes to be deployed.
+
+      iex> EhOsContract.Auth.Manifest.schemas()
+      ["ehos.manifest/v2", "ehos.manifest/v3"]
+
+  `build/3` writes `ehos.manifest/v3` for an `ehos.yaml/v3` and `ehos.manifest/v2` for an
+  older one.
+  """
+  @spec schemas() :: [String.t()]
+  def schemas, do: ["ehos.manifest/v2", "ehos.manifest/v3"]
+
   # `eh-os` D-81: a manifest keeps the meaning it had when EHOS accepted it, so the version that
   # can carry `needs.people` is a new one, and an older file keeps its v2.
   defp manifest_schema("ehos.yaml/v3"), do: "ehos.manifest/v3"

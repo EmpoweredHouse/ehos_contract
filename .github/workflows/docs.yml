@@ -7,7 +7,9 @@ name: docs
 #
 # By hand, for any branch, tag or full commit SHA: Actions → docs → Run workflow; or
 # `gh workflow run docs.yml -f ref=<ref>`. The archive is the run's artifact, kept
-# 30 days. On a published release it is also attached to the release, and kept with it.
+# 30 days. On a published release it is also attached to the release, and kept with it;
+# so it is when run by hand on a tag that has a release, which is how release.yml's
+# Publish job has it built, since a release created with GITHUB_TOKEN starts no workflow.
 # The build script is the checked-out ref's, so a ref from before #237 cannot be built.
 on:
   workflow_dispatch:
@@ -28,17 +30,20 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       name: ${{ steps.name.outputs.name }}
+      release: ${{ steps.ref.outputs.release }}
 
     steps:
       # Before anything reads it: a ref is text a person typed, so it reaches the
       # scripts through the environment, never written into one, and is refused unless
       # it is a branch's, tag's or commit's name. A release builds its tag as a tag, so
-      # a branch of the same name cannot stand in for it.
+      # a branch of the same name cannot stand in for it; so does a run by hand on a tag
+      # that has a release, whose archive is then attached to it.
       - name: Check the ref
         id: ref
         env:
           TAG: ${{ github.event.release.tag_name }}
           INPUT: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           ref="${TAG:-$INPUT}"
           if [[ ! "$ref" =~ ^[A-Za-z0-9._/][A-Za-z0-9._/-]*$ || "$ref" == *..* ]]; then
@@ -46,8 +51,21 @@ jobs:
             exit 1
           fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          if [[ -n "$TAG" ]]; then
-            echo "checkout=refs/tags/$TAG" >> "$GITHUB_OUTPUT"
+          # A tag with a release, asked of the API: "no such release" (HTTP 404) is a plain
+          # build, any other answer stops the run rather than leave a release without its docs.
+          release="$TAG"
+          if [[ -z "$release" ]]; then
+            if found=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$INPUT" --jq .tag_name 2> "$RUNNER_TEMP/release.err"); then
+              if [[ "$found" == "$INPUT" ]]; then release="$INPUT"; fi
+            elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/release.err"; then
+              cat "$RUNNER_TEMP/release.err" >&2
+              echo "Could not tell whether '$INPUT' has a release" >&2
+              exit 1
+            fi
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          if [[ -n "$release" ]]; then
+            echo "checkout=refs/tags/$release" >> "$GITHUB_OUTPUT"
           else
             echo "checkout=$INPUT" >> "$GITHUB_OUTPUT"
           fi
@@ -131,7 +149,7 @@ jobs:
           overwrite: true
 
   attach:
-    if: github.event_name == 'release'
+    if: needs.build.outputs.release != ''
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -147,7 +165,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NAME: ${{ needs.build.outputs.name }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ needs.build.outputs.release }}
         run: |
           (cd docs && zip -qr "../$NAME.zip" .)
           gh release upload --clobber --repo "$GITHUB_REPOSITORY" -- "$TAG" "$NAME.zip"

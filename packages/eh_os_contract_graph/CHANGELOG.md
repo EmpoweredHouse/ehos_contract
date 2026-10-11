@@ -2,7 +2,26 @@
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+**Every change a user of this package can see gets a line under `## [Unreleased]`, in its own pull
+request.** A user is a host application's developer: what they see is the package's public API, its
+Mix tasks, what it writes, what it verifies and what the dashboard reports; its tests, docs and CI
+are not. A pull request with no such line says why on a line of its description,
+`No changelog: <why>`, and CI's Changelog check (`.github/workflows/changelog.yml`) fails it
+otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
+`**Breaking:**`, under the subsection it belongs to.
+
+This package keeps its own version; the repository's tag, `vX.Y.Z`, follows the engine's, and
+releases every package at its own version. Between releases the version in `mix.exs` ends in `-dev`;
+at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
+moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
+from its last release, and that version's section says so under `### Changed` ("Released with
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
+eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
+and the `ehos-dev:release` skill makes one.
+
+## [Unreleased]
+
+### Added
 
 - **The first version: a `graph.v1` document drawn in a LiveView** (plan E13, #217). It does not depend on the
   engine: a document is plain data, the same from `EhOsContract.Graph.Document` as from `GET <mount>/graph/…`

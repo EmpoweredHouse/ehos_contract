@@ -1,6 +1,6 @@
 # Changelog
 
-## The rule this file exists for
+The rule this file exists for:
 
 **A change that can move a verdict raises the MINOR version and gets a line here.**
 
@@ -23,7 +23,40 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+A line for a change that can move a verdict starts with `**Moves a verdict:**`, under the
+subsection it belongs to. CI's Changelog check holds that a pull request changing the package's
+code has a line or says why not; whether the change can move a verdict, it cannot tell.
+
+The rule beside it is every package's in this repository, and EHOS's other repositories' too:
+
+**Every change a user of this package can see gets a line under `## [Unreleased]`, in its own pull
+request.** A user is a host application's developer: what they see is the package's public API, its
+Mix tasks, what it writes, what it verifies, what the dashboard reports and its `docs/`, the DSL
+reference; its tests, README and CI are not. A pull request with no such line says why on a line of
+its description, `No changelog: <why>`, and CI's Changelog check (`.github/workflows/changelog.yml`)
+fails it otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts
+with `**Breaking:**`, under the subsection it belongs to.
+
+The repository's tag, `vX.Y.Z`, is this package's version, and releases every package of the
+repository at its own version. Between releases the version in `mix.exs` ends in `-dev`; at a
+release, a package with lines under `## [Unreleased]` moves to its next version. Every release moves
+the engine, whose version the tag is: a release of other packages alone moves it by a patch from its
+last release, and that version's section says so under `### Changed` ("Released with
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
+eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
+and the `ehos-dev:release` skill makes one.
+
+## [Unreleased]
+
+The engine's next version is 0.3.0: `0.3.0-dev` in `mix.exs` until it is released.
+
+The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
+**The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
+no longer compiles, and nothing of it is migrated — there was no consumer to migrate. What 0.3.0 is, and
+how to write a domain and a contract for it, is in `README.md` and `docs/contract.md`; every key of both
+DSLs is in `docs/dsl/`. Until E11, E1–E5 moved no verdict of a first-DSL contract — `mix
+eh_os_contract.report` and `graph --overlay --mermaid` gave byte-identical output before and after each —
+and from E6 the second DSL ran beside it. The entries below each name their stage.
 
 ### Added
 
@@ -220,539 +253,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   clock. `Trace.evaluate/3` is now the two over the log's rows. The split itself moves no verdict, and a log
   written under one identity reports byte for byte as before; the one verdict W3 does move, on a log whose rows
   predate a unit's identity growing, is under "Fixed" below.
-
-### Changed
-
-- **`event-without-consumer` counts an event a unit's lifecycle starts on or moves on as read** (plan DD, P1b,
-  #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
-  no verdict of the report moves.
-
-### Fixed
-
-- **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
-  dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
-  (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
-- **`EhOsContract.Model.to_data/1` redacts the rows a scenario gives with `given_entity`.** A field the domain's
-  entity declares `personal:` was published as written; it is `null` now, as in a given event, and a row of an
-  entity the domain does not declare has its values dropped. The model document of a contract whose scenarios
-  give such a row changes its digest. Moves no verdict.
-
-### Fixed — can move a verdict
-
-- **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or
-  `or_else` whose payload lacks one of the identity's fields, or carries it as `nil`, used to be paired by that
-  `nil` with a `from` missing the same field, and close an item neither named. It now resolves no item, as the
-  promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
-  identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
-  under one identity is judged as before.
-
-### Changed — a host has to act
-
-- **`mix eh_os_contract.pages` writes each contract's graph document beside its pages, and no diagram** (plan
-  E13, #217). `graph/<contract id>.json` holds the contract's `graph.v1` document, linked from its page, and the
-  task treats those files as its own when it overwrites, checks or deletes. The domain's context map and each
-  unit's Mermaid diagram are gone from the pages. **A host that commits the pages and checks them with `--check`**
-  runs the task once. Moves no verdict.
-- **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
-  user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
-  it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
-  report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
-  `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
-  A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
-  its id.
-- **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
-  `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
-  `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
-  id and add `"module"`; the model index is `eh_os_contract.model-index.v2`. `EhOsContract.Registry.contract/1`
-  finds a registered contract by its whole id. The OpenAPI and AsyncAPI documents keep the module as their title
-  and carry the id as `info.x-eh-os-contract-id`. `mix eh_os_contract.graph --contract` takes the id too, and the
-  text report heads each contract `CONTRACT: <id>`.
-- **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
-  `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
-  reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same
-  way. Two deposits on one account read "2 taken" on the graph, where they read "1/1 runs", and two failures of one
-  account are two. A contract's steps are counted whether or not it has a process, and an event's node on the graph
-  shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`).
-- **A contract's steps are its own block of the report, judged when it recorded an event** (plan DD, P1a, #183;
-  moves verdicts). `EhOsContract.Conformance.from_model/2` (now public) gives `activity` (the contract's events
-  and its commands, whatever their outcome, in the period) and `paths` (`steps`, `untraversed`, `in_flight`,
-  `failing`) at the report's level; a process (`Conformance.process/2`, now public) keeps its runs, declarations,
-  duration and promises, without lists of steps. "Never carried out" is listed when the contract recorded an event
-  in the period, where it was listed when its process had any run: a contract without a process is judged, and so
-  is one whose events belong to no run. What waits and what fails is listed whatever the activity. The text report
-  and the screen print a STEPS block before PROCESS; with no event it says "this contract recorded no event in this
-  period", and a contract with no steps says "The contract declares no steps."
-- **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
-  `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
-  where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
-  (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
-  contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
-  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
-  **The host also clears the tables its read models project into**, which are the host's and which the reset leaves: they
-  hold projections of the log that is gone, and an ordered read model starts again from the new log's first event. An inbox's durable
-  consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
-  deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
-  to the inbox and drain it before upgrading, then delete the old consumer. An effect's job
-  carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
-  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
-  `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision
-  names the contract by it.
-- **Two contracts of one `id:` across the configured applications, or the siblings they consume, are refused when the engine scans them**
-  (plan DD, ID4, #178): `ArgumentError` naming both modules and their applications, at boot or at the first
-  dispatch. X7 refuses it within one application at compile time; across applications no compile sees both, and
-  since every row and key names the id, the two would share one history.
-- **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
-  without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
-  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's
-  schema before upgrading** (`EhOsContract.Migrations.down/up`, or a fresh database), not only the events table:
-  subscriptions, the relay, process managers, runs and the commands' idempotency rows all point into the old log.
-  Events stored under the old types are not read, and nothing reports them: an aggregate whose stream holds one
-  raises, but a boundary, a subscription, a read model and the report skip them silently — a boundary that allows
-  one booking per seat would accept a second for a seat booked before the upgrade. No tool converts them (the
-  user's decision; rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
-  deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
-  the application: they key their runs.
-- **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
-  the refusal is **X10**). Left out, it
-  runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the
-  reaction rolls that event back. **X10** now refuses such a reaction without `delivery:` at compile time; one
-  that names `delivery: :in_transaction` compiles, and `mix eh_os_contract.check` warns about it
-  (`in-transaction-across-contexts`). Only consumers of a sibling contract of the same domain and another
-  `context:` are affected; within one context nothing changes, and a reaction that leaves `delivery` out keeps
-  `:in_transaction` and its contract's version. An effect (`:at_least_once` unless declared) is not refused, but
-  one declared `:in_transaction` on another context's event gets the same warning, which turns
-  `check --warnings-as-errors` red. **A host with such a reaction adds `delivery:`** — `:at_least_once` (with
-  its `idempotency` for a policy, P3; a read model takes none), or `:in_transaction` and an explanation for the
-  warning. Choosing `:at_least_once` moves the reaction after the transaction: an overlay
-  step goes from inline to subscribed, and a test that read the reaction's result straight after the dispatch
-  drains the subscriptions first.
-- **T1: a domain value's invariant may no longer be named `:supplied`** (D9), the word a request's refusal now
-  puts where an invariant's name goes, as it already could not be `:required`, `:type` or `:generated`. Rename one
-  that was.
-
-- **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and
-  invisible format characters (zero-width spaces, direction marks, the byte order mark). N1 refuses one on any
-  declaration of a contract, fields included; D1 does the same in a domain; F2 and D3 refuse a blank label of an
-  enum member. `event :visit_closed, ""` compiled until now and left a page, a graph's node and a report's
-  sentence with nothing saying what the business calls it. An optional label left out still passes, and a struct
-  written as data, in a scenario's rows or an invariant's examples, is not checked. An enum member named `true`,
-  `false` or `nil` is refused with a label too, as it already was without one. No version moves: a contract that
-  compiles is unchanged.
-- **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,
-  non-personal field of type `:date` or `:timestamp`, or of a domain value resting on one, adds a tag
-  `<field>.day:YYYY-MM-DD` beside the `:id` tags: a date its own day, a timestamp the day it falls on in the
-  domain's new `time_zone:` option, UTC unless given (`use EhOsContract.Domain, …, time_zone: "Europe/Warsaw"`).
-  A boundary that buckets by day (B2) will find every event appended from this version on; events appended before
-  carry none, and none is added to them, since the log only grows — so **set `time_zone:` before you upgrade**, or
-  the tags already written keep UTC's days. A zone other than UTC is read with the time zone database the host
-  configures (`config :elixir, :time_zone_database, Tz.TimeZoneDatabase`, with `{:tz, …}` among its
-  dependencies): the package brings none, and **D13** refuses a zone that database does not know — also when the
-  configured module is not there. A node that runs with another database than the domain compiled with, or none,
-  refuses to start, naming the domain and the zone, instead of raising on every append; it asks the domain of
-  every contract it scans, also one in an application `applications:` does not list. Nothing reads the tags yet.
-  Only a domain that sets a zone moves its version.
-- **W1: a row of the log carries the schema version it was written with, and newer code's rows wait.**
-  Dispatch writes the event's `schema_version:` into `schema_version`, where every row said 1 until now, the
-  column's default. A row written with a newer version than the running code declares is never decoded with the
-  older fields: it raises `EhOsContract.NewerSchemaError`, which names the row, never a value. During a rolling
-  deploy, or after a rollback, that means on the older node:
-  - a command whose stream holds such a row is refused, recorded `failed` with that error;
-  - a subscription, a process manager and a relay wait at the row: the events before it in the batch are
-    applied, the row itself moves nothing, no attempt is counted, the runner logs a warning and tries again every
-    5 s, and it goes on by itself once the node runs the newer code; a subscription does not turn `failing` over
-    it, so do not `--skip` it;
-  - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`, and its backoff after
-    a real failure counts only the attempts that ran;
-  - a message an inbox takes whose policy's command meets such a row is answered `:nack` and delivered again.
-  Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
-  none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
-- **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
-  `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
-  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (N1). A process manager's page
-  prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
-  and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
-  contract with a timer.
-- **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
-  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
-  … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
-  and reads its events from this log; a published name given to it is refused by K1, which says to write
-  `subscribe` instead. D11 says `subscribe`, and with no list of events to take, it no longer refuses one. The
-  model is unchanged, so **no version moves**.
-- **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
-  :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
-  `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a
-  required, non-personal `:id`, as it adds a unit's. An identity some system gives takes `issued_by:` on the
-  entity, `identity: :number, issued_by: :ksef`, and the model keeps it on the injected field. D6 refuses an
-  identity not in snake_case or declared again as a field; D8 holds an entity's `issued_by:` to the domain's
-  externals. **Moves the version** of every domain with an entity, whose model now says `identity`.
-- **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
-  `scenario` no longer compiles; write `target :remind_on_close`. `scope` stays a command's and a query's,
-  where it narrows a grant. S1 says "target". The model's scenario loses its raw `scope` key and keeps the
-  resolved `target`, so **the version moves** of every contract with a scenario.
-- **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
-  terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
-  the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
-  "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
-- **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
-  `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
-  the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
-  the two into one capability.
-
-### Removed — a host has to act
-
-- **The Mermaid pictures** (plan E13, #217). `EhOsContract.Graph` is gone, with `declared_to_mermaid/2`,
-  `contract_to_mermaid/2`, `unit_to_mermaid/2`, `lifecycle_to_mermaid/3`, `context_map_to_mermaid/1` and
-  `system_to_mermaid/3`, and `mix eh_os_contract.graph` draws nothing: `--contract <id>` gives the contract's
-  `graph.v1` document as JSON where it gave a Mermaid diagram, and `--process`, `--mermaid`, `--unit`,
-  `--lifecycle`, `--map` and `--system` are refused as unknown options. **A host that drew a picture** with them
-  mounts the dashboard (`eh_os_contract_web`), whose Graph screen draws the same six pictures, or renders the
-  documents with `eh_os_contract_graph`. Moves no verdict.
-- **A process has no `cadence`** (plan DD, P1d, #195; the user's decision). It said how often a run is due
-  (`cadence {1, :month}`), and nothing acted on it: the report printed "Due: every …" among the process's
-  confirmed declarations, the pages "Cadence: every …", and the check noted an unconfirmed one
-  (`unverified-declaration`). A contract that declares it no longer compiles (`undefined function cadence/1`):
-  delete the line. The report's `declarations` hold at most the confirmed `deadline`. A process is digested as it
-  was with no cadence declared, so no other contract's version moves; one that declared it moves once, when the
-  line goes. The exported model (`EhOsContract.Model.to_data/1`) loses the `"cadence"` key from `"process"`, where
-  it was `null` unless declared, so that document's own `"digest"` moves for every contract with a process.
-
-## Unreleased — 0.3.0
-
-The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
-**The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
-no longer compiles, and nothing of it is migrated — there was no consumer to migrate. What 0.3.0 is, and
-how to write a domain and a contract for it, is in `README.md` and `docs/contract.md`; every key of both
-DSLs is in `docs/dsl/`. Until E11, E1–E5 moved no verdict of a first-DSL contract — `mix
-eh_os_contract.report` and `graph --overlay --mermaid` gave byte-identical output before and after each —
-and from E6 the second DSL ran beside it. The entries below each name their stage.
-
-### Removed — E11a, the first DSL
-
-- `use EhOsContract.Contract` with `event`, `process`, `trace`, `rule`, `example`, `external` and `command`
-  keyword declarations, and everything that read them: `EhOsContract.Handler`, `EhOsContract.emit/4` and its
-  emitter, `EhOsContract.Job`, handler failures, `EhOsContract.Telemetry`, `EhOsContract.Brief`, the first
-  model (`Model.V1`), and the first DSL's findings in `check`, its AsyncAPI projection, report, trace, run,
-  graph overlay and deployment rows.
-- `mix eh_os_contract.trace` and `mix eh_os_contract.brief`. A promise's verdicts are in the report; a Brief
-  for a process owner comes back on the dashboard. `mix eh_os_contract.graph` without a picture flag refuses,
-  exiting non-zero with its usage, instead of drawing the first DSL's graph: a script that ran it bare fails.
-- The dashboard's "every contract" panel on `/graph`, which drew the first DSL's handler graph.
-- **Jobs of `EhOsContract.Job` still in a host's Oban queue have no worker.** Drain the queue before the
-  upgrade. A job left behind fails and is discarded, and the handler's work it carried never happens, with
-  nothing recording that. Its args hold the event's payload and actor, which erasure does not reach, so after
-  draining delete the rows (`worker = 'EhOsContract.Job'`) rather than waiting for a pruner.
-- The direct `:telemetry` dependency. It stays in the lock through Ecto and Oban.
-
-### Changed — a host has to act
-
-- **EP4: `idempotency` names its key and its owner.** `idempotency: :event_id` no longer compiles: it is
-  `[key: :event_id, owner: :self]`, the owner one of `:self` (the reaction's code keys what it writes),
-  `:downstream` (the system an effect calls is given the key) and `:infrastructure` (the engine keys the
-  commands a policy or a process manager issues, so the key is `:event_id`). P3 refuses `:downstream` outside
-  an effect and `:infrastructure` on one. The callback's `@doc` and the reaction's page say what the owner
-  asks of the code. **Moves the version** of every contract with an `idempotency`, which is a map in the model
-  and in its export (`eh_os_contract.model.v1`), no longer an atom.
-- **#98: a key past 2048 bytes is refused, not failed.** F9's six fields were measured, not proved: a key heavy
-  in `|` and `%`, which escape to three bytes, or behind a long name, fit a btree entry only when Postgres
-  compressed it. Now the key is counted after escaping, with the name in front of it, against
-  `EhOsContract.Key.budget/0`, 2048 bytes of the 2704 an entry holds:
-  - **dispatch** refuses a command whose aggregate's stream id, or a run's key an event belongs to — home or
-    included, the process's name and the instance id — is over it: `{:error, :key_too_long}`, or 422
-    `{"error": "key_too_long"}`, with nothing written. Until now Postgres refused the append, and the answer
-    was 500;
-  - **a process manager** raises `EhOsContract.Key.TooLongError` on an event that would start a run whose
-    key — its timer stream, `"$pm:<manager>:<correlation>"` — is over it, before anything is written. Its
-    subscription stops at that event as at any failure, until someone skips it (`mix
-    eh_os_contract.subscriptions`). Until now it stopped on Postgres's exception, or did not, depending on
-    compression. An event no run takes is taken as before, whatever its key's length;
-  - **a command a reaction issues** and dispatch refuses with `:key_too_long` raises, as any refusal of such a
-    command other than a rejection does: a policy delivered `:in_transaction` rolls back the command that led
-    to it, and the caller still gets a 500; one delivered `:at_least_once`, and a process manager, stop at the
-    event. Only a command's own keys became a 422.
-  - **A key written before this change past the budget** is now refused: an aggregate whose stream id is longer
-    takes no further command, and a run is not started for it. A host finds them with
-    `octet_length(stream_id) > 2048` on `eh_os_contract_events` and `octet_length(process) +
-    octet_length(instance_id) > 2048` on `eh_os_contract_event_runs`.
-  - The 422 of every command in the OpenAPI document names the new reason, so its `x-eh-os-contract-digest`
-    changes.
-
-- **#96: a run and a process manager are told only by an `:id`, and a key has at most six fields.** Two
-  contract shapes that compiled no longer do:
-  - **F8.** A field a process or a process manager `correlate`s on is an `:id`, `{:id, entity}` or a domain
-    value resting on `:id`, in every local event that carries it and in a manager's state. Its value is
-    part of the run's and the manager's index key, and only an `:id` is bounded (255 bytes). Until now
-    `correlate :invoice_number` on a `:string` compiled, and a request with 3 KB of text in it answered 500;
-    on a manager delivered `:at_least_once`, its subscription stalled. A contract correlating on another type
-    correlates on the identifier it stands for instead. A manager's correlation the state does not declare takes
-    its type from the first local event carrying it, handled or not, so that event is held to F8.
-  - **X6, the part F8 needs between contracts.** A process that correlates on a field no local event carries — a
-    contract with no unit of its own, including a sibling's events — holds the sibling's field to `:id`. Until now
-    its type was not compared at all.
-  - **F9.** A unit's identity, a process's `correlate` and a process manager's `correlate` have at most six
-    fields. Seven `:id` fields at their bound, with `|` and `%` that escape to three bytes, overflow the 2704
-    bytes a btree entry holds, and the append failed.
-
-- **#65: a policy on another application's event is a path of the conformance screen. This moves verdicts.**
-  `EhOsContract.Paths` declares a step `received event → policy → command` for every `consumes "<name>"` event a
-  policy handles, and counts it taken in the runs whose commands that policy issued with a row of its inbox
-  (`eh_os_contract_inbox`) as their cause, bounded by when the inbox took the row.
-  - Until now such a reaction was neither traversed nor untraversed: the screen did not see it. A contract
-    whose reaction was declared and never ran now reports it as untraversed.
-  - The step is one of the contract's edges, so its wiring version changes once, at the first boot on this
-    version, with the path among the paths added (`EhOsContract.Deployment`).
-  - The contract's graph draws the received event, and its edge to the policy.
-  - **What it does not see:** a delivery the policy fails on is rolled back with the inbox's row and delivered
-    again by the transport, so it leaves nothing in this database. A received path that always fails reads as
-    untraversed, not as failing, and the policy's own failures on the log are not counted against it.
-  - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
-    a report's bounds read both alike.
-
-- **What a request controls is bounded where what holds it is.** Past a bound a value does not fit its type:
-  `{field, :type}`, or 422 over HTTP. Until now each of these failed a write or a host's read model later, a 500
-  or a stopped subscription. The bounds:
-  - **an `:id` is at most 255 bytes**, so an index entry keys it with room for the rest of a key;
-  - **an `:integer` is a signed 64-bit integer**, what a `bigint` column holds. Until now an integer far beyond 64
-    bits was let in, since the log's JSON and the BEAM hold it. **This reverses that**, by the user's decision;
-  - **a `:decimal` is finite, with an exponent and a coefficient of at most a thousand digits.** `NaN` and
-    `Infinity` were let in. A struct past the bounds failed at the append, where `Decimal.to_string(_, :normal)`
-    refuses past its digits. Decimal itself parses text only within decimal128;
-  - **a `:date` and a `:timestamp` are within the years 1 to 9999**, which Postgres keeps.
-
-  **They hold wherever a value enters the log:**
-  - a request, and another application's published event an inbox takes;
-  - a command a reaction issues, an event a decider emits, a domain service's arguments and result.
-
-  Reading the log back asks none of them, so what was written before them still reads. Written again — copied by a
-  decider, re-issued by a reaction from an old event, published to another application — it is held to them:
-  - an aggregate whose identity is past 255 bytes takes no further command;
-  - a decider whose arithmetic leaves the bounds (two int64s summed past int64, a decimal's exponent past a
-    thousand) fails the command, as an event that does not fit always has.
-
-  A decimal within the bounds reads back whole, though Decimal 3 parses text, and casts an integer, only up to 34
-  digits: the codec reads the plain form the log writes, and a JSON number is held to the bounds as its text is. An empty `:id` is refused as it is decoded, as validation refused it: an inbox
-  takes a published event by decoding alone.
-
-  A tighter bound — a `varchar(n)`, a `numeric(p, s)`, a sum a read model keeps — is the domain's to declare, as an
-  invariant of a value. The OpenAPI and AsyncAPI documents carry the bounds JSON Schema has words for: `:id`
-  `minLength`/`maxLength` in characters and `x-eh-os-contract-max-bytes`, since the bound is in bytes; `:integer`
-  `minimum`/`maximum` beside `format: int64`, which only annotates. Every document with such a field gets a new
-  `x-eh-os-contract-digest`, though its contract did not change.
-
-  Over HTTP, **a query string Plug cannot read** — not UTF-8, nested too deep — is 400 `{"error":
-  "invalid_query_string"}`, and one past Plug's length is 414. Either comes after the caller is asked whether it
-  may make the call. Until now Plug raised as it read the string: Phoenix answered 400 and a bare Plug 500.
-
-  A scope value past 255 bytes is asked of the `Authorizer` as none, so it is refused `:outside_scope` and never
-  recorded in full.
-
-- **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
-  of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before
-  (below):
-  - **Text in a `:string` or `:id` field holding a NUL, or invalid UTF-8, does not fit its type.**
-    - Reachable over HTTP: `"\u0000"` in JSON, `%00` in a query string. Plug refuses invalid UTF-8 in a query
-      string, and Jason in a body.
-    - Reachable from a direct caller of `call/3` or `dispatch/3` with any bytes.
-    - The answer is `{:error, {:invalid, [{field, :type}]}}`, or 422 `{"invalid": {"<field>": "type"}}`, at any
-      depth of a domain value. A query's parameter is held to it too.
-    - A published event an inbox takes is held to it as well. One that does not fit is delivered again, also when
-      no policy would have stored the field.
-    - A scope value that is not text is asked of the `Authorizer` as none (`nil`), so it is refused
-      `:outside_scope` and never reaches a decision row.
-    - Reading the log back does not ask again: a sealed personal value written before the rule still opens.
-  - **A caller's idempotency key must be printable ASCII (`0x21`–`0x7E`) of at most 255 bytes.**
-    - Otherwise the answer is `{:error, :idempotency_key_invalid}`, or 400 `{"error": "idempotency_key_invalid"}`.
-      This is a new refusal.
-    - The rule is stricter than the key's columns need, so a key never depends on what a text column, `jsonb` and
-      an index entry happen to hold.
-      - What failed the write before was a NUL, invalid UTF-8, or a key past about 2.7 KB.
-      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
-        key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
-    - The OpenAPI document gives the header's pattern.
-    - A reaction's key is held to it too, since a reaction's actor is a struct any caller can build. The key the
-      library derives keeps its form, `<kind>:<contract>:<name>:<event id>:<n>`; one that would break the rule
-      (names past what 255 bytes leave, a quoted module) is `<kind>:sha256:<hex>` of it instead.
-
-- **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
-  process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
-  never enters the log they read, so none of them would ever have been given it. React with a policy, and take
-  the event its command records.
-- **E12c: V01 creates one more table, `eh_os_contract_inbox`.** V01 is changed in place, as before 0.3.0 is
-  first released: a database migrated earlier has no inbox. Recreate it, or create the table V01 now creates.
-- **E12c: an `EhOsContract.Bus.Message` has a fifth field, `key`, and it is required.** A transport adapter
-  carries it as it carries the id; a test that builds a message gives it one.
-
-- **D11: a domain's `name:` is one segment of an application's namespace.** It begins every name the domain's
-  contracts publish and every capability, and nothing checked it: `name: :"acme.billing"` published
-  `"acme.billing.x.v1"`, which passed both D11 checks and lies in the namespace of an application `acme`. A
-  domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
-  dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
-  that could publish before, only those with a dot are refused.
-- **F1, D3 and D6: a field's name is snake_case, and a value's field is named once.** A contract's fields
-  were checked only for uniqueness and a leading `__`, a value's and an entity's only for uniqueness (an
-  entity's) or not at all (a value's): `field :"Invoice No"` became a key of the typespec, the JSON Schema and
-  the page, `:"a|b"` broke the unit graph's edge it labelled, and a value's field declared twice gave the JSON
-  Schema the later definition with the earlier one's `required`. A unit's `identity` is held to the same,
-  named once, at the unit: `identity :"a|b"` reached a graph edge and a page table through `consults`. A
-  contract or domain declaring such a field no longer compiles.
-- **N1: two names that camelize alike are refused where they become one module or alias.** N1 compared names
-  exactly, so `event :visit_closed` beside `event :visit_closed_` compiled, with a warning that
-  `<Contract>.Events.VisitClosed` was redefined: one event carried the other's struct. The same held for a
-  command, event or consumed event (an implementation aliases each as `<Camelized>`) and for two aggregates,
-  dcbs, reactions, read models, queries or domain services of one kind. N2 compares `:state` and `:row`, the
-  aliases of a unit's state and a read model's row, camelized too, so `command :state_` is refused. A contract
-  that declared such a pair no longer compiles.
-- **D1: a subdomain's, context's, subject's, value's, entity's and external's name is snake_case.** They were
-  held only to uniqueness: `value :"a/b"` generated `<Domain>.Values.A.B`, a module nested in another, and
-  `context :"front desk"` broke the context map's diagram; `mix eh_os_contract.pages` refused such a name, but
-  only when it ran. Two values whose names camelize alike (`:money_amount`, `:money_amount_`, `:money__amount`)
-  generated one module of invariants once either had one, and are now refused as two of one name. A value
-  named after a type Elixir builds in (`:map`, `:bool`), whose `@type` failed to compile with an error pointing
-  at the library, and one named after a built-in field type (`:date`, `:id`), which a field of that type
-  silently meant instead, are refused with a code. A domain that declared one no longer compiles. Field names
-  are not covered.
-- **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
-  reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
-  `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as
-  it names a person. A domain that declared one no longer compiles.
-- **N1 and D9: a name ending in a newline is refused, and so is a decimal in scenario data.** Their patterns
-  ended in `$`, which also matches before a final newline: `command :"pay\n"` compiled, and its capability
-  `"<domain>.pay\n"` reached `EhOsContract.Model.capabilities/1`, the OpenAPI document and the EHOS manifest.
-  The same held for a value invariant's name and a scenario's decimal written `"12.50\n"`: a contract or a
-  domain that declared one no longer compiles. `mix eh_os_contract.pages` refuses a page named after a
-  domain's element ending in a newline, as it refuses one with a space.
-- **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
-  also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
-  breaks the subject line. A contract that declared one no longer compiles.
-- **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
-  an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
-  boundary's query and its conflict condition narrow to those types, so appending an event it passes
-  over no longer conflicts with its decisions, and its commands' `given_types` list only folded types —
-  unless it folds none of its events, when it reads and conflicts on all of them as before, since a store
-  query cannot be empty.
-  Scenario coverage compares a scenario's `given` on the folded types too, so no verdict moves for a
-  scenario that names an event the unit passes over. A row of a passed-over type that no longer fits its
-  declaration no longer stops the stream; a type the contract no longer declares still does.
-- **E11f: an idempotency key belongs to the actor who sent it.** Dispatch looks an accepted key up by the
-  actor and the key together, and the unique index is on both (`issued_by`, `idempotency_key`). Before, the
-  key was one for the whole application: a second actor sending a key the first had used got the first
-  one's receipt — its events, personal fields opened — and its own command was not run. Now it is its own
-  command. A host that shared one key between actors on purpose, to run a command once whoever sends it,
-  no longer gets that. A retry therefore has to come from the same subject, and whatever shares one
-  credential or one `:system` actor shares one key space (`docs/authorization.md`). A credential with an
-  empty subject is refused, since it would make every such credential one actor. A development database
-  created before this change keeps the old index: recreate it,
-  or rebuild the index with `DROP INDEX eh_os_contract_commands_idempotency_index` and the `CREATE UNIQUE
-  INDEX` V01 now runs.
-- **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is
-  `use EhOsContract.Contract`, and every `EhOsContract.Next.*` module drops `Next`. `Registry.v2_contracts/0`
-  is `Registry.contracts/0`, and the scan's key `graph().v2_contracts` is `graph().contracts`;
-  `Check.v2_findings/1` is `Check.findings/1`; `Deployment.v2_edge_labels/1` is `Deployment.edge_labels/1`.
-  **`Registry.contracts/0` and `Check.findings/1` existed before and meant the first DSL's contracts**: a
-  call written before E11 still compiles, and now gets the second DSL's.
-- **E11c: the engine's storage is one migration.** `EhOsContract.Migrations.current_version/0` is 1, and V01
-  creates the whole store in its final shape. The upgrades to versions 2–5 are gone, and nothing migrates a
-  database from them: **a database that holds data stays on 0.2.x.** A development database is recreated —
-  delete the host's migrations that call `up(version: 2..5)` first, since on a fresh database they would
-  run versions that no longer exist, then `ecto.drop`, `ecto.create` and `ecto.migrate`; what the old log,
-  subject keys and erasures held is gone with it. Left as it is, such a database is refused: `up/1` and
-  `down/1` raise on a recorded version above 1, and on a target outside the versions the release has — a
-  leftover `up(version: 3)` migration fails with that message. The final shape differs from what V05 left:
-  text columns are
-  `text`, not `varchar(255)`; `eh_os_contract_event_handlings` and `eh_os_contract_handler_failures` are not
-  created; the indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` of
-  `eh_os_contract_events` are not created, since runs are read through `eh_os_contract_event_runs`.
-- **E11a: R2 refuses a process with `correlate []`, and P4 a process manager with `correlate: []`.** Both
-  compiled, and then every event of the contract joined one run — the report counted one run for everything
-  — and every run of the manager shared one record, state and set of timers.
-- **E11a: an empty `:id` is refused**, at dispatch (`{field, :type}`) and in scenario data at compile (S3), as
-  an entity's id is. The log read back still accepts one, so what is already written keeps reading.
-- **E11a: a promise can be suspended.** `EhOsContract.Dependency.unavailable!/4` takes a contract with an
-  event that `depends_on` the external, where it accepted only a first-DSL contract, so an outage recorded
-  inside a promise's window now suspends it instead of counting as a violation. `Dependency.observe/3`
-  records an outage of an external the contract only `calls:`, where it raised; such an observation
-  suspends nothing, since promises read only `depends_on` events.
-
-- **E10: `EhOsContract.Model.to_data/1` publishes the v2 model under the named schema
-  `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
-  capabilities and a digest of that projection. Its declaration and example structure is complete, but
-  personal values in scenarios, rule examples, invariant examples and defaults are `null`: the public model
-  is not a second store for fixture data. A scenario's event is redacted by the fields of the contract that
-  declares it, so a consumer's scenario on a sibling's event does not publish that sibling's personal
-  values. What no declaration covers is `null` rather than verbatim: the data of an event or command
-  that cannot be found, a query's answer without its read model, a key no field declares, and a
-  structured value's example that is not a map but holds a personal field.
-
-- **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
-  of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
-  `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential
-  granted a scoped command without values for its dimension is refused `:unscoped_grant`, as for a query, so a
-  host granting one has to send the values (`scp`).
-- **E9a: an event a contract records has a capability, and a credential records with it.**
-  `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
-  `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks
-  the `Authorizer` for it, as `dispatch/3` does for a command, instead of refusing every credential with
-  `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`,
-  and answers a recording for a unit no command created (`{:error, :not_created}`) with 404 `{"error":
-  "not_created"}`.
-  A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, `eh-os` D-34) maps the
-  recordings too; D14 now also refuses a recorded event named like another declaration's capability.
-- **E9a: only what a person may do is a capability.** `EhOsContract.Model.capabilities/1` gives a command, a
-  query or a recorded event a capability only when its `by:` or `recorded_by:` names a `:human` actor, and its
-  roles are those people only. A command only a reaction issues (no `by:`) and an event only a `:system` actor
-  records have none: a credential naming them is refused `:missing_capability`, and `EhOsContract.Plug`
-  answers 404. A host's entry-point check drops them; the application's own `:system` actor reaches them as
-  before.
-- **EG1: `EhOsContract.Graph.steps_to_mermaid/2` is `contract_to_mermaid/2`**, and draws a v2 contract's full
-  graph (below). A caller renames the call; the options (`overlay:`, `since:`, `until:`) and the steps' nodes and
-  edges are the ones they were.
-- **EL2b: a domain service's `rule` needs `examples:`**, `rule :never_below_zero, "…", examples: [{[1, 3],
-  0}]` — the arguments in the order the function takes them, then the result. A rule without one fails the
-  compile (S9), and so does an example of the wrong arity or types (S9, X9 for domain values). Each example is a
-  test in `use EhOsContract.ScenarioCase, contract: C`, run through `C.DomainServices.<Name>`.
-- **EL2b: N2 refuses a callback named after a function every module defines** at its arity: an event
-  `:module_info` (its handler would define `module_info/1`) fails the compile, as a domain service's function
-  of that name already did.
-- **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
-  domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
-  and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
-  `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
-- **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;
-  one without fails the compile. A translation may name words to `avoid` in its language, and an `avoid` may
-  give its `reason:`. `mix eh_os_contract.glossary --language` prints them.
-- **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
-  declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
-  one-line output reads the first line of each pair; one reading it by program should move to `--format json`.
-- **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
-  refuses to start, since an erased subject's data would stay in its tables.
-- **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
-  EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
-  without personal fields configures nothing.
-
-- **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
-  that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
-  database that leaked rows is recovered with `ecto.drop`.
-- **Emissions run under READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at a stricter
-  isolation level. Every append takes one transaction-scoped advisory lock, so a transaction that locks a row
-  and then emits can deadlock with an emission whose handler locks the same row. Take
-  `EhOsContract.Store.Postgres.lock/1` first (`EhOsContract.Store`'s moduledoc).
-- **A new dependency: `spark ~> 2.7.3`.**
-- **E7a: the `EhOsContract` child is a supervisor.** Besides scanning the registry and recording the
-  deployment, it registers every subscription, rebuilds the stale read models that define `reset/0`, and
-  starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
-  **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
-  runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
-- **EM1: an `EhOsContract.Store` implementation of the host's own needs `read_query/2`**, and its `append/3`
-  takes a third condition, `{:dcb, query, after_position}`, refused with `{:error, :condition_failed}`
-  (v2 §10.1). `EhOsContract.Store.Suite` checks both. `EhOsContract.Store.Postgres`, the default, has them.
-- **EM1: an appended event is tagged with every required, non-personal `:id` field it carries**, not only its
-  unit's identity: `["account_id:a-1", "branch_id:b-7"]` where it was `["account_id:a-1"]`. A consistency
-  boundary finds what it consults by these tags, so a `match:` names only such fields (A4 for a local event,
-  X6 already for a sibling's). Events appended before this version carry the narrower tags.
-- **EM1: a command's row in `eh_os_contract_commands` lists each type it was given once** (`given_types`), in
-  the order first read, where it listed one entry per event: a boundary may read the whole history of a type.
-  Scenario coverage compares these as sets, so no count moves.
-
-### Added
 
 - **LC4b (#99): an aggregate's lifecycle as a diagram.** `EhOsContract.Graph.lifecycle_to_mermaid/3` and
   `mix eh_os_contract.graph --contract M --lifecycle NAME` draw where an aggregate starts, its statuses and ends,
@@ -1304,10 +804,519 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed
 
+- **`event-without-consumer` counts an event a unit's lifecycle starts on or moves on as read** (plan DD, P1b,
+  #186): the report's lifecycle section reads it, whether or not the contract has a process. The check warns less;
+  no verdict of the report moves.
+
+- **Breaking:** **`mix eh_os_contract.pages` writes each contract's graph document beside its pages, and no diagram** (plan
+  E13, #217). `graph/<contract id>.json` holds the contract's `graph.v1` document, linked from its page, and the
+  task treats those files as its own when it overwrites, checks or deletes. The domain's context map and each
+  unit's Mermaid diagram are gone from the pages. **A host that commits the pages and checks them with `--check`**
+  runs the task once. Moves no verdict.
+- **Breaking:** **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
+  user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
+  it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
+  report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
+  `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
+  A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
+  its id.
+- **Breaking:** **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
+  `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
+  `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
+  id and add `"module"`; the model index is `eh_os_contract.model-index.v2`. `EhOsContract.Registry.contract/1`
+  finds a registered contract by its whole id. The OpenAPI and AsyncAPI documents keep the module as their title
+  and carry the id as `info.x-eh-os-contract-id`. `mix eh_os_contract.graph --contract` takes the id too, and the
+  text report heads each contract `CONTRACT: <id>`.
+- **Breaking:** **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
+  `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
+  reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same
+  way. Two deposits on one account read "2 taken" on the graph, where they read "1/1 runs", and two failures of one
+  account are two. A contract's steps are counted whether or not it has a process, and an event's node on the graph
+  shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`).
+- **Breaking:** **A contract's steps are its own block of the report, judged when it recorded an event** (plan DD, P1a, #183;
+  moves verdicts). `EhOsContract.Conformance.from_model/2` (now public) gives `activity` (the contract's events
+  and its commands, whatever their outcome, in the period) and `paths` (`steps`, `untraversed`, `in_flight`,
+  `failing`) at the report's level; a process (`Conformance.process/2`, now public) keeps its runs, declarations,
+  duration and promises, without lists of steps. "Never carried out" is listed when the contract recorded an event
+  in the period, where it was listed when its process had any run: a contract without a process is judged, and so
+  is one whose events belong to no run. What waits and what fails is listed whatever the activity. The text report
+  and the screen print a STEPS block before PROCESS; with no event it says "this contract recorded no event in this
+  period", and a contract with no steps says "The contract declares no steps."
+- **Breaking:** **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
+  `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
+  where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
+  (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
+  contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
+  schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
+  **The host also clears the tables its read models project into**, which are the host's and which the reset leaves: they
+  hold projections of the log that is gone, and an ordered read model starts again from the new log's first event. An inbox's durable
+  consumer on the bus is named by its key, so the transport keeps the old one and may go on filling it until it is
+  deleted: what reaches it — before the upgrade and after it — is never taken under the new key. Stop what publishes
+  to the inbox and drain it before upgrading, then delete the old consumer. An effect's job
+  carries the name of the application its dispatch looked in (`"application"`), since an id cannot name it. The
+  conformance wire, the dashboard's APIs and the exported model still name the module; they change with P1a. An
+  `EhOsContract.Authorizer.Request` carries `contract_id` beside `contract`: an authorizer that records a decision
+  names the contract by it.
+- **Breaking:** **Two contracts of one `id:` across the configured applications, or the siblings they consume, are refused when the engine scans them**
+  (plan DD, ID4, #178): `ArgumentError` naming both modules and their applications, at boot or at the first
+  dispatch. X7 refuses it within one application at compile time; across applications no compile sees both, and
+  since every row and key names the id, the two would share one history.
+- **Breaking:** **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
+  without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
+  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's
+  schema before upgrading** (`EhOsContract.Migrations.down/up`, or a fresh database), not only the events table:
+  subscriptions, the relay, process managers, runs and the commands' idempotency rows all point into the old log.
+  Events stored under the old types are not read, and nothing reports them: an aggregate whose stream holds one
+  raises, but a boundary, a subscription, a read model and the report skip them silently — a boundary that allows
+  one booking per seat would accept a second for a seat booked before the upgrade. No tool converts them (the
+  user's decision; rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
+  deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
+  the application: they key their runs.
+- **Breaking:** **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;
+  the refusal is **X10**). Left out, it
+  runs `:in_transaction`, inside the transaction that records the other context's event, so a failure of the
+  reaction rolls that event back. **X10** now refuses such a reaction without `delivery:` at compile time; one
+  that names `delivery: :in_transaction` compiles, and `mix eh_os_contract.check` warns about it
+  (`in-transaction-across-contexts`). Only consumers of a sibling contract of the same domain and another
+  `context:` are affected; within one context nothing changes, and a reaction that leaves `delivery` out keeps
+  `:in_transaction` and its contract's version. An effect (`:at_least_once` unless declared) is not refused, but
+  one declared `:in_transaction` on another context's event gets the same warning, which turns
+  `check --warnings-as-errors` red. **A host with such a reaction adds `delivery:`** — `:at_least_once` (with
+  its `idempotency` for a policy, P3; a read model takes none), or `:in_transaction` and an explanation for the
+  warning. Choosing `:at_least_once` moves the reaction after the transaction: an overlay
+  step goes from inline to subscribed, and a test that read the reaction's result straight after the dispatch
+  drains the subscriptions first.
+- **Breaking:** **T1: a domain value's invariant may no longer be named `:supplied`** (D9), the word a request's refusal now
+  puts where an invariant's name goes, as it already could not be `:required`, `:type` or `:generated`. Rename one
+  that was.
+
+- **Breaking:** **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and
+  invisible format characters (zero-width spaces, direction marks, the byte order mark). N1 refuses one on any
+  declaration of a contract, fields included; D1 does the same in a domain; F2 and D3 refuse a blank label of an
+  enum member. `event :visit_closed, ""` compiled until now and left a page, a graph's node and a report's
+  sentence with nothing saying what the business calls it. An optional label left out still passes, and a struct
+  written as data, in a scenario's rows or an invariant's examples, is not checked. An enum member named `true`,
+  `false` or `nil` is refused with a label too, as it already was without one. No version moves: a contract that
+  compiles is unchanged.
+- **Breaking:** **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,
+  non-personal field of type `:date` or `:timestamp`, or of a domain value resting on one, adds a tag
+  `<field>.day:YYYY-MM-DD` beside the `:id` tags: a date its own day, a timestamp the day it falls on in the
+  domain's new `time_zone:` option, UTC unless given (`use EhOsContract.Domain, …, time_zone: "Europe/Warsaw"`).
+  A boundary that buckets by day (B2) will find every event appended from this version on; events appended before
+  carry none, and none is added to them, since the log only grows — so **set `time_zone:` before you upgrade**, or
+  the tags already written keep UTC's days. A zone other than UTC is read with the time zone database the host
+  configures (`config :elixir, :time_zone_database, Tz.TimeZoneDatabase`, with `{:tz, …}` among its
+  dependencies): the package brings none, and **D13** refuses a zone that database does not know — also when the
+  configured module is not there. A node that runs with another database than the domain compiled with, or none,
+  refuses to start, naming the domain and the zone, instead of raising on every append; it asks the domain of
+  every contract it scans, also one in an application `applications:` does not list. Nothing reads the tags yet.
+  Only a domain that sets a zone moves its version.
+- **Breaking:** **W1: a row of the log carries the schema version it was written with, and newer code's rows wait.**
+  Dispatch writes the event's `schema_version:` into `schema_version`, where every row said 1 until now, the
+  column's default. A row written with a newer version than the running code declares is never decoded with the
+  older fields: it raises `EhOsContract.NewerSchemaError`, which names the row, never a value. During a rolling
+  deploy, or after a rollback, that means on the older node:
+  - a command whose stream holds such a row is refused, recorded `failed` with that error;
+  - a subscription, a process manager and a relay wait at the row: the events before it in the batch are
+    applied, the row itself moves nothing, no attempt is counted, the runner logs a warning and tries again every
+    5 s, and it goes on by itself once the node runs the newer code; a subscription does not turn `failing` over
+    it, so do not `--skip` it;
+  - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`, and its backoff after
+    a real failure counts only the attempts that ran;
+  - a message an inbox takes whose policy's command meets such a row is answered `:nack` and delivered again.
+  Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
+  none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
+- **Breaking:** **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
+  `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
+  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (N1). A process manager's page
+  prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
+  and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
+  contract with a timer.
+- **Breaking:** **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
+  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
+  … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
+  and reads its events from this log; a published name given to it is refused by K1, which says to write
+  `subscribe` instead. D11 says `subscribe`, and with no list of events to take, it no longer refuses one. The
+  model is unchanged, so **no version moves**.
+- **Breaking:** **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
+  :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
+  `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a
+  required, non-personal `:id`, as it adds a unit's. An identity some system gives takes `issued_by:` on the
+  entity, `identity: :number, issued_by: :ksef`, and the model keeps it on the injected field. D6 refuses an
+  identity not in snake_case or declared again as a field; D8 holds an entity's `issued_by:` to the domain's
+  externals. **Moves the version** of every domain with an entity, whose model now says `identity`.
+- **Breaking:** **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
+  `scenario` no longer compiles; write `target :remind_on_close`. `scope` stays a command's and a query's,
+  where it narrows a grant. S1 says "target". The model's scenario loses its raw `scope` key and keeps the
+  resolved `target`, so **the version moves** of every contract with a scenario.
+- **Breaking:** **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
+  terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
+  the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
+  "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
+- **Breaking:** **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
+  `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
+  the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
+  the two into one capability.
+
+- **Breaking:** **EP4: `idempotency` names its key and its owner.** `idempotency: :event_id` no longer compiles: it is
+  `[key: :event_id, owner: :self]`, the owner one of `:self` (the reaction's code keys what it writes),
+  `:downstream` (the system an effect calls is given the key) and `:infrastructure` (the engine keys the
+  commands a policy or a process manager issues, so the key is `:event_id`). P3 refuses `:downstream` outside
+  an effect and `:infrastructure` on one. The callback's `@doc` and the reaction's page say what the owner
+  asks of the code. **Moves the version** of every contract with an `idempotency`, which is a map in the model
+  and in its export (`eh_os_contract.model.v1`), no longer an atom.
+- **Breaking:** **#98: a key past 2048 bytes is refused, not failed.** F9's six fields were measured, not proved: a key heavy
+  in `|` and `%`, which escape to three bytes, or behind a long name, fit a btree entry only when Postgres
+  compressed it. Now the key is counted after escaping, with the name in front of it, against
+  `EhOsContract.Key.budget/0`, 2048 bytes of the 2704 an entry holds:
+  - **dispatch** refuses a command whose aggregate's stream id, or a run's key an event belongs to — home or
+    included, the process's name and the instance id — is over it: `{:error, :key_too_long}`, or 422
+    `{"error": "key_too_long"}`, with nothing written. Until now Postgres refused the append, and the answer
+    was 500;
+  - **a process manager** raises `EhOsContract.Key.TooLongError` on an event that would start a run whose
+    key — its timer stream, `"$pm:<manager>:<correlation>"` — is over it, before anything is written. Its
+    subscription stops at that event as at any failure, until someone skips it (`mix
+    eh_os_contract.subscriptions`). Until now it stopped on Postgres's exception, or did not, depending on
+    compression. An event no run takes is taken as before, whatever its key's length;
+  - **a command a reaction issues** and dispatch refuses with `:key_too_long` raises, as any refusal of such a
+    command other than a rejection does: a policy delivered `:in_transaction` rolls back the command that led
+    to it, and the caller still gets a 500; one delivered `:at_least_once`, and a process manager, stop at the
+    event. Only a command's own keys became a 422.
+  - **A key written before this change past the budget** is now refused: an aggregate whose stream id is longer
+    takes no further command, and a run is not started for it. A host finds them with
+    `octet_length(stream_id) > 2048` on `eh_os_contract_events` and `octet_length(process) +
+    octet_length(instance_id) > 2048` on `eh_os_contract_event_runs`.
+  - The 422 of every command in the OpenAPI document names the new reason, so its `x-eh-os-contract-digest`
+    changes.
+
+- **Breaking:** **#96: a run and a process manager are told only by an `:id`, and a key has at most six fields.** Two
+  contract shapes that compiled no longer do:
+  - **F8.** A field a process or a process manager `correlate`s on is an `:id`, `{:id, entity}` or a domain
+    value resting on `:id`, in every local event that carries it and in a manager's state. Its value is
+    part of the run's and the manager's index key, and only an `:id` is bounded (255 bytes). Until now
+    `correlate :invoice_number` on a `:string` compiled, and a request with 3 KB of text in it answered 500;
+    on a manager delivered `:at_least_once`, its subscription stalled. A contract correlating on another type
+    correlates on the identifier it stands for instead. A manager's correlation the state does not declare takes
+    its type from the first local event carrying it, handled or not, so that event is held to F8.
+  - **X6, the part F8 needs between contracts.** A process that correlates on a field no local event carries — a
+    contract with no unit of its own, including a sibling's events — holds the sibling's field to `:id`. Until now
+    its type was not compared at all.
+  - **F9.** A unit's identity, a process's `correlate` and a process manager's `correlate` have at most six
+    fields. Seven `:id` fields at their bound, with `|` and `%` that escape to three bytes, overflow the 2704
+    bytes a btree entry holds, and the append failed.
+
+- **Breaking:** **#65: a policy on another application's event is a path of the conformance screen. This moves verdicts.**
+  `EhOsContract.Paths` declares a step `received event → policy → command` for every `consumes "<name>"` event a
+  policy handles, and counts it taken in the runs whose commands that policy issued with a row of its inbox
+  (`eh_os_contract_inbox`) as their cause, bounded by when the inbox took the row.
+  - Until now such a reaction was neither traversed nor untraversed: the screen did not see it. A contract
+    whose reaction was declared and never ran now reports it as untraversed.
+  - The step is one of the contract's edges, so its wiring version changes once, at the first boot on this
+    version, with the path among the paths added (`EhOsContract.Deployment`).
+  - The contract's graph draws the received event, and its edge to the policy.
+  - **What it does not see:** a delivery the policy fails on is rolled back with the inbox's row and delivered
+    again by the transport, so it leaves nothing in this database. A received path that always fails reads as
+    untraversed, not as failing, and the policy's own failures on the log are not counted against it.
+  - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
+    a report's bounds read both alike.
+
+- **Breaking:** **What a request controls is bounded where what holds it is.** Past a bound a value does not fit its type:
+  `{field, :type}`, or 422 over HTTP. Until now each of these failed a write or a host's read model later, a 500
+  or a stopped subscription. The bounds:
+  - **an `:id` is at most 255 bytes**, so an index entry keys it with room for the rest of a key;
+  - **an `:integer` is a signed 64-bit integer**, what a `bigint` column holds. Until now an integer far beyond 64
+    bits was let in, since the log's JSON and the BEAM hold it. **This reverses that**, by the user's decision;
+  - **a `:decimal` is finite, with an exponent and a coefficient of at most a thousand digits.** `NaN` and
+    `Infinity` were let in. A struct past the bounds failed at the append, where `Decimal.to_string(_, :normal)`
+    refuses past its digits. Decimal itself parses text only within decimal128;
+  - **a `:date` and a `:timestamp` are within the years 1 to 9999**, which Postgres keeps.
+
+  **They hold wherever a value enters the log:**
+  - a request, and another application's published event an inbox takes;
+  - a command a reaction issues, an event a decider emits, a domain service's arguments and result.
+
+  Reading the log back asks none of them, so what was written before them still reads. Written again — copied by a
+  decider, re-issued by a reaction from an old event, published to another application — it is held to them:
+  - an aggregate whose identity is past 255 bytes takes no further command;
+  - a decider whose arithmetic leaves the bounds (two int64s summed past int64, a decimal's exponent past a
+    thousand) fails the command, as an event that does not fit always has.
+
+  A decimal within the bounds reads back whole, though Decimal 3 parses text, and casts an integer, only up to 34
+  digits: the codec reads the plain form the log writes, and a JSON number is held to the bounds as its text is. An empty `:id` is refused as it is decoded, as validation refused it: an inbox
+  takes a published event by decoding alone.
+
+  A tighter bound — a `varchar(n)`, a `numeric(p, s)`, a sum a read model keeps — is the domain's to declare, as an
+  invariant of a value. The OpenAPI and AsyncAPI documents carry the bounds JSON Schema has words for: `:id`
+  `minLength`/`maxLength` in characters and `x-eh-os-contract-max-bytes`, since the bound is in bytes; `:integer`
+  `minimum`/`maximum` beside `format: int64`, which only annotates. Every document with such a field gets a new
+  `x-eh-os-contract-digest`, though its contract did not change.
+
+  Over HTTP, **a query string Plug cannot read** — not UTF-8, nested too deep — is 400 `{"error":
+  "invalid_query_string"}`, and one past Plug's length is 414. Either comes after the caller is asked whether it
+  may make the call. Until now Plug raised as it read the string: Phoenix answered 400 and a bare Plug 500.
+
+  A scope value past 255 bytes is asked of the `Authorizer` as none, so it is refused `:outside_scope` and never
+  recorded in full.
+
+- **Breaking:** **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
+  of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before
+  (below):
+  - **Text in a `:string` or `:id` field holding a NUL, or invalid UTF-8, does not fit its type.**
+    - Reachable over HTTP: `"\u0000"` in JSON, `%00` in a query string. Plug refuses invalid UTF-8 in a query
+      string, and Jason in a body.
+    - Reachable from a direct caller of `call/3` or `dispatch/3` with any bytes.
+    - The answer is `{:error, {:invalid, [{field, :type}]}}`, or 422 `{"invalid": {"<field>": "type"}}`, at any
+      depth of a domain value. A query's parameter is held to it too.
+    - A published event an inbox takes is held to it as well. One that does not fit is delivered again, also when
+      no policy would have stored the field.
+    - A scope value that is not text is asked of the `Authorizer` as none (`nil`), so it is refused
+      `:outside_scope` and never reaches a decision row.
+    - Reading the log back does not ask again: a sealed personal value written before the rule still opens.
+  - **A caller's idempotency key must be printable ASCII (`0x21`–`0x7E`) of at most 255 bytes.**
+    - Otherwise the answer is `{:error, :idempotency_key_invalid}`, or 400 `{"error": "idempotency_key_invalid"}`.
+      This is a new refusal.
+    - The rule is stricter than the key's columns need, so a key never depends on what a text column, `jsonb` and
+      an index entry happen to hold.
+      - What failed the write before was a NUL, invalid UTF-8, or a key past about 2.7 KB.
+      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
+        key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
+    - The OpenAPI document gives the header's pattern.
+    - A reaction's key is held to it too, since a reaction's actor is a struct any caller can build. The key the
+      library derives keeps its form, `<kind>:<contract>:<name>:<event id>:<n>`; one that would break the rule
+      (names past what 255 bytes leave, a quoted module) is `<kind>:sha256:<hex>` of it instead.
+
+- **Breaking:** **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
+  process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
+  never enters the log they read, so none of them would ever have been given it. React with a policy, and take
+  the event its command records.
+- **Breaking:** **E12c: V01 creates one more table, `eh_os_contract_inbox`.** V01 is changed in place, as before 0.3.0 is
+  first released: a database migrated earlier has no inbox. Recreate it, or create the table V01 now creates.
+- **Breaking:** **E12c: an `EhOsContract.Bus.Message` has a fifth field, `key`, and it is required.** A transport adapter
+  carries it as it carries the id; a test that builds a message gives it one.
+
+- **Breaking:** **D11: a domain's `name:` is one segment of an application's namespace.** It begins every name the domain's
+  contracts publish and every capability, and nothing checked it: `name: :"acme.billing"` published
+  `"acme.billing.x.v1"`, which passed both D11 checks and lies in the namespace of an application `acme`. A
+  domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
+  dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
+  that could publish before, only those with a dot are refused.
+- **Breaking:** **F1, D3 and D6: a field's name is snake_case, and a value's field is named once.** A contract's fields
+  were checked only for uniqueness and a leading `__`, a value's and an entity's only for uniqueness (an
+  entity's) or not at all (a value's): `field :"Invoice No"` became a key of the typespec, the JSON Schema and
+  the page, `:"a|b"` broke the unit graph's edge it labelled, and a value's field declared twice gave the JSON
+  Schema the later definition with the earlier one's `required`. A unit's `identity` is held to the same,
+  named once, at the unit: `identity :"a|b"` reached a graph edge and a page table through `consults`. A
+  contract or domain declaring such a field no longer compiles.
+- **Breaking:** **N1: two names that camelize alike are refused where they become one module or alias.** N1 compared names
+  exactly, so `event :visit_closed` beside `event :visit_closed_` compiled, with a warning that
+  `<Contract>.Events.VisitClosed` was redefined: one event carried the other's struct. The same held for a
+  command, event or consumed event (an implementation aliases each as `<Camelized>`) and for two aggregates,
+  dcbs, reactions, read models, queries or domain services of one kind. N2 compares `:state` and `:row`, the
+  aliases of a unit's state and a read model's row, camelized too, so `command :state_` is refused. A contract
+  that declared such a pair no longer compiles.
+- **Breaking:** **D1: a subdomain's, context's, subject's, value's, entity's and external's name is snake_case.** They were
+  held only to uniqueness: `value :"a/b"` generated `<Domain>.Values.A.B`, a module nested in another, and
+  `context :"front desk"` broke the context map's diagram; `mix eh_os_contract.pages` refused such a name, but
+  only when it ran. Two values whose names camelize alike (`:money_amount`, `:money_amount_`, `:money__amount`)
+  generated one module of invariants once either had one, and are now refused as two of one name. A value
+  named after a type Elixir builds in (`:map`, `:bool`), whose `@type` failed to compile with an error pointing
+  at the library, and one named after a built-in field type (`:date`, `:id`), which a field of that type
+  silently meant instead, are refused with a code. A domain that declared one no longer compiles. Field names
+  are not covered.
+- **Breaking:** **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
+  reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
+  `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as
+  it names a person. A domain that declared one no longer compiles.
+- **Breaking:** **N1 and D9: a name ending in a newline is refused, and so is a decimal in scenario data.** Their patterns
+  ended in `$`, which also matches before a final newline: `command :"pay\n"` compiled, and its capability
+  `"<domain>.pay\n"` reached `EhOsContract.Model.capabilities/1`, the OpenAPI document and the EHOS manifest.
+  The same held for a value invariant's name and a scenario's decimal written `"12.50\n"`: a contract or a
+  domain that declared one no longer compiles. `mix eh_os_contract.pages` refuses a page named after a
+  domain's element ending in a newline, as it refuses one with a space.
+- **Breaking:** **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
+  also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
+  breaks the subject line. A contract that declared one no longer compiles.
+- **Breaking:** **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
+  an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
+  boundary's query and its conflict condition narrow to those types, so appending an event it passes
+  over no longer conflicts with its decisions, and its commands' `given_types` list only folded types —
+  unless it folds none of its events, when it reads and conflicts on all of them as before, since a store
+  query cannot be empty.
+  Scenario coverage compares a scenario's `given` on the folded types too, so no verdict moves for a
+  scenario that names an event the unit passes over. A row of a passed-over type that no longer fits its
+  declaration no longer stops the stream; a type the contract no longer declares still does.
+- **Breaking:** **E11f: an idempotency key belongs to the actor who sent it.** Dispatch looks an accepted key up by the
+  actor and the key together, and the unique index is on both (`issued_by`, `idempotency_key`). Before, the
+  key was one for the whole application: a second actor sending a key the first had used got the first
+  one's receipt — its events, personal fields opened — and its own command was not run. Now it is its own
+  command. A host that shared one key between actors on purpose, to run a command once whoever sends it,
+  no longer gets that. A retry therefore has to come from the same subject, and whatever shares one
+  credential or one `:system` actor shares one key space (`docs/authorization.md`). A credential with an
+  empty subject is refused, since it would make every such credential one actor. A development database
+  created before this change keeps the old index: recreate it,
+  or rebuild the index with `DROP INDEX eh_os_contract_commands_idempotency_index` and the `CREATE UNIQUE
+  INDEX` V01 now runs.
+- **Breaking:** **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is
+  `use EhOsContract.Contract`, and every `EhOsContract.Next.*` module drops `Next`. `Registry.v2_contracts/0`
+  is `Registry.contracts/0`, and the scan's key `graph().v2_contracts` is `graph().contracts`;
+  `Check.v2_findings/1` is `Check.findings/1`; `Deployment.v2_edge_labels/1` is `Deployment.edge_labels/1`.
+  **`Registry.contracts/0` and `Check.findings/1` existed before and meant the first DSL's contracts**: a
+  call written before E11 still compiles, and now gets the second DSL's.
+- **Breaking:** **E11c: the engine's storage is one migration.** `EhOsContract.Migrations.current_version/0` is 1, and V01
+  creates the whole store in its final shape. The upgrades to versions 2–5 are gone, and nothing migrates a
+  database from them: **a database that holds data stays on 0.2.x.** A development database is recreated —
+  delete the host's migrations that call `up(version: 2..5)` first, since on a fresh database they would
+  run versions that no longer exist, then `ecto.drop`, `ecto.create` and `ecto.migrate`; what the old log,
+  subject keys and erasures held is gone with it. Left as it is, such a database is refused: `up/1` and
+  `down/1` raise on a recorded version above 1, and on a target outside the versions the release has — a
+  leftover `up(version: 3)` migration fails with that message. The final shape differs from what V05 left:
+  text columns are
+  `text`, not `varchar(255)`; `eh_os_contract_event_handlings` and `eh_os_contract_handler_failures` are not
+  created; the indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` of
+  `eh_os_contract_events` are not created, since runs are read through `eh_os_contract_event_runs`.
+- **Breaking:** **E11a: R2 refuses a process with `correlate []`, and P4 a process manager with `correlate: []`.** Both
+  compiled, and then every event of the contract joined one run — the report counted one run for everything
+  — and every run of the manager shared one record, state and set of timers.
+- **Breaking:** **E11a: an empty `:id` is refused**, at dispatch (`{field, :type}`) and in scenario data at compile (S3), as
+  an entity's id is. The log read back still accepts one, so what is already written keeps reading.
+- **Breaking:** **E11a: a promise can be suspended.** `EhOsContract.Dependency.unavailable!/4` takes a contract with an
+  event that `depends_on` the external, where it accepted only a first-DSL contract, so an outage recorded
+  inside a promise's window now suspends it instead of counting as a violation. `Dependency.observe/3`
+  records an outage of an external the contract only `calls:`, where it raised; such an observation
+  suspends nothing, since promises read only `depends_on` events.
+
+- **Breaking:** **E10: `EhOsContract.Model.to_data/1` publishes the v2 model under the named schema
+  `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
+  capabilities and a digest of that projection. Its declaration and example structure is complete, but
+  personal values in scenarios, rule examples, invariant examples and defaults are `null`: the public model
+  is not a second store for fixture data. A scenario's event is redacted by the fields of the contract that
+  declares it, so a consumer's scenario on a sibling's event does not publish that sibling's personal
+  values. What no declaration covers is `null` rather than verbatim: the data of an event or command
+  that cannot be found, a query's answer without its read model, a key no field declares, and a
+  structured value's example that is not a map but holds a personal field.
+
+- **Breaking:** **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
+  of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
+  `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential
+  granted a scoped command without values for its dimension is refused `:unscoped_grant`, as for a query, so a
+  host granting one has to send the values (`scp`).
+- **Breaking:** **E9a: an event a contract records has a capability, and a credential records with it.**
+  `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
+  `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks
+  the `Authorizer` for it, as `dispatch/3` does for a command, instead of refusing every credential with
+  `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`,
+  and answers a recording for a unit no command created (`{:error, :not_created}`) with 404 `{"error":
+  "not_created"}`.
+  A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, `eh-os` D-34) maps the
+  recordings too; D14 now also refuses a recorded event named like another declaration's capability.
+- **Breaking:** **E9a: only what a person may do is a capability.** `EhOsContract.Model.capabilities/1` gives a command, a
+  query or a recorded event a capability only when its `by:` or `recorded_by:` names a `:human` actor, and its
+  roles are those people only. A command only a reaction issues (no `by:`) and an event only a `:system` actor
+  records have none: a credential naming them is refused `:missing_capability`, and `EhOsContract.Plug`
+  answers 404. A host's entry-point check drops them; the application's own `:system` actor reaches them as
+  before.
+- **Breaking:** **EG1: `EhOsContract.Graph.steps_to_mermaid/2` is `contract_to_mermaid/2`**, and draws a v2 contract's full
+  graph (below). A caller renames the call; the options (`overlay:`, `since:`, `until:`) and the steps' nodes and
+  edges are the ones they were.
+- **Breaking:** **EL2b: a domain service's `rule` needs `examples:`**, `rule :never_below_zero, "…", examples: [{[1, 3],
+  0}]` — the arguments in the order the function takes them, then the result. A rule without one fails the
+  compile (S9), and so does an example of the wrong arity or types (S9, X9 for domain values). Each example is a
+  test in `use EhOsContract.ScenarioCase, contract: C`, run through `C.DomainServices.<Name>`.
+- **Breaking:** **EL2b: N2 refuses a callback named after a function every module defines** at its arity: an event
+  `:module_info` (its handler would define `module_info/1`) fails the compile, as a domain service's function
+  of that name already did.
+- **Breaking:** **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
+  domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
+  and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
+  `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
+- **Breaking:** **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;
+  one without fails the compile. A translation may name words to `avoid` in its language, and an `avoid` may
+  give its `reason:`. `mix eh_os_contract.glossary --language` prints them.
+- **Breaking:** **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
+  declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
+  one-line output reads the first line of each pair; one reading it by program should move to `--format json`.
+- **Breaking:** **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
+  refuses to start, since an erased subject's data would stay in its tables.
+- **Breaking:** **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
+  EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
+  without personal fields configures nothing.
+
+- **Breaking:** **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
+  that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
+  database that leaked rows is recovered with `ecto.drop`.
+- **Breaking:** **Emissions run under READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at a stricter
+  isolation level. Every append takes one transaction-scoped advisory lock, so a transaction that locks a row
+  and then emits can deadlock with an emission whose handler locks the same row. Take
+  `EhOsContract.Store.Postgres.lock/1` first (`EhOsContract.Store`'s moduledoc).
+- **Breaking:** **A new dependency: `spark ~> 2.7.3`.**
+- **Breaking:** **E7a: the `EhOsContract` child is a supervisor.** Besides scanning the registry and recording the
+  deployment, it registers every subscription, rebuilds the stale read models that define `reset/0`, and
+  starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
+  **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
+  runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
+- **Breaking:** **EM1: an `EhOsContract.Store` implementation of the host's own needs `read_query/2`**, and its `append/3`
+  takes a third condition, `{:dcb, query, after_position}`, refused with `{:error, :condition_failed}`
+  (v2 §10.1). `EhOsContract.Store.Suite` checks both. `EhOsContract.Store.Postgres`, the default, has them.
+- **Breaking:** **EM1: an appended event is tagged with every required, non-personal `:id` field it carries**, not only its
+  unit's identity: `["account_id:a-1", "branch_id:b-7"]` where it was `["account_id:a-1"]`. A consistency
+  boundary finds what it consults by these tags, so a `match:` names only such fields (A4 for a local event,
+  X6 already for a sibling's). Events appended before this version carry the narrower tags.
+- **Breaking:** **EM1: a command's row in `eh_os_contract_commands` lists each type it was given once** (`given_types`), in
+  the order first read, where it listed one entry per event: a boundary may read the whole history of a type.
+  Scenario coverage compares these as sets, so no count moves.
+
 - `mix eh_os_contract.check` prints its findings in a fixed order: errors, warnings, notices, each by text.
   The lines are the same.
 
+### Removed
+
+- **Breaking:** **The Mermaid pictures** (plan E13, #217). `EhOsContract.Graph` is gone, with `declared_to_mermaid/2`,
+  `contract_to_mermaid/2`, `unit_to_mermaid/2`, `lifecycle_to_mermaid/3`, `context_map_to_mermaid/1` and
+  `system_to_mermaid/3`, and `mix eh_os_contract.graph` draws nothing: `--contract <id>` gives the contract's
+  `graph.v1` document as JSON where it gave a Mermaid diagram, and `--process`, `--mermaid`, `--unit`,
+  `--lifecycle`, `--map` and `--system` are refused as unknown options. **A host that drew a picture** with them
+  mounts the dashboard (`eh_os_contract_web`), whose Graph screen draws the same six pictures, or renders the
+  documents with `eh_os_contract_graph`. Moves no verdict.
+- **Breaking:** **A process has no `cadence`** (plan DD, P1d, #195; the user's decision). It said how often a run is due
+  (`cadence {1, :month}`), and nothing acted on it: the report printed "Due: every …" among the process's
+  confirmed declarations, the pages "Cadence: every …", and the check noted an unconfirmed one
+  (`unverified-declaration`). A contract that declares it no longer compiles (`undefined function cadence/1`):
+  delete the line. The report's `declarations` hold at most the confirmed `deadline`. A process is digested as it
+  was with no cadence declared, so no other contract's version moves; one that declared it moves once, when the
+  line goes. The exported model (`EhOsContract.Model.to_data/1`) loses the `"cadence"` key from `"process"`, where
+  it was `null` unless declared, so that document's own `"digest"` moves for every contract with a process.
+
+- **Breaking:** **E11a, the first DSL:** `use EhOsContract.Contract` with `event`, `process`, `trace`, `rule`, `example`, `external` and `command`
+  keyword declarations, and everything that read them: `EhOsContract.Handler`, `EhOsContract.emit/4` and its
+  emitter, `EhOsContract.Job`, handler failures, `EhOsContract.Telemetry`, `EhOsContract.Brief`, the first
+  model (`Model.V1`), and the first DSL's findings in `check`, its AsyncAPI projection, report, trace, run,
+  graph overlay and deployment rows.
+- **Breaking:** **E11a, the first DSL:** `mix eh_os_contract.trace` and `mix eh_os_contract.brief`. A promise's verdicts are in the report; a Brief
+  for a process owner comes back on the dashboard. `mix eh_os_contract.graph` without a picture flag refuses,
+  exiting non-zero with its usage, instead of drawing the first DSL's graph: a script that ran it bare fails.
+- **E11a, the first DSL:** The dashboard's "every contract" panel on `/graph`, which drew the first DSL's handler graph.
+- **Breaking:** **E11a, the first DSL:** **Jobs of `EhOsContract.Job` still in a host's Oban queue have no worker.** Drain the queue before the
+  upgrade. A job left behind fails and is discarded, and the handler's work it carried never happens, with
+  nothing recording that. Its args hold the event's payload and actor, which erasure does not reach, so after
+  draining delete the rows (`worker = 'EhOsContract.Job'`) rather than waiting for a pruner.
+- **E11a, the first DSL:** The direct `:telemetry` dependency. It stays in the lock through Ecto and Oban.
+
 ### Fixed
+
+- **A scenario of a unit without a lifecycle fails when its `evolve/2` returns anything but the unit's state**, as
+  dispatch refuses it. Scenarios, property tests and dispatch now fold a unit's stream with one function
+  (`EhOsContract.Decision`), where a scenario had folded such a unit without the check. Moves no verdict.
+- **`EhOsContract.Model.to_data/1` redacts the rows a scenario gives with `given_entity`.** A field the domain's
+  entity declares `personal:` was published as written; it is `null` now, as in a given event, and a row of an
+  entity the domain does not declare has its values dropped. The model document of a contract whose scenarios
+  give such a row changes its digest. Moves no verdict.
+
+- **Moves a verdict:** **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or
+  `or_else` whose payload lacks one of the identity's fields, or carries it as `nil`, used to be paired by that
+  `nil` with a `from` missing the same field, and close an item neither named. It now resolves no item, as the
+  promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
+  identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
+  under one identity is judged as before.
 
 - **An append waits only for appends to the same log.** The append lock had one fixed key, and an advisory
   lock belongs to the whole database: where applications share one, each in a schema of its own, as EHOS
@@ -1341,14 +1350,14 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   unqualified `oban_jobs`, which failed when Oban's prefix was not on the search path. A node running no
   Oban still reports, looking on the path as before. No verdict moves where the jobs were on the path.
 
-## 0.2.1 — 2026-09-23
+## [0.2.1] - 2026-09-23
 
 ### Changed
 
 - The repository is `EmpoweredHouse/eh-os-contract`, renamed from `eh-os-prototype`.
   `source_url` and the package links point there. No code changed; no verdict moves.
 
-## 0.2.0 — 2026-09-23
+## [0.2.0] - 2026-09-23
 
 The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — see
 `README.md`. Everything below that `0.1.0` did not have, including what changed on
@@ -1461,7 +1470,9 @@ The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — 
   its `principals:` key stay, as a description; the engine no longer derives an
   access decision from them. No verdict moves: nothing in the report read either.
 
-## 0.1.0 — never published
+## [0.1.0]
+
+Never published.
 
 Everything up to 2026-09-22, recorded here after the fact because the rule above
 did not exist while it was happening. **These entries are retroactive and carry no
@@ -1470,13 +1481,15 @@ a second source of truth about a sequence that never happened.
 
 At least five changes at this version moved a verdict:
 
-- A process with no runs reports `basis: :no_runs` rather than reporting every
+### Changed
+
+- **Moves a verdict:** A process with no runs reports `basis: :no_runs` rather than reporting every
   declared path as untraversed. Zero runs is not evidence that a path is dead.
-- Work sitting in the queue counts as in flight, not as a path nobody took.
-- A step that is attempted and fails was split out of "never attempted". Both were
+- **Moves a verdict:** Work sitting in the queue counts as in flight, not as a path nobody took.
+- **Moves a verdict:** A step that is attempted and fails was split out of "never attempted". Both were
   previously one line, and they go to different people.
-- `:suspended` became a fourth `trace` verdict: a run whose window contained an
+- **Moves a verdict:** `:suspended` became a fourth `trace` verdict: a run whose window contained an
   external dependency's outage is not a breach on the client's side.
-- `unverified` reaches a `trace` by name, so the sharpest assertion the engine can
+- **Moves a verdict:** `unverified` reaches a `trace` by name, so the sharpest assertion the engine can
   make — the one most likely to be a guess — can be declared without being counted
   as measured.
