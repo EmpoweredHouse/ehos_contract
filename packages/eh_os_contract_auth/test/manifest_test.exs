@@ -346,8 +346,11 @@ defmodule EhOsContract.Auth.ManifestTest do
         Manifest.build(file, [Ledger], [Entries])["schema"]
       end
 
-    assert Enum.sort(written) == Manifest.schemas()
+    # Oldest first, by the number: as text, "ehos.manifest/v10" would sort before "/v2".
+    assert Enum.sort_by(written, &schema_number/1) == Manifest.schemas()
   end
+
+  defp schema_number("ehos.manifest/v" <> number), do: String.to_integer(number)
 
   test "offers the commands, queries and recordings a human holds, and the roles that hold them" do
     assert Manifest.build(@file_v1, [Domain], [Work]) == %{
