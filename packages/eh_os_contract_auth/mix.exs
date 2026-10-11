@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.MixProject do
   use Mix.Project
 
-  @version "0.1.0-dev"
+  @version "0.1.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   @description "Verifies EHOS credentials and authorizes EhOsContract commands, recordings and queries."
@@ -91,15 +91,17 @@ defmodule EhOsContract.Auth.MixProject do
       # compiles `test/support/` (the engine's `mix.exs` says why it matters).
       filter_modules: &lib_module?/2,
       # The package is a directory of its repository, so a source link names it. A build
-      # of the docs for a commit (.github/scripts/build-docs.sh) links there; a release,
-      # to its version tag.
+      # of the docs for a commit (.github/scripts/build-docs.sh, the only one anybody
+      # reads) links to that commit; any other build, to `main`. Not to `v<version>`: the
+      # repository's tag follows the engine's version, not each package's, and a `-dev`
+      # version has no tag at all.
       source_ref: source_ref(),
       source_url_pattern:
         "#{@source_url}/blob/#{source_ref()}/packages/eh_os_contract_auth/%{path}#L%{line}"
     ]
   end
 
-  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "v#{@version}")
+  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "main")
 
   @lib Path.join(__DIR__, "lib") <> "/"
 

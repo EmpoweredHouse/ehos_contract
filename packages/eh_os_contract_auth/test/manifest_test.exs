@@ -23,6 +23,8 @@ defmodule EhOsContract.Auth.ManifestTest do
   alias EhOsContract.Auth.{EhosYaml, Manifest}
   alias EhOsContract.Model
 
+  doctest EhOsContract.Auth.Manifest, only: [schemas: 0]
+
   @fixtures Path.expand("fixtures", __DIR__)
 
   defmodule Domain do
@@ -334,6 +336,21 @@ defmodule EhOsContract.Auth.ManifestTest do
       assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v3"
     end
   end
+
+  # schemas/0 is what a release says the package produces: exactly what build/3 writes from
+  # every ehos.yaml it can read, no more.
+  test "schemas/0 lists exactly the versions build/3 writes" do
+    written =
+      for version <- EhosYaml.versions(), uniq: true do
+        file = %{"schema" => version, "health" => @health}
+        Manifest.build(file, [Ledger], [Entries])["schema"]
+      end
+
+    # Oldest first, by the number: as text, "ehos.manifest/v10" would sort before "/v2".
+    assert Enum.sort_by(written, &schema_number/1) == Manifest.schemas()
+  end
+
+  defp schema_number("ehos.manifest/v" <> number), do: String.to_integer(number)
 
   test "offers the commands, queries and recordings a human holds, and the roles that hold them" do
     assert Manifest.build(@file_v1, [Domain], [Work]) == %{

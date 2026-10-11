@@ -1,0 +1,309 @@
+name: Release
+
+# eh-os D-91 (its docs/releases.md): a tag `vX.Y.Z` on main publishes a GitHub release of this
+# repository. The tag follows the engine's version; every package keeps its own, and is released
+# at this tag when its version has no `-dev`. The notes are each released package's section of
+# its CHANGELOG.md, under `## <package> <version>`: the release's description when they fit in
+# one, and `notes.md`, attached, always. `release.json` beside them says what the packages produce
+# and accept and each one's version (`mix contract.release_file` in sandbox/).
+# Started by hand on a commit of main, the workflow writes what a release of it would publish
+# into its summary and publishes nothing: a package at `-dev` shows its `## [Unreleased]`, one
+# without shows its version's section. That is how the job is checked before a tag, and how a
+# release's notes are read before it (`gh workflow run release.yml -f ref=main`).
+#
+# Two jobs, so that no token that can write to the repository is present while code is compiled:
+# Prepare compiles the packages with read access only, and Publish, which may write, runs nothing
+# but `gh` on Prepare's two files. Publish runs in the environment `release`, whose protection
+# rules (who may approve, which tags may deploy) are the repository's settings.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "A commit or branch of main to preview; nothing is published"
+        required: true
+        default: main
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      commit: ${{ steps.commit.outputs.commit }}
+      version: ${{ steps.release.outputs.version }}
+      latest: ${{ steps.latest.outputs.latest }}
+    env:
+      PUBLISH: ${{ github.event_name == 'push' }}
+      TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+      # sandbox/ has no prod configuration; the task only compiles, and starts nothing.
+      MIX_ENV: dev
+    steps:
+      - id: tag
+        name: The tag is a version
+        if: env.PUBLISH == 'true'
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not a release tag, vX.Y.Z"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      # On a push, the commit the run was started for, which is checked against what the tag names
+      # now; by hand, the commit asked for. All of history, to check that it is on main. No token
+      # is left in .git/config: the dependencies' code runs while they compile.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: commit
+        name: The commit is on main, and the tag names it
+        run: |
+          commit=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$commit is not on main"
+            exit 1
+          fi
+          if [ "$PUBLISH" = "true" ]; then
+            tagged=$(git rev-parse "refs/tags/$TAG^{commit}")
+            if [ "$tagged" != "$commit" ]; then
+              echo "::error::$TAG names $tagged now, not $commit, which this run was started for"
+              exit 1
+            fi
+          fi
+          echo "COMMIT=$commit" >> "$GITHUB_ENV"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      # sandbox/ takes the four packages by path, and fetches what they need for every
+      # environment; the dashboard's `:dev` dependency, which is private, is not among them.
+      - name: Fetch the dependencies
+        working-directory: sandbox
+        run: mix deps.get
+
+      - id: release
+        name: Write release.json, and check the tag is the engine's version
+        working-directory: sandbox
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          mix contract.release_file --commit "$COMMIT" --output "$RUNNER_TEMP/release/release.json"
+          version=$(jq -r .version "$RUNNER_TEMP/release/release.json")
+          if [ "$PUBLISH" = "true" ] && [ "v$version" != "$TAG" ]; then
+            echo "::error::packages/eh_os_contract/mix.exs says $version, the tag $TAG"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
+        with:
+          tool: parse-changelog@0.6.17
+
+      # A package whose version has no `-dev` is released at this commit, and its version's section
+      # must be there and say something. On a tag, a package still at `-dev` is not released and
+      # has no notes, though release.json names its version. A preview shows such a package's
+      # lines not released yet, if it has any.
+      #
+      # Versions only go up, and each is released once. The previous release is the highest
+      # `vX.Y.Z` tag reachable from this commit's parent, and a tag not higher than it stops the
+      # run. A package whose version here, without `-dev`, is the one it had there was released
+      # then: it was never moved back to its next `-dev` after that release, or a release pull
+      # request did not move it on, and the run stops either way. (Every version a tag carries
+      # has its section, as this job requires and the tags before it had, so such a package
+      # cannot be told apart as "not released again".) A package that did not exist at the
+      # previous release has no version there.
+      #
+      # GitHub refuses a release whose description is over 125,000 characters, and the engine's
+      # first section alone is about that. notes.md, all the sections, is attached to every
+      # release; the description, body.md, is notes.md when it fits, and otherwise each package's
+      # heading with where its section is.
+      - name: Take each package's section from its CHANGELOG.md
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          notes="$RUNNER_TEMP/release/notes.md"
+          pointers="$RUNNER_TEMP/pointers.md"
+          : > "$notes"
+          : > "$pointers"
+          previous=$(git tag --merged HEAD^ --list 'v*' 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          echo "The previous release: ${previous:-none}"
+          if [ "$PUBLISH" = "true" ] && [ -n "$previous" ]; then
+            higher=$(printf '%s\n%s\n' "$previous" "$TAG" | sort -V | tail -n 1)
+            if [ "$previous" = "$TAG" ] || [ "$higher" != "$TAG" ]; then
+              echo "::error::$TAG is not higher than $previous, the release before it on main"
+              exit 1
+            fi
+          fi
+          for package in eh_os_contract eh_os_contract_auth eh_os_contract_web eh_os_contract_graph; do
+            version=$(jq -r --arg p "$package" '.packages[$p]' "$RUNNER_TEMP/release/release.json")
+            if [[ "$version" == *-dev ]]; then
+              if [ "$PUBLISH" = "true" ]; then
+                echo "$package $version is not released at $TAG"
+                continue
+              fi
+              section=Unreleased
+            else
+              section=$version
+            fi
+            before=""
+            if [ -n "$previous" ]; then
+              before=$(git show "$previous:packages/$package/mix.exs" 2>/dev/null | sed -n 's/^  @version "\(.*\)"$/\1/p' | head -n 1 || true)
+            fi
+            if ! body=$(parse-changelog "packages/$package/CHANGELOG.md" "$section") \
+              || ! grep -q '[^[:space:]]' <<<"$body"; then
+              body=""
+            fi
+            if [ "$section" = "$before" ]; then
+              echo "::error::$package $version is the version it had at $previous, where it was released: after a release a package moves back to its next -dev, and to a new version when it is released again"
+              exit 1
+            fi
+            if [ -z "$body" ]; then
+              if [ "$section" = "Unreleased" ]; then
+                echo "$package $version has no lines under Unreleased"
+                continue
+              fi
+              echo "::error::packages/$package/CHANGELOG.md has no section $section, or an empty one"
+              exit 1
+            fi
+            printf '## %s %s\n\n%s\n\n' "$package" "$version" "$body" >> "$notes"
+            printf '## %s %s\n\nIn notes.md, attached, and in [its CHANGELOG.md](https://github.com/%s/blob/%s/packages/%s/CHANGELOG.md).\n\n' \
+              "$package" "$version" "$REPOSITORY" "${TAG:-$COMMIT}" "$package" >> "$pointers"
+          done
+          if [ "$PUBLISH" = "true" ] && ! grep -q '[^[:space:]]' "$notes"; then
+            echo "::error::No package is released at $TAG"
+            exit 1
+          fi
+          # Bytes, which are never fewer than characters.
+          if [ "$(wc -c < "$notes")" -le 125000 ]; then
+            cp "$notes" "$RUNNER_TEMP/release/body.md"
+          else
+            {
+              echo "The notes are longer than a release's description can hold; each package's section is in notes.md, attached."
+              echo
+              cat "$pointers"
+            } > "$RUNNER_TEMP/release/body.md"
+          fi
+
+      # A patch to an older minor, released after a newer one, is not what `releases/latest` names.
+      - id: latest
+        name: Whether this is the highest version released
+        run: |
+          highest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          if [ -n "$TAG" ] && [ "$highest" = "$TAG" ]; then latest=true; else latest=false; fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          {
+            if [ "$PUBLISH" = "true" ]; then
+              echo "# The release of $TAG, from $COMMIT (marked latest: $latest)"
+            else
+              echo "# A preview of a release of $COMMIT: nothing is published"
+              echo
+              echo "A package whose version ends in \`-dev\` shows its \`## [Unreleased]\` lines here; a tag on this commit would leave it out of the notes, unreleased. Whether a release is marked latest is decided only on a tag."
+            fi
+            echo
+            echo "# The description"
+            echo
+            cat "$RUNNER_TEMP/release/body.md"
+            echo
+            echo "# notes.md"
+            echo
+            cat "$RUNNER_TEMP/release/notes.md"
+            echo
+            echo "# release.json"
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/release/release.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          # Long enough for a release to wait in the environment `release` for its approval.
+          retention-days: 7
+
+  publish:
+    name: Publish
+    needs: prepare
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: release
+    permissions:
+      contents: write # creates the release
+      actions: write # starts docs.yml for it
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          LATEST: ${{ needs.prepare.outputs.latest }}
+        # The tag may not have moved while the release waited in its environment. Asked as
+        # `refs/tags/<tag>`: `commits/<tag>` resolves a branch of the same name first, so a branch
+        # called v0.3.0 would answer for the tag, and `commits/tags/<tag>` is refused (422).
+        run: |
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$TAG" --jq .sha)
+          if [ "$tagged" != "$COMMIT" ]; then
+            echo "::error::$TAG names $tagged now, not $COMMIT, which the notes and release.json describe"
+            exit 1
+          fi
+          # A run started again, after the job was cancelled once the release was made, finds the
+          # release there, and creating it again would fail. It is this run's only if its
+          # release.json names the commit prepared: a release made by hand, or from another
+          # commit before the tag moved, stops the run. Any answer but "no such release" stops.
+          # Publish reads Prepare's artifact, kept seven days: past that, re-running Publish alone
+          # fails to download it, and all jobs are re-run instead.
+          if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .html_url 2> "$RUNNER_TEMP/view.err"); then
+            described=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p release.json -O - | jq -r .commit || true)
+            if [ "$described" != "$COMMIT" ]; then
+              echo "::error::$TAG has a release already, $existing, whose release.json names '${described}', not $COMMIT: it describes another commit, or was not made by this workflow"
+              exit 1
+            fi
+            echo "::notice::$TAG is released already, from $COMMIT: $existing"
+            exit 0
+          elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/view.err"; then
+            cat "$RUNNER_TEMP/view.err" >&2
+            echo "::error::Could not tell whether $TAG is released already"
+            exit 1
+          fi
+          gh release create "$TAG" "$RUNNER_TEMP/release/release.json" "$RUNNER_TEMP/release/notes.md" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "eh-os-contract $VERSION" \
+            --notes-file "$RUNNER_TEMP/release/body.md" --latest="$LATEST"
+
+      # docs.yml attaches the documentation to a published release, but GitHub starts no workflow
+      # from an event GITHUB_TOKEN causes, so the release just created does not start it. A run by
+      # hand on a tag that has a release attaches the archive to it, and a dispatch is the one
+      # event GITHUB_TOKEN may start a workflow with. The release stands without its docs, so a
+      # dispatch that fails is a warning, and `gh workflow run docs.yml -f ref=<tag>` adds them.
+      - name: Build the release's documentation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          if ! gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" -f ref="$TAG"; then
+            echo "::warning::docs.yml did not start for $TAG; run 'gh workflow run docs.yml -f ref=$TAG' to attach its documentation"
+          fi

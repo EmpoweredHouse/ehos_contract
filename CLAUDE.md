@@ -216,6 +216,14 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   `.github/workflows/pr-links-issue.yml` checks it). A stage's commits end with `Part of #N`, its branch is
   `dd/<issue>-<words>`, and a code comment citing a stage cites its issue: `plan DD, ID1 (#165)`
   (`CONTRIBUTING.md`).
+- **A change a host can see gets a changelog line in its own pull request**: under `## [Unreleased]` in that
+  package's `CHANGELOG.md`, starting with `**Breaking:**` when a host has to act on it, and with
+  `**Moves a verdict:**` when it can move a verdict of the engine's. Otherwise the description says why on a line
+  `No changelog: <why>`; `.github/workflows/changelog.yml` fails a pull request with neither. What a host sees is
+  a package's public API, its Mix tasks, what it writes, what it verifies and what the dashboard reports. Versions
+  stay `-dev` between releases, and a release is made as eh-os's
+  [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md) says, with the
+  `ehos-dev:release` skill (`CONTRIBUTING.md`, "Changelogs and releases").
 - **Do not rely on word splitting in shell scripts.** The shell is zsh, which does **not** split unquoted
   expansions: `for x in $LIST` runs once with the whole list as one argument. Once that handed `git cherry-pick`
   seven SHAs as one argument, and the `git commit --amend` after it rewrote the wrong commit. Loop over SHAs

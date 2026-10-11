@@ -4,7 +4,7 @@ defmodule EhOsContract.MixProject do
   # One source for `project/0` and, through `EhOsContract.version/0`, for the line every
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
-  @version "0.3.0-dev"
+  @version "0.3.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @description "Checks that deployed code does what the declared business process says it does."
 
@@ -155,15 +155,17 @@ defmodule EhOsContract.MixProject do
       # cite a fixture and pass here, then be a dead link once published.
       filter_modules: &lib_module?/2,
       # The package is a directory of its repository, so a source link names it. A build
-      # of the docs for a commit (.github/scripts/build-docs.sh) links there; a release,
-      # to its version tag.
+      # of the docs for a commit (.github/scripts/build-docs.sh, the only one anybody
+      # reads) links to that commit; any other build, to `main`. Not to `v<version>`: the
+      # repository's tag follows the engine's version, not each package's, and a `-dev`
+      # version has no tag at all.
       source_ref: source_ref(),
       source_url_pattern:
         "#{@source_url}/blob/#{source_ref()}/packages/eh_os_contract/%{path}#L%{line}"
     ]
   end
 
-  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "v#{@version}")
+  defp source_ref, do: System.get_env("EH_OS_CONTRACT_DOCS_SOURCE_REF", "main")
 
   @lib Path.join(__DIR__, "lib") <> "/"
 

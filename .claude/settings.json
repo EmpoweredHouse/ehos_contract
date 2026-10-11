@@ -13,5 +13,17 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "ehos-tools": {
+      "source": {
+        "source": "github",
+        "repo": "EmpoweredHouse/ehos-tools",
+        "ref": "ehos-dev-v0.1.0"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ehos-dev@ehos-tools": true
   }
 }
