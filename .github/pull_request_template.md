@@ -11,6 +11,9 @@ Closes #
 What changes, for a user of the library first. A refusal or rule code goes in parentheses after its meaning:
 "a reaction to another context's event that leaves delivery out (X10)".
 
+A change a host can see has its line under `## [Unreleased]` in the package's `CHANGELOG.md`. Otherwise write
+why on a line of its own here, `No changelog: <why>` (`CONTRIBUTING.md`, "Changelogs and releases").
+
 ## How it was tested
 
 The commands run and what they printed, with the gate's exit code (`mix check` in `sandbox/`).

@@ -5,6 +5,18 @@ change a consumer can see gets a line here, in the same commit.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+**Every change a user of this package can see gets a line under `## [Unreleased]`, in its own pull
+request.** A user is a host application's developer: what they see is the package's public API, its
+Mix tasks, what it writes, what it verifies and what the dashboard reports; its tests, docs and CI
+are not. A pull request with no such line says why on a line of its description,
+`No changelog: <why>`, and CI's Changelog check (`.github/workflows/changelog.yml`) fails it
+otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
+`**Breaking:**`, under the subsection it belongs to.
+
+Between releases the version in `mix.exs` ends in `-dev`. How a release is made is written in
+eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
+and the `ehos-dev:release` skill makes one.
+
 ## [Unreleased]
 
 ### Added

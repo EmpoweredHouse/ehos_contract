@@ -93,8 +93,10 @@ The hook still asks for the note: record it once you have checked the diff is do
    (`-f` replaces a note already on that commit). Notes stay local: `refs/notes/review` is not
    pushed.
 8. **Open the pull request.** Its "How it was tested" section says what you ran, with the gate's
-   exit code. A "Review" section lists what each review found and what happened to each finding,
-   or says the change is documentation only. A stage of a programme links its issue: `Closes #N` on
+   exit code. A change a host can see has its line in the package's `CHANGELOG.md` (below); for
+   one without, the description says why on a line `No changelog: <why>`. A "Review" section
+   lists what each review found and what happened to each finding, or says the change is
+   documentation only. A stage of a programme links its issue: `Closes #N` on
    the pull request that finishes the stage, `Part of #N` on any before it, and the review goes on that issue as a comment too, in the plain
    form `.claude/skills/stage-issue/SKILL.md` describes.
 
@@ -121,6 +123,13 @@ them, not against memory:
   `encoding: :unicode`, zsh not splitting words.
 - `.claude/skills/review-pr/SKILL.md`: what the gate already guarantees, and where a human
   reviewer's attention goes instead.
+- **The changelog** (`CONTRIBUTING.md`, "Changelogs and releases"): each package whose public API,
+  Mix tasks, what it writes or verifies, or what the dashboard reports the change touches has a line
+  under `## [Unreleased]` in its `CHANGELOG.md`, saying what changed for a host. A change a host has
+  to act on when it upgrades starts its line with `**Breaking:**`; an engine change that can move a
+  verdict, with `**Moves a verdict:**`. A change with no line says why in the description,
+  `No changelog: <why>`; the Changelog check fails the pull request otherwise. The version stays
+  `-dev`: only a release changes it (`ehos-dev:release`).
 - `.claude/skills/write-docs/SKILL.md`, when the change touches a public module or function: does
   its `@doc` still describe it, and does it read for a host rather than the team.
 - On a stage branch (`dsl-v2/eN-*`): the rules of every commit and the stage's acceptance

@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/taxvision/ or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a verdict-moving change without a CHANGELOG line, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `pre-pr-review`.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/taxvision/ or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `pre-pr-review`.
 ---
 
 # Reviewing a pull request
@@ -115,11 +115,19 @@ A change to what `docs/adr/` assumes or `PLAN.md` decided comes as a dated note,
 that erases what was believed before (`CLAUDE.md`, "Zanim cokolwiek zmienisz"). For a change to
 contract semantics or to a check's meaning, look for the note in the same pull request.
 
-### A verdict-moving change without a CHANGELOG line
+### A changelog line that is missing, says too little, or misses a marker
+
+Every change a host can see has a line under `## [Unreleased]` in its package's `CHANGELOG.md`, or a
+line `No changelog: <why>` in the description (`CONTRIBUTING.md`, "Changelogs and releases"). The
+Changelog check (`.github/workflows/changelog.yml`) fails a pull request with neither, but judges
+neither: read the line as a host would. Does it say what changed for them, in their words? Does a
+change a host has to act on when it upgrades start with `**Breaking:**`? Is the `No changelog:`
+reason true — a change to `lib/` that a host cannot see, not one nobody wanted to describe?
 
 `packages/eh_os_contract/CHANGELOG.md`: a change that can move a verdict raises the minor version and
-gets a line. A verdict is anything the conformance report prints as a number or a state. Nothing
-mechanical enforces it, and this list of files that trigger the question lives here and only here:
+gets a line starting with `**Moves a verdict:**`. A verdict is anything the conformance report prints
+as a number or a state. Nothing mechanical enforces that part, and this list of files that trigger
+the question lives here and only here:
 
 `packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
 `run.ex`, `stage_order.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`,
@@ -127,8 +135,9 @@ mechanical enforces it, and this list of files that trigger the question lives h
 `report.ex`, `report/`, `graph.ex`, `graph/` — and, where the change touches runs, keys or failure
 labels, `store/postgres.ex`, `key.ex` and `dispatcher.ex`.
 
-A diff touching one of these without a CHANGELOG entry goes back, or its author writes in the pull
-request why it cannot move a verdict. That answer is often right; it should be written, not assumed.
+A diff touching one of these without a `**Moves a verdict:**` line goes back, or its author writes in
+the pull request why it cannot move a verdict. That answer is often right; it should be written, not
+assumed.
 
 ### A doc that no longer describes its function
 
@@ -162,7 +171,8 @@ not reviewed, only stamped.
 4. For each edited declaration, find its row in `change-contract`'s table and the author's row count.
 5. For each fix, find the reverse check.
 6. Read the strings for Polish.
-7. Look for the dated note, and for the CHANGELOG line if a file above is touched.
+7. Look for the dated note, for each package's CHANGELOG line or the `No changelog:` reason, and for
+   `**Breaking:**` and `**Moves a verdict:**` where they belong.
 8. Compare the diff's size with its stated scope.
 9. Approve, or send back naming the finding, the row or the line — never "looks fine".
 

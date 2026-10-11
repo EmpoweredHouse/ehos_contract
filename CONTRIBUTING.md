@@ -14,6 +14,7 @@ stale, so each place links to the next instead.
 | A GitHub issue | Why and how was this stage done? In short for anyone, then the technical detail, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed by the pull request that says `Closes #N`, or by hand after its closing comment |
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
 | A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
+| A package's `CHANGELOG.md` | What changed for a host, version by version | In the pull request that changes what a host sees ("Changelogs and releases", below) |
 | The code and its tests | What the library does | — |
 | `packages/eh_os_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
 
@@ -40,12 +41,38 @@ stage was carried out stays in its issue.
 6. **A pull request** from the template. Its first line is `Closes #N` on the pull request that finishes the
    issue, `Part of #N` on earlier ones, or `No issue: <why>` for a change that needs none — a typo, a
    dependency bump. A check (`.github/workflows/pr-links-issue.yml`) fails a pull request that says none of
-   them; it does not decide which one is right.
+   them; it does not decide which one is right. A change a host can see has its line in the package's
+   `CHANGELOG.md`, or the description says why not on a line `No changelog: <why>` (below).
 7. **Before it is opened**, the author reviews it (`.claude/skills/pre-pr-review/SKILL.md`), and `mix check` in
    `sandbox/` passes (`README.md`, "Working on it").
 8. **When it is merged**, `PLAN.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
    when it upgrades.
+
+## Changelogs and releases
+
+Each package keeps a `CHANGELOG.md`, written by hand for whoever uses the package — a host application's
+developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), as EHOS's other repositories do
+(eh-os D-91).
+
+- **Every change a user of a package can see gets a line under `## [Unreleased]` in that package's
+  `CHANGELOG.md`, in its own pull request.** What a host sees is the package's public API, its Mix tasks, what it
+  writes (the manifest, the pages, the graph documents, its tables), what it verifies and what the dashboard
+  reports. Its tests, its docs, `sandbox/` and CI are not.
+- **A pull request with no such line says why** on a line of its description: `No changelog: <why>`. The
+  Changelog check (`.github/workflows/changelog.yml`) fails a pull request that changes a package's code with
+  neither, naming each package; it does not judge the line.
+- **A breaking change**, one a host has to act on when it upgrades, starts its line with `**Breaking:**`, under the
+  subsection it belongs to. In the engine, a change that can move a verdict starts its line with
+  `**Moves a verdict:**` and raises the minor version: the rule at the top of
+  [`packages/eh_os_contract/CHANGELOG.md`](packages/eh_os_contract/CHANGELOG.md).
+- **The format is Keep a Changelog as written**: one `## [Unreleased]`, `## [X.Y.Z] - YYYY-MM-DD` for a release,
+  only the subsections `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`, prose only between a
+  version's heading and its first subsection, and no link references at the end.
+- **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it. How a
+  release is made is written once, for the three repositories, in eh-os's
+  [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
+  skill makes one (the `ehos-dev` plugin from ehos-tools, enabled in `.claude/settings.json`).
 
 ## Following a line back to its reason
 
