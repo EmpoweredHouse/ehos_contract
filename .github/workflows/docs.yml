@@ -51,11 +51,17 @@ jobs:
             exit 1
           fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          # A tag with a release, asked of the API: "no such release" (HTTP 404) is a plain
+          # build, any other answer stops the run rather than leave a release without its docs.
           release="$TAG"
-          if [[ -z "$release" ]] &&
-            gh release view "$INPUT" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null |
-            grep -qxF -- "$INPUT"; then
-            release="$INPUT"
+          if [[ -z "$release" ]]; then
+            if found=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$INPUT" --jq .tag_name 2> "$RUNNER_TEMP/release.err"); then
+              if [[ "$found" == "$INPUT" ]]; then release="$INPUT"; fi
+            elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/release.err"; then
+              cat "$RUNNER_TEMP/release.err" >&2
+              echo "Could not tell whether '$INPUT' has a release" >&2
+              exit 1
+            fi
           fi
           echo "release=$release" >> "$GITHUB_OUTPUT"
           if [[ -n "$release" ]]; then
