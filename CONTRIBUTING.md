@@ -75,7 +75,10 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
 
 How a release is made is written once, for the three repositories, in eh-os's
 [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
-skill makes one (the `ehos-dev` plugin from ehos-tools, once enabled here). In this repository:
+skill makes one. The skill comes from the `ehos-dev` plugin, which ehos-tools publishes as a Claude Code
+marketplace and `.claude/settings.json` enables, pinned to its tag `ehos-dev-vX.Y.Z`; a new version is taken by
+moving that `ref`. On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store a
+credential with `gh auth setup-git`, since ehos-tools is private. In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
   `eh_os_contract_auth` `~> 0.1.0-dev` while the engine is at 0.3.0, and one shared number would break it.
