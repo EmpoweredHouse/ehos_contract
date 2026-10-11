@@ -198,11 +198,19 @@ jobs:
       - id: latest
         name: Whether this is the highest version released
         run: |
-          highest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          highest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
           if [ -n "$TAG" ] && [ "$highest" = "$TAG" ]; then latest=true; else latest=false; fi
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
           {
-            echo "# Description of ${TAG:-a preview of $COMMIT} (latest: $latest)"
+            if [ "$PUBLISH" = "true" ]; then
+              echo "# The release of $TAG, from $COMMIT (marked latest: $latest)"
+            else
+              echo "# A preview of a release of $COMMIT: nothing is published"
+              echo
+              echo "A package whose version ends in \`-dev\` shows its \`## [Unreleased]\` lines here; a tag on this commit would leave it out of the notes, unreleased. Whether a release is marked latest is decided only on a tag."
+            fi
+            echo
+            echo "# The description"
             echo
             cat "$RUNNER_TEMP/release/body.md"
             echo
