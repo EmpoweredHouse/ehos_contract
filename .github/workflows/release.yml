@@ -165,7 +165,7 @@ jobs:
             if [ -n "$previous" ]; then
               before=$(git show "$previous:packages/$package/mix.exs" 2>/dev/null | sed -n 's/^  @version "\(.*\)"$/\1/p' | head -n 1 || true)
             fi
-            if ! body=$(parse-changelog "packages/$package/CHANGELOG.md" "$section" 2>/dev/null) \
+            if ! body=$(parse-changelog "packages/$package/CHANGELOG.md" "$section") \
               || ! grep -q '[^[:space:]]' <<<"$body"; then
               body=""
             fi
