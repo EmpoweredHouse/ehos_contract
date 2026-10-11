@@ -1,0 +1,1 @@
+Reviewed: two reviews (correctness; security and performance) of 651cb98d..5fe1e32e, then a second round of the fixes (5fe1e32e..f00db8c2); every finding fixed or settled in the pull request's Review section. eh-os#358, eh-os-contract#275.
