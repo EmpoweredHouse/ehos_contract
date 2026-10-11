@@ -21,6 +21,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **`EhOsContract.Auth.Manifest.schemas/0` lists the versions of EHOS's manifest the package writes**
+  (eh-os D-91, eh-os-contract#275): `["ehos.manifest/v2", "ehos.manifest/v3"]`, what a release of this
+  repository says it produces, and what an EHOS has to accept for every manifest `build/3` writes.
+
 - **eh-os-contract#252 (eh-os D-81): the application reads EHOS's people as itself.** `EhOsContract.Auth.People`,
   a child configured with `config :eh_os_contract_auth, people: [client_id:, client_key_file:]`, takes a
   credential with OAuth's client credentials grant and the client key EHOS gives, renews it, and answers `list/1`
