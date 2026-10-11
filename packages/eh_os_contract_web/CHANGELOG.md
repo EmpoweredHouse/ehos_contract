@@ -16,10 +16,12 @@ otherwise. A line for a breaking change, one a host has to act on when it upgrad
 
 This package keeps its own version; the repository's tag, `vX.Y.Z`, follows the engine's, and
 releases every package at its own version. Between releases the version in `mix.exs` ends in `-dev`;
-at a release, a package with lines under `## [Unreleased]` moves to its next version. How a release
-is made is written in eh-os's
-[`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md), and the
-`ehos-dev:release` skill makes one.
+at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
+moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
+from its last release, and that version's section says so under `### Changed` ("Released with
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
+eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
+and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 

@@ -67,7 +67,8 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
   subsection it belongs to. In the engine, a change that can move a verdict starts its line with
   `**Moves a verdict:**` and raises the minor version: the rule at the top of
   [`packages/eh_os_contract/CHANGELOG.md`](packages/eh_os_contract/CHANGELOG.md).
-- **The format is Keep a Changelog as written**: one `## [Unreleased]`, `## [X.Y.Z] - YYYY-MM-DD` for a release,
+- **The format is Keep a Changelog as written**: one `## [Unreleased]`, `## [X.Y.Z] - YYYY-MM-DD` for a release
+  (a version never published, as the engine's 0.1.0, has no date: `## [X.Y.Z]` and "Never published."),
   only the subsections `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`, prose only between a
   version's heading and its first subsection, and no link references at the end.
 - **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it.
@@ -81,6 +82,9 @@ skill makes one (the `ehos-dev` plugin from ehos-tools, once enabled here). In t
 - **At a release, each package with lines under `## [Unreleased]` moves to its next version**, its lines under
   `## [X.Y.Z] - YYYY-MM-DD`, in the release's pull request; a package with none stays at its `-dev` and is not
   released at that tag, though `release.json` names its version.
+- **Every release moves the engine**, since the tag is its version. A release of other packages alone moves the
+  engine by a patch from its last release, and that version's section says so under `### Changed`: "Released
+  with eh_os_contract_auth 0.1.1; nothing in the engine changed."
 - **The tag runs `.github/workflows/release.yml`.** Its Prepare job, which can only read, checks the tag, writes
   `release.json` (`mix contract.release_file` in `sandbox/`) and takes each released package's section of its
   changelog; its Publish job, in the environment `release`, creates the GitHub release and has the documentation
