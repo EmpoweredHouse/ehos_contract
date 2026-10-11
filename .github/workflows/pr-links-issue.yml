@@ -1,8 +1,8 @@
 name: pr-links-issue
 
 # A pull request's first line says what it belongs to (6 October 2026): `Closes #N`
-# or `Part of #N` for an issue, or `No issue: <why>` for a change that needs none — a
-# typo, a dependency bump. The check does not decide which; it makes the choice
+# or `Part of #N` for an issue (an issue of another repository as `owner/repo#N` or its
+# address), or `No issue: <why>` for a change that needs none — a typo, a dependency bump. The check does not decide which; it makes the choice
 # deliberate, so that from code, through its pull request, a reader can reach the
 # reasons behind it (CONTRIBUTING.md). It reads only the description, so it runs on
 # every pull request, documentation included, and is cheap.
@@ -26,7 +26,7 @@ jobs:
         # gone: the template opens with one, above the line this checks.
         run: |
           first=$(printf '%s\n' "$BODY" | tr -d '\r' | perl -0777 -pe 's/<!--.*?-->//gs' | grep -m1 -v '^[[:space:]]*$' || true)
-          if printf '%s\n' "$first" | grep -Eiq '^[[:space:]]*((close[sd]?|fix(e[sd])?|resolve[sd]?|part of) #[0-9]+|no issue:[[:space:]]*[^[:space:]])'; then
+          if printf '%s\n' "$first" | grep -Eiq '^[[:space:]]*((close[sd]?|fix(e[sd])?|resolve[sd]?|part of):?[[:space:]]+(([[:alnum:]_.-]+/[[:alnum:]_.-]+)?#[0-9]+|https://github\.com/[[:alnum:]_.-]+/[[:alnum:]_.-]+/issues/[0-9]+)|no issue:[[:space:]]*[^[:space:]])'; then
             echo "The description links an issue, or says why there is none."
           else
             echo "::error::The first line says what this pull request belongs to: 'Closes #N', 'Part of #N', or 'No issue: <why>'. See CONTRIBUTING.md."

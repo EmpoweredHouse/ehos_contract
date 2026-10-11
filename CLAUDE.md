@@ -34,7 +34,7 @@ means today's `EhOsContract.X`.
 | --- | --- |
 | How work is planned, recorded and reviewed, for a person and an assistant alike: where each thing lives, from an idea to `main`, how to follow a line of code back to its reason | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | The programmes, their stages and **their status** | [`PLAN.md`](PLAN.md), the "Postęp" table |
-| A stage's scope, decisions, review and pull requests | its GitHub issue (labels `dd`, `wave-<n>`); how to run a stage through one: the [`stage-issue`](.claude/skills/stage-issue/SKILL.md) skill |
+| A stage's scope, decisions, review and pull requests | its GitHub issue (labels `dd`, `wave-<n>`); how to run a stage through one: the `ehos-dev:stage-issue` skill (`CONTRIBUTING.md`, "From an idea to `main`") |
 | What this repository is, the gate, the structure | [`README.md`](README.md) |
 | **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |

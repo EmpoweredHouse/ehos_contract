@@ -1,6 +1,6 @@
 ---
 name: Programme stage
-about: One stage of a planned programme (see PLAN.md and the stage-issue skill)
+about: One stage of a planned programme (see PLAN.md and the ehos-dev:stage-issue skill)
 labels: []
 ---
 
