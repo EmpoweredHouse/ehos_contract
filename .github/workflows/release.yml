@@ -247,9 +247,11 @@ jobs:
           COMMIT: ${{ needs.prepare.outputs.commit }}
           VERSION: ${{ needs.prepare.outputs.version }}
           LATEST: ${{ needs.prepare.outputs.latest }}
-        # The tag may not have moved while the release waited in its environment.
+        # The tag may not have moved while the release waited in its environment. Asked as
+        # `refs/tags/<tag>`: `commits/<tag>` resolves a branch of the same name first, so a branch
+        # called v0.3.0 would answer for the tag, and `commits/tags/<tag>` is refused (422).
         run: |
-          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$TAG" --jq .sha)
           if [ "$tagged" != "$COMMIT" ]; then
             echo "::error::$TAG names $tagged now, not $COMMIT, which the notes and release.json describe"
             exit 1
