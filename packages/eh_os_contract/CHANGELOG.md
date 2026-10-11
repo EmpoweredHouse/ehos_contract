@@ -48,7 +48,7 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
-The engine's next version is 0.3.0: `0.3.0-dev` in `mix.exs` until it is released.
+## [0.3.0] - 2026-10-11
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
 **The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
