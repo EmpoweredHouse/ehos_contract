@@ -73,7 +73,7 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
 
 How a release is made is written once, for the three repositories, in eh-os's
 [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
-skill makes one (the `ehos-dev` plugin from ehos-tools, enabled in `.claude/settings.json`). In this repository:
+skill makes one (the `ehos-dev` plugin from ehos-tools, once enabled here). In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
   `eh_os_contract_auth` `~> 0.1.0-dev` while the engine is at 0.3.0, and one shared number would break it.
