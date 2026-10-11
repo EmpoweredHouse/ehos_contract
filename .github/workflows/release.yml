@@ -264,10 +264,16 @@ jobs:
             echo "::error::$TAG names $tagged now, not $COMMIT, which the notes and release.json describe"
             exit 1
           fi
-          # A run started again, after the docs failed or the job was cancelled once the release
-          # was made, finds the release there: the tag names the commit prepared, so it is this
-          # one, and creating it again would fail. Any answer but "no such release" stops.
+          # A run started again, after the job was cancelled once the release was made, finds the
+          # release there, and creating it again would fail. It is this run's only if its
+          # release.json names the commit prepared: a release made by hand, or from another
+          # commit before the tag moved, stops the run. Any answer but "no such release" stops.
           if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .html_url 2> "$RUNNER_TEMP/view.err"); then
+            described=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p release.json -O - | jq -r .commit || true)
+            if [ "$described" != "$COMMIT" ]; then
+              echo "::error::$TAG has a release already, $existing, whose release.json names '${described}', not $COMMIT: it describes another commit, or was not made by this workflow"
+              exit 1
+            fi
             echo "::notice::$TAG is released already, from $COMMIT: $existing"
             exit 0
           elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/view.err"; then
