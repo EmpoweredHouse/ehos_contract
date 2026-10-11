@@ -2,7 +2,9 @@
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [Unreleased]
+
+### Added
 
 - **The first version: a `graph.v1` document drawn in a LiveView** (plan E13, #217). It does not depend on the
   engine: a document is plain data, the same from `EhOsContract.Graph.Document` as from `GET <mount>/graph/…`
