@@ -48,7 +48,8 @@ stage was carried out stays in its issue.
    dependency bump. A check (`.github/workflows/pr-links-issue.yml`) fails a pull request that says none of
    them; it does not decide which one is right. A change a host can see has its line in the package's
    `CHANGELOG.md`, or the description says why not on a line `No changelog: <why>` (below).
-7. **Before it is opened**, the author reviews it (`.claude/skills/pre-pr-review/SKILL.md`), and `mix check` in
+7. **Before it is opened**, the author reviews it (the `ehos-dev:pre-pr-review` skill, with this repository's
+   part in `.claude/review.md`), and `mix check` in
    `sandbox/` passes (`README.md`, "Working on it").
 8. **When it is merged**, `PLAN.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do

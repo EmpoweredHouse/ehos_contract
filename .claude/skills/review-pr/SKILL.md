@@ -12,7 +12,8 @@ this form.
 ## Where this sits
 
 `module-boundary-check`, `contract-distillation`, `add-event`, `change-contract`, `write-decider` and
-`write-reaction` are for whoever writes. `pre-pr-review` is the author reviewing their own change
+`write-reaction` are for whoever writes. `ehos-dev:pre-pr-review`, with this repository's part in
+`.claude/review.md`, is the author reviewing their own change
 before the pull request. This skill is for the person who receives it and has to approve it or send
 it back — the gate `CLAUDE.md` names ("Człowiek jest bramą"). When the change edits a contract that
 may have history, it does not re-derive the risk: it opens `change-contract`'s table and holds the
@@ -94,7 +95,7 @@ once per pattern. In a pull request here that is:
 ### Verified in reverse
 
 For a fix, the author reverted it and watched the one test meant to catch it go red, and no other
-(`pre-pr-review`, step 4). The pull request says which test and how many failed, in the shape "with
+(`ehos-dev:pre-pr-review`, step 5). The pull request says which test and how many failed, in the shape "with
 the fix reverted, N of M tests in `<file>` fail, all of them about <the case>". Its absence is
 not a rejection by itself, but it is a question to ask before trusting that the fix is the thing
 that was broken.

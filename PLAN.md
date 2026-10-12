@@ -181,7 +181,7 @@ for P2e.
 4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
    kod tam trafia.
 5. Starsze ustalenia przy kluczach i wartościach: „#98 — co wyszło”, „#96 — co wyszło”, „Granice wartości z żądania”.
-6. `.claude/skills/pre-pr-review/SKILL.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
+6. Skill `ehos-dev:pre-pr-review` i `.claude/review.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
    `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
 
 ### Komendy
@@ -465,7 +465,7 @@ W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września), w sesji E
 (1 października) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej bramie
 na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
-przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
+przed PR skill `ehos-dev:pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
 `~/Projects/ai/eh-os` też nie (tylko czytanie).
 
 ### Język
