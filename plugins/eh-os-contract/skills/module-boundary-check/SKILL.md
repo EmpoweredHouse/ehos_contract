@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: Before adding a new business entity, action, screen or table to a client tree (an application's `lib/<app>/`, or here `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/`), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
+description: Before adding a new business entity, action, screen or table to an application (its `lib/<app>/`, or a client tree under `sandbox/lib/` here), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
 ---
 
 # Deciding where a new feature lives, before writing it

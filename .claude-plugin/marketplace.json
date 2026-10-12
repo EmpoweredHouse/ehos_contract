@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "eh-os-contract",
-      "source": "./",
+      "source": "./plugins/eh-os-contract",
       "description": "Skills for writing and changing contracts with eh_os_contract, for an application built on EHOS: where a feature lives, distilling a process into a domain and contracts, adding an event, changing a contract that has history, writing a decider and a reaction."
     }
   ]

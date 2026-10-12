@@ -6,13 +6,5 @@
     "name": "EmpoweredHouse"
   },
   "repository": "https://github.com/EmpoweredHouse/eh-os-contract",
-  "license": "Apache-2.0",
-  "skills": [
-    "./.claude/skills/module-boundary-check",
-    "./.claude/skills/contract-distillation",
-    "./.claude/skills/add-event",
-    "./.claude/skills/change-contract",
-    "./.claude/skills/write-decider",
-    "./.claude/skills/write-reaction"
-  ]
+  "license": "Apache-2.0"
 }

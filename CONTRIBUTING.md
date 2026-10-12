@@ -109,10 +109,15 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 - **Preview a release before tagging it**: `gh workflow run release.yml -f ref=main` writes into the run's
   summary what a release of that commit would publish (a package at `-dev` shows its `## [Unreleased]`), and
   publishes nothing.
-- **The `eh-os-contract` Claude Code plugin** (`.claude-plugin/`) is the repository's skills an
-  application uses, listed by name in `.claude-plugin/plugin.json`; the others stay this repository's.
-  Raise its `version` in the pull request that changes one of those skills, then tag the merge commit
-  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. An application
+- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
+  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
+  `write-docs` stay this repository's alone. The plugin is its own directory so that nothing else in
+  the repository reaches an application through it: a hook or an MCP server added at the root for work
+  here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. Raise its `version`
+  (`plugins/eh-os-contract/.claude-plugin/plugin.json`) in the pull request that changes one of its
+  skills, then tag the merge commit
+  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
+  must hold it as they hold `v*`, since every application's settings name it. An application
   takes it when `ehos_app`'s installer moves the `ref` in its `.claude/settings.json`. A skill it
   carries says, at its top, where its paths are in an application.
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and

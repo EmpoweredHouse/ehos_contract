@@ -51,7 +51,8 @@ and the `ehos-dev:release` skill makes one.
 ### Added
 
 - **The skills for writing contracts reach an application as a Claude Code plugin.** This repository is a
-  marketplace, `eh-os-contract`, whose plugin of the same name carries `module-boundary-check`,
+  marketplace, `eh-os-contract`, whose plugin of the same name, in `plugins/eh-os-contract/`, carries
+  `module-boundary-check`,
   `contract-distillation`, `add-event`, `change-contract`, `write-decider` and `write-reaction`, each saying
   where its paths are in an application (`deps/eh_os_contract/`). `docs/getting-started.md` says how an
   application enables it; its release is a tag `eh-os-contract-plugin-vX.Y.Z`.
