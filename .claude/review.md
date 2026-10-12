@@ -43,7 +43,6 @@ Everything else is reviewed: anything not Markdown (`.claude/settings.json` and 
 
 Check the diff is documentation only with `git diff --stat origin/main..HEAD`.
 
-
 ## Security and performance
 
 Authentication and authorization, injection, secrets, trust in fetched data (TLS, redirects,
