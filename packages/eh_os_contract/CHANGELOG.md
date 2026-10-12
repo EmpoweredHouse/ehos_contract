@@ -56,8 +56,9 @@ and the `ehos-dev:release` skill makes one.
   `core-unit-records-only` (a warning for a unit with events none of whose commands can be refused). A unit's
   page from `mix eh_os_contract.pages` says "Records only" when that holds. Moves no verdict; a host running the
   check with `--warnings-as-errors` may see the new warning on an unchanged contract.
-- **A field can say which unit it identifies** (plan DD, stage L3, #286). `{:id, name}` names a unit of one
-  of the domain's contracts as it names an entity: `field :visit_id, {:id, :visit}`, and a unit keyed by
+- **A field can say which unit it identifies** (plan DD, stage L3, #286). In a contract, `{:id, name}` names
+  a unit of one of the domain's contracts as it names an entity (a domain's own values and entities still
+  name only entities): `field :visit_id, {:id, :visit}`, and a unit keyed by
   another's number types its identity, `identity visit_id: {:id, :visit}` or `identity [:period_id,
   company_id: {:id, :client}]`. The compiler between modules refuses a name that matches no entity and no
   unit, or more than one of them, and a `reads:` through a field that identifies a unit. The model keeps
@@ -66,6 +67,12 @@ and the `ehos-dev:release` skill makes one.
   pages link the field to the unit, and a unit's page lists the fields that refer to it. In a contract's
   `graph.v1` document a field's `refers_to` names the entity or the contract's own unit, and is left out for
   a sibling's unit. Moves no verdict; a contract that types a field this way gets a new version.
+
+### Changed
+
+- **Breaking:** `{:id, name}` for a name that both an entity of the domain and a unit of one of its
+  contracts have no longer compiles (plan DD, stage L3, #286); before, it meant the entity. Adding such a
+  unit to any contract of the domain refuses every reference to the entity. Rename the unit or the entity.
 
 ## [0.3.0] - 2026-10-11
 

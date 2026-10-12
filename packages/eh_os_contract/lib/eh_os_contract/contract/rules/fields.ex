@@ -14,8 +14,9 @@ defmodule EhOsContract.Contract.Rules.Fields do
   #   entity's, and a generated identity, which is new, is no other's number.
   # - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
   #   `{:enum, members}` with no member twice, the name of a domain value, or
-  #   `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
-  #   exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+  #   `{:id, name}`, the identifier of a domain entity or, since plan DD, L3 (#286), of a
+  #   unit of one of the domain's contracts. Whether that value, entity or unit exists is
+  #   the domain's and its contracts' to say, and a Mix compiler checks it (L3, X3).
   # - **F3.** Only a state gives a field a `default:`.
   # - **F4.** A field that tells which run an event belongs to — named in the
   #   process's `correlate`, or in the `correlate` of a process manager handling the

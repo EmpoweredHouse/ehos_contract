@@ -264,6 +264,26 @@ defmodule EhOsContract.ContractUnitsTest do
       )
     end
 
+    # Plan DD, L3 (#286): a typed identity is a keyword, never a second argument.
+    test "an identity typed as a second argument is refused, naming the form that types it" do
+      source =
+        contract("IdentityPositional", """
+          aggregate :visit_note, "Notatka" do
+            identity :visit_id, {:id, :visit}
+            command :note, "Zanotuj", by: :reception, emits: :noted
+            event :noted, "Zanotowano"
+          end
+        """)
+
+      assert_refused(
+        source,
+        "identity_positional.ex",
+        "and got {:id, :visit}; a field of it typed as another unit's or an entity's number is " <>
+          "written `identity visit_id: {:id, :visit}`",
+        5
+      )
+    end
+
     test "control: a generated identity with a creating command compiles into the model" do
       model =
         compile_contract("GeneratedRight", """
@@ -327,7 +347,8 @@ defmodule EhOsContract.ContractUnitsTest do
 
       assert message =~
                "A8: command :book_visit reads :visit by :visit_id, a field of the unit's " <>
-                 "identity, an :id; an entity is named by a field typed {:id, entity}"
+                 "identity, which names the unit, not a row to read; an entity is read by a " <>
+                 "field of the command's own typed {:id, entity}"
 
       assert message =~
                "A8: command :book_visit reads :code by :code, typed :id; an entity is named by a " <>

@@ -242,7 +242,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       [] ->
         [
           "names no entity of #{inspect(domain.module)} and no unit of its contracts; " <>
-            suggest_reference(name, References.names(domain, models))
+            suggest(name, References.names(domain, models), "they declare")
         ]
 
       many ->
@@ -250,13 +250,6 @@ defmodule EhOsContract.Contract.Links.Domain do
           "names more than one: #{Enum.map_join(many, ", ", &References.describe/1)}; a " <>
             "reference cannot tell them apart, so rename one"
         ]
-    end
-  end
-
-  defp suggest_reference(name, names) do
-    case DslRules.closest(name, names) do
-      nil -> "they declare #{inspect(Enum.sort(names))}"
-      suggestion -> "did you mean #{inspect(suggestion)}?"
     end
   end
 
@@ -522,9 +515,9 @@ defmodule EhOsContract.Contract.Links.Domain do
     published ++ named
   end
 
-  defp suggest(name, names) do
+  defp suggest(name, names, declare \\ "it declares") do
     case DslRules.closest(name, names) do
-      nil -> "it declares #{inspect(Enum.sort(names))}"
+      nil -> "#{declare} #{inspect(Enum.sort(names))}"
       suggestion -> "did you mean #{inspect(suggestion)}?"
     end
   end

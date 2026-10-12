@@ -77,7 +77,9 @@ defmodule EhOsContract.Contract.Dsl do
             line: __CALLER__.line,
             description:
               "identity takes one option beside its fields, `generated: :uuid`, and got " <>
-                Macro.to_string(opts)
+                Macro.to_string(opts) <>
+                "; a field of it typed as another unit's or an entity's number is written " <>
+                "`identity visit_id: {:id, :visit}`"
       end
     end
   end

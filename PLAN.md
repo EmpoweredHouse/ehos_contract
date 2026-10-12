@@ -2590,8 +2590,9 @@ a policy, a process manager or its timer issues it and no actor may, `by:` empty
 warning: a core unit that has events and none of whose commands refuses). "Records only" is derived, never
 declared, and shown on the unit's page; the graph waits for E13.
 **L3 — a field can say which unit it identifies** (#286; tightened 12 October 2026). `field :visit_id, {:id,
-:visit}`, as for an entity: the name resolves against the domain's entities and the units of its contracts, and X3
-refuses a name that matches none or more than one; A8 refuses a `reads:` through such a field. The model keeps
+:visit}`, as for an entity, and `identity visit_id: {:id, :visit}` for a unit keyed by another's number: the name
+resolves against the domain's entities and the units of its contracts, a name that matches none or more than one is
+refused (X3), and so is a `reads:` through such a field (A8). The model keeps
 `type: :id, refers_to:`; `crossings/2` counts a reference to another context's unit, so the context-map rules see it;
 pages, view and the graph show it. The test material moves to typed references in the same pull request.
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
