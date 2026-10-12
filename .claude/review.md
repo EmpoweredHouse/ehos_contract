@@ -24,10 +24,9 @@ makes the note mean something.
 
 ## Documentation alone
 
-Markdown that no part of `mix check` reads: `PLAN.md`, `CLAUDE.md`, the root `README.md`,
-`.claude/skills/`, and `docs/` except `docs/adr/contract-v2.md`. Not this file, which changes what
-every review here does, and nothing that is not Markdown (`.claude/settings.json` and its hook,
-`.claude/launch.json`, which runs commands). The gate reads more than it seems to:
+Markdown that no part of `mix check` reads and that sets no rule a review follows: `PLAN.md`, the
+root `README.md`, and `docs/` except `docs/adr/contract-v2.md`. The gate reads more than it seems
+to:
 
 - `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`,
   `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
@@ -38,7 +37,12 @@ every review here does, and nothing that is not Markdown (`.claude/settings.json
 - `eh_os_contract.docs --check` and `eh_os_contract.rules --check` compare the generated
   `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` with the code.
 
+Everything else is reviewed: anything not Markdown (`.claude/settings.json` and its hook,
+`.claude/launch.json`, which runs commands), and what sets the rules a review checks against:
+`CLAUDE.md`, `CONTRIBUTING.md`, `.claude/skills/` (`review-pr` above all) and this file.
+
 Check the diff is documentation only with `git diff --stat origin/main..HEAD`.
+
 
 ## Security and performance
 
@@ -56,8 +60,8 @@ handoff and explain every new line.
 
 A mix task on the dev database (`MIX_ENV=dev`, never `MIX_ENV=test mix run`, see `CLAUDE.md`), the
 dashboard through the `eh_os_contract_host` preview (`.claude/launch.json`), a hook through a pipe
-test with a synthesised payload. `review-pr` §2, "Verified in reverse", has examples of how this repository writes the
-reverse check of a fix down.
+test with a synthesised payload. `review-pr` §2, "Verified in reverse", has the shape in which this
+repository writes the reverse check of a fix down.
 
 ## A finding skipped
 
