@@ -97,10 +97,32 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
+  # Plan DD, L3 (#286): fields that identify a unit, this contract's own and
+  # `Openings`'s. Invented, as `Openings` is.
+  defmodule Notes do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.graph_notes"
+
+    aggregate :note, "Note" do
+      identity :note_id
+
+      command :write_note, "Write a note", by: :auditor, emits: :note_written do
+        field :previous_id, {:id, :note}, optional: true
+        field :branch_id, {:id, :branch_note}
+      end
+
+      event :note_written, "Note written"
+    end
+  end
+
   # The registry's, and this file's two with a process of their own, so that a stage,
-  # a promise and a terminal event are held to the schema too.
+  # a promise and a terminal event are held to the schema too, and one whose fields
+  # identify units.
   defp documents do
-    contracts = Registry.contracts() ++ [Promised, Openings]
+    contracts = Registry.contracts() ++ [Promised, Openings, Notes]
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
       for d <- Registry.domains(), do: {d, Document.domain(d, contracts)}
@@ -859,6 +881,22 @@ defmodule EhOsContract.GraphDocumentTest do
                "process" => %{"name" => "visit", "label" => "Visit"}
              } = node(d, "contract", contract)
     end
+  end
+
+  # Plan DD, L3 (#286).
+  test "a field identifying the contract's own unit names its node; one of a sibling's names none" do
+    d = Document.contract(Notes)
+    command = node(d, "command", Document.id([:command, scope(Notes), :write_note]))
+    by_name = Map.new(command["fields"], &{&1["name"], &1})
+
+    assert by_name["previous_id"]["refers_to"] == Document.id([:unit, scope(Notes), :note])
+    assert node(d, "unit", by_name["previous_id"]["refers_to"])
+    refute Map.has_key?(by_name["branch_id"], "refers_to")
+
+    # Neither unit is taken for an entity the domain does not declare.
+    names = for e <- d["nodes"]["entity"], do: e["name"]
+    refute "note" in names
+    refute "branch_note" in names
   end
 
   describe "a node's content is its declaration's" do

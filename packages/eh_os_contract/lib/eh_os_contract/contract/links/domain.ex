@@ -12,8 +12,9 @@ defmodule EhOsContract.Contract.Links.Domain do
   #   `:human` actor in `by:`, and its scenario by a person names them with `as`, which
   #   no `:system` actor and no other command takes (plan DD, A1, #247).
   # - **X3.** Every field type that is not built in is a value of the domain, inside
-  #   a list as well; every `{:id, entity}` names an entity of the domain; every
-  #   `subject:` is a subject of the domain.
+  #   a list as well; every `{:id, name}` names exactly one entity of the domain or
+  #   unit of one of its contracts (plan DD, L3 (#286)); every `subject:` is a subject
+  #   of the domain.
   # - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
   #   `issued_by` name externals of the domain. Since plan EP5a, a call that names an
   #   operation, `{:p1, :submit_report}`, names one of that external's; and a call to an
@@ -34,35 +35,44 @@ defmodule EhOsContract.Contract.Links.Domain do
   #   record is told by, typed by a domain value, is of one resting on `:id`.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
   #   `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
+  # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
+  #   `reads:` is an entity the application keeps, never a unit, whose state is its
+  #   events.
   @moduledoc false
 
   alias EhOsContract.Codec
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
   alias EhOsContract.Key
+  alias EhOsContract.References
   alias EhOsContract.Contract.{Links, Rules}
 
   @built_in Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [Links.violation()]
-  def check(system), do: Enum.flat_map(system.contracts, &contract/1)
+  def check(system) do
+    # A reference may name a unit of any contract of the domain (plan DD, L3 (#286)).
+    models = Enum.map(system.contracts, & &1.model)
+    Enum.flat_map(system.contracts, &contract(&1, models))
+  end
 
-  defp contract(%{domain: nil} = c) do
+  defp contract(%{domain: nil} = c, _models) do
     [
       {"X1: #{inspect(c.module)} names domain #{inspect(c.model.domain)}, which is not a " <>
          "compiled EhOsContract.Domain", c.at}
     ]
   end
 
-  defp contract(c) do
+  defp contract(c, models) do
     Enum.concat([
       context(c),
       actors(c),
       people(c),
       types(c),
       returns(c),
-      entities(c),
+      references(c, models),
+      reads(c, models),
       subjects(c),
       personal_values(c),
       correlation_values(c),
@@ -193,27 +203,71 @@ defmodule EhOsContract.Contract.Links.Domain do
     end
   end
 
-  defp entities(%{declarations: d, domain: domain}) do
-    entities = Enum.map(Map.get(domain, :entities, []), & &1.name)
-
+  # Plan DD, L3 (#286): `{:id, name}` names an entity of the domain or a unit of one of
+  # its contracts, and exactly one, since every reader after this takes the name alone.
+  defp references(%{declarations: d, domain: domain}, models) do
     fields =
       for {where, field} <- fields(d),
           name <- Domain.Rules.references(field.type),
-          name not in entities do
-        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names no entity of " <>
-           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(field)}
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} #{problem}",
+         Links.at(field)}
       end
 
     returns =
       for {where, function} <- Rules.Fields.returns(d),
           function.returns != nil,
           name <- Domain.Rules.references(function.returns.type),
-          name not in entities do
-        {"X3: #{where} returns {:id, #{inspect(name)}}, which names no entity of " <>
-           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(function)}
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{where} returns {:id, #{inspect(name)}}, which #{problem}", Links.at(function)}
       end
 
-    fields ++ returns
+    identities =
+      for unit <- d.units,
+          {field, type} <- unit.identity_types,
+          name <- Domain.Rules.references(type),
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{unit.kind} #{inspect(unit.name)}: identity #{inspect(field)}: " <>
+           "{:id, #{inspect(name)}} #{problem}", Links.at(unit)}
+      end
+
+    fields ++ returns ++ identities
+  end
+
+  defp reference_problems(name, domain, models) do
+    case References.candidates(name, domain, models) do
+      [_one] ->
+        []
+
+      [] ->
+        [
+          "names no entity of #{inspect(domain.module)} and no unit of its contracts; " <>
+            suggest(name, References.names(domain, models), "they declare")
+        ]
+
+      many ->
+        [
+          "names more than one: #{Enum.map_join(many, ", ", &References.describe/1)}; a " <>
+            "reference cannot tell them apart, so rename one"
+        ]
+    end
+  end
+
+  # A8, the part that needs the domain (plan DD, L3 (#286)): a command reads a row the
+  # application keeps (`EhOsContract.Entities`). A unit's state is its events, which
+  # its own contract decides, and the host has no row of it to give.
+  defp reads(%{declarations: d, domain: domain}, models) do
+    for command <- Rules.commands(d),
+        {name, field_name} <- Map.get(command, :reads, []),
+        field = Enum.find(command.fields, &(&1.name == field_name)),
+        field != nil,
+        [target] <- [Domain.Rules.references(field.type)],
+        {:unit, _c, _name} = unit <- [References.resolve(target, domain, models)] do
+      {"A8: command #{inspect(command.name)} reads #{inspect(name)} by " <>
+         "#{inspect(field_name)}, which identifies #{References.describe(unit)}; a command reads " <>
+         "only an entity the application keeps, and a unit's state is its events",
+       Links.at(command)}
+    end
   end
 
   defp subjects(%{declarations: d, domain: domain}) do
@@ -461,9 +515,9 @@ defmodule EhOsContract.Contract.Links.Domain do
     published ++ named
   end
 
-  defp suggest(name, names) do
+  defp suggest(name, names, declare \\ "it declares") do
     case DslRules.closest(name, names) do
-      nil -> "it declares #{inspect(Enum.sort(names))}"
+      nil -> "#{declare} #{inspect(Enum.sort(names))}"
       suggestion -> "did you mean #{inspect(suggestion)}?"
     end
   end

@@ -44,6 +44,65 @@ defmodule EhOsContract.ContractFieldsTest do
       refute message =~ ":visit_id is not snake_case"
     end
 
+    # Plan DD, L3 (#286): an identity field may be typed as another unit's number.
+    test "an identity field typed otherwise than :id or {:id, name} is refused, at the unit" do
+      message =
+        refuse_contract("IdentityTypes", """
+          aggregate :visit, "Wizyta" do
+            identity [:visit_id, clinic_id: :string, generated: :uuid]
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+        """)
+
+      assert message =~
+               "F1: aggregate :visit: identity :clinic_id is :string; an identity field is an " <>
+                 ":id, or {:id, name} for another unit's or an entity's number (identity_types.ex:4)"
+
+      assert message =~
+               "identity :generated is :uuid; an identity field is an :id, or {:id, name} for " <>
+                 "another unit's or an entity's number; to have the library generate it, write " <>
+                 "`identity :name, generated: :uuid`"
+    end
+
+    test "a generated identity typed as another's number is refused" do
+      message =
+        refuse_contract("IdentityGeneratedRef", """
+          aggregate :visit, "Wizyta" do
+            identity [visit_id: {:id, :booking}], generated: :uuid
+            command :open_visit, "Otwarcie wizyty", by: :reception, emits: :visit_opened, creates: true
+            event :visit_opened, "Wizyta otwarta"
+          end
+        """)
+
+      assert message =~
+               "F1: aggregate :visit: identity :visit_id is {:id, :booking}, and the library " <>
+                 "generates the identity: a new one is no other unit's or entity's number"
+    end
+
+    test "control: a typed identity is injected as an :id that refers to what it names" do
+      compile_contract("IdentityTyped", """
+        aggregate :visit_documentation, "Dokumentacja wizyty" do
+          identity [:period_id, visit_id: {:id, :visit}]
+          command :document, "Dokumentuj", by: :reception, emits: :documented
+          event :documented, "Udokumentowano"
+        end
+      """)
+
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.IdentityTyped)
+      [unit] = model.units
+      [command] = model.commands
+      [event] = model.events
+
+      assert unit.identity == [:period_id, :visit_id]
+
+      for fields <- [unit.state.fields, command.fields, event.fields] do
+        assert [%{name: :period_id, type: :id} = period, %{name: :visit_id} = visit] = fields
+        refute Map.has_key?(period, :refers_to)
+        assert %{type: :id, refers_to: :visit} = visit
+      end
+    end
+
     test "a field whose name is not snake_case is refused, once, and __ keeps its own refusal" do
       message =
         refuse_contract(

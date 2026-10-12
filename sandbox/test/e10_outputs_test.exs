@@ -33,7 +33,11 @@ defmodule EhOsContractHost.E10OutputsTest do
     # Plan DD, L1 (#269): a notice per context naming its words no term covers.
     # Plan DD, L2 (#272): three core commands that reject nothing — booking a visit,
     # coding a diagnosis, ingesting a bank statement.
-    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 22 notices"
+    # Plan DD, L3 (#286): a field that identifies a unit is a reference into its context.
+    # Three cross a relation neither context map declares — Rehmed's external payers and
+    # statutory reporting keep scheduling's visit, TaxVision's KSeF inbox the client
+    # company — and settlement's visit now crosses the relation to scheduling.
+    assert output =~ "eh_os_contract.check: 0 errors, 31 warnings, 22 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,

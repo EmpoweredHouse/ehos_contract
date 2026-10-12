@@ -236,7 +236,16 @@ defmodule EhOsContract.Contract.Build do
     })
   end
 
-  defp identity_fields(unit), do: id_fields(unit.identity)
+  # An identity field typed as another unit's or an entity's number refers to it, as a
+  # declared field does (plan DD, L3 (#286)).
+  defp identity_fields(unit) do
+    for field <- id_fields(unit.identity) do
+      case Map.get(unit.identity_types, field.name) do
+        nil -> field
+        type -> EhOsContract.Domain.Build.reference(%{field | type: type})
+      end
+    end
+  end
 
   defp id_fields(names) do
     for name <- names do

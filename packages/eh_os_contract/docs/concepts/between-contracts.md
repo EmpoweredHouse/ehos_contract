@@ -45,6 +45,20 @@ one that does not, does not compile ([`X10`](../contract.md#refusals-x)). Usuall
 `idempotency`, a read model none. An effect and a process manager are left alone, since undeclared they run
 `:at_least_once` already. How each delivery fails is on [the reactions page](reactions.md).
 
+## Naming a sibling's unit
+
+A contract often keeps the number of something a sibling decides: a clinic's settlement keeps the visit
+that booking made. The field's type says so, as it says which entity a field identifies:
+`field :visit_id, {:id, :visit}`. A unit keyed by that number says it in its identity, `identity visit_id:
+{:id, :visit}`. The name has to match exactly one unit of the domain's contracts or entity of the domain, or the
+contract does not compile.
+
+A reference carries no event. It says what a number means, so the pages link the field to the unit, and
+`mix eh_os_contract.check` counts it as a dependency of this context on the sibling's: the context map has
+to relate the two, in the direction the reference runs. To react to what happens to the visit, consume its
+events; to decide on them, consult them from a boundary. A command never reads a sibling's unit the way it
+reads an entity, since a unit's state is its events.
+
 ## Publishing an integration event
 
 An event leaves the application only through `publish`. It names a local event, the versioned name it goes

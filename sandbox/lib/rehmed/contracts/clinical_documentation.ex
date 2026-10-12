@@ -66,7 +66,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   # anything a specialist records: a colleague could record the patient leaving, but not
   # rebook the visit.
   dcb :visit_documentation, "Dokumentacja wizyty" do
-    identity :visit_id
+    identity visit_id: {:id, :visit}
 
     consults :visit_booked, match: :visit_id
 

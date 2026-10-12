@@ -70,7 +70,9 @@ defmodule EhOsContract.Pages do
       |> Enum.filter(&(&1.domain == domain.module))
 
     distinct!(contracts)
-    site = %{domain: domain, contracts: contracts}
+    # What every reference name resolves to, once for all pages (plan DD, L3 (#286)).
+    referents = EhOsContract.References.index(domain, contracts)
+    site = %{domain: domain, contracts: contracts, referents: referents}
 
     [{"index.md", domain_page(site)}]
     |> Enum.concat(for v <- domain.values, do: {value_path(v.name), value_page(site, v)})
@@ -273,11 +275,11 @@ defmodule EhOsContract.Pages do
   # A row of a table with links in it, joined when the page resolves them.
   defp row(parts), do: {:row, parts}
 
-  defp type(site, %{refers_to: entity, type: {:list, inner}}) when entity != nil,
-    do: ["list of ", code(inspect(inner)), " of ", entity_link(site, entity)]
+  defp type(site, %{refers_to: name, type: {:list, inner}}) when name != nil,
+    do: ["list of ", code(inspect(inner)), " of ", reference_link(site, name)]
 
-  defp type(site, %{refers_to: entity, type: type}) when entity != nil,
-    do: [code(inspect(type)), " of ", entity_link(site, entity)]
+  defp type(site, %{refers_to: name, type: type}) when name != nil,
+    do: [code(inspect(type)), " of ", reference_link(site, name)]
 
   defp type(site, %{type: type}), do: type_link(site, type)
 
@@ -291,10 +293,25 @@ defmodule EhOsContract.Pages do
 
   defp type_link(_site, type), do: code(inspect(type))
 
-  defp entity_link(site, name) do
-    if Enum.any?(site.domain.entities, &(&1.name == name)),
-      do: link(code(name), entity_path(name)),
-      else: code(name)
+  # What a field identifies: an entity's page, or a unit's (plan DD, L3 (#286)).
+  defp reference_link(site, name) do
+    case Map.get(site.referents, name) do
+      {:entity, ^name} ->
+        link(code(name), entity_path(name))
+
+      {:unit, model, ^name} ->
+        unit = Enum.find(model.units, &(&1.name == name))
+        link(code(name), unit_path(model, unit))
+
+      nil ->
+        code(name)
+    end
+  end
+
+  # Whether a field refers to `referent`, as the reference resolves.
+  defp refers_to?(site, field, referent) do
+    name = Map.get(field, :refers_to)
+    name != nil and Map.get(site.referents, name) == referent
   end
 
   defp notes(field) do
@@ -499,8 +516,10 @@ defmodule EhOsContract.Pages do
     section("Used by", aliases ++ holders(site, &mentions?(&1.type, name)), & &1)
   end
 
-  # Every declaration, value and entity with a field `wanted` says yes to.
-  defp holders(site, wanted) do
+  # Every declaration, value and entity with a field `wanted` says yes to. With
+  # `:identity_once`, a command's or an event's fields leave out its unit's identity,
+  # which the unit's own entry stands for.
+  defp holders(site, wanted, identity \\ :each) do
     in_domain =
       for(
         v <- site.domain.values,
@@ -514,7 +533,7 @@ defmodule EhOsContract.Pages do
     in_contracts =
       for model <- site.contracts,
           {key, declaration, fields} <- field_holders(model),
-          Enum.any?(fields, wanted) do
+          Enum.any?(own_fields(model, key, declaration, fields, identity), wanted) do
         bullet([
           kind_word(key, declaration),
           " ",
@@ -525,6 +544,14 @@ defmodule EhOsContract.Pages do
 
     in_domain ++ in_contracts
   end
+
+  defp own_fields(model, key, declaration, fields, :identity_once)
+       when key in [:commands, :events] do
+    unit = Enum.find(model.units, &(&1.name == declaration.unit))
+    Enum.reject(fields, &(&1.name in unit.identity))
+  end
+
+  defp own_fields(_model, _key, _declaration, fields, _identity), do: fields
 
   defp mentions?({:list, inner}, name), do: mentions?(inner, name)
   defp mentions?(type, name), do: type == name
@@ -569,7 +596,7 @@ defmodule EhOsContract.Pages do
       "## Fields",
       "",
       fields_table(site, e.fields),
-      section("Referred to by", holders(site, &(Map.get(&1, :refers_to) == e.name)), & &1)
+      section("Referred to by", holders(site, &refers_to?(site, &1, {:entity, e.name})), & &1)
     ]
     |> Enum.reject(&is_nil/1)
   end
@@ -906,7 +933,14 @@ defmodule EhOsContract.Pages do
       end),
       ["", "## State", "" | fields_table(site, u.state.fields)],
       section("Commands", commands, &declaration_bullet(model, :commands, &1)),
-      section("Events", events, &declaration_bullet(model, :events, &1))
+      section("Events", events, &declaration_bullet(model, :events, &1)),
+      # Plan DD, L3 (#286): the fields that identify it, in this contract and others. A
+      # unit whose identity does is listed once, not with each of its commands and events.
+      section(
+        "Referred to by",
+        holders(site, &refers_to?(site, &1, {:unit, model, u.name}), :identity_once),
+        & &1
+      )
     ]
   end
 

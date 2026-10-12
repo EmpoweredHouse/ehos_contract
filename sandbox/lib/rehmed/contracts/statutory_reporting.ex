@@ -54,7 +54,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
   consumes Rehmed.Contracts.ClinicalDocumentation, :visit_closed_clinically
 
   aggregate :p1_report, "Zgłoszenie P1" do
-    identity :visit_id
+    identity visit_id: {:id, :visit}
 
     # Both issued by the policy on the clinical close, never by a person.
     command :queue_p1_report, "Zakolejkuj zgłoszenie do P1",

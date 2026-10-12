@@ -111,7 +111,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
       emits: :visit_marked_settled_with_payer,
       rejects: [:invoiced_period_does_not_change, :only_a_charged_visit_is_marked_or_excluded],
       source: "C-48, aktor A-02; S-58" do
-      field :visit_id, :id
+      field :visit_id, {:id, :visit}
     end
 
     # The mockup's exclude on the monthly screen. The event model has no command
@@ -121,7 +121,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
       emits: :visit_excluded_from_invoice,
       rejects: [:invoiced_period_does_not_change, :only_a_charged_visit_is_marked_or_excluded],
       source: "51-mock.md §4.8; AGG-11 niezmiennik 4" do
-      field :visit_id, :id
+      field :visit_id, {:id, :visit}
       field :reason, :string
     end
 
@@ -140,7 +140,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
     # `E-86`, the load-bearing click: if it is not made, the payer never pays.
     event :visit_marked_settled_with_payer, "Oznaczono wizytę jako rozliczoną u płatnika",
       source: "E-86" do
-      field :visit_id, :id
+      field :visit_id, {:id, :visit}
     end
 
     # A delivered visit that will not be invoiced has to say why. The reason is
@@ -148,7 +148,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
     event :visit_excluded_from_invoice,
           "Wykluczono wizytę z rozliczenia okresu, z podanym powodem",
           source: "AGG-11 niezmiennik 4" do
-      field :visit_id, :id
+      field :visit_id, {:id, :visit}
       field :reason, :string
     end
 

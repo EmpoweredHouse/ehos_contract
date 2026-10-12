@@ -2314,8 +2314,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
-| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ◐ `dd/272-core-decides` | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
-| L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
+| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
+| L3 | 5 | typowane referencje do agregatów | ID3 | ◐ `dd/286-typed-references` | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ | — |
 
 ### Program — szczegóły etapów
@@ -2589,8 +2589,12 @@ another context's unit identity is a reference and is not read).
 a policy, a process manager or its timer issues it and no actor may, `by:` empty) and `core-unit-records-only` (a
 warning: a core unit that has events and none of whose commands refuses). "Records only" is derived, never
 declared, and shown on the unit's page; the graph waits for E13.
-**L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być
-jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf je rysuje.
+**L3 — a field can say which unit it identifies** (#286; tightened 12 October 2026). `field :visit_id, {:id,
+:visit}`, as for an entity, and `identity visit_id: {:id, :visit}` for a unit keyed by another's number: the name
+resolves against the domain's entities and the units of its contracts, a name that matches none or more than one is
+refused (X3), and so is a `reads:` through such a field (A8). The model keeps
+`type: :id, refers_to:`; `crossings/2` counts a reference to another context's unit, so the context-map rules see it;
+pages, view and the graph show it. The test material moves to typed references in the same pull request.
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
 
 ---
@@ -2648,7 +2652,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 | A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem — **decided 7 October: no exception** |
 | M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
 | V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
-| L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie |
+| L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie — **decided 12 October: `{:id, :visit}`**, unambiguous among the domain's entities and units (#286) |
 
 #### Ryzyka
 
@@ -2710,6 +2714,17 @@ not depend on it. **Open, the user's,** unchanged: an outage one step upstream (
 | A scenario of a unit without a lifecycle fails when `evolve/2` returns anything but the state (#268) | fix an `evolve/2` that returns something else; dispatch already refused it | run the scenarios before the bump |
 
 `ehos-ledger` takes the same rows.
+
+### Before L3 — the user's decision (12 October 2026)
+
+**A field names a unit as it names an entity, `{:id, :visit}`** (the recommended default), and the name has to
+match exactly one entity or unit in the domain; a reference to a name two of them share is refused. *Rejected:*
+`{:id, unit: :visit}`, which states the kind but is a second shape to learn and still cannot tell two units of the
+same name apart; `{:id, "rehmed.scheduling", :visit}`, never ambiguous but long, and every field pointing at a unit
+would change when the unit moves to another contract. **The test material moves in the same pull request.**
+*Rejected:* a second pull request after the engine's, leaving the stage open with nothing showing its effect on real
+contracts. **A field named like another unit's identity but typed plain `:id` gets no new rule now.** *Rejected:* a
+notice suggesting `{:id, unit}` in L3; L1 already keeps such a field out of the glossary check. Details: #286.
 
 ### Before wave 3's boundaries — the user's decision (7 October 2026)
 

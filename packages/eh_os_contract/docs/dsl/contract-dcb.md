@@ -23,7 +23,7 @@ A dynamic consistency boundary: a unit that decides over the events it consults.
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `identity` | `atom \| list(atom)` | yes |  | The fields that identify one boundary; injected into its state, commands and events. |
+| `identity` | `atom \| {atom, any} \| list(atom \| {atom, any})` | yes |  | The fields that identify one boundary; injected into its state, commands and events. Each is an `:id`, or another unit's or an entity's when typed: `identity [:period_id, company_id: {:id, :client}]`. |
 | `source` | `String.t` |  |  | Where the boundary comes from in the material. |
 
 Inside it: [`consults`](#contract-dcb-consults), [`state`](#contract-dcb-state), [`invariant`](#contract-dcb-invariant), [`command`](#contract-dcb-command), [`event`](#contract-dcb-event), [`stage`](#contract-dcb-stage).

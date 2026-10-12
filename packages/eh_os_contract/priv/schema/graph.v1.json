@@ -852,7 +852,7 @@
         },
         "refers_to": {
           "type": "string",
-          "description": "The id of the entity it identifies."
+          "description": "The id of what it identifies: an entity of the domain, or a unit of this contract. A unit of another contract is in no node of this document, and the field then has no refers_to."
         },
         "issued_by": {
           "type": "string",
@@ -1551,7 +1551,7 @@
                   },
                   "refers_to": {
                     "type": "string",
-                    "description": "The id of the entity it identifies."
+                    "description": "The id of what it identifies: an entity of the domain, or a unit of this contract. A unit of another contract is in no node of this document, and the field then has no refers_to."
                   },
                   "issued_by": {
                     "type": "string",

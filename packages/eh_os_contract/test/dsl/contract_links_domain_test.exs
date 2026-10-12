@@ -260,6 +260,130 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # Plan DD, L3 (#286): a contract of the scheduling context, beside the settlement one
+  # `@body` declares, with a unit and a field that may identify another unit.
+  defp scheduling(unit, field_type, opts \\ []) do
+    reads = if opts[:reads], do: ", reads: [visit: :visit_id]", else: ""
+
+    """
+      aggregate #{inspect(unit)}, "Rezerwacja" do
+        identity :booking_id
+
+        command :book, "Zarezerwuj", by: :scheduler, emits: :booked#{reads} do
+          field :visit_id, #{field_type}
+        end
+
+        event :booked, "Zarezerwowano" do
+          field :visit_id, #{field_type}
+        end
+      end
+    """
+  end
+
+  defp scheduling_links(name, body, other \\ @body) do
+    links([
+      {"links_settlement_#{Macro.underscore(name)}.ex", source("Settlement#{name}", other, [])},
+      {"#{Macro.underscore(name)}.ex", source(name, body, context: :scheduling)}
+    ])
+  end
+
+  describe "X3: a unit's identifier names exactly one unit or entity of the domain" do
+    test "control: {:id, unit} naming a unit of another contract compiles, and refers to it" do
+      assert scheduling_links("LinksUnitRef", scheduling(:booking, "{:id, :visit}")) == []
+
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.LinksUnitRef)
+      event = Enum.find(model.events, &(&1.name == :booked))
+
+      assert %{type: :id, refers_to: :visit} = Enum.find(event.fields, &(&1.name == :visit_id))
+    end
+
+    test "{:id, name} naming neither a unit nor an entity is refused, with a suggestion" do
+      violations = scheduling_links("LinksUnitTypo", scheduling(:booking, "{:id, :visti}"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :booked, field :visit_id: {:id, :visti}",
+               "links_unit_typo.ex"
+             ) =~
+               "names no entity of #{inspect(@domain)} and no unit of its contracts; did you " <>
+                 "mean :visit?"
+
+      assert_linked(violations, "X3: command :book, field :visit_id", "links_unit_typo.ex")
+      assert length(violations) == 2
+    end
+
+    test "a name two units share is refused at the reference, naming both" do
+      violations = scheduling_links("LinksUnitTwice", scheduling(:visit, "{:id, :visit}"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :booked, field :visit_id: {:id, :visit} names more than one",
+               "links_unit_twice.ex"
+             ) =~
+               "unit :visit of EhOsContract.Fixtures.LinksUnitTwice, unit :visit of " <>
+                 "EhOsContract.Fixtures.SettlementLinksUnitTwice; a reference cannot tell them " <>
+                 "apart, so rename one"
+
+      assert length(violations) == 2
+    end
+
+    test "control: two units of one name that nothing refers to are not refused" do
+      assert scheduling_links("LinksUnitTwiceUnused", scheduling(:visit, ":id")) == []
+    end
+
+    test "a name an entity and a unit share is refused at the reference, naming both" do
+      violations = scheduling_links("LinksUnitEntity", scheduling(:clinic, ":id"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :payment_recorded, field :clinic_id: {:id, :clinic} names more than one",
+               "links_settlement_links_unit_entity.ex"
+             ) =~ "entity :clinic, unit :clinic of EhOsContract.Fixtures.LinksUnitEntity"
+
+      assert length(violations) == 1
+    end
+
+    test "an identity typed as a unit's number is checked too, at the unit" do
+      body = """
+        aggregate :visit_note, "Notatka do wizyty" do
+          identity visit_id: {:id, :visti}
+          command :note, "Zanotuj", by: :scheduler, emits: :noted
+          event :noted, "Zanotowano"
+        end
+      """
+
+      violations = scheduling_links("LinksIdentityRef", body)
+
+      assert assert_linked(
+               violations,
+               "X3: aggregate :visit_note: identity :visit_id: {:id, :visti}",
+               "links_identity_ref.ex",
+               4
+             ) =~
+               "names no entity of #{inspect(@domain)} and no unit of its contracts; did you mean :visit?"
+
+      assert length(violations) == 1
+
+      right = String.replace(body, ":visti", ":visit")
+      assert scheduling_links("LinksIdentityRefRight", right) == []
+    end
+
+    test "A8: a command reading a unit by its identifier is refused" do
+      violations =
+        scheduling_links("LinksUnitRead", scheduling(:booking, "{:id, :visit}", reads: true))
+
+      assert assert_linked(
+               violations,
+               "A8: command :book reads :visit by :visit_id",
+               "links_unit_read.ex"
+             ) =~
+               "which identifies unit :visit of EhOsContract.Fixtures.SettlementLinksUnitRead; " <>
+                 "a command reads only an entity the application keeps, and a unit's state is its events"
+
+      assert length(violations) == 1
+    end
+  end
+
   describe "X3: an entity's identifier names an entity of the domain" do
     test "{:id, entity} naming no entity of the domain is refused" do
       body = String.replace(@body, "{:id, :clinic}", "{:id, :clinc}")
@@ -271,7 +395,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
                "links_entity.ex",
                17
              ) =~
-               "{:id, :clinc} names no entity of #{inspect(@domain)}; did you mean :clinic?"
+               "{:id, :clinc} names no entity of #{inspect(@domain)} and no unit of its " <>
+                 "contracts; did you mean :clinic?"
 
       assert length(violations) == 1
     end
@@ -320,7 +445,9 @@ defmodule EhOsContract.ContractLinksDomainTest do
                "X3: domain service :lookup, function :nearest returns {:id, :clinc}",
                "links_service_entity.ex",
                56
-             ) =~ "which names no entity of #{inspect(@domain)}; did you mean :clinic?"
+             ) =~
+               "which names no entity of #{inspect(@domain)} and no unit of its contracts; " <>
+                 "did you mean :clinic?"
 
       assert length(violations) == 1
     end

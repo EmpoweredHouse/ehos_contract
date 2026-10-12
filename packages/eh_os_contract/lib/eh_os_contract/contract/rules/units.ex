@@ -213,7 +213,8 @@ defmodule EhOsContract.Contract.Rules.Units do
     cond do
       declared == nil and field in List.wrap(unit.identity) ->
         [
-          "a field of the unit's identity, an :id; an entity is named by a field typed {:id, entity}"
+          "a field of the unit's identity, which names the unit, not a row to read; an entity " <>
+            "is read by a field of the command's own typed {:id, entity}"
         ]
 
       declared == nil ->

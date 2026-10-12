@@ -31,7 +31,7 @@ defmodule Taxvision.Contracts.DocumentIntake do
     id: "taxvision.document_intake"
 
   aggregate :ksef_inbox, "Faktury firmy z KSeF" do
-    identity :company_id
+    identity company_id: {:id, :client}
 
     # The period the invoice is settled in, which the integration works out; pulled
     # in the month before it is booked (WF 01:17:14).
