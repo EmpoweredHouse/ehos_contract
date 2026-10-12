@@ -25,8 +25,9 @@ makes the note mean something.
 ## Documentation alone
 
 Markdown that no part of `mix check` reads: `PLAN.md`, `CLAUDE.md`, the root `README.md`,
-`.claude/` except `.claude/settings.json`, whose hook is code, and `docs/` except
-`docs/adr/contract-v2.md`. The gate reads more than it seems to:
+`.claude/skills/`, and `docs/` except `docs/adr/contract-v2.md`. Not this file, which changes what
+every review here does, and nothing that is not Markdown (`.claude/settings.json` and its hook,
+`.claude/launch.json`, which runs commands). The gate reads more than it seems to:
 
 - `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`,
   `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
