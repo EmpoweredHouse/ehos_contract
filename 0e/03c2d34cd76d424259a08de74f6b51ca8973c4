@@ -1,0 +1,1 @@
+Two reviews (correctness; security and performance), two rounds. Round 1: no defect; same gap at > < and a backtick, and { or a backtick before the command - fixed in the second commit. Round 2: no defect; a backslash-newline split added to review.md's list of what the hook misses. Pipe tests: 18 of 18, and 34 of 37 in the reviewer's set, the 3 left being the listed misses.
