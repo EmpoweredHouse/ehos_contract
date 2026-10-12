@@ -97,10 +97,12 @@ Zero rows of the type means the change is still additive in fact. Anything else 
 user, with the count: a new event instead of a changed one, an optional field instead of a required
 one, or data work written down in `PLAN.md` before the change.
 
-**In an application, the development database proves nothing.** The log that matters is every
-environment's the application is deployed to, production's first. Count the rows there, through
-whoever may read it; until that count is known, treat the change as one that meets old rows, and
-write the decision and the data work into the pull request instead of `PLAN.md`.
+**In an application, the development database proves nothing.** The log that matters is that of
+every environment the application is deployed to, production's first. Count the rows there, through
+whoever may read it, for the affected types alone (`where type in (...)`, which the log's index on
+`type` serves) rather than the whole log; until that count is known, treat the change as one that
+meets old rows, and write the decision and the data work into the pull request instead of
+`PLAN.md`.
 
 ## Non-negotiables
 
