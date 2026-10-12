@@ -109,23 +109,23 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 - **Preview a release before tagging it**: `gh workflow run release.yml -f ref=main` writes into the run's
   summary what a release of that commit would publish (a package at `-dev` shows its `## [Unreleased]`), and
   publishes nothing.
-- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
-  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
-  `write-docs` stay this repository's alone. The plugin is its own directory so that nothing else in
-  the repository reaches an application through it: a hook or an MCP server added at the root for work
-  here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. Raise its `version`
-  (`plugins/eh-os-contract/.claude-plugin/plugin.json`) in the pull request that changes one of its
-  skills, then tag the merge commit
-  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
-  must hold it as they hold `v*`, since every application's settings name it. An application
-  takes it when `ehos_app`'s installer moves the `ref` in its `.claude/settings.json`. A skill it
-  carries says, at its top, where its paths are in an application.
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
   nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
   this repository's `main` (ehos-tools' T-05), that is the next patch's `-dev`, not the next minor's, which
   eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.3.0-dev` of the engine and
   `~> 0.1.0-dev` of the verifier, and `0.4.0-dev` or `0.2.0-dev` on `main` would refuse its next
   `mix deps.update`, and every project `ehosctl` 0.2.0 generates.
+- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
+  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
+  `write-docs` stay this repository's alone. The plugin is a directory of its own so that nothing else
+  in the repository reaches an application through it: a hook or an MCP server added at the root for
+  work here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. The plugin is not a
+  package and has no `-dev`: raise its `version` (`plugins/eh-os-contract/.claude-plugin/plugin.json`)
+  in the pull request that changes one of its skills, then tag that pull request's merge commit
+  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
+  must hold it as they hold `v*`, since applications' settings name it. An application takes a new
+  version by moving the `ref` in its `.claude/settings.json`, which `ehos_app`'s installer is to do. A
+  skill it carries says, at its top, where its paths are in an application.
 
 ## Following a line back to its reason
 

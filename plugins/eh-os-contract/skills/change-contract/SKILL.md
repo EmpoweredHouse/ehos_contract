@@ -11,11 +11,12 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 §13. Not yet run on a real change: read what it says against those before trusting it.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
-application built on EHOS enables. There, the engine's paths below (`packages/eh_os_contract/…`)
-are under `deps/eh_os_contract/`, at the version the application pins; `PLAN.md`, `CLAUDE.md`,
-`docs/adr/` and `sandbox/` are this repository's, on
-[GitHub](https://github.com/EmpoweredHouse/eh-os-contract); the application's domain and contracts
-are in its `lib/<app>/`; and the gate is its `mix precommit`.
+application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
+at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
+`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
+from `sandbox/`, run the application's `mix precommit`.
 
 ## Why this runs before the code
 

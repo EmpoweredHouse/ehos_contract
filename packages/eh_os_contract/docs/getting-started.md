@@ -157,6 +157,9 @@ questions for each contract once there is something in the log. Every task, and 
 - With an assistant: the `eh-os-contract` Claude Code plugin, from this repository's marketplace, gives
   an application the skills for deciding where a feature lives, distilling a process into a domain and
   contracts, writing an event, a decider and a reaction, and changing a contract that has history
-  (`/eh-os-contract:change-contract`). An application `ehos_app` generates enables it in its
-  `.claude/settings.json`; another adds the marketplace `EmpoweredHouse/eh-os-contract`, at the tag
-  of the plugin's release, and enables `eh-os-contract@eh-os-contract`.
+  (`/eh-os-contract:change-contract`). An application enables it in its `.claude/settings.json`: the
+  marketplace `EmpoweredHouse/eh-os-contract` at the tag of the plugin's release,
+  `eh-os-contract-plugin-vX.Y.Z`, and the plugin `eh-os-contract@eh-os-contract`; `ehos_app`'s template
+  is to write both into the projects it generates. The repository is private, so Claude Code fetches
+  it with the machine's git credentials: without a GitHub SSH key, set
+  `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and run `gh auth setup-git`.
