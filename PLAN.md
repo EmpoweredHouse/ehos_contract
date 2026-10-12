@@ -2313,8 +2313,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
-| L1 | 5 | słownik połączony z kodem | N1 | ◐ `dd/269-glossary-in-code` | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
-| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ | — |
+| L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
+| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ◐ `dd/272-core-decides` | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☐ | — |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ | — |
 
@@ -2584,8 +2584,11 @@ translation into that language. `mix eh_os_contract.glossary` lists, under each 
 it; `check` gets `word-without-term` (a notice per context ranking uncovered words of names of units, read models
 and fields) and `term-of-another-context` (a warning, one per name; a field typed `{:id, entity}` or named like
 another context's unit identity is a reference and is not read).
-**L2 — rdzeń**: L5 `core-command-never-refuses` (komenda kontekstu `:core` bez `rejects:`/`or_rejects:`, poza
-wydawanymi przez reakcje) i `core-unit-records-only`; znacznik „tylko rejestruje” na stronach i grafie.
+**L2 — the core is where things are decided** (#272; tightened 9 October 2026). `check` gets
+`core-command-never-refuses` (a notice: a command of a context in a `:core` subdomain with empty `rejects:`, unless
+a policy, a process manager or its timer issues it and no actor may, `by:` empty) and `core-unit-records-only` (a
+warning: a core unit that has events and none of whose commands refuses). "Records only" is derived, never
+declared, and shown on the unit's page; the graph waits for E13.
 **L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być
 jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf je rysuje.
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.

@@ -3,7 +3,7 @@
 This page covers the declarations that decide (an aggregate over one stream, a dynamic consistency
 boundary over a query of the log, the domain services both may call) and the module each one needs.
 
-<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario -->
+<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
 
 A **unit** is what a command is sent to. It holds the rules that must stay true, reads what it has
 decided before, and answers each command with events or a refusal. The engine knows two kinds:
@@ -318,3 +318,12 @@ From [its rules](../rules.md):
   this one has none, so dispatch refuses to run it. Add the module.
 - `contract-without-implementation` (notice): nothing implements the contract at all. Legal (a
   contract may be written before its code) but nothing of it can be dispatched yet.
+- `core-unit-records-only` (warning): the unit's context belongs to a subdomain of `type: :core`, it has
+  events, and no command of the unit can be refused: none has `rejects:`, or it has no commands and its
+  events are only `recorded_by:`. The core is where the business decides; a unit that only records keeps a log.
+  Its page says "Records only", in any context, so a reader sees which units decide nothing.
+- `core-command-never-refuses` (notice): a command of a core context rejects nothing, so no rule of
+  its unit refuses a request; only its fields' types and values can. A command only a policy or a
+  process manager issues, with no `by:`, is left out, since it follows from an event already decided. Either the command has a rule not declared yet, or it records a
+  fact, which an event `recorded_by:` an actor says more plainly; some core commands legitimately
+  always succeed.

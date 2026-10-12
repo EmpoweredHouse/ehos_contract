@@ -48,6 +48,15 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The core is where things are decided** (plan DD, stage L2, #272). `mix eh_os_contract.check` has two new
+  rules for contracts of a context in a subdomain of `type: :core`: `core-command-never-refuses` (a notice for a
+  command with empty `rejects:`, unless only a policy or a process manager issues it) and
+  `core-unit-records-only` (a warning for a unit with events none of whose commands can be refused). A unit's
+  page from `mix eh_os_contract.pages` says "Records only" when that holds. Moves no verdict; a host running the
+  check with `--warnings-as-errors` may see the new warning on an unchanged contract.
+
 ## [0.3.0] - 2026-10-11
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.

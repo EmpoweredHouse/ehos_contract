@@ -61,8 +61,61 @@ defmodule EhOsContract.Check.Completeness do
       consults_without_match(c),
       without_scenario(c),
       unillustrated(c),
-      untaken_transitions(c)
+      untaken_transitions(c),
+      core_commands_never_refusing(c),
+      core_units_recording_only(c)
     ])
+  end
+
+  # Plan DD, L2 (#272): the core is where things are decided. A contract is core when
+  # its context belongs to a subdomain of `type: :core`.
+  defp core?(%{domain: nil}), do: false
+
+  defp core?(%{domain: domain, model: model}) do
+    with %{subdomain: subdomain} <- Enum.find(domain.contexts, &(&1.name == model.context)),
+         %{type: type} <- Enum.find(domain.subdomains, &(&1.name == subdomain)) do
+      type == :core
+    else
+      _ -> false
+    end
+  end
+
+  # A command of the core that nothing can refuse, unless only a reaction issues it:
+  # what a policy or a timer sends follows from an event already decided. A command an
+  # actor may issue too (`by:`) is a person's request like any other.
+  defp core_commands_never_refusing(%{model: model} = c) do
+    if core?(c) do
+      issued = EhOsContract.Refusals.issued_by_reactions(model)
+
+      for command <- model.commands,
+          not EhOsContract.Refusals.refuses?(command),
+          List.wrap(command.by) != [] or not MapSet.member?(issued, command.name) do
+        Finding.new(
+          "core-command-never-refuses",
+          "command #{inspect(command.name)} of #{inspect(c.module)}, in core context " <>
+            "#{inspect(model.context)}, rejects nothing: no rule of its unit can refuse it",
+          declared_command(c, command.unit, command.name)
+        )
+      end
+    else
+      []
+    end
+  end
+
+  # A unit of the core none of whose commands can be refused: it decides nothing.
+  defp core_units_recording_only(%{model: model} = c) do
+    if core?(c) do
+      for unit <- model.units, EhOsContract.Refusals.records_only?(model, unit) do
+        Finding.new(
+          "core-unit-records-only",
+          "#{unit.kind} #{inspect(unit.name)} of #{inspect(c.module)}, in core context " <>
+            "#{inspect(model.context)}, only records: no command it takes can be refused",
+          with(%{} = declared <- declared_unit(c, unit.name), do: Links.at(declared))
+        )
+      end
+    else
+      []
+    end
   end
 
   defp declared_unit(c, name), do: Enum.find(c.declarations.units, &(&1.name == name))

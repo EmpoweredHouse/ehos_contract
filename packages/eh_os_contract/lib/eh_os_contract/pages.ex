@@ -892,7 +892,13 @@ defmodule EhOsContract.Pages do
     events = Enum.filter(model.events, &(&1.unit == u.name))
 
     [
-      facts(["Identity: #{Enum.map_join(u.identity, ", ", &code/1)}."]),
+      facts([
+        "Identity: #{Enum.map_join(u.identity, ", ", &code/1)}.",
+        # Plan DD, L2 (#272): derived, never declared.
+        if(EhOsContract.Refusals.records_only?(model, u),
+          do: "Records only: no command it takes can be refused."
+        )
+      ]),
       section("Consults", u.consults, &consults(site, model, &1)),
       section("Invariants", u.invariants, fn i ->
         rejecting = for c <- commands, i.name in c.rejects, do: command_link(model, c.name)
