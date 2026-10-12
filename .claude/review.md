@@ -84,7 +84,7 @@ shape.
 The traps this repository has already paid for are written down once. Check the change against
 them, not against memory:
 
-- `CLAUDE.md`, sections "Brama" and "Konwencje, które łatwo złamać": the gate without `tail`,
+- `CLAUDE.md`, sections "The gate" and "Conventions that are easy to break": the gate without `tail`,
   `MIX_ENV=test mix run`, `boundary` siblings, implementations pointing at the contract and never
   the other way round, checks in the macro body, `emit/1` and `issue/1` taking struct literals,
   English code and where Polish is allowed, the closing `”`, `encoding: :unicode`, zsh not splitting
