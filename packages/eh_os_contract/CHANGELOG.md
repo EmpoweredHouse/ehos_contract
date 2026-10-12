@@ -56,6 +56,16 @@ and the `ehos-dev:release` skill makes one.
   `core-unit-records-only` (a warning for a unit with events none of whose commands can be refused). A unit's
   page from `mix eh_os_contract.pages` says "Records only" when that holds. Moves no verdict; a host running the
   check with `--warnings-as-errors` may see the new warning on an unchanged contract.
+- **A field can say which unit it identifies** (plan DD, stage L3, #286). `{:id, name}` names a unit of one
+  of the domain's contracts as it names an entity: `field :visit_id, {:id, :visit}`, and a unit keyed by
+  another's number types its identity, `identity visit_id: {:id, :visit}` or `identity [:period_id,
+  company_id: {:id, :client}]`. The compiler between modules refuses a name that matches no entity and no
+  unit, or more than one of them, and a `reads:` through a field that identifies a unit. The model keeps
+  such a field as `type: :id, refers_to: name`, as for an entity. `mix eh_os_contract.check` counts a
+  reference to another context's unit as one into that context, so the context-map rules read it; the
+  pages link the field to the unit, and a unit's page lists the fields that refer to it. In a contract's
+  `graph.v1` document a field's `refers_to` names the entity or the contract's own unit, and is left out for
+  a sibling's unit. Moves no verdict; a contract that types a field this way gets a new version.
 
 ## [0.3.0] - 2026-10-11
 

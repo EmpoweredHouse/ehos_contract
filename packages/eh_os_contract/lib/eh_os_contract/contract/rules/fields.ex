@@ -9,7 +9,9 @@ defmodule EhOsContract.Contract.Rules.Fields do
   #   (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
   #   a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
   #   edge it named. A unit's `identity` is held to the same, named once, since it is
-  #   a field of the unit's state, commands and events.
+  #   a field of the unit's state, commands and events. An identity field typed
+  #   (plan DD, L3 (#286)) is an `:id` or `{:id, name}`, another unit's or an
+  #   entity's, and a generated identity, which is new, is no other's number.
   # - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
   #   `{:enum, members}` with no member twice, the name of a domain value, or
   #   `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
@@ -224,8 +226,34 @@ defmodule EhOsContract.Contract.Rules.Fields do
       for name <- DslRules.duplicates(unit.identity, & &1),
           do: {"#{where} names #{inspect(name)} twice", unit}
 
-    Enum.reject(form, &is_nil/1) ++ twice
+    Enum.reject(form, &is_nil/1) ++ twice ++ identity_types(unit, where)
   end
+
+  defp identity_types(unit, where) do
+    typed =
+      for {name, type} <- unit.identity_types, not identity_type?(type) do
+        {"#{where} #{inspect(name)} is #{inspect(type)}; an identity field is an :id, or " <>
+           "{:id, name} for another unit's or an entity's number#{generated_hint(name)}", unit}
+      end
+
+    generated =
+      for {name, {:id, _}} <- unit.identity_types, unit.generated != nil do
+        {"#{where} #{inspect(name)} is #{inspect(unit.identity_types[name])}, and the library " <>
+           "generates the identity: a new one is no other unit's or entity's number", unit}
+      end
+
+    typed ++ generated
+  end
+
+  defp identity_type?(:id), do: true
+  defp identity_type?({:id, name}) when is_atom(name) and name not in [nil, true, false], do: true
+  defp identity_type?(_type), do: false
+
+  # `identity visit_id: {:id, :visit}, generated: :uuid` is one keyword list to Elixir.
+  defp generated_hint(:generated),
+    do: "; to have the library generate it, write `identity :name, generated: :uuid`"
+
+  defp generated_hint(_name), do: ""
 
   @doc """
   Every function of a domain service, as `{where, function}`, for the type it

@@ -23,7 +23,7 @@ A unit that decides over one stream, identified by its identity.
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `identity` | `atom \| list(atom)` | yes |  | The fields that identify one aggregate; injected into its state, commands and events. |
+| `identity` | `atom \| {atom, any} \| list(atom \| {atom, any})` | yes |  | The fields that identify one aggregate; injected into its state, commands and events. Each is an `:id`, or another unit's or an entity's when typed: `identity visit_id: {:id, :visit}`. |
 | `generated` | `:uuid` |  |  | That the library gives a new aggregate its identity, a UUIDv7, when a command that `creates:` it arrives without one; written `identity :booking_id, generated: :uuid`. |
 | `source` | `String.t` |  |  | Where the aggregate comes from in the material. |
 

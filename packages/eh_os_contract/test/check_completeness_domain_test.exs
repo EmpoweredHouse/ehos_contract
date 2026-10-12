@@ -182,6 +182,88 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
                "of context :settlement"
   end
 
+  # Plan DD, L3 (#286): a field typed `{:id, unit}` of another context's unit is a
+  # reference into that context, as one naming an entity it owns is.
+  defp unit_reference(name, relation) do
+    domain = Module.concat(__MODULE__, "#{name}Domain")
+    scheduling = Module.concat(__MODULE__, "#{name}Scheduling")
+    billing = Module.concat(__MODULE__, "#{name}Billing")
+    namespace = Macro.underscore(name)
+
+    compile(
+      """
+      defmodule #{inspect(domain)} do
+        use EhOsContract.Domain, name: :#{namespace}, language: :pl
+
+        subdomain :supporting, "Wsparcie", type: :supporting
+        context :scheduling, "Terminarz", subdomain: :supporting
+        context :billing, "Rozliczenia", subdomain: :supporting
+        actor :reception, :human, "Recepcja"
+        #{relation}
+      end
+
+      defmodule #{inspect(scheduling)} do
+        use EhOsContract.Contract, domain: #{inspect(domain)}, context: :scheduling, id: "#{namespace}.scheduling"
+
+        aggregate :appointment, "Wizyta" do
+          identity :appointment_id
+          command :book, "Umów", by: :reception, emits: :booked
+          event :booked, "Umówiono"
+        end
+      end
+
+      defmodule #{inspect(billing)} do
+        use EhOsContract.Contract, domain: #{inspect(domain)}, context: :billing, id: "#{namespace}.billing"
+
+        aggregate :bill, "Rachunek" do
+          identity :bill_id
+
+          command :charge, "Obciąż", by: :reception, emits: :charged do
+            field :appointment_id, {:id, :appointment}
+          end
+
+          event :charged, "Obciążono" do
+            field :appointment_id, {:id, :appointment}
+          end
+        end
+      end
+      """,
+      "#{namespace}.ex"
+    )
+
+    for f <- Completeness.findings([scheduling, billing]),
+        f.rule in [
+          "cross-bounded-context-reference-without-mapping",
+          "orphan-context-mapping",
+          "relation-against-references"
+        ],
+        do: {f.rule, f.message}
+  end
+
+  test "a field identifying another context's unit with no relation between them" do
+    assert [{"cross-bounded-context-reference-without-mapping", message}] =
+             unit_reference("UnitUnmapped", "")
+
+    assert message =~
+             "UnitUnmappedBilling in context :billing names unit :appointment of " <>
+               "#{inspect(__MODULE__)}.UnitUnmappedScheduling of context :scheduling"
+  end
+
+  test "a field identifying a unit against the relation's direction" do
+    relation = "relation :customer_supplier, upstream: :billing, downstream: :scheduling"
+
+    assert [{"relation-against-references", message}] =
+             unit_reference("UnitAgainst", relation)
+
+    assert message =~ "names unit :appointment"
+    assert message =~ ":billing does not depend on :scheduling"
+  end
+
+  test "control: a relation the unit reference follows, crossed and not orphaned" do
+    relation = "relation :customer_supplier, upstream: :scheduling, downstream: :billing"
+    assert unit_reference("UnitMapped", relation) == []
+  end
+
   test "a subdomain no context belongs to; control: the three contexts name theirs" do
     assert [{message, {"clinic.ex", 26}}] = findings("subdomain-without-bounded-context")
     assert message =~ "subdomain :legacy of #{inspect(@domain)} is the `subdomain:` of no context"

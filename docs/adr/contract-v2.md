@@ -258,6 +258,17 @@ scenario        description!   scope · actor
 > typespecs see a plain `:id`. No field of an entity is personal: its rows are the application's, outside the
 > log, where erasure cannot reach them. Rules: D6 in the domain, X3 in a contract.
 
+> **12 October 2026, plan DD, L3 ([#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286)) — a field
+> may identify a unit.** EM2 let a field name only an entity, so the number of a visit a sibling decides was a
+> bare `:id` in every contract that kept it, and nothing could check the context map against it. **`{:id,
+> name}` now names an entity of the domain or a unit of one of its contracts**, and the name has to match
+> exactly one of them; a reference to a name two share is refused at the reference (X3), not the two
+> declarations. A unit keyed by another's number types its identity the same way, `identity visit_id: {:id,
+> :visit}` or `identity [:period_id, company_id: {:id, :client}]`, since the identity is injected and cannot be
+> declared as a field (F6). The model is unchanged in shape: `type: :id, refers_to: name`. A command reads only
+> an entity (A8): a unit's state is its events, not a row the host keeps. The domain still cannot refer to a
+> unit, since it does not know its contracts.
+
 > **27 September 2026, EM2 — a domain service.** ESDM's `domain-service` was the one core kind the four
 > contracts did not need (the 25 September mapping), and it came with the coverage the user asked for. It is
 > declared in the contract, `domain_service :name, "label" do function :f, "label" do argument …; returns …;

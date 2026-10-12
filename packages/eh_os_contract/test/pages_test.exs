@@ -322,6 +322,33 @@ defmodule EhOsContract.PagesTest do
              "| `clinics` | list of `:id` of [`clinic`](../../../entities/clinic.md) |"
   end
 
+  # Plan DD, L3 (#286): a field may identify a unit, which its page then lists.
+  test "a field that identifies a unit links to its page, which lists the field" do
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+    [pay_in | commands] = till.commands
+
+    previous = %{
+      name: :previous_till_id,
+      type: :id,
+      refers_to: :till,
+      optional: true,
+      label: nil,
+      personal: nil,
+      subject: nil,
+      default: nil
+    }
+
+    till = %{till | commands: [%{pay_in | fields: pay_in.fields ++ [previous]} | commands]}
+    pages = Pages.render(ValueRig.Domain, [till])
+
+    assert pages["till/till/commands/pay_in.md"] =~
+             "| `previous_till_id` | `:id` of [`till`](../aggregates/till.md) |"
+
+    assert pages["till/till/aggregates/till.md"] =~
+             "## Referred to by\n\n- command [`pay_in`](../commands/pay_in.md) of " <>
+               inspect(ValueRig.Till)
+  end
+
   # The EL3 review: the client's text went into tables and code spans as it was.
   test "a label with a bar or a line break stays in its cell, and a backtick in its span" do
     till = EhOsContract.Model.fetch(ValueRig.Till)

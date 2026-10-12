@@ -82,7 +82,8 @@ defmodule EhOsContract.Graph.Facts do
   def contract(contract) do
     {model, domain} = redacted(contract)
     c = model.id
-    ctx = context(model.domain, domain, grants(model))
+    # A field may identify one of the contract's own units (plan DD, L3 (#286)).
+    ctx = Map.put(context(model.domain, domain, grants(model)), :units, unit_scopes(model))
     events = events(model, ctx)
 
     {process_nodes, process_relations} = process(model)
@@ -1198,6 +1199,7 @@ defmodule EhOsContract.Graph.Facts do
       name: Map.get(domain, :name),
       values: MapSet.new(domain.values, & &1.name),
       entities: Map.new(domain.entities, &{&1.name, &1}),
+      units: %{},
       grants: grants
     }
   end
@@ -1247,7 +1249,7 @@ defmodule EhOsContract.Graph.Facts do
           personal_of: Map.get(f, :personal),
           subject: Map.get(f, :subject) && id(:subject, ctx.d, f.subject),
           value: value_of(f.type, ctx),
-          refers_to: Map.get(f, :refers_to) && id(:entity, ctx.d, f.refers_to),
+          refers_to: refers_to(Map.get(f, :refers_to), ctx),
           issued_by: issuer && id(:external, ctx.d, issuer),
           supplied_by: Map.get(f, :supplied_by),
           kept: kept(f, held)
@@ -1327,6 +1329,21 @@ defmodule EhOsContract.Graph.Facts do
         end
     }
   end
+
+  # What a field identifies (plan DD, L3 (#286)): an entity of the domain, or a unit of
+  # this contract. A unit of another contract is in no node here: the document holds
+  # this contract and the domain's declarations it names, never a sibling's.
+  defp refers_to(nil, _ctx), do: nil
+
+  defp refers_to(name, ctx) do
+    cond do
+      Map.has_key?(ctx.entities, name) -> id(:entity, ctx.d, name)
+      scope = Map.get(ctx.units, name) -> id(:unit, scope, name)
+      true -> nil
+    end
+  end
+
+  defp unit_scopes(model), do: Map.new(model.units, &{&1.name, model.id})
 
   # What a function returns, as a field without a name: `{:id, entity}` read the way
   # the model reads it on every named field (`EhOsContract.Domain.Build.reference/1`).

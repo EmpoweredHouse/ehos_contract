@@ -83,8 +83,8 @@ defmodule EhOsContract.CodeWords do
   Every name of `contract`, as `EhOsContract.Contract.Links.contract/1` reads it: its
   units, read models, commands and events, and the fields of their states, commands,
   events and rows. A unit's identity is the unit's own name and is left out, and so
-  is a field that refers to an entity (`{:id, entity}`), which names what another
-  declaration owns.
+  is a field that refers to an entity or a unit (`{:id, name}`), which names what
+  another declaration owns.
   """
   @spec names(map()) :: [name()]
   def names(%{declarations: d}) do

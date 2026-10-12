@@ -16,6 +16,7 @@ defmodule EhOsContract.Check.Completeness do
   alias EhOsContract.Domain
   alias EhOsContract.Lifecycle
   alias EhOsContract.Model
+  alias EhOsContract.References
   alias EhOsContract.Contract.{Links, Rules}
 
   @doc """
@@ -670,14 +671,15 @@ defmodule EhOsContract.Check.Completeness do
         "orphan-context-mapping",
         "relation #{inspect(relation.type)} between #{inspect(a)} and #{inspect(b)} in " <>
           "#{inspect(model.module)} is crossed by no reference: no contract of one consumes a " <>
-          "contract of the other or names an entity it owns, and none uses an external it ends at",
+          "contract of the other or names an entity or a unit it owns, and none uses an external it " <>
+          "ends at",
         declared.relations |> Enum.at(index) |> then(&(&1 && Links.at(&1)))
       )
     end
   end
 
   # ESDM's `cross-bounded-context-reference-without-mapping`: a contract that consumes
-  # a contract of another context, or names an entity another context owns, with no
+  # a contract of another context, or names an entity or a unit another context owns, with no
   # relation declared between the two contexts. One finding per reference.
   defp unmapped_references(model, contracts) do
     mapped = MapSet.new(model.relations, &MapSet.new(Domain.Build.endpoints(&1)))
@@ -978,10 +980,10 @@ defmodule EhOsContract.Check.Completeness do
 
   # Every reference from a contract into another context: `{contexts, contract, what,
   # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
-  # an entity named in a field, the contract's `use`.
+  # an entity or a unit named in a field (plan DD, L3 (#286)), the contract's `use`.
   defp crossings(model, contracts) do
     context_of = Map.new(contracts, &{&1.module, &1.model.context})
-    owner = Map.new(model.entities, &{&1.name, &1.context})
+    models = Enum.map(contracts, & &1.model)
 
     for contract <- contracts,
         {other, what, at} <-
@@ -992,14 +994,21 @@ defmodule EhOsContract.Check.Completeness do
             do: {other, "consumes #{inspect(from)}", Links.at(consumes)}
           ) ++
             for(
-              entity <- contract.model |> references() |> Enum.uniq(),
-              other = Map.get(owner, entity),
-              do: {other, "names entity #{inspect(entity)}", contract.at}
+              name <- contract.model |> references() |> Enum.uniq(),
+              referent = References.resolve(name, model, models),
+              referent != nil,
+              do: {owner(referent, model), "names #{References.describe(referent)}", contract.at}
             ),
         other != nil and other != contract.model.context do
       {MapSet.new([other, contract.model.context]), contract, what, at}
     end
   end
+
+  # The context that owns what a field refers to: an entity's, or its unit's contract's.
+  defp owner({:entity, name}, model),
+    do: Enum.find_value(model.entities, &(&1.name == name && &1.context))
+
+  defp owner({:unit, contract, _name}, _model), do: contract.context
 
   # The externals a contract reaches: what its effects call, what its events depend on,
   # what issues its fields' values, and what stands behind the actors it names — in a
@@ -1051,7 +1060,7 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  # Every entity a field of the model refers to (plan EM2), at any depth.
+  # Every entity or unit a field of the model refers to (plan EM2; L3 (#286)), at any depth.
   defp references(%{refers_to: entity} = map),
     do: [entity | map |> Map.delete(:refers_to) |> references()]
 

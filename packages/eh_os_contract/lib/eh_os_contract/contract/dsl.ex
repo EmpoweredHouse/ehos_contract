@@ -122,7 +122,23 @@ defmodule EhOsContract.Contract.Dsl do
     @moduledoc false
     defstruct [:kind, :name, :label, :source, :generated, identity: [], consults: [], state: []] ++
                 [invariants: [], commands: [], events: [], stages: [], lifecycle: []] ++
-                [__spark_metadata__: nil]
+                [identity_types: %{}, __spark_metadata__: nil]
+
+    # `identity [:period_id, company_id: {:id, :client}]` (plan DD, L3 (#286)): an identity
+    # field may be typed, as another unit's or an entity's number. The names stay a list
+    # in `identity`, which everything reads, and the types go to `identity_types`, which
+    # only the build and the rules about types read.
+    @doc false
+    @spec split_identity(%__MODULE__{}) :: {:ok, %__MODULE__{}}
+    def split_identity(%__MODULE__{identity: identity} = unit) do
+      {names, types} =
+        Enum.map_reduce(identity, %{}, fn
+          {name, type}, types -> {name, Map.put(types, name, type)}
+          name, types -> {name, types}
+        end)
+
+      {:ok, %{unit | identity: names, identity_types: types}}
+    end
   end
 
   defmodule Policy do
@@ -605,6 +621,7 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :aggregate],
+    transform: {Unit, :split_identity, []},
     entities:
       Keyword.put(@unit_entities, :commands, [@aggregate_command]) ++ [lifecycle: [@lifecycle]],
     imports: [Generated],
@@ -612,10 +629,12 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The aggregate's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       identity: [
-        type: {:wrap_list, :atom},
+        type: {:wrap_list, {:or, [:atom, {:tuple, [:atom, :any]}]}},
         required: true,
         doc:
-          "The fields that identify one aggregate; injected into its state, commands and events."
+          "The fields that identify one aggregate; injected into its state, commands and events. " <>
+            "Each is an `:id`, or another unit's or an entity's when typed: " <>
+            "`identity visit_id: {:id, :visit}`."
       ],
       generated: [
         type: {:one_of, [:uuid]},
@@ -633,15 +652,18 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :dcb],
+    transform: {Unit, :split_identity, []},
     entities: [consults: [@consults]] ++ @unit_entities,
     schema: [
       name: [type: :atom, required: true, doc: "The boundary's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       identity: [
-        type: {:wrap_list, :atom},
+        type: {:wrap_list, {:or, [:atom, {:tuple, [:atom, :any]}]}},
         required: true,
         doc:
-          "The fields that identify one boundary; injected into its state, commands and events."
+          "The fields that identify one boundary; injected into its state, commands and events. " <>
+            "Each is an `:id`, or another unit's or an entity's when typed: " <>
+            "`identity [:period_id, company_id: {:id, :client}]`."
       ],
       source: [type: :string, doc: "Where the boundary comes from in the material."]
     ]
