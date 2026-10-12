@@ -410,6 +410,10 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
 
       assert [%{words: "visit_completed", line: "solid", head: true}] =
                between(view, "contract:rehmed.scheduling", reporting.id)
+
+      # Plan DD, L3 (#286): a contract keeping the number of a sibling's unit.
+      assert [%{words: "refers to visit", line: "dotted", head: true}] =
+               between(view, "contract:rehmed.settlement", "contract:rehmed.scheduling")
     end
   end
 end

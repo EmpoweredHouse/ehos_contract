@@ -10,6 +10,8 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
   # gives today. Two hand-made documents beside them hold what no client wrote: edge_cases.json,
   # ids of any character, a loop and a dangling relation; messaging.json, an event published to
   # and one received from another application, the inbox, and a manager that ends and cancels.
+  # On 12 October domain.rehmed.json got its `refers_to` relations as the engine gives them
+  # (plan DD, L3 (#286)), and nothing else of it was refreshed.
 
   @dir Path.expand("../fixtures", __DIR__)
 

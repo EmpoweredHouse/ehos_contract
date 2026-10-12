@@ -626,9 +626,10 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # The system of a domain's `document`, left to right: its contracts in groups of their
   # contexts, each named by its module's last segment and its process, an arrow from a
-  # contract to one that consumes its events, carrying their names, and the publications
-  # on the wire, with an arrow from the contract that publishes one and to the one that
-  # subscribes.
+  # contract to one that consumes its events, carrying their names, a dotted one from a
+  # contract to a sibling whose unit's number it keeps, naming the units, and the
+  # publications on the wire, with an arrow from the contract that publishes one and to
+  # the one that subscribes.
   # Called by `build/3`; public for its tests.
   @doc false
   @spec system(map()) :: t()
@@ -652,6 +653,14 @@ defmodule EhOsContract.GraphRenderer.View do
         )
       end
 
+    referring =
+      for r <- relations(document, "refers_to"),
+          do:
+            arrow("refers_to", r,
+              words: "refers to #{Enum.join(r["units"] || [], ", ")}",
+              line: "dotted"
+            )
+
     published =
       for r <- relations(document, "publishes"),
           do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
@@ -662,7 +671,12 @@ defmodule EhOsContract.GraphRenderer.View do
 
     groups = for c <- nodes(document, "context"), do: group("context", c, "#{title(c)} · context")
 
-    finish("LR", contracts ++ publications, consumed ++ published ++ subscribed, groups)
+    finish(
+      "LR",
+      contracts ++ publications,
+      consumed ++ referring ++ published ++ subscribed,
+      groups
+    )
   end
 
   # --- what the log saw -------------------------------------------------------------------

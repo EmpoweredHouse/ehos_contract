@@ -21,6 +21,14 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **A contract keeping the number of a sibling's unit, drawn** (plan DD, stage L3, #286). The system view draws a
+  dotted arrow from the contract to the sibling, "refers to visit"; its panel says which units, and a contract's
+  panel lists the units whose numbers it keeps ("Keeps the number of") and the contracts keeping its units'
+  ("Its units' numbers are kept by"). It reads the domain document's `refers_to` relations, which the engine
+  writes from this release.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added
