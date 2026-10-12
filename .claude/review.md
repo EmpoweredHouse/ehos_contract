@@ -56,7 +56,7 @@ handoff and explain every new line.
 
 A mix task on the dev database (`MIX_ENV=dev`, never `MIX_ENV=test mix run`, see `CLAUDE.md`), the
 dashboard through the `eh_os_contract_host` preview (`.claude/launch.json`), a hook through a pipe
-test with a synthesised payload. `review-pr` §4 has examples of how this repository writes the
+test with a synthesised payload. `review-pr` §2, "Verified in reverse", has examples of how this repository writes the
 reverse check of a fix down.
 
 ## A finding skipped

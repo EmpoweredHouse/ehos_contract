@@ -182,7 +182,7 @@ for P2e.
    kod tam trafia.
 5. Starsze ustalenia przy kluczach i wartościach: „#98 — co wyszło”, „#96 — co wyszło”, „Granice wartości z żądania”.
 6. Skill `ehos-dev:pre-pr-review` i `.claude/review.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
-   `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
+   `refs/notes/review`; hook czyta `HEAD` katalogu z wiodącego `cd <dir> &&`, więc worktree jest sprawdzany jako on sam.
 
 ### Komendy
 
