@@ -115,6 +115,17 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
   eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.3.0-dev` of the engine and
   `~> 0.1.0-dev` of the verifier, and `0.4.0-dev` or `0.2.0-dev` on `main` would refuse its next
   `mix deps.update`, and every project `ehosctl` 0.2.0 generates.
+- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
+  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
+  `write-docs` stay this repository's alone. The plugin is a directory of its own so that nothing else
+  in the repository reaches an application through it: a hook or an MCP server added at the root for
+  work here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. The plugin is not a
+  package and has no `-dev`: raise its `version` (`plugins/eh-os-contract/.claude-plugin/plugin.json`)
+  in the pull request that changes one of its skills, then tag that pull request's merge commit
+  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
+  must hold it as they hold `v*`, since applications' settings name it. An application takes a new
+  version by moving the `ref` in its `.claude/settings.json`, which `ehos_app`'s installer is to do. A
+  skill it carries says, at its top, where its paths are in an application.
 
 ## Following a line back to its reason
 

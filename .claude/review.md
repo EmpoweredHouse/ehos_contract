@@ -89,6 +89,10 @@ shape.
 The traps this repository has already paid for are written down once. Check the change against
 them, not against memory:
 
+- A skill under `plugins/eh-os-contract/skills/`, also reached through `.claude/skills/`, ships to
+  every application that enables the plugin: a change to one raises the version in
+  `plugins/eh-os-contract/.claude-plugin/plugin.json`, or no application sees it, and names no path
+  of this repository that the skill's "In an application" paragraph does not map.
 - `CLAUDE.md`, sections "The gate" and "Conventions that are easy to break": the gate without `tail`,
   `MIX_ENV=test mix run`, `boundary` siblings, implementations pointing at the contract and never
   the other way round, checks in the macro body, `emit/1` and `issue/1` taking struct literals,

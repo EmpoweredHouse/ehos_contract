@@ -10,6 +10,14 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 `EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
 §13. Not yet run on a real change: read what it says against those before trusting it.
 
+**In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
+application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
+at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
+`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
+from `sandbox/`, run the application's `mix precommit`.
+
 ## Why this runs before the code
 
 The log cannot be edited, only added to, and it is the source of the state: **an old row is read
@@ -88,6 +96,13 @@ docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "sel
 Zero rows of the type means the change is still additive in fact. Anything else is a decision for the
 user, with the count: a new event instead of a changed one, an optional field instead of a required
 one, or data work written down in `PLAN.md` before the change.
+
+**In an application, the development database proves nothing.** The log that matters is that of
+every environment the application is deployed to, production's first. Count the rows there, through
+whoever may read it, for the affected types alone (`where type in (...)`, which the log's index on
+`type` serves) rather than the whole log; until that count is known, treat the change as one that
+meets old rows, and write the decision and the data work into the pull request instead of
+`PLAN.md`.
 
 ## Non-negotiables
 

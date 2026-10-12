@@ -11,6 +11,14 @@ and the engine's source (`EhOsContract.Dispatcher`, `EhOsContract.Contract.Callb
 `EhOsContract.Implementation`). Not yet run on a real change: read what it says against those
 before trusting it.
 
+**In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
+application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
+at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
+`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
+from `sandbox/`, run the application's `mix precommit`.
+
 ## Where this sits
 
 `module-boundary-check` decided that the action is a command to a unit. The contract already
