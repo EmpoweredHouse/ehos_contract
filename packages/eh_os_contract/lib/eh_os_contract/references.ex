@@ -64,18 +64,36 @@ defmodule EhOsContract.References do
   end
 
   @doc """
-  Every name a field of `model`, a contract's model, refers to, at any depth and in the
-  order met, each once.
+  Every name a field of `model`, a contract's model, refers to, each once, in the order
+  its declarations come: its units' states, commands, events, read models, process
+  managers' states, consumed events, queries' parameters and domain services'
+  functions. Only declared fields count, never a key of a scenario's data.
   """
   @spec in_model(map()) :: [atom()]
-  def in_model(model), do: model |> names_in() |> Enum.uniq()
+  def in_model(model) do
+    model
+    |> declared_fields()
+    |> Enum.flat_map(&List.wrap(Map.get(&1, :refers_to)))
+    |> Enum.uniq()
+  end
 
-  defp names_in(%{refers_to: name} = map),
-    do: [name | map |> Map.delete(:refers_to) |> names_in()]
+  defp declared_fields(model) do
+    within = fn key, fields -> Enum.flat_map(Map.get(model, key, []), fields) end
 
-  defp names_in(%{} = map), do: map |> Map.values() |> Enum.flat_map(&names_in/1)
-  defp names_in(list) when is_list(list), do: Enum.flat_map(list, &names_in/1)
-  defp names_in(_other), do: []
+    Enum.concat([
+      within.(:units, & &1.state.fields),
+      within.(:commands, & &1.fields),
+      within.(:events, & &1.fields),
+      within.(:read_models, & &1.fields),
+      within.(:process_managers, & &1.state.fields),
+      within.(:consumes, &Map.get(&1, :fields, [])),
+      within.(:queries, &Map.get(&1, :params, [])),
+      within.(:domain_services, fn service ->
+        Enum.flat_map(service.functions, &[&1.returns | &1.arguments])
+      end)
+    ])
+    |> Enum.filter(&is_map/1)
+  end
 
   @doc "Every name a reference may use: the domain's entities and its contracts' units."
   @spec names(map(), [map()]) :: [atom()]
