@@ -70,7 +70,9 @@ defmodule EhOsContract.Pages do
       |> Enum.filter(&(&1.domain == domain.module))
 
     distinct!(contracts)
-    site = %{domain: domain, contracts: contracts}
+    # What every reference name resolves to, once for all pages (plan DD, L3 (#286)).
+    referents = EhOsContract.References.index(domain, contracts)
+    site = %{domain: domain, contracts: contracts, referents: referents}
 
     [{"index.md", domain_page(site)}]
     |> Enum.concat(for v <- domain.values, do: {value_path(v.name), value_page(site, v)})
@@ -293,7 +295,7 @@ defmodule EhOsContract.Pages do
 
   # What a field identifies: an entity's page, or a unit's (plan DD, L3 (#286)).
   defp reference_link(site, name) do
-    case EhOsContract.References.resolve(name, site.domain, site.contracts) do
+    case Map.get(site.referents, name) do
       {:entity, ^name} ->
         link(code(name), entity_path(name))
 
@@ -309,7 +311,7 @@ defmodule EhOsContract.Pages do
   # Whether a field refers to `referent`, as the reference resolves.
   defp refers_to?(site, field, referent) do
     name = Map.get(field, :refers_to)
-    name != nil and EhOsContract.References.resolve(name, site.domain, site.contracts) == referent
+    name != nil and Map.get(site.referents, name) == referent
   end
 
   defp notes(field) do

@@ -5,9 +5,12 @@ defmodule EhOsContract.References do
   # (plan EM2), so the codec, tags and typespecs see a plain `:id`, and the name is
   # resolved here, against the domain and its contracts.
   #
-  # A name has to match exactly one: the compiler between modules refuses a reference
-  # that matches none or several (X3), so the readers after it — `check`, the pages,
-  # the graph — take `resolve/3`'s answer, and all of them read it from this one place.
+  # In a contract a name has to match exactly one: the compiler between modules refuses
+  # a reference that matches none or several (X3). The domain knows only entities, so
+  # a field of a value or an entity names one even when a unit has the same name, and
+  # `resolve/3` and `index/2` therefore answer the entity first, then the one unit of
+  # that name. `check` and the pages read them; the graph resolves the same way within
+  # what one document holds.
   @moduledoc false
 
   @typedoc "What a name refers to: an entity of the domain, or a unit of a contract's model."
@@ -28,13 +31,36 @@ defmodule EhOsContract.References do
           do: {:unit, c, name}
   end
 
-  @doc "What `name` refers to when exactly one thing in the domain has it, else `nil`."
+  @doc """
+  What `name` refers to: the domain's entity of that name, else the one unit of it,
+  else `nil`.
+  """
   @spec resolve(atom(), map(), [map()]) :: referent() | nil
-  def resolve(name, domain, contracts) do
-    case candidates(name, domain, contracts) do
-      [one] -> one
-      _none_or_many -> nil
-    end
+  def resolve(name, domain, contracts), do: pick(candidates(name, domain, contracts))
+
+  defp pick([{:entity, _name} = entity | _units]), do: entity
+  defp pick([{:unit, _c, _name} = unit]), do: unit
+  defp pick(_none_or_many), do: nil
+
+  @doc """
+  What each name refers to, for a reader that resolves many: `resolve/3`'s answer for
+  every name it answers, in one pass over the domain and `contracts`.
+  """
+  @spec index(map(), [map()]) :: %{atom() => referent()}
+  def index(domain, contracts) do
+    entities = for e <- Map.get(domain, :entities, []), do: {e.name, {:entity, e.name}}
+
+    units =
+      for c <- contracts,
+          c.domain == domain.module,
+          u <- c.units,
+          do: {u.name, {:unit, c, u.name}}
+
+    for {name, candidates} <- Enum.group_by(entities ++ units, &elem(&1, 0), &elem(&1, 1)),
+        referent = pick(candidates),
+        referent != nil,
+        into: %{},
+        do: {name, referent}
   end
 
   @doc "Every name a reference may use: the domain's entities and its contracts' units."

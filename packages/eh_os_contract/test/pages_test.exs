@@ -349,6 +349,46 @@ defmodule EhOsContract.PagesTest do
                inspect(ValueRig.Till)
   end
 
+  # Plan DD, L3 (#286): the domain knows only entities, so an entity's field naming a
+  # name a unit shares still links to the entity, as the graph says.
+  test "a domain field naming a name an entity and a unit share links to the entity" do
+    field = fn name, type, extra ->
+      Map.merge(
+        %{name: name, type: type, label: nil, personal: nil, subject: nil, default: nil},
+        extra
+      )
+    end
+
+    till = %{
+      name: :till,
+      label: "Till",
+      context: :till,
+      identity: :till_id,
+      source: nil,
+      fields: [field.(:till_id, :id, %{optional: false})]
+    }
+
+    branch = %{
+      name: :branch,
+      label: "Branch",
+      context: :till,
+      identity: :branch_id,
+      source: nil,
+      fields: [
+        field.(:branch_id, :id, %{optional: false}),
+        field.(:main_till_id, :id, %{optional: false, refers_to: :till})
+      ]
+    }
+
+    domain = EhOsContract.Model.fetch(ValueRig.Domain)
+    pages = Pages.render(%{domain | entities: [till, branch]}, [ValueRig.Till])
+
+    assert pages["entities/branch.md"] =~
+             "| `main_till_id` | `:id` of [`till`](till.md) |"
+
+    assert pages["entities/till.md"] =~ "## Referred to by\n\n- entity [`branch`](branch.md)"
+  end
+
   # The EL3 review: the client's text went into tables and code spans as it was.
   test "a label with a bar or a line break stays in its cell, and a backtick in its span" do
     till = EhOsContract.Model.fetch(ValueRig.Till)

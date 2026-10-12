@@ -983,7 +983,7 @@ defmodule EhOsContract.Check.Completeness do
   # an entity or a unit named in a field (plan DD, L3 (#286)), the contract's `use`.
   defp crossings(model, contracts) do
     context_of = Map.new(contracts, &{&1.module, &1.model.context})
-    models = Enum.map(contracts, & &1.model)
+    referents = References.index(model, Enum.map(contracts, & &1.model))
 
     for contract <- contracts,
         {other, what, at} <-
@@ -995,7 +995,7 @@ defmodule EhOsContract.Check.Completeness do
           ) ++
             for(
               name <- contract.model |> references() |> Enum.uniq(),
-              referent = References.resolve(name, model, models),
+              referent = Map.get(referents, name),
               referent != nil,
               do: {owner(referent, model), "names #{References.describe(referent)}", contract.at}
             ),
