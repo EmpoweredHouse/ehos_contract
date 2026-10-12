@@ -10,6 +10,13 @@ The categories are the two DSLs' (`packages/eh_os_contract/docs/dsl/domain-dsl.m
 `contract-dsl.md`, generated from the code and kept current by the gate). Not yet run on a real
 engagement in this form: review its output before trusting it.
 
+**In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
+application built on EHOS enables. There, the engine's paths below (`packages/eh_os_contract/…`)
+are under `deps/eh_os_contract/`, at the version the application pins; `PLAN.md`, `CLAUDE.md`,
+`docs/adr/` and `sandbox/` are this repository's, on
+[GitHub](https://github.com/EmpoweredHouse/eh-os-contract); the application's domain and contracts
+are in its `lib/<app>/`; and the gate is its `mix precommit`.
+
 ## Where this sits, and where it does not
 
 `appunite/process-native-software` owns the validated Process Mapping methodology — its

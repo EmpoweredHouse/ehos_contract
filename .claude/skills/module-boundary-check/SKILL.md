@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: Before adding a new business entity, action, screen or table to a client tree (`sandbox/lib/taxvision/`, `sandbox/lib/rehmed/`, or a future one), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
+description: Before adding a new business entity, action, screen or table to a client tree (an application's `lib/<app>/`, or here `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/`), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
 ---
 
 # Deciding where a new feature lives, before writing it
@@ -8,6 +8,13 @@ description: Before adding a new business entity, action, screen or table to a c
 Checked on 30 September 2026 (plan E11e) against `packages/eh_os_contract/docs/contract.md`,
 `packages/eh_os_contract/docs/rules.md` and `CLAUDE.md`, "Czym biblioteka jest, a czym nie". Not yet run on a real feature:
 read what it says against those before trusting it.
+
+**In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
+application built on EHOS enables. There, the engine's paths below (`packages/eh_os_contract/…`)
+are under `deps/eh_os_contract/`, at the version the application pins; `PLAN.md`, `CLAUDE.md`,
+`docs/adr/` and `sandbox/` are this repository's, on
+[GitHub](https://github.com/EmpoweredHouse/eh-os-contract); the application's domain and contracts
+are in its `lib/<app>/`; and the gate is its `mix precommit`.
 
 ## The decision this closes
 

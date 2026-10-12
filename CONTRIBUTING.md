@@ -109,6 +109,12 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 - **Preview a release before tagging it**: `gh workflow run release.yml -f ref=main` writes into the run's
   summary what a release of that commit would publish (a package at `-dev` shows its `## [Unreleased]`), and
   publishes nothing.
+- **The `eh-os-contract` Claude Code plugin** (`.claude-plugin/`) is the repository's skills an
+  application uses, listed by name in `.claude-plugin/plugin.json`; the others stay this repository's.
+  Raise its `version` in the pull request that changes one of those skills, then tag the merge commit
+  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. An application
+  takes it when `ehos_app`'s installer moves the `ref` in its `.claude/settings.json`. A skill it
+  carries says, at its top, where its paths are in an application.
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
   nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
   this repository's `main` (ehos-tools' T-05), that is the next patch's `-dev`, not the next minor's, which

@@ -154,5 +154,9 @@ questions for each contract once there is something in the log. Every task, and 
   [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
   [between contracts](concepts/between-contracts.md), [processes](concepts/process.md) and
   [scenarios](concepts/scenarios.md).
-- With an assistant: the skills in the repository's `.claude/skills/` (writing an event, a decider, a
-  reaction, changing a contract that has history) work in an application's repository too.
+- With an assistant: the `eh-os-contract` Claude Code plugin, from this repository's marketplace, gives
+  an application the skills for deciding where a feature lives, distilling a process into a domain and
+  contracts, writing an event, a decider and a reaction, and changing a contract that has history
+  (`/eh-os-contract:change-contract`). An application `ehos_app` generates enables it in its
+  `.claude/settings.json`; another adds the marketplace `EmpoweredHouse/eh-os-contract`, at the tag
+  of the plugin's release, and enables `eh-os-contract@eh-os-contract`.

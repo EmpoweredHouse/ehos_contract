@@ -50,6 +50,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The skills for writing contracts reach an application as a Claude Code plugin.** This repository is a
+  marketplace, `eh-os-contract`, whose plugin of the same name carries `module-boundary-check`,
+  `contract-distillation`, `add-event`, `change-contract`, `write-decider` and `write-reaction`, each saying
+  where its paths are in an application (`deps/eh_os_contract/`). `docs/getting-started.md` says how an
+  application enables it; its release is a tag `eh-os-contract-plugin-vX.Y.Z`.
 - **The core is where things are decided** (plan DD, stage L2, #272). `mix eh_os_contract.check` has two new
   rules for contracts of a context in a subdomain of `type: :core`: `core-command-never-refuses` (a notice for a
   command with empty `rejects:`, unless only a policy or a process manager issues it) and
