@@ -4,10 +4,10 @@ What eh_os_contract is, what it is for, and the principles it is built on.
 
 ## What it is
 
-A business process is written down as two Elixir modules: a **domain**, the words the people in the
-process use, the contexts it is split into, who acts in it and which systems it depends on; and a
-**contract**, what is decided in one context, what happened, what reacts to it, what is read, and what was
-promised. Both are declarations, not code that runs: every key of them is listed in the reference
+A business process is written down as 2 Elixir modules. The **domain** holds the words the people in
+the process use, the contexts it is split into, who acts in it and which systems it depends on. The
+**contract** holds what is decided in one context, what happened, what reacts to it, what is read, and
+what was promised. Both are declarations, not code that runs: every key of them is listed in the reference
 ([the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md),
 [the process module](dsl/process-dsl.md)).
 
@@ -57,28 +57,28 @@ defmodule Introduction.Contracts.Onboarding do
 end
 ```
 
-Read the promise aloud: *after an application is received, within seven days it is approved.* That
+Read the promise aloud: *after an application is received, within 7 days it is approved.* That
 sentence is what the person who owns the process confirms or corrects, and it is why every declaration
 carries a label in the words of the people in the process.
 
-Everything else the library does reads those two modules:
+Everything else the library does reads those 2 modules:
 
 - **The compiler** refuses a model that contradicts itself and code that contradicts the model: an
   implementation that emits an event its command does not declare does not compile.
 - **Dispatch** (`EhOsContract.dispatch/3`) runs a command through the contract: may this actor issue it,
   are its fields sound, what does the implementation decide. What the contract declares is appended to
-  the engine's own event log, and nothing else is. A unit's state is its events, folded.
+  the engine's own event log, and nothing else is. A unit's state is its events, folded: applied one by one, in order.
 - **Reactions** run from the log: read models that answer queries, policies that issue commands, effects
   that call other systems, process managers that steer a run over time.
 - **Between applications**, an event leaves only through a `publish`, and one arrives only in an inbox a
   policy takes.
-- **Conformance** compares the log with the contract and answers four questions: which declared paths were
+- **Conformance** compares the log with the contract and answers 4 questions: which declared paths were
   never taken, what happened that the contract does not declare, which promises are broken, and which
   version of the contract is deployed, and since when.
 
 ## What it is for
 
-- **Building an event-sourced application from a model the business can read.** The contract is the
+- **Building an event-sourced application (every change stored as an event) from a model the business can read.** The contract is the
   part of the code a process owner reviews; the implementation decides, the contract holds it to what
   was agreed.
 - **Knowing whether the deployed code does what the process says**, by comparing what happened, in
@@ -92,9 +92,9 @@ Everything else the library does reads those two modules:
 
 ## What it is not
 
-It answers the four questions and no more. Performance belongs to your APM, errors to your error
+It answers the 4 questions and nothing more. Performance belongs to your application performance monitoring (APM) tool, errors to your error
 tracker, and the state of your business to your own application, which the library helps you build
-through read models and queries but does not show on its dashboard. It does not know who anybody is: an
+through read models and queries but does not show on the conformance dashboard. It does not know who anybody is: an
 actor is an opaque subject with the capabilities its verified credential grants
 ([authorization](authorization.md)). It ships no message broker, no identity provider, no REST or
 GraphQL layer beyond the documents it generates from the contract, and nothing that answers a question

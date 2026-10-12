@@ -6,13 +6,13 @@ those promises.
 
 <!-- covers: entities contract.process, contract.process.stage, contract.process.include, contract.process.promise, contract.process.deadline, process.correlate, process.stage, process.ends_on, process.promise, process.deadline; rules process-without-accountable, promise-without-within, deadline-without-terminal-event, unverified-declaration -->
 
-A unit decides over its own stream: one loan, one fine. A business is usually accountable for something
-longer (a loan from the day the copy goes out to the day it comes back, or is paid for) and that is a
+A unit decides over its own stream: one loan, one fine. A business usually answers for
+something longer (a loan from the day the copy goes out to the day it comes back, or is paid for) and that is a
 **run** of a process. The units do not need a process to decide; the process is what the engine measures.
 Its events are the units' events, and nothing is dispatched to a process. What it adds is a way to file
 those events into runs, and a set of claims about runs that the report can check against the log.
 
-There are two places to write one. **A contract's `process`** describes a run made of that contract's own
+There are 2 places to write one. **A contract's `process`** describes a run made of that contract's own
 events, and of the sibling events it includes. **A process module**, `use EhOsContract.Process`, describes a
 run that crosses several contracts, naming each contract's events it takes. [The guide](../contract.md)
 introduces both; this page is how they behave.
@@ -34,7 +34,7 @@ application, which already knows.
 
 Correlate on what the business means by "one case". A run keyed by too coarse a field, a member instead of a
 loan, gathers unrelated loans into one and judges them together; one keyed by too fine a field splits a case
-in two, and a promise that spans both halves is never kept. At most six fields make one key ([`F9`](../contract.md#refusals-f)).
+in two, and a promise that spans both halves is never kept. At most 6 fields make 1 key ([`F9`](../contract.md#refusals-f)).
 
 ## A process in a contract
 
@@ -138,11 +138,11 @@ A promise is what the process owner agreed happens in a run: after one event, an
   fixed length.
 - `or_else` is another event that keeps it the other way: the loan ended with the copy written off, which is
   a correct ending, just not the one wanted. `within` binds it as well, so a run that ends the other way
-  three months late is not kept.
+  3 months late is not kept.
 
 `from`, `eventually` and `or_else` are events of the run: local events, or included ones ([`R5`](../contract.md#refusals-r)).
 
-Each run gets one of four verdicts per promise:
+Each run gets one of 4 verdicts per promise:
 
 | Verdict | When |
 | --- | --- |
@@ -178,8 +178,8 @@ and reported for July does not look as if it started in July.
 
 A promise or a deadline written before the process owner has confirmed its number is marked
 `unverified: true`. Such a promise is still evaluated, and a test may ask for its verdicts, but the
-conformance report leaves it out, and an unverified deadline with it: a number the client never agreed to,
-printed beside the ones they did, reads as measured. `mix eh_os_contract.check` warns of each one until the
+conformance report leaves it out, and leaves out an unverified deadline too. A number the client never agreed
+to, printed beside the ones they did agree to, would read as measured. `mix eh_os_contract.check` warns of each one until the
 mark is removed.
 
 ## A process across contracts
@@ -271,7 +271,7 @@ The module compiles to a model `EhOsContract.Model.fetch/1` returns, of kind `:p
 
 ## How the report reads a process
 
-`mix eh_os_contract.report` asks four questions of each contract: which declared paths were never taken,
+`mix eh_os_contract.report` asks 4 questions of each contract: which declared paths were never taken,
 which transitions happened that were not declared, which promises were broken, and which version is
 deployed. The first two are about the contract's steps and its units' lifecycles, which do not depend on a
 process. The third is the process's: for each confirmed promise, how many runs kept it (and by which route),
@@ -280,16 +280,16 @@ the number of runs in the period, and the runs measured against a confirmed dead
 overdue.
 
 The report also counts the runs that entered a later stage before an earlier one, and names the pairs of
-stages: a visit reported before it was closed. A stage is entered by its first event, and the order is
+stages, such as a visit reported before it was closed. A stage is entered by its first event. The order is
 the log's, not the clock's: a process includes only contracts of its own application, so all its stages
 are in one log. Only stages a run reached are compared, so a skipped stage, or one whose reaction still
-waits in a queue, is no finding. A run belongs to the period by its first event, as its duration is measured, and is
-judged on all of its events; the count of runs in the period takes every run with an event in it. The order
-is judged by the stages declared today. The dashboard does not show it yet. The report says how many runs, never which: finding them is the application's job
-(`EhOsContract.StageOrder`).
+waits in a queue, is not a finding. A run belongs to the period by its first event, the same way its duration
+is measured, and is judged on all of its events. The count of runs in the period includes every run with an
+event in it. The order is judged by the stages declared today. The dashboard does not show it yet. The report
+says how many runs, never which ones: finding them is the application's job (`EhOsContract.StageOrder`).
 
-A process module gets a section of its own after the contracts': its deployment, runs, deadline,
-promises and stage order, and no steps, lifecycles or scenarios, which are its contracts'. The JSON
+A process module gets a section of its own after the contracts' sections: its deployment, runs, deadline,
+promises and stage order. Steps, lifecycles and scenarios belong to its contracts and are not in it. The JSON
 document (`EhOsContract.Conformance.as_data/2`) carries it, keyed `process`; the dashboard does not list it
 yet.
 
@@ -299,7 +299,7 @@ the change.
 
 ## What the compiler refuses
 
-- A second `process` in a contract, or with none, a stage group or a `terminal:` event ([`R1`](../contract.md#refusals-r)): add the
+- A second `process` in a contract; or, in a contract with no process, a stage group or a `terminal:` event ([`R1`](../contract.md#refusals-r)): add the
   process, or take the run-only markings out.
 - A process correlating on nothing, or a local event missing a correlated field ([`R2`](../contract.md#refusals-r)); a correlated field
   that is optional or personal ([`F4`](../contract.md#refusals-f)), or not an identifier ([`F8`](../contract.md#refusals-f)).

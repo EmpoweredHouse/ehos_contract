@@ -33,7 +33,7 @@ from the code (`EhOsContract.Model.capabilities/1`):
   grants the capabilities of every declaration whose `by:` or `recorded_by:` names that actor.
 
 **Only what a person may do is a capability.** A declaration whose `by:` or `recorded_by:` names no
-`:human` actor — a command only a policy issues, an event only an integration records — has none, so
+`:human` actor (a command only a policy issues, an event only an integration records) has none, so
 no credential can be granted it, even by mistake; the application's own `:system` actor reaches it
 without a credential.
 
@@ -68,9 +68,9 @@ sequenceDiagram
 2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
    optionally with scope values ("clinic 7").
 3. **Sign-in.** The person signs in to EHOS and receives a credential: a JWT signed with Ed25519, valid
-   for ten minutes, for one application and environment (`aud`). It carries `sub` (who), `cap` (every
+   for 10 minutes, for one application and environment (`aud`). It carries `sub` (who), `cap` (every
    capability of every role bound to them there) and `scp` (the values of scoped capabilities).
-4. **Keys.** The application keeps EHOS's public keys in its own database and refreshes them every five
+4. **Keys.** The application keeps EHOS's public keys in its own database and refreshes them every 5
    minutes, so it verifies credentials without calling EHOS, and keeps working while EHOS is down.
 5. **The call.** The credential arrives with the request. The auth package verifies it and builds an
    `EhOsContract.Actor`; the engine asks the `EhOsContract.Authorizer` whether that actor may make this
@@ -110,7 +110,7 @@ flowchart LR
 | A policy reacting to an event | built by the engine | the contract: the policy's `issues:` names the command |
 | The application's own code (a job, an import) | `Actor.system(:name)` | the contract: the actor is `:system` in the domain and named in `by:` or `recorded_by:` |
 
-The application's own code is not asked of the `Authorizer`, for three reasons: the application would
+The application's own code is not asked of the `Authorizer`, for 3 reasons: the application would
 be asking itself; EHOS issues no credential to a job; and a policy runs in the transaction of the
 command that set it off, so a refusal there would fail a person's command for a reason that is not
 theirs. Its permission was given when the contract said `issues:` or `by:` and a reviewer approved
@@ -213,7 +213,7 @@ stays in the application's code.
 
 `EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
 observation or an integration's answer. Its capability is `<domain>.<event>`, with the roles of
-the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command —
+the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command:
 reception marking that the patient arrived needs `rehmed.patient_arrived`. A `:system` actor the
 event names records it without a credential. `EhOsContract.Plug` serves it as
 `POST <mount>/records/<capability>` with the event's fields as the body.
@@ -275,8 +275,8 @@ about the declaration's fields, and every request is one decision, recorded by t
 
 ## Another door
 
-The plug is one door onto `EhOsContract.call/3`, and a host's other doors — a form, a job that carries a
-person's credential — call it the same way: the capability's name, the data as it was sent, the
+The plug is one door onto `EhOsContract.call/3`, and a host's other doors, such as a form or a job that carries a
+person's credential, call it the same way: the capability's name, the data as it was sent, the
 credential's actor.
 
 ```elixir
@@ -292,8 +292,8 @@ It asks the `Authorizer` before it says what is wrong with what was sent, as the
 as `dispatch/3`, `record/3` or `query/3` would, or `{:error, :not_found}` for a capability the contracts it
 serves (`contracts:`, every registered one by default) do not declare as that kind, `{:error, :no_actor}`
 without a credential's actor, and, once the caller may, `{:error, :not_an_object}` or
-`{:error, :correlation_id_is_not_a_uuid}`. A door that builds structs itself goes around that order, which
-is why the plug no longer does.
+`{:error, :correlation_id_is_not_a_uuid}`. A door that builds the structs itself skips that order, which
+is why the plug no longer builds them.
 
 ## Calling it from code
 
@@ -328,7 +328,7 @@ What that asks of a host:
 ## How strong this is
 
 It is the standard, well-understood level: the same as an application validating Auth0, Keycloak or
-Entra ID tokens. Signed short-lived tokens (Ed25519, ten minutes) verified locally against published
+Entra ID tokens. Signed short-lived tokens (Ed25519, 10 minutes) verified locally against published
 keys, rotation by `kid`, one audience per application and environment, roles flattened into
 capabilities, failing closed, and a record of every decision.
 
@@ -339,11 +339,11 @@ a query's rows are checked a second time against the grant.
 
 Known limits, accepted deliberately:
 
-- A removed role keeps working until the credential expires, at most ten minutes, as with any JWT
+- A removed role keeps working until the credential expires, at most 10 minutes, as with any JWT
   without a revocation list.
 - A stolen credential works until it expires. Binding tokens to a client (DPoP, mutual TLS) is a
-  higher, banking-grade level, and would be EHOS's decision.
-- A key removed from EHOS's set is trusted until the next refresh, at most five minutes.
+higher, banking-grade level, and would be EHOS's decision.
+- A key removed from EHOS's set is trusted until the next refresh, at most 5 minutes.
 - `scope` is one field and equality; richer row rules stay in application code.
 - The audit rows are not tamper-evident.
 - How a frontend obtains a credential for a signed-in user is EHOS's to design, and the whole chain is

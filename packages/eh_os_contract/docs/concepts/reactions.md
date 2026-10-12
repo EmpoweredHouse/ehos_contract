@@ -1,6 +1,6 @@
 # Reactions: policies, effects and process managers
 
-What happens because something else happened: the three kinds of reaction a contract declares, when each
+What happens because something else happened: the 3 kinds of reaction a contract declares, when each
 runs, what a failure leaves in the log, and how a second delivery is made harmless.
 
 <!-- covers: entities contract.policy, contract.effect, contract.process_manager, contract.process_manager.timer, contract.process_manager.starts_on, contract.process_manager.on, contract.process_manager.ends_on; rules in-transaction-policy-fan-out, competing-in-transaction-consumers, process-manager-without-ends-on, process-manager-without-event-reactions, event-without-consumer, backward-edge -->
@@ -141,7 +141,7 @@ end
 event it takes, and so what is left in the log when the reaction fails.
 
 **`:in_transaction`** runs inside the dispatch that appended the event, before it commits. It is the default
-for a policy (and a read model). Dispatch runs every consumer delivered so that takes the event, in any
+for a policy (and a read model). Dispatch runs every `:in_transaction` consumer that takes the event, in any
 contract of the application: read models first, then policies, then effects. What a policy issues is
 dispatched at once, in the same transaction.
 
@@ -149,25 +149,25 @@ dispatched at once, in the same transaction.
   it**: the person's command fails for a reason that is not theirs. When dispatch owns the transaction it
   writes a `failed` row naming where it failed and the exception's module.
 - A rejection of the command a policy issues is the unit's answer, not a failure: the first command stands.
-- A policy that reacts again to the kind of event it already reacted to, down one chain, is a cycle, and
-  raises.
+- If a policy, further down the same chain, reacts again to a kind of event it already reacted to, that is a
+  cycle, and dispatch raises.
 - Every such reaction runs while the transaction holds the store's global append lock, so every other
   append waits for it.
 
 **`:at_least_once`** runs after the commit. It is the default for an effect and the only delivery of a process
-manager. A policy delivered so is an ordered subscription to the log, one event a step, each step its own
-transaction; an effect is an Oban job, inserted in the transaction that appends the event and holding only the
-effect's key and the event's id; a process manager is an ordered subscription too.
+manager. A policy delivered so is an ordered subscription to the log: 1 event per step, each step in its own
+transaction. An effect is an Oban job, inserted in the transaction that appends the event and holding only the
+effect's key and the event's id. A process manager is an ordered subscription too.
 
 - The triggering event stays in the log whatever the reaction does.
-- An event a subscription fails on is retried; after three attempts the subscription is `failing` at that
+- An event a subscription fails on is retried; after 3 attempts the subscription is `failing` at that
   event and **stops there**. It never skips by itself: moving it on is a person's decision,
   `mix eh_os_contract.subscriptions --skip` or `--reset`.
-- An effect's job is retried, three attempts in all. What Oban keeps of a failure names the effect and the
+- An effect's job is retried, 3 attempts in all. What Oban keeps of a failure names the effect and the
   event's position, never a value, since a value may be personal data.
 
 So `:in_transaction` fits when "if this did not happen, the command did not happen either": a policy whose
-command is part of the same business step. `:at_least_once` when the reaction is a different failure domain:
+command is part of the same business step. `:at_least_once` fits when the reaction is a different failure domain:
 anything that calls out, fans out, or may be slow. An effect that calls an external system is always
 `:at_least_once`, since a call cannot be rolled back with the append.
 
@@ -209,8 +209,8 @@ A timer fires `wait:` after the event that set it, or `at:` a `:timestamp` field
 reaction `sets:` it and `cancels:` it, and an `ends_on` event ends the run and forgets every timer it has.
 
 The firing is an event in the run's own stream, which the process manager takes in order with everything
-else. A timer fired twice dispatches once, and a replay sees each firing where it happened. A timer that
-issues is a callback of the state alone: whatever its command needs, beyond the run's correlation, has to be
+else. A timer fired twice dispatches once, and a replay sees each firing where it happened. The callback of a timer
+that issues receives only the state: whatever its command needs, beyond the run's correlation, has to be
 in the state by then.
 
 A timer's label says what the timer is for, "Return date", not how long it waits: `wait:` or `at:` says when,
@@ -238,7 +238,7 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 
 - `in-transaction-policy-fan-out` (warning): a scenario shows an in-transaction policy issuing more than one
   command, each while the append lock is held. Deliver it `:at_least_once`.
-- `competing-in-transaction-consumers` (warning): two policies or effects take one event inside its
+- `competing-in-transaction-consumers` (warning): 2 policies or effects take one event inside its
   transaction, in an order the contract does not state. If one depends on the other, have it react to the
   event the other decides.
 - `process-manager-without-ends-on` (warning): every run stays open for ever, with its state. Declare

@@ -1,16 +1,16 @@
 # EhOsContract
 
-A contract per business process, and two things built on it: an event-sourced application that
+A contract per business process, and 2 things built on it: an event-sourced application that
 dispatches through the contract, and a continuous check that what happened is what the contract says
 should.
 
-You write the process down as two Elixir modules, in the manner of [ESDM](https://www.esdm.io): a
-**domain** — the words, the contexts, the actors and the systems it depends on — and a **contract** — the
+You write the process down as 2 Elixir modules, in the manner of [ESDM](https://www.esdm.io): a
+**domain** (the words, the contexts, the actors and the systems it depends on) and a **contract** (the
 units that decide, their commands, events and invariants, what reacts to them, what is read, and the
-promises the process owner agreed to. The compiler refuses a model that contradicts itself and code that
+promises the process owner agreed to). The compiler refuses a model that contradicts itself and code that
 contradicts the model. `EhOsContract.dispatch/3` runs a command through it: who may issue it, what its
-fields must be, what the implementation decides, and nothing the contract does not declare is appended to
-the log, which is the engine's own. Then EhOsContract compares the log with the contract and answers four
+fields must be, what the implementation decides. Nothing the contract does not declare is appended to
+the log, which the engine owns. Then EhOsContract compares the log with the contract and answers 4
 questions about the difference:
 
 - which declared steps have never been taken,
@@ -19,7 +19,7 @@ questions about the difference:
 - which contract version is deployed, and since when.
 
 Nothing else. Performance belongs to your APM, errors to your error tracker, and the state of your
-business to your own application — which the library helps you build, through read models and queries,
+business to your own application, which the library helps you build, through read models and queries,
 but does not show on its dashboard. A tool that starts answering "which customer has not closed July" has
 become a second, worse copy of the screen you already have.
 
@@ -105,9 +105,9 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
-Every append takes one lock, held to the end of its transaction, which is what keeps the log's order — so
+Every append takes one lock, held to the end of its transaction, which is what keeps the log's order. So
 whatever runs `:in_transaction` holds every other write while it runs, and belongs in the database only. In
-the Ecto sandbox a test's transaction lasts the whole test, so two `async: true` tests that write the log
+the Ecto sandbox a test's transaction lasts the whole test, so 2 `async: true` tests that write the log
 wait for each other, and the one waiting fails once the other outlasts the repo's timeout: mark them
 `async: false`.
 
@@ -123,14 +123,14 @@ config :eh_os_contract, EhOsContract.Vault,
 
 Without one the host does not boot, rather than failing on the first command that carries
 personal data. A data key is wrapped by the first master key and unwrapped by the one it names, so
-rotate in three deploys: add the new key **after** the current one and deploy, so that every node can
-unwrap what the new key will wrap; move it first and deploy; then rewrap every data key with it —
-`mix eh_os_contract.rewrap`, or `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has
-no `mix` — and drop the old key in the third. Putting the new key first in one step leaves the nodes
+rotate in 3 deploys: add the new key **after** the current one and deploy, so that every node can
+unwrap what the new key will wrap; move it first and deploy; then rewrap every data key with it
+(`mix eh_os_contract.rewrap`, or `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has
+no `mix`) and drop the old key in the third. Putting the new key first in one step leaves the nodes
 still on the old configuration unable to read what the new ones write until the rollout ends. A KMS
 goes behind the `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
 
-To erase a subject — a person who asked for their data to be removed:
+To erase a subject, that is, a person who asked for their data to be removed:
 
 ```elixir
 EhOsContract.erase(:patient, "p-17", actor: actor)
@@ -140,7 +140,7 @@ It deletes the subject's data key, records the erasure and appends an event sayi
 subject's personal fields read back as `%EhOsContract.Erased{}` from then on, everything else
 stays, and a command that would write their personal data again is refused with
 `{:error, :subject_erased}`. It answers `{:ok, :erased}`, `{:ok, :already_erased}`, or
-`{:ok, :no_data}` when no data key was there for that id — recorded all the same, but worth
+`{:ok, :no_data}` when no data key was there for that id. That case is recorded all the same, but worth
 reporting, since a mistyped id erases nobody. Who may erase is yours to decide: the engine asks no authorizer.
 A read model that projects personal data keeps a copy in your tables, so it defines
 `forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the
@@ -201,7 +201,7 @@ defmodule MyApp.Contracts.Onboarding do
 end
 ```
 
-Read the promise aloud: *after an application is received, within seven days it is approved.* That
+Read the promise aloud: *after an application is received, within 7 days it is approved.* That
 sentence is what a process owner confirms or corrects, and it is the reason every declaration carries a
 label in the words of the people in the process.
 
@@ -262,7 +262,7 @@ What is unambiguously wrong never gets that far: it does not compile.
 
 It does not know what a company is, what a tenant is, or what any of your fields mean, and it does not
 know who anybody is: an actor is an opaque subject with the capabilities and scopes its verified credential
-grants — EHOS derives them from the contract's `by:` — and only a `:system` actor is checked against `by:`
+grants (EHOS derives them from the contract's `by:`), and only a `:system` actor is checked against `by:`
 directly. An actor built from a credential nobody verified is a hole the host opened. Authentication,
 accounts and tenants stay on your side. A library that knows one
 client's domain is a library for one client.

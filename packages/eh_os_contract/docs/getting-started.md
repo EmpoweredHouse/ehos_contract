@@ -1,6 +1,6 @@
 # Getting started
 
-From an installed package to a contract whose scenarios run as tests, a command dispatched through it,
+This page goes from an installed package to a contract whose scenarios run as tests, a command dispatched through it,
 and the first check and report.
 
 <!-- covers: rules no-contracts -->
@@ -8,7 +8,7 @@ and the first check and report.
 ## 1. Install and configure
 
 The dependency, the migration, the compiler and the place in the supervision tree are in
-[the README](../README.md). The two settings every application needs:
+[the README](../README.md). The 2 settings every application needs:
 
 ```elixir
 config :eh_os_contract,
@@ -76,7 +76,7 @@ end
 ```
 
 The domain says where the contract lives and who acts in it; the contract says what is decided (an
-aggregate, identified by `copy_id`), what it refuses (an invariant), and two scenarios a librarian can
+aggregate, identified by `copy_id`), what it refuses (an invariant), and 2 scenarios a librarian can
 read and confirm. [Writing a domain and a contract](contract.md) explains each part and every refusal of
 the compiler; the [concepts](concepts/domain.md) go through each kind of declaration.
 
@@ -113,7 +113,7 @@ defmodule GettingStarted.LoansScenariosTest do
 end
 ```
 
-A scenario that the implementation does not bear out fails as a test, with the scenario's own words as
+A scenario that the implementation does not satisfy fails as a test, with the scenario's own words as
 its name. [Scenarios](concepts/scenarios.md) says what each part of one asserts.
 
 ## 5. Dispatch a command
@@ -143,7 +143,7 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 ```
 
 `mix eh_os_contract.check` is the one for CI; `--warnings-as-errors` fails the build on a warning. Each
-finding names a rule, listed with its reason in [the rules](rules.md). The report answers the four
+finding names a rule, listed with its reason in [the rules](rules.md). The report answers the 4
 questions for each contract once there is something in the log. Every task, and its options, is in
 [the command-line tasks](cli.md).
 

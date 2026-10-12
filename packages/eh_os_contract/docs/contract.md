@@ -1,7 +1,7 @@
 # Writing a domain and a contract
 
-A business process is written down twice over: once as a **domain** — the words its people use, the
-contexts it is split into, who acts in it and which systems it depends on — and once per process as a
+A business process is written down twice. First as a **domain**: the words its people use, the
+contexts it is split into, who acts in it and which systems it depends on. Then, once per process, as a
 **contract**: what is decided, what happened, what reacts to it, what is read, and what was promised.
 Both are Elixir modules on [Spark](https://hexdocs.pm/spark), in the manner of
 [ESDM](https://www.esdm.io): the model is code, and there is nothing beside it.
@@ -33,11 +33,11 @@ end
 
 `name:` is the application's name towards EHOS: capabilities are `lending.<command>` and roles
 `lending.<actor>`, and every name its contracts publish begins with `lending.`. So it is one segment of a
-namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
-`:"my-shop"` — and a domain named otherwise does not compile ([`D11`](#refusals-d)). `language:` is the language the labels
-are written in — labels are the words of the people in the process, in their language, and the engine prints
-them as written. `code_language:`, English unless given, is the language identifiers are written in: a term's
-translation into it is the word the check holds the names of the context's contracts to. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
+namespace (lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
+`:"my-shop"`), and a domain named otherwise does not compile ([`D11`](#refusals-d)). `language:` is the language the labels
+are written in. Labels are the words of the people in the process, in their language, and the engine prints
+them as written. `code_language:`, English unless given, is the language identifiers are written in. The check
+holds the names of the context's contracts to each term's translation into that language. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
 an event's required timestamps are tagged with the day they fall on there, which the host's configured time zone
 database answers (`config :elixir, :time_zone_database`); a zone it does not know does not compile ([`D13`](#refusals-d)).
 
@@ -46,8 +46,8 @@ shows and nothing runs. A relation between contexts may pair the words each side
 `terms: [{"Visit", "Encounter"}]`, the first end's word and the second's, each a term of its context's
 glossary; the glossary shows, under a term, what the other end calls it.
 
-An entity is one in Evans's sense — a thing with an identity that lasts while its attributes change — whose
-lifecycle the application's code or another system keeps, outside this log; contracts point at it by its
+An entity is one in Evans's sense: a thing with an identity that lasts while its attributes change. Its
+lifecycle is kept by the application's code or another system, outside this log; contracts point at it by its
 identity, as a field `{:id, :copy}`. `entity :copy, "Copy", context: :loans, identity: :copy_id` declares it,
 and the library injects `copy_id` into its fields as a required, non-personal `:id`, as it injects a unit's
 identity; `issued_by: :catalogue` names the external that gives it, when one does.
@@ -58,9 +58,9 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 
 A contract belongs to one context of one domain, and holds at most one process. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
-contract records — `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
+contract records: `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
 changes the type of every event it covers, and the log's old rows are no longer read as those events; the module's
-name and the process's name are stored too, in each row and in each run, so neither is free to rename either.
+name and the process's name are stored too, in each row and in each run, so neither can be renamed freely either.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
@@ -122,7 +122,7 @@ end
   it decides. `identity` is injected into its state, commands and events. A consistency boundary that spans
   streams is a `dcb`, which `consults` the events it decides over.
 - **An aggregate may declare its lifecycle**: the statuses its decisions depend on, in the client's words,
-  the `initial` one each first event starts it in, and the `transition`s events make between them —
+  the `initial` one each first event starts it in, and the `transition`s events make between them, for example
   `transition :booked, :patient_arrived, :in_progress`. A transition names an event type and nothing about
   its fields, so the graph is checked as it compiles: every status reached, and only a `final:` one without a way out.
   A command may name the statuses it is issued in, `from: :booked`, with the invariant it is refused on in
@@ -137,11 +137,11 @@ end
   Dispatch refuses an actor outside `by:` before anything else. An event outside `emits:` after the
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.
 - **The process is the run**: `correlate` names the fields that make one run, `stage` groups its events
-  when it has stages, and a `promise` is what the process owner agreed happens — from one event, eventually
+  when it has stages, and a `promise` is what the process owner agreed happens: from one event, eventually
   another, within a time, or else a third. `deadline` bounds the whole run. A contract whose
-  units only decide and record — a register of equipment, of rooms — declares no process, and then nothing
+  units only decide and record, such as a register of equipment or of rooms, declares no process, and then nothing
   that belongs to a run: no `stage` group and no `terminal:` event ([`R1`](#refusals-r)).
-- **A scenario is a test the contract carries** — given events, when a command, then events or a
+- **A scenario is a test the contract carries**: given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
 
@@ -149,36 +149,40 @@ end
   use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
   ```
 
-  A given's event happened a minute after the given before it, the first at 2026-01-01 09:00 UTC, unless it
-  says when: `given :loan_opened, %{copy_id: "c-1"}, at: "2026-09-01T09:00:00Z"`. The moment is an ISO 8601
-  timestamp with an offset, never earlier than the given before it, since a log holds events in the order they
-  happened, and a given without it does not come before one with it ([`S3`](#refusals-s)).
+  Unless a given says when, its event happened 1 minute after the given before it, and the first one at
+  2026-01-01 09:00 UTC. A given says when like this: `given :loan_opened, %{copy_id: "c-1"}, at: "2026-09-01T09:00:00Z"`.
+  The moment is an ISO 8601 timestamp with an offset, never earlier than the given before it, since a log holds
+  events in the order they happened. A given without a moment does not come before one with it ([`S3`](#refusals-s)).
 
 - **The implementation reads the contract where it is written.** Each callback of a generated behaviour
   carries what the contract says of it: the declaration's label and source, what it may emit or issue,
-  the rules that hold there — each with the scenario that refuses on it or illustrates it, or marked
-  prose alone — and its scenarios. `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx prints it.
+  the rules that hold there (each with the scenario that refuses on it or illustrates it, or marked
+  prose alone), and its scenarios. `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx prints it.
 
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
-`effect` calls an external system — naming one of its `operation`s, `calls: {:p1, :submit_report}`, when
-the domain says what the system does — a `process_manager` steers a run with its own state and timers, and a
-`read_model` projects rows that a `query` reads. A reaction names its rules as a command does, with
+`effect` calls an external system, naming one of its `operation`s (`calls: {:p1, :submit_report}`) when
+the domain says what the system does; a `process_manager` steers a run with its own state and timers, and a
+`read_model` projects rows that a `query` reads.
+
+A reaction names its rules as a command does, with
 `constraint`, and a process manager its `invariant`s too; a scenario that names one in `illustrates:`
 is the test that it holds, and `mix eh_os_contract.check` warns of one no scenario illustrates. An
 effect's constraint stays prose, since no scenario runs an effect. A process manager's scenario may also
-say the `state` its run holds after the trigger — `state %{check_at: "2026-02-01T00:00:00Z"}` — which
-`ScenarioCase` compares after folding the delivered event, as the engine does. A reaction delivered
+say the `state` its run holds after the trigger, `state %{check_at: "2026-02-01T00:00:00Z"}`, which
+`ScenarioCase` compares after folding the delivered event, as the engine does.
+
+A reaction delivered
 `:at_least_once` names what makes a second delivery harmless and who keeps it so, `idempotency: [key:
 :event_id, owner: :downstream]`: its own code (`:self`), the system an effect calls, given the key
 (`:downstream`), or the engine (`:infrastructure`), which keys the commands a policy issues. A policy or a
-read model left without `delivery` runs `:in_transaction`, inside the transaction that records the event — so
+read model left without `delivery` runs `:in_transaction`, inside the transaction that records the event. So
 one that takes an event of a sibling of another context has to declare it (**[`X10`](#refusals-x)**), and
 `mix eh_os_contract.check` warns of a declared `:in_transaction` there. `consumes` takes a sibling contract's events, and
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
-If `Loans` publishes its loans — `publish :loan_opened, as: "lending.loan.opened.v1", from: :loan_opened,
-fields: [:loan_id, :copy_id], idempotent_on: [:loan_id]` — a contract of **another application**, a
+Say `Loans` publishes its loans with `publish :loan_opened, as: "lending.loan.opened.v1", from: :loan_opened,
+fields: [:loan_id, :copy_id], idempotent_on: [:loan_id]`. A contract of **another application**, a
 reservations service say, takes the event by that name, with the fields it reads:
 
 ```elixir
@@ -198,33 +202,33 @@ under a new id when the publisher declares `idempotent_on:`, whose values make t
 subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
 and the transport delivers by.
 
-A field a decision depends on that is not the caller's to say — whether a loan's copy was scanned at the desk,
-which the desk's own system knows — is declared `supplied_by: :host`: `field :scanned, :boolean, supplied_by:
+Some fields a decision depends on are not the caller's to say, for example whether a loan's copy was scanned at the desk,
+which the desk's own system knows. Such a field is declared `supplied_by: :host`: `field :scanned, :boolean, supplied_by:
 :host`. Through `EhOsContract.call/3`, and so `EhOsContract.Plug`, a request that sends it at all is refused by
 name, `{:invalid, [scanned: :supplied]}`; once the caller is authorized, the configured `EhOsContract.Supplier`
-gives its value (`config :eh_os_contract, supplier: MyApp.Supplier`), and `{:not_supplied, reason}` — a 503 —
+gives its value (`config :eh_os_contract, supplier: MyApp.Supplier`), and `{:not_supplied, reason}` (a 503)
 when it cannot. The application's own `dispatch/3` is trusted, as every other field of its struct is. Only a
 command's field, or a recorded event's, takes it ([`F10`](#refusals-f)), and a node with such a field and no supplier does not
 start.
 
-A decision may depend on an entity the application keeps outside the log — whether a member may borrow
-another copy depends on the membership card, which the library's own system keeps. The domain declares the
-entity (`entity :card, "Membership card", context: :loans, identity: :card_id`, with its fields), the command
-names it by a field typed `{:id, :card}`, and says it reads it: `reads: [card: :card_id]`. The field has to be the
-command's own, required and typed `{:id, entity}`, each name is given once, and only an actor in `by:` issues
+A decision may depend on an entity the application keeps outside the log. For example, whether a member may
+borrow another copy depends on the membership card, which the library's own system keeps. The domain declares the
+entity (`entity :card, "Membership card", context: :loans, identity: :card_id`, with its fields). The command
+names it by a field typed `{:id, :card}` and says it reads it: `reads: [card: :card_id]`. The field has to be the
+command's own, required and typed `{:id, entity}`, and each name is given once. Only an actor in `by:` issues
 such a command, never a policy or a process manager ([`A8`](#refusals-a)). The decision then takes a third argument,
-`%{card: %{card_id: "c-1", suspended: false}}`: the row the configured `EhOsContract.Entities` gives (`config
+`%{card: %{card_id: "c-1", suspended: false}}`. It is the row the configured `EhOsContract.Entities` gives (`config
 :eh_os_contract, entities: MyApp.Entities`), asked once per command before it is decided, as the actor who issued
 it, with the fields the domain declares for the entity. A row that is not there refuses the
-command as a field naming nothing, `{:invalid, [card_id: :unknown]}`, a 422; the row read is kept with the
+command as a field naming nothing, `{:invalid, [card_id: :unknown]}`, a 422. The row read is kept with the
 command's record. A scenario of such a command gives the row with `given_entity :card, %{card_id: "c-1",
-suspended: false}` ([`S12`](#refusals-s)), its fields held to the entity's ([`X9`](#refusals-x)), and a node with
+suspended: false}` ([`S12`](#refusals-s)), its fields held to the entity's ([`X9`](#refusals-x)). A node with
 such a command and no `EhOsContract.Entities` does not start.
 
 Some rules name a person, not a role: a loan is returned by the librarian who lent it, not by any librarian. Inside
 the command, `actor_is :librarian_id, or_rejects: :returned_where_lent` says who must issue it: the person a field of
 the unit's state holds, a non-personal `:id` that an earlier event filled ([`A9`](#refusals-a)). Dispatch compares
-it with the credential's subject after folding the state and before the decision; anyone else is refused on the
+it with the credential's subject after folding the state and before the decision. Anyone else is refused on the
 invariant, with a `rejected` row, as a lifecycle's `from:` refuses. A field still empty names nobody, so every
 person is refused. A `:system` actor and a reaction act for the application, and pass. There is no exception for a
 role: a person who must act on another's unit does so through a command declared for it. A scenario names the
@@ -234,8 +238,8 @@ person with `as "librarian-ola"` beside its `actor` ([`S7`](#refusals-s)), and i
 
 <!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline, process.scenario -->
 
-A process whose run crosses several contracts — a loan lent at one desk and returned at another, a visit
-booked, documented and reported by three parts of a practice — is written as a module of its own. It names
+A process whose run crosses several contracts is written as a module of its own. Examples: a loan lent at
+one desk and returned at another, or a visit booked, documented and reported by 3 parts of a practice. The module names
 the run, what tells one run from another, its stages and the events of each contract they include, the events
 that end a run, its promises, and how long a run may take:
 
@@ -267,19 +271,23 @@ end
 `id:` and `label:` are required; `id:` is formed as a contract's is ([`D11`](#refusals-d)). A stage's `include:` names a
 contract and one of its events, or a list of them, and names the contract without a compile dependency, as
 `consumes` does. Everywhere else in the module an included event is named by its name alone, so two includes
-of one name are refused ([`N1`](#refusals-n)). The module refuses what it can see is wrong in itself: no `correlate` or an
-empty one, two, or a field named twice ([`R2`](#refusals-r)) or one of more than six fields ([`F9`](#refusals-f)), no stage, a stage that
-includes nothing, or an `include:` entry naming no event or no contract module ([`R3`](#refusals-r)), a promise or
-`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit, `deadline`
-twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
+of one name are refused ([`N1`](#refusals-n)). The module refuses what it can see is wrong in itself:
+
+- no `correlate`, an empty one, 2 `correlate`s, or one naming a field twice ([`R2`](#refusals-r));
+- a `correlate` of more than 6 fields ([`F9`](#refusals-f));
+- no stage, a stage that includes nothing, or an `include:` entry naming no event or no contract module ([`R3`](#refusals-r));
+- a promise or `ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r));
+- a duration not in a fixed unit, `deadline` twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)).
+
+It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
 under a run of it, named by its `id:`, beside the run of the contract's own `process`; `mix eh_os_contract.report`
 prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
 judged is in [processes](concepts/process.md).
 
 A promise is shown with a scenario: the events that happened and when, the moments an external system was
-seen unavailable, and the verdict the promise gets at a moment — `:satisfied`, `:violated`, `:pending` or
-`:suspended` — with the route that kept it, when it was kept:
+seen unavailable, and the verdict the promise gets at a moment (`:satisfied`, `:violated`, `:pending` or
+`:suspended`), with the route that kept it, when it was kept:
 
 ```elixir
 scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :eventually do
@@ -289,22 +297,23 @@ scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :ev
 end
 ```
 
-`outage :catalogue, at: "2026-09-10T08:00:00Z"` says an external system was seen unavailable then; it is one
-the events the promise waits on, `eventually` and `or_else`, depend on ([`X4`](#refusals-x)), since an outage of
-anything else excuses nothing. `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan` writes a test
-per scenario, which builds each given as the event its contract declares, files it into its run and judges the
-promise as the report would, without a database. A scenario judges exactly one promise of the module, each
-description once ([`S1`](#refusals-s)); its givens are events the process includes ([`S2`](#refusals-s)), their
-data held to the contract that declares each, the unit's identity included, since runs and items are told apart by it ([`X9`](#refusals-x)); every `at:` is a timestamp, a given's never
-earlier than the given before it ([`S3`](#refusals-s)). It says a verdict the promise can get, `via:` only on `:satisfied` and
-`:or_else` only for a promise that has one, gives the event that opens the promise, and nothing after the moment
-of judgement ([`S11`](#refusals-s)).
+`outage :catalogue, at: "2026-09-10T08:00:00Z"` says an external system was seen unavailable at that moment. It
+names a system that the events the promise waits on (`eventually` and `or_else`) depend on ([`X4`](#refusals-x)), since
+an outage of anything else excuses nothing. `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan` writes
+1 test per scenario. The test builds each given as the event its contract declares, files it into its run and judges
+the promise as the report would, without a database. A scenario judges exactly 1 promise of the module, and each
+description is used once ([`S1`](#refusals-s)). Its givens are events the process includes ([`S2`](#refusals-s)). Their
+data is held to the contract that declares each event, the unit's identity included, since runs and items are told
+apart by it ([`X9`](#refusals-x)). Every `at:` is a timestamp, and a given's is never earlier than the given before it
+([`S3`](#refusals-s)). The scenario names a verdict the promise can get, with `via:` only on `:satisfied` and `:or_else`
+only for a promise that has one. It gives the event that opens the promise, and nothing after the moment of
+judgement ([`S11`](#refusals-s)).
 
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates
-the structs and the behaviour that module implements. The structs live under the contract —
-`Lending.Contracts.Loans.Commands.OpenLoan`, `Lending.Contracts.Loans.Events.LoanOpened` — and a module
+the structs and the behaviour that module implements. The structs live under the contract
+(`Lending.Contracts.Loans.Commands.OpenLoan`, `Lending.Contracts.Loans.Events.LoanOpened`), and a module
 bound to the unit has them by their short names:
 
 ```elixir
@@ -353,7 +362,7 @@ Who the actor is, and how the credential EHOS issues becomes one, is in [authori
 
 ## What will not compile
 
-A model is checked in five layers. The first four refuse; the fifth reports.
+A model is checked in 5 layers. L1 to L4 refuse; L5 reports.
 
 | Layer | When | What it is |
 | --- | --- | --- |
@@ -394,9 +403,9 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F5` | L2, L3 | `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same struct; a domain value's field naming an undeclared subject; a personal field whose type holds personal data of its own |
 | `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
-| `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
-| `F9` | L2 | a unit's identity, a process's or a process module's `correlate` or a process manager's `correlate` of more than six fields |
-| `F10` | L2 | `supplied_by: :host` on a field no request fills — a state's, a read model's row, an event no actor records — or on a command's `scope` field |
+| `F8` | L2, L3 | a field a run or a process manager's record is told by (an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from) that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
+| `F9` | L2 | a unit's identity, a process's or a process module's `correlate` or a process manager's `correlate` of more than 6 fields |
+| `F10` | L2 | `supplied_by: :host` on a field no request fills (a state's, a read model's row, an event no actor records), or on a command's `scope` field |
 
 <a id="refusals-a"></a>
 

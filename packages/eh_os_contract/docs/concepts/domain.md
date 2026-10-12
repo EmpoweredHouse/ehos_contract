@@ -9,16 +9,16 @@ says how the contexts depend on each other, and why every contract belongs to ex
 
 An application has one domain module. It is the vocabulary its contracts share: the parts the business is
 split into, the words each part uses, who acts, whose personal data is kept, the value types, and the systems
-the application depends on. Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the rules
-between modules hold every contract to it as it compiles.
+the application depends on. Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compiler's
+rules between modules check every contract against it.
 
 ```elixir
 use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsaw"
 ```
 
 `name:` is the application's namespace towards EHOS: the first segment of every capability, role, contract id
-and published event name. `language:` is the language labels and terms are written in, and `code_language:`,
-English unless given, the language of identifiers, which the glossary below is held to. `time_zone:` is the
+and published event name. `language:` is the language labels and terms are written in. `code_language:` is
+the language of identifiers, English unless given, and the glossary below is held to it. `time_zone:` is the
 zone the business's days are in. [Writing a domain and a contract](../contract.md) says what each refuses;
 every key is in [the domain's reference](../dsl/domain-dsl.md).
 
@@ -46,8 +46,8 @@ context map draws it as a group of its contexts; nothing at run time reads the k
 ## Contexts and their glossary
 
 A bounded context is a part of the domain where a word means one thing. "Copy" at the loan desk is a copy a
-member can take home; in the catalogue it may be any item on the shelf, lendable or not. Two contexts are
-where the same word may mean two things without either being wrong.
+member can take home; in the catalogue it may be any item on the shelf, lendable or not. Separate contexts
+let the same word mean 2 things without either being wrong.
 
 ```elixir
 context :loans, "Loans", subdomain: :lending do
@@ -63,8 +63,8 @@ means in this context and, optionally, the `source` the definition comes from.
 
 A term may say which words must not be used for it, `avoid "Borrowing", reason: "…"`, and how it is said in
 another language, `translation :de, "Ausleihe", definition: "…"`, with what it means there; a translation
-may avoid words of its own language. A term defined twice in one context does not compile ([`D1`](../contract.md#refusals-d)), nor two
-translations of one term into one language, or one into the context's own ([`D2`](../contract.md#refusals-d)).
+may avoid words of its own language. A term defined twice in one context does not compile ([`D1`](../contract.md#refusals-d)), nor 2
+translations of 1 term into the same language, nor a translation into the context's own language ([`D2`](../contract.md#refusals-d)).
 
 The glossary is what `mix eh_os_contract.glossary` prints, per context, with the words to avoid and the
 translations; `--language en` prints each term in English, or notes that it has none.
@@ -72,28 +72,28 @@ translations; `--language en` prints each term in English, or notes that it has 
 ### The glossary in the code
 
 Labels are in the context's language and identifiers are in the domain's `code_language:`, English unless
-`use EhOsContract.Domain` says otherwise. A term's **word in code** is its translation into that language — or
-the term itself, in a context written in it — so a term "Wypożyczenie" with `translation :en, "Loan"` is the
+`use EhOsContract.Domain` says otherwise. A term's **word in code** is its translation into that language, or
+the term itself in a context written in that language. So a term "Wypożyczenie" with `translation :en, "Loan"` is the
 word `loan`, and `:loan`, `:loan_id` and `:return_loan` are named with it. A term with several words is
 matched as those words in a row: "Due date" is in `:due_date_set`, not in `:date_due`. Inflected forms are not
 matched.
 
 `mix eh_os_contract.glossary` lists, under each term, its word in code and the declarations of the context's
-contracts named with it. `mix eh_os_contract.check` reads the names of things — units, read models and
-fields — both ways:
+contracts named with it. `mix eh_os_contract.check` reads the names of things (units, read models and
+fields) both ways:
 
-- **`word-without-term`** (notice): one per context, the words of its names no term covers, the word used by
-  the most names first. Words of one or two letters (`id`, `at`) are left out, and so are names of commands
-  and events, whose verbs are inflected ("returned") where a term is not ("Return").
-- **`term-of-another-context`** (warning): a name says the word in code of a term another context declares,
-  and no term of its own context covers it: either the word means something here too and the glossary should
-  say what, or the name borrows the other context's meaning. One finding per name. A field typed
-  `{:id, entity}`, or named like the identity of another context's unit (`loan_id`), is not read, since it
-  refers to that declaration under its name.
+- **`word-without-term`** (notice): one finding per context. It lists the words in the context's names that
+  no term covers, starting with the word used by the most names. Words of 1 or 2 letters (`id`, `at`) are left
+  out, and so are names of commands and events, whose verbs are inflected ("returned") where a term is not ("Return").
+- **`term-of-another-context`** (warning): a name uses the word in code of a term another context declares,
+  and no term of its own context covers it. Either the word means something here too and the glossary should
+  say what, or the name borrows the other context's meaning. One finding per name. The check skips a field typed
+  `{:id, entity}` or named like the identity of another context's unit (`loan_id`): it refers to that
+  declaration under its name.
 
 ## Relations between contexts
 
-A relation says how two contexts depend on each other: one of the eight context-mapping patterns. Five are
+A relation says how two contexts depend on each other: one of the 8 context-mapping patterns. Of these, 5 are
 directed, with an upstream the other side depends on and a downstream that depends on it:
 
 | Type | What it says |
@@ -104,7 +104,7 @@ directed, with an upstream the other side depends on and a downstream that depen
 | `:open_host_service` | the upstream offers a protocol for any downstream |
 | `:published_language` | the two exchange a documented, shared language |
 
-Three are symmetric and name their two contexts with `between:`. On the context map a directed relation is an
+The other 3 are symmetric and name their 2 contexts with `between:`. On the context map a directed relation is an
 arrow from upstream to downstream, a symmetric one a line, and `:separate_ways` a dashed one.
 
 | Type | What it says |
@@ -122,7 +122,7 @@ relation :separate_ways, between: [:loans, :events]
 `between:`), then the second's, each a term of its context's glossary. The glossary then shows, under a term,
 what the other end calls it.
 
-An end of a directed relation may be an external system rather than a context, the other end then a context:
+One end of a directed relation may be an external system; the other end is then a context:
 `relation :anticorruption_layer, upstream: :payment_provider, downstream: :loans`. A symmetric relation is
 between contexts only. A relation whose roles do not fit its type, an end the domain does not declare, a
 context related to itself, or a word of `terms:` its context's glossary does not define does not compile
@@ -214,7 +214,7 @@ the catalogue is upstream, the desk downstream.
 
 ## What the compiler refuses
 
-The domain's own rules ([`D1`](../contract.md#refusals-d)–[`D7`](../contract.md#refusals-d)) and the rules between a contract and its domain ([`X1`](../contract.md#refusals-x), [`X2`](../contract.md#refusals-x)) are in the
+The domain's own rules ([`D1`](../contract.md#refusals-d) to [`D7`](../contract.md#refusals-d)) and the rules between a contract and its domain ([`X1`](../contract.md#refusals-x), [`X2`](../contract.md#refusals-x)) are in the
 table of [Writing a domain and a contract](../contract.md). The ones this page is about:
 
 - **[`D1`](../contract.md#refusals-d)**: a name not snake_case, two subdomains or contexts of one name, a term defined twice in a
@@ -237,8 +237,8 @@ A domain that compiles may still describe a business its contracts do not have. 
   it a context, or remove it.
 - **`bounded-context-without-content`** (warning): no contract names the context as its `context:`, so
   nothing is decided, recorded or read there. Values and entities the context owns do not count. In the
-  example, the catalogue is reported until a contract belongs to it; that is right while its contract is not
-  written yet.
+  example, the catalogue is reported until a contract belongs to it; that is expected until its contract is
+  written.
 - **`orphan-context-mapping`** (warning): a relation that no reference crosses: no contract of one context
   consumes a contract of the other or names an entity it owns, in either direction. For a relation to an
   external system, no contract of the context calls it, depends on it, has a field it issues or acts through
@@ -254,5 +254,5 @@ A domain that compiles may still describe a business its contracts do not have. 
 - **`label-with-avoided-term`** (warning): a label of a contract uses a word its context's glossary says to
   avoid. In the example, an event of the loans contract labelled "Borrowing recorded" is reported. Every
   declaration's label and every enum member's label is read; a word matches whole, in any letter case, and
-  not inside the term itself. Inflected forms are not caught, so `avoid` names each form to avoid. The words
-  a translation avoids are another language's, which labels are not written in.
+  not inside the term itself. Inflected forms are not caught, so `avoid` names each form to avoid. The check skips
+  words a translation avoids: they belong to another language, and labels are not written in it.
