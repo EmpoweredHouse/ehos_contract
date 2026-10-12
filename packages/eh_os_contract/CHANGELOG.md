@@ -67,6 +67,10 @@ and the `ehos-dev:release` skill makes one.
   pages link the field to the unit, and a unit's page lists the fields that refer to it. In a contract's
   `graph.v1` document a field's `refers_to` names the entity or the contract's own unit, and is left out for
   a sibling's unit. Moves no verdict; a contract that types a field this way gets a new version.
+- **A domain's `graph.v1` document draws what one contract's cannot** (plan DD, stage L3, #286): a new
+  relation type, `refers_to`, from a contract to a sibling whose units' numbers it keeps, one per pair, with
+  the units' names in `units`. The schema in `priv/schema/graph.v1.json` lists it among a domain's relations,
+  every one of which a document carries, empty or not. Moves no verdict.
 
 ### Changed
 

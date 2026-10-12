@@ -994,7 +994,7 @@ defmodule EhOsContract.Check.Completeness do
             do: {other, "consumes #{inspect(from)}", Links.at(consumes)}
           ) ++
             for(
-              name <- contract.model |> references() |> Enum.uniq(),
+              name <- References.in_model(contract.model),
               referent = Map.get(referents, name),
               referent != nil,
               do: {owner(referent, model), "names #{References.describe(referent)}", contract.at}
@@ -1059,12 +1059,4 @@ defmodule EhOsContract.Check.Completeness do
       nil -> nil
     end
   end
-
-  # Every entity or unit a field of the model refers to (plan EM2; L3 (#286)), at any depth.
-  defp references(%{refers_to: entity} = map),
-    do: [entity | map |> Map.delete(:refers_to) |> references()]
-
-  defp references(%{} = map), do: map |> Map.values() |> Enum.flat_map(&references/1)
-  defp references(list) when is_list(list), do: Enum.flat_map(list, &references/1)
-  defp references(_other), do: []
 end

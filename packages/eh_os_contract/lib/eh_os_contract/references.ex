@@ -63,6 +63,20 @@ defmodule EhOsContract.References do
         do: {name, referent}
   end
 
+  @doc """
+  Every name a field of `model`, a contract's model, refers to, at any depth and in the
+  order met, each once.
+  """
+  @spec in_model(map()) :: [atom()]
+  def in_model(model), do: model |> names_in() |> Enum.uniq()
+
+  defp names_in(%{refers_to: name} = map),
+    do: [name | map |> Map.delete(:refers_to) |> names_in()]
+
+  defp names_in(%{} = map), do: map |> Map.values() |> Enum.flat_map(&names_in/1)
+  defp names_in(list) when is_list(list), do: Enum.flat_map(list, &names_in/1)
+  defp names_in(_other), do: []
+
   @doc "Every name a reference may use: the domain's entities and its contracts' units."
   @spec names(map(), [map()]) :: [atom()]
   def names(domain, contracts) do
