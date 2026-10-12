@@ -1,0 +1,1 @@
+Claude Code config only (the ehos-dev ref to 0.4.0). Reviewed with the four ehos-tools#98 step 3 branches, two reviews and two rounds; no finding here. Live check: write-adr stops here and says it does not apply.
