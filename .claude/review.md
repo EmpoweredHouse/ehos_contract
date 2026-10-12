@@ -17,10 +17,11 @@ until `HEAD` carries a note in `refs/notes/review`. The note belongs to one comm
 amend or rebase leaves the new `HEAD` without one. The hook is a reminder for this workflow, not
 access control. It reads the `HEAD` of the directory the command runs in — the one a leading
 `cd <dir> &&` names, else the session's working directory, so a worktree is checked as itself and
-not as the main checkout — not the branch the pull request will carry (`--head`). It does not see an
-invocation behind `env`, `bash -c` or a shell keyword, it lets everything through on a machine
-without `jq`, and it refuses `--help` too (`gh help pr create` works). Keeping to the steps is what
-makes the note mean something.
+not as the main checkout — not the branch the pull request will carry (`--head`). It does not see
+the command behind `env`, `bash -c` or a shell keyword (`time`), with a global flag before `pr`
+(`gh -R <repo> pr …`), or split by quotes or a backslash at the end of a line. It lets everything
+through on a machine without `jq`, and it refuses `--help` too (`gh help pr create` works). Keeping
+to the steps is what makes the note mean something.
 
 ## Documentation alone
 
