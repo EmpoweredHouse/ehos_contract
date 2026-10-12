@@ -66,7 +66,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   consumes Taxvision.Contracts.DocumentIntake, [:invoice_pulled_from_ksef]
 
   dcb :accounting_month, "Miesiąc księgowy firmy" do
-    identity [:company_id, :period_id]
+    identity company_id: {:id, :client}, period_id: :id
 
     consults :registry_data_consistent, match: [:company_id, :period_id]
     consults :registry_discrepancy_detected, match: [:company_id, :period_id]
@@ -96,7 +96,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   # 03 §4.4: TurnoverInvoiceMatch, "tabela ciągła" of one company's month.
   dcb :turnover_matching, "Dopasowywanie obrotów z fakturami" do
-    identity [:company_id, :period_id]
+    identity company_id: {:id, :client}, period_id: :id
 
     consults :invoice_pulled_from_ksef, match: [:company_id, :period_id]
 

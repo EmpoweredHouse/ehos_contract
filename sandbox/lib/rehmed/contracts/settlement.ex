@@ -60,7 +60,7 @@ defmodule Rehmed.Contracts.Settlement do
   use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.settlement"
 
   aggregate :visit_settlement, "Rozliczenie wizyty" do
-    identity :visit_id
+    identity visit_id: {:id, :visit}
 
     state do
       field :scope_changed, :boolean, default: false

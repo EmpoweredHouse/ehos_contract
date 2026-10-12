@@ -84,7 +84,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
       or_rejects: :fulfilled_once,
       rejects: :fulfilled_once,
       source: "E (2026-10-04)" do
-      field :computer_id, :id
+      field :computer_id, {:id, :computer}
     end
 
     # A start date is known for a new person (T l.58: who comes, and when), not
@@ -101,7 +101,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
 
     event :fulfilled, "Wydano komputer — zapotrzebowanie zaspokojone",
       source: "cf.pdf, E (2026-10-04)" do
-      field :computer_id, :id
+      field :computer_id, {:id, :computer}
     end
   end
 
@@ -119,7 +119,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
   # waiting for a computer, from when, and whether one is already ordered for them.
   read_model :waiting, "Zapotrzebowania — kto czeka na komputer",
     projects: [:opened, :computer_ordered, :fulfilled] do
-    field :demand_id, :id
+    field :demand_id, {:id, :demand}
     field :employee_id, :id, subject: :employee
     field :reason, :demand_reason
     field :starts_on, :date, optional: true

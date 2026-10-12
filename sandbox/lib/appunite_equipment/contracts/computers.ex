@@ -171,7 +171,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
         :for_sale_not_issued
       ],
       source: "T l.100–102, E" do
-      field :demand_id, :id
+      field :demand_id, {:id, :demand}
       field :assignment_id, :id
       field :employee_id, :id, subject: :employee
       field :shipped_on, :date
@@ -298,7 +298,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
     # Assigning the person, setting up their account, packing and calling the
     # courier are one move (E, 4 October 2026), and it answers one demand.
     event :issued, "Wydano komputer pracownikowi", source: "T l.100–102, E" do
-      field :demand_id, :id
+      field :demand_id, {:id, :demand}
       field :assignment_id, :id
       field :employee_id, :id, subject: :employee
       field :shipped_on, :date
@@ -406,7 +406,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
       :disposed,
       :lost
     ] do
-    field :computer_id, :id
+    field :computer_id, {:id, :computer}
     field :profile, :hardware_profile
     field :serial_number, :serial_number, optional: true
     field :chip, :chip, optional: true

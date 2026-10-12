@@ -56,11 +56,13 @@ defmodule Rehmed.ConsumedFieldChangeTest do
   end
 
   # The two contracts compiled and checked against each other, as the project's
-  # compiler does; the violations with their file and line.
+  # compiler does; the violations with their file and line. The real scheduling contract
+  # is checked beside them, as in the tree: both identities are its visit's number
+  # (plan DD, L3 (#286)).
   defp contracts(namespace, change) do
     modules =
       compile(copy(@publisher, namespace, change), @publisher) ++
-        compile(copy(@subscriber, namespace), @subscriber)
+        compile(copy(@subscriber, namespace), @subscriber) ++ [Rehmed.Contracts.Scheduling]
 
     for {message, anno} <- EhOsContract.Contract.Links.check(modules),
         do: {message, anno && to_string(:erl_anno.file(anno)), anno && :erl_anno.line(anno)}
