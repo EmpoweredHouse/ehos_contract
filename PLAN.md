@@ -129,7 +129,7 @@ for P2e.
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
      T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta; z fali 2 ID1 (#152).
   2. **Asystent:** fala 2 — ID2, potem ID3, ID4, P1a… po kolei (tabela „Postęp”), każdy przez swoje issue (skill
-     `stage-issue`, gałąź `dd/<issue>-…`). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
+     `ehos-dev:stage-issue`, gałąź `dd/<issue>-…`). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
      AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: akapit, issue, ◐ i gałąź w tabeli; koniec: komentarz zamykający issue; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
@@ -175,7 +175,7 @@ for P2e.
 2. `PLAN.md`, „Dopisek 5 października — DD” — decyzje, tabela „Postęp” (jedyne miejsce ze stanem programu) i
    zasady jej prowadzenia, projekt etapu, który zaczynasz, „Konwencje każdego PR-a”, decyzje przed etapem, ryzyka.
    **Od 6 października szczegóły etapu są w jego issue** (kolumna „Issue” w tabeli; etykiety `dd`, `wave-<n>`), a
-   jak prowadzić etap przez issue — skill `.claude/skills/stage-issue/SKILL.md`.
+   jak prowadzić etap przez issue — skill `ehos-dev:stage-issue` (plugin `ehos-dev`).
 3. `PLAN.md`, „Dopisek 4 października — #99” i „LC… — co wyszło” — cykl życia (`from:`, `or_rejects:`), na którym
    stoi program; „Dopisek 4 października (3)” — trzecia analiza ESDM i decyzja o etykiecie timera (N3).
 4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
@@ -2237,7 +2237,7 @@ czas („Doba na dokumentację”).
 Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan żyje tutaj, nie w rozmowie.
 **Od 6 października (decyzja użytkownika) każdy etap ma issue na GitHubie** (etykiety `dd` i `wave-<n>`, po
 angielsku, dla czytelnika spoza zespołu): zakres, oczekiwany wynik, decyzje z odrzuconymi opcjami, przegląd, PR-y z
-`Closes #N`. Tutaj zostaje status, zakres w kilku słowach, akapit etapu i link — skill `stage-issue`. **Status żyje
+`Closes #N`. Tutaj zostaje status, zakres w kilku słowach, akapit etapu i link — skill `ehos-dev:stage-issue`. **Status żyje
 tylko tutaj, uzasadnienia tylko w issue.** Etapy zrobione wcześniej mają zamknięte issue z linkiem do PR-a i do
 „co wyszło” poniżej; tych sekcji nie przepisujemy. *Odrzucone:* wszystko dalej w `PLAN.md` (plik ma ponad 11 000
 linii, decyzje giną w środku); wszystko w issue (model musiałby czytać API, żeby się rozeznać); issue dla wszystkich

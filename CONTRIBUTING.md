@@ -1,16 +1,17 @@
 # Contributing
 
 How work is planned, recorded and reviewed in this repository, for a person joining it. An assistant working
-here follows the same scheme; `CLAUDE.md` and the skills in `.claude/skills/` give it the details.
+here follows the same scheme; `CLAUDE.md`, the skills in `.claude/skills/` and those of the `ehos-dev` plugin
+("Changelogs and releases") give it the details.
 
-## Where things live
+## Where the work is recorded
 
 Each place answers one question. Copying an answer into a second place makes two versions, and one of them goes
 stale, so each place links to the next instead.
 
 | Place | The question it answers | When it changes |
 | --- | --- | --- |
-| `PLAN.md` | Where are we, and what comes next? The programmes, their waves, each stage's status, a short paragraph per stage, the link to its issue | When a stage starts or ends |
+| `PLAN.md` | Where are we, and what comes next? The programmes, their waves, each stage's status in the "Postęp" table, a short paragraph per stage, the link to its issue | When a stage starts or ends |
 | A GitHub issue | Why and how was this stage done? In short for anyone, then the technical detail, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed by the pull request that says `Closes #N`, or by hand after its closing comment |
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
 | A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
@@ -31,13 +32,17 @@ stage was carried out stays in its issue.
 1. **The stage's paragraph in `PLAN.md`** says, in a few lines, what it changes and what it depends on. A stage
    not yet started may be rewritten; one already done is not.
 2. **An issue** from the "Programme stage" template, with the programme's label and, where there are waves,
-   the wave's. Its first section, "In short", is for a reader outside the team who may not be technical: no
+   the wave's: `dd` and `wave-0` … `wave-5` for the DD programme ("domain-driven design checked by code").
+   The template applies none, so that a stage of another programme, which gets a label of its own and the same
+   waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
 3. **A branch** named after the issue: `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
-   English.
-5. **Decisions go on the issue as comments when they are made**, with the options that lost and why.
+   English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
+5. **Decisions go on the issue as comments when they are made**, with the options that lost and why. One that
+   changes what the library is meant to be also gets its dated amendment in `docs/adr/`, linking the issue,
+   and the issue names it under "Changes to the design record".
 6. **A pull request** from the template. Its first line is `Closes #N` on the pull request that finishes the
    issue, `Part of #N` on earlier ones, or `No issue: <why>` for a change that needs none — a typo, a
    dependency bump. A check (`.github/workflows/pr-links-issue.yml`) fails a pull request that says none of
@@ -47,7 +52,14 @@ stage was carried out stays in its issue.
    `sandbox/` passes (`README.md`, "Working on it").
 8. **When it is merged**, `PLAN.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
-   when it upgrades.
+   when it upgrades. No "co wyszło" section is added to `PLAN.md`. Stages finished before 6 October 2026 keep
+   theirs; their issues are closed ones that link the pull request and the section.
+9. **When a wave or a programme closes**, nothing more is written: the user decides whether it is released
+   ("Changelogs and releases"), and the next wave's stages start from the "Postęp" table.
+
+The `ehos-dev:stage-issue` skill is the same procedure for an assistant, with how an issue is written. It comes
+from the `ehos-dev` plugin ("Changelogs and releases"), which eh-os, ehos-tools and eh-os-contract share, and
+reads this section and the one before it for what is this repository's.
 
 ## Changelogs and releases
 
@@ -77,7 +89,7 @@ How a release is made is written once, for the three repositories, in eh-os's
 [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
 skill makes one. The skill comes from the `ehos-dev` plugin, which ehos-tools publishes as a Claude Code
 marketplace and `.claude/settings.json` enables, pinned to its tag `ehos-dev-vX.Y.Z`; a new version is taken by
-moving that `ref`. On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store a
+moving that `ref`, and a session picks it up after `/reload-plugins` or a restart. On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store a
 credential with `gh auth setup-git`, since ehos-tools is private. In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires

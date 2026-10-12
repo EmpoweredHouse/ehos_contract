@@ -98,7 +98,7 @@ The hook still asks for the note: record it once you have checked the diff is do
    lists what each review found and what happened to each finding, or says the change is
    documentation only. A stage of a programme links its issue: `Closes #N` on
    the pull request that finishes the stage, `Part of #N` on any before it, and the review goes on that issue as a comment too, in the plain
-   form `.claude/skills/stage-issue/SKILL.md` describes.
+   form the `ehos-dev:stage-issue` skill describes.
 
 After review comments or a failed CI run, fix, commit, and go through steps 3–7 again for the new
 commits before pushing them. For a small fix-up both reviews may run on the new commits alone. Before any push to an existing pull request, check it is still open: a
