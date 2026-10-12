@@ -892,6 +892,11 @@ defmodule EhOsContract.GraphDocumentTest do
     assert by_name["previous_id"]["refers_to"] == Document.id([:unit, scope(Notes), :note])
     assert node(d, "unit", by_name["previous_id"]["refers_to"])
     refute Map.has_key?(by_name["branch_id"], "refers_to")
+
+    # Neither unit is taken for an entity the domain does not declare.
+    names = for e <- d["nodes"]["entity"], do: e["name"]
+    refute "note" in names
+    refute "branch_note" in names
   end
 
   describe "a node's content is its declaration's" do

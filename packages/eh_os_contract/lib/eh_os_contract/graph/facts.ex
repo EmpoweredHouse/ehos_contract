@@ -930,9 +930,14 @@ defmodule EhOsContract.Graph.Facts do
   defp follow([], _values, _entities, acc), do: acc
 
   defp follow([field | rest], values, entities, {found, seen}) do
+    # A unit's name is no entity (plan DD, L3 (#286)), whatever this document holds of it.
     refs =
       Enum.map(type_values(Map.get(field, :type), values), &{:value, &1}) ++
-        Enum.map(List.wrap(Map.get(field, :refers_to)), &{:entity, &1}) ++
+        for(
+          name <- List.wrap(Map.get(field, :refers_to)),
+          is_map_key(entities, name),
+          do: {:entity, name}
+        ) ++
         Enum.map(List.wrap(Map.get(field, :subject)), &{:subject, &1}) ++
         Enum.map(List.wrap(Map.get(field, :issued_by)), &{:issuer, &1}) ++
         Enum.map(List.wrap(issued_through(field, entities)), &{:issuer, &1})
