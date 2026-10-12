@@ -1,0 +1,12 @@
+Review of origin/main..6120283b (L3, #286). Two reviews in parallel.
+
+Correctness (code-review, high): 8 findings.
+- fixed 5f52e986: a contract's graph took every unit reference for an undeclared entity node (seen on Rehmed's settlement, AppUnite's demands); test in graph_document_test fails without the fix.
+- fixed ae66cdd1: pages lost an entity's link when a domain field names a name a unit shares; resolver now entity first, as the graph; pages_test fails without the fix. Same commit: one index per site for pages and crossings (also the security review's finding).
+- fixed 6120283b: breaking change marked in the CHANGELOG (also the security review's); A8 message for a typed identity; hint for identity typed as a second argument (test added); suggest helper merged; F2 comment; PLAN.md meaning before code; CHANGELOG scope.
+- skipped: units in a dependency are invisible to the compiler between modules -> #287.
+
+Security and performance (engineering:code-review): nothing above low. Quadratic scans in pages -> fixed (ae66cdd1). Name clash breaking -> CHANGELOG. A8 wording -> fixed.
+
+Gate on OTP 27.1.2 / Elixir 1.18.4: EXIT=0. sandbox 226 + 7 properties, check 0/31/22 (+3 cross-bounded-context-reference-without-mapping: external payers and statutory reporting keep scheduling's visit, the KSeF inbox the client company, across relations the workshops' maps do not draw; -1 orphan-context-mapping: scheduling-settlement now crossed); engine 1681 + 10 properties, check 0/77/51 unchanged; web 77; auth 329 + 1 property + 1 doctest; graph 88.
+Verified for real: MIX_ENV=dev mix eh_os_contract.pages --domain rehmed: the visit's page lists 7 referrers, settlement's field links to the visit.
