@@ -25,6 +25,18 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** `<mount>/model/<id>` serves a contract's model without `process`, and its events without `stage`
+  and `terminal`, because a contract can no longer declare a process (engine, plan DD, stage P2h,
+  eh-os-contract#221). A consumer of the model reads a run's stages, endings and promises from a process module
+  once the API serves process documents. The digests and versions of existing contracts do not move. `graph.v1`
+  keeps its process, stage and promise kinds, empty in a contract's document. Moves no verdict.
+- **The contract status screen no longer shows a contract's process** — its runs, accountable, duration and
+  promises — and the graph screen no longer draws a contract's declared process shape or names the process beside
+  the contract in its selector (plan DD, stage P2h, eh-os-contract#221). A contract has none any more; a process
+  module's screens come with P2e (eh-os-contract#220). Moves no verdict.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

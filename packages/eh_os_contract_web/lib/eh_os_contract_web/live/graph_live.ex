@@ -14,22 +14,19 @@ defmodule EhOsContract.Web.Live.Graph do
   # the pictures declared, and the mount that follows lays the log over them. A click
   # on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).
   #
-  # The selector picks a contract, by its id, whether or not it has a process (plan DD,
-  # P1b, #186; until then it picked a process, and a contract without one could not be
-  # reached). Its pictures, per ADR §9 ("navigation is per-process, never global"; the
-  # domain's pictures above them are a dated exception there):
+  # The selector picks a contract, by its id (plan DD, P1b, #186; until then it picked a
+  # process, and a contract without one could not be reached). Its picture is **declared
+  # versus observed** — the contract's full graph with the log laid over it (v2 plan E7c,
+  # plan EG1): the steps, and the actors, read models, queries and external systems
+  # around them. A contract declares no process (plan DD, P2h, #221), so the declared
+  # shape of a process — stages, endings, promise windows — is not drawn here until
+  # process modules are (P2e, #220).
   #
-  #   * **Declared shape of its process**, only when it has one: the structural view —
-  #     stages, endings, promise windows — true even for a process with zero runs.
-  #   * **Declared versus observed** — the contract's full graph with the log laid over
-  #     it (v2 plan E7c, plan EG1): the steps, and the actors, read models, queries and
-  #     external systems around them.
-  #
-  # **Above both, each domain** (plan EG2): its context map — subdomains, contexts,
+  # **Above it, each domain** (plan EG2): its context map — subdomains, contexts,
   # externals and their relations — with its actors under it, people and systems apart,
   # a row opening the actor's panel; and, where it has a v2 contract, its system: the
   # contracts in their contexts, what one consumes from another, and the log over it.
-  # **Below both, the units** of the selected contract, each its own picture: state,
+  # **Below it, the units** of the selected contract, each its own picture: state,
   # commands, events, invariants and the scenarios that pin each path. The map and the
   # units describe the model rather than the log; they are here since 28 September at
   # the user's word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed
@@ -46,12 +43,11 @@ defmodule EhOsContract.Web.Live.Graph do
   def mount(_params, _session, socket) do
     registered = EhOsContract.Registry.contracts()
 
-    # Plan DD, P1b (#186): every contract, by its id, whether or not it has a process.
+    # Plan DD, P1b (#186): every contract, by its id.
     contracts =
       for(
         contract <- registered,
-        model = EhOsContract.Model.fetch(contract),
-        do: %{contract: contract, id: model.id, process: EhOsContract.Model.process(model)}
+        do: %{contract: contract, id: EhOsContract.Model.fetch(contract).id}
       )
       |> Enum.sort_by(& &1.id)
 
@@ -88,7 +84,7 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @spec select_contract(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
   defp select_contract(socket, nil) do
-    assign(socket, selected: nil, document: nil, overlay: nil, declared?: false, units: [])
+    assign(socket, selected: nil, document: nil, overlay: nil, units: [])
   end
 
   defp select_contract(socket, selected) do
@@ -105,7 +101,6 @@ defmodule EhOsContract.Web.Live.Graph do
       selected: selected.id,
       document: document,
       overlay: if(connected?(socket), do: Overlay.contract(selected.contract)),
-      declared?: List.keymember?(views, :declared, 0),
       units: units
     )
   end
@@ -151,17 +146,12 @@ defmodule EhOsContract.Web.Live.Graph do
               value={contract.id}
               selected={contract.id == @selected}
             >
-              {option_label(contract)}
+              {contract.id}
             </option>
           </select>
         </form>
 
         <p :if={@contracts == []}>No contract is registered.</p>
-      </section>
-
-      <section :if={@declared?}>
-        <h3>Declared shape of its process</h3>
-        <.live_component module={Canvas} id="declared-graph" document={@document} view={:declared} />
       </section>
 
       <section :if={@document}>
@@ -198,11 +188,6 @@ defmodule EhOsContract.Web.Live.Graph do
     </div>
     """
   end
-
-  # A contract by its id, and its process's label where it has one.
-  @spec option_label(map()) :: String.t()
-  defp option_label(%{id: id, process: nil}), do: id
-  defp option_label(%{id: id, process: process}), do: "#{id} — #{process.label}"
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"
