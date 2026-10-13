@@ -156,7 +156,7 @@ the key store, cannot unwrap any subject's data, erased or not. And a read model
 data is plain text in your own tables, so its backups hold it whatever happens to the keys:
 `forget/2` reaches the live table, and only your backup policy reaches the rest.
 
-## A domain and a contract
+## A domain, a contract and a process
 
 ```elixir
 defmodule MyApp.Domain do

@@ -69,7 +69,7 @@ Pick by what the business says, not by what the code will look like:
 | "if Y has not happened a day after X, chase it" | a `process_manager` with a timer | `write-reaction` |
 | "reception sees the day's totals" | a `read_model` and the `query` that reads it | `write-reaction` |
 
-- A contract describes what one context decides; it has no run of its own. A fact goes into the
+- A contract belongs to one context and describes what it decides; it has no run of its own. A fact goes into the
   contract of the context it is born in, and is never declared twice: a sibling contract that
   reacts to it `consumes` it. The run it belongs to — a loan from lending to return, a visit from
   booking to its report — is a process module (`use EhOsContract.Process`), which includes the
@@ -87,8 +87,9 @@ Pick by what the business says, not by what the code will look like:
 - **Yes** → a `promise` in the process module, with the number that was stated, and
   `unverified: true` until the process owner confirms it (`unverified-declaration`). Its `from`,
   `eventually` and `or_else` are events the module includes (`R5`).
-- **No** → the structure stands on its own, and that is a complete answer. Stages, `ends_on` and
-  the declared paths already give the report untraversed paths and drift without any clock
+- **No** → the structure stands on its own, and that is a complete answer. The contracts' declared
+  paths give the report untraversed paths and drift, and a process module's stages and `ends_on`
+  its runs and the runs that went out of order, without any clock
   (`contract-distillation`, step 7). A promise with no agreed number is written without `within`,
   and `promise-without-within` says so rather than letting it read as kept.
 - A reminder *before* a scheduled moment is not a promise — a promise runs forward from an observed

@@ -15,7 +15,7 @@ those events into runs, and a set of claims about runs that the report can check
 A process is a module of its own, `use EhOsContract.Process`. It names the contracts' events that make a
 run, whether they come from one contract or from several, and says what the business promised about a run.
 [The guide](../contract.md) introduces it; this page is how it behaves. A contract can still declare a
-`process` of its own, an older form that is being removed: [the last section](#a-process-declared-in-a-contract)
+`process` of its own, an older form that is being removed: [the last section](#the-older-form)
 says how it maps onto a module.
 
 ## A run, and what tells one from another
@@ -145,7 +145,9 @@ end
 ```
 
 The contracts know nothing of the run: they decide loans and fines, and declare their events. The module
-decides nothing and declares no event of its own; nothing is dispatched to it.
+decides nothing and declares no event of its own; nothing is dispatched to it. `loan_id` is the loan's
+identity in `Loans` and an ordinary field in `Fines`; both are `:id`, so the module correlates on it
+([`X6`](../contract.md#refusals-x)).
 
 **Its `id:`** keys its runs, as a contract's `id:` keys its events: two processes of one system may not
 share it ([`X7`](../contract.md#refusals-x)), and renaming it changes the key every run is filed under, so the report no longer
@@ -156,8 +158,8 @@ finds the runs already in the log.
 at least one stage, and every stage includes something ([`R3`](../contract.md#refusals-r)); a run with one step has one stage. The
 events are ones the contract declares, not ones it consumes or receives ([`X5`](../contract.md#refusals-x)). Everywhere else in the
 module an event is named by its name alone, so two included events of one name are refused, whichever
-contracts they come from ([`N1`](../contract.md#refusals-n)). The graph and the pages draw the stages, and the report counts the runs
-that entered them out of order.
+contracts they come from ([`N1`](../contract.md#refusals-n)). The engine does not hold a run to the order of its stages; the
+report counts the runs that entered them out of order.
 
 **`ends_on`** lists the events that end a run. Whichever comes first ends it, and a later event does not
 reopen it. A run with none of them yet is open. The contracts do not mark their events as ending anything,
@@ -167,8 +169,8 @@ since a fine settled ends a loan only for this process.
 to. The report prints the actor's label beside the process. It is an actor of the domain, of any of its
 contexts, since a process may cross them ([`X2`](../contract.md#refusals-x)).
 
-**Its runs are filed under its `id:`**, at the append of each included event. An included event without a
-value for every `correlate` field belongs to none of its runs.
+A run is filed at the append of each included event; an included event without a value for every
+`correlate` field belongs to none of its runs.
 
 The module compiles to a model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Its keys are on
 [the reference page](../dsl/process-dsl.md).
@@ -260,7 +262,12 @@ the change.
 
 ## What the compiler refuses
 
-- A module without a stage, or a stage including nothing ([`R3`](../contract.md#refusals-r)).
+- An `id:` that is not the domain's `name:` then dotted snake_case segments ([`D11`](../contract.md#refusals-d)); a `domain:` that
+  is not a compiled domain ([`X1`](../contract.md#refusals-x)).
+- No `correlate`, an empty one, two, or one naming a field twice ([`R2`](../contract.md#refusals-r)); one of more than six fields
+  ([`F9`](../contract.md#refusals-f)).
+- A module without a stage, a stage including nothing, or an `include:` entry naming no event or no
+  contract module ([`R3`](../contract.md#refusals-r)).
 - An included event the contract does not declare ([`X5`](../contract.md#refusals-x)), or one whose `correlate` fields are missing,
   optional, personal or of another identifier ([`X6`](../contract.md#refusals-x)); two included events of one name ([`N1`](../contract.md#refusals-n)).
 - A promise naming an event the process does not include, an `ends_on` event it does not include, or
@@ -281,7 +288,7 @@ The [rules](../rules.md) about a process:
 - **`promise-without-within`** (notice): the promise has no failing case. Add `within` when the owner
   agrees a window; leave it out while nobody has.
 
-<a id="a-process-declared-in-a-contract"></a>
+<a id="the-older-form"></a>
 
 ## A process declared in a contract
 
@@ -291,11 +298,18 @@ Before process modules, a contract could describe one run of its own with a `pro
 being removed, and a new process is written as a module. A contract that still has one maps onto a module
 like this:
 
-- the block's `correlate`, `accountable`, `deadline` and promises move to the module unchanged, and its name
-  becomes the module's `id:` (`"<application>.<name>"`);
+- the block's label becomes the module's `label:`, its `accountable` the `accountable:` option of the `use`,
+  and the module gets an `id:` of its own, the domain's `name:` then dotted snake_case segments, as a
+  contract's is ([`D11`](../contract.md#refusals-d));
+- its `correlate`, promises and `deadline` move into the module's body unchanged;
 - each `stage` of the block becomes a stage of the module, and the events the units placed in it with a
-  `stage` group, and the sibling events it took with `include`, go into that stage's `include:`;
-- the events marked `terminal: true`, and the `include … terminal: true`, go into `ends_on`;
+  `stage` group go into that stage's `include:`, under their contract; a sibling event the block took with
+  `include` goes in under the sibling that declares it, `{Fines, :fine_settled}`, since a module includes
+  only events a contract declares ([`X5`](../contract.md#refusals-x));
+- a block without stages had every local event in its run; the module gets one stage that includes them
+  all;
+- the events marked `terminal: true`, and the `include … terminal: true`, go into `ends_on`; a `deadline`
+  without them does not compile in a module ([`R6`](../contract.md#refusals-r));
 - the contract loses the block, its units' `stage` groups and the events' `terminal:`.
 
 The runs of the module are filed under its `id:`, so runs recorded under the contract's process are not

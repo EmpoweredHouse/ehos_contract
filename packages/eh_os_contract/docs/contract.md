@@ -59,8 +59,8 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 A contract belongs to one context of one domain. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
 contract records — `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
-changes the type of every event it covers, and the log's old rows are no longer read as those events; the module's
-name is stored too, in each row, so it is not free to rename either.
+changes the type of every event it covers, and the log's old rows are no longer read as those events. Rows and keys
+name the contract by its id, not its module, so renaming the module keeps its history.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
@@ -134,10 +134,11 @@ end
   Dispatch refuses an actor outside `by:` before anything else. An event outside `emits:` after the
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.
 - **A contract describes what its units decide, not the run they make.** A loan from lending to return, a
-  visit from booking to its report, is a [process](#a-process): a module of its own that names the events of
-  the run, from one contract or several, and what was promised about it. A contract can still declare a
+  visit from booking to its report, is a [process](#process-modules): a module of its own that names the events of
+  the run, from one contract or several, and what was promised about it. A contract whose units only
+  decide and record — a register of equipment, of rooms — needs no process. A contract can still declare a
   `process` of its own, an older form that is being removed
-  ([processes](concepts/process.md#a-process-declared-in-a-contract)).
+  ([processes](concepts/process.md#the-older-form)).
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
@@ -227,7 +228,7 @@ person is refused. A `:system` actor and a reaction act for the application, and
 role: a person who must act on another's unit does so through a command declared for it. A scenario names the
 person with `as "librarian-ola"` beside its `actor` ([`S7`](#refusals-s)), and is refused for anyone else.
 
-<a id="a-process"></a>
+<a id="process-modules"></a>
 
 ## A process
 

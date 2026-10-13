@@ -83,8 +83,9 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
   log as written after its subject is erased.
 - **The unit's identity is injected**: do not declare it again (`F6`).
-- **Every `correlate` field of the process is in every local event** (`R2`; the identity counts),
-  and is neither `optional:` nor `personal:` (`F4`).
+- **Every `correlate` field of a process module that includes it is in the event** (`X6`; the
+  unit's identity counts), required, not `personal:`, and the same kind of identifier as in the
+  module's other events.
 - **Every required, non-personal `:id` field becomes a tag** a boundary can `match:` on — also one
   typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a PESEL, a patient's number at a payer — is never an `:id`.
 - **Personal data** is `personal: :patient_id`, naming a required, non-personal `:id` field of the

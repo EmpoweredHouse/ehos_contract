@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract do
   @moduledoc """
-  One context of a business written down: the contract DSL.
+  What is decided in one context of a business, written down: the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
         use EhOsContract.Contract,
@@ -22,7 +22,7 @@ defmodule EhOsContract.Contract do
         end
       end
 
-  Everything decided in the context is declared here: the units that decide, with
+  What the contract decides is declared here: the units that decide, with
   their state, invariants, commands and events; what reacts to events; what is read;
   what enters from elsewhere and what leaves; scenarios. The run those events make,
   with its stages and promises, is an `EhOsContract.Process` of its own; a contract's

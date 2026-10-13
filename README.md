@@ -65,9 +65,9 @@ green — the code that should have run it just never fired.
 
 ## The idea
 
-Declare the process once, as a **contract**: an Elixir module, written by developers, approved
+Declare the process once, as **contracts** and a **process**: Elixir modules, written by developers, approved
 by the person who owns the process, and versioned like any other code. Everything downstream
-reads that one module and nothing else — the code structure, the tests, the API surface, the
+reads those modules and nothing else — the code structure, the tests, the API surface, the
 graph of events the system is allowed to emit, and the assertions a log of what actually
 happened will be checked against ("within 3 days of X, Y must happen, or else Z").
 

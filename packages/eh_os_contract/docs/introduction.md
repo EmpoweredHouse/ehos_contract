@@ -6,8 +6,8 @@ What eh_os_contract is, what it is for, and the principles it is built on.
 
 A business process is written down as Elixir modules: a **domain**, the words the people in the
 process use, the contexts it is split into, who acts in it and which systems it depends on; a
-**contract** per context, what is decided there, what happened, what reacts to it and what is read; and a
-**process**, the run those events make and what was promised about it. Both are declarations, not code that runs: every key of them is listed in the reference
+**contract**, what is decided in one of its contexts, what happened, what reacts to it and what is read; and a
+**process**, the run those events make and what was promised about it. All are declarations, not code that runs: every key of them is listed in the reference
 ([the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md),
 [the process module](dsl/process-dsl.md)).
 
