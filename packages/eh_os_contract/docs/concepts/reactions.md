@@ -81,7 +81,7 @@ defmodule Concepts.Reactions.Contracts.Loans do
 
     event :copy_returned, "Copy returned"
     event :loan_marked_overdue, "Loan overdue"
-    event :loan_closed, "Loan closed", terminal: true
+    event :loan_closed, "Loan closed"
   end
 
   policy :close_on_return, "A returned copy closes its loan",
@@ -102,10 +102,6 @@ defmodule Concepts.Reactions.Contracts.Loans do
     timer :due, "Return date", wait: {30, :day}, issues: :mark_overdue
 
     ends_on :loan_closed
-  end
-
-  process :lending, "A loan, from lending to return" do
-    correlate :loan_id
   end
 
   scenario "a returned copy closes its loan" do
@@ -246,8 +242,8 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 - `process-manager-without-event-reactions` (warning): after it starts, the manager reacts only to its own
   timers, so the process can end it but not steer it. It is a schedule, and may be simpler as one.
 - `event-without-consumer` (warning): nothing reacts to or reads an event: no reaction, read model,
-  boundary, consuming contract or `publish`, and no promise, lifecycle or `terminal:` that the conformance
-  report reads. Add the reader it was declared for, or ask whether it is needed.
+  boundary, consuming contract or `publish`, and no promise, lifecycle or process module that the
+  conformance report reads. Add the reader it was declared for, or ask whether it is needed.
 - `backward-edge` (warning): with stages declared, a policy or a process manager reacting to an event of one
   stage issues a command whose events sit in an earlier one. Either the stages are in the wrong order or the
   reaction is a loop the process has not declared.

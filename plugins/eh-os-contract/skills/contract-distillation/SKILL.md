@@ -6,8 +6,9 @@ description: Distill process-mapping workshop material (raw transcripts, board e
 # Contract distillation
 
 Checked on 30 September 2026 (plan E11e).
-The categories are the two DSLs' (`packages/eh_os_contract/docs/dsl/domain-dsl.md` and
-`contract-dsl.md`, generated from the code and kept current by the gate). Not yet run on a real
+The categories are the three DSLs' (`packages/eh_os_contract/docs/dsl/domain-dsl.md`,
+`contract-dsl.md` and `process-dsl.md`, generated from the code and kept current by the gate): the
+run, its stages, terminal states, promises and deadline are a process module's, not a contract's. Not yet run on a real
 engagement in this form: review its output before trusting it.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an

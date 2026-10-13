@@ -45,10 +45,13 @@ turn down is `command :request_payment` with `rejects:`; the event is what it de
 
 ## Where it goes
 
-Inside the unit that decides or records it, `aggregate` or `dcb`. When the process declares stages,
-inside the unit's `stage :name do … end` group (`R3`); the order of stages is the order of `stage`
-entries in `process`. An event born in a sibling process is not declared again: it is consumed
-(`consumes Sibling, [:event]`) and placed in this run with `include` inside `process` (`R4`).
+Inside the unit that decides or records it, `aggregate` or `dcb`, in the contract of the context it
+is born in. The contract does not say which run the event belongs to. A process module
+(`use EhOsContract.Process`) does: it names the event in the stage it belongs to,
+`stage :name, "Label", include: [{Contract, [:event]}]`, and in `ends_on` when the event ends a run.
+The event carries the module's `correlate` fields, required and not personal (`X6`). An event born
+in a sibling contract is not declared again: a contract that reacts to it `consumes` it, and a
+process includes it from the contract that declares it (`X5`).
 
 ## The name, and the label
 
@@ -80,8 +83,9 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
   log as written after its subject is erased.
 - **The unit's identity is injected**: do not declare it again (`F6`).
-- **Every `correlate` field of the process is in every local event** (`R2`; the identity counts),
-  and is neither `optional:` nor `personal:` (`F4`).
+- **Every `correlate` field of a process module that includes it is in the event** (`X6`; the
+  unit's identity counts), required, not `personal:`, and the same kind of identifier as in the
+  module's other events.
 - **Every required, non-personal `:id` field becomes a tag** a boundary can `match:` on — also one
   typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a PESEL, a patient's number at a payer — is never an `:id`.
 - **Personal data** is `personal: :patient_id`, naming a required, non-personal `:id` field of the
@@ -96,13 +100,13 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 
 ## The rest of the declaration
 
-- `terminal: true` when the event ends a run. `deadline-without-terminal-event` notices a process
-  with a deadline and no terminal event.
+- **When it ends a run**, the process module lists it in `ends_on`; a module's `deadline` does not
+  compile without `ends_on` (`R6`).
 - `depends_on: :external` when the fact waits on a system; an outage then suspends a promise
   instead of breaking it.
 - **Someone reads it.** `event-without-consumer` warns of an event nothing takes: no reaction, read
   model, boundary, sibling `consumes` or `publish`, no promise names it, no unit's lifecycle starts or
-  moves on it, nor is it `terminal`.
+  moves on it, and no process module includes it.
   An event that nothing depends on is usually a field of another event (`contract-distillation`,
   step 1).
 - **A scenario shows it.** A decided event: `expect :new_event` in a scenario of the command that
@@ -122,7 +126,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 3. Take the name and label from the material, with `source:`.
 4. Write the fields: types from the built-in set or domain values, correlation present, personal
    data marked.
-5. Place it: its unit, its stage group, `terminal:` if it ends a run.
+5. Place it: its unit; if it belongs to a run, the stage of the process module that includes it, and
+   that module's `ends_on` if it ends the run.
 6. Decided: add it to the command's `emits:` and to a scenario's `expect`. Recorded: use it as a
    scenario's `given` or `on`, and test `EhOsContract.record/3` with an actor from `recorded_by:`.
 7. Compile. Every refusal starts with its code; `packages/eh_os_contract/docs/contract.md`, "What will not compile", says

@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract do
   @moduledoc """
-  A part of a business, and at most one process, written down: the contract DSL.
+  What is decided in one context of a business, written down: the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
         use EhOsContract.Contract,
@@ -20,16 +20,13 @@ defmodule EhOsContract.Contract do
             field :amount, :money
           end
         end
-
-        process :visit_settlement, "Rozliczenie wizyty" do
-          correlate :visit_id
-        end
       end
 
-  Everything born in the process is declared here: the units that decide, with
+  What the contract decides is declared here: the units that decide, with
   their state, invariants, commands and events; what reacts to events; what is read;
-  what enters from elsewhere and what leaves; the process with its stages and
-  promises; scenarios. The module compiles to plain data,
+  what enters from elsewhere and what leaves; scenarios. The run those events make,
+  with its stages and promises, is an `EhOsContract.Process` of its own; a contract's
+  own `process` is an older form that is being removed. The module compiles to plain data,
   `__eh_os_contract_model__/0`, which `EhOsContract.Model.fetch/1` returns.
 
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its
@@ -50,7 +47,7 @@ defmodule EhOsContract.Contract do
     default_extensions: [extensions: [EhOsContract.Contract.Dsl]],
     opt_schema: [
       domain: [type: :atom, required: true, doc: "The application's domain module."],
-      context: [type: :atom, required: true, doc: "The domain context the process belongs to."],
+      context: [type: :atom, required: true, doc: "The domain context the contract belongs to."],
       id: [
         type: :string,
         doc:

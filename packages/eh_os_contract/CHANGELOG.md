@@ -80,6 +80,12 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **The docs and the plugin's skills teach a process as a module** (plan DD, stage P2i, #294). The examples of
+  the README, `docs/introduction.md`, `docs/contract.md` and `docs/concepts/` write a run with
+  `use EhOsContract.Process` (`stage … include:`, `ends_on`) and contracts without a `process`, stage groups or
+  `terminal:`; `docs/concepts/process.md` says how a contract's own `process`, which is being removed, maps onto a
+  module. The plugin `eh-os-contract` 0.2.0: `add-event`, `module-boundary-check`, `change-contract`,
+  `write-reaction` and `contract-distillation` say the same. Nothing in the engine changed.
 - **Breaking:** `{:id, name}` for a name that both an entity of the domain and a unit of one of its
   contracts have no longer compiles (plan DD, stage L3, #286); before, it meant the entity. Adding such a
   unit to any contract of the domain refuses every reference to the entity. Rename the unit or the entity.

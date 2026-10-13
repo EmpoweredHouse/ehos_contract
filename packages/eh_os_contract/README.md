@@ -156,7 +156,7 @@ the key store, cannot unwrap any subject's data, erased or not. And a read model
 data is plain text in your own tables, so its backups hold it whatever happens to the keys:
 `forget/2` reaches the live table, and only your backup policy reaches the rest.
 
-## A domain and a contract
+## A domain, a contract and a process
 
 ```elixir
 defmodule MyApp.Domain do
@@ -185,18 +185,28 @@ defmodule MyApp.Contracts.Onboarding do
       emits: :application_approved
 
     event :application_received, "Application received"
-    event :application_approved, "Application approved", terminal: true
+    event :application_approved, "Application approved"
   end
+end
 
-  process :onboarding, "Onboarding" do
-    correlate :application_id
-    accountable :reviewer
+defmodule MyApp.Processes.ApplicationReview do
+  use EhOsContract.Process,
+    id: "my_app.application_review",
+    domain: MyApp.Domain,
+    label: "Reviewing an application",
+    accountable: :reviewer
 
-    promise :decided_within_a_week do
-      from :application_received
-      eventually :application_approved
-      within {7, :day}
-    end
+  correlate :application_id
+
+  stage :review, "Review",
+    include: [{MyApp.Contracts.Onboarding, [:application_received, :application_approved]}]
+
+  ends_on :application_approved
+
+  promise :decided_within_a_week do
+    from :application_received
+    eventually :application_approved
+    within {7, :day}
   end
 end
 ```
