@@ -8,14 +8,12 @@
         "name": "ledger.flag_entry",
         "command": "flag_entry",
         "label": "Flag an entry",
-        "process": "entries",
         "principals": ["human"]
       },
       {
         "name": "ledger.record_entry",
         "command": "record_entry",
         "label": "Record an entry",
-        "process": "entries",
         "principals": ["human"]
       }
     ],
