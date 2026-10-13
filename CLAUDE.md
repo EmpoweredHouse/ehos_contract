@@ -12,9 +12,21 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 | `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
 | `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment |
 | `docs/` | the design record (`docs/adr/`), distillations and workshop material |
+| `plugins/eh-os-contract/`, `.claude-plugin/` | the `eh-os-contract` Claude Code plugin and the marketplace that publishes it: the skills for writing contracts that applications use |
 
 Each of the five is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
 is a property we keep: `sandbox/` is the library's first consumer, not part of it.
+
+**This repository also maintains the skills applications write contracts with.** It is a Claude Code
+marketplace, and its plugin `eh-os-contract` (`plugins/eh-os-contract/`) carries the skills an application built on
+EHOS uses: `module-boundary-check`, `contract-distillation`, `add-event`, `change-contract`, `write-decider` and
+`write-reaction`, linked from `.claude/skills/` for work here. Applications enable it at the tag of its release,
+and `ehos_app`'s template is to do that for every project it generates, so keeping these skills true to the
+engine is this repository's job, as its docs are: a change to the engine that changes how a contract is
+written, decided or changed updates the skill that says so, in the same pull request. A skill there is read in
+an application, so it names no path of this repository its "In an application" paragraph does not map, and a
+change to one raises the plugin's version (`CONTRIBUTING.md`, "Changelogs and releases"). `review-pr` and
+`write-docs` are this repository's alone, in `.claude/skills/`.
 
 **`sandbox/` is not a product.** The library is. TaxVision (`sandbox/lib/taxvision/`), Rehmed
 (`sandbox/lib/rehmed/`) and AppUnite's equipment (`sandbox/lib/appunite_equipment/`) are **test material**: each
