@@ -221,6 +221,20 @@ scenario        description!   scope · actor
 > id is namespaced and survives renaming the module, the reason contracts' rows moved to ids in ID3–ID4; a process
 > that moves from a contract into a module therefore starts its runs afresh under the new key.
 > ([#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210))
+>
+> *Changed 13 October 2026, plan DD, P2h.* **A contract can no longer declare a process.** A run — its
+> correlation, stages, endings, deadline and promises — is a process module (P2b), the only form: §4.1's "the
+> process itself with its stages and promises" and requirement 7's "at most one process" now read "none". The
+> `process` block with `correlate`, `accountable`, `stage`, `include`, `deadline` and `promise`, a unit's `stage`
+> groups and an event's `terminal:` no longer compile; "stage membership is nesting" below holds only of a
+> process module's `stage … include:`, and an event ends a run when a module's `ends_on` names it. What the old
+> form needed went with it: R1 refuses only a contract that declares nothing, R4 is gone, and N1, R6, F4, F8, F9,
+> X2, X6 and X7 refuse nothing of a contract's process any more (§6). The model of a contract has no `process`,
+> and its events no `stage` and `terminal` (§9). **No contract's version moves:** the digest keeps the empty
+> process group and every event's `stage: nil, terminal: false` in the digested form, as P1d kept `cadence`, so
+> removing the form is not a new deployment of every contract. The examples of §4.5 and §4.6 keep the old form
+> as they were written; `contract_examples_test.exs` takes it out before compiling them (`without_process/1`).
+> [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
@@ -522,6 +536,16 @@ defmodule Rehmed.VisitSettlementScenariosTest do
 end
 ```
 
+> *Changed 13 October 2026, plan DD, P2h.* **The example's run no longer compiles in the contract.** Its
+> `process :visit_settlement` block, the `stage :charging` and `stage :payment` groups in the unit and
+> `terminal: true` on the two closing events are the form a contract lost (§4.2's amendment of this date). Written
+> today, the contract keeps the unit with its events, and the run is a process module beside it:
+> `use EhOsContract.Process, id: "rehmed.visit_settlement", domain: Rehmed.Domain, label: "Rozliczenie wizyty"`,
+> `correlate :visit_id`, `stage :charging, include: [{Rehmed.Contracts.VisitSettlement, [...]}]`, `stage
+> :payment, include: …`, and `ends_on [:visit_closed_commercially, :visit_closed_without_payment]`. The test that
+> compiles this section strips the old form (`without_process/1`).
+> [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
+
 ### 4.6 The other kinds, in short
 
 Names the material does not provide are marked *illustrative*; a real port does not invent them.
@@ -632,6 +656,13 @@ with :ok <- EhOsContract.Capability.check(%RecordPayment{} = cmd, roles),
 > what it writes), `:downstream` (the system it calls is given the key) or `:infrastructure` (the engine
 > keys it, as it does a policy's commands). The line is rewritten because the test that compiles this
 > section reads it as written.
+
+> *Changed 13 October 2026, plan DD, P2h.* **A run over foreign events is a process module.** The ClinicalVisit
+> example above, a `process` that `include`s consumed events, `terminal:` on an `include` and a `stage` group in
+> PayerSettlement's boundary, no longer compiles: a process module includes each event from the contract that
+> declares it, `stage :departure, include: [{Rehmed.Contracts.Scheduling, :visit_completed}]`, with no `consumes`
+> needed for it, ends a run with `ends_on`, and carries the promise.
+> [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 
 ## 5. What a contract generates, and how an implementation binds to it
 
@@ -832,6 +863,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   it declares none, no groups. R4: `include` names consumed events only. R5: a promise's `from`,
   `eventually` and `or_else` are events of the run. R6: `within`, `deadline` and `wait` use fixed units and
   non-negative counts.
+
+  > *Changed 13 October 2026, plan DD, P2h.* **These rules are a process module's now, and R1 and R4 are not.**
+  > A contract declares no process, so R1 refuses only a contract that declares nothing, and R4, which held a
+  > contract's `include` to its consumed events, is gone with `include`: a process module's includes are X5's.
+  > R2, R3, R5 and R6 hold of a process module as P2b built them, and R6 also keeps a timer's `wait`.
+  > [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 - *Consumes.* K1: a contract cannot consume itself; consumed aliases do not collide with local names.
 - *Scenarios.* S1: the trigger resolves; the unit is inferred or given with `scope`. S2: `given` and
   `expect` events belong to that unit or to what it consults or projects. S3: data keys are declared fields,
@@ -974,6 +1011,15 @@ not register the compiler):
   > database while every other rule reads compiled modules only — it comes with `publish` leaving the
   > application (E12); and v1's "promises finer than their run", which no v2 contract can be asked about
   > until the sandbox's are written anew (E9). **L5 repeats L3** for a project without the compiler.
+
+  > *Changed 13 October 2026, plan DD, P2h.* **Two rules read process modules, and one is gone.**
+  > `backward-edge` read a contract's stage groups and would never fire again: it now warns of a policy or a
+  > process manager reacting to an event that one stage of a process module includes and issuing a command
+  > whose events sit in an earlier stage of that module (the user's choice; rejected: deleting the rule, to
+  > come back with a later stage). `orphan-actor` counts an actor named as a process module's `accountable`,
+  > which only a contract's process counted. "Deadline without a terminal event" is removed: a process module's
+  > `deadline` does not compile without `ends_on` (R6), so nothing can reach it.
+  > [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 
 ## 7. A change to an event, and its subscribers
 
@@ -1227,6 +1273,17 @@ Recovering a test database that leaked rows (the `MIX_ENV=test mix run` trap in 
 > either: runs are read through `_event_runs`, and `(type, position)` covers `type`. Nothing migrates from
 > before the cut — there was no consumer, so a database with an older schema is recreated (decision of the
 > user, 29 September; `PLAN.md`, "E11c — co wyszło").
+
+> *Changed 13 October 2026, plan DD, P2h — migration V03.* **`process` and `instance_id` leave
+> `eh_os_contract_events` and `eh_os_contract_commands`.** They filed a row under the home run of its contract's
+> process, which a contract no longer has; every run an event belongs to is a row of `_event_runs`, filed under
+> the process module that includes it, and a command keeps no run (its columns were written and never read; what
+> is lost is the run of a rejected command of a contract's process, a form that no longer exists). V03 is the
+> first version that removes, so the engine now refuses to start on storage **newer** than its own version, as it
+> refused older storage since T2a: a node of the release before would write the removed columns on every append.
+> A deploy stops the old nodes before it migrates. Rejected (the user's choice): keeping the columns unwritten,
+> which leaves two columns that mean nothing. `down` gives them back, empty and nullable.
+> [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 
 ### 10.4 Appends
 
@@ -1587,6 +1644,15 @@ the person's.
 > takes a run by its first event and does not cut it; a stage entered by its first event; the count and the pairs,
 > never which runs. [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260)
 
+> *Changed 13 October 2026, plan DD, P2h.* **An event has no home run.** "`process` and `instance_id` are computed
+> at append for the event's home process" and "a contract `include`s into its own process" above no longer hold:
+> a contract declares no process, and the columns are gone (§10.3's amendment of this date). Every run is a row
+> of `_event_runs`, written in the append for each process module that includes the event (P2c), and `Trace`
+> and `Run` read only those. The conformance report keeps its `processes` key, empty for a contract, and a
+> process module's report carries the runs, durations and promises; `graph.v1` keeps its process, stage and
+> promise kinds, empty in a contract's document, until P2e draws a process module's (the user's choice: shapes
+> others read stay readable unchanged). [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |
@@ -1679,9 +1745,9 @@ one is a dated note here.
 | D2 | Migrations collapse into one version at the cut, as V01 did ("the final shape, not the history"). |
 | D3 | A contract without an implementation stays legal (Rehmed, the invented fixtures); `check` notes it. |
 | D4 | ESDM's rules split as §6 does: structural rules are L2/L3 errors, completeness rules are L5 warnings. |
-| D5 | Stages by nesting inside units, and `include` for foreign events. |
+| D5 | Stages by nesting inside units, and `include` for foreign events (*changed 13 October 2026, plan DD, P2h: a contract has no stages; a process module's `stage … include:` names each event by its contract, §4.2*). |
 | D6 | The 15 events no command publishes — observations and integrations' answers — declare `recorded_by:` and enter through `record/3`; no command name is invented, which "names come from the workshop" forbids. |
-| D7 | An event included in another contract's process belongs to that run through `_event_runs`. |
+| D7 | An event included in another contract's process belongs to that run through `_event_runs` (*changed 13 October 2026, plan DD, P2h: in a process module's, and every run of an event is there, §13*). |
 | D8 | F1 and F2 go to the process owner; they do not block. |
 | D9 | One branch per stage, small commits with the gate green; pushing, pull requests and merges are the user's. |
 
