@@ -68,7 +68,7 @@ hide a mistake:
 | `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own? |
 | `unverified-declaration` | Is the change relying on an `unverified: true` number as if it were confirmed? |
 | `consults-without-match` | A boundary reading every event of a type conflicts under load. |
-| `backward-edge` | A new one on a real contract is an ordering mistake or an undeclared loop. |
+| `backward-edge` | A new one on a real process module is an ordering mistake in its stages or an undeclared loop. |
 | `declaration-without-implementation` | Declared, not built — intended in this pull request, or forgotten? |
 
 ### Where the randomness is
