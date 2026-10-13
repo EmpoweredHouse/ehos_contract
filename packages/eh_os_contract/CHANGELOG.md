@@ -93,6 +93,48 @@ and the `ehos-dev:release` skill makes one.
   #286), which `priv/schema/graph.v1.json` lists among the relations every document carries. A reader that
   holds a domain document to the schema shipped in 0.3.0 refuses the new key, and the new schema refuses a
   0.3.0 document without it: take the schema with the engine. A contract's document is unchanged.
+- **Moves a verdict:** two rules of `mix eh_os_contract.check` read process modules (plan DD, stage P2h, #221).
+  `backward-edge` warns of a policy or a process manager reacting to an event one stage of a process module
+  includes and issuing a command whose events sit in an earlier stage of that module; it read a contract's stage
+  groups, which are gone. `orphan-actor` counts an actor named as a process module's `accountable` as used; it
+  counted only a contract's process, so such an actor was reported unused. `deadline-without-terminal-event` is
+  removed: a process module's `deadline` does not compile without `ends_on` (R6).
+- **The plugin `eh-os-contract` 0.3.0** (plan DD, stage P2h, #221): `change-contract` says that a process module's
+  stages decide what `backward-edge` warns of, since a contract has none.
+
+### Removed
+
+- **Breaking:** a contract can no longer declare a process (plan DD, stage P2h, #221). The `process` block — with
+  `correlate`, `accountable`, `stage`, `include`, `deadline` and `promise` —, a unit's `stage` groups and an
+  event's `terminal:` no longer compile. Write the run as a process module, `use EhOsContract.Process`, with
+  `stage … include: [{Contract, [:event]}]` and `ends_on`; `docs/concepts/process.md` says how each part of the
+  old block maps onto one. The refusals of the old form go with it: R1 now refuses only a contract that declares
+  nothing, R4 (a process's includes) is gone, and N1, R6, F4, F8, F9, X2, X6 and X7 lose what they refused of a
+  contract's process; what they refuse of a process module is unchanged. No contract's version or digest moves:
+  the digest keeps an empty process group and every event's `stage: nil, terminal: false`.
+- **Breaking:** the model of a contract has no `process` key, and its events no `stage` and `terminal` (plan DD,
+  stage P2h, #221), in `EhOsContract.Model.to_data/1` and the `/model` documents. `EhOsContract.Model.process/1`
+  is `nil` and `EhOsContract.Model.process_events/1` is `[]` for a contract; for a process module they answer as
+  before, and an entry of `process_events/1` no longer has `included`, which was always `true` for one. The
+  conformance report keeps its `processes` key, `[]` for a contract, and `graph.v1` keeps its process, stage and
+  promise kinds and their relations, empty in a contract's document: a reader of either needs no change.
+- **Breaking:** the storage is at version 3 (plan DD, stage P2h, #221): `eh_os_contract_events` and
+  `eh_os_contract_commands` lose `process` and `instance_id`, which filed a row under the process its contract
+  declared. An event's runs are the rows of `eh_os_contract_event_runs`, filed under the process modules that
+  include it, and a command keeps no run. **A host has to act:** add a migration calling
+  `EhOsContract.Migrations.up(version: 3)` (and `down(version: 3)`, which gives the columns back empty). The
+  engine now also **refuses to start on storage newer than its own version**, since a node of an older release
+  would write the removed columns on every append: a deploy stops the nodes of the old release before it
+  migrates.
+
+  ```elixir
+  defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV3 do
+    use Ecto.Migration
+
+    def up, do: EhOsContract.Migrations.up(version: 3)
+    def down, do: EhOsContract.Migrations.down(version: 3)
+  end
+  ```
 
 ## [0.3.0] - 2026-10-11
 

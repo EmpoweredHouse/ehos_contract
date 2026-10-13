@@ -9,7 +9,7 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress.** It draws six views — a contract's full graph, its process's declared shape,
+**Work in progress.** It draws six views — a contract's full graph, a process's declared shape,
 a unit, an aggregate's lifecycle, a domain's context map and its system — and, as a test bed, every node and
 relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and where it comes from, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
@@ -50,7 +50,7 @@ reads the markup this package renders — so update them together:
 | `view` | Of | The picture |
 | --- | --- | --- |
 | `:contract` | a contract | its full graph: commands and events in their units, the reactions and timers between them, read models and queries, the actors and external systems around them |
-| `:declared` | a contract with a process | the process's stages in order, the events in them, its promises with their windows |
+| `:declared` | a document with a process | the process's stages in order, the events in them, its promises with their windows; a contract's document has none since a contract can no longer declare a process |
 | `{:unit, id}` | a contract | one unit: its state, commands, events and rules, and the scenarios that pin each path |
 | `{:lifecycle, id}` | a contract | an aggregate's statuses and the events that move it between them |
 | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
