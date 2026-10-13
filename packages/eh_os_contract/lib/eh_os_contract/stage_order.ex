@@ -75,7 +75,6 @@ defmodule EhOsContract.StageOrder do
 
     out_of_order =
       process.name
-      |> to_string()
       |> firsts(comparable(stage_of), Enum.map(events, & &1.type), opts)
       |> Enum.group_by(&elem(&1, 0), &Tuple.delete_at(&1, 0))
       |> Enum.map(fn {_run, rows} -> pairs(rows, stage_of, order) end)

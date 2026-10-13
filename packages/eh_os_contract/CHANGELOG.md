@@ -107,10 +107,13 @@ and the `ehos-dev:release` skill makes one.
 - **Breaking:** a contract can no longer declare a process (plan DD, stage P2h, #221). The `process` block — with
   `correlate`, `accountable`, `stage`, `include`, `deadline` and `promise` —, a unit's `stage` groups and an
   event's `terminal:` no longer compile. Write the run as a process module, `use EhOsContract.Process`, with
-  `stage … include: [{Contract, [:event]}]` and `ends_on`; `docs/concepts/process.md` says how each part of the
-  old block maps onto one. The refusals of the old form go with it: R1 now refuses only a contract that declares
-  nothing, R4 (a process's includes) is gone, and N1, R6, F4, F8, F9, X2, X6 and X7 lose what they refused of a
-  contract's process; what they refuse of a process module is unchanged. No contract's version or digest moves:
+  `stage … include: [{Contract, [:event]}]` and `ends_on` (`docs/concepts/process.md`): the block's label,
+  `accountable`, `correlate`, promises and `deadline` move to the module, the events of each stage group and each
+  `include` go into a stage's `include:` under the contract that declares them, and the `terminal:` events into
+  `ends_on`. The refusals of the old form go with it: the rule that a contract declares a process now refuses only
+  a contract that declares nothing (R1), the rule on a process's includes is gone (R4), and the rules on names,
+  durations, correlation fields, actors and siblings lose what they refused of a contract's process (N1, R6, F4,
+  F8, F9, X2, X6, X7); what they refuse of a process module is unchanged. No contract's version or digest moves:
   the digest keeps an empty process group and every event's `stage: nil, terminal: false`.
 - **Breaking:** the model of a contract has no `process` key, and its events no `stage` and `terminal` (plan DD,
   stage P2h, #221), in `EhOsContract.Model.to_data/1` and the `/model` documents. `EhOsContract.Model.process/1`
@@ -124,8 +127,10 @@ and the `ehos-dev:release` skill makes one.
   include it, and a command keeps no run. **A host has to act:** add a migration calling
   `EhOsContract.Migrations.up(version: 3)` (and `down(version: 3)`, which gives the columns back empty). The
   engine now also **refuses to start on storage newer than its own version**, since a node of an older release
-  would write the removed columns on every append: a deploy stops the nodes of the old release before it
-  migrates.
+  would write the removed columns on every append. **A rolling deploy that migrates first breaks:** a node of
+  0.3.0 does not refuse newer storage, and once the migration runs every command it handles fails on a missing
+  column. Stop the nodes of the old release before migrating. Dropping the columns takes a short exclusive lock
+  on both tables, so migrate when nothing holds a long transaction on them.
 
   ```elixir
   defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV3 do

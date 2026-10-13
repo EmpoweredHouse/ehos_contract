@@ -25,11 +25,11 @@ defmodule EhOsContract.Check.Contracts do
   Every finding of these rules about `contracts`, v2 contract modules. Their
   implementations are the ones dispatch finds (`EhOsContract.Implementations`),
   unless `implementations` names the modules to read instead. The stages a reaction
-  could go back across are those of `processes`, the process modules, or of every
-  process module the registry has when it is `nil`.
+  could go back across are those of `processes`, the process modules (none unless
+  given), or of every process module the registry has when it is `nil`.
   """
   @spec findings([module()], [module()] | nil, [module()] | nil) :: [Finding.t()]
-  def findings(contracts, implementations \\ nil, processes \\ nil) do
+  def findings(contracts, implementations \\ nil, processes \\ []) do
     linked = contracts |> Enum.map(&Links.contract/1) |> Enum.reject(&is_nil/1)
     staged = staged(processes || EhOsContract.Registry.processes())
 

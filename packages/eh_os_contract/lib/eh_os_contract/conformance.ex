@@ -215,7 +215,7 @@ defmodule EhOsContract.Conformance do
   def process(model, opts \\ []) do
     %{} = process = Model.process(model)
 
-    runs = EhOsContract.Paths.runs_of(model, to_string(process.name), opts)
+    runs = EhOsContract.Paths.runs_of(model, process.name, opts)
 
     %{
       process: process.name,

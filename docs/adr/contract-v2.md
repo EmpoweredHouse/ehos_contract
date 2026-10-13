@@ -228,8 +228,10 @@ scenario        description!   scope · actor
 > `process` block with `correlate`, `accountable`, `stage`, `include`, `deadline` and `promise`, a unit's `stage`
 > groups and an event's `terminal:` no longer compile; "stage membership is nesting" below holds only of a
 > process module's `stage … include:`, and an event ends a run when a module's `ends_on` names it. What the old
-> form needed went with it: R1 refuses only a contract that declares nothing, R4 is gone, and N1, R6, F4, F8, F9,
-> X2, X6 and X7 refuse nothing of a contract's process any more (§6). The model of a contract has no `process`,
+> form needed went with it: the rule that a contract declares a process now refuses only a contract that declares
+> nothing (R1); the rule holding a process's `include` to consumed events is gone (R4); and the rules on names,
+> durations, correlation fields, actors and siblings refuse nothing of a contract's process any more (N1, R6, F4,
+> F8, F9, X2, X6, X7; §6). The model of a contract has no `process`,
 > and its events no `stage` and `terminal` (§9). **No contract's version moves:** the digest keeps the empty
 > process group and every event's `stage: nil, terminal: false` in the digested form, as P1d kept `cadence`, so
 > removing the form is not a new deployment of every contract. The examples of §4.5 and §4.6 keep the old form
@@ -865,9 +867,11 @@ where it helps; every violation is reported as a diagnostic before the single ra
   non-negative counts.
 
   > *Changed 13 October 2026, plan DD, P2h.* **These rules are a process module's now, and R1 and R4 are not.**
-  > A contract declares no process, so R1 refuses only a contract that declares nothing, and R4, which held a
-  > contract's `include` to its consumed events, is gone with `include`: a process module's includes are X5's.
-  > R2, R3, R5 and R6 hold of a process module as P2b built them, and R6 also keeps a timer's `wait`.
+  > A contract declares no process, so the rule about a contract's process refuses only a contract that declares
+  > nothing (R1), and the rule holding a contract's `include` to its consumed events is gone with `include` (R4):
+  > what a process module includes is held by the rule between modules (X5). The rules on correlation, stages,
+  > promises and durations hold of a process module as P2b built them (R2, R3, R5, R6), and the one on durations
+  > also keeps a timer's `wait`.
   > [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 - *Consumes.* K1: a contract cannot consume itself; consumed aliases do not collide with local names.
 - *Scenarios.* S1: the trigger resolves; the unit is inferred or given with `scope`. S2: `given` and

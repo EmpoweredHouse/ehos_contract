@@ -297,10 +297,10 @@ defmodule EhOsContract.ContractExamplesTest do
   defp without_process(code) do
     code
     |> String.replace(", terminal: true", "")
-    |> then(&Regex.replace(~r/^( *)process :\w+, "[^"]*" do\n.*?^\1end\n/ms, &1, ""))
+    |> then(&Regex.replace(~r/^( *)process :\w+, "[^"]*" do\n.*?^\1end\n/msu, &1, ""))
     |> then(
-      &Regex.replace(~r/^( *)stage :\w+ do\n(.*?)^\1end\n/ms, &1, fn _, _indent, events ->
-        String.replace(events, ~r/^  /m, "")
+      &Regex.replace(~r/^( *)stage :\w+ do\n(.*?)^\1end\n/msu, &1, fn _, _indent, events ->
+        String.replace(events, ~r/^  /mu, "")
       end)
     )
   end

@@ -2117,9 +2117,10 @@ move their processes into modules; the tests of runs, promises, deadlines and ke
 tests of the contract's `process` block and the manifest's process field stay for #221, dashboard fixtures for #220.
 **P2h — a contract can no longer declare a process** (#221; tightened 13 October 2026, after the revision that put it
 before P2e). The contract DSL loses `process` (with its `include`), units' `stage` groups and events' `terminal:`;
-the rules lose R1, R4, the contract parts of R2, R3, R5 and R6, `Rules.Fields.correlated/1` and
-`deadline-without-terminal-event`; every reader that branches on a contract's process keeps the module's branch only,
-and a contract's `graph.v1` document loses its process, stage and promise nodes. Migration **V03** drops `process` and
+the rules lose what they refused of a contract's process (the rule that a contract declares one narrows to refusing a
+contract that declares nothing, R1; the rule on its includes goes, R4; the contract parts of R2, R3, R5 and R6),
+`Rules.Fields.correlated/1` and `deadline-without-terminal-event`; every reader that branches on a contract's process
+keeps the module's branch only, and a contract's `graph.v1` document has no process, stage or promise nodes. Migration **V03** drops `process` and
 `instance_id` from `eh_os_contract_events` and `eh_os_contract_commands`: runs live in `eh_os_contract_event_runs`.
 The engine's tests and the web fixtures that still declare a contract's process move to modules or go. Dated
 amendments in `docs/adr/contract-v2.md`; the plugin's skills already teach the module (P2i). Acceptance: no
