@@ -409,11 +409,14 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
                "Zgodność i sprawozdawczość · context"
 
       assert [%{words: "visit_completed", line: "solid", head: true}] =
-               between(view, "contract:rehmed.scheduling", reporting.id)
+               view
+               |> between("contract:rehmed.scheduling", reporting.id)
+               |> Enum.filter(&(&1.type == "consumed_by"))
 
-      # Plan DD, L3 (#286): a contract keeping the number of a sibling's unit.
-      assert [%{words: "refers to visit", line: "dotted", head: true}] =
-               between(view, "contract:rehmed.settlement", "contract:rehmed.scheduling")
+      # Plan DD, L3 (#286): a contract keeping the number of a sibling's unit, drawn the
+      # way the number travels, as a consumed event is.
+      assert [%{words: "number of visit", line: "dotted", head: true}] =
+               between(view, "contract:rehmed.scheduling", "contract:rehmed.settlement")
     end
   end
 end

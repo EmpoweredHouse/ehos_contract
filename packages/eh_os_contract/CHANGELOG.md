@@ -77,6 +77,10 @@ and the `ehos-dev:release` skill makes one.
 - **Breaking:** `{:id, name}` for a name that both an entity of the domain and a unit of one of its
   contracts have no longer compiles (plan DD, stage L3, #286); before, it meant the entity. Adding such a
   unit to any contract of the domain refuses every reference to the entity. Rename the unit or the entity.
+- **Breaking:** a domain's `graph.v1` document carries the new relation type `refers_to` (plan DD, stage L3,
+  #286), which `priv/schema/graph.v1.json` lists among the relations every document carries. A reader that
+  holds a domain document to the schema shipped in 0.3.0 refuses the new key, and the new schema refuses a
+  0.3.0 document without it: take the schema with the engine. A contract's document is unchanged.
 
 ## [0.3.0] - 2026-10-11
 
