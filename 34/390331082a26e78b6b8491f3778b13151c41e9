@@ -1,0 +1,12 @@
+Review of origin/main..34390331 (L3 second PR, #286). Two reviews in parallel.
+
+Correctness (code-review, high): 3 findings hold.
+- fixed 34390331: refers_to arrows ran against consumed_by and closed cycles; dagre reversed scheduling's arrows. Drawn now from the unit's contract to the keeper; view_test asserts the direction.
+- fixed 34390331 (user's decision): the required new relation type is marked **Breaking:** for readers holding a domain document to the 0.3.0 schema.
+- fixed 34390331: renderer moduledoc row for :system.
+Security and performance (engineering:code-review): nothing above low.
+- fixed 232bd8ee: References.in_model walked scenario data; a refers_to key there drew a false edge. Test in graph_document_test fails without the fix.
+- no change needed: Enum.join on units assumes strings, which the schema requires, as the panel already does for publication fields.
+
+Gate on OTP 27.1.2 / Elixir 1.18.4: EXIT=0. sandbox 226 + 7, check 0/31/22 (unchanged from main); engine 1683 + 10, check 0/77/51; web 77; auth 329 + 1 + 1 doctest; graph 89.
+Verified for real: MIX_ENV=dev mix eh_os_contract.graph --domain rehmed gives four refers_to relations, all to rehmed.scheduling with units [visit]. Dashboard not opened in a browser.
