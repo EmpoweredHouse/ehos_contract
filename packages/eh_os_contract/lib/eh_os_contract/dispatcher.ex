@@ -56,9 +56,9 @@ defmodule EhOsContract.Dispatcher do
      an event carrying personal data of an erased subject is refused,
      `{:error, :subject_erased}`, before anything is sealed, and writes no row: the
      decision was the unit's, the refusal is the erasure's. So is a run's key over
-     `EhOsContract.Key.budget/0`, the process's name and the instance id an event
-     belongs to, home or included: `{:error, :key_too_long}`, with no row, in place
-     of Postgres refusing the entry.
+     `EhOsContract.Key.budget/0`, the process's id and the run's key, of a run an
+     event belongs to: `{:error, :key_too_long}`, with no row, in place of Postgres
+     refusing the entry.
   7. **Inside the transaction**: every read model delivered `:in_transaction`
      projects the appended events, in order, then every such policy reacts, then
      every such effect acts. What a
@@ -1251,9 +1251,7 @@ defmodule EhOsContract.Dispatcher do
       contract: model.id,
       contract_version: model.version,
       tags: tags(declaration, event, values, time_zone(model)),
-      process: process_name(model),
-      instance_id: instance(model, event),
-      # The runs of the processes that include it (D7), written with it.
+      # The runs of the process modules that include it (D7), written with it.
       runs: included_runs(model, declaration.type, event),
       command_id: command_id,
       correlation_id: ctx.correlation_id,
@@ -1299,21 +1297,6 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  # The run a struct belongs to: the process's name, then its correlation values.
-  defp instance(model, struct) do
-    case Model.process(model) do
-      nil -> nil
-      process -> run_key(process, struct)
-    end
-  end
-
-  defp process_name(model) do
-    case Model.process(model) do
-      nil -> nil
-      process -> Atom.to_string(process.name)
-    end
-  end
-
   # The key of the run of `process` an event belongs to, or nil when it lacks a
   # correlation field. Called by scenario_case.ex too, which files a promise scenario's
   # givens as dispatch files events (plan DD, S2, #251).
@@ -1325,17 +1308,11 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # Every run the events belong to, as `eh_os_contract_event_runs` indexes it: the
-  # process's name and the instance id (issue #98).
+  # process's id and the run's key (issue #98).
   defp runs_fit(model, events) do
     runs =
       Enum.flat_map(events, fn {declaration, event} ->
-        home =
-          case instance(model, event) do
-            nil -> []
-            key -> [{process_name(model), key}]
-          end
-
-        home ++ included_runs(model, declaration.type, event)
+        included_runs(model, declaration.type, event)
       end)
 
     if Enum.all?(runs, fn {process, key} -> Key.fits?([process, key]) end),
@@ -1343,14 +1320,13 @@ defmodule EhOsContract.Dispatcher do
       else: {:error, :key_too_long}
   end
 
-  # An event without the fields another process correlates on is in none of its runs,
-  # as one without its home process's is in no home run. A process module's runs are
-  # filed under its id (plan DD, P2c, #210), a contract process's under its name.
+  # An event without the fields a process correlates on is in none of its runs. A
+  # process module's runs are filed under its id (plan DD, P2c, #210).
   defp included_runs(model, type, event) do
     for process <- Implementations.included(model.module, type),
         key = run_key(process, event),
         key != nil,
-        do: {to_string(process.name), key}
+        do: {process.name, key}
   end
 
   defp write_row!(repo, job, outcome, fields) do
@@ -1372,8 +1348,6 @@ defmodule EhOsContract.Dispatcher do
             # Each type once, in the order first read: a boundary reads what may be the
             # whole history of a type, and coverage asks only which types were there.
             given_types: job |> Map.get(:given, []) |> Enum.map(& &1.type) |> Enum.uniq(),
-            process: process_name(model),
-            instance_id: instance(model, job.command),
             inputs: Entities.recorded(model, job.declaration, Map.get(job, :reads, %{}))
           },
           fields

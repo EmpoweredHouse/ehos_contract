@@ -59,10 +59,6 @@ defmodule EhOsContract.ViewTest do
           param :visit_id, :id
         end
 
-        process :visit, "Wizyta" do
-          correlate :visit_id
-        end
-
         scenario "druga płatność odrzucona" do
           given :paid, %{amount: 1}
           command :pay, %{amount: 1}
@@ -86,7 +82,7 @@ defmodule EhOsContract.ViewTest do
              """
              domain clinic  2 contexts · 1 contract
              ├─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
-             │  └─ contract #{inspect(@visits)}  process visit
+             │  └─ contract #{inspect(@visits)}
              │     ├─ aggregate visit  1 cmd · 2 evts
              │     │  ├─ command pay  → paid
              │     │  ├─ event paid  ← pay
@@ -104,7 +100,7 @@ defmodule EhOsContract.ViewTest do
              """
              domain clinic  2 contexts · 1 contract
              └─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
-                └─ contract #{inspect(@visits)}  process visit
+                └─ contract #{inspect(@visits)}
                    └─ aggregate visit  1 cmd · 2 evts
                       │  identity: visit_id
                       │  invariant paid_once — Wizyta jest opłacona raz

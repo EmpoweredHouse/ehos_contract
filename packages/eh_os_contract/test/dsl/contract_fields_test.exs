@@ -241,23 +241,25 @@ defmodule EhOsContract.ContractFieldsTest do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-            event :visit_closed, "Wizyta zamknięta", terminal: true do
+            event :visit_closed, "Wizyta zamknięta" do
               field :patient_id, :id, subject: :patient
               field :clinic_id, :id, optional: true
               field :episode_id, :id, personal: :patient_id
             end
           end
 
-          process :visit, "Wizyta" do
+          process_manager :chase, "Pogoń" do
             correlate [:visit_id, :clinic_id, :episode_id]
+            starts_on :visit_closed
+            ends_on :visit_closed
           end
         """)
 
       assert message =~
-               "F4: event :visit_closed, field :clinic_id tells which run of process :visit the " <>
-                 "event belongs to, so it cannot be optional (optional_correlation.ex:10)"
+               "F4: event :visit_closed, field :clinic_id tells which run of process manager " <>
+                 ":chase the event belongs to, so it cannot be optional (optional_correlation.ex:10)"
 
-      assert message =~ "field :episode_id tells which run of process :visit"
+      assert message =~ "field :episode_id tells which run of process manager :chase"
       assert message =~ "so it cannot be personal (optional_correlation.ex:11)"
     end
 
@@ -268,13 +270,15 @@ defmodule EhOsContract.ContractFieldsTest do
                    identity :visit_id
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
 
-                   event :visit_closed, "Wizyta zamknięta", terminal: true do
+                   event :visit_closed, "Wizyta zamknięta" do
                      field :note, :string, optional: true
                    end
                  end
 
-                 process :visit, "Wizyta" do
+                 process_manager :chase, "Pogoń" do
                    correlate :visit_id
+                   starts_on :visit_closed
+                   ends_on :visit_closed
                  end
                """)
     end
@@ -288,18 +292,14 @@ defmodule EhOsContract.ContractFieldsTest do
             identity :invoice_id
             command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
 
-            event :invoice_recorded, "Zarejestrowano", terminal: true do
+            event :invoice_recorded, "Zarejestrowano" do
               field :invoice_number, :string
               field :batches, {:list, :id}
             end
           end
 
-          process :invoice, "Faktura" do
-            correlate [:invoice_id, :invoice_number]
-          end
-
           process_manager :chase, "Pogoń" do
-            correlate [:batches, :reminder]
+            correlate [:invoice_number, :batches, :reminder]
 
             state do
               field :reminder, {:enum, [:soft, :hard]}
@@ -312,7 +312,7 @@ defmodule EhOsContract.ContractFieldsTest do
 
       assert message =~
                "F8: event :invoice_recorded, field :invoice_number tells which run of process " <>
-                 ":invoice the event belongs to, so its value is part of an index key, and it " <>
+                 "manager :chase the event belongs to, so its value is part of an index key, and it " <>
                  "is :string; correlate only on an identifier, an :id of at most 255 bytes, as " <>
                  "match: does (text_correlation.ex:9)"
 
@@ -429,32 +429,6 @@ defmodule EhOsContract.ContractFieldsTest do
       assert [_one] = Regex.scan(~r/F8: event :invoice_recorded, field :ref/u, message)
     end
 
-    test "a field the process and a manager both correlate on is one finding" do
-      message =
-        refuse_contract("TwiceCorrelated", """
-          aggregate :invoice, "Faktura" do
-            identity :invoice_id
-            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
-
-            event :invoice_recorded, "Zarejestrowano", terminal: true do
-              field :invoice_number, :string
-            end
-          end
-
-          process :invoice, "Faktura" do
-            correlate [:invoice_id, :invoice_number]
-          end
-
-          process_manager :chase, "Pogoń" do
-            correlate :invoice_number
-            starts_on :invoice_recorded
-            ends_on :invoice_recorded
-          end
-        """)
-
-      assert [_one] = Regex.scan(~r/F8: event :invoice_recorded, field :invoice_number/u, message)
-    end
-
     test "control: an :id, an entity's identifier and a domain value compile here" do
       assert %{} =
                compile_contract("IdCorrelation", """
@@ -462,22 +436,24 @@ defmodule EhOsContract.ContractFieldsTest do
                    identity :invoice_id
                    command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
 
-                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                   event :invoice_recorded, "Zarejestrowano" do
                      field :clinic_id, {:id, :clinic}
                      field :period, :period
                      field :batch_id, :id
                    end
                  end
 
-                 process :invoice, "Faktura" do
+                 process_manager :chase, "Pogoń" do
                    correlate [:invoice_id, :clinic_id, :period, :batch_id]
+                   starts_on :invoice_recorded
+                   ends_on :invoice_recorded
                  end
                """)
     end
   end
 
   describe "F9: a key of at most six fields" do
-    test "an identity, a process's correlate and a manager's correlate of seven are refused" do
+    test "an identity and a manager's correlate of seven are refused" do
       seven = "[:a_id, :b_id, :c_id, :d_id, :e_id, :f_id, :g_id]"
 
       message =
@@ -485,11 +461,7 @@ defmodule EhOsContract.ContractFieldsTest do
           aggregate :ledger, "Księga" do
             identity #{seven}
             command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
-            event :ledger_opened, "Otwarto", terminal: true
-          end
-
-          process :ledger, "Księga" do
-            correlate #{seven}
+            event :ledger_opened, "Otwarto"
           end
 
           process_manager :chase, "Pogoń" do
@@ -504,7 +476,6 @@ defmodule EhOsContract.ContractFieldsTest do
                  "one index entry, which more fields of an :id at its bound would overflow " <>
                  "(seven_fields.ex:4)"
 
-      assert message =~ "F9: process :ledger: correlate has 7 fields"
       assert message =~ "F9: process manager :chase: correlate has 7 fields"
     end
 
@@ -516,11 +487,7 @@ defmodule EhOsContract.ContractFieldsTest do
                  aggregate :ledger, "Księga" do
                    identity #{six}
                    command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
-                   event :ledger_opened, "Otwarto", terminal: true
-                 end
-
-                 process :ledger, "Księga" do
-                   correlate #{six}
+                   event :ledger_opened, "Otwarto"
                  end
 
                  process_manager :chase, "Pogoń" do

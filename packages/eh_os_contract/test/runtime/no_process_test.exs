@@ -1,9 +1,10 @@
 defmodule EhOsContract.NoProcessTest do
   @moduledoc """
-  Plan DD, P1c (#190): a contract may describe no process (R1). Its units decide,
-  dispatch appends to the log without indexing a run, and every reader answers for it
-  with what it has: the lifecycle, the steps, no run, no promise. On the invented
-  `LifecycleRig.Rooms`.
+  Plan DD, P1c (#190): a contract whose events no process module includes. Its units
+  decide, dispatch appends to the log without indexing a run, and every reader answers
+  for it with what it has: the lifecycle, the steps, no run, no promise. On the invented
+  `LifecycleRig.Rooms`. Since plan DD, P2h (#221) no contract declares a process of its
+  own.
   """
 
   use EhOsContract.DataCase, async: false
@@ -31,7 +32,8 @@ defmodule EhOsContract.NoProcessTest do
     do: EhOsContract.dispatch(Rooms, struct(module, room_id: room), actor: reception())
 
   test "the model has no process" do
-    assert Model.fetch(Rooms).process == nil
+    refute Map.has_key?(Model.fetch(Rooms), :process)
+    assert Model.process(Rooms) == nil
   end
 
   test "dispatch decides and appends, and files the events under no run" do

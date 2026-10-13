@@ -21,11 +21,9 @@ defmodule EhOsContract.Event do
     field(:type, :string)
     field(:contract, :string)
     field(:contract_version, :string)
-    # Which run this event belongs to. `correlation_id` answers a different
-    # question — "from which command" — and is per request, so a month opened by
-    # two commands has two correlations and one run.
-    field(:process, :string)
-    field(:instance_id, :string)
+    # From which command. Which run an event belongs to is a different question,
+    # answered by `eh_os_contract_event_runs`: a month opened by two commands has two
+    # correlations and one run.
     field(:correlation_id, :binary_id)
     field(:causation_id, :binary_id)
     field(:payload, :map)

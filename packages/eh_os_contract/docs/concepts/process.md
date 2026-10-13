@@ -4,7 +4,7 @@ What a process adds to the units that decide: runs that group their events, the 
 how a run ends, what the process owner promised about it, and how the conformance report holds the log to
 those promises.
 
-<!-- covers: entities contract.process, contract.process.stage, contract.process.include, contract.process.promise, contract.process.deadline, process.correlate, process.stage, process.ends_on, process.promise, process.deadline; rules process-without-accountable, promise-without-within, deadline-without-terminal-event, unverified-declaration -->
+<!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline; rules process-without-accountable, promise-without-within, unverified-declaration -->
 
 A unit decides over its own stream: one loan, one fine. A business is usually accountable for something
 longer (a loan from the day the copy goes out to the day it comes back, or is paid for) and that is a
@@ -14,9 +14,7 @@ those events into runs, and a set of claims about runs that the report can check
 
 A process is a module of its own, `use EhOsContract.Process`. It names the contracts' events that make a
 run, whether they come from one contract or from several, and says what the business promised about a run.
-[The guide](../contract.md) introduces it; this page is how it behaves. A contract can still declare a
-`process` of its own, an older form that is being removed: [the last section](#the-older-form)
-says how it maps onto a module.
+[The guide](../contract.md) introduces it; this page is how it behaves.
 
 ## A run, and what tells one from another
 
@@ -287,35 +285,3 @@ The [rules](../rules.md) about a process:
   report leaves it out. Remove the mark once the process owner confirms the number.
 - **`promise-without-within`** (notice): the promise has no failing case. Add `within` when the owner
   agrees a window; leave it out while nobody has.
-
-<a id="the-older-form"></a>
-
-## A process declared in a contract
-
-<!-- covers: entities contract.process, contract.process.stage, contract.process.include, contract.process.promise, contract.process.deadline; rules deadline-without-terminal-event -->
-
-Before process modules, a contract could describe one run of its own with a `process` block. That form is
-being removed, and a new process is written as a module. A contract that still has one maps onto a module
-like this:
-
-- the block's label becomes the module's `label:`, its `accountable` the `accountable:` option of the `use`,
-  and the module gets an `id:` of its own, the domain's `name:` then dotted snake_case segments, as a
-  contract's is ([`D11`](../contract.md#refusals-d));
-- its `correlate`, promises and `deadline` move into the module's body unchanged;
-- each `stage` of the block becomes a stage of the module, and the events the units placed in it with a
-  `stage` group go into that stage's `include:`, under their contract; a sibling event the block took with
-  `include` goes in under the sibling that declares it, `{Fines, :fine_settled}`, since a module includes
-  only events a contract declares ([`X5`](../contract.md#refusals-x));
-- a block without stages had every local event in its run; the module gets one stage that includes them
-  all;
-- the events marked `terminal: true`, and the `include … terminal: true`, go into `ends_on`; a `deadline`
-  without them does not compile in a module ([`R6`](../contract.md#refusals-r));
-- the contract loses the block, its units' `stage` groups and the events' `terminal:`.
-
-The runs of the module are filed under its `id:`, so runs recorded under the contract's process are not
-continued. While the form exists, a contract holds at most one process, and without one may have neither
-stage groups nor terminal events ([`R1`](../contract.md#refusals-r)); its correlated fields are required in every local event
-([`R2`](../contract.md#refusals-r)); with stages, every local event sits in a group naming a declared stage ([`R3`](../contract.md#refusals-r)); it includes only
-events it consumes from a sibling ([`R4`](../contract.md#refusals-r)). `mix eh_os_contract.check` notes a contract's process with a
-`deadline` and no terminal event (`deadline-without-terminal-event`). The keys are on
-[the reference page](../dsl/contract-process.md).

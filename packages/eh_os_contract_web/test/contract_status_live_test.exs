@@ -2,12 +2,11 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   @moduledoc """
   Two kinds of proof, deliberately not one: a real, DB-backed run through
   `mount/3` shows the wiring to `EhOsContract.Registry`/`EhOsContract.Conformance` is not
-  hollow; the `render/1` cases below it show every section of the four
-  questions renders correctly, without needing real time to pass to force a
-  `:violated` verdict — `EhOsContract.Trace.evaluate/3`'s `now:` override exists
-  exactly so that distinction can be tested, but only inside the engine's own
-  suite, not through this screen. `EhOsContract.Registry.load!/0` runs once at boot
-  (test_helper.exs), the same way a real host would call it once at startup.
+  hollow; the `render/1` cases below it show the sections a real log rarely
+  produces render correctly. A contract declares no process, so its runs and
+  promises are not on this screen (plan DD, P2h, #221). `EhOsContract.Registry.load!/0`
+  runs once at boot (test_helper.exs), the same way a real host would call it once
+  at startup.
   """
 
   use EhOsContract.Web.TestHost.DataCase, async: false
@@ -49,12 +48,10 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     html = html_response(conn, 200)
 
     assert html =~ "web_test_host.case_handling"
-    # What one run is, beside the count (point 4 of the working plan, `PLAN.md`,
-    # "Szczegóły ekranu Graph"): the process's correlate.
-    assert html =~ "Runs in this period: 1, one per case_id."
+    # A contract declares no process (plan DD, P2h, #221): no runs, no promises.
+    refute html =~ "Runs in this period"
     # A v2 step: the rejection reaching its policy, and the policy's command.
     assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"
-    assert html =~ "Met in all 1 runs."
     # A v2 contract's scenarios, in the report's words: this one declares none.
     assert html =~ EhOsContract.Report.Sentence.scenarios_observed(%{declared: 0})
 
@@ -96,22 +93,6 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     for edge <- report.paths.failing,
         do: assert(html =~ escape(EhOsContract.Report.Sentence.step_failing(edge)))
 
-    for process <- report.processes do
-      if line = EhOsContract.Report.Sentence.accountable(process.accountable),
-        do: assert(html =~ escape(line))
-
-      for declaration <- process.declarations,
-          do: assert(html =~ escape(EhOsContract.Report.Sentence.declaration(declaration)))
-
-      for line <- EhOsContract.Report.Sentence.duration(process.duration),
-          do: assert(html =~ escape(line))
-
-      for assertion <- process.promises do
-        assert html =~ escape(EhOsContract.Report.Sentence.rule(assertion))
-        assert html =~ escape(EhOsContract.Report.Sentence.outcome(assertion))
-      end
-    end
-
     # Plan LC4b: the lifecycle's section, in the same sentences.
     assert report.lifecycles != []
 
@@ -130,61 +111,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     end
   end
 
-  test "and the clauses a real log rarely produces are not this screen's to omit" do
-    # The test above walks a real report, and a real report exercises one branch of
-    # `outcome/1`. **Checked by neutralising it: putting a local two-branch copy back
-    # in the screen left that test green**, because the branch it covers is the one
-    # both versions agree on.
-    #
-    # So this one hands the screen an assertion with every qualifying clause set at
-    # once — a breach, a fallback, an outage, and a rule that has since changed — and
-    # asserts the screen prints exactly what the shared function says. A local copy
-    # cannot pass this without becoming the shared function.
-    assertion = %{
-      from_label: "Case opened",
-      eventually_label: "Case closed",
-      or_else_label: "Case closed as rejected",
-      within: {1, :hour},
-      instances: 9,
-      satisfied: 5,
-      satisfied_via_eventually: 3,
-      satisfied_via_or_else: 2,
-      violated: 3,
-      pending: 1,
-      suspended: 1,
-      promise: :closed_in_time,
-      under_earlier_declaration: 4,
-      declaration_changed_at: ~U[2026-08-05 09:00:00.000000Z]
-    }
-
-    assigns = %{
-      eh_os_contract_web_access: :all,
-      eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(promises: [assertion])])]
-    }
-
-    html = render_component(&ContractStatus.render/1, assigns)
-
-    assert html =~ escape(EhOsContract.Report.Sentence.verdict(assertion))
-
-    for qualification <- EhOsContract.Report.Sentence.qualifications(assertion),
-        do: assert(html =~ escape(qualification))
-
-    # Named individually, so a failure says which clause went missing.
-    assert html =~ "reached the fallback ending"
-    assert html =~ "an external dependency was unavailable"
-    assert html =~ "judged under a different promise"
-
-    # **Only the verdict is coloured.** A clause saying an outage is not a breach on
-    # the client's side, printed in the breach colour, says the opposite of what it
-    # means — so the class stops at the verdict's own element.
-    [_before, after_verdict] = String.split(html, "outcome-breached", parts: 2)
-    assert after_verdict =~ "BREACHED in 3 of 9 runs."
-    refute after_verdict |> String.split("</p>", parts: 2) |> hd() =~ "not a breach"
-  end
-
-  # HEEx escapes interpolated values, so a sentence carrying a quotation mark — every
-  # `rule` sentence does — is not in the HTML verbatim.
+  # HEEx escapes interpolated values, so a sentence carrying a quotation mark is not in
+  # the HTML verbatim.
   defp escape(sentence),
     do: sentence |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
@@ -196,8 +124,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         report(
           activity: %{events: 0, commands: 0},
           # One declared step: a contract with none says so instead.
-          paths: %{steps: [%{}], untraversed: [], in_flight: [], failing: []},
-          processes: [process(runs: 0)]
+          paths: %{steps: [%{}], untraversed: [], in_flight: [], failing: []}
         )
       ]
     }
@@ -236,68 +163,6 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assert html =~ "Agreed steps that are attempted and fail"
     refute html =~ "recorded no event"
     refute html =~ "Declared paths never exercised"
-  end
-
-  test "a breached assertion says BREACHED, not just a number" do
-    assertion = %{
-      from_label: "Case opened",
-      eventually_label: "Case closed",
-      or_else_label: "Case closed as rejected",
-      within: {1, :hour},
-      instances: 2,
-      satisfied: 1,
-      violated: 1,
-      pending: 0,
-      suspended: 0,
-      satisfied_via_eventually: 1,
-      satisfied_via_or_else: 0,
-      under_earlier_declaration: 0,
-      declaration_changed_at: nil
-    }
-
-    assigns = %{
-      eh_os_contract_web_access: :read_only,
-      eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(promises: [assertion])])]
-    }
-
-    html = render_component(&ContractStatus.render/1, assigns)
-
-    assert html =~ "BREACHED in 1 of 2 runs."
-
-    assert html =~
-             "Rule: after &quot;Case opened&quot; within hour, &quot;Case closed&quot; follows, or else &quot;Case closed as rejected&quot;."
-
-    assert html =~ "Access: read only"
-  end
-
-  test "a pending assertion reports how many are still open" do
-    assertion = %{
-      from_label: "Case opened",
-      eventually_label: "Case closed",
-      or_else_label: nil,
-      within: nil,
-      instances: 3,
-      satisfied: 1,
-      violated: 0,
-      pending: 2,
-      suspended: 0,
-      satisfied_via_eventually: 1,
-      satisfied_via_or_else: 0,
-      under_earlier_declaration: 0,
-      declaration_changed_at: nil
-    }
-
-    assigns = %{
-      eh_os_contract_web_access: :all,
-      eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(promises: [assertion])])]
-    }
-
-    html = render_component(&ContractStatus.render/1, assigns)
-
-    assert html =~ "Met in 1 of 3, 2 still in progress."
-    assert html =~ "Rule: after &quot;Case opened&quot;, &quot;Case closed&quot; follows."
   end
 
   @drift %{
@@ -364,21 +229,6 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         in_log: [],
         changed: nil,
         from_earlier_versions: 0
-      },
-      Map.new(overrides)
-    )
-  end
-
-  defp process(overrides) do
-    Map.merge(
-      %{
-        process: :handling,
-        label: "Case handling",
-        accountable: nil,
-        runs: 1,
-        declarations: [],
-        duration: nil,
-        promises: []
       },
       Map.new(overrides)
     )

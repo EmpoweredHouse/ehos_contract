@@ -23,7 +23,8 @@ defmodule EhOsContract.Check.Completeness do
   Every finding of a completeness rule about `contracts`, v2 contract modules,
   and the domains they name. `processes`, the process modules, are read for what they
   include: an event one includes has a reader, the report of its runs (plan DD, P2d,
-  #213).
+  #213); and for whom they hold `accountable`, an actor with something to do (plan DD,
+  P2h, #221).
   """
   @spec findings([module()], [module()]) :: [Finding.t()]
   def findings(contracts, processes \\ []) do
@@ -34,7 +35,7 @@ defmodule EhOsContract.Check.Completeness do
       for {domain, members} <- Enum.group_by(linked, & &1.model.domain),
           members = Enum.reject(members, &is_nil(&1.domain)),
           members != [],
-          finding <- domain(domain, members),
+          finding <- domain(domain, members, processes),
           do: finding
 
     domains ++ Enum.flat_map(linked, &contract(&1, linked, included))
@@ -123,7 +124,7 @@ defmodule EhOsContract.Check.Completeness do
 
   defp declared_event(c, unit, name) do
     with %{} = declared <- declared_unit(c, unit),
-         %{} = event <- Enum.find(Rules.events(declared), &(&1.name == name)),
+         %{} = event <- Enum.find(declared.events, &(&1.name == name)),
          do: Links.at(event)
   end
 
@@ -149,13 +150,11 @@ defmodule EhOsContract.Check.Completeness do
   # ESDM's `event-without-consumer`. A consumer is what reacts to or reads the
   # event: a policy, an effect, a process manager, a read model, a boundary that
   # consults it, a contract that consumes it, a `publish`. So is the conformance
-  # half of this library, for an event a promise names or one that ends a run, and for
-  # one a unit's lifecycle starts on or moves on (plan DD, P1b, #186): the report reads
-  # it, process or not; and for one a process module includes (plan DD, P2d, #213). The
+  # half of this library, for an event a unit's lifecycle starts on or moves on (plan
+  # DD, P1b, #186): the report reads it, process or not; and for one a process module
+  # includes (plan DD, P2d, #213), whose promises and ends are its own events. The
   # unit's own `evolve` does not count; ESDM's aggregate folds its events too.
   defp events_without_consumer(%{model: model} = c, all, included) do
-    process = Model.process(model)
-
     local =
       Enum.flat_map(model.policies, &List.wrap(&1.handles)) ++
         Enum.flat_map(model.effects, &List.wrap(&1.handles)) ++
@@ -165,11 +164,7 @@ defmodule EhOsContract.Check.Completeness do
         Enum.flat_map(model.read_models, &List.wrap(&1.projects)) ++
         Enum.flat_map(model.units, fn u -> Enum.map(u.consults, & &1.event) end) ++
         Enum.map(model.publishes, & &1.from) ++
-        lifecycle_events(model) ++
-        if(process,
-          do: Enum.flat_map(process.promises, &[&1.from, &1.eventually, &1.or_else]),
-          else: []
-        )
+        lifecycle_events(model)
 
     siblings =
       for %{model: other} <- all,
@@ -182,14 +177,13 @@ defmodule EhOsContract.Check.Completeness do
 
     consumed = MapSet.new(local ++ siblings ++ of_modules)
 
-    for event <- model.events,
-        not event.terminal,
-        not MapSet.member?(consumed, event.name) do
+    for event <- model.events, not MapSet.member?(consumed, event.name) do
       Finding.new(
         "event-without-consumer",
         "event #{inspect(event.name)} of #{inspect(model.module)} has no consumer: no policy, " <>
           "effect, process manager or read model takes it, no boundary consults it, no contract " <>
-          "consumes it, nothing publishes it, no promise names it, and no lifecycle moves on it",
+          "consumes it, nothing publishes it, no process includes it, and no lifecycle moves on " <>
+          "it",
         declared_event(c, event.unit, event.name)
       )
     end
@@ -431,12 +425,12 @@ defmodule EhOsContract.Check.Completeness do
 
   # --- a whole domain ------------------------------------------------------------
 
-  defp domain(module, contracts) do
+  defp domain(module, contracts, processes) do
     model = hd(contracts).domain
     declared = declared(module)
 
     Enum.concat([
-      orphan_actors(model, declared, contracts),
+      orphan_actors(model, declared, contracts, processes),
       orphan_externals(model, declared, contracts),
       uncalled_operations(model, declared, contracts),
       empty_contexts(model, declared, contracts),
@@ -523,25 +517,35 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # ESDM's `orphan-actor`: an actor no command, query, recorded event or process
-  # names. A scenario's actor is in a command's `by:` already (S7).
-  defp orphan_actors(model, declared, contracts) do
+  # module names. A scenario's actor is in a command's `by:` already (S7). A process
+  # module of the domain names its `accountable` (plan DD, P2h, #221).
+  defp orphan_actors(model, declared, contracts, processes) do
+    accountable =
+      for module <- processes,
+          %{domain: domain, accountable: actor} <- [Model.fetch(module)],
+          domain == model.module,
+          actor != nil,
+          do: actor
+
     named =
       MapSet.new(
-        for %{model: m} <- contracts,
+        accountable ++
+          for(
+            %{model: m} <- contracts,
             actor <-
               Enum.flat_map(m.commands, & &1.by) ++
                 Enum.flat_map(m.queries, & &1.by) ++
-                Enum.flat_map(m.events, & &1.recorded_by) ++
-                List.wrap(Model.process(m)[:accountable]),
+                Enum.flat_map(m.events, & &1.recorded_by),
             do: actor
+          )
       )
 
     for actor <- model.actors, not MapSet.member?(named, actor.name) do
       Finding.new(
         "orphan-actor",
         "actor #{inspect(actor.name)} of #{inspect(model.module)} is in no command's or query's " <>
-          "`by:`, no event's `recorded_by:` and no process's `accountable`, so no contract gives " <>
-          "it anything to do",
+          "`by:`, no event's `recorded_by:` and no process's `accountable`, so no contract or " <>
+          "process gives it anything to do",
         at(declared.actors, actor.name)
       )
     end
@@ -1012,15 +1016,16 @@ defmodule EhOsContract.Check.Completeness do
 
   # The externals a contract reaches: what its effects call, what its events depend on,
   # what issues its fields' values, and what stands behind the actors it names — in a
-  # command's or a query's `by:`, an event's `recorded_by:`, the process's `accountable`.
+  # command's or a query's `by:`, an event's `recorded_by:`. A process module's
+  # `accountable` is not among them: the module belongs to no context, and a use here
+  # crosses a relation of the contract's context.
   defp externals_used(contract, domain) do
     backing = Map.new(domain.actors, &{&1.name, &1.backed_by})
 
     actors =
       Enum.flat_map(contract.commands, & &1.by) ++
         Enum.flat_map(contract.queries, & &1.by) ++
-        Enum.flat_map(contract.events, & &1.recorded_by) ++
-        List.wrap(Model.process(contract)[:accountable])
+        Enum.flat_map(contract.events, & &1.recorded_by)
 
     Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
       Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++

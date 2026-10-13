@@ -1,21 +1,15 @@
 defmodule EhOsContract.ContractProcessTest do
   @moduledoc """
-  v2 plan, E4: **R1–R6 and K1 of v2 §6** — the process a contract describes, if any,
-  and what it consumes from a sibling. Each refusal names the declaration's file and
-  line, and has a control beside it that compiles.
+  A contract declares no process: what is left of R1–R6 of v2 §6, and K1, what a
+  contract consumes from a sibling. A process, its runs, stages, promises and deadline,
+  is a module of its own (`EhOsContract.Process`, its rules in
+  `test/dsl/process_module_test.exs`); plan DD, P2h (#221) took the contract's own form
+  away. Each refusal names the declaration's file and line, and has a control beside it
+  that compiles.
   """
 
   use EhOsContract.DslCase, async: false
 
-  @unit """
-    aggregate :visit, "Wizyta" do
-      identity :visit_id
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta", terminal: true
-    end
-  """
-
-  # The unit with nothing a process would place: what a contract without one declares.
   @bare_unit """
     aggregate :visit, "Wizyta" do
       identity :visit_id
@@ -24,32 +18,33 @@ defmodule EhOsContract.ContractProcessTest do
     end
   """
 
-  describe "R1: at most one process" do
-    test "none compiles, and the model has no process" do
-      model =
-        compile_contract("NoProcess", """
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+  describe "a contract declares no process" do
+    test "its model has no process, and its events no stage and no end of a run" do
+      model = compile_contract("NoProcess", @bare_unit)
+
+      refute Map.has_key?(model, :process)
+      assert EhOsContract.Model.process(model) == nil
+      assert EhOsContract.Model.process_events(model) == []
+      assert [%{name: :visit_closed} = event] = model.events
+      refute Map.has_key?(event, :stage)
+      refute Map.has_key?(event, :terminal)
+    end
+
+    test "a `process` in a contract is not a word of it any more" do
+      log =
+        refused_by_compiler("ProcessGone", """
+        #{@bare_unit}
+          process :visit, "Wizyta" do
+            correlate :visit_id
           end
         """)
 
-      assert model.process == nil
-      assert [%{name: :visit_closed}] = model.events
+      assert log =~ "undefined function process/3"
     end
 
-    test "without one, a terminal event is refused, since there is no run to end" do
-      message = refuse_contract("NoProcessTerminal", @unit)
-
-      assert message =~
-               "R1: the contract declares no process, so event :visit_closed cannot be terminal; " <>
-                 "`terminal:` ends a process's run (no_process_terminal.ex:7)"
-    end
-
-    test "without one, a stage group is refused, since there is no run to have steps" do
-      message =
-        refuse_contract("NoProcessStage", """
+    test "nor is a stage group in a unit" do
+      log =
+        refused_by_compiler("StageGone", """
           aggregate :visit, "Wizyta" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
@@ -60,242 +55,33 @@ defmodule EhOsContract.ContractProcessTest do
           end
         """)
 
-      assert message =~
-               "R1: the contract declares no process, so aggregate :visit cannot group events " <>
-                 "into stage :closing; a stage is a step of a process's run (no_process_stage.ex:8)"
+      assert log =~ "undefined function stage/2"
     end
 
+    test "and `terminal:` is not an option of an event" do
+      message =
+        refuse_contract("TerminalGone", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+        """)
+
+      assert message =~ "terminal"
+    end
+  end
+
+  describe "R1: a contract declares something" do
     test "a contract that declares nothing is refused" do
       assert refuse_contract("Empty", "") =~
-               "R1: a contract declares a process or what decides in it, and this one declares nothing"
-    end
-
-    test "without one, a terminal event in a stage group is refused once, for the group" do
-      message =
-        refuse_contract("NoProcessStageTerminal", """
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            stage :closing do
-              event :visit_closed, "Wizyta zamknięta", terminal: true
-            end
-          end
-        """)
-
-      assert message =~ "cannot group events into stage :closing"
-      refute message =~ "cannot be terminal"
-    end
-
-    test "a second is refused" do
-      message =
-        refuse_contract("TwoProcesses", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-
-          process :billing, "Rozliczenie" do
-            correlate :visit_id
-          end
-        """)
-
-      assert message =~
-               "R1: a contract describes one process; :billing is a second (two_processes.ex:14)"
+               "R1: a contract declares what decides in it, or what reacts, and this one " <>
+                 "declares nothing"
     end
   end
 
-  describe "the correlation is declared" do
-    test "a process without `correlate` is refused, at the process" do
-      # Without it the engine cannot tell one run from another, and every reader —
-      # coverage, promises, the deadline — counts runs. A default would pick a field
-      # for the owner; the owner names it.
-      message =
-        refuse_contract("NoCorrelate", """
-        #{@unit}
-          process :visit, "Wizyta" do
-          end
-        """)
-
-      assert message =~ "required :correlate option not found"
-      assert message =~ "no_correlate.ex:10"
-    end
-
-    test "an empty `correlate` is refused too, since it makes the whole contract one run" do
-      # Found porting v1's tests (plan E11a): `correlate []` compiled, every event got the
-      # bare process name as its run, and the report counted one run for everything.
-      message =
-        refuse_contract("EmptyCorrelate", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate []
-          end
-        """)
-
-      assert message =~ "R2: process :visit correlates on no field, so every event of it"
-    end
-
-    test "control: with it, the process compiles and keeps the fields in order" do
-      model =
-        compile_contract("Correlated", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-        """)
-
-      assert model.process.correlate == [:visit_id]
-    end
-  end
-
-  describe "R2: the correlation is in every local event" do
-    test "an event without the field is refused, and identity counts as declared" do
-      message =
-        refuse_contract("Uncorrelated", """
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            event :visit_closed, "Wizyta zamknięta", terminal: true do
-              field :clinic_id, :id
-            end
-          end
-
-          aggregate :invoice, "Faktura" do
-            identity :invoice_id
-            command :issue_invoice, "Wystawienie", by: :reception, emits: :invoice_issued
-            event :invoice_issued, "Wystawiono", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate [:visit_id, :clinic_id]
-          end
-        """)
-
-      assert message =~
-               "R2: event :invoice_issued has no field :visit_id, which process :visit correlates " <>
-                 "on (uncorrelated.ex:16)"
-
-      assert message =~ "R2: event :invoice_issued has no field :clinic_id"
-      refute message =~ "event :visit_closed has no field"
-    end
-  end
-
-  describe "R3: stages are all or nothing" do
-    test "with stages: an ungrouped event, an unknown group and an unplaced include" do
-      message =
-        refuse_contract("StagesPartly", """
-          consumes Clinic.Contracts.Scheduling, :visit_completed
-
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: [:visit_closed, :visit_billed]
-            event :visit_closed, "Wizyta zamknięta", terminal: true
-
-            stage :billing do
-              event :visit_billed, "Rozliczono"
-            end
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            stage :closing
-            include :visit_completed
-          end
-        """)
-
-      assert message =~
-               "R3: process :visit declares stages, so event :visit_closed has to sit in a stage " <>
-                 "group of aggregate :visit (stages_partly.ex:9)"
-
-      assert message =~
-               "R3: aggregate :visit groups events into stage :billing, which process :visit does " <>
-                 "not declare (stages_partly.ex:11)"
-
-      assert message =~
-               "R3: process :visit declares stages, so include :visit_completed has to sit in one " <>
-                 "of them (stages_partly.ex:19)"
-    end
-
-    test "without stages: a group is refused" do
-      message =
-        refuse_contract("StagesNone", """
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            stage :closing do
-              event :visit_closed, "Wizyta zamknięta", terminal: true
-            end
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-          end
-        """)
-
-      assert message =~
-               "R3: process :visit declares no stages, so aggregate :visit cannot group events " <>
-                 "into stage :closing (stages_none.ex:8)"
-    end
-
-    test "control: every event grouped and every include placed compiles, in stage order" do
-      model =
-        compile_contract("StagesAll", """
-          consumes Clinic.Contracts.Scheduling, :visit_completed
-
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            stage :closing do
-              event :visit_closed, "Wizyta zamknięta", terminal: true
-            end
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-
-            stage :departure, "Wyjście" do
-              include :visit_completed
-            end
-
-            stage :closing
-          end
-        """)
-
-      assert Enum.map(model.process.stages, & &1.name) == [:departure, :closing]
-
-      assert model.process.includes == [
-               %{event: :visit_completed, terminal: false, stage: :departure}
-             ]
-    end
-  end
-
-  describe "R4: include places consumed events" do
-    test "a local event, and one nobody declares, are refused" do
-      message =
-        refuse_contract("IncludeLocal", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            include :visit_closed
-            include :visit_invented
-          end
-        """)
-
-      assert message =~
-               "R4: process :visit includes :visit_closed, but a local event is placed by its " <>
-                 "unit's stage group (include_local.ex:12)"
-
-      assert message =~
-               "R4: process :visit includes :visit_invented, but it is not an event this contract " <>
-                 "consumes (include_local.ex:13)"
-    end
-  end
-
-  describe "R4 and A4: an event received from another application is not in this log (D12)" do
-    test "neither a run nor a boundary can take it in" do
+  describe "A4: an event received from another application is not in this log (D12)" do
+    test "a boundary cannot take it in" do
       message =
         refuse_contract("ReceivedInLog", """
           subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
@@ -306,19 +92,9 @@ defmodule EhOsContract.ContractProcessTest do
             identity :visit_id
             consults :visit_closed_elsewhere, match: :visit_id
             command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres", terminal: true
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            include :visit_closed_elsewhere
+            event :period_closed, "Zamknięto okres"
           end
         """)
-
-      assert message =~
-               "R4: process :visit includes :visit_closed_elsewhere, but it arrives from another " <>
-                 "application into an inbox, not into this log (D12); a run across applications is " <>
-                 "assembled by EHOS (received_in_log.ex:17)"
 
       assert message =~
                "A4: dcb :payer_period consults :visit_closed_elsewhere, which arrives from another " <>
@@ -327,37 +103,8 @@ defmodule EhOsContract.ContractProcessTest do
     end
   end
 
-  describe "R5: a promise is about events of the run" do
-    test "an event outside the run is refused, in each position" do
-      message =
-        refuse_contract("PromiseOutside", """
-          consumes Clinic.Contracts.Scheduling, [:visit_completed, :visit_cancelled]
-
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            include :visit_completed
-
-            promise :closed_after_departure do
-              from :visit_completed
-              eventually :visit_invoiced
-              or_else :visit_cancelled
-            end
-          end
-        """)
-
-      assert message =~
-               "R5: promise :closed_after_departure: eventually :visit_invoiced is not an event of " <>
-                 "the run of process :visit (promise_outside.ex:16)"
-
-      assert message =~ "R5: promise :closed_after_departure: or_else :visit_cancelled"
-      refute message =~ "from :visit_completed"
-    end
-  end
-
-  describe "R6: durations" do
-    test "a timer's wait is checked in a contract without a process too" do
-      # A timer belongs to its process manager, not to the process (#190, CodeRabbit).
+  describe "R6: a timer's wait" do
+    test "a negative count is refused" do
       message =
         refuse_contract("NoProcessTimer", """
           aggregate :visit, "Wizyta" do
@@ -377,96 +124,18 @@ defmodule EhOsContract.ContractProcessTest do
                "R6: timer :reminder: wait counts -1, which is not a non-negative integer (no_process_timer.ex:12)"
     end
 
-    test "calendar units, negative counts and malformed ones are refused where time is computed" do
-      message =
-        refuse_contract("Durations", """
-        #{@unit}
+    test "control: a calendar unit is a timer's to use" do
+      model =
+        compile_contract("CalendarWait", """
+        #{@bare_unit}
           process_manager :chase, "Pogoń", correlate: :visit_id do
             starts_on :visit_closed, sets: :reminder
-            timer :reminder, "Reminder", wait: {-1, :hour}
+            timer :reminder, "Reminder", wait: {1, :month}
             ends_on :visit_closed
           end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            deadline {1, :month}
-
-            promise :closed_quickly do
-              from :visit_closed
-              eventually :visit_closed
-              within 24
-            end
-          end
         """)
 
-      assert message =~
-               "R6: timer :reminder: wait counts -1, which is not a non-negative integer (durations.ex:12)"
-
-      assert message =~
-               "R6: process :visit: deadline is in :month, a calendar unit, which only a timer's wait " <>
-                 "may use (durations.ex:18)"
-
-      assert message =~ "R6: promise :closed_quickly: within is 24, which is not {count, unit}"
-    end
-
-    test "a calendar unit in a promise's within is refused as in a deadline" do
-      message =
-        refuse_contract("CalendarWithin", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-
-            promise :closed_quickly do
-              from :visit_closed
-              eventually :visit_closed
-              within {1, :month}
-            end
-          end
-        """)
-
-      assert message =~
-               "R6: promise :closed_quickly: within is in :month, a calendar unit, which only a " <>
-                 "timer's wait may use"
-    end
-
-    test "control: a zero window and fixed units compile" do
-      model =
-        compile_contract("DurationsRight", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            deadline {30, :day}
-
-            promise :closed_at_once do
-              from :visit_closed
-              eventually :visit_closed
-              within {0, :second}
-            end
-          end
-        """)
-
-      assert model.process.deadline == %{amount: 30, unit: :day, unverified: false}
-      assert [%{within: %{amount: 0, unit: :second}}] = model.process.promises
-    end
-
-    test "a process has no cadence: it said how often a run is due, and nothing read it" do
-      # Plan DD, P1d (#195): removed with nothing in its place, so a contract that still
-      # declares one is refused by the compiler rather than ignored.
-      source =
-        contract("CadenceGone", """
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            cadence {1, :month}
-          end
-        """)
-
-      log =
-        ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          assert_raise CompileError, fn -> compile(source, "cadence_gone.ex") end
-        end)
-
-      assert log =~ "undefined function cadence/1"
+      assert [%{timers: [%{wait: %{amount: 1, unit: :month}}]}] = model.process_managers
     end
   end
 
@@ -517,11 +186,8 @@ defmodule EhOsContract.ContractProcessTest do
         compile_contract("ConsumesRenamed", """
           consumes Clinic.Contracts.Scheduling, :visit_completed, as: [visit_completed: :patient_left]
 
-        #{@unit}
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            include :patient_left
-          end
+        #{@bare_unit}
+          policy :follow_up, "Kontrola", handles: :patient_left, issues: :close_visit
         """)
 
       assert [%{kind: :contract, from: Clinic.Contracts.Scheduling, renames: renames}] =
@@ -530,5 +196,15 @@ defmodule EhOsContract.ContractProcessTest do
       assert renames == %{visit_completed: :patient_left}
       assert Map.has_key?(model.digests, "consumes:patient_left")
     end
+  end
+
+  # What the compiler logs for a word the DSL does not have: an undefined function,
+  # before the `CompileError` that names no cause.
+  defp refused_by_compiler(name, body) do
+    ExUnit.CaptureIO.capture_io(:stderr, fn ->
+      assert_raise CompileError, fn ->
+        compile(contract(name, body), "#{Macro.underscore(name)}.ex")
+      end
+    end)
   end
 end

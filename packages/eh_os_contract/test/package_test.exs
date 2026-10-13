@@ -57,7 +57,16 @@ defmodule EhOsContract.PackageTest do
     {formatter, _} = Code.eval_file(".formatter.exs")
     exported = formatter[:export][:locals_without_parens]
 
-    for declaration <- [:aggregate, :command, :event, :policy, :process, :promise, :scenario] do
+    for declaration <- [
+          :aggregate,
+          :command,
+          :event,
+          :policy,
+          :correlate,
+          :stage,
+          :promise,
+          :scenario
+        ] do
       assert Enum.any?(exported, fn {name, _arity} -> name == declaration end),
              "#{declaration} is a declaration macro and is not exported to consumers' formatters"
     end

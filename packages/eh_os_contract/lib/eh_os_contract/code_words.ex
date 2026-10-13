@@ -100,7 +100,7 @@ defmodule EhOsContract.CodeWords do
     actions =
       for u <- d.units,
           {kind, declaration} <-
-            Enum.map(u.commands, &{:command, &1}) ++ Enum.map(Rules.events(u), &{:event, &1}) do
+            Enum.map(u.commands, &{:command, &1}) ++ Enum.map(u.events, &{:event, &1}) do
         name("#{kind} #{inspect(declaration.name)}", kind, declaration.name, declaration)
       end
 

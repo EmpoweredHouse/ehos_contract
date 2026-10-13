@@ -92,6 +92,11 @@ decide (`aggregate`, `dcb`) with their commands, events and invariants, consumer
 way round. `retain:` became `personal:` with crypto-shredding (E8). Every key is in the reference generated
 from the extensions, `packages/eh_os_contract/docs/dsl/`.
 
+*Corrected 13 October 2026, plan DD, P2h* ([contract v2](contract-v2.md) §4.2, [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)).
+**A contract has no `process` any more.** The run, its stages, `ends_on`, promises and deadline are a third
+module, `use EhOsContract.Process`, which includes events from the contracts that declare them; a contract's
+units have no stage groups and its events no `terminal:`.
+
 The Polish is not a placeholder — `label`, `source`, and the two `example` titles above are read
 by a real accountant, in the language the workshop was run in, and the engine passes them
 through untouched (see `docs/contract.md`'s note on `event`'s `label`). The English comments
@@ -440,6 +445,12 @@ may quote a value. `correlation_id` and `causation_id` are still set by the fram
 command the cause of its events, and the event a policy reacted to the cause of the policy's command. The
 payload is written by `EhOsContract.Codec` in the log's JSON form and read back into the contract's structs.
 Retention: E8.
+
+*Corrected 13 October 2026, plan DD, P2h* ([contract v2](contract-v2.md) §10.3, [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)).
+Neither table has `process` or `instance_id` since storage version 3 (V03): an event's runs are rows of
+`eh_os_contract_event_runs`, one per process module that includes it, and a command row names no run. The
+engine refuses to start on storage newer than its own version, since a node of an older release would write the
+removed columns.
 
 ## 4. Delivery
 

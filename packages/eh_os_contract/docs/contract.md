@@ -136,9 +136,7 @@ end
 - **A contract describes what its units decide, not the run they make.** A loan from lending to return, a
   visit from booking to its report, is a [process](#process-modules): a module of its own that names the events of
   the run, from one contract or several, and what was promised about it. A contract whose units only
-  decide and record — a register of equipment, of rooms — needs no process. A contract can still declare a
-  `process` of its own, an older form that is being removed
-  ([processes](concepts/process.md#the-older-form)).
+  decide and record — a register of equipment, of rooms — needs no process.
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
@@ -379,7 +377,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; the process's stages or promises; a process module's stages, promises or included events, an event included twice from one contract or two; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command or an event an actor records; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events; a label given and blank |
+| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; a process module's stages, promises or included events, an event included twice from one contract or two; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command or an event an actor records; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events; a label given and blank |
 | `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
 
 <a id="refusals-f"></a>
@@ -391,12 +389,12 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case; an identity field typed otherwise than `:id` or `{:id, name}`, or typed `{:id, name}` in a generated identity |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, repeats one, or labels one blank; a domain service function without `returns`, or with a malformed return type |
 | `F3` | L2 | `default:` on a field outside a `state`, including a domain value's field |
-| `F4` | L2 | an `optional:` or `personal:` event field that the process's `correlate`, or the `correlate` of a process manager handling the event, names |
+| `F4` | L2 | an `optional:` or `personal:` event field that the `correlate` of a process manager handling the event names |
 | `F5` | L2, L3 | `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same struct; a domain value's field naming an undeclared subject; a personal field whose type holds personal data of its own |
 | `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
-| `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
-| `F9` | L2 | a unit's identity, a process's or a process module's `correlate` or a process manager's `correlate` of more than six fields |
+| `F8` | L2, L3 | a field a process manager's record is told by — an event's field its `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
+| `F9` | L2 | a unit's identity, a process module's `correlate` or a process manager's `correlate` of more than six fields |
 | `F10` | L2 | `supplied_by: :host` on a field no request fills — a state's, a read model's row, an event no actor records — or on a command's `scope` field |
 
 <a id="refusals-a"></a>
@@ -452,12 +450,11 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `R1` | L2 | a contract declaring two `process`es, or nothing at all; with no process, a unit's `stage` group or a `terminal:` event |
-| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts); a process module without `correlate`, with an empty one, with two, or naming a field twice |
-| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group; a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
-| `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
-| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one; in a process module, a promise's events or an `ends_on` event the module does not include, or `ends_on` declared twice |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice; in a process module, `deadline` without `ends_on` |
+| `R1` | L2 | a contract declaring nothing at all |
+| `R2` | L2 | a process module without `correlate`, with an empty one, with two, or naming a field twice |
+| `R3` | L2 | a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
+| `R5` | L2 | a process module's promise whose `from`, `eventually` or `or_else`, or an `ends_on` event, the module does not include; `ends_on` declared twice |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit: a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
 
 <a id="refusals-k"></a>
 
@@ -514,12 +511,12 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | Code | Layer | What is refused |
 | --- | --- | --- |
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
-| `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
+| `X2` | L3 | `by:`, `recorded_by:` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts, or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
-| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
-| `X7` | L3 | two processes of the system with one name, which keys their runs, a process module's being its `id:`; two contracts with one `id:`, which types their events |
+| `X6` | L3 | a sibling event's field that a process manager's `correlate` (on an event it handles) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
+| `X7` | L3 | two process modules of the system with one `id:`, which keys their runs; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values; a `given_entity` row with a field its entity lacks, missing its identity or a required field, or with an ill-typed value; a process module's `given` with data the event its contract declares does not fit, in the same ways, or leaving out its unit's identity |
 | `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |

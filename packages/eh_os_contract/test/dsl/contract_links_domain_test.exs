@@ -98,9 +98,9 @@ defmodule EhOsContract.ContractLinksDomainTest do
       end
     end
 
-    process :visit, "Wizyta" do
+    process_manager :visit_chase, "Pogoń" do
       correlate :visit_id
-      accountable :reception
+      starts_on :payment_recorded
     end
 
     effect :notify_payer, "Powiadom płatnika", handles: :payment_recorded,
@@ -158,7 +158,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
   end
 
   describe "X2: every actor named is the domain's, and of this context" do
-    test "a typo in by:, recorded_by:, accountable and a scenario's actor" do
+    test "a typo in by:, recorded_by: and a scenario's actor" do
       body =
         @body
         |> String.replace("by: [:reception, :cashier]", "by: [:recepion, :cashier]")
@@ -166,7 +166,6 @@ defmodule EhOsContract.ContractLinksDomainTest do
           ~s|"Zapłacono", depends_on|,
           ~s|"Zapłacono", recorded_by: :kasjer, depends_on|
         )
-        |> String.replace("accountable :reception", "accountable :recption")
         |> String.replace("actor :cashier", "actor :recepion")
 
       violations = links("LinksActors", body)
@@ -184,19 +183,12 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       assert_linked(
         violations,
-        "X2: process :visit: accountable :recption",
-        "links_actors.ex",
-        23
-      )
-
-      assert_linked(
-        violations,
         ~s|X2: scenario "druga płatność odrzucona": actor :recepion|,
         "links_actors.ex",
         50
       )
 
-      assert length(violations) == 4
+      assert length(violations) == 3
     end
 
     test "an actor of another context" do
@@ -489,7 +481,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       assert assert_linked(
                violations,
-               "F8: event :payment_recorded, field :amount tells which run of process :visit",
+               "F8: event :payment_recorded, field :amount tells which run of process manager " <>
+                 ":visit_chase",
                "links_text_correlation.ex",
                16
              ) =~ "it is :money, which rests on :integer; correlate only on an identifier"

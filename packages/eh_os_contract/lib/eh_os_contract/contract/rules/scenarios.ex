@@ -350,7 +350,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp fits(where, scenario, trigger, kind, unit, d) when kind in [:aggregate, :dcb] do
     command = Enum.find(unit.commands, &(&1.name == trigger.name))
-    events = Map.new(Rules.events(unit), &{&1.name, &1})
+    events = Map.new(unit.events, &{&1.name, &1})
     consulted = MapSet.new(unit.consults, & &1.event)
     where = "#{where} (#{kind(kind)} #{inspect(unit.name)})"
 
@@ -582,7 +582,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
         end
 
       event ->
-        unit = Enum.find(d.units, fn u -> event in Rules.events(u) end)
+        unit = Enum.find(d.units, fn u -> event in u.events end)
         data(where, declaration, "event #{inspect(name)}", event.fields, unit, required: true)
     end
   end

@@ -6,12 +6,12 @@ The Spark extension behind `use EhOsContract.Contract`.
 
 One top-level section, so every entity is written straight into the module body:
 the units that decide (aggregates and dynamic consistency boundaries) with their
-state, invariants, commands, events and stage groups; what reacts to events
-(policies, effects, process managers); what is read (read models, queries); what
-enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
-application) and what leaves the application (`publish`);
-the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
-extensions.
+state, invariants, commands and events; what reacts to events (policies, effects,
+process managers); what is read (read models, queries); what enters from elsewhere
+(`consumes` from a sibling contract, `subscribe` from another application) and what
+leaves the application (`publish`); and scenarios. A process, its runs, stages and
+promises, is a module of its own (`EhOsContract.Process`). The vocabulary is closed:
+a contract cannot add extensions.
 
 Options may stand beside a `do` block, as in `command :record_payment, "…", by:
 :reception do … end`.
@@ -21,7 +21,7 @@ extension: readers get plain data from `EhOsContract.Model`, never these structs
 
 ## contract
 
-At most one process, and everything born in the contract.
+Everything born in the contract.
 
 
 
@@ -38,5 +38,4 @@ At most one process, and everything born in the contract.
 | [`consumes`](contract-consumes.md) | A sibling contract's events, read from this log. |
 | [`subscribe`](contract-subscribe.md) | Another application's published event, taken into an inbox by a policy, with the fields this contract reads. |
 | [`publish`](contract-publish.md) | An integration event: the one way an event leaves the application. |
-| [`process`](contract-process.md) | The process the contract describes, if any, at most one: its runs, stages and promises. |
 | [`scenario`](contract-scenario.md) | Given events, a trigger, and what follows: an example the process owner reads. |

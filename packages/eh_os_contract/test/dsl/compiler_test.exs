@@ -99,14 +99,10 @@ defmodule EhOsContract.CompilerTest do
         field :room, :string
       end
     end
-
-    process :booking, "Rezerwacja" do
-      correlate :booking_id
-    end
   end
   """
 
-  # Line 14 includes the publisher's event in the run.
+  # Line 14 starts a run of the process manager on the publisher's event.
   @billing """
   defmodule Fx.Billing do
     use EhOsContract.Contract, domain: Fx.Domain, context: :settlement, id: "fx.billing"
@@ -119,9 +115,10 @@ defmodule EhOsContract.CompilerTest do
       event :visit_billed, "Wizyta rozliczona"
     end
 
-    process :billing, "Rozliczenie" do
+    process_manager :chase, "Pogoń" do
       correlate :visit_id
-      include :visit_booked
+      starts_on :visit_booked
+      ends_on :visit_billed
     end
   end
   """
@@ -154,7 +151,7 @@ defmodule EhOsContract.CompilerTest do
     assert output =~ "Compiling 1 file (.ex)"
 
     assert output =~
-             "X6: process :billing includes :visit_booked and correlates on :visit_id, which " <>
+             "X6: process manager :chase handles :visit_booked and correlates on :visit_id, which " <>
                "event :visit_booked of Fx.Booking (lib/booking.ex:9) has as :string, not :id"
 
     assert output =~ "lib/billing.ex:14"

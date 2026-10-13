@@ -33,7 +33,9 @@ defmodule EhOsContract.ContractVocabularyTest do
     :issued_by,
     :supplied_by
   ]
-  @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
+  # Plan DD, P2h (#221): no `terminal:`, no stage group in a unit and no `process`: a
+  # process is a module of its own.
+  @event [:name, :label, :depends_on, :recorded_by, :schema_version, :source]
   @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :reads, :source]
 
   defp unit(kind) do
@@ -49,10 +51,7 @@ defmodule EhOsContract.ContractVocabularyTest do
       # Plan DD, A1 (#247): the person who must issue it.
       [kind, :command, :actor_is] => [:field, :or_rejects],
       [kind, :event] => @event,
-      [kind, :event, :field] => @field,
-      [kind, :stage] => [:name],
-      [kind, :stage, :event] => @event,
-      [kind, :stage, :event, :field] => @field
+      [kind, :event, :field] => @field
     }
   end
 
@@ -104,20 +103,6 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:subscribe] => [:from, :as],
         [:subscribe, :field] => @field,
         [:publish] => [:name, :as, :from, :fields, :idempotent_on],
-        [:process] => [:name, :label, :correlate, :accountable, :source],
-        [:process, :stage] => [:name, :label],
-        [:process, :stage, :include] => [:event, :terminal],
-        [:process, :include] => [:event, :terminal],
-        [:process, :deadline] => [:within, :unverified],
-        [:process, :promise] => [
-          :name,
-          :from,
-          :eventually,
-          :within,
-          :or_else,
-          :unverified,
-          :source
-        ],
         [:scenario] => [:description, :target, :actor, :as, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data, :at],
         [:scenario, :given_entity] => [:entity, :data],

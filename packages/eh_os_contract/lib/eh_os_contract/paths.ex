@@ -7,8 +7,8 @@ defmodule EhOsContract.Paths do
   # ("The shape"): change it with what is computed here. How each is counted:
   #
   # **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
-  # P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
-  # row names the command's row (`command_id`); a reaction issued a command when a row
+  # P1a, #183): a step is the contract's, which has no runs of its own. A command
+  # emitted an event when the event's row names the command's row (`command_id`); a reaction issued a command when a row
   # of `eh_os_contract_commands` names its actor and, as its cause, an event of the
   # step's type. Another application's event never enters this log (D12): a policy on
   # it issued a command when the row names, as its cause, a row of
@@ -234,9 +234,9 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
-  Distinct runs of the contract's process in the period, over its own events' types
-  and the ones it includes. A process's own count: a step is counted in occurrences,
-  not runs (plan DD, P1a, #183).
+  Distinct runs of the process module `model`, filed under `process`, its `id:`, in the
+  period, over the types of the events it includes. A process's own count: a step is
+  counted in occurrences, not runs.
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
@@ -254,18 +254,12 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
-  How often each event the contract records, and each its process includes, happened
-  in the period: `%{name => occurrences}`, by the name the event has in this contract,
-  whatever run, if any, it falls in (plan DD, P1a, #183). A contract with no process
-  counts its own events; an included event its sibling does not declare is left out.
+  How often each event the contract records happened in the period:
+  `%{name => occurrences}`, whatever run, if any, it falls in.
   """
   @spec occurrences(map(), keyword()) :: %{atom() => non_neg_integer()}
   def occurrences(model, opts \\ []) do
-    by_type =
-      Map.new(model.events, &{&1.type, &1.name})
-      |> Map.merge(
-        for(%{included: true} = e <- Model.process_events(model), into: %{}, do: {e.type, e.name})
-      )
+    by_type = Map.new(model.events, &{&1.type, &1.name})
 
     types = Map.keys(by_type)
 

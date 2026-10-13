@@ -48,8 +48,8 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
     event :case_opened, "Case opened"
     event :case_approved, "Case approved"
     event :case_rejected, "Case rejected"
-    event :case_closed, "Case closed", terminal: true
-    event :case_closed_as_rejected, "Case closed as rejected", terminal: true
+    event :case_closed, "Case closed"
+    event :case_closed_as_rejected, "Case closed as rejected"
   end
 
   policy :close_approved, "Close an approved case", handles: :case_approved, issues: :close_case
@@ -57,17 +57,6 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
   policy :close_rejected, "Close a rejected case",
     handles: :case_rejected,
     issues: :close_as_rejected
-
-  process :handling, "Case handling" do
-    correlate :case_id
-
-    promise :closes_promptly do
-      from :case_opened
-      eventually :case_closed
-      within {1, :hour}
-      or_else :case_closed_as_rejected
-    end
-  end
 end
 
 defmodule EhOsContract.Web.TestHost.Fixtures.Case do

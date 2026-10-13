@@ -31,7 +31,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
           event :booked, "Umówiono"
           event :noted, "Zanotowano"
           event :rescheduled, "Przełożono"
-          event :visit_closed, "Zamknięto", terminal: true
+          event :visit_closed, "Zamknięto"
         end
 
         aggregate :drawer, "Szuflada" do
@@ -61,10 +61,6 @@ defmodule EhOsContract.CheckCompletenessContractTest do
           starts_on :booked
           on :rescheduled
           ends_on :visit_closed
-        end
-
-        process :visit, "Wizyta" do
-          correlate :visit_id
         end
       end
 
@@ -99,7 +95,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     assert message =~ "aggregate :drawer"
   end
 
-  test "an event nothing reads; control: projected, reacted to, ending a run, consulted" do
+  test "an event nothing reads; control: projected, reacted to, ending a manager, consulted" do
     assert [{message, {"visits.ex", 13}}] = findings("event-without-consumer")
     assert message =~ "event :noted of #{inspect(@visits)} has no consumer"
   end
@@ -123,7 +119,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
   end
 
   test "a boundary consulting by prose alone; control: one consulting by match" do
-    assert [{message, {"visits.ex", 59}}] = findings("consults-without-match")
+    assert [{message, {"visits.ex", 55}}] = findings("consults-without-match")
 
     assert message =~
              "boundary :slot of #{inspect(@slots)} consults :room_closed with `where:` alone"
@@ -177,7 +173,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     assert Finding.place(finding) == {"fan_out.ex", 12}
   end
 
-  test "an event read only by ends_on, a promise, a publish or a sibling has a consumer" do
+  test "an event read only by ends_on, a process, a publish or a sibling has a consumer" do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessContractTest.Intake do
@@ -206,16 +202,15 @@ defmodule EhOsContract.CheckCompletenessContractTest do
         end
 
         publish :forwarded, as: "clinic.referral.forwarded.v1", from: :forwarded, fields: [:visit_id]
+      end
 
-        process :referral, "Skierowanie" do
-          correlate :visit_id
+      defmodule EhOsContract.CheckCompletenessContractTest.Referral do
+        use EhOsContract.Process, id: "clinic.referral", domain: Clinic, label: "Skierowanie"
 
-          promise :accepted_in_time do
-            from :received
-            eventually :accepted
-            within {2, :day}
-          end
-        end
+        correlate :visit_id
+
+        stage :acceptance,
+          include: [{EhOsContract.CheckCompletenessContractTest.Intake, [:received, :accepted]}]
       end
 
       defmodule EhOsContract.CheckCompletenessContractTest.Archive do
@@ -229,16 +224,23 @@ defmodule EhOsContract.CheckCompletenessContractTest do
 
     intake = EhOsContract.CheckCompletenessContractTest.Intake
     archive = EhOsContract.CheckCompletenessContractTest.Archive
+    referral = EhOsContract.CheckCompletenessContractTest.Referral
 
-    unread = fn contracts ->
-      for f <- Completeness.findings(contracts), f.rule == "event-without-consumer", do: f.message
+    unread = fn contracts, processes ->
+      for f <- Completeness.findings(contracts, processes),
+          f.rule == "event-without-consumer",
+          do: f.message
     end
 
-    assert unread.([intake, archive]) == []
+    assert unread.([intake, archive], [referral]) == []
 
     # Control: the sibling is what reads :signed, so without it the event is unread.
-    assert [message] = unread.([intake])
+    assert [message] = unread.([intake], [referral])
     assert message =~ "event :signed of #{inspect(intake)} has no consumer"
+
+    # Control: the process module is what reads :accepted.
+    assert [message] = unread.([intake, archive], [])
+    assert message =~ "event :accepted of #{inspect(intake)} has no consumer"
   end
 
   # Plan DD, P1b (#186): an event a unit's lifecycle starts on or moves on is read by

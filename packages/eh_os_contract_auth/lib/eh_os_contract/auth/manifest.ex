@@ -288,27 +288,16 @@ defmodule EhOsContract.Auth.Manifest do
       %{
         kind: access.kind,
         declaration: to_string(declaration.name),
-        capability:
-          with_process(
-            %{
-              Atom.to_string(access.kind) => to_string(declaration.name),
-              "name" => name,
-              "label" => declaration.label,
-              "principals" => principals
-            },
-            Model.process(model)
-          ),
+        capability: %{
+          Atom.to_string(access.kind) => to_string(declaration.name),
+          "name" => name,
+          "label" => declaration.label,
+          "principals" => principals
+        },
         roles: access.roles
       }
     end
   end
-
-  # Plan DD, P1b (#186): a contract may have no process, and then the capability names
-  # none. EHOS keeps the field optional and reads it nowhere (eh-os#203).
-  defp with_process(capability, nil), do: capability
-
-  defp with_process(capability, process),
-    do: Map.put(capability, "process", to_string(process.name))
 
   defp declaration!(model, %{kind: kind, name: name}) do
     declarations =

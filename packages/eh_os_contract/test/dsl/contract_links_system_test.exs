@@ -33,23 +33,12 @@ defmodule EhOsContract.ContractLinksSystemTest do
     :ok
   end
 
-  # A contract with one aggregate: the command at line 6, the process, if `process:`
-  # names one, at line 10, and what `extra:` adds from line 9, or 13 after a process.
+  # A contract with one aggregate: the command at line 6, and what `extra:` adds from
+  # line 9. A process module's id among the system's processes (X7) is
+  # `ProcessLinksTest`'s.
   defp unit_contract(name, opts) do
     unit = Keyword.fetch!(opts, :unit)
     command = Keyword.fetch!(opts, :command)
-
-    process =
-      if process = opts[:process] do
-        """
-
-          process #{inspect(process)}, "Proces" do
-            correlate :case_id
-          end
-        """
-      else
-        ""
-      end
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
@@ -60,28 +49,11 @@ defmodule EhOsContract.ContractLinksSystemTest do
         command #{inspect(command)}, "Komenda", by: :reception, emits: :done
         event :done, "Zrobione"
       end
-    #{process}#{Keyword.get(opts, :extra, "")}
+    #{Keyword.get(opts, :extra, "")}
     end
     """
 
     {"#{Macro.underscore(name)}.ex", source}
-  end
-
-  describe "X7: a process name is the application's" do
-    test "two contracts declaring one process" do
-      violations =
-        links([
-          unit_contract("SysProcessA", unit: :visit, process: :visit, command: :open_a),
-          unit_contract("SysProcessB", unit: :visit, process: :visit, command: :open_b)
-        ])
-
-      assert assert_linked(violations, "X7:", "sys_process_b.ex", 10) =~
-               "process :visit of #{inspect(@fixtures)}.SysProcessB is also declared by " <>
-                 "#{inspect(@fixtures)}.SysProcessA (sys_process_a.ex:10); a process's name " <>
-                 "keys its runs, so it is unique in the application"
-
-      assert length(violations) == 1
-    end
   end
 
   describe "D14: a command, query or recorded event name is the domain's" do

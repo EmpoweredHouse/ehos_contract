@@ -4,12 +4,12 @@ defmodule EhOsContract.Contract.Dsl do
 
   One top-level section, so every entity is written straight into the module body:
   the units that decide (aggregates and dynamic consistency boundaries) with their
-  state, invariants, commands, events and stage groups; what reacts to events
-  (policies, effects, process managers); what is read (read models, queries); what
-  enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
-  application) and what leaves the application (`publish`);
-  the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
-  extensions.
+  state, invariants, commands and events; what reacts to events (policies, effects,
+  process managers); what is read (read models, queries); what enters from elsewhere
+  (`consumes` from a sibling contract, `subscribe` from another application) and what
+  leaves the application (`publish`); and scenarios. A process, its runs, stages and
+  promises, is a module of its own (`EhOsContract.Process`). The vocabulary is closed:
+  a contract cannot add extensions.
 
   Options may stand beside a `do` block, as in `command :record_payment, "…", by:
   :reception do … end`.
@@ -86,13 +86,8 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Event do
     @moduledoc false
-    defstruct [:name, :label, :depends_on, :source, terminal: false, recorded_by: []] ++
+    defstruct [:name, :label, :depends_on, :source, recorded_by: []] ++
                 [schema_version: 1, fields: [], __spark_metadata__: nil]
-  end
-
-  defmodule Stage do
-    @moduledoc false
-    defstruct [:name, events: [], __spark_metadata__: nil]
   end
 
   defmodule Consults do
@@ -123,7 +118,7 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Unit do
     @moduledoc false
     defstruct [:kind, :name, :label, :source, :generated, identity: [], consults: [], state: []] ++
-                [invariants: [], commands: [], events: [], stages: [], lifecycle: []] ++
+                [invariants: [], commands: [], events: [], lifecycle: []] ++
                 [identity_types: %{}, __spark_metadata__: nil]
 
     # `identity [:period_id, company_id: {:id, :client}]` (plan DD, L3 (#286)): an identity
@@ -232,31 +227,10 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:name, :as, :from, fields: [], idempotent_on: [], __spark_metadata__: nil]
   end
 
-  defmodule Include do
-    @moduledoc false
-    defstruct [:event, terminal: false, __spark_metadata__: nil]
-  end
-
-  defmodule ProcessStage do
-    @moduledoc false
-    defstruct [:name, :label, includes: [], __spark_metadata__: nil]
-  end
-
-  defmodule Deadline do
-    @moduledoc false
-    defstruct [:within, unverified: false, __spark_metadata__: nil]
-  end
-
   defmodule Promise do
     @moduledoc false
     defstruct [:name, :from, :eventually, :within, :or_else, :source, unverified: false] ++
                 [__spark_metadata__: nil]
-  end
-
-  defmodule ProcessDeclaration do
-    @moduledoc false
-    defstruct [:name, :label, :accountable, :source, correlate: [], stages: [], includes: []] ++
-                [deadline: [], promises: [], __spark_metadata__: nil]
   end
 
   defmodule Given do
@@ -511,7 +485,6 @@ defmodule EhOsContract.Contract.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The event's name."],
       label: [type: :string, required: true, doc: "The fact, as the business states it."],
-      terminal: [type: :boolean, default: false, doc: "Whether it ends a run of the process."],
       depends_on: [type: :atom, doc: "The external system the fact depends on."],
       recorded_by: [
         type: {:wrap_list, :atom},
@@ -527,15 +500,6 @@ defmodule EhOsContract.Contract.Dsl do
       ],
       source: [type: :string, doc: "Where the event comes from in the material."]
     ]
-  }
-
-  @stage %Spark.Dsl.Entity{
-    name: :stage,
-    describe: "Groups the unit's events into one stage of the process.",
-    target: Stage,
-    args: [:name],
-    entities: [events: [@event]],
-    schema: [name: [type: :atom, required: true, doc: "A stage the process declares."]]
   }
 
   @consults %Spark.Dsl.Entity{
@@ -613,8 +577,7 @@ defmodule EhOsContract.Contract.Dsl do
     state: [@state],
     invariants: [@invariant],
     commands: [@command],
-    events: [@event],
-    stages: [@stage]
+    events: [@event]
   ]
 
   @aggregate %Spark.Dsl.Entity{
@@ -1017,41 +980,7 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
-  # --- the process ---------------------------------------------------------------
-
-  @include %Spark.Dsl.Entity{
-    name: :include,
-    describe: "Places a consumed event in the process.",
-    target: Include,
-    args: [:event],
-    schema: [
-      event: [type: :atom, required: true, doc: "The consumed event."],
-      terminal: [type: :boolean, default: false, doc: "Whether it ends a run."]
-    ]
-  }
-
-  @process_stage %Spark.Dsl.Entity{
-    name: :stage,
-    describe: "One stage of the process, in order; consumed events are placed with `include`.",
-    target: ProcessStage,
-    args: [:name, {:optional, :label}],
-    entities: [includes: [@include]],
-    schema: [
-      name: [type: :atom, required: true, doc: "The stage's name."],
-      label: [type: :string, doc: "What the business calls it."]
-    ]
-  }
-
-  @deadline %Spark.Dsl.Entity{
-    name: :deadline,
-    describe: "How long a run may take, from its first event to a terminal one.",
-    target: Deadline,
-    args: [:within],
-    schema: [
-      within: [type: :any, required: true, doc: "`{n, unit}`, in a fixed unit."],
-      unverified: [type: :boolean, default: false, doc: "Not confirmed by the process owner."]
-    ]
-  }
+  # --- the promise, which a process module declares -------------------------------
 
   @promise %Spark.Dsl.Entity{
     name: :promise,
@@ -1074,35 +1003,6 @@ defmodule EhOsContract.Contract.Dsl do
   # both places, so a promise moved out of a contract is written as it was.
   @spec promise() :: Spark.Dsl.Entity.t()
   def promise, do: @promise
-
-  @process %Spark.Dsl.Entity{
-    name: :process,
-    describe:
-      "The process the contract describes, if any, at most one: its runs, stages and promises.",
-    target: ProcessDeclaration,
-    args: [:name, :label],
-    entities: [
-      stages: [@process_stage],
-      includes: [@include],
-      deadline: [@deadline],
-      promises: [@promise]
-    ],
-    schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "The process's name, which keys its runs."
-      ],
-      label: [type: :string, required: true, doc: "What the business calls it."],
-      correlate: [
-        type: {:wrap_list, :atom},
-        required: true,
-        doc: "The fields that tell which run an event belongs to."
-      ],
-      accountable: [type: :atom, doc: "The actor a finding about the process is addressed to."],
-      source: [type: :string, doc: "Where the process comes from in the material."]
-    ]
-  }
 
   # --- scenarios -----------------------------------------------------------------
 
@@ -1285,7 +1185,7 @@ defmodule EhOsContract.Contract.Dsl do
               %Spark.Dsl.Section{
                 name: :contract,
                 top_level?: true,
-                describe: "At most one process, and everything born in the contract.",
+                describe: "Everything born in the contract.",
                 entities: [
                   @aggregate,
                   @dcb,
@@ -1298,7 +1198,6 @@ defmodule EhOsContract.Contract.Dsl do
                   @consumes,
                   @subscribe,
                   @publish,
-                  @process,
                   @scenario
                 ]
               },

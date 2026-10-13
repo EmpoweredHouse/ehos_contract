@@ -22,9 +22,10 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   #   A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
   #
   # An event no transition names moves nothing: it is allowed in every status that is
-  # not final, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
-  # checked here: `terminal:` on an event ends a run, and a run may be correlated by
-  # other fields than the aggregate's identity.
+  # not final, once an initial event has started the aggregate. Whether a run of a
+  # process ends with the aggregate's life is not checked here: a process module's
+  # `ends_on` ends a run, and a run may be correlated by other fields than the
+  # aggregate's identity.
   @moduledoc false
 
   alias EhOsContract.DslRules
@@ -105,7 +106,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
 
   defp references(unit, where, lifecycle) do
     statuses = Enum.map(lifecycle.statuses, & &1.name)
-    events = Enum.map(Rules.events(unit), & &1.name)
+    events = Enum.map(unit.events, & &1.name)
 
     status = fn name, what, declaration ->
       if name in statuses,

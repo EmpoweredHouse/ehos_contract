@@ -215,7 +215,7 @@ defmodule EhOsContract.Report do
     end
   end
 
-  # Plan DD, P1a (#183): the contract's steps, whether or not it has a process.
+  # Plan DD, P1a (#183): the contract's steps; its runs are a process module's.
   @spec steps(map(), map()) :: [String.t()]
   defp steps(activity, p) do
     ["STEPS", "  " <> Sentence.activity(activity)] ++ paths(activity, p) ++ [""]

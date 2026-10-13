@@ -55,7 +55,7 @@ defmodule EhOsContract.ContractNamesTest do
           aggregate :visit, "" do
             identity :visit_id
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "   ", terminal: true do
+            event :visit_closed, "   " do
               field :note, :string, label: ""
             end
 
@@ -66,14 +66,10 @@ defmodule EhOsContract.ContractNamesTest do
             end
           end
 
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "\u200B\u00A0", correlate: :visit_id do
             starts_on :visit_closed, sets: :nudge
             timer :nudge, " ", wait: {1, :day}
             ends_on :visit_closed
-          end
-
-          process :visit, "\u200B\u00A0" do
-            correlate :visit_id
           end
         """)
 
@@ -87,7 +83,7 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: status :closed has a blank label"
       assert message =~ "N1: timer :nudge has a blank label"
       # A zero-width space and a no-break space print as nothing, as a space does.
-      assert message =~ "N1: process :visit has a blank label"
+      assert message =~ "N1: process manager :chase has a blank label"
       # So do direction marks, left-to-right and right-to-left (Unicode Cf).
       assert message =~ "N1: status :open has a blank label"
     end
@@ -172,7 +168,7 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "(shared_namespace.ex:4)"
     end
 
-    test "invariants and stage groups within a unit, stages and promises within the process" do
+    test "invariants within a unit" do
       message =
         refuse_contract("Nested", """
           aggregate :visit, "Wizyta" do
@@ -180,36 +176,11 @@ defmodule EhOsContract.ContractNamesTest do
             invariant :paid, "Zapłacono"
             invariant :paid, "Zapłacono 2"
             command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            stage :closing do
-              event :visit_closed, "Wizyta zamknięta", terminal: true
-            end
-
-            stage :closing do
-            end
-          end
-
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            stage :closing
-            stage :closing
-
-            promise :closed do
-              from :visit_closed
-              eventually :visit_closed
-            end
-
-            promise :closed do
-              from :visit_closed
-              eventually :visit_closed
-            end
+            event :visit_closed, "Wizyta zamknięta"
           end
         """)
 
       assert message =~ "N1: aggregate :visit has two invariants named :paid (nested.ex:7)"
-      assert message =~ "N1: aggregate :visit groups stage :closing twice (nested.ex:14)"
-      assert message =~ "N1: process :visit has two stages named :closing (nested.ex:21)"
-      assert message =~ "N1: process :visit has two promises named :closed (nested.ex:28)"
     end
 
     test "two names that camelize alike, where the name is a module or an alias" do

@@ -1,7 +1,7 @@
 defmodule EhOsContract.TraceTest do
   @moduledoc """
   **`EhOsContract.Trace`'s pure core, without a database** (plan W3): `trace/2` reads
-  what a promise is judged on from the contract, and `judge/3` gives verdicts for
+  what a promise is judged on from the process module, and `judge/3` gives verdicts for
   events handed to it rather than read from the log.
 
   The rules themselves are pinned against the log in `test/conformance/promise_*.exs`,
@@ -53,22 +53,35 @@ defmodule EhOsContract.TraceTest do
       event :item_submitted, "Item submitted", recorded_by: :clerk
       event :item_inspected, "Item inspected", recorded_by: :clerk
     end
+  end
 
-    process :desk, "Desk" do
-      correlate :request_id
+  defmodule Desk do
+    @moduledoc "# INVENTED. NOT A DOMAIN. The run of `Requests`'s request."
 
-      promise :answered_in_a_day do
-        from :requested
-        eventually :answered
-        within {1, :day}
-        or_else :refused
-      end
+    use EhOsContract.Process,
+      id: "trace_core.desk",
+      domain: EhOsContract.TraceTest.Domain,
+      label: "Desk"
 
-      promise :items_inspected_in_a_day do
-        from :item_submitted
-        eventually :item_inspected
-        within {1, :day}
-      end
+    correlate :request_id
+
+    stage :desk,
+      include: [
+        {EhOsContract.TraceTest.Requests,
+         [:requested, :answered, :refused, :item_submitted, :item_inspected]}
+      ]
+
+    promise :answered_in_a_day do
+      from :requested
+      eventually :answered
+      within {1, :day}
+      or_else :refused
+    end
+
+    promise :items_inspected_in_a_day do
+      from :item_submitted
+      eventually :item_inspected
+      within {1, :day}
     end
   end
 
@@ -91,14 +104,14 @@ defmodule EhOsContract.TraceTest do
   defp judge(occurrences, opts \\ []),
     do:
       Trace.judge(
-        Trace.trace(Requests, :answered_in_a_day),
+        Trace.trace(Desk, :answered_in_a_day),
         occurrences,
         Keyword.merge([now: @later], opts)
       )
 
   describe "trace/2" do
     test "names the promise's events by their stored types, with its window" do
-      assert Trace.trace(Requests, :answered_in_a_day) == %{
+      assert Trace.trace(Desk, :answered_in_a_day) == %{
                from: "trace_core.requests.requested",
                eventually: "trace_core.requests.answered",
                or_else: "trace_core.requests.refused",
@@ -108,22 +121,26 @@ defmodule EhOsContract.TraceTest do
     end
 
     test "carries the item's identity when from's unit is finer than the run" do
-      assert Trace.trace(Requests, :items_inspected_in_a_day).identity == [
+      assert Trace.trace(Desk, :items_inspected_in_a_day).identity == [
                "request_id",
                "item_no"
              ]
     end
 
     test "takes a model as well as a module" do
-      model = EhOsContract.Model.fetch(Requests)
+      model = EhOsContract.Model.fetch(Desk)
 
       assert Trace.trace(model, :answered_in_a_day) ==
-               Trace.trace(Requests, :answered_in_a_day)
+               Trace.trace(Desk, :answered_in_a_day)
     end
 
-    test "refuses a promise the contract does not declare, and a domain" do
+    test "refuses a promise the module does not declare, a contract and a domain" do
       assert_raise ArgumentError, ~r/does not declare promise :nope/, fn ->
-        Trace.trace(Requests, :nope)
+        Trace.trace(Desk, :nope)
+      end
+
+      assert_raise ArgumentError, ~r/does not declare promise :answered_in_a_day/, fn ->
+        Trace.trace(Requests, :answered_in_a_day)
       end
 
       assert_raise ArgumentError, ~r/does not declare promise :answered_in_a_day/, fn ->
@@ -188,14 +205,14 @@ defmodule EhOsContract.TraceTest do
       assert [%{verdict: :violated}] = judge(occurrences, now: @deadline)
 
       assert_raise KeyError, fn ->
-        Trace.judge(Trace.trace(Requests, :answered_in_a_day), occurrences, [])
+        Trace.judge(Trace.trace(Desk, :answered_in_a_day), occurrences, [])
       end
     end
   end
 
   describe "judge/3 over a promise made per item" do
     setup do
-      %{trace: Trace.trace(Requests, :items_inspected_in_a_day)}
+      %{trace: Trace.trace(Desk, :items_inspected_in_a_day)}
     end
 
     test "the run's one verdict is the worst of its items'", %{trace: trace} do

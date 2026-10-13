@@ -14,9 +14,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   # No contract picker: the registry's contracts are the same source
   # `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
   # same way that task does, one section per contract. A contract's report has its
-  # steps, its promises, its wiring and its scenarios (v2 plan, E7c), and for an
-  # aggregate that declares a lifecycle, the same first two questions of its
-  # transitions (plan LC4b).
+  # steps, its wiring and its scenarios (v2 plan, E7c), and for an aggregate that
+  # declares a lifecycle, the same first two questions of its transitions (plan LC4b).
+  # A contract declares no process (plan DD, P2h, #221): runs and promises are a
+  # process module's, and this screen does not show them yet (P2e, #220).
   @moduledoc false
 
   use Phoenix.LiveView
@@ -81,33 +82,6 @@ defmodule EhOsContract.Web.Live.ContractStatus do
                 <li :for={edge <- report.paths.failing}>{Sentence.step_failing(edge)}</li>
               </ul>
             </div>
-          </div>
-        </section>
-
-        <section :for={process <- report.processes}>
-          <h3>{process.label}</h3>
-          <p :if={Sentence.accountable(process.accountable)}>
-            {Sentence.accountable(process.accountable)}
-          </p>
-          <p>Runs in this period: {process.runs}{runs_per(report.module)}.</p>
-
-          <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
-          <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
-
-          <div :if={process.promises != []}>
-            <h4>Promises</h4>
-            <ul>
-              <li :for={assertion <- process.promises}>
-                <p>{Sentence.rule(assertion)}</p>
-                <p class={outcome_class(assertion)}>{Sentence.verdict(assertion)}</p>
-                <p
-                  :for={qualification <- Sentence.qualifications(assertion)}
-                  class="outcome-qualification"
-                >
-                  {qualification}
-                </p>
-              </li>
-            </ul>
           </div>
         </section>
 
@@ -192,30 +166,4 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @spec deployed_since(DateTime.t() | nil) :: String.t()
   defp deployed_since(nil), do: "nothing has happened under this version yet"
   defp deployed_since(at), do: "in force since #{DateTime.to_date(at)}"
-
-  # The one line the report exists to be read from — README's own pitch for
-  # it — so it is the one place color carries the answer, not just the words.
-  # **The verdict only.** The clauses beside it are deliberately unstyled: one of
-  # them says an outage means "this is not a breach on the client's side", and that
-  # sentence printed in the breach colour says the opposite of what it means.
-  @spec outcome_class(map()) :: String.t()
-  defp outcome_class(a) do
-    cond do
-      a.instances == 0 -> ""
-      a.violated > 0 -> "outcome-breached"
-      a.pending > 0 -> "outcome-pending"
-      true -> "outcome-ok"
-    end
-  end
-
-  # What one run is, beside the count (point 4 of the working plan, `PLAN.md`,
-  # "Szczegóły ekranu Graph"): the process's `correlate`, read from the contract's
-  # model, since the report carries no such field and is what EHOS reads on the wire.
-  @spec runs_per(module()) :: String.t() | nil
-  defp runs_per(module) do
-    with %{correlate: fields} <- EhOsContract.Model.process(EhOsContract.Model.fetch(module)),
-         clause when is_binary(clause) <- Sentence.runs_per(fields),
-         do: ", " <> clause,
-         else: (_ -> nil)
-  end
 end

@@ -10,7 +10,8 @@ defmodule EhOsContract.DslRules do
   # lists every violation with the file and line of the declaration at fault. A
   # violation is `{message, declaration}`, where the declaration is the Spark struct
   # whose source annotation says where it was written, or that annotation itself, for
-  # what no struct holds, such as an option of `use`.
+  # what no struct holds, such as an option of `use`, or `nil` for a violation of the
+  # whole module, which has no line to point at.
   @moduledoc false
 
   # `\z`, not `$`, which also matches before a final newline.
@@ -18,7 +19,7 @@ defmodule EhOsContract.DslRules do
   @snake_case ~r/^[a-z][a-z0-9_]*\z/
 
   @typedoc "A broken rule, and the declaration it points at, or where it was written."
-  @type violation :: {String.t(), struct() | :erl_anno.anno()}
+  @type violation :: {String.t(), struct() | :erl_anno.anno() | nil}
 
   @doc false
   # One segment of an application's namespace (D11): a domain's `name:`, and the first
@@ -173,8 +174,6 @@ defmodule EhOsContract.DslRules do
     case {struct |> Module.split() |> List.last(), Map.get(declaration, :kind)} do
       {"Unit", :aggregate} -> "aggregate"
       {"Unit", :dcb} -> "dcb"
-      {"ProcessDeclaration", _} -> "process"
-      {"ProcessStage", _} -> "stage"
       {"ServiceFunction", _} -> "function"
       {"ValueInvariant", _} -> "invariant"
       {name, _} -> name |> Macro.underscore() |> String.replace("_", " ")

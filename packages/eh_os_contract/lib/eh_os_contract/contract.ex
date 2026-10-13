@@ -25,8 +25,8 @@ defmodule EhOsContract.Contract do
   What the contract decides is declared here: the units that decide, with
   their state, invariants, commands and events; what reacts to events; what is read;
   what enters from elsewhere and what leaves; scenarios. The run those events make,
-  with its stages and promises, is an `EhOsContract.Process` of its own; a contract's
-  own `process` is an older form that is being removed. The module compiles to plain data,
+  with its stages and promises, is an `EhOsContract.Process` of its own. The module
+  compiles to plain data,
   `__eh_os_contract_model__/0`, which `EhOsContract.Model.fetch/1` returns.
 
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its

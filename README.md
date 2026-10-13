@@ -8,10 +8,11 @@ happened is what the contract says should.**
 
 ## Two halves, one contract
 
-A process is written down as two Elixir modules, in the manner of [ESDM](https://www.esdm.io): a
-**domain** — its words, contexts, actors and the systems it depends on — and a **contract** per process —
-the units that decide, their commands, events and invariants, what reacts to them, what is read, and what
-the process owner was promised. Both halves of the library read those modules and nothing else.
+A process is written down as Elixir modules, in the manner of [ESDM](https://www.esdm.io): a **domain** —
+its words, contexts, actors and the systems it depends on — **contracts** — the units that decide, their
+commands, events and invariants, what reacts to them and what is read — and a **process** module — its
+runs, their stages and endings, and what the process owner was promised. Both halves of the library read
+those modules and nothing else.
 
 **Events.** `EhOsContract.dispatch/3` runs a command through the contract: it asks whether the actor may
 issue it, checks its fields, reads the unit's history from the log, lets the implementation decide, and
@@ -175,9 +176,9 @@ mounted at `/dashboard` on this repository's sandbox host the way `oban_web` mou
 app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
 showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
 status (the four questions, per contract), and graph — a domain's context map, its system of contracts and
-what flows between them, and each contract's full graph, its process's declared shape, its units and their
-lifecycles, over the log — drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the
-`graph.v1` document the engine gives, with a panel for whatever is clicked.
+what flows between them, and each contract's full graph, its units and their lifecycles, over the log —
+drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the `graph.v1` document the
+engine gives, with a panel for whatever is clicked.
 
 ```bash
 cd sandbox && mix phx.server

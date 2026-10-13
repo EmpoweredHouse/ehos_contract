@@ -6,7 +6,9 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of
   `ehos-ledger`, unchanged: `eh-os` `test/support/fixtures/manifests/ledger.v2.json`,
   last changed in `ff1388e`, read at `f7b2330`. EHOS deploys ledger with it (step 6c)
-  until this generator writes it.
+  until this generator writes it. Its capabilities name the process the ledger's
+  contract declared; a contract declares none since plan DD, P2h (#221), so the test
+  reads that copy without them, a field EHOS keeps optional (eh-os#203).
 
   `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand
   from `ehos_yaml/accepted/sign_in.yaml`, an `ehos.yaml/v2` that signs people in
@@ -67,7 +69,7 @@ defmodule EhOsContract.Auth.ManifestTest do
         field(:branch_id, :id)
       end
 
-      event(:job_finished, "Job finished", terminal: true)
+      event(:job_finished, "Job finished")
       event(:job_noted, "Job noted", recorded_by: :clerk)
     end
 
@@ -84,10 +86,6 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
 
     policy(:finish_started, "Finish a started job", handles: :job_started, issues: :finish_job)
-
-    process :work, "Work" do
-      correlate(:job_id)
-    end
   end
 
   defmodule ReadDomain do
@@ -232,11 +230,7 @@ defmodule EhOsContract.Auth.ManifestTest do
       command(:record_entry, "Record an entry", by: :clerk, emits: :recorded)
       command(:flag_entry, "Flag an entry", by: :auditor, emits: :flagged)
       event(:recorded, "Entry recorded")
-      event(:flagged, "Entry flagged", terminal: true)
-    end
-
-    process :entries, "Entries" do
-      correlate(:entry_id)
+      event(:flagged, "Entry flagged")
     end
   end
 
@@ -252,7 +246,13 @@ defmodule EhOsContract.Auth.ManifestTest do
   describe "ledger" do
     test "its ehos.yaml and offers give EHOS's own ledger.v2.json, with the engine beside" do
       expected =
-        @fixtures |> Path.join("manifests/ledger.v2.json") |> File.read!() |> Jason.decode!()
+        @fixtures
+        |> Path.join("manifests/ledger.v2.json")
+        |> File.read!()
+        |> Jason.decode!()
+        |> update_in(["offers", "capabilities"], fn capabilities ->
+          Enum.map(capabilities, &Map.delete(&1, "process"))
+        end)
 
       manifest = Manifest.build(ehos_yaml!("ehos_yaml/accepted/ledger.yaml"), [Ledger], [Entries])
 
@@ -365,21 +365,18 @@ defmodule EhOsContract.Auth.ManifestTest do
                    "name" => "manifest-rig.job_noted",
                    "record" => "job_noted",
                    "label" => "Job noted",
-                   "process" => "work",
                    "principals" => ["human"]
                  },
                  %{
                    "name" => "manifest-rig.jobs_in_branch",
                    "query" => "jobs_in_branch",
                    "label" => "Jobs in a branch",
-                   "process" => "work",
                    "principals" => ["human"]
                  },
                  %{
                    "name" => "manifest-rig.start_job",
                    "command" => "start_job",
                    "label" => "Start a job",
-                   "process" => "work",
                    "principals" => ["human"]
                  }
                ],
@@ -398,13 +395,12 @@ defmodule EhOsContract.Auth.ManifestTest do
            }
   end
 
-  # Plan DD, P1b (#186): a contract without a process offers its capabilities all the
-  # same, naming no process; EHOS keeps the field optional (eh-os#203). `ReadWork`
-  # declares none since P1e (#192); a capability of every kind passes through the
-  # same `with_process/2`, so its one query stands for the others.
-  test "a contract without a process offers capabilities that name none" do
+  # Plan DD, P2h (#221): a contract declares no process, so no capability names one;
+  # EHOS keeps the field optional and reads it nowhere (eh-os#203). `Work` offers a
+  # command, a query and a recording.
+  test "a capability names no process" do
     %{"offers" => %{"capabilities" => capabilities}} =
-      Manifest.build(@file_v1, [ReadDomain], [ReadWork])
+      Manifest.build(@file_v1, [Domain], [Work])
 
     assert capabilities != []
     refute Enum.any?(capabilities, &Map.has_key?(&1, "process"))

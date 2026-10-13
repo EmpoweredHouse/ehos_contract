@@ -49,16 +49,15 @@ defmodule EhOsContract.Web.Live.GraphTest do
       render_change(view, "select_contract", %{"contract" => "web_test_host.case_handling"})
 
     assert html =~ "Access: all"
-    assert html =~ "web_test_host.case_handling — Case handling"
+    assert html =~ ~r/value="web_test_host.case_handling"[^>]*selected/
 
     contract = EhOsContract.Registry.contract("web_test_host.case_handling")
     document = Document.contract(contract)
     overlay = Overlay.contract(contract)
 
-    # Its process's declared shape, and its full graph with the log laid over it once
-    # connected: zeros, in a test database.
-    assert html =~ "Declared shape of its process"
-    assert cards(html, "declared-graph") == drawn(document, :declared)
+    # Its full graph with the log laid over it once connected: zeros, in a test database.
+    # A contract declares no process (plan DD, P2h, #221), so no declared shape of one.
+    refute html =~ ~s(id="declared-graph")
     assert html =~ "Declared versus observed, this contract"
     assert cards(html, "overlay-graph") == drawn(document, :contract, overlay)
 
@@ -119,9 +118,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ ~s(id="overlay-graph")
   end
 
-  test "two contracts whose processes share a name are each reachable, by id" do
-    # Both fixtures name their process `handling`; the selector keys by the contract's
-    # id (plan DD, P1b, #186), so each is reachable.
+  test "two registered contracts are each reachable, by id" do
+    # The selector keys by the contract's id (plan DD, P1b, #186).
     view = live_graph()
 
     html = render_change(view, "select_contract", %{"contract" => "web_test_appeals.appeals"})
@@ -165,7 +163,6 @@ defmodule EhOsContract.Web.Live.GraphTest do
         selected: nil,
         document: nil,
         overlay: nil,
-        declared?: false,
         units: []
       },
       overrides
@@ -197,9 +194,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
     refute html =~ ~s(id="overlay-graph")
   end
 
-  # Plan DD, P1b (#186): a contract without a process is listed and can be selected; its
-  # process's shape is not drawn, its contract graph is.
-  test "the selected contract's option is marked, and one without a process is listed" do
+  # Plan DD, P1b (#186): every contract is listed by its id and can be selected.
+  test "the selected contract's option is marked" do
     document = Document.contract(EhOsContract.Registry.contract("web_test_appeals.appeals"))
 
     html =
@@ -208,12 +204,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
         assigns(%{
           eh_os_contract_web_access: :read_only,
           contracts: [
-            %{
-              contract: nil,
-              id: "shop.cases",
-              process: %{name: :handling, label: "Case handling"}
-            },
-            %{contract: nil, id: "shop.stock", process: nil}
+            %{contract: nil, id: "shop.cases"},
+            %{contract: nil, id: "shop.stock"}
           ],
           selected: "shop.stock",
           document: document
@@ -222,7 +214,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     assert html =~ ~s(value="shop.stock" selected>)
     refute html =~ ~s(value="shop.cases" selected>)
-    assert html =~ "shop.cases — Case handling"
+    assert html =~ ~s(value="shop.cases">)
     refute html =~ ~s(id="declared-graph")
     assert html =~ ~s(id="overlay-graph")
     assert html =~ "Access: read only"

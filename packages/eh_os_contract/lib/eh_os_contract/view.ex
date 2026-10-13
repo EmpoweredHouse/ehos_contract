@@ -67,16 +67,10 @@ defmodule EhOsContract.View do
   end
 
   defp contract(model, unit_filter, details?) do
-    process =
-      case EhOsContract.Model.process(model) do
-        nil -> ""
-        p -> "  process #{p.name}"
-      end
-
     children =
       for {name, node} <- declarations(model, details?), unit_filter in [nil, name], do: node
 
-    {"contract #{inspect(model.module)}#{process}", [], children}
+    {"contract #{inspect(model.module)}", [], children}
   end
 
   # Each row under a contract with the name `path:` keeps it by.
@@ -135,10 +129,8 @@ defmodule EhOsContract.View do
         by = for c <- commands, event.name in c.emits, do: c.name
         recorded = for actor <- event.recorded_by, do: "recorded by #{actor}"
         from = Enum.join(Enum.map(by, &"#{&1}") ++ recorded, ", ")
-        stage = if event.stage, do: " · stage #{event.stage}", else: ""
 
-        {"event #{event.name}  ← #{from}#{stage}",
-         if(details?, do: fields(event.fields), else: []), []}
+        {"event #{event.name}  ← #{from}", if(details?, do: fields(event.fields), else: []), []}
       end
 
     {"#{unit.kind} #{unit.name}  #{plural(length(commands), "cmd")} · " <>

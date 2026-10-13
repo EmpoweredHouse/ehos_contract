@@ -24,6 +24,13 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** `mix eh_os_contract.manifest` no longer writes `process` on a capability of `offers.capabilities`,
+  because a contract can no longer declare a process (engine, plan DD, stage P2h, eh-os-contract#221). EHOS keeps
+  the field optional and reads it nowhere (EmpoweredHouse/eh-os#203); a consumer that compared a manifest field by
+  field finds it gone.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

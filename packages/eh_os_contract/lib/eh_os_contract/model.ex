@@ -11,7 +11,7 @@ defmodule EhOsContract.Model do
   ## The data
 
       %{format: 1, kind: :contract, module: MyApp.Contracts.Month,
-        domain: MyApp.Domain, context: :settlement, process: %{...},
+        domain: MyApp.Domain, context: :settlement,
         events: [...], commands: [...], units: [...], policies: [...],
         scenarios: [...], ...,
         version: "3f9c…", digests: %{"event:month_opened" => "…"}}
@@ -24,8 +24,8 @@ defmodule EhOsContract.Model do
   A domain's model is plain data with its own keys (`contexts`, `actors`, `values`,
   …), read directly until a reader needs more. So is a process module's
   (`use EhOsContract.Process`), of kind `:process`; `process/1`, `process_events/1`
-  and `declaring/2` answer for it as for a contract's process, so whatever reads a
-  run — `EhOsContract.Trace`, the conformance report — reads either.
+  and `declaring/2` answer for it, so whatever reads a run — `EhOsContract.Trace`,
+  the conformance report — asks them rather than reading its keys.
   """
 
   @typedoc "A contract module, or the model already built from one."
@@ -408,16 +408,14 @@ defmodule EhOsContract.Model do
   end
 
   @typedoc """
-  A contract's process as the model holds it: its `name` and `label`, the fields
-  that `correlate` its runs, the `accountable` actor, its `stages`, the `includes`
-  that place consumed events in it, its `deadline`, its `promises` and its `source`.
-
-  A process module's has the same keys. Its `name` is its `id:`, a string, since its
-  runs are filed under it; every event of its run is an include,
-  `%{contract, event, stage, terminal}`, and `terminal` is whether `ends_on` names it.
+  A process module's process (`use EhOsContract.Process`): its `name`, which is its
+  `id:`, a string, since its runs are filed under it; its `label`; the fields that
+  `correlate` its runs; the `accountable` actor; its `stages`; the `includes` that place
+  the contracts' events in them, `%{contract, event, stage, terminal}`, where `terminal`
+  is whether `ends_on` names the event; its `deadline`, its `promises` and its `source`.
   """
   @type process :: %{
-          required(:name) => atom() | String.t(),
+          required(:name) => String.t(),
           required(:correlate) => [atom()],
           required(:includes) => [map()],
           required(:stages) => [map()],
@@ -430,36 +428,28 @@ defmodule EhOsContract.Model do
 
     * `type` — the type it is stored under, `"<contract id>.<event>"` of the contract
       that declares it;
-    * `name` — its name in this contract, which for an included event is the name it
-      is consumed under (`as:`), not the sibling's;
-    * `contract` — the module that declares it: this contract, or the sibling;
-    * `stage` — the stage group a local event sits in, or the stage its `include`
-      sits in; `nil` outside one;
-    * `terminal` — whether it ends a run: a local event's own `terminal:`, an
-      included one's `include`'s, never the sibling's declaration;
-    * `included` — `false` for this contract's own event, `true` for one its process
-      includes;
+    * `name` — its name in the contract that declares it;
+    * `contract` — the module that declares it;
+    * `stage` — the stage it is included in;
+    * `terminal` — whether it ends a run: whether the process's `ends_on` names it;
     * `declaration` — the event's declaration in the contract that declares it.
   """
   @type process_event :: %{
           type: String.t(),
           name: atom(),
           contract: module(),
-          stage: atom() | nil,
+          stage: atom(),
           terminal: boolean(),
-          included: boolean(),
           declaration: map()
         }
 
-  # Process modules came in plan DD, P2d (#213); this function is the one way a reader
-  # asks for a process so that moving it out of the contract changes only this
-  # function (plan DD, P2a, #202).
   @doc """
-  The process a contract declares, or `nil` when it declares none. A domain declares
-  none either. A process module is one, under its `id:`.
+  The process a process module declares, under its `id:` (see `t:process/0`). `nil` for
+  a contract and a domain: a contract describes what decides and what is recorded, and
+  the runs that cross it are process modules of their own.
 
-  The one way a reader asks for it: what a process is may move out of the contract,
-  and only this function would then change.
+  The one way a reader asks for a process, so that what a process is can change in
+  this function only.
   """
   @spec process(contract() | map()) :: process() | nil
   def process(%{kind: :process} = model) do
@@ -479,21 +469,14 @@ defmodule EhOsContract.Model do
     }
   end
 
-  def process(%{} = model), do: Map.get(model, :process)
+  def process(%{}), do: nil
   def process(module) when is_atom(module), do: module |> fetch() |> process()
 
   @doc """
-  The events of a contract's process's run, in this order: every event the contract
-  declares, in declaration order, then every consumed event its process includes, in
-  the order of its `include`s — those at the process's level first, then each stage's
-  in turn (see `t:process_event/0`). `[]` when the contract declares no process.
+  The events of a process module's run: every event its stages include, in their
+  order, each resolved to the contract that declares it (see `t:process_event/0`).
+  `[]` for a contract and a domain, which declare no process.
 
-  An include whose event cannot be resolved to a declaration — one another
-  application publishes, which `R4` refuses, or one its sibling does not declare —
-  is left out, since it is stored under no type of this log.
-
-  A process module's run is every event its stages include, in their order, each
-  resolved to the contract that declares it; `terminal` is whether `ends_on` names it.
   An include of a contract this node cannot load, of an event that contract does not
   declare, or of a contract of another domain is left out: the rules between modules
   refuse all three (X5). Those rules run per project, and a process module of a
@@ -505,11 +488,11 @@ defmodule EhOsContract.Model do
   def process_events(contract) do
     model = if is_atom(contract), do: fetch(contract), else: contract
 
-    case {model, process(model)} do
-      {_model, nil} ->
+    case process(model) do
+      nil ->
         []
 
-      {%{kind: :process}, process} ->
+      process ->
         for include <- process.includes,
             %{events: events, domain: domain} <- [compiled(include.contract)],
             domain == model.domain,
@@ -520,40 +503,9 @@ defmodule EhOsContract.Model do
             contract: include.contract,
             stage: include.stage,
             terminal: include.terminal,
-            included: true,
             declaration: event
           }
         end
-
-      {_contract, process} ->
-        own =
-          for e <- model.events do
-            %{
-              type: e.type,
-              name: e.name,
-              contract: model.module,
-              stage: e.stage,
-              terminal: e.terminal,
-              included: false,
-              declaration: e
-            }
-          end
-
-        included =
-          for include <- process.includes,
-              {contract, %{} = event} <- [declaring(model, include.event)] do
-            %{
-              type: event.type,
-              name: include.event,
-              contract: contract,
-              stage: include.stage,
-              terminal: include.terminal,
-              included: true,
-              declaration: event
-            }
-          end
-
-        own ++ included
     end
   end
 

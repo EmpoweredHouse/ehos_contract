@@ -83,7 +83,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
         EhOsContract.Check.findings(contracts) ++
         EhOsContract.Check.process_module_findings(processes) ++
         EhOsContract.Check.Completeness.findings(contracts, processes) ++
-        EhOsContract.Check.Contracts.findings(contracts) ++ findings,
+        EhOsContract.Check.Contracts.findings(contracts, nil, processes) ++ findings,
       opts
     )
   end

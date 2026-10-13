@@ -64,9 +64,8 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         field :room, :string
   """
 
-  # The subscriber: it correlates its process on `visit_id` and includes the
-  # publisher's event (line 15), a process manager starts on it (line 19), and a
-  # boundary consults it matching `visit_id` (line 29).
+  # The subscriber: a process manager correlated on `visit_id` starts on the publisher's
+  # event (line 13), and a boundary consults it matching `visit_id` (line 23).
   defp subscriber(name, publisher, consumes \\ ":visit_booked") do
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
@@ -78,12 +77,6 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         identity :visit_id
         command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
         event :visit_billed, "Wizyta rozliczona"
-      end
-
-      process :billing, "Rozliczenie" do
-        correlate :visit_id
-
-        include :visit_booked
       end
 
       process_manager :chase, "Pogoń za rozliczeniem", correlate: :visit_id do
@@ -150,9 +143,10 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         end
       end
 
-      process :billing, "Rozliczenie" do
+      process_manager :chase, "Pogoń za rozliczeniem" do
         correlate :visit_id
-        include :visit_booked
+        starts_on :visit_booked
+        ends_on :visit_billed
       end
     end
     """
@@ -164,7 +158,8 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
       ])
 
     assert Enum.any?(violations, fn %{message: message} ->
-             message =~ "X6: process :billing includes :visit_booked and correlates on :visit_id" and
+             message =~
+               "X6: process manager :chase handles :visit_booked and correlates on :visit_id" and
                message =~ "has as :other_code, not :visit_code"
            end),
            inspect(violations)
@@ -225,79 +220,47 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
   end
 
   describe "X6: the fields a subscriber uses are in the publisher's schema" do
-    test "a removed field breaks the include, the process manager and the boundary, naming both sides" do
+    test "a removed field breaks the process manager and the boundary, naming both sides" do
       violations = pair("sib_removed", "      field :room, :string")
 
       assert assert_linked(
                violations,
-               "X6: process :billing includes :visit_booked",
+               "X6: process manager :chase handles :visit_booked",
                "sib_removed_billing.ex",
-               15
+               13
              ) =~
                "correlates on :visit_id, which event :visit_booked of " <>
                  "#{inspect(@fixtures)}.SibRemovedBooking (sib_removed_booking.ex:9) does not have"
 
       assert_linked(
         violations,
-        "X6: process manager :chase handles :visit_booked",
-        "sib_removed_billing.ex",
-        19
-      )
-
-      assert_linked(
-        violations,
         "X6: dcb :visit_slot consults :visit_booked matching :visit_id",
         "sib_removed_billing.ex",
-        29
+        23
       )
 
-      assert length(violations) == 3
+      assert length(violations) == 2
     end
 
     test "a changed type" do
       violations =
         pair("sib_retyped", "      field :visit_id, :string\n      field :room, :string")
 
-      assert assert_linked(violations, "X6: process :billing", "sib_retyped_billing.ex", 15) =~
-               "(sib_retyped_booking.ex:9) has as :string, not :id"
-
-      assert length(violations) == 3
-    end
-
-    test "a contract with no unit of its own holds an included event's correlation to :id" do
-      # No local event types the field, so the sibling's is compared with :id, the type a
-      # run's key may hold (F8), as a manager's undeclared correlation is.
-      observer = """
-      defmodule #{inspect(@fixtures)}.SibObserver do
-        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sib_observer"
-
-        consumes #{inspect(@fixtures)}.SibObservedBooking, :visit_booked
-
-        process :observed, "Obserwacja" do
-          correlate :room
-          include :visit_booked
-        end
-      end
-      """
-
-      violations =
-        links([
-          {"sib_observed_booking.ex", publisher("SibObservedBooking", @fields)},
-          {"sib_observer.ex", observer}
-        ])
-
       assert assert_linked(
                violations,
-               "X6: process :observed includes :visit_booked and correlates on :room",
-               "sib_observer.ex",
-               8
-             ) =~ "has as :string, not :id"
+               "X6: process manager :chase",
+               "sib_retyped_billing.ex",
+               13
+             ) =~
+               "(sib_retyped_booking.ex:9) has as :string, not :id"
+
+      assert length(violations) == 2
     end
 
     test "a field made optional, or personal" do
       optional = pair("sib_optional", "      field :visit_id, :id, optional: true")
 
-      assert assert_linked(optional, "X6: process :billing", "sib_optional_billing.ex", 15) =~
+      assert assert_linked(optional, "X6: process manager :chase", "sib_optional_billing.ex", 13) =~
                "declares optional; a field telling which run an event belongs to cannot be"
 
       personal =
@@ -306,14 +269,13 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
               field :patient_id, :id, subject: :patient
         """)
 
-      assert_linked(personal, "declares personal", "sib_personal_billing.ex", 15)
+      assert_linked(personal, "declares personal", "sib_personal_billing.ex", 13)
     end
 
     test "an event renamed with as: is checked under its local name" do
       billing =
         "SibRenamedBilling"
         |> subscriber("SibRenamedBooking", ":visit_booked, as: [visit_booked: :booked]")
-        |> String.replace("include :visit_booked", "include :booked")
         |> String.replace("starts_on :visit_booked", "starts_on :booked")
         |> String.replace("consults :visit_booked", "consults :booked")
 
@@ -326,14 +288,14 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
       assert assert_linked(
                violations,
-               "X6: process :billing includes :booked",
+               "X6: process manager :chase handles :booked",
                "sib_renamed_billing.ex",
-               15
+               13
              ) =~
                "which event :visit_booked of #{inspect(@fixtures)}.SibRenamedBooking " <>
                  "(sib_renamed_booking.ex:9) does not have"
 
-      assert length(violations) == 3
+      assert length(violations) == 2
     end
 
     test "controls: an optional field added, and a change to a field no declaration uses" do

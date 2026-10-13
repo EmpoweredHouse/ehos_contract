@@ -1,7 +1,8 @@
 defmodule EhOsContract.CheckContractsTest do
   @moduledoc """
   Plan EL1: **the rules v1 contracts had, over v2 contracts**, and one only an
-  implementation answers — a reaction back into an earlier stage, two reactions in
+  implementation answers — a reaction back into an earlier stage of a process module,
+  two reactions in
   one transaction, free text left unsealed, an event a command declares and never
   emits; and plan DD, X1: a reaction to another context's event in its transaction. Each finding points at its declaration, with a control beside it.
   """
@@ -12,6 +13,7 @@ defmodule EhOsContract.CheckContractsTest do
 
   @visits EhOsContract.CheckContractsTest.Visits
   @decider EhOsContract.CheckContractsTest.Visit
+  @run EhOsContract.CheckContractsTest.VisitRun
 
   setup_all do
     compile(
@@ -29,31 +31,30 @@ defmodule EhOsContract.CheckContractsTest do
           command :arrive, "Przyjdź", by: :reception, emits: [:arrived, :no_show]
           command :reopen, "Otwórz", by: :reception, emits: :reopened
 
-          stage :booking do
-            event :booked, "Umówiono" do
-              field :note, :string
-            end
-
-            event :reopened, "Otwarto ponownie" do
-              field :attempt, :integer
-            end
+          event :booked, "Umówiono" do
+            field :note, :string
           end
 
-          stage :arrival do
-            event :arrived, "Przyszedł"
-            event :no_show, "Nie przyszedł"
+          event :reopened, "Otwarto ponownie" do
+            field :attempt, :integer
           end
+
+          event :arrived, "Przyszedł"
+          event :no_show, "Nie przyszedł"
         end
 
         policy :greet, "Powitanie", handles: :booked, issues: :arrive
         policy :reopen_after_arrival, "Ponowne otwarcie", handles: :arrived, issues: :reopen
         effect :log_booking, "Zapis", handles: :booked, delivery: :in_transaction
+      end
 
-        process :visit, "Wizyta" do
-          correlate :visit_id
-          stage :booking
-          stage :arrival
-        end
+      defmodule #{inspect(@run)} do
+        use EhOsContract.Process, id: "clinic.visit_run", domain: Clinic, label: "Wizyta"
+
+        correlate :visit_id
+
+        stage :booking, include: [{#{inspect(@visits)}, [:booked, :reopened]}]
+        stage :arrival, include: [{#{inspect(@visits)}, [:arrived, :no_show]}]
       end
 
       defmodule #{inspect(@decider)} do
@@ -78,21 +79,73 @@ defmodule EhOsContract.CheckContractsTest do
   end
 
   defp findings(rule) do
-    for %Finding{rule: ^rule} = f <- Contracts.findings([@visits], [@decider]),
+    for %Finding{rule: ^rule} = f <- Contracts.findings([@visits], [@decider], [@run]),
         do: {f.message, Finding.place(f)}
   end
 
-  test "a reaction issuing into an earlier stage; control: one issuing forward" do
-    assert [{message, {"visits.ex", 31}}] = findings("backward-edge")
+  test "a reaction issuing into an earlier stage of a process; control: one issuing forward" do
+    assert [{message, {"visits.ex", 27}}] = findings("backward-edge")
 
     assert message =~
              "policy :reopen_after_arrival of #{inspect(@visits)} reacts to :arrived in stage " <>
-               ":arrival and issues :reopen, whose :reopened is in the earlier stage :booking"
+               ":arrival of #{inspect(@run)} and issues :reopen, whose :reopened is in the " <>
+               "earlier stage :booking"
+  end
+
+  test "control: without a process that stages them, no reaction goes back" do
+    assert for(
+             f <- Contracts.findings([@visits], [@decider], []),
+             f.rule == "backward-edge",
+             do: f
+           ) == []
+  end
+
+  test "a sibling's event a reaction consumes is found in the stage the process gives it" do
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Frontdesk do
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.frontdesk"
+
+        consumes #{inspect(@visits)}, :arrived, as: [arrived: :patient_here]
+
+        aggregate :desk, "Recepcja" do
+          identity :visit_id
+          command :check_in, "Zameldowanie", emits: :checked_in
+          event :checked_in, "Zameldowano"
+        end
+
+        policy :check_in_on_arrival, "Meldunek", handles: :patient_here, issues: :check_in
+      end
+
+      defmodule EhOsContract.CheckContractsTest.FrontdeskRun do
+        use EhOsContract.Process, id: "clinic.frontdesk_run", domain: Clinic, label: "Recepcja"
+
+        correlate :visit_id
+
+        stage :desk, include: [{EhOsContract.CheckContractsTest.Frontdesk, [:checked_in]}]
+        stage :arrival, include: [{#{inspect(@visits)}, [:arrived]}]
+      end
+      """,
+      "frontdesk.ex"
+    )
+
+    desk = EhOsContract.CheckContractsTest.Frontdesk
+    run = EhOsContract.CheckContractsTest.FrontdeskRun
+
+    assert [%Finding{message: message} = finding] =
+             for(f <- Contracts.findings([desk], [], [run]), f.rule == "backward-edge", do: f)
+
+    assert message =~
+             "policy :check_in_on_arrival of #{inspect(desk)} reacts to :patient_here in stage " <>
+               ":arrival of #{inspect(run)} and issues :check_in, whose :checked_in is in the " <>
+               "earlier stage :desk"
+
+    assert Finding.place(finding) == {"frontdesk.ex", 12}
   end
 
   test "two reactions in the transaction recording one event; control: an event with one" do
     # At the first of them, as they are listed.
-    assert [{message, {"visits.ex", 32}}] = findings("competing-in-transaction-consumers")
+    assert [{message, {"visits.ex", 28}}] = findings("competing-in-transaction-consumers")
 
     assert message =~
              ":booked of #{inspect(@visits)} has 2 reactions inside the transaction that " <>
@@ -100,7 +153,7 @@ defmodule EhOsContract.CheckContractsTest do
   end
 
   test "free text in an event, not personal; control: a number, and a command's field" do
-    assert [{message, {"visits.ex", 16}}] = findings("free-text-not-personal")
+    assert [{message, {"visits.ex", 15}}] = findings("free-text-not-personal")
     assert message =~ ":booked.note of #{inspect(@visits)} is free text and not `personal:`"
   end
 

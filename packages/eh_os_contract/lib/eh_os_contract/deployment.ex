@@ -118,9 +118,7 @@ defmodule EhOsContract.Deployment do
   # contract itself, so they move its version. What only the code says is which
   # module implements each declaration — the contract's own, and the checks of its
   # domain's values, which decide what dispatch accepts (plan EL2b) — and that, with
-  # the steps, is its wiring. A
-  # promise gets a digest of its own here, so a changed promise has a boundary
-  # (`declaration_boundaries/1`) where the model only digests the whole process.
+  # the steps, is its wiring.
   #
   # The edges and bindings are sorted, so the list order carries no meaning by the
   # time they are hashed — the one case where `EhOsContract.Digest` needs the
@@ -139,8 +137,6 @@ defmodule EhOsContract.Deployment do
           module <- modules,
           do: "#{kind}:#{name}=#{inspect(module)}"
 
-    promises = promise_digests(Model.process(model))
-
     %{
       id: Ecto.UUID.generate(),
       contract: model.id,
@@ -148,12 +144,14 @@ defmodule EhOsContract.Deployment do
       wiring_version: EhOsContract.Digest.hash(edges ++ Enum.sort(bindings)),
       events: model.events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
       edges: edges,
-      declaration_digests: Map.merge(model.digests, promises),
+      declaration_digests: model.digests,
       first_seen_at: now
     }
   end
 
-  # A process module's row; see the moduledoc.
+  # A process module's row; see the moduledoc. A promise gets a digest of its own here,
+  # so a changed promise has a boundary (`declaration_boundaries/1`) where the model
+  # only digests the whole process.
   @spec process_row(module(), DateTime.t()) :: map()
   defp process_row(module, now) do
     model = Model.fetch(module)
@@ -172,7 +170,7 @@ defmodule EhOsContract.Deployment do
   end
 
   defp promise_digests(process) do
-    for promise <- (process && process.promises) || [],
+    for promise <- process.promises,
         into: %{},
         do: {"promise:#{promise.name}", promise_digest(promise)}
   end

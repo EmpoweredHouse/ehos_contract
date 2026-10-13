@@ -8,11 +8,12 @@ defmodule EhOsContract.Graph.Overlay do
   whatever the log holds.
 
   It carries **only the numbers the conformance report computes**, and its readings
-  of them, so a reader recounts nothing: an event's occurrences, a process's runs,
-  how often a step was taken, what waits and what fails there and whether the report
-  counts it as never taken or not yet; a lifecycle transition's count, "not yet" and
-  "never", and an aggregate's count; between contracts, the events the log holds and
-  what waits or fails at the consumer, and each contract's runs. They are counted as
+  of them, so a reader recounts nothing: an event's occurrences, how often a step was
+  taken, what waits and what fails there and whether the report counts it as never
+  taken or not yet; a lifecycle transition's count, "not yet" and "never", and an
+  aggregate's count; between contracts, the events the log holds and what waits or
+  fails at the consumer. A run is a process module's, and a contract's overlay counts
+  none. They are counted as
   `EhOsContract.Conformance.report/2` counts them; between contracts, from the
   consumer's steps and one count of the consumed events.
 
@@ -95,10 +96,6 @@ defmodule EhOsContract.Graph.Overlay do
       for {name, occurrences} <- Paths.occurrences(model, period),
           do: {id.(:event, name), %{occurrences: occurrences}}
 
-    process =
-      for p <- List.wrap(Model.process(model)),
-          do: {id.(:process, p.name), %{runs: Paths.runs_of(model, to_string(p.name), period)}}
-
     units = for l <- lifecycles, do: {id.(:unit, l.unit), %{aggregates: l.aggregates}}
 
     {undeclared, moved} = undeclared(c, lifecycles)
@@ -110,7 +107,7 @@ defmodule EhOsContract.Graph.Overlay do
         "module" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(events ++ process ++ units),
+        "nodes" => Map.new(events ++ units),
         "relations" =>
           Map.new(on_steps(document, c, steps) ++ transitions(document, c, lifecycles) ++ moved),
         "observed" => %{"relations" => %{"undeclared" => undeclared}}
@@ -121,8 +118,9 @@ defmodule EhOsContract.Graph.Overlay do
 
   @doc """
   The overlay of `domain` over `contracts` (those naming another domain are left
-  out) and the period `opts` names, against `Document.domain/2` of the same: each
-  contract's runs, and what crosses between two contracts.
+  out) and the period `opts` names, against `Document.domain/2` of the same: what
+  crosses between two contracts. Its `nodes` are empty: a contract has no runs, a
+  process module's are its own.
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
   def domain(domain, contracts, opts \\ []) do
@@ -137,18 +135,13 @@ defmodule EhOsContract.Graph.Overlay do
 
     id = &Document.id([:contract, &1.id])
 
-    runs =
-      for m <- models,
-          p = Model.process(m),
-          do: {id.(m), %{runs: Paths.runs_of(m, to_string(p.name), period)}}
-
     seal(
       %{
         "kind" => "domain",
         "domain" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(runs),
+        "nodes" => %{},
         "relations" => Map.new(between(document, models, id, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
