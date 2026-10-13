@@ -81,7 +81,7 @@ defmodule Concepts.Reactions.Contracts.Loans do
 
     event :copy_returned, "Copy returned"
     event :loan_marked_overdue, "Loan overdue"
-    event :loan_closed, "Loan closed", terminal: true
+    event :loan_closed, "Loan closed"
   end
 
   policy :close_on_return, "A returned copy closes its loan",
@@ -102,10 +102,6 @@ defmodule Concepts.Reactions.Contracts.Loans do
     timer :due, "Return date", wait: {30, :day}, issues: :mark_overdue
 
     ends_on :loan_closed
-  end
-
-  process :lending, "A loan, from lending to return" do
-    correlate :loan_id
   end
 
   scenario "a returned copy closes its loan" do

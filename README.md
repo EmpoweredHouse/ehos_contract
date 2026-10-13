@@ -88,8 +88,8 @@ flowchart LR
 
 ## Seeing it work
 
-A process with one promise: a case is opened, and within three days it is either filed or explicitly
-flagged for review.
+A contract that decides cases, and a process with one promise about them: a case is opened, and within
+three days it is either filed or explicitly flagged for review.
 
 ```elixir
 defmodule Acme.Contracts.InvoiceFiling do
@@ -103,19 +103,29 @@ defmodule Acme.Contracts.InvoiceFiling do
     command :flag_invoice, "Flag for manual review", by: :clerk, emits: :invoice_flagged
 
     event :case_opened, "Case opened"
-    event :invoice_filed, "Invoice filed", terminal: true
-    event :invoice_flagged, "Invoice flagged for manual review", terminal: true
+    event :invoice_filed, "Invoice filed"
+    event :invoice_flagged, "Invoice flagged for manual review"
   end
+end
 
-  process :invoice_filing, "Invoice filing" do
-    correlate :case_id
+defmodule Acme.Processes.CaseFiling do
+  use EhOsContract.Process,
+    id: "acme.case_filing",
+    domain: Acme.Domain,
+    label: "Invoice filing"
 
-    promise :invoice_follows_case do
-      from :case_opened
-      eventually :invoice_filed
-      within {3, :day}
-      or_else :invoice_flagged
-    end
+  correlate :case_id
+
+  stage :filing, "Filing",
+    include: [{Acme.Contracts.InvoiceFiling, [:case_opened, :invoice_filed, :invoice_flagged]}]
+
+  ends_on [:invoice_filed, :invoice_flagged]
+
+  promise :invoice_follows_case do
+    from :case_opened
+    eventually :invoice_filed
+    within {3, :day}
+    or_else :invoice_flagged
   end
 end
 ```
@@ -125,18 +135,14 @@ month, 40 cases were opened. 39 look completely uneventful — filed or flagged,
 didn't: a code path that should have flagged it never ran, for reasons that have nothing to do with this
 library (a bug, a missed deploy, an edge case nobody tested). No error, so nothing paged anyone. This is
 the part of what `mix eh_os_contract.report` prints for that month about the process, in the sentences it
-prints — the header and the contract's version, deployed since when, come before it:
+prints — the header and the process's version, deployed since when, come before it:
 
 ```
 PROCESS: Invoice filing
   Runs in this period: 40.
-  All agreed steps were carried out in this period.
   Rule: after "Case opened" within 3 days, "Invoice filed" follows, or else "Invoice flagged for manual review".
     BREACHED in 1 of 40 runs.
     Of those that were met, 2 runs reached the fallback ending, which conforms to the rule.
-
-DRIFT
-  None: nothing happened outside the agreement.
 ```
 
 `BREACHED in 1 of 40 runs` is the conformance half on one line. It doesn't point at a stack trace, and it

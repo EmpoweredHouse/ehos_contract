@@ -4,10 +4,10 @@ What eh_os_contract is, what it is for, and the principles it is built on.
 
 ## What it is
 
-A business process is written down as two Elixir modules: a **domain**, the words the people in the
-process use, the contexts it is split into, who acts in it and which systems it depends on; and a
-**contract**, what is decided in one context, what happened, what reacts to it, what is read, and what was
-promised. Both are declarations, not code that runs: every key of them is listed in the reference
+A business process is written down as Elixir modules: a **domain**, the words the people in the
+process use, the contexts it is split into, who acts in it and which systems it depends on; a
+**contract** per context, what is decided there, what happened, what reacts to it and what is read; and a
+**process**, the run those events make and what was promised about it. Both are declarations, not code that runs: every key of them is listed in the reference
 ([the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md),
 [the process module](dsl/process-dsl.md)).
 
@@ -41,18 +41,28 @@ defmodule Introduction.Contracts.Onboarding do
       emits: :application_approved
 
     event :application_received, "Application received"
-    event :application_approved, "Application approved", terminal: true
+    event :application_approved, "Application approved"
   end
+end
 
-  process :onboarding, "Onboarding" do
-    correlate :application_id
-    accountable :reviewer
+defmodule Introduction.Processes.ApplicationReview do
+  use EhOsContract.Process,
+    id: "introduction_example.application_review",
+    domain: Introduction.Domain,
+    label: "Reviewing an application",
+    accountable: :reviewer
 
-    promise :decided_within_a_week do
-      from :application_received
-      eventually :application_approved
-      within {7, :day}
-    end
+  correlate :application_id
+
+  stage :review, "Review",
+    include: [{Introduction.Contracts.Onboarding, [:application_received, :application_approved]}]
+
+  ends_on :application_approved
+
+  promise :decided_within_a_week do
+    from :application_received
+    eventually :application_approved
+    within {7, :day}
   end
 end
 ```
@@ -61,7 +71,7 @@ Read the promise aloud: *after an application is received, within seven days it 
 sentence is what the person who owns the process confirms or corrects, and it is why every declaration
 carries a label in the words of the people in the process.
 
-Everything else the library does reads those two modules:
+Everything else the library does reads those modules:
 
 - **The compiler** refuses a model that contradicts itself and code that contradicts the model: an
   implementation that emits an event its command does not declare does not compile.

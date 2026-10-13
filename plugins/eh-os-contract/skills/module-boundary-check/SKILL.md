@@ -69,11 +69,13 @@ Pick by what the business says, not by what the code will look like:
 | "if Y has not happened a day after X, chase it" | a `process_manager` with a timer | `write-reaction` |
 | "reception sees the day's totals" | a `read_model` and the `query` that reads it | `write-reaction` |
 
-- A contract holds **one process** (`R1`), and every local event belongs to its runs (`R2`: every
-  event carries the process's `correlate` fields). There is no event outside a run, so the
-  question is never whether it needs a process, only *which* process: the one whose
-  contract belongs to the context the fact is born in. A fact born in a sibling process is
-  `consumes`d and `include`d, never declared twice.
+- A contract describes what one context decides; it has no run of its own. A fact goes into the
+  contract of the context it is born in, and is never declared twice: a sibling contract that
+  reacts to it `consumes` it. The run it belongs to — a loan from lending to return, a visit from
+  booking to its report — is a process module (`use EhOsContract.Process`), which includes the
+  events of one contract or of several (`stage …, include: [{Contract, [:event]}]`) and says what
+  tells one run from another (`correlate`). A register whose units only decide and record has no
+  process, and needs none.
 - A new context, actor, value or external goes into the **domain** first (`use EhOsContract.Domain`);
   the contract names them (`X1`–`X4`). An actor with nothing to do is `orphan-actor`; a context no
   contract uses is `bounded-context-without-content`.
@@ -82,10 +84,10 @@ Pick by what the business says, not by what the code will look like:
 
 > **Did someone confirm "after A, within N, B follows, or else C", and does it matter if it breaks?**
 
-- **Yes** → a `promise` in the process, with the number that was stated, and `unverified: true`
-  until the process owner confirms it (`unverified-declaration`). Its `from`, `eventually` and
-  `or_else` are events of the run (`R5`).
-- **No** → the structure stands on its own, and that is a complete answer. Stages, `terminal:` and
+- **Yes** → a `promise` in the process module, with the number that was stated, and
+  `unverified: true` until the process owner confirms it (`unverified-declaration`). Its `from`,
+  `eventually` and `or_else` are events the module includes (`R5`).
+- **No** → the structure stands on its own, and that is a complete answer. Stages, `ends_on` and
   the declared paths already give the report untraversed paths and drift without any clock
   (`contract-distillation`, step 7). A promise with no agreed number is written without `within`,
   and `promise-without-within` says so rather than letting it read as kept.

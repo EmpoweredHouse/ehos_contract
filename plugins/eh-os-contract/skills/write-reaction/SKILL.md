@@ -22,7 +22,7 @@ from `sandbox/`, run the application's `mix precommit`.
 
 ## Which kind
 
-A reaction is declared in the contract of the process it belongs to, beside the units, and bound
+A reaction is declared in the contract of the context it belongs to, beside the units, and bound
 by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reaction produces:
 
 | It… | Kind | Callback | Example |

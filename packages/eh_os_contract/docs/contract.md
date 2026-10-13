@@ -56,11 +56,11 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 
 <!-- covers: entities contract.aggregate, contract.policy, contract.subscribe, contract.scenario -->
 
-A contract belongs to one context of one domain, and holds at most one process. It names itself, `id: "lending.loans"` on its
+A contract belongs to one context of one domain. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
 contract records — `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
 changes the type of every event it covers, and the log's old rows are no longer read as those events; the module's
-name and the process's name are stored too, in each row and in each run, so neither is free to rename either.
+name is stored too, in each row, so it is not free to rename either.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
@@ -90,17 +90,7 @@ defmodule Lending.Contracts.Loans do
       field :member_id, :id
     end
 
-    event :copy_returned, "Copy returned", terminal: true
-  end
-
-  process :lending, "A loan, from lending to return" do
-    correlate :loan_id
-
-    promise :returned_within_a_month do
-      from :loan_opened
-      eventually :copy_returned
-      within {30, :day}
-    end
+    event :copy_returned, "Copy returned"
   end
 
   scenario "a copy is lent" do
@@ -143,11 +133,11 @@ end
 - **A command names who may issue it** (`by:`), what it may emit, and which invariants it may refuse on.
   Dispatch refuses an actor outside `by:` before anything else. An event outside `emits:` after the
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.
-- **The process is the run**: `correlate` names the fields that make one run, `stage` groups its events
-  when it has stages, and a `promise` is what the process owner agreed happens — from one event, eventually
-  another, within a time, or else a third. `deadline` bounds the whole run. A contract whose
-  units only decide and record — a register of equipment, of rooms — declares no process, and then nothing
-  that belongs to a run: no `stage` group and no `terminal:` event ([`R1`](#refusals-r)).
+- **A contract describes what its units decide, not the run they make.** A loan from lending to return, a
+  visit from booking to its report, is a [process](#a-process): a module of its own that names the events of
+  the run, from one contract or several, and what was promised about it. A contract can still declare a
+  `process` of its own, an older form that is being removed
+  ([processes](concepts/process.md#a-process-declared-in-a-contract)).
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
   an ExUnit test against the implementation:
@@ -237,12 +227,15 @@ person is refused. A `:system` actor and a reaction act for the application, and
 role: a person who must act on another's unit does so through a command declared for it. A scenario names the
 person with `as "librarian-ola"` beside its `actor` ([`S7`](#refusals-s)), and is refused for anyone else.
 
+<a id="a-process"></a>
+
 ## A process
 
 <!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline, process.scenario -->
 
-A process whose run crosses several contracts — a loan lent at one desk and returned at another, a visit
-booked, documented and reported by three parts of a practice — is written as a module of its own. It names
+A run of the business — a loan from lending to return, a visit booked, documented and reported by three
+parts of a practice — is written as a process module, whether its events come from one contract or from
+several. It names
 the run, what tells one run from another, its stages and the events of each contract they include, the events
 that end a run, its promises, and how long a run may take:
 
@@ -280,7 +273,7 @@ includes nothing, or an `include:` entry naming no event or no contract module (
 `ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit, `deadline`
 twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
-under a run of it, named by its `id:`, beside the run of the contract's own `process`; `mix eh_os_contract.report`
+under a run of it, named by its `id:`; `mix eh_os_contract.report`
 prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
 judged is in [processes](concepts/process.md).
 
