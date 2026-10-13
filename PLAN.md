@@ -21,7 +21,7 @@ table** in "Dopisek 5 października — DD"; each stage's scope, decisions and r
 marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**Next** (the revision of 13 October, below the "Postęp" table): P2i, P2h, P2e, C1; then M1, O2, V5 and L4 rewritten
+**Next** (the revision of 13 October, below the "Postęp" table): P2i (#294, in progress), P2h, P2e, C1; then M1, O2, V5 and L4 rewritten
 before they start. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
@@ -1885,7 +1885,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☐ | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
-| P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☐ | — |
+| P2i | 2 | docs and the plugin's skills teach the process module | P2g | ◐ `dd/294-teach-process-module` | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | L3; its paragraph rewritten first | ⏸ to be rewritten after L3 (13 October) | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
