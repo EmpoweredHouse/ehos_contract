@@ -5,473 +5,66 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 6 października (fala 1 i ID1 w `main`; ID2 w toku)
+## Handoff — state on 13 October 2026 (waves 1–4, E13 and wave 5's L1–L3 in `main`; the remaining plan revised)
 
-Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
-zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
+Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
+is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
+waves) is in `git log -p PLAN.md` and in the closed issues.
 
-Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
-dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
-stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11**, a po nich #53–#56 (tabele
-poza `public`, klucz blokady per schemat, każda nazwa w formie). **E12 — integracja między aplikacjami — jest
-zamknięte i w `main`**: E12a (#57, `Bus`), E12b (#58, relay), E12c (#59, inbox), E12d (#61, `call/3`), E12e (#62,
-dokumentacja); pytania, które zostawiło, to issues #63–#66 (#67). Po E12 w `main` są jeszcze: plan generatora
-manifestu v2 odzyskany z worktree (#68), termin pobierania kluczy w auth (#69, odzyskany z #36) i sprawdzenie planu
-EH wobec dzisiejszego kodu (#70).
+The repository of the `eh_os_contract` library: a contract of a business process as a Spark DSL, dispatch with its
+own event log, and conformance; packages `eh_os_contract_web` (dashboard), `eh_os_contract_auth` and
+`eh_os_contract_graph` (the `graph.v1` renderer); `sandbox/` is test material. What each is: `CLAUDE.md`.
 
-**EH — generator `ehos.manifest/v2` — jest zamknięty i w `main`** (#73, merge `743e91d`, z EH3 wmergowanym do
-niego jako #74): `EhOsContract.Auth.EhosYaml.read/1` czyta `ehos.yaml` jak EHOS, a `mix eh_os_contract.manifest`
-pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wyszło” pod „EH — odpowiedź EHOS-a”.
+**The DD programme** ("DDD checked by code", approved 5 October) is the work. **Its only status is the "Postęp"
+table** in "Dopisek 5 października — DD"; each stage's scope, decisions and reviews are in its GitHub issue (labels
+`dd`, `wave-<n>`), run with the `stage-issue` skill. Waves 1–4 are closed (conditionally: what waits for the graph is
+marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
+since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**EB — logowanie przeglądarki przez EHOS w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78))
-— plan w „Dopisek 2 października — EB”, specyfikacja w `docs/adr/browser-session.md`. **EB1 jest w `main`** (#82,
-merge `7a2bcb7`), a po nim [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83): `ehos.yaml/v2` z
-kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`) — „Dopisek 2 października (2)”.
-**EB jest zamknięte i w `main`**: EB2a (#85), EB2b (#86), EB3a (#87), EB3b (#88, merge `da9f56f`) — „EB3b — co
-wyszło”. Ekranów logowania biblioteka nie ma i mieć nie będzie: formularz logowania, odmowy i wylogowanie to strony
-EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko link „Zaloguj” i przycisk „Wyloguj”.
+**Next** (the revision of 13 October, below the "Postęp" table): P2i (#294, in progress), P2h, P2e, C1; then M1, O2, V5 and L4 rewritten
+before they start. V1–V4 are required before the first application keeps data it may not lose.
 
-**#99 — cykl życia agregatu — jest zamknięty w kodzie i w `main`** (4 października): LC0 #120 (sprzęt AppUnite jako
-trzecie dane testowe), LC1 #121 (DSL i reguły `T1`–`T4`), LC2 #122 (status w `State`, `from:`, strażnik w
-dispatchu), LC3 #123 (raport), LC4a #124 (`Computer` na cyklu życia, `T4` dla drobniejszych odmów), LC4b #125
-(diagram w `graph` i na dashboardzie), #126 (utrata tylko z `W użytku`, poprawka użytkownika po obejrzeniu
-diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”. Po nim #128 (AppUnite: zapotrzebowanie na
-komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
+**Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
+#256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
+#193 (an upper bound for durations); the three relations the Rehmed and TaxVision context maps lack, which L3's
+references show (`check` warnings; the source material is not in this repository); a version tag and the pins in
+AppUnite's application and `ehos-ledger` (the migration notes after each wave and the closing comments of #269,
+#272, #286).
 
-**Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
-etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
-października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-**Fala 1 zamknięta w `main`** (#135–#151, merge `32d7137`); decyzja użytkownika „dalej”, notatka migracyjna dla
-AppUnite i `ehos-ledger` — „Po fali 1 — decyzja użytkownika i notatka migracyjna”. Tag wersji czeka na polecenie.
-**Wave 2:** ID1 merged in #152 (issue #165, closed; a follow-up test in #169). ID2 merged on
-`dd/171-contract-names` (issue #171, #172): every contract names its `id:`. ID3 merged in #174
-(issue #173): the id is required and labels every event; existing logs are reset. Follow-up #175 (a start-up
-warning for undeclared types in the log) merged in #176. ID4 merged in #181 (issue #178): rows and keys name a
-contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
-merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
-v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b merged in #189 (issue #186): the manifest, the graph page and the check no longer
-assume a process. P1c merged in #191 (issue #190): a contract describes at most one process. P1e merged in #194 (issue #192): test contracts
-declare a process only when the test is about one. P1d merged in #196 and #200 (issue #195): no
-`cadence`, and the sandbox keeps only the four processes its clients described. P2a merged in #204 (issue #202): readers ask
-`Model.process/1` and `Model.process_events/1`. P2b merged in #207 (issue #205): a process can be a
-module of its own. P2c merged in #212 (issue #210): process modules
-are checked against their contracts and get runs. P2d merged in #216 (issue #213): the report, deployment
-and check show process modules. **Wave 2 closed conditionally** (7 October; migration note in "After wave 2 — the user's decision and the migration note"). **On hold until the graph documents and renderer (E13; #217, #219, another contributor) are in `main`: a process module's picture and page (P2e, #220), and removing the contract's own `process` (P2h, #221).** P2f merged in #225–#227
-(issue #222): the sandbox's processes are process modules. The library's own test material uses process modules (P2g, merged in #231, issue #228).
-#193 (an upper bound for durations, R6) is open. A follow-up outside the stages, merged in #234 (#180, the user's
-decision of 7 October): `eh_os_contract_auth` refuses to start unless its audience is `<application>/<environment>`,
-the application equals one domain's `name:` exactly, and no other domain publishes; EHOS enforces the same on the bus
-(EmpoweredHouse/eh-os#201). **Wave 3:** B2, B3 and B4 dropped (the user's decision of 7 October, "Before wave 3's
-boundaries"). T2a with T2b merged in #242 (issue #240): a command reads an entity the application keeps, through
-`EhOsContract.Entities`, and the storage is at migration V02, which the engine requires at boot. T2s merged in #246
-(issue #245), A1 in #248 (issue #247): a command can require the person a field of its unit's state names
-(`actor_is`), and A2 in #250 (issue #249): a clinic's visit is closed only by the specialist it is booked with. S2 merged
-in #254 (issue #251): a process's promise has scenarios that run as tests, and any scenario may date a given (`at:`).
-S3 merged in #257 (issue #256): the clinic's and the accounting firm's promises have scenarios. Open from it, the
-user's: an outage of a system a promise depends on one step upstream cannot excuse it (#256). Next without E13: O1,
-which adds a key to the conformance wire EHOS reads; process modules are not on the wire at all yet, so both were asked
-of EHOS in EmpoweredHouse/eh-os#297 (8 October). EHOS agreed: P2w merged in #261 (issue #259) puts process modules on
-the wire, keyed `process`, and O1 merged in #262 (issue #260) counts runs whose stages happened out of order. **Wave 3
-closed conditionally** (8 October; migration note in "After wave 3 — the user's decision and the migration note"); M1
-and O2 wait for E13 with P2h and P2e. **Wave 4:** PC1 merged in #265 (issue #264), PC2 in #267 (issue #266), and a
-shared fold of a unit's stream after them in #268. **Wave 4 closed conditionally** (9 October; migration note in "After
-wave 4 — the user's decision and the migration note"); V1–V5 wait for P2h. **Next: wave 5's L1, L2, L3**; L4 waits
-for P2e.
+**Read first:** `CLAUDE.md`; `CONTRIBUTING.md`; `.claude/review.md` (this repository's part of
+`ehos-dev:pre-pr-review`); the `stage-issue` skill; the issue of the stage you work on; the "Postęp" table and the
+stage's paragraph below it.
 
-### Stan repozytorium
-
-- **`origin/main` = `5a90e96`** (merge #152, ID1, 6 października; przed nim `32d7137`, merge #151, S4; przed nim `2386feb`, merge #150, X1; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
-  W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
-  `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
-  znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
-  wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
-  `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
-  `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwartych PR-ów programu brak.** #151 (S4) i #150 (X1) zmergowane 6 października, #146 (W4) i #148 (T1+T1s) 5 października; gałęzie
-  `engine/w3-trace-core`, `engine/w4-decision`, `engine/t1-supplied-by-host` zmergowane, nieusunięte (sprzątanie na
-  polecenie użytkownika). **CI stoi na billingu GitHub Actions** (joby nie są przydzielane runnerowi): kod z `main`
-  przeszedł lokalną bramę, ale nie przeszedł jeszcze CI w całości — po naprawie `gh run rerun 37371291018`.
-  Poza programem otwarte jeszcze #140 (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
-- Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
-  budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
-  #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
-  CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` — #95 (granice wartości). CI `main` na `90a83f2` —
-  `success`; na `eb0c8a1` (przebieg `37135771176`) w toku przy pisaniu. CI PR-a #103 — `success`, CodeRabbit bez
-  uwag. Historia `main` z merge'ami PR-ów; gałęzie liniowe. **Otwartych PR-ów brak** poza tym handoffem.
-- **#95 zmergowano bez dwóch ostatnich commitów** (poprawek z komentarzy CodeRabbita) — przyszły osobno jako #100,
-  razem z błędem, który przegląd w nich znalazł. W `main` jest wszystko; zapis w „Granice wartości z żądania”.
-- **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
-  #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
-  GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października, późny wieczór):** `runner-usage-optimization-b60150` — sesja X1
-  (`claude/dsl-x1-in-transaction-4447a3`; katalog po sesji CI z #147); `w3-public-trace-core-c3ed23` — sesja W3, W4 i
-  T1 (`engine/t1-supplied-by-host`, zmergowana);
-  `computer-ordering-process-f84437` — poprzednia sesja DD (`engine/w2-day-tags`);
-  `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
-  `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
-- **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
-  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
-  ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
-  paść na `too_many_connections`** (3 października, dwa razy: 9 padnięć silnika w `SchemaTest` i `AppendLockTest`,
-  sam silnik przechodził) — wtedy `mix check`
-  każdego pakietu osobno, po kolei, i zapisać, że tak było.
-- **Otwarte na GitHubie:** #64 (okno retencji inboxu —
-  czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
-  **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
-- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
-  repozytorium. Od #95/#100 dokumenty OpenAPI i AsyncAPI z polem `:id` albo `:integer` mają nowy
-  `x-eh-os-contract-digest`; po #98 nowy ma dokument OpenAPI **każdego** kontraktu z komendą (opis odpowiedzi 422).
-
-### Co zostało — i czyje to jest
-
-- **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
-  — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
-     T1+T1s (#148), X1 (#150), S4 (#151) — fala 1 zamknięta; z fali 2 ID1 (#152).
-  2. **Asystent:** fala 2 — ID2, potem ID3, ID4, P1a… po kolei (tabela „Postęp”), każdy przez swoje issue (skill
-     `ehos-dev:stage-issue`, gałąź `dd/<issue>-…`). **Użytkownik:** tag po fali 1 (na polecenie), bump przypięcia w
-     AppUnite i `ehos-ledger` (notatka migracyjna). Start etapu: akapit, issue, ◐ i gałąź w tabeli; koniec: komentarz zamykający issue; po merge'u ☑ i numer PR-a.
-  3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
-     V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
-     stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
-- **E13 — graf jako API i renderer — w toku** (decyzja użytkownika z 5 października, równolegle z DD): E13a
-  (`graph/e13a-document`) i E13b (`graph/e13b-renderer`), plan, decyzje, otwarte pytanie o strony modelu i tabela
-  „Postęp E13” — „Dopisek 5 października (3) — E13”.
-- **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
-  wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
-- **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
-  zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
-  przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
-  (nowa jednostka bez reguły z materiału, która by jej wymagała); strażnik w `Computer` z komendą „uzgodnij zwrot”
-  (reguła spoza materiału). Wątek CodeRabbita na #124 zamknięty z tą odpowiedzią; issue #99 zamknięte.
-- **Po #99, biblioteka (bez przykładu, nie budujemy):** przejście z kilku statusów rysowane jako strzałka z
-  każdego; `or_rejects:` per status zamiast odmowy w decyzji; enum read modelu czytający etykiety cyklu życia.
-- **Ryzyka zostawione świadomie przy #98** (#103, issue zamknięte): zdarzenie przechodzi dispatch, a menedżer, który miałby
-  zacząć na nim przebieg, staje (wybór „stoi”); komenda wydana przez reakcję i odrzucona `:key_too_long` dalej się
-  wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
-- **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
-  dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49 (wyżej).
-- **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
-- **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
-  port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
-- **Wybór użytkownika na potem:** fikstury akceptacyjne (po #49), drobne reguły z „Otwartych pytań”, E13 (graf jako
-  API), a poza etapami: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex.
-- **Lista zmian do `eh-os`** — issues
-  [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
-  i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
-- **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
-  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1–EP3 w `main`** (#102, #106, #107; poprawka
-  hooka przeglądu dla worktree — #105). **EP4 w `main`** (#109; wiersze read modelu odrzucone — „Przed EP4”).
-  **EP5a w `main`** (#111, operacje systemów zewnętrznych). **EP5b w `main`** (#112, odpowiedzialność aktora i
-  pary terminów relacji; przypadkiem cofnięte w #114, przywrócone w #115 razem z poprawką słownika po przeglądzie
-  CodeRabbita). **Plan EP skończony**; odłożone z niego: `invariant` encji i tożsamość
-  `static` (każde dopiero z przykładem z materiału), sprawdzanie kodu wobec prozy przez LLM (na później).
-
-### Co przeczytać najpierw
-
-1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (`label` po
-   polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`, „Dopisek 5 października — DD” — decyzje, tabela „Postęp” (jedyne miejsce ze stanem programu) i
-   zasady jej prowadzenia, projekt etapu, który zaczynasz, „Konwencje każdego PR-a”, decyzje przed etapem, ryzyka.
-   **Od 6 października szczegóły etapu są w jego issue** (kolumna „Issue” w tabeli; etykiety `dd`, `wave-<n>`), a
-   jak prowadzić etap przez issue — skill `ehos-dev:stage-issue` (plugin `ehos-dev`).
-3. `PLAN.md`, „Dopisek 4 października — #99” i „LC… — co wyszło” — cykl życia (`from:`, `or_rejects:`), na którym
-   stoi program; „Dopisek 4 października (3)” — trzecia analiza ESDM i decyzja o etykiecie timera (N3).
-4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
-   kod tam trafia.
-5. Starsze ustalenia przy kluczach i wartościach: „#98 — co wyszło”, „#96 — co wyszło”, „Granice wartości z żądania”.
-6. Skill `ehos-dev:pre-pr-review` i `.claude/review.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
-   `refs/notes/review`; hook czyta `HEAD` katalogu z wiodącego `cd <dir> &&`, więc worktree jest sprawdzany jako on sam.
-
-### Komendy
+**Commands.** Locally OTP 28 is the default and breaks the engine's and the sandbox's tests (a compiled regex in a
+module attribute): run every `mix` with `ASDF_ERLANG_VERSION=27.1.2 ASDF_ELIXIR_VERSION=1.18.4` (CI: 27.2 / 1.18.4).
+The gate, from `sandbox/`, once the shared Postgres has room:
 
 ```bash
-docker compose up -d && cd sandbox && mix ecto.setup
-out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
+export ASDF_ERLANG_VERSION=27.1.2 ASDF_ELIXIR_VERSION=1.18.4; until [ "$(lsof -nP -iTCP:5433 | awk 'NR>1 && $1 ~ /beam/' | wc -l | tr -d ' ')" -lt 10 ]; do sleep 20; done; out=$(mix check 2>&1); rc=$?; echo "$out" | /usr/bin/grep -a -E "tests,|errors,|properties|\(Mix\)"; echo "EXIT=$rc"
 ```
 
-Brama idzie z `sandbox/` i woła `mix check` trzech pakietów; Postgres słucha na **5433**. **W świeżym worktree**
-najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_os_contract_web` i
-`packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. `docs/rules.md` regeneruje
-`MIX_ENV=test mix eh_os_contract.rules` w pakiecie silnika. Do oglądania czegokolwiek `MIX_ENV=dev`. Grafy:
-`mix eh_os_contract.graph --process <nazwa> --mermaid | --map <domena> | --system <domena> [--overlay] | --contract
-<Moduł> [--overlay] [--unit <nazwa>]` — bez flagi obrazu task odmawia z opisem użycia. `docs/dsl/` regeneruje
-`MIX_ENV=test mix eh_os_contract.docs`. Ekran `/dashboard/graph` w preview `eh_os_contract_host` (port 4010, CSP
-EHOS-a).
-
-**Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia.** Pobieranie i push przez HTTPS z credentialem `gh`:
+SSH to GitHub is refused from Claude Code sessions here; fetch and push over HTTPS with `gh`'s credential:
 
 ```bash
 git -c credential.helper='!gh auth git-credential' fetch https://github.com/EmpoweredHouse/eh-os-contract.git +refs/heads/main:refs/remotes/origin/main
 ```
 
-```bash
-git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git <gałąź>:<gałąź>
-```
+- Merge `main` into a branch with the app's `sync_with_base_branch`: `main` touches the protected `.claude/skills`.
+- After an engine change, in `sandbox/`: `MIX_ENV=test mix deps.compile eh_os_contract --force`.
+- `mix eh_os_contract.graph` in dev prints `boundary` warnings to stdout before the JSON; cut from the first `{`.
+- A new DSL word or option: `MIX_ENV=dev mix eh_os_contract.docs` in the engine; a new rule:
+  `MIX_ENV=dev mix eh_os_contract.rules`. The sandbox's `check` counts are pinned in `sandbox/test/e10_outputs_test.exs`.
+- `grep` in this shell is `ugrep`: use `/usr/bin/grep -a` or `git grep`.
+- The review note (`git notes --ref=review add …`) goes in a shell call of its own, before the one that opens the
+  pull request: the hook reads it before the whole command runs.
 
-Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy gołe `git stash`.
+**Consent.** Commits on a stage's branch at a green gate, issues and comments, push and a pull request (each asked
+for separately) were confirmed by the user for the session of 13 October. Merge, tags, deleting branches or
+worktrees and resetting the shared databases only on an explicit word. A new session asks again. Nothing is written
+to `~/Projects/ai/empowered-house-context` or `~/Projects/ai/eh-os`.
 
-**Pułapki** (poza listą w `CLAUDE.md`):
-- nowe słowo DSL-a → `MIX_ENV=test mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl`
-  w pakiecie silnika, a w `sandbox/` i pakiecie web skasować
-  `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej `mix format` doda nawiasy;
-- fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
-- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash` i **nie
-  `git checkout -- plik`**, które cofa do HEAD razem z niezacommitowaną zmianą (E11f: zmazało refaktor, nałożony
-  ponownie z tego samego skryptu);
-- `~s(...)` kończy się na pierwszym `)`; fikstury v2: kontrakt bez procesu się nie kompiluje (R1), `publish … as:`
-  wersjonowane (D11), `consumes "<nazwa>"` wymaga pól, `send` koliduje z `Kernel.send/2` (N2); opcja encji Sparka z
-  blokiem idzie **do środka bloku** (`promise :x do unverified true … end`);
-- dwa kontrakty o jednej nazwie procesu muszą mieć różne domeny (X7);
-- test pakietu z bazą i drugi `mix` w tym samym pakiecie naraz się gryzą (wspólne `_build` i bazy testowe
-  `eh_os_contract_test`, `…_commits`, bez partycji) — agentów z testami puszczać po kolei;
-- Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`);
-- `\n` w heredocu `"""` testu z fiksturą to prawdziwa nowa linia w kompilowanym źródle — atom `:"x\n"` zajmuje
-  wtedy dwie linie i przesuwa numery linii w asercjach; nazwę z nową linią pisz `#{"\\n"}` albo licz linie od nowa;
-- `for` w Elixirze musi zaczynać się generatorem — filtr (`kind != …`, `:x in list`) idzie po generatorze;
-- **hook `gh pr create` sprawdza notatkę przeglądu na `HEAD` głównego checkoutu** (`$CLAUDE_PROJECT_DIR`), nie
-  worktree, z którego idzie PR — z worktree odmawia mimo notatki na głowie gałęzi. #57 i #58 wystawione przez
-  `gh api repos/EmpoweredHouse/eh-os-contract/pulls -f base=main -f head=<gałąź> -f title=… -F body=@<plik>` po
-  sprawdzeniu `git notes --ref=review show HEAD` w worktree; użytkownik o tym wie;
-- `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
-  przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
-
-### Ostatnia pełna weryfikacja
-
-- **5 października, wieczór, `engine/w4-decision` @ `8dd7970`** (W4 po przeglądzie): `mix check` w `sandbox/` EXIT=0 —
-  `check` 0 / 29 / 10 i 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1312 (+14: `decision_test.exs`,
-  `contract_data_cast_test.exs`, dwa w `lifecycle_test.exs`), web 52, auth 286 + 1 property.
-- **5 października, wieczór, `engine/w3-trace-core` @ `33eb982`** (druga poprawka po CodeRabbicie i jej przeglądzie):
-  `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1298, web 52, auth 286 + 1
-  property.
-- **5 października, wieczór, `engine/w3-trace-core` @ `6a030c2`** (W3 z wmergowanym `main` = `6a236d5` i pierwszą
-  poprawką po CodeRabbicie): `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1296, web 52,
-  auth 286 + 1 property.
-- **5 października, wieczór, `engine/w3-trace-core` @ `96253a2`** (kod W3 po przeglądzie): `mix check` w `sandbox/`
-  EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1293 (+13,
-  `trace_test.exs`), web 52, auth 286 + 1 property. Web 52 było już na W2 — „51” niżej to pomyłka zapisu (W3 nie
-  dotyka pakietu web). CI #143 @ `4f79df3` — `check` success.
-- **5 października, wieczór, `engine/w2-day-tags` @ `5c3a619`** (kod W2; głowa `586eb07` dokłada tylko `PLAN.md`):
-  `mix check` w `sandbox/` EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (nowe ostrzeżenie:
-  `event-without-consumer` dla `:day_closed` rigu); sandbox 194, silnik 1280, web 51, auth 286 + 1 property. CI:
-  #139 @ `9c55d15` i #142 @ `0e0ac01` — job `check` success; #143 @ `586eb07` w toku przy pisaniu.
-- **5 października, `docs/dd0-programme` po merge'u `main`:** bramy nie uruchamiano — gałąź różni się od `main`
-  tylko `PLAN.md` (`git diff origin/main -- . ':!PLAN.md'` pusty). CI `main` na `af59a48` (#128) — `check` `success`.
-- **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
-  `AppendLockTest`, 4 `SchemaTest`); sandbox 145 w niej, a pakiety osobno — EXIT=0: silnik **1170** (z testami EP1),
-  `check` 0 / 71 / 6; web 52; auth 285 + 1 property. CI PR-a — `success`.
-- **#98 @ `657e38c`** (przed rebase'em na `b6a96dd`; rebase dołożył tylko `PLAN.md` z #101 i EP1 z #102): pełna
-  brama padła na `too_many_connections` (9 testów silnika, cudzy `phx.server`); sandbox przeszedł w niej (145,
-  `check` 0 / 29 / 9), a `mix check` każdego pakietu osobno — EXIT=0: silnik **1164**, `check` 0 / **71** / 6 (+3
-  ostrzeżenia rigu `KeyRig`: `:loaded` bez odbiorcy, `:watch` bez `ends_on` i bez scenariusza); web 52; auth 285 +
-  1 property. Na `32187fc` (pierwszy commit) pełna brama z `sandbox/` — EXIT=0.
-- **Lokalnie, 3 października wieczorem, na `main` = `0b7bc84`** (główny checkout po `mix deps.get` w trzech pakietach
-  i `sandbox/`): brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik **1151**, `check` 0 / 68
-  / 6; web 52; auth 285 + 1 property. CI `main` na `0b7bc84` — `success` (job `check`).
-- **#100 @ `2a7ebad`:** pełna brama padła na `too_many_connections` (cudzy `phx.server`); sandbox przeszedł w niej,
-  a `mix check` każdego pakietu osobno — EXIT=0 (silnik 1139, web 52, auth 285 + 1 property).
-- **#97 @ `7d3997e`:** brama z `sandbox/` → EXIT=0 — silnik 1150, reszta jak wyżej.
-- **Lokalnie, 3 października, po rebase'ach na `9e61834`:** brama z `sandbox/` → **EXIT=0** na każdej głowie —
-  #93 @ `3a675bb`: sandbox 145, silnik 1129, web 52, auth 285 + 1 property; #95 @ `0446abd`: silnik **1138**, reszta
-  jak wyżej. Liczby dla #96 — „#96 — co wyszło”.
-- **Lokalnie, 2 października, na `56876b2`** (#89 po przeglądzie, `auth/issue-89-loopback`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **278** + 1 property.
-- **Lokalnie, 2 października, na `f63596e`** (EB3b po przeglądzie, `eb/eb3b-applications`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **274** + 1
-  property. CI `main` na `499ea0b` (EB3a) — `success`.
-- **Lokalnie, 2 października, na `auth/issue-71-keys-hardening`** (#71, od `65d7caf`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **149** + 1 property.
-- **Lokalnie, 2 października, na `claude/issue-72-assessment-923997`** (#72, od `01ac970`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145; silnik **1114** (+10, budzenie runnerów); web 52; auth 138 + 1 property.
-- **`main` = `743e91d`** (merge #73, EH): drzewo jak `2bda2b7`, ostatni commit PR-a; lokalnie na `2bda2b7` brama z
-  `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **138** + 1
-  property. CI PR-a na `3263d1d` — `success`; CI `main` na `743e91d` — sprawdzić.
-- **Lokalnie, 1 października, na `ac8d694`** (EH3 po trzech rundach przeglądu, `eh/eh3-manifest-v2`): brama z
-  `sandbox/` → **EXIT=0** — sandbox **145**, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth
-  **137** + 1 property.
-- **Lokalnie, 1 października, na `ee67995`** (EH2 po trzech rundach przeglądu, `eh/eh2-ehos-yaml`): brama z
-  `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **115**.
-- **Lokalnie, 1 października, na `main` = `aadcbd1`** (baza EH, przed pierwszym commitem `eh/eh2-ehos-yaml`): brama z
-  `sandbox/` → **EXIT=0** — sandbox 144, `check` **0 / 29 / 9**; silnik **1104**, `check` **0 / 68 / 6**; web 52;
-  auth **71**. CI `main` na `aadcbd1` (przebieg `36860580158`, job `check`) — `success`.
-- **Lokalnie, 1 października, na `dsl-v2/e12e-docs`** (E12e po przeglądzie; sama dokumentacja): brama z `sandbox/`
-  → **EXIT=0**, liczby jak dla E12d niżej. CI `main` na `7aa0496` (merge #61) — sprawdzić.
-- **Lokalnie, 1 października, na `9d1ae58`** (E12d po przeglądzie, `dsl-v2/e12d-call`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1104** (1094 + `call_test.exs` 9 + Plug 1), `check`
-  **0 / 68 / 6**; web 52; auth 68. CI `main` na `67253bf` (merge #59) — sprawdzić
-  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 2`).
-- **Lokalnie, 1 października, na `0038a71`** (E12c po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** —
-  sandbox 144, `check` 0 / 29 / 9; silnik **1094** (+4 testy keepera), `check` **0 / 68 / 6**; web 52; auth **68**.
-- **Lokalnie, 1 października, na `da2b841`** (E12c po pierwszej rundzie przeglądu, głowa kodu `bab57b3`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1090** (1088 + kolizja klucza 1 + broker leżący przy
-  starcie 1), `check` **0 / 68 / 6**; web 52; auth **67** (+1, pomocnik testów i `.subscribe`).
-- **Lokalnie, 1 października, na drzewie kodu `0692740`** (głowa kodu E12c przed przeglądem): brama z `sandbox/` → **EXIT=0** —
-  sandbox 144, `check` 0 / 29 / 9; silnik **1088**, `check` **0 / 68 / 6**; web 52; auth 66. Szczegóły i commity
-  pośrednie — „E12c — co wyszło”. Brama bazowa tej sesji na `66c3637` — te same liczby co niżej dla `842a2f1`.
-- **Lokalnie, 1 października, na `main` = `842a2f1`** (po merge'u #58; drzewo kodu jak `25e51d5`): brama z
-  `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1073**, `check` 0 / 67 / 6; web 52; auth 66.
-- **CI:** PR #58 (`check`, przebieg `36791662027`) — `success`; `main` na `7e4e4cc` (`36788298869`) — `success`;
-  `main` na `842a2f1` (`36825204797`, job `check`) — `success`.
-- **Lokalnie, 1 października, na `25e51d5`** (głowa kodu E12b po przeglądzie): brama z `sandbox/` → **EXIT=0** —
-  sandbox 144, `check` 0 / 29 / 9; silnik **1073** (1059 + 14: relay 12, runner na `CommitRepo` 1, `--reset`
-  relaya 1), `check` **0 / 67 / 6** — o jedno ostrzeżenie i jedną uwagę więcej, obie z fikstury `BusRig` i
-  zamierzone (`event-without-consumer` dla `:cancelled`, kontroli zdarzenia, które nie wychodzi;
-  `free-text-not-personal` dla notatki, która zostaje w sklepie); web 52; auth 66. Pełna brama także na `472102e`;
-  commity poprawek sprawdzane testami relaya, runnera i taska oraz kompilacją z `--warnings-as-errors`. CI `main`
-  na `7e4e4cc` (merge #57) — `success`.
-- **Lokalnie, 1 października, na `fb6bf46`** (głowa kodu E12a po przeglądzie): brama z `sandbox/` → **EXIT=0** —
-  sandbox 144, `check` 0 / 29 / 9; silnik **1059** (1028 + 31 testów `Bus.Local` i suity), `check` 0 / 66 / 5; web
-  52; auth 66. Te same liczby `check`, co przed E12a. Commity poprawek między `5ce8c90` a `fb6bf46` sprawdzane
-  testem `bus_local_test.exs` i kompilacją z `--warnings-as-errors`, pełna brama na `5ce8c90` i na `fb6bf46`.
-- **Lokalnie, 30 września, na `main` = `6e1658a`** (po merge'u #56): brama z `sandbox/` → **EXIT=0** — sandbox 144
-  testy, `eh_os_contract.check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
-  `docs/rules.md` aktualne. Drzewo `6e1658a` jest identyczne z głową #56 (`e002519`).
-- **CI:** PR #56 na `e002519` (przebieg `36778876263`, job `check`) — `success`; `main` na `0e6e10f`
-  (`36761436783`) — `success`; `main` na `6e1658a` (`36779783368`) — `success`.
-- **Dwie bramy naraz z dwóch worktree gryzą się o wspólne bazy** — 30 września pierwsza brama tej sesji padła na
-  `too_many_connections`, bo w tej samej minucie bramę puszczała sesja PR-a #53. Przed bramą sprawdzić, czy żaden
-  inny BEAM z worktree tego repozytorium nie chodzi.
-- Wcześniejsze przebiegi — w zapisach „co wyszło” poszczególnych etapów.
-
-### Otwarte pytania
-
-- **One grant for two versions of one publication** (6 October, E13a final review). `Model.capabilities/1` keeps
-  one `<publication less its version>.subscribe` grant, named after one of the names it is received under, so a
-  contract receiving `x.v1` and `x.v2` under two names has one grant (meant: the grant takes the event whichever
-  version). The graph document finds a received event's grant by its publication, so the other version's name
-  shows none. Fixing it needs the model to say which publications a grant covers — a change to
-  `Model.capabilities/1` or a helper beside it, not made in E13a. No fixture or client tree has the shape.
-- **The contract does not say which command uses a domain service** (6 October, found in E9c-2 on 28 September,
-  moved out of E13 by the user's decision). A decision calls `C.DomainServices.<Name>` in its code; no DSL key says
-  so, so no graph can draw the edge without reading the implementation, which the graph document must not do. EM2
-  never decided it either way — a gap, not a design. Possible: (a) a key on the command, as `emits:` is, e.g.
-  `uses: [:pairing]`, checked by the compiler and perhaps refused at run time when an undeclared command calls the
-  service (to be checked); (b) a key on the unit (less precise); (c) leave it. Until then the service is in the
-  graph document as a node with its functions and rules, without an edge — "E13a — the document as a graph of
-  facts", "Hooks".
-- *Rozstrzygnięte 3 października (#66): skrót zamiast wartości, której tabela nie utrzyma.* Opis sprzed decyzji:
-  **Surowa wartość zakresu w decyzjach auth** — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66) (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
-  idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
-  query stringa (`%FF`) wywraca zapis decyzji — 500 zamiast odmowy; długi napis — wiersz na żądanie. Możliwe:
-  odmowa wartości spoza UTF-8 bez NUL przed pytaniem `Authorizer`, limit długości — nowy powód odmowy, do decyzji.
-- *Rozstrzygnięte 3 października (#64): wszystko zostaje, host mierzy; okno czeka na retencję transportu EHOS-a.*
-  Opis sprzed decyzji: **Retencja `eh_os_contract_inbox`** — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64) (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
-  okno, w którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika.
-- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (3 października: odłożone
-  decyzją użytkownika do pierwszych innych drzwi) — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63) (z E12d) — zbudowany na
-  zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
-  drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
-  produkcją i najlepiej przed wydaniem 0.3.0; lista pytań — „E12d — co wyszło”, „Do powrotu”.
-- *Rozstrzygnięte 1 października („Przed E12d”): E12d teraz.* Opis sprzed decyzji: **czy publiczne wejście dla
-  surowych danych robić teraz** — termin z 27 września stał na przesłance, że inbox to drugie drzwi dla surowych
-  danych; zbudowany inbox nie autoryzuje i dekoduje sam, a komendy wydaje polityka strukturą.
-- *Rozstrzygnięte 3 października (#65): krok liczony z inboxu.* Opis sprzed decyzji: **Zgodność nie widzi polityki
-  inboxu** — [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65) (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
-  mówi, czy polityka na nim była przejechana. Możliwe: krok liczony z komend `policy:<nazwa>`, których przyczyna
-  jest w `eh_os_contract_inbox`; albo zostawić — do decyzji użytkownika.
-- *Rozstrzygnięte 1 października (D1, „Przed E12c”): wiadomość niesie klucz z `idempotent_on`.* Opis sprzed
-  decyzji: **E12c, przed startem — decyzja użytkownika: czy wiadomość niesie wartości `idempotent_on`.** Inbox kluczuje
-  `(nazwa, id wiadomości)`, a id to `<id zdarzenia>/<nazwa wersjonowana>`, więc dwa zdarzenia o tych samych
-  wartościach `idempotent_on` (np. `visit_id`) to dwie wiadomości i dwie reakcje; `eh-os` FM-08 chce jednej. Możliwe:
-  piąte pole `Bus.Message` z wartościami (inbox kluczuje po nich), albo nic (subskrybent sam w swojej jednostce).
-- *Rozstrzygnięte 1 października (D2, „Przed E12c”): kolejność w drzewie silnika.* Opis sprzed decyzji: **E12c,
-  przed startem — decyzja użytkownika: kiedy powstaje konsument odbiorcy względem relaya wydawcy.**
-  `Bus.Local` daje nowemu konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, a relay wydawcy
-  startuje od głowy logu — w dwóch aplikacjach w jednym BEAM-ie relay uruchomiony przed konsumentem publikuje w
-  próżnię. Możliwe: kolejność startu w drzewie hosta, konsument rejestrowany przy pierwszym boocie jak wiersz relaya,
-  albo zostawić to transportowi (JetStream trzyma strumień).
-- **H177** z materiału Rehmedu przeczy DEC-18 — czeka na klienta.
-- **Runner read modelu `:in_transaction`** odpytuje co sekundę — wraca przy pomiarze; tam też nakładka na `/graph`
-  bez granicy czasu, podwójny mount, koszt raportu z całej historii przebiegów i 17 s testu skali (niezłapane;
-  „E11a — co wyszło”).
-- **Dwie domeny o jednym `name:`** dałyby zdublowane identyfikatory bloków na `/graph` — sprawa rejestru.
-- **Z E11a, bez decyzji:** reguła v2 w miejsce `promise-finer-than-run` (kandydat na E11f); pusty `:string` jako
-  wartość pola korelacji; termin `{1, :hour}` w raporcie bez liczby.
-- **Z przeglądu E11b, sprzed E11b, bez decyzji:** `config :eh_os_contract, exclude:` dopasowuje prefiks bez granicy
-  modułu (`"ProcessShapes.Promised"` wycina też `ProcessShapes.PromisedLate`), a `Implementations.build/1` go nie
-  stosuje (konsumenci wyłączonego kontraktu dostają wpisy dispatchu i wiersze subskrypcji). Zmiana zmienia znaczenie
-  konfiguracji hosta — do użytkownika; kandydat na E11f.
-- **Z PR-a #53:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej bazy — *rozstrzygnięte
-  30 września: klucz per schemat, osobny PR* („Klucz blokady dopisu per schemat — co wyszło”).
-- **Z przeglądu #50, sprzed #50: `name:` domeny nie jest sprawdzane** — *rozstrzygnięte 30 września: odmowa D11 w
-  regułach domeny, z podkreślnikiem* („`name:` domeny jako przestrzeń nazw — co wyszło”). Opis sprzed decyzji: `name:`
-  jest przestrzenią nazw publikacji. `name: :"acme.billing"` publikuje `"acme.billing.x.v1"` — przechodzi oba
-  sprawdzenia D11, a na brokerze leży w przestrzeni aplikacji `acme` (`acme.>`); wraca w E12, gdy nazwy staną się
-  tematami i capability `<nazwa>.subscribe`. Inne złe nazwy (`:"shop-"`, `:"my shop"`, wielkie litery) zamykają się
-  same — żadna publikacja nie przejdzie — ale odmowa wskazuje publikację, nie domenę. Możliwe: odmowa w regułach
-  domeny dla `name:` spoza gramatyki segmentu przestrzeni nazw (z `_` albo bez — bez `_` odpada `:dispatch_rig` z
-  fikstur i każda domena OTP nazwana z podkreślnikiem); albo w `namespaces/1` porównanie pierwszego segmentu z
-  nazwą domeny. Nowy powód odmowy widoczny dla hosta.
-- **Z przeglądu `name:` domeny, sprzed tej zmiany** — *oba zrobione 30 września na tej samej gałęzi, na polecenie
-  użytkownika* („`$` w nazwach i nazwy aktorów — co wyszło”). Opis sprzed decyzji:
-  (1) **N1, D9 i ścieżki stron kończą wzorzec na `$`**, nie `\z` (`contract/rules/names.ex`, `domain/rules.ex` przy
-  D9, `pages.ex`) — `command :"pay\n"` przechodzi N1, a capability `"acme.pay\n"` trafia do `Model.capabilities`,
-  ścieżki OpenAPI i manifestu EHOS-a; ta sama klasa co `$` → `\z` w #55. (2) **Nazwy aktorów domeny nie mają
-  sprawdzenia formy** — `actor :"*"` albo `:"billing.clerk"` w domenie `acme` daje rolę `acme.*` /
-  `acme.billing.clerk` w manifeście; z przestrzeni aplikacji nie wychodzi, ale czy EHOS czyta `*` albo `>` w roli jako
-  wzorzec, jest poza tym repozytorium. Możliwe: snake_case jak N1, z `\z`.
-- **Z przeglądu poprawek `$` i aktorów, sprzed nich** — *nazwy elementów domeny zrobione 30 września, na polecenie
-  użytkownika, na `dsl-v2/domain-names-snake-case`* („Nazwy elementów domeny — co wyszło”); zostaje reszta z tego
-  punktu. Opis sprzed decyzji: **nazwy pozostałych elementów domeny nie mają sprawdzenia formy** — wartości, encje, konteksty, podmioty,
-  systemy zewnętrzne, poddziedziny; sprawdzana jest tylko unikalność (D1). `value :"a/b"` daje moduł zagnieżdżony
-  `D.Values.A.B`, `:money_amount` i `:money__amount` — ten sam `MoneyAmount`; `context :"front desk"` psuje
-  identyfikator węzła Mermaida na mapie kontekstów; strony (`mix eh_os_contract.pages`) odmawiają dopiero przy
-  generowaniu. Możliwe: jedna reguła snake_case dla wszystkich nazw domeny (`DslRules.snake_case?/1` już jest), jak
-  N1 dla kontraktu. Obok, niżej: pole użyte jako `scope:` staje się kluczem w `scp` EHOS-a i nie ma sprawdzenia formy
-  poza F1 (wraca, gdy manifest poniesie zakresy); `Model.capabilities/1` przy zapytaniu i zdarzeniu nagrywanym o
-  jednej nazwie traci jedno bez kompilatora L3 (D14 łapie to w L3, zamyka się bezpiecznie); mapa capability liczona
-  od nowa przy każdym dispatchu z credentialem (do pomiaru).
-- **Z przeglądu nazw elementów domeny, sprzed tej zmiany** — *(1) i (2) zrobione 30 września na polecenie
-  użytkownika, w PR-ze #56* („Kolizja nazw kontraktu i nazwy pól — co wyszło”); (3) i (4) zostają. Opis sprzed
-  decyzji: (1) **kolizja nazw kontraktu po `Macro.camelize`** — N1 sprawdza tylko równość, a `event :visit_closed`
-  obok `event :visit_closed_` kompiluje się z ostrzeżeniem „redefining module …Events.VisitClosed” (sprawdzone
-  tymczasowym testem 30 września): jedno zdarzenie dostaje strukturę drugiego; bez `--warnings-as-errors` host tego
-  nie zobaczy. Możliwe: ta sama odmowa co D1 dla wartości, w N1, w przestrzeni nazw, która generuje moduły. (2) **Nazwy
-  pól** — wartości, encji i kontraktu — mają tylko unikalność (encje) i zakaz wiodącego `__` (F1); `field :"Invoice
-  No"` trafia do klucza typespeca, JSON Schemy i strony, a pole wartości zadeklarowane dwa razy daje w JSON Schemie
-  ostatnią definicję przy `required` z pierwszej. (3) Etykiety krawędzi Mermaida nie są escapowane (`pipes/1`), a
-  trafiają do nich nazwy pól kontraktu — (2) zamyka to przy okazji. (4) Kolizja stron `context :values` z
-  `value :index` (`values/index.md`) — odmawia dopiero `mix eh_os_contract.pages`.
-- *Rozstrzygnięte 3 października: klucz to drukowalny ASCII do 255 bajtów (#93), a pole korelacji to `:id` do 255
-  bajtów, najwyżej sześć (#95, #96).* Opisy sprzed decyzji, dwa niżej.
-- **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
-  nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
-  komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
-- **Z przeglądu E11c, sprzed E11c, bez decyzji:** (1) wartość pola korelacji albo nagłówek `idempotency-key`
-  dłuższe niż ~2,7 KB wywracają dopis błędem Postgresa („index row size exceeds maximum” w indeksie `_event_runs`,
-  strumienia albo idempotencji) — 500 zamiast odmowy; (2) `_commands` ma tylko indeks idempotencji, więc `Paths`
-  (filtr po `contract`, `outcome`, `issued_by LIKE`) czyta całą tabelę przy każdym raporcie — do pomiaru razem z
-  runnerem read modelu.
-- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*zrobione w E11f-1: w zakresie
-  aktora*; zostaje odtworzenie paragonu przez tego samego aktora po zawężeniu jego zakresu — „E11f — co wyszło”) —
-  `Dispatcher` szuka przyjętej komendy po `idempotency_key`, `contract` i `type`, a unikalny indeks jest na samym
-  kluczu; przez HTTP klucz to nagłówek klienta. Aktor B z tym samym uprawnieniem, który zgadnie klucz A (np.
-  `"req-81"` z `docs/authorization.md`), dostaje paragon A — `command_id`, wygenerowaną tożsamość, pozycje; w kodzie
-  także zdarzenia z odszyfrowanymi polami osobowymi — a użyty zawczasu klucz sprawia, że prawdziwa komenda A wraca
-  jako `duplicate: true` bez wykonania. Możliwe: klucz w zakresie aktora (i skrót treści), albo wymóg klucza
-  niezgadywalnego w dokumentacji. (2) Partia `rewrap!` trzyma `FOR UPDATE` na 500 wierszach kluczy z wywołaniem
-  vaulta na wiersz, a `erase/3` bierze blokadę dopisu i czeka na te wiersze — przy wolnym KMS wszystkie dispatche
-  czekają. (3) `mix eh_os_contract.rewrap` uruchamia całego hosta (`app.start`: Endpoint, kolejki Obana, runnery).
-- **Z E11e:** test „no longer fits” — *zrobione w E11f-2*; upcasterów nie ma — bez decyzji; nazwa modułu kontraktu
-  na wierszach — *rozstrzygnięte w E11f*: zostaje tożsamością kontraktu, zmiany nazwy modułu z historią się nie robi.
-- **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
-
-### Zgoda i stałe uprawnienia
-
-**Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
-
-W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września), w sesji E12a–E12b, w sesji E12c i w sesji EH
-(1 października) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej bramie
-na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
-dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
-przed PR skill `ehos-dev:pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
-`~/Projects/ai/eh-os` też nie (tylko czytanie).
-
-### Język
-
-Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
-`README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+**Language.** We talk in Polish; everything left in the repository and on GitHub is English, except the strings a
+client reads (`CLAUDE.md`). `PLAN.md` before 6 October stays Polish.
 
 ## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
 
@@ -2259,7 +1852,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 - **Kolejność w fali 1:** N1 → N2 → N3, reszta w dowolnej kolejności; etapy bez wspólnych plików mogą iść równolegle
   w osobnych worktree.
 
-☐ nie zaczęte · ◐ w toku · ☑ w `main`
+☐ nie zaczęte · ◐ w toku · ☑ w `main` · ⏸ on hold (the reason in the cell) · ✕ dropped. The order of what is left: "Revision of the remaining plan (13 October 2026)" below the table.
 
 | Etap | Fala | Zakres | Zależy od | Status | Issue |
 |---|---|---|---|---|---|
@@ -2288,12 +1881,13 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☑ #207 | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
-| P2e | 2 | grafy i strony procesu | P2d, **E13a** | ⏸ **on hold until E13a (#217) is in `main`** | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
+| P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ☐ | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
-| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g, P2e, **E13** | ⏸ **on hold until E13 and P2e** | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☐ | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2i | 2 | docs and the plugin's skills teach the process module | P2g | ◐ `dd/294-teach-process-module` | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
-| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ⏸ on hold with P2h, until E13 | — |
+| M1 | 3 | mapa kontekstów L3, wartości jako referencje | L3; its paragraph rewritten first | ⏸ to be rewritten after L3 (13 October) | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
@@ -2305,18 +1899,72 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
-| O2 | 3 | ekran: kolejność etapów | O1, P2e | ⏸ on hold with P2e, until E13 | — |
-| V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ | — |
-| V2 | 4 | upcast przez callback | V1 | ☐ | — |
-| V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ | — |
-| V4 | 4 | zamek wobec upcastów | V3 | ☐ | — |
-| V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ | — |
+| O2 | 3 | ekran: kolejność etapów | O1, P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
+| V1 | 4 | upcasty deklaratywne | W1, P2h | ⏸ required before an application keeps data it may not lose (13 October) | — |
+| V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
+| V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
+| V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
+| V5 | 4 | wersja umowy i wersja tekstu | P2h; its paragraph rewritten first | ⏸ to be rewritten after P2h | — |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
-| L3 | 5 | typowane referencje do agregatów | ID3 | ◐ `dd/286-typed-references` | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
-| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ | — |
+| L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
+| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
+| C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☐ | — |
+
+### Revision of the remaining plan (13 October 2026) — the user's decision
+
+On 13 October, after L3, the user asked to stop and review what is left: what the programme assumed, what was built
+since 5 October, and where the problems are. The review found the main unfinished thing to be **a process in two
+forms at once**. The process module works in the engine (runs, report, `check`, the wire), and the contract's own
+`process` is still in the DSL, in about twenty functions that handle both forms and in the V01 columns, though no
+contract of the test material uses it any more. Every reader that would show a process reads contracts only
+(`graph`, `pages`, `view`, `glossary`, the Graph screen, `/graph`, the manifest), so the Graph screen shows no process
+of the sandbox at all. And the docs and the plugin's skills, which reach applications since #291, still teach the
+old form.
+
+The user's decisions:
+
+1. **Finish the process module before anything new**, in this order: P2i, P2h, P2e (three pull requests), C1. Then
+   rewrite the paragraphs of M1, O2, V5 and L4 against today's code before any of them starts.
+2. **P2h goes before P2e.** The test material's contracts exist only to test the library, nothing collects data
+   with them, and they may be changed freely; so removing the contract's `process` costs no client anything, and P2e
+   then draws one form, not two. *Rejected:* P2e first, as planned on 7 October, which would build every new reader
+   for both forms and leave the dual paths a stage longer. P2h no longer waits for E13 or P2e: the contract graph's
+   process node goes with the form.
+3. **V1–V4 wait, and are required before the first application keeps data it may not lose** (and before a
+   release on Hex). A general tool must let a contract change while its log is kept; today no application keeps
+   such a log (the test material keeps none, and ID3's rule was to reset), so nothing yet tests the design.
+   *Rejected:* building upcasts and the schema lock now, with no log to validate them against; dropping them,
+   which would leave the library usable only where history can be thrown away. V5 (the agreement's version
+   against the text's) is not about old rows and is rewritten after P2h.
+4. **P2i, new:** the docs (`README.md`, `docs/introduction.md`, `docs/contract.md`, `docs/concepts/process.md`,
+   `docs/concepts/reactions.md`, the `EhOsContract.Contract` moduledoc) and the plugin's skills (`add-event`,
+   `module-boundary-check`, and `contract-distillation`, `change-contract` where they name a process) teach
+   `use EhOsContract.Process`. A small pull request that raises the plugin's version; P2h then only deletes.
+5. **C1, new:** the debt the closing comments left without an issue — the list of commands reactions issue,
+   computed in four places with four shapes (#272); a contract's `correlate` that may name a field twice (#205);
+   "Records only" drawn in the graph (#272).
+
+**The library is a general tool for DDD; the clients' material validates it** (the user, 13 October, restating
+what the programme assumed). So what is left is judged by what any domain needs, and the material shows it or
+refutes it; a question about one client's process is not the library's. When M1, O2, V5 and L4 are rewritten,
+each says which DDD rule it makes checkable for any domain, then which example of the material shows it. B2–B4
+(a time bucket in a boundary, a boundary with a generated identity) were dropped on 7 October because the
+material did not need them; they come back under the same test, when a rule of a domain needs them, not
+because a client does.
+
+Open questions of the library, each found in the material but general:
+- **Can a promise be excused by an outage one step upstream** of the event that keeps it (#256)? Any promise
+  whose step depends on a system through an earlier step has it; TaxVision's month is the example.
+- **Can a person act on another's behalf** where a command requires a named person (`actor_is`, #249)? Any
+  domain with substitutes or delegation has it; the clinic's specialist is the example.
+- The confirmation of T2b folded into T2a (#240), already built.
+
+Not the library's: whether the clinic's visit run also spans settlement (#195, #222), and the three relations
+the Rehmed and TaxVision context maps lack (#286). The check found them, which is what it is for; the material is
+changed only if a test of the library needs it.
 
 ### Program — szczegóły etapów
 
