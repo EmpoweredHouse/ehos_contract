@@ -122,6 +122,20 @@ defmodule EhOsContract.Migrations do
   AND pg_namespace.nspname = current_schema()
   """
 
+  # Storage migrated before 0.3.0 recorded versions 3 to 5 with another meaning, and
+  # this release's version 3 is the first to have no `instance_id` on the events table
+  # (plan DD, P2h, #221). A database recording 3 or more with the column is one of those.
+  @pre_release_query """
+  SELECT 1 FROM information_schema.columns
+  WHERE table_schema = current_schema()
+  AND table_name = 'eh_os_contract_events'
+  AND column_name = 'instance_id'
+  """
+
+  @pre_release_message "it was migrated before 0.3.0, whose versions 3–5 are gone, and it " <>
+                         "cannot be upgraded, since 0.3.0 starts again from version 1: drop " <>
+                         "the database and create it again, or keep it on 0.2"
+
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
   def initial_version, do: @initial_version
@@ -149,7 +163,7 @@ defmodule EhOsContract.Migrations do
     # a `CREATE SCHEMA` or `SET search_path` changes which schema the version, the
     # tables and the append lock's key belong to.
     flush()
-    recorded = known!(migrated_version())
+    recorded = known!(migrated_version(), repo())
 
     cond do
       recorded == 0 -> change(@initial_version..target, :up)
@@ -170,7 +184,7 @@ defmodule EhOsContract.Migrations do
   def down(opts \\ []) when is_list(opts) do
     target = target!(Keyword.get(opts, :version, @initial_version))
     flush()
-    recorded = known!(migrated_version())
+    recorded = known!(migrated_version(), repo())
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
   end
@@ -196,7 +210,7 @@ defmodule EhOsContract.Migrations do
   @doc false
   @spec check!(module()) :: :ok
   def check!(repo) do
-    case recorded!(repo) do
+    case repo |> recorded!() |> pre_release!(repo) do
       0 ->
         raise ArgumentError,
               "the database has no eh_os_contract storage in its current schema: add a " <>
@@ -238,14 +252,29 @@ defmodule EhOsContract.Migrations do
     end
   end
 
-  defp known!(recorded) when recorded > @current_version do
-    raise ArgumentError,
-          "eh_os_contract_events records version #{recorded}, and this release of " <>
-            "eh_os_contract knows versions up to #{@current_version}: a newer release " <>
-            "migrated it, so use that release, or roll the storage back with it."
+  defp known!(recorded, repo) do
+    case pre_release!(recorded, repo) do
+      newer when newer > @current_version ->
+        raise ArgumentError,
+              "eh_os_contract_events records version #{newer}, and this release of " <>
+                "eh_os_contract knows versions up to #{@current_version}: a newer release " <>
+                "migrated it, so use that release, or roll the storage back with it."
+
+      known ->
+        known
+    end
   end
 
-  defp known!(recorded), do: recorded
+  defp pre_release!(recorded, repo) when recorded >= 3 do
+    if match?(%{rows: [_ | _]}, repo.query!(@pre_release_query, [], log: false)) do
+      raise ArgumentError,
+            "eh_os_contract_events records version #{recorded}, and " <> @pre_release_message
+    end
+
+    recorded
+  end
+
+  defp pre_release!(recorded, _repo), do: recorded
 
   defp target!(version) when version in @initial_version..@current_version//1, do: version
 

@@ -247,6 +247,17 @@ defmodule EhOsContract.MigrationsTest do
     assert version() == "5"
   end
 
+  test "a database migrated before 0.3.0 is refused by its column, whatever it records" do
+    Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
+    on_exit(fn -> Repo.query!("ALTER TABLE eh_os_contract_events DROP COLUMN instance_id") end)
+
+    assert_raise ArgumentError, ~r/records version 3, and it was migrated before 0\.3\.0/, fn ->
+      Ecto.Migrator.up(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
+    end
+
+    assert version() == "3"
+  end
+
   test "a version this release does not have is refused as a target" do
     assert_raise ArgumentError, ~r/and 4 is not one of them/, fn ->
       EhOsContract.Migrations.up(version: 4)

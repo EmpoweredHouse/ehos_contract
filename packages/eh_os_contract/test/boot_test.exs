@@ -80,6 +80,15 @@ defmodule EhOsContract.BootTest do
            "refused before anything is recorded"
   end
 
+  # Before 0.3.0 the versions ran to 5 with another meaning; a database that kept one
+  # still has the column V03 removes, so it is not taken for this release's version 3.
+  test "storage migrated before 0.3.0 stops the boot, saying it cannot be upgraded" do
+    Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+    assert message =~ "records version 3, and it was migrated before 0.3.0"
+  end
+
   test "control: storage at the release's version lets the boot through" do
     Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '3'")
     assert start_supervised!(EhOsContract)
