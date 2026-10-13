@@ -21,7 +21,7 @@ table** in "Dopisek 5 października — DD"; each stage's scope, decisions and r
 marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**Next** (the revision of 13 October, below the "Postęp" table): P2i (#294, in progress), P2h, P2e, C1; then M1, O2, V5 and L4 rewritten
+**Next** (the revision of 13 October, below the "Postęp" table): P2i is merged (#295); P2h (#221, in progress), P2e, C1; then M1, O2, V5 and L4 rewritten
 before they start. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
@@ -1884,8 +1884,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ☐ | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
-| P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☐ | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
-| P2i | 2 | docs and the plugin's skills teach the process module | P2g | ◐ `dd/294-teach-process-module` | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
+| P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ◐ `dd/221-remove-contract-process` | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☑ #295 | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | L3; its paragraph rewritten first | ⏸ to be rewritten after L3 (13 October) | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
@@ -2115,12 +2115,16 @@ graphs lose them until P2e.
 runtime rigs (`DispatchRig.Ledger`/`Branch`, `KeyRig`, `ProcessShapes`, `UniversalityGate`, `BoundaryRig.Enrolment`)
 move their processes into modules; the tests of runs, promises, deadlines and key budgets hold against them. DSL
 tests of the contract's `process` block and the manifest's process field stay for #221, dashboard fixtures for #220.
-**P2h — a contract can no longer declare a process** (#221). **Waits for E13** and P2e, since E13's contract graph
-still draws a contract's process. Formerly — **P2h — stare słowa i kolumny znikają**: z DSL kontraktu `@process`, `@include`, etapy w jednostkach, `terminal:`
-zdarzenia; reguły R1/R4 i procesowe części R2–R6, `Rules.Fields.correlated/1`; **migracja** (V02 albo V01 w
-miejscu — decyzja niżej): usunąć `process`/`instance_id` z `_events` i `_commands`; `@amendments` ADR §4.5; dopiski z datą w ADR §10.3, §13, D5, D7;
-skille `add-event`, `change-contract`, `contract-distillation`, `module-boundary-check`. Odbiór: grep `terminal:` w
-zdarzeniach, `process :` i etapów w jednostkach = 0.
+**P2h — a contract can no longer declare a process** (#221; tightened 13 October 2026, after the revision that put it
+before P2e). The contract DSL loses `process` (with its `include`), units' `stage` groups and events' `terminal:`;
+the rules lose R1, R4, the contract parts of R2, R3, R5 and R6, `Rules.Fields.correlated/1` and
+`deadline-without-terminal-event`; every reader that branches on a contract's process keeps the module's branch only,
+and a contract's `graph.v1` document loses its process, stage and promise nodes. Migration **V03** drops `process` and
+`instance_id` from `eh_os_contract_events` and `eh_os_contract_commands`: runs live in `eh_os_contract_event_runs`.
+The engine's tests and the web fixtures that still declare a contract's process move to modules or go. Dated
+amendments in `docs/adr/contract-v2.md`; the plugin's skills already teach the module (P2i). Acceptance: no
+`terminal:` on an event, no `process :` in a contract and no stage group in a unit, outside the CHANGELOG and the
+design record's history.
 
 #### Fala 3 — granice i decyzje
 
