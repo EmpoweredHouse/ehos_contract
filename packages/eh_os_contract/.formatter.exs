@@ -8,7 +8,6 @@
 # rewrites this list, and the package's `mix check` runs it with `--check`, so it cannot
 # fall behind the DSLs.
 spark_locals_without_parens = [
-  accountable: 1,
   actor: 1,
   actor: 3,
   actor: 4,
@@ -98,7 +97,6 @@ spark_locals_without_parens = [
   identity: 1,
   illustrates: 1,
   include: 1,
-  include: 2,
   initial: 1,
   initial: 2,
   invariant: 2,
@@ -127,8 +125,6 @@ spark_locals_without_parens = [
   personal: 1,
   policy: 2,
   policy: 3,
-  process: 2,
-  process: 3,
   process_manager: 2,
   process_manager: 3,
   projects: 1,
@@ -184,7 +180,6 @@ spark_locals_without_parens = [
   target: 1,
   term: 1,
   term: 2,
-  terminal: 1,
   terms: 1,
   timer: 2,
   timer: 3,

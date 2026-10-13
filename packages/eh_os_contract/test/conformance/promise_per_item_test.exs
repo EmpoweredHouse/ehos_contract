@@ -54,29 +54,42 @@ defmodule EhOsContract.PromisePerItemTest do
       event :item_inspected, "Item inspected", recorded_by: :inspector
       event :item_rejected, "Item rejected", recorded_by: :inspector
     end
+  end
 
-    process :inspection, "Inspection" do
-      correlate :case_id
+  defmodule Inspection do
+    @moduledoc "# INVENTED. NOT A DOMAIN. A case's run over `PerItem`'s items."
 
-      promise :item_inspected_within_a_day do
-        from :item_submitted
-        eventually :item_inspected
-        within {1, :day}
-      end
+    use EhOsContract.Process,
+      id: "promise_per_item.inspection",
+      domain: EhOsContract.PromisePerItemTest.Domain,
+      label: "Inspection"
 
-      # Two ways to close an item, for the test that mixes them.
-      promise :item_resolved do
-        from :item_submitted
-        eventually :item_inspected
-        within {1, :day}
-        or_else :item_rejected
-      end
+    correlate :case_id
 
-      # No `within`, for the test where a deadline is never computed at all.
-      promise :item_acknowledged do
-        from :item_submitted
-        eventually :item_inspected
-      end
+    stage :inspection,
+      include: [
+        {EhOsContract.PromisePerItemTest.PerItem,
+         [:item_submitted, :item_inspected, :item_rejected]}
+      ]
+
+    promise :item_inspected_within_a_day do
+      from :item_submitted
+      eventually :item_inspected
+      within {1, :day}
+    end
+
+    # Two ways to close an item, for the test that mixes them.
+    promise :item_resolved do
+      from :item_submitted
+      eventually :item_inspected
+      within {1, :day}
+      or_else :item_rejected
+    end
+
+    # No `within`, for the test where a deadline is never computed at all.
+    promise :item_acknowledged do
+      from :item_submitted
+      eventually :item_inspected
     end
   end
 
@@ -94,8 +107,7 @@ defmodule EhOsContract.PromisePerItemTest do
       type: "promise_per_item.per_item.#{name}",
       contract: EhOsContract.Model.fetch(PerItem).id,
       contract_version: EhOsContract.Model.fetch(PerItem).version,
-      process: "inspection",
-      instance_id: "inspection|#{case_id}",
+      runs: [{"promise_per_item.inspection", "promise_per_item.inspection|#{case_id}"}],
       correlation_id: Ecto.UUID.generate(),
       actor: EhOsContract.Event.system_actor(),
       payload: %{"case_id" => case_id, "item_no" => item_no},
@@ -114,7 +126,7 @@ defmodule EhOsContract.PromisePerItemTest do
   defp inspected(case_id, item_no, at), do: insert(:item_inspected, case_id, item_no, at)
 
   defp verdicts(promise \\ :item_inspected_within_a_day),
-    do: Trace.evaluate(PerItem, promise, now: @after_window)
+    do: Trace.evaluate(Inspection, promise, now: @after_window)
 
   describe "a run's one verdict requires every item to be resolved" do
     test "three items promised, one delivered — the run is violated" do

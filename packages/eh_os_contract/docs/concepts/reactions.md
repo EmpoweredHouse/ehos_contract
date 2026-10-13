@@ -242,11 +242,11 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 - `process-manager-without-event-reactions` (warning): after it starts, the manager reacts only to its own
   timers, so the process can end it but not steer it. It is a schedule, and may be simpler as one.
 - `event-without-consumer` (warning): nothing reacts to or reads an event: no reaction, read model,
-  boundary, consuming contract or `publish`, and no promise, lifecycle or process module that the
-  conformance report reads. Add the reader it was declared for, or ask whether it is needed.
-- `backward-edge` (warning): with stages declared, a policy or a process manager reacting to an event of one
-  stage issues a command whose events sit in an earlier one. Either the stages are in the wrong order or the
-  reaction is a loop the process has not declared.
+  boundary, consuming contract or `publish`, and no lifecycle or process module that the conformance
+  report reads. Add the reader it was declared for, or ask whether it is needed.
+- `backward-edge` (warning): a policy or a process manager reacting to an event that one stage of a
+  [process module](process.md) includes issues a command whose events sit in an earlier stage of it. Either
+  the stages are in the wrong order or the reaction is a loop the process has not declared.
 
 All of the rules are in [the catalogue](../rules.md). Reactions to another context's events, and to another
 application's, are on [their own page](between-contracts.md).

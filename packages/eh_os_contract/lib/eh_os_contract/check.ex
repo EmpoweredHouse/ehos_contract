@@ -21,36 +21,25 @@ defmodule EhOsContract.Check do
   at the declaration it is about (plan EL1).
 
   Much of what a whole-program check could look for a contract cannot compile
-  without — a name declared twice, a promise naming an event nobody declares, a rule
-  function that does not exist are L2 and L3 rules of the DSL. What is left is what
-  a contract may legally say and a reader should still hear about: a process with
-  no `accountable`; a declaration or a `promise` the process owner has not
-  confirmed; a promise with no `within`, which has no failing case; a `deadline` with no event that ends a run; and whether the
-  contract is implemented — not at all is legal and noted (D3), in part is a
-  command or a consumer dispatch will refuse, and a warning.
+  without — a name declared twice, a rule function that does not exist are L2 and L3
+  rules of the DSL. What is left here is whether the contract is implemented — not
+  at all is legal and noted (D3), in part is a command or a consumer dispatch will
+  refuse, and a warning.
   """
   @spec findings([module()] | nil) :: [Finding.t()]
   def findings(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
         %{} = linked <- [Links.contract(contract)],
-        finding <- process_findings(linked) ++ implemented_findings(linked) do
+        finding <- implemented_findings(linked) do
       finding
-    end
-  end
-
-  defp process_findings(%{model: model} = linked) do
-    case Model.process(model) do
-      nil -> []
-      process -> process_findings(linked, process)
     end
   end
 
   @doc """
   What `mix eh_os_contract.check` says about process modules, `use EhOsContract.Process`
-  (plan DD, P2d, #213): the rules about a contract's process, at the module's `use` and
-  its promises. A process with no `accountable`, a `deadline` or a promise not
-  confirmed, a promise with no `within`. Not a `deadline` with no event that ends a
-  run: a process module cannot declare one without `ends_on` (R6).
+  (plan DD, P2d, #213), at the module's `use` and its promises: a process with no
+  `accountable`, a `deadline` or a promise the process owner has not confirmed, a
+  promise with no `within`, which has no failing case.
   """
   @spec process_module_findings([module()] | nil) :: [Finding.t()]
   def process_module_findings(processes \\ nil) do
@@ -67,33 +56,7 @@ defmodule EhOsContract.Check do
     end
   end
 
-  defp process_findings(%{model: model, declarations: declarations}, process) do
-    name = inspect(model.module)
-    declared = Enum.find(declarations.processes, &(&1.name == process.name))
-    at = declared && Links.at(declared)
-    promise_at = fn promise -> located(declared && declared.promises, promise.name) || at end
-
-    ends? = Enum.any?(Model.process_events(model), & &1.terminal)
-
-    unobservable =
-      if process.deadline && not ends?,
-        do: [
-          Finding.new(
-            "deadline-without-terminal-event",
-            "process #{inspect(process.name)} declares `deadline` = " <>
-              "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
-              "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
-              "measured (#{name})",
-            at
-          )
-        ],
-        else: []
-
-    process_rules(process, name, at, promise_at) ++ unobservable
-  end
-
-  # The rules about a process, a contract's or a module's: `name` is the module's, as a
-  # message names it.
+  # The rules about a process module: `name` is the module's, as a message names it.
   defp process_rules(process, name, at, promise_at) do
     accountable =
       if process.accountable == nil,
@@ -140,8 +103,6 @@ defmodule EhOsContract.Check do
 
     accountable ++ unverified ++ unfalsifiable
   end
-
-  defp located(nil, _name), do: nil
 
   defp located(declarations, name) do
     case Enum.find(declarations, &(&1.name == name)) do

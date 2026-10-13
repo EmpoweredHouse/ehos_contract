@@ -169,8 +169,7 @@ refused when it brings an identity of its own (`{field, :generated}`), and witho
   and dispatch refuses it in any other, on its `or_rejects:` invariant, before the decision runs. The
   rules of the graph are in [the guide](../contract.md).
 - **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
-  [process module](process.md)'s to say. A unit groups its events by stage only in a contract that
-  still declares a `process` of its own, an older form that is being removed.
+  [process module](process.md)'s to say.
 
 ## A dynamic consistency boundary
 

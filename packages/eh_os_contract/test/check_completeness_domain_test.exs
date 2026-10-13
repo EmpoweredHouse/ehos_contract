@@ -111,6 +111,48 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~ "actor :auditor of #{inspect(@domain)} is in no command's or query's `by:`"
   end
 
+  # Plan DD, P2h (#221): a process module's `accountable` gives an actor something to do,
+  # as a contract's process did; one of another domain gives this one's nothing.
+  test "an actor a process module of the domain holds accountable is named" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.Audit do
+        use EhOsContract.Process,
+          id: "clinic.audit",
+          domain: #{inspect(@domain)},
+          label: "Audyt",
+          accountable: :auditor
+
+        correlate :visit_id
+        stage :payment, include: [{#{inspect(@settlement)}, :payment_recorded}]
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ElsewhereAudit do
+        use EhOsContract.Process,
+          id: "elsewhere.audit",
+          domain: EhOsContract.CheckCompletenessDomainTest.Elsewhere,
+          label: "Audyt",
+          accountable: :auditor
+
+        correlate :visit_id
+        stage :payment, include: [{#{inspect(@settlement)}, :payment_recorded}]
+      end
+      """,
+      "audit.ex"
+    )
+
+    orphans = fn processes ->
+      for %Finding{rule: "orphan-actor"} = f <-
+            Completeness.findings([@settlement, @scheduling, @reporting], processes),
+          do: f.message
+    end
+
+    assert orphans.([EhOsContract.CheckCompletenessDomainTest.Audit]) == []
+
+    assert [message] = orphans.([EhOsContract.CheckCompletenessDomainTest.ElsewhereAudit])
+    assert message =~ "actor :auditor of #{inspect(@domain)}"
+  end
+
   test "a scoped actor may not get an application-wide command; control: scoped and unscoped actors" do
     compile(
       """

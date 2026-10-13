@@ -228,11 +228,11 @@ defmodule EhOsContract.PathsTest do
       assert %{taken: 2} = step(steps(), :deposit, nil, :deposited)
     end
 
-    test "a contract without a process has its steps counted all the same" do
+    test "a step is counted whatever process modules include its event" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 3})
-      without = %{EhOsContract.Model.fetch(Ledger) | process: nil}
+      assert EhOsContract.Model.process(Ledger) == nil
 
-      assert %{taken: 1} = without |> Paths.observe() |> step(:deposit, nil, :deposited)
+      assert %{taken: 1} = Ledger |> Paths.observe() |> step(:deposit, nil, :deposited)
     end
 
     @tag :capture_log

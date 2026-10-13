@@ -9,10 +9,10 @@ defmodule EhOsContract.Contract.Links.Siblings do
   # - **X6.** The fields a subscriber's declarations use exist in the sibling's event
   #   with the type the subscriber gives them, and are neither `optional:` nor
   #   `personal:`, since each tells which run or which boundary an event belongs to
-  #   (F4): the process's `correlate` for every event it `include`s, a process
-  #   manager's `correlate` for every event it handles, and a boundary's `match:` for
+  #   (F4): a process manager's `correlate` for every event it handles, and a boundary's `match:` for
   #   every event it `consults`. A `correlate` field no local event carries is an `:id`
-  #   there, as a run's key has to be (F8). The error stands at the subscriber's declaration and
+  #   there, as a run's key has to be (F8). A process module's `correlate` is held to
+  #   the same for every event it includes (`EhOsContract.Contract.Links.Processes`). The error stands at the subscriber's declaration and
   #   names the sibling's event, with its file and line.
   #
   # - **X10** (plan DD, X1). A policy or a read model that takes an event of a sibling
@@ -49,9 +49,7 @@ defmodule EhOsContract.Contract.Links.Siblings do
     events = consumed_events(c, siblings)
     values = EhOsContract.Codec.values(c.model.domain)
 
-    existence ++
-      correlation(c, events, values) ++
-      managers(c, events, values) ++ matches(c, events, values) ++ x10(c, siblings)
+    existence ++ managers(c, events, values) ++ matches(c, events, values) ++ x10(c, siblings)
   end
 
   # --- X5 ---------------------------------------------------------------------------
@@ -145,22 +143,6 @@ defmodule EhOsContract.Contract.Links.Siblings do
     end
   end
 
-  defp correlation(c, events, values) do
-    types = local_types(c.model.events)
-
-    for process <- c.declarations.processes,
-        include <- process.includes ++ Enum.flat_map(process.stages, & &1.includes),
-        consumed = events[include.event],
-        consumed != nil,
-        field <- process.correlate,
-        # With no local event carrying the field, the run's key is the sibling's value, so
-        # it is held to what a run's key may be: an :id (F8).
-        problem <- problems(consumed, field, Map.get(types, field, :id), values) do
-      {"X6: process #{inspect(process.name)} includes #{inspect(include.event)} and correlates " <>
-         "on #{inspect(field)}, #{problem}", Links.at(include)}
-    end
-  end
-
   defp managers(c, events, values) do
     for pm <- c.declarations.process_managers,
         model = Enum.find(c.model.process_managers, &(&1.name == pm.name)),
@@ -186,14 +168,6 @@ defmodule EhOsContract.Contract.Links.Siblings do
       {"X6: dcb #{inspect(unit.name)} consults #{inspect(consults.event)} matching " <>
          "#{inspect(field)}, #{problem}", Links.at(consults)}
     end
-  end
-
-  # The type a field has in this contract's own events, where it has one.
-  defp local_types(events) do
-    events
-    |> Enum.flat_map(& &1.fields)
-    |> Enum.reverse()
-    |> Map.new(&{&1.name, &1.type})
   end
 
   @doc """

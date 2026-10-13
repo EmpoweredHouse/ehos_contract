@@ -50,8 +50,8 @@ defmodule EhOsContract.ProcessModuleRunsTest do
     review = DispatchRig.AccountReview.__eh_os_contract_model__()
     run = %{name: "dispatch_rig.account_review", correlate: [:account_id]}
 
-    assert Implementations.runs_of([], [review])["dispatch_rig.ledger.withdrawn"] == [run]
-    assert Implementations.runs_of([], [%{review | domain: Elsewhere.Domain}]) == %{}
+    assert Implementations.runs_of([review])["dispatch_rig.ledger.withdrawn"] == [run]
+    assert Implementations.runs_of([%{review | domain: Elsewhere.Domain}]) == %{}
   end
 
   test "an included event belongs to the run of every module that includes it, under its id" do

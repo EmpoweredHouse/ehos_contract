@@ -71,7 +71,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
 
     unit_of =
       for unit <- declarations.units,
-          event <- Rules.events(unit),
+          event <- unit.events,
           into: %{},
           do: {event.name, unit.name}
 

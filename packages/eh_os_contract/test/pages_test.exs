@@ -10,41 +10,6 @@ defmodule EhOsContract.PagesTest do
 
   alias EhOsContract.{Pages, Registry}
 
-  # A contract's own `process`, which only a contract's page shows: the rigs' processes
-  # are modules since plan DD, P2g (#228), and the block goes with #221. Invented, like
-  # the ledger whose withdrawal it includes.
-  defmodule Audit do
-    @moduledoc false
-    use EhOsContract.Contract,
-      domain: DispatchRig.Domain,
-      context: :ledger,
-      id: "dispatch_rig.audit"
-
-    consumes DispatchRig.Ledger, :withdrawn
-
-    aggregate :audit, "Audit" do
-      identity :account_id
-
-      event :audit_opened, "Audit opened", recorded_by: :auditor
-      event :audit_passed, "Audit passed", recorded_by: :auditor, terminal: true
-      event :audit_failed, "Audit failed", recorded_by: :auditor, terminal: true
-    end
-
-    process :audit, "Audit", accountable: :auditor do
-      correlate :account_id
-      include :withdrawn
-
-      deadline {30, :day}, unverified: true
-
-      promise :audit_reaches_a_verdict do
-        from :audit_opened
-        eventually :audit_passed
-        within {3, :day}
-        or_else :audit_failed
-      end
-    end
-  end
-
   defp pages(domain), do: Pages.render(domain, Registry.contracts())
 
   # Every relative Markdown link on a page, resolved against the page's directory.
@@ -176,23 +141,6 @@ defmodule EhOsContract.PagesTest do
                "[`flag_account`](../commands/flag_account.md)"
 
     assert chase =~ "- `review` — Review (at `review_at`) → "
-  end
-
-  # The EL3 review: the page stated a promise without its `or_else`, and left out
-  # what the process includes from other contracts.
-  test "a process shows its deadline, what it includes and its promises as declared" do
-    audit =
-      Pages.render(DispatchRig.Domain, [DispatchRig.Ledger, Audit])["ledger/audit/index.md"]
-
-    assert audit =~ "Deadline: 30 days (unverified)."
-
-    assert audit =~
-             "- `audit_reaches_a_verdict`: after [`audit_opened`](events/audit_opened.md), " <>
-               "eventually [`audit_passed`](events/audit_passed.md) within " <>
-               "3 days, or else [`audit_failed`](events/audit_failed.md)"
-
-    assert audit =~ "## Included from other contracts"
-    assert audit =~ "[`withdrawn` of DispatchRig.Ledger](../ledger/events/withdrawn.md)"
   end
 
   # The EL3 review: a timer named in `on` printed as an event received from another

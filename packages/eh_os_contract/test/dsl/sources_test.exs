@@ -15,8 +15,12 @@ defmodule EhOsContract.SourcesTest do
   # The contract's moved once since, from 304120633fb2, with plan EP4: its effect's
   # `idempotency` names a key and an owner, as every contract's with one does; and
   # from 0233079a0430 with plan N3: its timer has a label; and from fbeab3316603 with
-  # plan DD, ID3 (#173): its events are typed by its id, `clinic.visits`, not its process.
-  @unsourced_version "d6a1c3e1d546"
+  # plan DD, ID3 (#173): its events are typed by its id, `clinic.visits`, not its process;
+  # and from d6a1c3e1d546 with plan DD, P2h (#221): a contract no longer declares a
+  # process, and the fixture's is gone. What it has now is what it would have hashed to
+  # without one before: that removing the form moved no such contract's version is
+  # `ContractTest`'s.
+  @unsourced_version "0a533b0dc4d3"
   @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
@@ -50,10 +54,6 @@ defmodule EhOsContract.SourcesTest do
     query :visits_of, "Wizyty recepcji", reads: :visits, by: :reception, source: "R-02" do
       param :visit_id, :id
     end
-
-    process :visit, "Wizyta", source: "W1 00:12:00" do
-      correlate :visit_id
-    end
   """
 
   @unsourced """
@@ -85,10 +85,6 @@ defmodule EhOsContract.SourcesTest do
 
     query :visits_of, "Wizyty recepcji", reads: :visits, by: :reception do
       param :visit_id, :id
-    end
-
-    process :visit, "Wizyta" do
-      correlate :visit_id
     end
   """
 
@@ -151,8 +147,7 @@ defmodule EhOsContract.SourcesTest do
       assert {policy.source, effect.source, pm.source, timer.source} ==
                {"P-07", "P-08", "P-09", "H21"}
 
-      assert {read_model.source, query.source, model.process.source} ==
-               {"R-01", "R-02", "W1 00:12:00"}
+      assert {read_model.source, query.source} == {"R-01", "R-02"}
     end
 
     test "without one, keeps the key as nil and the version it had before EP1", %{
@@ -164,7 +159,7 @@ defmodule EhOsContract.SourcesTest do
             model.policies ++
               model.effects ++
               model.process_managers ++
-              pm.timers ++ model.read_models ++ model.queries ++ [model.process] do
+              pm.timers ++ model.read_models ++ model.queries do
         assert Map.fetch!(declaration, :source) == nil, inspect(declaration)
       end
 
@@ -184,8 +179,7 @@ defmodule EhOsContract.SourcesTest do
                  "effect:notify_registry",
                  "process_manager:chase",
                  "read_model:visits",
-                 "query:visits_of",
-                 "process:visit"
+                 "query:visits_of"
                ])
     end
   end
@@ -234,7 +228,6 @@ defmodule EhOsContract.SourcesTest do
       assert pages["#{dir}/process_managers/chase.md"] =~ "· _source: H21_"
       assert pages["#{dir}/read_models/visits.md"] =~ "_Source: R-01_"
       assert pages["#{dir}/queries/visits_of.md"] =~ "_Source: R-02_"
-      assert pages["#{dir}/index.md"] =~ "_Source: W1 00:12:00_"
     end
   end
 end

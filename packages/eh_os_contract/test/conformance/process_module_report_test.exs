@@ -46,7 +46,7 @@ defmodule EhOsContract.ProcessModuleReportTest do
   end
 
   describe "the model" do
-    test "answers for the module's run as for a contract's process" do
+    test "answers for the module's run" do
       assert %{name: "dispatch_rig.account_review", correlate: [:account_id]} =
                Model.process(AccountReview)
 
@@ -217,11 +217,11 @@ defmodule EhOsContract.ProcessModuleReportTest do
 
       assert [_, _] = Model.process_events(review)
       assert Model.process_events(elsewhere) == []
-      assert EhOsContract.Implementations.runs_of([], [elsewhere]) == %{}
+      assert EhOsContract.Implementations.runs_of([elsewhere]) == %{}
 
       types = review |> Model.process_events() |> Enum.map(& &1.type) |> Enum.sort()
 
-      assert EhOsContract.Implementations.runs_of([], [review]) |> Map.keys() |> Enum.sort() ==
+      assert EhOsContract.Implementations.runs_of([review]) |> Map.keys() |> Enum.sort() ==
                types
     end
   end

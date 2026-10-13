@@ -115,17 +115,16 @@ defmodule EhOsContract.Implementations do
   def effects(contract, type), do: Map.get(index(contract).effects, type, [])
 
   @typedoc """
-  A process an event belongs to besides its home run: `name` is what its runs are
-  filed under, a contract process's name, or a process module's `id:` (plan DD, P2c,
-  #210), and `correlate` the fields that key them.
+  A process an event belongs to: `name` is what its runs are filed under, the process
+  module's `id:`, and `correlate` the fields that key them.
   """
-  @type included :: %{name: atom() | String.t(), correlate: [atom()]}
+  @type included :: %{name: String.t(), correlate: [atom()]}
 
   @doc """
   The processes that `include` events of `type` (D7), each with the fields that
   correlate its runs, in the applications dispatch of `contract` looks in: the runs an
-  event of that type belongs to besides its home run. A contract's process, and every
-  process module (`EhOsContract.Process`) that includes the type in one of its stages.
+  event of that type belongs to. Every process module (`EhOsContract.Process`) that
+  includes the type in one of its stages.
   """
   @spec included(module(), String.t()) :: [included()]
   def included(contract, type), do: Map.get(index(contract).included, type, [])
@@ -286,7 +285,7 @@ defmodule EhOsContract.Implementations do
         contracts
         |> Enum.flat_map(&inboxes(&1, declarations))
         |> Enum.sort_by(& &1.key),
-      included: runs_of(contracts, processes),
+      included: runs_of(processes),
       contracts: known
     }
   end
@@ -351,10 +350,6 @@ defmodule EhOsContract.Implementations do
     end
   end
 
-  # A process includes a sibling's event by the name it consumes it under, and the
-  # event is stored under the sibling's type. Another application's event is received
-  # into an inbox, never this log (D12), so its runs are not written here.
-  #
   # A process module names each event by its contract, and its runs are filed under
   # its id. Which includes count is `EhOsContract.Model.process_events/1`'s rule, the
   # one the check and the deployment record read too: an include the node cannot
@@ -362,20 +357,13 @@ defmodule EhOsContract.Implementations do
   # process module listed in `:applications` gets no runs filed for this application's
   # events.
   @doc false
-  @spec runs_of([map()], [map()]) :: %{optional(String.t()) => [map()]}
-  def runs_of(contracts, processes) do
-    of_contracts =
-      for model <- contracts,
-          %{} = process <- [EhOsContract.Model.process(model)],
-          %{included: true, type: type} <- EhOsContract.Model.process_events(model),
-          do: {type, %{name: process.name, correlate: process.correlate}}
-
-    of_modules =
-      for process <- processes,
-          %{type: type} <- EhOsContract.Model.process_events(process),
-          do: {type, %{name: process.id, correlate: process.correlate}}
-
-    (of_contracts ++ of_modules)
+  @spec runs_of([map()]) :: %{optional(String.t()) => [map()]}
+  def runs_of(processes) do
+    for(
+      process <- processes,
+      %{type: type} <- EhOsContract.Model.process_events(process),
+      do: {type, %{name: process.id, correlate: process.correlate}}
+    )
     |> Enum.uniq()
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Map.new(fn {type, runs} -> {type, Enum.sort(runs)} end)

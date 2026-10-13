@@ -2,12 +2,10 @@ defmodule EhOsContract.Contract.Links.System do
   # X7, X8 and the part of D14 no single contract can check: names that have to be
   # unique across the application, and one implementation per declaration.
   #
-  # - **X7.** A process's name is unique across the application: it keys the process's
-  #   runs, so two processes of one name would share runs no reader could tell apart.
-  #   A process module's runs are keyed by its `id:` (plan DD, P2c, #210), so its id is
-  #   compared, as a string, with every other process module's id and every contract
-  #   process's name. It may equal a contract's `id:`: that one prefixes event types,
-  #   which are never a run's key.
+  # - **X7.** A process module's `id:` is unique across the application: it keys the
+  #   process's runs (plan DD, P2c, #210), so two processes of one id would share runs
+  #   no reader could tell apart. It may equal a contract's `id:`: that one prefixes
+  #   event types, which are never a run's key.
   #   So is a contract's `id:` (plan DD, ID1), which prefixes every event type the
   #   contract records (`"<id>.<event>"`, from ID3).
   # - **X8.** A declaration that code implements — a unit, a policy, an effect, a
@@ -29,20 +27,11 @@ defmodule EhOsContract.Contract.Links.System do
     do: processes(system) ++ ids(system) ++ capabilities(system) ++ implementations(system)
 
   defp processes(system) do
-    # A process module's id and a contract process's name are compared too, though they
-    # cannot be equal today: the id is dotted under the application's namespace (D11),
-    # and a contract process's name is a snake_case atom, which has no dot. Only two
-    # contract processes, or two process modules, can collide.
+    # Sorted by module, and the later is refused.
     named =
-      for(
-        c <- system.contracts,
-        process <- c.declarations.processes,
-        do: {Atom.to_string(process.name), c.module, {process.name, Links.at(process)}}
-      ) ++
-        for(p <- system.processes, do: {p.model.id, p.module, {p.model.id, p.at}})
-
-    # Contracts and process modules are each sorted by module, and the later is refused.
-    named = Enum.sort_by(named, &inspect(elem(&1, 1)))
+      system.processes
+      |> Enum.map(&{&1.model.id, &1.module, {&1.model.id, &1.at}})
+      |> Enum.sort_by(&inspect(elem(&1, 1)))
 
     for {_key, {module, {name, at}}, {first, {_first_name, first_at}}} <- collisions(named) do
       {"X7: process #{inspect(name)} of #{inspect(module)} is also declared by " <>
@@ -86,7 +75,7 @@ defmodule EhOsContract.Contract.Links.System do
 
   defp recorded(declarations) do
     for unit <- declarations.units,
-        event <- Rules.events(unit),
+        event <- unit.events,
         event.recorded_by != [],
         do: event
   end

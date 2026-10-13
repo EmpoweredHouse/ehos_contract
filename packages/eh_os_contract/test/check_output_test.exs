@@ -131,10 +131,13 @@ defmodule EhOsContract.CheckOutputTest do
             command :stack, "Stack", by: :batch_operator, emits: :stacked
             event :stacked, "Stacked"
           end
+        end
 
-          process :piling, "Piling" do
-            correlate :pile_id
-          end
+        defmodule EhOsContract.CheckOutputTest.Piling do
+          use EhOsContract.Process, id: "process_shapes.piling", domain: ProcessShapes.Domain, label: "Piling"
+
+          correlate :pile_id
+          stage :piling, include: [{EhOsContract.CheckOutputTest.Unaddressed, [:stacked]}]
         end
         """,
         "unaddressed.ex"
@@ -143,11 +146,11 @@ defmodule EhOsContract.CheckOutputTest do
       assert %Finding{rule: "process-without-accountable"} =
                finding =
                Enum.find(
-                 EhOsContract.Check.findings([EhOsContract.CheckOutputTest.Unaddressed]),
+                 EhOsContract.Check.process_module_findings([EhOsContract.CheckOutputTest.Piling]),
                  &(&1.rule == "process-without-accountable")
                )
 
-      assert Finding.place(finding) == {"unaddressed.ex", 10}
+      assert Finding.place(finding) == {"unaddressed.ex", 12}
     end
   end
 end

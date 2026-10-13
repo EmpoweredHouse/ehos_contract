@@ -6,7 +6,7 @@ defmodule EhOsContract.Contract.Links.Domain do
   #   its contexts. When the domain is not one, nothing else here is checked, since
   #   there is nothing to check it against.
   # - **X2.** Every actor a contract names — in a command's or a query's `by:`, an
-  #   event's `recorded_by:`, the process's `accountable` and a scenario's `actor` —
+  #   event's `recorded_by:` and a scenario's `actor` —
   #   is an actor of the domain, and of this contract's context unless the actor
   #   names no context. A command whose `actor_is` names who must issue it has a
   #   `:human` actor in `by:`, and its scenario by a person names them with `as`, which
@@ -105,11 +105,6 @@ defmodule EhOsContract.Contract.Links.Domain do
           e <- Rules.local_events(d),
           a <- e.recorded_by,
           do: {e, "event #{inspect(e.name)}: recorded_by:", a}
-        ) ++
-        for(
-          p <- d.processes,
-          p.accountable != nil,
-          do: {p, "process #{inspect(p.name)}: accountable", p.accountable}
         ) ++
         for s <- d.scenarios,
             s.actor != nil,

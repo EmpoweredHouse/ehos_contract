@@ -39,18 +39,11 @@ defmodule EhOsContract.ContractTest do
         emits: :closed,
         rejects: :paid_in_full
 
-      stage :payment do
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money
-        end
-
-        event :closed, "Zamknięto", terminal: true
+      event :payment_recorded, "Zapłacono" do
+        field :amount, :money
       end
-    end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
+      event :closed, "Zamknięto"
     end
 
     scenario "zapłacono za mało — zamknięcie odrzucone" do
@@ -67,20 +60,13 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
-    end
-
     aggregate :visit, "Wizyta", source: "AGG-03" do
       identity :visit_id
 
-      stage :payment do
-        event :closed, "Zamknięto", terminal: true
+      event :closed, "Zamknięto"
 
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money
-        end
+      event :payment_recorded, "Zapłacono" do
+        field :amount, :money
       end
 
       command :close, "Zamknięcie",
@@ -133,19 +119,12 @@ defmodule EhOsContract.ContractTest do
         emits: :closed,
         rejects: :paid_in_full
 
-      stage :payment do
-        # The only difference from `Golden`: the amount is optional.
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money, optional: true
-        end
-
-        event :closed, "Zamknięto", terminal: true
+      # The only difference from `Golden`: the amount is optional.
+      event :payment_recorded, "Zapłacono" do
+        field :amount, :money, optional: true
       end
-    end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
+      event :closed, "Zamknięto"
     end
 
     scenario "zapłacono za mało — zamknięcie odrzucone" do
@@ -169,17 +148,6 @@ defmodule EhOsContract.ContractTest do
                domain: EhOsContract.ContractTest.Clinic,
                context: :settlement,
                id: "clinic.golden",
-               process: %{
-                 name: :visit,
-                 label: "Wizyta",
-                 correlate: [:visit_id],
-                 accountable: nil,
-                 stages: [%{name: :payment, label: nil}],
-                 includes: [],
-                 deadline: nil,
-                 promises: [],
-                 source: nil
-               },
                units: [
                  %{
                    name: :visit,
@@ -226,9 +194,7 @@ defmodule EhOsContract.ContractTest do
                    name: :payment_recorded,
                    unit: :visit,
                    type: "clinic.golden.payment_recorded",
-                   stage: :payment,
                    label: "Zapłacono",
-                   terminal: false,
                    recorded_by: [],
                    depends_on: nil,
                    schema_version: 1,
@@ -239,9 +205,7 @@ defmodule EhOsContract.ContractTest do
                    name: :closed,
                    unit: :visit,
                    type: "clinic.golden.closed",
-                   stage: :payment,
                    label: "Zamknięto",
-                   terminal: true,
                    recorded_by: [],
                    depends_on: nil,
                    schema_version: 1,
@@ -286,7 +250,6 @@ defmodule EhOsContract.ContractTest do
                "contract",
                "event:closed",
                "event:payment_recorded",
-               "process:visit",
                "scenario:*",
                "unit:visit"
              ]
@@ -473,6 +436,25 @@ defmodule EhOsContract.ContractTest do
       moved = for {key, digest} <- without.digests, sourced.digests[key] != digest, do: key
       assert moved == ["command:close_visit"]
       assert without.version != sourced.version
+    end
+
+    test "did not move when a contract stopped declaring a process, its stages and its ends" do
+      # Plan DD, P2h (#221): the version and the digests of `ProcessShapes.Bare` as the
+      # engine computed them while a contract could still declare a process, and every
+      # one without hashed an empty process group and events with no stage and no end.
+      # Removing the form is not a new deployment of every contract.
+      model = Model.fetch(ProcessShapes.Bare)
+
+      assert model.version == "ecbde0977484"
+
+      assert model.digests == %{
+               "command:close_batch" => "ae6cf175a710",
+               "command:open_batch" => "32f552c441ae",
+               "contract" => "40d32268317c",
+               "event:batch_closed" => "dd3dbedab085",
+               "event:batch_opened" => "dfcd26cfc8ef",
+               "unit:batch" => "bc749bcff4cd"
+             }
     end
   end
 

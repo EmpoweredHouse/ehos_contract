@@ -42,7 +42,7 @@ defmodule EhOsContract.Contract.Rules.Units do
 
   defp unit(unit, d) do
     where = "#{unit.kind} #{inspect(unit.name)}"
-    events = MapSet.new(Rules.events(unit), & &1.name)
+    events = MapSet.new(unit.events, & &1.name)
     invariants = MapSet.new(unit.invariants, & &1.name)
 
     emits =
@@ -63,7 +63,7 @@ defmodule EhOsContract.Contract.Rules.Units do
     emitted = MapSet.new(Enum.flat_map(unit.commands, & &1.emits))
 
     unemitted =
-      for event <- Rules.events(unit),
+      for event <- unit.events,
           not MapSet.member?(emitted, event.name),
           event.recorded_by == [] do
         {"A2: event #{inspect(event.name)} is emitted by no command of #{where} and declares no " <>
@@ -365,7 +365,7 @@ defmodule EhOsContract.Contract.Rules.Units do
   # For each local event, the fields an append tags it with: its unit's identity, and
   # its own required, non-personal fields of the built-in type `:id`.
   defp tagged_fields(d) do
-    for unit <- d.units, event <- Rules.events(unit), into: %{} do
+    for unit <- d.units, event <- unit.events, into: %{} do
       own = for f <- event.fields, EhOsContract.Key.tag_field?(f), do: f.name
 
       {event.name, List.wrap(unit.identity) ++ own}

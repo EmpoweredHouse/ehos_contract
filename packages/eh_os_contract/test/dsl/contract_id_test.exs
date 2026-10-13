@@ -31,22 +31,18 @@ defmodule EhOsContract.ContractIdTest do
   end
 
   # A contract whose `use` is at line 2, naming `id` when given.
-  defp source(name, id, process \\ nil) do
+  defp source(name, id, unit \\ nil) do
     id = if id, do: ", id: #{inspect(id)}", else: ""
-    process = process || Macro.underscore(name) |> String.to_atom()
+    unit = unit || Macro.underscore(name) |> String.to_atom()
 
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement#{id}
 
-      aggregate #{inspect(process)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Jednostka" do
         identity :case_id
-        command #{inspect(:"open_#{process}")}, "Otwórz", by: :reception, emits: #{inspect(:"#{process}_opened")}
-        event #{inspect(:"#{process}_opened")}, "Otwarto"
-      end
-
-      process #{inspect(process)}, "Proces" do
-        correlate :case_id
+        command #{inspect(:"open_#{unit}")}, "Otwórz", by: :reception, emits: #{inspect(:"#{unit}_opened")}
+        event #{inspect(:"#{unit}_opened")}, "Otwarto"
       end
     end
     """

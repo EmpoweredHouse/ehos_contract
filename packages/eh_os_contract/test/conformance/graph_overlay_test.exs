@@ -20,49 +20,6 @@ defmodule EhOsContract.GraphOverlayTest do
 
   @schema Overlay.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
 
-  # A contract that declares a process of its own. No rig's contract does since plan
-  # DD, P2g (#228), which moved their runs into process modules; until the contract's
-  # `process` goes (#221) the overlay counts its runs, and the tests of runs read this
-  # one. Invented, beside the ledger.
-  defmodule Openings do
-    @moduledoc false
-    use EhOsContract.Contract,
-      domain: DispatchRig.Domain,
-      context: :ledger,
-      id: "dispatch_rig.graph_overlay_openings"
-
-    aggregate :branch_note, "Branch note" do
-      identity :branch_id
-      command :note_branch, "Note a branch", by: :auditor, emits: :branch_noted
-      event :branch_noted, "Branch noted"
-    end
-
-    process :openings, "Openings" do
-      correlate :branch_id
-    end
-  end
-
-  # Two runs of `Openings`, filed as dispatch files them.
-  defp seed_openings do
-    model = Model.fetch(Openings)
-    [noted] = model.events
-
-    record_events!(
-      for branch <- ["b-1", "b-2"] do
-        %{
-          type: noted.type,
-          contract: model.id,
-          contract_version: model.version,
-          process: "openings",
-          instance_id: "openings|#{branch}",
-          payload: %{"branch_id" => branch}
-        }
-      end
-    )
-  end
-
-  defp openings(kind, name), do: Document.id([kind, "dispatch_rig.graph_overlay_openings", name])
-
   defp valid!(overlay) do
     case JSV.validate(overlay, @schema) do
       {:ok, _} -> overlay
@@ -134,7 +91,7 @@ defmodule EhOsContract.GraphOverlayTest do
     assert Document.domain(DispatchRig.Domain, Registry.contracts()) == domain
   end
 
-  test "an event's occurrences, a process's runs, and a step's numbers on its emits" do
+  test "an event's occurrences, and a step's numbers on its emits" do
     seed_ledger()
     d = Document.contract(DispatchRig.Ledger)
     o = Overlay.contract(DispatchRig.Ledger)
@@ -143,9 +100,9 @@ defmodule EhOsContract.GraphOverlayTest do
     assert o["nodes"][id.(:event, :deposited)] == %{"occurrences" => 2}
     assert o["nodes"][id.(:event, :account_opened)] == %{"occurrences" => 2}
 
-    seed_openings()
-    runs = Overlay.contract(Openings) |> valid!() |> joins!(Document.contract(Openings))
-    assert runs["nodes"][openings(:process, :openings)] == %{"runs" => 2}
+    # A contract has no runs: they are a process module's.
+    o |> valid!() |> joins!(d)
+    refute Enum.any?(Map.values(o["nodes"]), &Map.has_key?(&1, "runs"))
 
     deposit =
       o["relations"][relation(d, "emits", id.(:command, :deposit), id.(:event, :deposited))]
@@ -248,17 +205,14 @@ defmodule EhOsContract.GraphOverlayTest do
     assert o["relations"][moved] == %{"count" => 1}
   end
 
-  test "a domain's: each contract's runs and the events between two contracts" do
+  test "a domain's: the events between two contracts, and no contract's runs" do
     seed_ledger()
-    seed_openings()
-    contracts = Registry.contracts() ++ [Openings]
+    contracts = Registry.contracts()
     o = Overlay.domain(DispatchRig.Domain, contracts)
     contract = &Document.id([:contract, Model.fetch(&1).id])
 
-    # A contract's own process has its runs on the contract's node; the rigs' runs are
-    # process modules' since plan DD, P2g (#228), so the ledger carries none.
-    assert o["nodes"][contract.(Openings)] == %{"runs" => 2}
-    refute Map.has_key?(o["nodes"], contract.(DispatchRig.Ledger))
+    # A run is a process module's, so no contract's node carries one.
+    assert o["nodes"] == %{}
 
     between =
       Document.id([:consumed_by, contract.(DispatchRig.Ledger), contract.(DispatchRig.Branch)])
@@ -289,13 +243,9 @@ defmodule EhOsContract.GraphOverlayTest do
 
   test "a domain's reads the steps of consumers only, and counts every pair at once" do
     contracts = Registry.contracts()
-    ours = Enum.filter(contracts, &(Model.fetch(&1).domain == DispatchRig.Domain))
-
-    # DispatchRig.Branch is the one consumer: its steps, the runs of each contract with
-    # a process of its own (none of the rigs' since plan DD, P2g, #228), and one count
-    # for every pair of contracts.
-    with_process = Enum.count(ours, &(Model.process(Model.fetch(&1)) != nil))
-    budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + with_process + 1
+    # DispatchRig.Branch is the one consumer: its steps, and one count for every pair of
+    # contracts.
+    budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + 1
 
     assert queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end) <= budget
   end
@@ -310,10 +260,6 @@ defmodule EhOsContract.GraphOverlayTest do
     assert o["version"] == Model.fetch(DispatchRig.Ledger).version
     id = &Document.id([&1, "dispatch_rig.ledger", &2])
     refute Map.has_key?(o["nodes"], id.(:event, :deposited))
-
-    seed_openings()
-    runs = Overlay.contract(Openings, since: since)
-    assert runs["nodes"][openings(:process, :openings)] == %{"runs" => 0}
 
     d = Document.contract(DispatchRig.Ledger)
     deposit = relation(d, "emits", id.(:command, :deposit), id.(:event, :deposited))

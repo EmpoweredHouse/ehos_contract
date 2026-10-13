@@ -9,9 +9,9 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  A step counts its **occurrences**: a step is the contract's, and a contract may have
-  no process to count runs of. A process's promises and durations are judged per
-  **run**. And the report has to avoid lying in the three situations where lying is
+  A step counts its **occurrences**: a step is the contract's, and a contract has no
+  runs to count; a run is a process module's. A process's promises and durations are
+  judged per **run**. And the report has to avoid lying in the three situations where lying is
   easy:
 
   **Nothing happening is no basis for a verdict, not three untraversed paths.** A
@@ -61,15 +61,16 @@ defmodule EhOsContract.Conformance do
   rolled back and delivered again by the transport, so a path that always fails there
   reads as untraversed.
 
-  The assertions are the process's `promises`. Beside them, `out_of_order` counts the
-  runs that entered a later stage before an earlier one, with the pairs of stages
+  The assertions are a process module's `promises`. Beside them, `out_of_order` counts
+  the runs that entered a later stage before an earlier one, with the pairs of stages
   (`EhOsContract.StageOrder`): a claim about the process, kept apart from a contract's
   undeclared transitions. An aggregate that declares its
   lifecycle adds the first two questions for its transitions, under `lifecycles`.
   `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
   contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
-  it. A process module's report has `process`, its `id:`, in the place of `contract`,
-  and only its process; a report has exactly one of the two. v2 is not served.
+  it; a contract's `processes` is always empty. A process module's report has
+  `process`, its `id:`, in the place of `contract`, and only its process under
+  `processes`; a report has exactly one of the two. v2 is not served.
 
   ## The boundary
 
@@ -93,7 +94,7 @@ defmodule EhOsContract.Conformance do
 
   ## `unverified` declarations are omitted, not marked
 
-  A process declaration or a promise the process owner has not confirmed **does
+  A process module's `deadline` or promise the process owner has not confirmed **does
   not appear**.
   `mix eh_os_contract.check` warns about it on every run, which is right for a developer
   check, but an evidence report is a different artifact with a different reader:
@@ -104,8 +105,8 @@ defmodule EhOsContract.Conformance do
 
   ## A process module
 
-  A process module (`use EhOsContract.Process`) gets the process section of a contract's
-  report, and only that, under `processes`: its runs, its confirmed declarations, its
+  A process module (`use EhOsContract.Process`) gets a report of its own, under
+  `processes`: its runs, its confirmed declarations, its
   duration against its `deadline` and its promises' verdicts, and its deployment. It has
   no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
   keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
@@ -144,11 +145,10 @@ defmodule EhOsContract.Conformance do
   The report of the contract `model` (`EhOsContract.Model.fetch/1`), as `report/2`
   gives it. The four questions: a path is a step — from, via, to, each
   `%{kind, name, label}` — with how often it was taken and each source of waiting and
-  failing apart (see "The shape" above), and the steps are the contract's whether or
-  not it has a process; the assertions are a process's promises, judged by
-  `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
-  left out: a declaration or a promise the owner has not confirmed, and every untaken
-  step when nothing happened in the contract.
+  failing apart (see "The shape" above); `processes` is empty, since the runs, their
+  promises and durations are a process module's report; the deployed version is
+  `EhOsContract.Deployment`'s. What is left out: every untaken step when nothing
+  happened in the contract.
 
   The model of a process module gives its own report; see `report/2`.
   """
@@ -183,7 +183,8 @@ defmodule EhOsContract.Conformance do
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
       activity: activity,
       paths: paths(model, activity, opts),
-      processes: List.wrap(Model.process(model) && process(model, opts)),
+      # A contract declares no process; the key stays for the readers of the shape.
+      processes: [],
       lifecycles: lifecycles(model, opts),
       scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift(model, opts)
@@ -206,10 +207,9 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  The report of `model`'s process: its runs, confirmed declarations, durations and
-  promises. Its steps are the contract's, in `from_model/2`'s `paths`. `model` has a
-  process; for one without, there is no process to report and this raises. A process
-  module is one, and its runs are filed under its `id:`.
+  The report of a process module's process, `model`: its runs, confirmed declarations,
+  durations and promises, judged by `EhOsContract.Trace`. Its runs are filed under its
+  `id:`. A contract has no process to report, and this raises for one.
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do

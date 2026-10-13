@@ -286,7 +286,7 @@ defmodule EhOsContract.Process.Rules do
 
     counted =
       for {what, duration, declaration} <- fixed,
-          problem <- EhOsContract.Contract.Rules.Process.problems(duration, Duration.units()) do
+          problem <- EhOsContract.Contract.Rules.Durations.problems(duration, Duration.units()) do
         {"R6: #{what} #{problem}", declaration}
       end
 

@@ -26,7 +26,7 @@ A dynamic consistency boundary: a unit that decides over the events it consults.
 | `identity` | `atom \| {atom, any} \| list(atom \| {atom, any})` | yes |  | The fields that identify one boundary; injected into its state, commands and events. Each is an `:id`, or another unit's or an entity's when typed: `identity [:period_id, company_id: {:id, :client}]`. |
 | `source` | `String.t` |  |  | Where the boundary comes from in the material. |
 
-Inside it: [`consults`](#contract-dcb-consults), [`state`](#contract-dcb-state), [`invariant`](#contract-dcb-invariant), [`command`](#contract-dcb-command), [`event`](#contract-dcb-event), [`stage`](#contract-dcb-stage).
+Inside it: [`consults`](#contract-dcb-consults), [`state`](#contract-dcb-state), [`invariant`](#contract-dcb-invariant), [`command`](#contract-dcb-command), [`event`](#contract-dcb-event).
 
 <a id="contract-dcb-consults"></a>
 
@@ -247,7 +247,6 @@ A fact the unit records.
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `terminal` | `boolean` |  | `false` | Whether it ends a run of the process. |
 | `depends_on` | `atom` |  |  | The external system the fact depends on. |
 | `recorded_by` | `atom \| list(atom)` |  | `[]` | The actors who record it as an observation, when no command decides it. |
 | `schema_version` | `pos_integer` |  | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
@@ -258,83 +257,6 @@ Inside it: [`field`](#contract-dcb-event-field).
 <a id="contract-dcb-event-field"></a>
 
 ## dcb.event.field
-
-```elixir
-field name, type
-```
-
-One field of a state, a command, an event or a read model's row.
-
-**Arguments**
-
-| Name | Type | Required | Default | Docs |
-|------|------|----------|---------|------|
-| `name` | `atom` | yes |  | The field's name. |
-| `type` | `any` | yes |  | A built-in type or a value of the domain. |
-
-**Options**
-
-| Name | Type | Required | Default | Docs |
-|------|------|----------|---------|------|
-| `optional` | `boolean` |  | `false` | Whether the field may be absent. |
-| `label` | `String.t` |  |  | What the business calls it. |
-| `personal` | `atom` |  |  | The field holding the identifier of whose data this is. |
-| `subject` | `atom` |  |  | The domain subject this identifier field identifies. |
-| `default` | `any` |  |  | The initial value; only in a state. |
-| `issued_by` | `atom` |  |  | The domain external that gives this value, e.g. a number another system assigns. |
-| `supplied_by` | `:host` |  |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
-
-
-<a id="contract-dcb-stage"></a>
-
-## dcb.stage
-
-```elixir
-stage name
-```
-
-Groups the unit's events into one stage of the process.
-
-**Arguments**
-
-| Name | Type | Required | Default | Docs |
-|------|------|----------|---------|------|
-| `name` | `atom` | yes |  | A stage the process declares. |
-
-Inside it: [`event`](#contract-dcb-stage-event).
-
-<a id="contract-dcb-stage-event"></a>
-
-## dcb.stage.event
-
-```elixir
-event name, label
-```
-
-A fact the unit records.
-
-**Arguments**
-
-| Name | Type | Required | Default | Docs |
-|------|------|----------|---------|------|
-| `name` | `atom` | yes |  | The event's name. |
-| `label` | `String.t` | yes |  | The fact, as the business states it. |
-
-**Options**
-
-| Name | Type | Required | Default | Docs |
-|------|------|----------|---------|------|
-| `terminal` | `boolean` |  | `false` | Whether it ends a run of the process. |
-| `depends_on` | `atom` |  |  | The external system the fact depends on. |
-| `recorded_by` | `atom \| list(atom)` |  | `[]` | The actors who record it as an observation, when no command decides it. |
-| `schema_version` | `pos_integer` |  | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
-| `source` | `String.t` |  |  | Where the event comes from in the material. |
-
-Inside it: [`field`](#contract-dcb-stage-event-field).
-
-<a id="contract-dcb-stage-event-field"></a>
-
-## dcb.stage.event.field
 
 ```elixir
 field name, type

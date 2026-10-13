@@ -7,7 +7,7 @@ defmodule EhOsContract.Pages do
   #     values/money.md                             a value: its type, invariants, examples
   #     entities/<name>.md                          an entity
   #     settlement/index.md                         a context: glossary, relations, contracts
-  #     settlement/visit_settlement/index.md        a contract: its process and declarations
+  #     settlement/visit_settlement/index.md        a contract: its declarations
   #     settlement/visit_settlement/commands/record_payment.md
   #     settlement/visit_settlement/events/payment_recorded.md
   #     settlement/visit_settlement/aggregates/visit_settlement.md
@@ -629,18 +629,11 @@ defmodule EhOsContract.Pages do
 
         _ ->
           for m <- contracts,
-              do: bullet([link(code(inspect(m.module)), contract_path(m)), process_label(m)])
+              do: bullet([link(code(inspect(m.module)), contract_path(m))])
       end,
       section("Relations", relations, & &1),
       glossary(c, d)
     ]
-  end
-
-  defp process_label(model) do
-    case Model.process(model) do
-      %{label: label} -> " — #{label}"
-      _none -> ""
-    end
   end
 
   defp glossary(%{terms: []}, _domain), do: ["", "## Glossary", "", "_No terms._"]
@@ -700,7 +693,6 @@ defmodule EhOsContract.Pages do
         " · version #{code(model.version)} · ",
         link("graph", graph_path(model))
       ]),
-      process_section(site, model),
       section("Units", model.units, &declaration_bullet(model, :unit, &1)),
       for {key, _dir, word} <- @kinds, key not in [:commands, :events] do
         section(plural(word), Map.fetch!(model, key), &declaration_bullet(model, key, &1))
@@ -722,61 +714,6 @@ defmodule EhOsContract.Pages do
 
   defp declaration_bullet(model, key, d),
     do: bullet([link(code(d.name), holder_path(model, key, d)), label(d)])
-
-  defp process_section(site, model) do
-    case Model.process(model) do
-      nil -> []
-      p -> process_section(site, model, p)
-    end
-  end
-
-  defp process_section(site, model, p) do
-    included = for %{included: true} = e <- Model.process_events(model), do: e
-    elsewhere = for i <- included, i.stage == nil, do: include(site, model, i)
-
-    [
-      "",
-      "## Process #{code(p.name)} — #{p.label}",
-      "",
-      facts([
-        "Runs are told by #{Enum.map_join(p.correlate, ", ", &code/1)}.",
-        if(p.accountable, do: "Accountable: #{code(p.accountable)}."),
-        if(p.deadline, do: "Deadline: #{duration(p.deadline)}."),
-        if(Map.get(p, :source), do: "_Source: #{p.source}_")
-      ]),
-      stages(site, model, p, included),
-      section("Included from other contracts", elsewhere, & &1),
-      section("Promises", p.promises, &promise(site, model, &1))
-    ]
-  end
-
-  # A stage's events: the unit's own in it, then those `include` places there.
-  defp stages(site, model, p, included) do
-    section("Stages", p.stages, fn stage ->
-      events =
-        for(e <- model.events, e.stage == stage.name, do: event_link(site, model, e.name)) ++
-          for i <- included, i.stage == stage.name, do: include(site, model, i)
-
-      bullet(["#{code(stage.name)}#{label(stage)}: " | joined(events)])
-    end)
-  end
-
-  defp include(site, model, i),
-    do: [event_link(site, model, i.name), if(i.terminal, do: " (ends a run)")]
-
-  defp promise(site, model, p) do
-    events = &joined(Enum.map(List.wrap(&1), fn e -> event_link(site, model, e) end))
-
-    bullet([
-      "#{code(p.name)}: after ",
-      events.(p.from),
-      ", eventually ",
-      events.(p.eventually),
-      if(Map.get(p, :within), do: " within #{duration(p.within)}"),
-      if(Map.get(p, :or_else), do: [", or else ", events.(p.or_else)]),
-      if(Map.get(p, :unverified), do: " (unverified)")
-    ])
-  end
 
   # `%{amount: 3, unit: :day}` as "3 days", and what the owner has not confirmed.
   defp duration(%{amount: amount, unit: unit} = d) do
@@ -980,9 +917,7 @@ defmodule EhOsContract.Pages do
         row(["Emitted by: " | joined(emitted)]),
         if(e.recorded_by != [],
           do: "Recorded by: #{Enum.map_join(e.recorded_by, ", ", &code/1)}."
-        ),
-        if(e.stage, do: "Stage: #{code(e.stage)}."),
-        if(e.terminal, do: "Ends a run.")
+        )
       ]),
       readers(site, model, e),
       ["", "## Fields", "" | fields_table(site, e.fields)]

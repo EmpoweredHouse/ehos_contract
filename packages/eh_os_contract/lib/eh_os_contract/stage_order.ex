@@ -27,7 +27,7 @@ defmodule EhOsContract.StageOrder do
     run has not done anything out of order, it has not done that yet.
   - **The period does not cut a run.** A run belongs to the period by its first event,
     as a run is measured against its deadline: by the first event of any type the
-    process includes, staged or not. It is judged on all its events, including those
+    process includes. It is judged on all its events, including those
     after `until`.
 
   - **The stages are today's.** After a deploy that reorders stages, a run is judged by
@@ -54,8 +54,8 @@ defmodule EhOsContract.StageOrder do
   @type t :: %{runs: non_neg_integer(), pairs: [pair()]}
 
   @doc """
-  The runs of the process of `model` (a contract's, or a process module's) that reached
-  a later stage before an earlier one, in the period `since:` and `until:` name.
+  The runs of the process module `model` that reached a later stage before an earlier
+  one, in the period `since:` and `until:` name.
 
   Pairs are listed in the stages' order, the earlier stage first.
   """

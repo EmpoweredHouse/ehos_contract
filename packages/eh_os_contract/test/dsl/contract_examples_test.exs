@@ -1,7 +1,9 @@
 defmodule EhOsContract.ContractExamplesTest do
   @moduledoc """
   v2 plan, E4, acceptance: **the examples of v2 §4.5–4.6 compile in the notation
-  they are written in**, apart from what D10–D12 changed.
+  they are written in**, apart from what D10–D12 changed, and the process a contract
+  declared there, which since plan DD, P2h (#221) is a module of its own
+  (`without_process/1`).
 
   The examples are read from `docs/adr/contract-v2.md` itself rather than copied
   here, so an edit to an example there is checked here at once. The changes this
@@ -56,7 +58,7 @@ defmodule EhOsContract.ContractExamplesTest do
       adr = File.read!(@adr)
       [domain, contract | _] = blocks(section(adr, "4.5"))
       compile(amend(domain), "rehmed/domain.ex")
-      compile(amend(contract), "rehmed/contracts/visit_settlement.ex")
+      compile(contract |> amend() |> without_process(), "rehmed/contracts/visit_settlement.ex")
       %{four_six: fragments(section(adr, "4.6"))}
     else
       :ok
@@ -70,7 +72,7 @@ defmodule EhOsContract.ContractExamplesTest do
       assert Enum.map(model.units, & &1.name) == [:visit_settlement]
       assert length(model.commands) == 5
       assert length(model.scenarios) == 4
-      assert Enum.map(model.process.stages, & &1.name) == [:charging, :payment]
+      refute Map.has_key?(model, :process)
 
       assert Enum.map(Model.fetch(Rehmed.Domain).actors, & &1.name) ==
                [:reception, :specialist, :manager]
@@ -220,24 +222,6 @@ defmodule EhOsContract.ContractExamplesTest do
       assert [%{reads: :daily_totals, by: [:reception, :manager]}] = model.queries
     end
 
-    test "a run over foreign events, and a promise (ClinicalVisit)", %{four_six: f} do
-      model =
-        compile_example("ClinicalVisit", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.clinical_visit"
-
-        #{f.run}
-        """)
-
-      assert [
-               %{
-                 from: :visit_completed,
-                 eventually: :p1_report_sent,
-                 or_else: :p1_reporting_not_required
-               }
-             ] =
-               model.process.promises
-    end
-
     test "a dynamic consistency boundary (PayerSettlement)", %{four_six: f} do
       model =
         compile_example("PayerSettlement", """
@@ -246,12 +230,7 @@ defmodule EhOsContract.ContractExamplesTest do
           consumes Rehmed.Contracts.VisitSettlement, [:visit_marked_settled_with_payer, :visit_excluded_from_invoice]
           consumes Rehmed.Contracts.Scheduling, :visit_completed
 
-        #{f.dcb}
-
-          process :payer_settlement, "Rozliczenie płatnika" do
-            correlate [:payer_id, :period_id]
-            stage :invoicing
-          end
+        #{without_process(f.dcb)}
 
           # S8: the invariant needs a scenario that is rejected on it.
           scenario "wizyta ani na fakturze, ani wykluczona — faktura odrzucona" do
@@ -306,10 +285,36 @@ defmodule EhOsContract.ContractExamplesTest do
       recorded: pick.("a fact recorded"),
       process_manager: pick.("process manager"),
       read_model: pick.("read model + query"),
-      run: pick.("a run over foreign events"),
       dcb: pick.("dynamic consistency boundary"),
       capabilities: pick.("capabilities")
     }
+  end
+
+  # Plan DD, P2h (#221): a contract no longer declares a process. Its `process` block
+  # goes, a unit's stage groups give their events back to the unit, and no event says it
+  # ends a run: what is left is the contract the example describes, without the run its
+  # process module now declares. The ADR keeps the examples as they were written.
+  defp without_process(code) do
+    code
+    |> String.replace(", terminal: true", "")
+    |> then(&Regex.replace(~r/^( *)process :\w+, "[^"]*" do\n.*?^\1end\n/ms, &1, ""))
+    |> then(
+      &Regex.replace(~r/^( *)stage :\w+ do\n(.*?)^\1end\n/ms, &1, fn _, _indent, events ->
+        String.replace(events, ~r/^  /m, "")
+      end)
+    )
+  end
+
+  test "the ADR's examples still declare a process, which without_process/1 takes out" do
+    adr = File.read!(@adr)
+
+    for {what, text} <- [
+          process: ~s|process :visit_settlement, "Rozliczenie wizyty" do|,
+          stage: "stage :charging do",
+          terminal: ", terminal: true"
+        ] do
+      assert adr =~ text, "the ADR no longer declares a #{what} this way: fix without_process/1"
+    end
   end
 
   defp amend(code) do

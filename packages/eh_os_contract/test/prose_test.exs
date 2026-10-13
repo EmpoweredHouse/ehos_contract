@@ -118,7 +118,10 @@ defmodule EhOsContract.Docs.ProseTest do
     end
 
     test "a prefix of a name is not the name: contract.process is not covered by contract.process_manager" do
-      gaps = Prose.uncovered(["<!-- covers: entities contract.process_manager -->"])
+      # Since plan DD, P2h (#221) no entity of the DSLs is named after another's prefix,
+      # so the names are given.
+      names = %{entities: ["contract.process", "contract.process_manager"], keys: [], rules: []}
+      gaps = Prose.uncovered(["<!-- covers: entities contract.process_manager -->"], names)
 
       refute "entity contract.process_manager" in gaps
       assert "entity contract.process" in gaps

@@ -7,9 +7,8 @@ defmodule EhOsContract.Contract.Rules.Names do
   # manager one per event and timer (v2 §5). Units are one namespace, whether
   # aggregate or boundary; so is each other kind of declaration. A query does not
   # take a command's name, nor that of an event an actor records, since each becomes a
-  # capability `<domain>.<name>` (D14). Invariants and stage
-  # groups are unique within their unit, and the process's stages and promises within
-  # the process. A domain service's functions are unique within it, and a function's
+  # capability `<domain>.<name>` (D14). Invariants are
+  # unique within their unit. A domain service's functions are unique within it, and a function's
   # rules within the function. A command's, a query's and a reaction's constraints are
   # unique within it, and a process manager's constraints and invariants together, since
   # a scenario `illustrates:` either by its name (plan EP2). Since the review of the domain's names, two names of one
@@ -76,12 +75,9 @@ defmodule EhOsContract.Contract.Rules.Names do
 
   # Every declared name, with what it names.
   defp named(d) do
-    process = List.first(d.processes)
-
     Enum.concat([
       for(u <- d.units, do: {unit_kind(u), u.name, u}),
       for(u <- d.units, i <- u.invariants, do: {"invariant", i.name, i}),
-      for(u <- d.units, s <- u.stages, do: {"stage", s.name, s}),
       for(c <- Rules.commands(d), do: {"command", c.name, c}),
       for(c <- Rules.commands(d), k <- c.constraints, do: {"constraint", k.name, k}),
       for(q <- d.queries, k <- q.constraints, do: {"constraint", k.name, k}),
@@ -105,10 +101,7 @@ defmodule EhOsContract.Contract.Rules.Names do
         do: {"argument", a.name, a}
       ),
       for(p <- d.publishes, do: {"publication", p.name, p}),
-      for({as, consumes} <- Rules.consumed(d), do: {Rules.arrived(consumes), as, consumes}),
-      for(p <- d.processes, do: {"process", p.name, p}),
-      if(process, do: for(s <- process.stages, do: {"stage", s.name, s}), else: []),
-      if(process, do: for(p <- process.promises, do: {"promise", p.name, p}), else: [])
+      for({as, consumes} <- Rules.consumed(d), do: {Rules.arrived(consumes), as, consumes})
     ])
   end
 
@@ -118,8 +111,6 @@ defmodule EhOsContract.Contract.Rules.Names do
   # --- N1: unique per namespace -----------------------------------------------------
 
   defp unique(d) do
-    process = List.first(d.processes)
-
     # Each list is a namespace of names, a namespace of generated modules, or both: an
     # aggregate and a dcb share one of names and are modules of two, Aggregates and
     # Dcbs; a publication generates no module.
@@ -153,21 +144,10 @@ defmodule EhOsContract.Contract.Rules.Names do
       end)
 
     per_unit =
-      Enum.flat_map(d.units, fn unit ->
-        invariants =
-          for i <- DslRules.duplicates(unit.invariants, & &1.name) do
-            {"N1: #{unit_kind(unit)} #{inspect(unit.name)} has two invariants named #{inspect(i.name)}",
-             i}
-          end
-
-        stages =
-          for s <- DslRules.duplicates(unit.stages, & &1.name) do
-            {"N1: #{unit_kind(unit)} #{inspect(unit.name)} groups stage #{inspect(s.name)} twice",
-             s}
-          end
-
-        invariants ++ stages
-      end)
+      for unit <- d.units, i <- DslRules.duplicates(unit.invariants, & &1.name) do
+        {"N1: #{unit_kind(unit)} #{inspect(unit.name)} has two invariants named #{inspect(i.name)}",
+         i}
+      end
 
     # Plan EL2: a command's constraints, and a query's, are named once each; plan EP2:
     # a policy's and an effect's too, and a process manager's constraints and
@@ -186,20 +166,6 @@ defmodule EhOsContract.Contract.Rules.Names do
              "its constraints and invariants are named apart, since a scenario illustrates " <>
              "them by name", r}
         end
-
-    in_process =
-      if process do
-        for(
-          s <- DslRules.duplicates(process.stages, & &1.name),
-          do: {"N1: process #{inspect(process.name)} has two stages named #{inspect(s.name)}", s}
-        ) ++
-          for p <- DslRules.duplicates(process.promises, & &1.name),
-              do:
-                {"N1: process #{inspect(process.name)} has two promises named #{inspect(p.name)}",
-                 p}
-      else
-        []
-      end
 
     per_service =
       for s <- d.domain_services,
@@ -220,7 +186,7 @@ defmodule EhOsContract.Contract.Rules.Names do
     kinds ++
       per_unit ++
       per_service ++
-      callback_namespace(d) ++ capability_namespace(d) ++ in_process ++ constraints
+      callback_namespace(d) ++ capability_namespace(d) ++ constraints
   end
 
   # A command, a query and a recorded event are capabilities, named `<domain>.<name>`
@@ -233,7 +199,7 @@ defmodule EhOsContract.Contract.Rules.Names do
 
     recorded =
       for unit <- d.units,
-          event <- Rules.events(unit),
+          event <- unit.events,
           event.recorded_by not in [nil, []],
           into: MapSet.new(),
           do: event.name

@@ -77,16 +77,6 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
-      id: "deadline-without-terminal-event",
-      level: :info,
-      esdm: nil,
-      summary: "A process has a `deadline` and no event of it is `terminal: true`.",
-      text: """
-      No run can be seen to end, so its duration cannot be measured and the deadline is never kept
-      or broken. Mark the event that ends a run `terminal: true`.
-      """
-    },
-    %{
       id: "contract-without-implementation",
       level: :info,
       esdm: nil,
@@ -211,9 +201,9 @@ defmodule EhOsContract.Check.Catalog do
       summary: "Nothing reacts to or reads an event.",
       text: """
       No policy, effect or process manager takes it, no read model projects it, no boundary consults
-      it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, one
-      marked `terminal: true`, one a unit's lifecycle starts on or moves on, or one a process module
-      includes, has a reader: the conformance report. The unit's own `evolve` does not count, as ESDM's aggregate does not.
+      it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a unit's lifecycle
+      starts on or moves on, or one a process module includes, has a reader: the conformance report.
+      The unit's own `evolve` does not count, as ESDM's aggregate does not.
       """
     },
     %{
@@ -349,12 +339,12 @@ defmodule EhOsContract.Check.Catalog do
       id: "orphan-actor",
       level: :warn,
       esdm: "esdm/modeling/orphan-actor",
-      summary: "An actor of the domain is named by no contract.",
+      summary: "An actor of the domain is named by no contract and no process module.",
       text: """
-      No command's or query's `by:`, no event's `recorded_by:` and no process's `accountable` names
-      it, so no contract gives it anything to do. A scenario's `actor` does not count: it has to be
-      in the command's `by:` already (S7). Either the actor is left over, or the contract that gives
-      it work is not written yet.
+      No command's or query's `by:`, no event's `recorded_by:` and no process module's `accountable`
+      names it, so no contract or process gives it anything to do. A scenario's `actor` does not
+      count: it has to be in the command's `by:` already (S7). Either the actor is left over, or the
+      contract that gives it work is not written yet.
       """
     },
     %{
@@ -501,11 +491,12 @@ defmodule EhOsContract.Check.Catalog do
       id: "backward-edge",
       level: :warn,
       esdm: nil,
-      summary: "A reaction in a later stage publishes into an earlier one.",
+      summary: "A reaction in a later stage of a process publishes into an earlier one.",
       text: """
-      A policy or a process manager reacting to an event of one stage issues a command whose events
-      sit in an earlier one. The process goes back on itself, which the stage order says it does not.
-      Either the stages are in the wrong order or the reaction is a loop the process has not declared.
+      A policy or a process manager reacting to an event that one stage of a process module includes
+      issues a command whose events sit in an earlier stage of that module. The process goes back on
+      itself, which the stage order says it does not. Either the stages are in the wrong order or
+      the reaction is a loop the process has not declared.
       """
     }
   ]

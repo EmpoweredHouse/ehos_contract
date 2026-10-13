@@ -87,7 +87,6 @@ defmodule EhOsContract.Graph.Facts do
     ctx = Map.put(context(model.domain, domain, grants(model)), :units, unit_scopes(model))
     events = events(model, ctx)
 
-    {process_nodes, process_relations} = process(model)
     {unit_nodes, unit_relations} = units(model, ctx)
     {reaction_nodes, reaction_relations} = reactions(model, events, ctx)
 
@@ -127,7 +126,13 @@ defmodule EhOsContract.Graph.Facts do
         end
     }
 
-    nodes = Map.merge(own, process_nodes) |> Map.merge(unit_nodes) |> Map.merge(reaction_nodes)
+    # A contract declares no process: the kinds stay, empty, for the readers of the
+    # document's shape.
+    nodes =
+      own
+      |> Map.merge(%{process: [], stage: [], promise: []})
+      |> Map.merge(unit_nodes)
+      |> Map.merge(reaction_nodes)
 
     relations =
       [
@@ -136,7 +141,6 @@ defmodule EhOsContract.Graph.Facts do
         read_side(model),
         outside(model, events),
         wire(model),
-        process_relations,
         unit_relations,
         reaction_relations
       ]
@@ -161,12 +165,10 @@ defmodule EhOsContract.Graph.Facts do
 
   # Every event this contract names: its own, those it consumes from a sibling under
   # the name they have here, those it receives from another application — each with
-  # where it is declared and whether the process includes it. A consumed one is as
+  # where it is declared. A consumed one is as
   # its sibling declares it, a received one as this contract's `subscribe` reads it.
   defp events(model, ctx) do
     c = model.id
-    process = Model.process(model)
-    included = Map.new((process && process.includes) || [], &{&1.event, &1})
 
     own =
       for e <- model.events,
@@ -191,14 +193,8 @@ defmodule EhOsContract.Graph.Facts do
           }
 
     for e <- own ++ consumed ++ received do
-      include = included[e.name]
       declared = e.declared
       own? = e.from == nil and not e.received
-
-      # A stage is this process's: a consumed event sits in one only where an `include`
-      # puts it, whatever stage its sibling gives it there. So is how it ends the run.
-      stage = if own?, do: declared.stage, else: include && include.stage
-      terminal = if own?, do: declared.terminal, else: include && include.terminal
 
       # A person records an event of this contract; the application is granted one it
       # receives. A sibling's is granted in the sibling.
@@ -214,11 +210,8 @@ defmodule EhOsContract.Graph.Facts do
         :node,
         node(:event, c, %{name: e.name, label: declared.label, source: declared[:source]},
           unit: own? && id(:unit, c, declared.unit),
-          stage: stage_id(model, stage),
-          included: include != nil,
           declared_as: e.from,
           fields: fields(declared.fields, ctx, if(not e.received, do: :event)),
-          terminal: terminal,
           type: declared[:type],
           schema_version: declared[:schema_version],
           capability: capability
@@ -226,64 +219,6 @@ defmodule EhOsContract.Graph.Facts do
       )
     end
   end
-
-  # The process, its stages and promises, who answers for it, and the events that
-  # open, fulfil or settle each promise otherwise.
-  defp process(model) do
-    case Model.process(model) do
-      nil -> {%{process: [], stage: [], promise: []}, %{}}
-      p -> process(model, p)
-    end
-  end
-
-  defp process(model, p) do
-    c = model.id
-    pid = id(:process, c, p.name)
-    promise_id = &Document.id([:promise, c, p.name, &1])
-
-    promises =
-      for pr <- p.promises do
-        # A promise has no words of its own in the DSL.
-        with_attrs(%{id: promise_id.(pr.name), name: pr.name, label: nil, source: pr[:source]},
-          process: pid,
-          within: pr.within,
-          unverified: pr.unverified
-        )
-      end
-
-    promised =
-      for pr <- p.promises,
-          {type, event} <- [opens: pr.from, fulfils: pr.eventually, or_else: pr.or_else],
-          event != nil,
-          do: {type, relation(id(:event, c, event), promise_id.(pr.name))}
-
-    accountable =
-      for actor <- List.wrap(p.accountable),
-          do: {:accountable_for, relation(id(:actor, model.domain, actor), pid)}
-
-    {%{
-       process: [
-         node(:process, c, p, correlate: p.correlate, deadline: p.deadline)
-       ],
-       stage:
-         for(
-           s <- p.stages,
-           do: %{
-             id: stage_id(model, s.name),
-             name: s.name,
-             label: s.label,
-             source: s[:source],
-             process: pid
-           }
-         ),
-       promise: promises
-     }, typed(promised ++ accountable)}
-  end
-
-  defp stage_id(_model, nil), do: nil
-
-  defp stage_id(model, stage),
-    do: Document.id([:stage, model.id, Model.process(model).name, stage])
 
   # Units with their statuses and rules, and what a unit is built from.
   defp units(model, ctx) do
@@ -827,8 +762,7 @@ defmodule EhOsContract.Graph.Facts do
     acting =
       Enum.flat_map(model.commands, & &1.by) ++
         Enum.flat_map(model.events, & &1.recorded_by) ++
-        Enum.flat_map(model.queries, &List.wrap(&1.by)) ++
-        List.wrap(Model.process(model)[:accountable])
+        Enum.flat_map(model.queries, &List.wrap(&1.by))
 
     actors = declared(domain.actors, acting)
 
@@ -1118,13 +1052,6 @@ defmodule EhOsContract.Graph.Facts do
         {:backed_by, relation(id(:actor, d, a.name), id(:external, d, a.backed_by))}
       end
 
-    accountable =
-      for m <- models,
-          p = Model.process(m),
-          a <- List.wrap(p && p.accountable) do
-        {:accountable_for, relation(id(:actor, d, a), contract_id.(m.module))}
-      end
-
     nodes = %{
       subdomain: for(s <- domain.subdomains, do: node(:subdomain, d, s, type: s.type)),
       context:
@@ -1135,18 +1062,15 @@ defmodule EhOsContract.Graph.Facts do
             terms: Enum.map(c.terms, &term(&1, c.language || domain.language, code))
           )
         end,
-      # A contract has no words of its own in the DSL; its process has.
+      # A contract has no words of its own in the DSL. Named by its id, as everything
+      # outside the code names it (plan DD, P1a, #183); its module beside it, for a reader
+      # in the code. A contract declares no process (plan DD, P2h, #221), so the
+      # optional `process` and `correlate` of the shape are left out.
       contract:
         for m <- models do
-          p = Model.process(m)
-
-          # Named by its id, as everything outside the code names it (plan DD, P1a,
-          # #183); its module beside it, for a reader in the code.
           with_attrs(%{id: contract_id.(m.module), name: m.id, label: nil, source: nil},
             context: id(:context, d, m.context),
-            module: m.module,
-            process: p && %{name: p.name, label: p.label},
-            correlate: p && p.correlate
+            module: m.module
           )
         end,
       event: events,
@@ -1165,7 +1089,7 @@ defmodule EhOsContract.Graph.Facts do
     }
 
     relations =
-      typed(patterns ++ backed ++ accountable)
+      typed(patterns ++ backed)
       |> Map.merge(%{
         consumed_by: consumed_by,
         refers_to: refers_to,
