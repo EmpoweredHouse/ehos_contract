@@ -252,7 +252,6 @@ defmodule EhOsContract.InboxTest do
       failed_in: "policy:reserve_for_order",
       issued_by: "policy:reserve_for_order",
       correlation_id: Ecto.UUID.generate(),
-      instance_id: "o-9",
       recorded_at: DateTime.utc_now()
     })
 

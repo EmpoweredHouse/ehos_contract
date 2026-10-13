@@ -46,8 +46,9 @@ defmodule EhOsContract.DispatchCommandTest do
       assert event.stream_version == 1
       assert event.tags == ["account_id:a-1", "branch_id:b-7"]
       # Plan DD, P2g (#228): the account's run is a process module's, filed in the index
-      # of runs under its id; the row's own columns hold only a contract's process.
-      assert {event.process, event.instance_id} == {nil, nil}
+      # of runs under its id; since plan DD, P2h (#221) the row has no run of its own.
+      refute Map.has_key?(event, :process)
+      refute Map.has_key?(event, :instance_id)
 
       assert Repo.all(
                from(r in EventRun,
@@ -75,7 +76,7 @@ defmodule EhOsContract.DispatchCommandTest do
       assert row.issued_by == "actor:u-1"
       assert row.emitted_types == ["dispatch_rig.ledger.account_opened"]
       assert {row.first_position, row.last_position} == {position, position}
-      assert row.instance_id == nil
+      refute Map.has_key?(row, :instance_id)
     end
 
     test "the decision sees the stream folded through evolve/2" do

@@ -62,7 +62,6 @@ defmodule EhOsContract.DispatchDcbTest do
       assert event.stream_id == nil and event.stream_version == nil
       assert event.tags == ["course_id:course-math", "student_id:student-anna"]
       # Plan DD, P2g (#228): the course's run is a process module's, in the index of runs.
-      assert event.process == nil
 
       assert Repo.all(
                from(r in EventRun,

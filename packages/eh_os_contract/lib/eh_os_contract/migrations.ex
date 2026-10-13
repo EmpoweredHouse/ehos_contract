@@ -31,15 +31,23 @@ defmodule EhOsContract.Migrations do
   When a later release raises `current_version/0`, the upgrade is another
   generated migration and not a rewrite of the one above:
 
-      defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV2 do
+      defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV3 do
         use Ecto.Migration
 
-        def up, do: EhOsContract.Migrations.up(version: 2)
-        def down, do: EhOsContract.Migrations.down(version: 2)
+        def up, do: EhOsContract.Migrations.up(version: 3)
+        def down, do: EhOsContract.Migrations.down(version: 3)
       end
 
   Version 2 adds the column that keeps what a command's decision read
-  (`EhOsContract.Entities`).
+  (`EhOsContract.Entities`). Version 3 removes the columns that filed an event and a
+  command under the process a contract declared, which a contract no longer can: an
+  event's runs are the rows of `EhOsContract.EventRun`, filed under the process modules
+  that include it.
+
+  **A version that removes a column stops the release before it.** The engine refuses
+  to start on storage newer than its own version, since a node of the older release
+  would write the removed columns on every append. So a deploy that migrates to a new
+  version stops the nodes of the old release first.
 
   **The mechanism exists at version 1, when there is nothing to upgrade from.**
   That is the point of building it now: the first schema change is the moment it
@@ -101,7 +109,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 2
+  @current_version 3
 
   # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
   # match on the path: with `search_path: "ledger, public"` and the tables already
@@ -130,9 +138,9 @@ defmodule EhOsContract.Migrations do
   a consumer's migration is safe.
 
   Raises on a target this release does not have, and on a database that records a
-  version it does not know: one migrated by a newer release, or before 0.3.0, whose
-  versions 3–5 are gone. Left alone, such a database would pass as
-  current, and a later version of this module would skip what it adds.
+  version it does not know, one migrated by a newer release. Left alone, such a
+  database would pass as current, and a later version of this module would skip what
+  it adds.
   """
   @spec up(keyword()) :: :ok
   def up(opts \\ []) when is_list(opts) do
@@ -178,12 +186,13 @@ defmodule EhOsContract.Migrations do
 
   # Refuses to start the engine on a database whose storage is not at
   # `current_version/0`: below it, every command's row would fail on a column this
-  # release writes and the database lacks (plan DD, T2a, #240). Storage above it is let
-  # through: a node of this release restarting while a newer one rolls out, or the code
-  # rolled back without its migration, runs on columns it does not know, which every
-  # version so far only adds. Called when the engine starts, with the host's repo,
-  # outside any migration. Raises `ArgumentError` naming both versions and what to do,
-  # and a database it cannot ask raises as itself, never as missing storage.
+  # release writes and the database lacks (plan DD, T2a, #240). Above it too, since
+  # version 3 (plan DD, P2h, #221): a newer version may remove a column this release
+  # writes, as V03 removes `process` and `instance_id`, and every append would fail.
+  # Until V03 every version only added, and a node of the older release ran on newer
+  # storage. Called when the engine starts, with the host's repo, outside any
+  # migration. Raises `ArgumentError` naming both versions and what to do, and a
+  # database it cannot ask raises as itself, never as missing storage.
   @doc false
   @spec check!(module()) :: :ok
   def check!(repo) do
@@ -199,7 +208,16 @@ defmodule EhOsContract.Migrations do
                 "release needs version #{@current_version}: add a migration calling " <>
                 "EhOsContract.Migrations.up(version: #{@current_version}) and run it"
 
-      _current_or_newer ->
+      recorded when recorded > @current_version ->
+        raise ArgumentError,
+              "the database's eh_os_contract storage is at version #{recorded}, newer than " <>
+                "version #{@current_version}, which this release of eh_os_contract knows: " <>
+                "a newer release migrated it, and this one may write what that version " <>
+                "removed. Run the release that migrated it, or roll the storage back with " <>
+                "EhOsContract.Migrations.down(version: #{@current_version + 1}) from that " <>
+                "release"
+
+      @current_version ->
         :ok
     end
   end
@@ -223,10 +241,8 @@ defmodule EhOsContract.Migrations do
   defp known!(recorded) when recorded > @current_version do
     raise ArgumentError,
           "eh_os_contract_events records version #{recorded}, and this release of " <>
-            "eh_os_contract knows versions up to #{@current_version}. If a newer release " <>
-            "migrated it, use that release. If it was migrated before 0.3.0, it cannot be " <>
-            "upgraded, since 0.3.0 starts again from version 1: drop the database and create " <>
-            "it again, or keep it on 0.2."
+            "eh_os_contract knows versions up to #{@current_version}: a newer release " <>
+            "migrated it, so use that release, or roll the storage back with it."
   end
 
   defp known!(recorded), do: recorded
@@ -236,8 +252,8 @@ defmodule EhOsContract.Migrations do
   defp target!(version) do
     raise ArgumentError,
           "eh_os_contract has migration versions #{@initial_version} to #{@current_version}, " <>
-            "and #{inspect(version)} is not one of them. A host migration calling " <>
-            "`up(version: 3..5)` is from before 0.3.0: delete it."
+            "and #{inspect(version)} is not one of them: a migration calling it is of a " <>
+            "newer release."
   end
 
   defp change(range, direction) do

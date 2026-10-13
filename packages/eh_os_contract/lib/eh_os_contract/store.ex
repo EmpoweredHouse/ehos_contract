@@ -68,10 +68,9 @@ defmodule EhOsContract.Store do
   One event to append: the fields of `EhOsContract.Event` except `position` and
   `recorded_at`, which the store assigns. `id` is generated when missing.
 
-  `runs` lists the runs the event belongs to besides its home run, as
-  `{process, instance_id}`: the processes of the contracts that `include` it.
-  The store writes every run as an `EhOsContract.EventRun` in the same append, the
-  home run from the entry's `process` and `instance_id` when it has both.
+  `runs` lists the runs the event belongs to, as `{process, instance_id}`: the
+  process modules that `include` it, each with the key of the run. The store writes
+  every run as an `EhOsContract.EventRun` in the same append, a run named twice once.
   """
   @type entry :: map()
 

@@ -2,12 +2,11 @@ defmodule EhOsContract.EventRun do
   @moduledoc """
   One run an event belongs to: a row of `eh_os_contract_event_runs`.
 
-  An event's home run is the process of the contract that decided it, and the
-  event's own `process` and `instance_id` say which. A contract may also `include`
-  a sibling's event in its own process, and then the event belongs to that run too,
-  keyed by that process's correlation. Every run is a row, the home run included, so
-  a reader asking for the runs of a process reads one table whichever contract decided
-  the events.
+  A process module (`EhOsContract.Process`) includes events of the contracts of its
+  domain, and each event belongs to a run of every process that includes it: `process`
+  is the module's `id:`, and `instance_id` the run's key, made of the values of the
+  fields the process correlates on. Every run is a row, so a reader asking for the
+  runs of a process reads one table whichever contract decided the events.
 
   `EhOsContract.Store` writes the rows with the events, in the same append, so an
   event cannot be in the log without its runs.
