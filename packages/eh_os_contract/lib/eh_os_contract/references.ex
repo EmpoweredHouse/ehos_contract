@@ -63,6 +63,38 @@ defmodule EhOsContract.References do
         do: {name, referent}
   end
 
+  @doc """
+  Every name a field of `model`, a contract's model, refers to, each once, in the order
+  its declarations come: its units' states, commands, events, read models, process
+  managers' states, consumed events, queries' parameters and domain services'
+  functions. Only declared fields count, never a key of a scenario's data.
+  """
+  @spec in_model(map()) :: [atom()]
+  def in_model(model) do
+    model
+    |> declared_fields()
+    |> Enum.flat_map(&List.wrap(Map.get(&1, :refers_to)))
+    |> Enum.uniq()
+  end
+
+  defp declared_fields(model) do
+    within = fn key, fields -> Enum.flat_map(Map.get(model, key, []), fields) end
+
+    Enum.concat([
+      within.(:units, & &1.state.fields),
+      within.(:commands, & &1.fields),
+      within.(:events, & &1.fields),
+      within.(:read_models, & &1.fields),
+      within.(:process_managers, & &1.state.fields),
+      within.(:consumes, &Map.get(&1, :fields, [])),
+      within.(:queries, &Map.get(&1, :params, [])),
+      within.(:domain_services, fn service ->
+        Enum.flat_map(service.functions, &[&1.returns | &1.arguments])
+      end)
+    ])
+    |> Enum.filter(&is_map/1)
+  end
+
   @doc "Every name a reference may use: the domain's entities and its contracts' units."
   @spec names(map(), [map()]) :: [atom()]
   def names(domain, contracts) do

@@ -410,6 +410,18 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "Zamknięto wizytę przez specjalistę event"
     end
 
+    # Plan DD, L3 (#286): the fixture's relations were added as the engine gives them today.
+    test "a contract keeping a sibling's unit's number says which, on its arrow and on both ends" do
+      id = "refers_to:contract:rehmed.settlement:contract:rehmed.scheduling"
+      assert open("domain.rehmed", id, :system) =~ "It keeps the number of visit, which"
+
+      text = open("domain.rehmed", "contract:rehmed.settlement", :system)
+      assert text =~ "Keeps the number of visit of"
+
+      text = open("domain.rehmed", "contract:rehmed.scheduling", :system)
+      assert text =~ "Its units' numbers are kept by"
+    end
+
     test "the actors' table, people and systems apart, each row selecting its actor in the canvas" do
       html =
         render_component(&Actors.table/1,

@@ -785,6 +785,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
       assign(assigns,
         from: Lookup.into(l, id, "consumed_by"),
         to: Lookup.out(l, id, "consumed_by"),
+        refers_to: Lookup.out(l, id, "refers_to"),
+        referred_by: Lookup.into(l, id, "refers_to"),
         publishes: Lookup.out(l, id, "publishes"),
         subscribes: Lookup.into(l, id, "subscribed_by"),
         accountable: Lookup.into(l, id, "accountable_for")
@@ -811,6 +813,20 @@ defmodule EhOsContract.GraphRenderer.Panel do
         <p class="ehg-trigger-title"><.ref id={r["to"]} ctx={@ctx} /></p>
         <.consumed relation={r} ctx={@ctx} />
       </div>
+    </.part>
+    <.part :if={@refers_to != []} title="Keeps the number of">
+      <ul class="ehg-list">
+        <li :for={r <- @refers_to}>
+          {Enum.join(r["units"] || [], ", ")} of <.ref id={r["to"]} ctx={@ctx} />
+        </li>
+      </ul>
+    </.part>
+    <.part :if={@referred_by != []} title="Its units' numbers are kept by">
+      <ul class="ehg-list">
+        <li :for={r <- @referred_by}>
+          <.ref id={r["from"]} ctx={@ctx} />: {Enum.join(r["units"] || [], ", ")}
+        </li>
+      </ul>
     </.part>
     <.part :if={@publishes != []} title="Publishes">
       <.refs relations={@publishes} side="to" ctx={@ctx} />
@@ -959,6 +975,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
           "Published as #{facts["name"]}, with #{Enum.join(facts["fields"] || [], ", ")}.",
         type == "publishes" && facts["event"] && "From #{Lookup.title(lookup, facts["event"])}.",
         type == "subscribed_by" && "As #{facts["as"]}#{with_grant(facts)}.",
+        type == "refers_to" &&
+          "It keeps the number of #{Enum.join(facts["units"] || [], ", ")}, which " <>
+            "#{Lookup.title(lookup, facts["to"])} decides.",
         facts["source"] && "Source: #{facts["source"]}"
       ],
       &(&1 in [nil, false])

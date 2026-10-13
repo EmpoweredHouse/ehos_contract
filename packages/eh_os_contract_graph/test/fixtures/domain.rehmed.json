@@ -614,6 +614,40 @@
     ],
     "published_language": [],
     "publishes": [],
+    "refers_to": [
+      {
+        "from": "contract:rehmed.clinical_documentation",
+        "id": "refers_to:contract:rehmed.clinical_documentation:contract:rehmed.scheduling",
+        "to": "contract:rehmed.scheduling",
+        "units": [
+          "visit"
+        ]
+      },
+      {
+        "from": "contract:rehmed.external_payers",
+        "id": "refers_to:contract:rehmed.external_payers:contract:rehmed.scheduling",
+        "to": "contract:rehmed.scheduling",
+        "units": [
+          "visit"
+        ]
+      },
+      {
+        "from": "contract:rehmed.settlement",
+        "id": "refers_to:contract:rehmed.settlement:contract:rehmed.scheduling",
+        "to": "contract:rehmed.scheduling",
+        "units": [
+          "visit"
+        ]
+      },
+      {
+        "from": "contract:rehmed.statutory_reporting",
+        "id": "refers_to:contract:rehmed.statutory_reporting:contract:rehmed.scheduling",
+        "to": "contract:rehmed.scheduling",
+        "units": [
+          "visit"
+        ]
+      }
+    ],
     "separate_ways": [],
     "shared_kernel": [],
     "subscribed_by": []

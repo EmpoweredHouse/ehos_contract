@@ -700,6 +700,7 @@
             "open_host_service",
             "published_language",
             "consumed_by",
+            "refers_to",
             "publishes",
             "subscribed_by",
             "backed_by",
@@ -759,6 +760,12 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/relation_consumed_by"
+              }
+            },
+            "refers_to": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_refers_to"
               }
             },
             "publishes": {
@@ -2763,6 +2770,39 @@
                 "description": "The name it has in the consumer."
               }
             }
+          }
+        }
+      }
+    },
+    "relation_refers_to": {
+      "type": "object",
+      "description": "between — a contract keeps the number of a unit a sibling decides: a field or its identity identifies the unit.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "units"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string",
+          "description": "The contract that keeps the number."
+        },
+        "to": {
+          "type": "string",
+          "description": "The contract whose unit it is."
+        },
+        "units": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The names of the sibling's units it identifies.",
+          "items": {
+            "type": "string"
           }
         }
       }

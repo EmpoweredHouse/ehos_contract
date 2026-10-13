@@ -899,6 +899,33 @@ defmodule EhOsContract.GraphDocumentTest do
     refute "branch_note" in names
   end
 
+  # Plan DD, L3 (#286): the domain's document draws what one contract's cannot.
+  test "a domain draws a contract keeping a sibling's unit's number, once per pair" do
+    d = Document.domain(DispatchRig.Domain, Registry.contracts() ++ [Openings, Notes])
+
+    contract = &Document.id([:contract, scope(&1)])
+
+    assert [relation] =
+             for(r <- d["relations"]["refers_to"], r["from"] == contract.(Notes), do: r)
+
+    assert relation["to"] == contract.(Openings)
+    assert relation["units"] == ["branch_note"]
+
+    # Its own unit is no sibling's, and a contract without such a field has none.
+    refute Enum.any?(d["relations"]["refers_to"], &(&1["to"] == &1["from"]))
+    assert Document.domain(DispatchRig.Domain, [Openings])["relations"]["refers_to"] == []
+  end
+
+  # Plan DD, L3 (#286): a reference is a declared field's, never a key of example data.
+  test "a key named refers_to in a scenario's data refers to nothing" do
+    model = Model.fetch(Openings)
+    [scenario | rest] = model.scenarios
+    scenario = put_in(scenario, [Access.key(:given), Access.at(0), :data], %{refers_to: :note})
+
+    assert EhOsContract.References.in_model(%{model | scenarios: [scenario | rest]}) == []
+    assert EhOsContract.References.in_model(Model.fetch(Notes)) == [:note, :branch_note]
+  end
+
   describe "a node's content is its declaration's" do
     # Against the model, for every fixture: what a panel shows of each kind, as data.
     test "reactions, timers, queries, commands, events, units, statuses and the process" do

@@ -57,7 +57,8 @@ defmodule EhOsContract.Graph.Facts do
   @domain_kinds ~w(subdomain context contract event publication actor external value entity
                    subject)a
 
-  @domain_types @patterns ++ ~w(consumed_by publishes subscribed_by backed_by accountable_for)a
+  @domain_types @patterns ++
+                  ~w(consumed_by refers_to publishes subscribed_by backed_by accountable_for)a
 
   # What tells apart two relations of one type between the same two nodes: a
   # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
@@ -1029,6 +1030,24 @@ defmodule EhOsContract.Graph.Facts do
       end)
       |> Enum.sort_by(&{&1.from, &1.to})
 
+    # A contract keeping the number of a sibling's unit (plan DD, L3 (#286)): one relation
+    # per pair, from the contract that keeps it to the one whose unit it is.
+    referents = EhOsContract.References.index(domain, models)
+
+    refers_to =
+      for(
+        m <- models,
+        name <- EhOsContract.References.in_model(m),
+        {:unit, owner, unit} <- [Map.get(referents, name)],
+        owner.module != m.module,
+        do: {m.module, owner.module, unit}
+      )
+      |> Enum.group_by(fn {from, to, _} -> {from, to} end, &elem(&1, 2))
+      |> Enum.map(fn {{from, to}, units} ->
+        relation(contract_id.(from), contract_id.(to), units: Enum.sort(Enum.uniq(units)))
+      end)
+      |> Enum.sort_by(&{&1.from, &1.to})
+
     publishes =
       for {m, p} <- published,
           do:
@@ -1147,7 +1166,12 @@ defmodule EhOsContract.Graph.Facts do
 
     relations =
       typed(patterns ++ backed ++ accountable)
-      |> Map.merge(%{consumed_by: consumed_by, publishes: publishes, subscribed_by: subscribed})
+      |> Map.merge(%{
+        consumed_by: consumed_by,
+        refers_to: refers_to,
+        publishes: publishes,
+        subscribed_by: subscribed
+      })
 
     group(nodes, @domain_kinds, relations, @domain_types)
   end

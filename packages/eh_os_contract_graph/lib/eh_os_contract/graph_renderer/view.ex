@@ -20,7 +20,7 @@ defmodule EhOsContract.GraphRenderer.View do
   | `{:unit, id}` | one unit's state, commands, events and rules, and how many scenarios pin each path |
   | `{:lifecycle, id}` | an aggregate's statuses and the events that move it between them |
   | `:context_map` | a domain's subdomains, contexts, external systems and their relations |
-  | `:system` | a domain's contracts in their contexts, what one consumes from another, and its publications |
+  | `:system` | a domain's contracts in their contexts, what one consumes from another, whose units' numbers one keeps, and its publications |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation
@@ -626,9 +626,10 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # The system of a domain's `document`, left to right: its contracts in groups of their
   # contexts, each named by its module's last segment and its process, an arrow from a
-  # contract to one that consumes its events, carrying their names, and the publications
-  # on the wire, with an arrow from the contract that publishes one and to the one that
-  # subscribes.
+  # contract to one that consumes its events, carrying their names, a dotted one from a
+  # contract to one keeping the number of its unit, naming the units, and the
+  # publications on the wire, with an arrow from the contract that publishes one and to
+  # the one that subscribes.
   # Called by `build/3`; public for its tests.
   @doc false
   @spec system(map()) :: t()
@@ -652,6 +653,19 @@ defmodule EhOsContract.GraphRenderer.View do
         )
       end
 
+    # Drawn the way the number travels, from the unit's contract to the one keeping it,
+    # as a consumed event is: against `refers_to`, a consumer keeping its source's unit
+    # would close a cycle the layout breaks by turning the source's arrows around.
+    referring =
+      for r <- relations(document, "refers_to"),
+          do:
+            arrow("refers_to", r,
+              from: r["to"],
+              to: r["from"],
+              words: "number of #{Enum.join(r["units"] || [], ", ")}",
+              line: "dotted"
+            )
+
     published =
       for r <- relations(document, "publishes"),
           do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
@@ -662,7 +676,12 @@ defmodule EhOsContract.GraphRenderer.View do
 
     groups = for c <- nodes(document, "context"), do: group("context", c, "#{title(c)} · context")
 
-    finish("LR", contracts ++ publications, consumed ++ published ++ subscribed, groups)
+    finish(
+      "LR",
+      contracts ++ publications,
+      consumed ++ referring ++ published ++ subscribed,
+      groups
+    )
   end
 
   # --- what the log saw -------------------------------------------------------------------
