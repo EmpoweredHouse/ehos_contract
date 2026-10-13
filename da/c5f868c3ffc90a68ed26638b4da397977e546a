@@ -1,0 +1,1 @@
+Documentation only (.claude/review.md, 'Documentation alone'): git diff --stat origin/main..HEAD touches PLAN.md alone, which no part of mix check reads. Read through for stale statuses and links against GitHub (#220, #221, #286 closed) on 13 October 2026.
