@@ -45,6 +45,7 @@ defmodule EhOsContract.ProcessManager do
     Event,
     Implementations,
     Key,
+    LogMetadata,
     Model,
     ProcessManagerRecord,
     TimerJob
@@ -65,7 +66,14 @@ defmodule EhOsContract.ProcessManager do
   `replay: true` suppresses its reactions.
   """
   @spec handle!(module(), Implementations.consumer(), Event.t(), [String.t()], boolean()) :: :ok
-  def handle!(repo, consumer, %Event{type: @elapsed} = row, _chain, replay?) do
+  # What the process manager logs while it takes the event carries the event's correlation (#298).
+  def handle!(repo, consumer, %Event{} = row, chain, replay?),
+    do:
+      LogMetadata.correlated(row.correlation_id, fn ->
+        handled!(repo, consumer, row, chain, replay?)
+      end)
+
+  defp handled!(repo, consumer, %Event{type: @elapsed} = row, _chain, replay?) do
     %{"process_manager" => key, "correlation" => correlation, "timer" => timer, "token" => fired} =
       row.payload
 
@@ -91,7 +99,7 @@ defmodule EhOsContract.ProcessManager do
     :ok
   end
 
-  def handle!(repo, consumer, %Event{} = row, chain, replay?) do
+  defp handled!(repo, consumer, %Event{} = row, chain, replay?) do
     {model, pm} = declaration(consumer)
     event = Consumer.decode!(row)
     name = Map.fetch!(consumer.callbacks, row.type)

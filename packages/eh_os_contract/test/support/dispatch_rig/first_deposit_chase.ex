@@ -8,12 +8,17 @@ defmodule DispatchRig.FirstDepositChase do
 
   use DispatchRig.Ledger, process_manager: :first_deposit_chase
 
+  require Logger
+
   @impl true
   def first_deposit_due(%State{account_id: id}), do: issue(%FlagAccount{account_id: id})
 
   @impl true
-  def interest_recorded(%InterestRecorded{account_id: id}, %State{deposits: 0}),
-    do: issue(%FlagAccount{account_id: id})
+  # A line, so a test can see what the engine puts in the Logger's metadata (#298).
+  def interest_recorded(%InterestRecorded{account_id: id}, %State{deposits: 0}) do
+    Logger.debug("chased interest before a deposit")
+    issue(%FlagAccount{account_id: id})
+  end
 
   def interest_recorded(_interest, _state), do: {:ok, []}
 

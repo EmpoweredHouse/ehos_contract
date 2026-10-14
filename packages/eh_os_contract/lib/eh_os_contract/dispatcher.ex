@@ -108,6 +108,7 @@ defmodule EhOsContract.Dispatcher do
     Implementations,
     Key,
     Lifecycle,
+    LogMetadata,
     Meta,
     Model,
     Personal,
@@ -154,6 +155,13 @@ defmodule EhOsContract.Dispatcher do
     model = model!(contract)
     declaration = command!(model, module)
     ctx = context(opts)
+
+    LogMetadata.correlated(ctx.correlation_id, fn ->
+      dispatch(model, declaration, command, ctx)
+    end)
+  end
+
+  defp dispatch(model, declaration, command, ctx) do
     values = Codec.values(model.domain)
 
     with :ok <-
@@ -185,6 +193,10 @@ defmodule EhOsContract.Dispatcher do
     model = model!(contract)
     declaration = recorded!(model, module)
     ctx = context(opts)
+    LogMetadata.correlated(ctx.correlation_id, fn -> record(model, declaration, event, ctx) end)
+  end
+
+  defp record(model, declaration, event, ctx) do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
