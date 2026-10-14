@@ -229,9 +229,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     """
   end
 
-  # A promise's arrow carries the promise's verdicts, which the overlay keeps on the
-  # promise; any other relation, its own numbers.
+  # Both arrows of a promise are the promise's, which the overlay keeps the verdicts of, as
+  # their panel says: each takes its state — a broken promise in the error colour — and
+  # the heavy one alone says the verdicts in words, so they are read once. Any other
+  # relation, its own numbers.
   defp marks(overlay, %{type: "promise"} = relation), do: Marks.promise(overlay, relation.facts)
+
+  defp marks(overlay, %{type: "or_else", facts: %{"process" => _} = promise}),
+    do: overlay |> Marks.promise(promise) |> Map.delete(:verdict)
 
   defp marks(overlay, relation), do: Marks.relation(overlay, relation.id)
 

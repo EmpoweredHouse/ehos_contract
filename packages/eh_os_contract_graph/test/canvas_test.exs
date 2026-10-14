@@ -224,9 +224,17 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     setup do
       document = Fixtures.document("process.rehmed.clinical_visit")
       overlay = Fixtures.overlay("process.rehmed.clinical_visit")
-      [promise] = for %{type: "promise"} = r <- View.process(document).relations, do: r
+      relations = View.process(document).relations
+      [promise] = for %{type: "promise"} = r <- relations, do: r
+      [other_way] = for %{type: "or_else"} = r <- relations, do: r.id
 
-      [document: document, overlay: overlay, arrow: promise.id, promise: promise.facts["id"]]
+      [
+        document: document,
+        overlay: overlay,
+        arrow: promise.id,
+        other_way: other_way,
+        promise: promise.facts["id"]
+      ]
     end
 
     defp count(html, attribute, id),
@@ -267,6 +275,12 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
       assert count(html, "data-ehg-relation", c.arrow) == ["· 3 kept, 1 broken, 2 pending"]
       assert "is-failing" in classes(label)
+
+      # The dotted arrow is the same promise's: its state, as its panel's verdicts, and the
+      # words once, on the heavy one.
+      other_way = at(html, "data-ehg-relation", c.other_way)
+      assert "is-failing" in classes(other_way)
+      assert count(html, "data-ehg-relation", c.other_way) == []
 
       # Over an empty log: no run opened it.
       html = draw(c.document, c.overlay, :process)
