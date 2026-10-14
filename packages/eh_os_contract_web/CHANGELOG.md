@@ -25,6 +25,23 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **A process module's graph over HTTP** (plan DD, stage P2e, eh-os-contract#220): `GET <mount>/graph/process/<id>`
+  serves its `graph.v1` document, with its digest as the `ETag` and `304` for a request that holds it, and
+  `GET <mount>/graph/process/<id>/overlay?since=…&until=…` what the log says over it: its runs, how often each event
+  happened and each promise's verdicts. A process module has its own path because its id may be a contract's. An
+  id no process module has is `404`. The `/graph` index lists the process modules under `processes`. Moves no
+  verdict.
+
+### Changed
+
+- **Breaking:** `<mount>/graph/domain/<module>` serves the domain's document with its process modules — a
+  `process` node each, an `includes` relation to each contract whose events it includes, the actor
+  `accountable_for` it — and its overlay with each one's runs (engine, plan DD, stage P2e, eh-os-contract#220). A
+  reader holding the document to the schema shipped with the engine's 0.3.0 refuses the new keys: take the schema
+  with the engine. The index's domain digests are those of these documents. Moves no verdict.
+
 ### Removed
 
 - **Breaking:** `<mount>/model/<id>` serves a contract's model without `process`, and its events without `stage`

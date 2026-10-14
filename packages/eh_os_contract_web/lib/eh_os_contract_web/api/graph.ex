@@ -2,15 +2,19 @@ defmodule EhOsContract.Web.Api.Graph do
   # The `graph.v1` documents and their overlays (plan E13a): what a renderer draws, in
   # the dashboard or in EHOS Console, as the engine gives it.
   #
-  #     GET <mount>/graph                                       contracts and domains, with versions and digests
+  #     GET <mount>/graph                                       contracts, process modules and domains, with versions and digests
   #     GET <mount>/graph/rehmed.settlement                     a contract's document, its digest as the ETag
   #     GET <mount>/graph/rehmed.settlement/overlay?since=…&until=…   what the log says over it
+  #     GET <mount>/graph/process/rehmed.clinical_visit         a process module's document
+  #     GET <mount>/graph/process/rehmed.clinical_visit/overlay?since=…&until=…
   #     GET <mount>/graph/domain/Rehmed.Domain                  a domain's document
   #     GET <mount>/graph/domain/Rehmed.Domain/overlay?since=…&until=…
   #
   # A contract is named by its `id:`, as the model and conformance APIs name it (plan
-  # DD, P1a, #183); a module's name is an unknown contract. A domain has no `id:` and
-  # is named by its module. A contract or a domain the registry does not hold is 404,
+  # DD, P1a, #183); a module's name is an unknown contract. A process module is named by
+  # its `id:` under `process/`, since it may share it with a contract (plan DD, P2e,
+  # #220). A domain has no `id:` and is named by its module; its document has the
+  # process modules beside the contracts. A contract or a domain the registry does not hold is 404,
   # never an empty graph. A
   # document is the same bytes for the same declarations — every object's keys in
   # order (`EhOsContract.Graph.Document.encode/2`) — so its digest is a sound `ETag`,
@@ -19,7 +23,8 @@ defmodule EhOsContract.Web.Api.Graph do
   # 400.
   #
   # The index (`eh_os_contract.graph_index.v1`) has no JSON Schema file: it is a list
-  # of contracts (`contract`, the id, `module`, `version`, `digest`) and domains (`domain`, `name`,
+  # of contracts (`contract`, the id, `module`, `version`, `digest`), process modules
+  # (`process`, the id, `module`, `version`, `digest`) and domains (`domain`, `name`,
   # `version`, `digest`), each digest the one its document carries.
   #
   # Authenticated through the same resolver as the model and AsyncAPI: the documents
@@ -49,6 +54,7 @@ defmodule EhOsContract.Web.Api.Graph do
 
       case {conn.path_params, Keyword.get(opts, :of, :contract)} do
         {%{"domain" => name}, :domain} -> domain(conn, name, overlay?)
+        {%{"process" => name}, :process} -> process(conn, name, overlay?)
         {%{"contract" => name}, :contract} -> contract(conn, name, overlay?)
         _index -> json(conn, 200, Document.encode(index()))
       end
@@ -57,6 +63,7 @@ defmodule EhOsContract.Web.Api.Graph do
 
   defp index do
     contracts = Registry.contracts()
+    modules = contracts ++ Registry.processes()
 
     %{
       "schema" => "eh_os_contract.graph_index.v1",
@@ -73,10 +80,23 @@ defmodule EhOsContract.Web.Api.Graph do
           }
         end)
         |> Enum.sort_by(& &1["contract"]),
+      "processes" =>
+        Registry.processes()
+        |> Enum.map(fn p ->
+          d = Document.process(p)
+
+          %{
+            "process" => d["process"],
+            "module" => d["module"],
+            "version" => d["version"],
+            "digest" => d["digest"]
+          }
+        end)
+        |> Enum.sort_by(& &1["process"]),
       "domains" =>
         Registry.domains()
         |> Enum.map(fn m ->
-          d = Document.domain(m, contracts)
+          d = Document.domain(m, modules)
 
           %{
             "domain" => d["domain"],
@@ -97,13 +117,21 @@ defmodule EhOsContract.Web.Api.Graph do
     end
   end
 
+  defp process(conn, name, overlay?) do
+    case Registry.process(name) do
+      nil -> not_found(conn, "unknown process module #{name}")
+      p when overlay? -> overlay(conn, &Overlay.process(p, &1))
+      p -> document(conn, Document.process(p))
+    end
+  end
+
   defp domain(conn, name, overlay?) do
-    contracts = Registry.contracts()
+    modules = Registry.contracts() ++ Registry.processes()
 
     case Enum.find(Registry.domains(), &(inspect(&1) == name)) do
       nil -> not_found(conn, "unknown domain #{name}")
-      d when overlay? -> overlay(conn, &Overlay.domain(d, contracts, &1))
-      d -> document(conn, Document.domain(d, contracts))
+      d when overlay? -> overlay(conn, &Overlay.domain(d, modules, &1))
+      d -> document(conn, Document.domain(d, modules))
     end
   end
 
