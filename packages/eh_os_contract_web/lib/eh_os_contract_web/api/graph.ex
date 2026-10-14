@@ -63,7 +63,8 @@ defmodule EhOsContract.Web.Api.Graph do
 
   defp index do
     contracts = Registry.contracts()
-    modules = contracts ++ Registry.processes()
+    processes = Registry.processes()
+    modules = contracts ++ processes
 
     %{
       "schema" => "eh_os_contract.graph_index.v1",
@@ -81,7 +82,7 @@ defmodule EhOsContract.Web.Api.Graph do
         end)
         |> Enum.sort_by(& &1["contract"]),
       "processes" =>
-        Registry.processes()
+        processes
         |> Enum.map(fn p ->
           d = Document.process(p)
 
