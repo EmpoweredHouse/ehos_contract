@@ -240,17 +240,43 @@ defmodule EhOsContract.Paths do
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
-    types = Enum.map(Model.process_events(model), & &1.type)
+    [{process, Enum.map(Model.process_events(model), & &1.type)}]
+    |> count_runs(opts)
+    |> Map.get(process, 0)
+  end
+
+  @doc """
+  Distinct runs of each of the process modules `models` in the period `opts` names, as
+  `runs_of/3` counts one's under its `id:`: `%{id => runs}`, every module's id present,
+  in one query however many there are.
+  """
+  @spec runs_by_process([map()], keyword()) :: %{String.t() => non_neg_integer()}
+  def runs_by_process(models, opts \\ []) do
+    filed = for m <- models, do: {m.id, Enum.map(Model.process_events(m), & &1.type)}
+    counted = count_runs(filed, opts)
+    Map.new(filed, fn {process, _types} -> {process, Map.get(counted, process, 0)} end)
+  end
+
+  # Distinct runs per process, each over the types of the events it includes.
+  defp count_runs([], _opts), do: %{}
+
+  defp count_runs(filed, opts) do
+    included =
+      Enum.reduce(filed, dynamic(false), fn {process, types}, acc ->
+        dynamic([r, event: e], ^acc or (r.process == ^process and e.type in ^types))
+      end)
 
     from(r in EventRun,
       join: e in Event,
       as: :event,
       on: e.position == r.position,
-      where: r.process == ^process and e.type in ^types,
-      select: count(r.instance_id, :distinct)
+      where: ^included,
+      group_by: r.process,
+      select: {r.process, count(r.instance_id, :distinct)}
     )
     |> bounded(opts)
-    |> repo().one()
+    |> repo().all()
+    |> Map.new()
   end
 
   @doc """

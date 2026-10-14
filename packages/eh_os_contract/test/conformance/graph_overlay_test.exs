@@ -396,6 +396,13 @@ defmodule EhOsContract.GraphOverlayTest do
     budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + 1
 
     assert queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end) <= budget
+
+    # And one more for the runs of all its process modules, however many there are.
+    processes = Enum.filter(Registry.processes(), &(Model.fetch(&1).domain == DispatchRig.Domain))
+    assert length(processes) >= 2
+    modules = contracts ++ processes
+
+    assert queries(fn -> Overlay.domain(DispatchRig.Domain, modules) end) <= budget + 1
   end
 
   test "the overlay says its period, and counts only what happened in it" do

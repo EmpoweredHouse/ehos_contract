@@ -196,9 +196,12 @@ defmodule EhOsContract.Graph.Overlay do
 
     models = Enum.filter(fetched, &(&1.kind == :contract))
 
+    # One query for every process module's runs, keyed by its node in the document.
+    counted = fetched |> Enum.filter(&(&1.kind == :process)) |> Paths.runs_by_process(period)
+
     runs =
-      for %{kind: :process} = p <- fetched,
-          do: {Document.id([:process, p.id]), %{runs: Paths.runs_of(p, p.id, period)}}
+      for p <- document["nodes"]["process"],
+          do: {p["id"], %{runs: Map.fetch!(counted, p["name"])}}
 
     id = &Document.id([:contract, &1.id])
 
