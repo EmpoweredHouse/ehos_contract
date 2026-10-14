@@ -10,8 +10,12 @@ defmodule DispatchRig.FirstDepositChase do
 
   require Logger
 
+  # A line, so a test can see what the engine puts in the Logger's metadata (#298).
   @impl true
-  def first_deposit_due(%State{account_id: id}), do: issue(%FlagAccount{account_id: id})
+  def first_deposit_due(%State{account_id: id}) do
+    Logger.debug("chased a first deposit, a day on")
+    issue(%FlagAccount{account_id: id})
+  end
 
   @impl true
   # A line, so a test can see what the engine puts in the Logger's metadata (#298).

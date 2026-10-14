@@ -52,8 +52,9 @@ and the `ehos-dev:release` skill makes one.
 
 - **A line logged while the engine works carries that work's correlation.** While it runs a command,
   records an event, or reacts to an event, a timer or a message, the Logger's metadata holds the
-  work's correlation identifier as `correlation_id`, and what was there before is back afterwards. A
-  host names `:correlation_id` in its formatter's metadata to write it (#298).
+  work's correlation identifier as `correlation_id`, and what was there before is back afterwards;
+  one that is not a UUID's text is left off. A host names `:correlation_id` in its formatter's
+  metadata to write it (#298).
 
 - **The skills for writing contracts reach an application as a Claude Code plugin.** This repository is a
   marketplace, `eh-os-contract`, whose plugin of the same name, in `plugins/eh-os-contract/`, carries

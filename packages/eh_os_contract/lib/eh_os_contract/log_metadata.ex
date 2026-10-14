@@ -10,12 +10,19 @@ defmodule EhOsContract.LogMetadata do
 
   @doc """
   Runs `fun` with the Logger's `correlation_id` set to `correlation_id`, and puts back the value
-  before it, or none, however `fun` ends. With `nil`, runs `fun` as it is.
+  before it, or none, however `fun` ends. With anything but a UUID's text, as a host's own option
+  or another application's message may hold, runs `fun` as it is: only an identifier of the shape
+  the log keeps reaches a line.
   """
-  @spec correlated(String.t() | nil, (-> result)) :: result when result: term()
-  def correlated(nil, fun), do: fun.()
+  @spec correlated(term(), (-> result)) :: result when result: term()
+  def correlated(correlation_id, fun) do
+    if uuid?(correlation_id), do: set(correlation_id, fun), else: fun.()
+  end
 
-  def correlated(correlation_id, fun) when is_binary(correlation_id) do
+  defp uuid?(id),
+    do: is_binary(id) and byte_size(id) == 36 and match?({:ok, _}, Ecto.UUID.cast(id))
+
+  defp set(correlation_id, fun) do
     before = Logger.metadata()[:correlation_id]
     Logger.metadata(correlation_id: correlation_id)
 

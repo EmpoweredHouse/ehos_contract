@@ -18,7 +18,7 @@ defmodule EhOsContract.LogMetadataTest do
   alias DispatchRig.Ledger
   alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
   alias DispatchRig.Ledger.Events.InterestRecorded
-  alias EhOsContract.{Actor, Testing}
+  alias EhOsContract.{Actor, Clock, LogMetadata, Testing}
 
   @clerk Actor.credential("u-1", [
            "dispatch_rig.open_account",
@@ -44,7 +44,12 @@ defmodule EhOsContract.LogMetadataTest do
     :ok
   end
 
-  @rig ["audited a withdrawal", "notified the branch", "chased interest before a deposit"]
+  @rig [
+    "audited a withdrawal",
+    "notified the branch",
+    "chased interest before a deposit",
+    "chased a first deposit, a day on"
+  ]
 
   # The rig's lines logged by `fun`, each as `<correlation_id> |<message>`; Ecto's queries, also at
   # debug level, are left out.
@@ -94,6 +99,35 @@ defmodule EhOsContract.LogMetadataTest do
     assert "#{@work} |chased interest before a deposit" in lines(fn -> Testing.drain() end)
   end
 
+  test "a process manager's timer logs with the correlation of the run that set it" do
+    opened = ~U[2026-09-01 09:00:00Z]
+
+    Clock.at(opened, fn ->
+      dispatch(%OpenAccount{account_id: "a-3", branch_id: "b-7"}, correlation_id: @work)
+      Testing.drain()
+    end)
+
+    lines = lines(fn -> Clock.at(DateTime.add(opened, 25, :hour), &Testing.drain/0) end)
+    assert "#{@work} |chased a first deposit, a day on" in lines
+  end
+
+  test "an identifier that is not a UUID's text reaches no line, and stops nothing" do
+    for id <- ["not-a-uuid", String.duplicate("a", 10_000), "#{@work}\nforged", 42] do
+      assert LogMetadata.correlated(id, fn -> Logger.metadata()[:correlation_id] end) == nil
+    end
+  end
+
+  test "a correlation inside another's puts the outer one back" do
+    inner = "1a2b3c4d-0000-4000-8000-000000000001"
+
+    LogMetadata.correlated(@work, fn ->
+      assert LogMetadata.correlated(inner, fn -> Logger.metadata()[:correlation_id] end) == inner
+      assert Logger.metadata()[:correlation_id] == @work
+    end)
+
+    assert Logger.metadata()[:correlation_id] == nil
+  end
+
   test "once the work is done, the correlation that was there before is back" do
     Logger.metadata(correlation_id: "the caller's own")
     dispatch(%Withdraw{account_id: "a-1", amount: 3}, correlation_id: @work)
@@ -106,7 +140,7 @@ defmodule EhOsContract.LogMetadataTest do
 
   test "it is put back when the work raises, too" do
     assert_raise ArgumentError, fn ->
-      EhOsContract.LogMetadata.correlated(@work, fn -> raise ArgumentError, "boom" end)
+      LogMetadata.correlated(@work, fn -> raise ArgumentError, "boom" end)
     end
 
     assert Logger.metadata()[:correlation_id] == nil
