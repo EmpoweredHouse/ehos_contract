@@ -133,6 +133,18 @@ lets the implementation decide, and appends what it emits to the log, all in one
 credential from outside enters through `EhOsContract.call/3` instead, and over HTTP through
 `EhOsContract.Plug` ([authorization](authorization.md)).
 
+Every command belongs to a piece of work, named by its correlation: `correlation_id:` in dispatch's
+options, `x-correlation-id` over HTTP, or a new one. While the engine runs the command, or reacts to
+an event, a timer or a message of that work, the Logger's metadata holds it as `correlation_id`, and
+what was there before is back afterwards. It is written in lower case, as the log keeps it. An
+erasure belongs to no piece of work and sets none, nor does an identifier that is not a UUID's text,
+from another application's message for instance: the metadata stays as it was. Name it in the formatter's metadata to write it on each
+line, so one piece of work can be read across applications:
+
+```elixir
+config :logger, :default_formatter, metadata: [:request_id, :correlation_id]
+```
+
 ## 6. Check, draw and report
 
 ```

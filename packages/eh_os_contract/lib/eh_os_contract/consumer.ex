@@ -23,6 +23,7 @@ defmodule EhOsContract.Consumer do
     Erased,
     Event,
     Implementations,
+    LogMetadata,
     Meta,
     Model,
     NewerSchemaError,
@@ -39,16 +40,23 @@ defmodule EhOsContract.Consumer do
   caller knows whether to roll back or to retry.
   """
   @spec handle!(Implementations.inline(), struct(), [String.t()]) :: :ok | {:error, term()}
+  # What the consumer logs while it handles the event carries the event's correlation (#298).
+  def handle!(consumer, event, chain),
+    do: LogMetadata.correlated(correlation(event), fn -> handled!(consumer, event, chain) end)
+
+  defp correlation(%{__meta__: %{correlation_id: correlation_id}}), do: correlation_id
+  defp correlation(_erased), do: nil
+
   # An erasure: the read model forgets the subject, if it holds that type's data at
   # all (v2 §14). One nobody implemented has written nothing to forget, and must not
   # stop every erasure of the type.
-  def handle!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
+  defp handled!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
     if consumer.module != nil and MapSet.member?(consumer.forgets, erased.subject),
       do: forget!(consumer, erased),
       else: :ok
   end
 
-  def handle!(%{kind: :read_model} = consumer, event, _chain) do
+  defp handled!(%{kind: :read_model} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
         :ok
@@ -60,7 +68,7 @@ defmodule EhOsContract.Consumer do
     end
   end
 
-  def handle!(%{kind: :effect} = consumer, event, _chain) do
+  defp handled!(%{kind: :effect} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
         :ok
@@ -75,7 +83,7 @@ defmodule EhOsContract.Consumer do
     end
   end
 
-  def handle!(%{kind: :policy} = consumer, event, chain) do
+  defp handled!(%{kind: :policy} = consumer, event, chain) do
     module = implemented!(consumer)
     model = Model.fetch(consumer.contract)
     policy = Enum.find(model.policies, &(&1.name == consumer.name))
