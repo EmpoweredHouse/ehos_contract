@@ -306,6 +306,20 @@ defmodule EhOsContract.GraphOverlayTest do
       refute Map.has_key?(later["nodes"], event.(:withdrawn))
     end
 
+    # The ids are the facts' to make: the overlay reads them from its document, so it
+    # follows them wherever they change.
+    test "keys its numbers by the ids its document gives, and by nothing else" do
+      review("a-1", true)
+      d = Document.process(AccountReview)
+      o = Overlay.process(AccountReview)
+
+      [process] = d["nodes"]["process"]
+      events = for e <- d["nodes"]["event"], do: e["id"]
+      promises = for p <- d["nodes"]["promise"], do: p["id"]
+
+      assert Enum.sort(Map.keys(o["nodes"])) == Enum.sort([process["id"] | events ++ promises])
+    end
+
     test "a promise the owner has yet to confirm has no verdicts, as in the report" do
       process = compile_unverified_promise()
       o = process |> Overlay.process() |> valid!() |> joins!(Document.process(process))

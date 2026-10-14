@@ -142,22 +142,25 @@ defmodule EhOsContract.Graph.Overlay do
     model = Model.fetch(process)
     document = Document.process(model)
     period = Keyword.take(opts, [:since, :until])
-    promises = Conformance.promise_verdicts(model, period)
-    included = Model.process_events(model)
-    ids = included |> Enum.map(& &1.contract) |> Enum.uniq() |> Map.new(&{&1, Model.fetch(&1).id})
+    verdicts = Map.new(Conformance.promise_verdicts(model, period), &{to_string(&1.promise), &1})
 
-    # Counted by type: the events of a run come from several contracts.
-    by_type = Paths.occurrences_by_type(Enum.map(included, & &1.type), period)
+    # Keyed by the ids of the document it joins, read from it: how they are made is the
+    # facts' alone.
+    nodes = document["nodes"]
+    [process_node] = nodes["process"]
+    by_type = nodes["event"] |> Enum.map(& &1["type"]) |> Paths.occurrences_by_type(period)
 
     events =
-      for e <- included,
-          occurrences = by_type[e.type],
-          do: {Document.id([:event, ids[e.contract], e.name]), %{occurrences: occurrences}}
+      for e <- nodes["event"],
+          occurrences = by_type[e["type"]],
+          do: {e["id"], %{occurrences: occurrences}}
 
-    verdicts =
-      for pr <- promises do
-        {Document.id([:promise, model.id, pr.promise]), Map.take(pr, @verdicts)}
-      end
+    promises =
+      for p <- nodes["promise"],
+          verdict = verdicts[p["name"]],
+          do: {p["id"], Map.take(verdict, @verdicts)}
+
+    runs = {process_node["id"], %{runs: Paths.runs_of(model, model.id, period)}}
 
     seal(
       %{
@@ -166,11 +169,7 @@ defmodule EhOsContract.Graph.Overlay do
         "module" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" =>
-          Map.new(
-            [{Document.id([:process, model.id]), %{runs: Paths.runs_of(model, model.id, period)}}] ++
-              events ++ verdicts
-          ),
+        "nodes" => Map.new([runs | events ++ promises]),
         "relations" => %{},
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
