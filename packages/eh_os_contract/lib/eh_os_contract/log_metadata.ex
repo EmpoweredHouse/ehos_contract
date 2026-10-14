@@ -10,17 +10,22 @@ defmodule EhOsContract.LogMetadata do
 
   @doc """
   Runs `fun` with the Logger's `correlation_id` set to `correlation_id`, and puts back the value
-  before it, or none, however `fun` ends. With anything but a UUID's text, as a host's own option
-  or another application's message may hold, runs `fun` as it is: only an identifier of the shape
-  the log keeps reaches a line.
+  before it, or none, however `fun` ends. The identifier is written as the log keeps it, in lower
+  case, so a work's lines carry one spelling whether they come from its command or from its events
+  read back. With anything but a UUID's text, as a host's own option or another application's
+  message may hold, runs `fun` as it is, leaving the metadata as it was.
   """
   @spec correlated(term(), (-> result)) :: result when result: term()
   def correlated(correlation_id, fun) do
-    if uuid?(correlation_id), do: set(correlation_id, fun), else: fun.()
+    case uuid(correlation_id) do
+      {:ok, uuid} -> set(uuid, fun)
+      :error -> fun.()
+    end
   end
 
-  defp uuid?(id),
-    do: is_binary(id) and byte_size(id) == 36 and match?({:ok, _}, Ecto.UUID.cast(id))
+  # The 36-byte check leaves out the 16 raw bytes `Ecto.UUID.cast/1` also takes.
+  defp uuid(id) when is_binary(id) and byte_size(id) == 36, do: Ecto.UUID.cast(id)
+  defp uuid(_id), do: :error
 
   defp set(correlation_id, fun) do
     before = Logger.metadata()[:correlation_id]

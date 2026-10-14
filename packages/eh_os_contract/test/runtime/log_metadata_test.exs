@@ -29,10 +29,6 @@ defmodule EhOsContract.LogMetadataTest do
   @work "0f0e4a1c-6c2e-4d5b-9a7e-3b1d2c4e5f60"
 
   setup do
-    level = Logger.level()
-    Logger.configure(level: :debug)
-    on_exit(fn -> Logger.configure(level: level) end)
-
     {:ok, _} =
       EhOsContract.dispatch(Ledger, %OpenAccount{account_id: "a-1", branch_id: "b-7"},
         actor: @clerk
@@ -41,6 +37,10 @@ defmodule EhOsContract.LogMetadataTest do
     {:ok, _} =
       EhOsContract.dispatch(Ledger, %Deposit{account_id: "a-1", amount: 10}, actor: @clerk)
 
+    # After the setup, so its queries are not printed.
+    level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: level) end)
     :ok
   end
 
@@ -112,9 +112,22 @@ defmodule EhOsContract.LogMetadataTest do
   end
 
   test "an identifier that is not a UUID's text reaches no line, and stops nothing" do
-    for id <- ["not-a-uuid", String.duplicate("a", 10_000), "#{@work}\nforged", 42] do
+    for id <- [
+          "not-a-uuid",
+          String.duplicate("a", 10_000),
+          "#{@work}\nforged",
+          # 36 bytes, the length of a UUID's text, and not one.
+          String.duplicate("z", 36),
+          "0f0e4a1c-6c2e-4d5b-9a7e-3b1d2c4e5f6\n",
+          42
+        ] do
       assert LogMetadata.correlated(id, fn -> Logger.metadata()[:correlation_id] end) == nil
     end
+  end
+
+  test "an identifier in upper case is written as the log keeps it, in lower case" do
+    upper = String.upcase(@work)
+    assert LogMetadata.correlated(upper, fn -> Logger.metadata()[:correlation_id] end) == @work
   end
 
   test "a correlation inside another's puts the outer one back" do
