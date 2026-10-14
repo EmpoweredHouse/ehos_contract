@@ -43,6 +43,33 @@ defmodule EhOsContract.GraphTaskTest do
              Jason.decode!(File.read!(path))
   end
 
+  @tag :tmp_dir
+  test "gives a process module's document and overlay, and its node in the domain's", %{
+    tmp_dir: dir
+  } do
+    path = Path.join(dir, "graph.json")
+
+    task(~w(--process dispatch_rig.account_review --output #{path}))
+
+    assert File.read!(path) ==
+             Document.encode(Document.process(DispatchRig.AccountReview), pretty: true) <> "\n"
+
+    task(~w(--process dispatch_rig.account_review --overlay --output #{path}))
+
+    assert %{
+             "kind" => "process",
+             "process" => "dispatch_rig.account_review",
+             "nodes" => %{"process:dispatch_rig.account_review" => %{"runs" => 0}}
+           } = Jason.decode!(File.read!(path))
+
+    task(~w(--domain dispatch_rig --output #{path}))
+
+    assert Enum.any?(
+             Jason.decode!(File.read!(path))["nodes"]["process"],
+             &(&1["name"] == "dispatch_rig.account_review")
+           )
+  end
+
   test "refuses two documents at once, a period without the log, and what names nothing" do
     assert_raise Mix.Error, ~r/pass one of them/, fn ->
       task(~w(--contract dispatch_rig.ledger --domain dispatch_rig))
@@ -52,8 +79,21 @@ defmodule EhOsContract.GraphTaskTest do
       task(~w(--contract dispatch_rig.ledger --since 2026-01-01T00:00:00Z))
     end
 
+    assert_raise Mix.Error, ~r/pass one of them/, fn ->
+      task(~w(--contract dispatch_rig.ledger --process dispatch_rig.account_review))
+    end
+
     assert_raise Mix.Error, ~r/no contract nonesuch\. Registered: .*dispatch_rig\.ledger/, fn ->
       task(~w(--contract nonesuch))
+    end
+
+    # A process module is not a contract, and the other way round.
+    assert_raise Mix.Error,
+                 ~r/no process module dispatch_rig\.ledger\. Registered: .*dispatch_rig\.account_review/,
+                 fn -> task(~w(--process dispatch_rig.ledger)) end
+
+    assert_raise Mix.Error, ~r/no contract dispatch_rig\.account_review/, fn ->
+      task(~w(--contract dispatch_rig.account_review))
     end
 
     assert_raise Mix.Error, ~r/no domain "nonesuch"; the domains are .*dispatch_rig/, fn ->

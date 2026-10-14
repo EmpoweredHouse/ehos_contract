@@ -88,10 +88,13 @@ and the `ehos-dev:release` skill makes one.
   verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
   `EhOsContract.Conformance.process/2` reports them; a promise not yet confirmed has none, as in the report. Its
   shape is the new `process_overlay` of `priv/schema/graph_overlay.v1.json`. Moves no verdict.
+- **`mix eh_os_contract.graph --process <id>`** gives a process module's document, and with `--overlay` what the
+  log says over it (plan DD, stage P2e, #220). It refuses an id no process module has, a contract's included, and
+  `--process` beside `--contract` or `--domain`.
 - **A domain's `graph.v1` document has its process modules** (plan DD, stage P2e, #220): a `process` node for each
   process module given, an `includes` relation from it to each given contract whose events it includes, and the
-  actor `accountable_for` it; the domain's overlay puts each one's runs on its node. See "Changed" for what a
-  reader of the schema has to do. Moves no verdict.
+  actor `accountable_for` it; the domain's overlay puts each one's runs on its node. The task gives them; see
+  "Changed" for what a reader of the schema has to do. Moves no verdict.
 
 ### Changed
 
