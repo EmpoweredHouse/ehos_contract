@@ -77,7 +77,7 @@ defmodule EhOsContract.Graph.Overlay do
 
   @schema "eh_os_contract.graph_overlay.v1"
 
-  # A promise's verdicts, as `Conformance.process/2` reports them.
+  # A promise's verdicts, as `Conformance.promise_verdicts/2` gives them.
   @verdicts ~w(satisfied satisfied_via_eventually satisfied_via_or_else violated pending
                suspended instances)a
 
@@ -128,9 +128,10 @@ defmodule EhOsContract.Graph.Overlay do
   `occurrences`, whatever run, if any, each falls in; and on each promise its verdicts
   over the runs it opened — `satisfied`, of them `satisfied_via_eventually` and
   `satisfied_via_or_else`, `violated`, `pending`, `suspended` and `instances` — as
-  `EhOsContract.Conformance.process/2` reports them, under the promise's current
-  declaration. A promise the owner has yet to confirm (`unverified`) has none, as the
-  report judges none. Its `relations` are empty.
+  the report gives them, under the promise's current declaration
+  (`EhOsContract.Conformance.promise_verdicts/2`, the report's own computation). A
+  promise the owner has yet to confirm (`unverified`) has none, as the report judges
+  none. Its `relations` are empty.
 
       EhOsContract.Graph.Overlay.process(Rehmed.Processes.ClinicalVisit,
         since: ~U[2026-07-01 00:00:00Z]
@@ -141,7 +142,7 @@ defmodule EhOsContract.Graph.Overlay do
     model = Model.fetch(process)
     document = Document.process(model)
     period = Keyword.take(opts, [:since, :until])
-    report = Conformance.process(model, period)
+    promises = Conformance.promise_verdicts(model, period)
     included = Model.process_events(model)
     ids = included |> Enum.map(& &1.contract) |> Enum.uniq() |> Map.new(&{&1, Model.fetch(&1).id})
 
@@ -153,8 +154,8 @@ defmodule EhOsContract.Graph.Overlay do
           occurrences = by_type[e.type],
           do: {Document.id([:event, ids[e.contract], e.name]), %{occurrences: occurrences}}
 
-    promises =
-      for pr <- report.promises do
+    verdicts =
+      for pr <- promises do
         {Document.id([:promise, model.id, pr.promise]), Map.take(pr, @verdicts)}
       end
 
@@ -167,7 +168,8 @@ defmodule EhOsContract.Graph.Overlay do
         "document_digest" => document["digest"],
         "nodes" =>
           Map.new(
-            [{Document.id([:process, model.id]), %{runs: report.runs}}] ++ events ++ promises
+            [{Document.id([:process, model.id]), %{runs: Paths.runs_of(model, model.id, period)}}] ++
+              events ++ verdicts
           ),
         "relations" => %{},
         "observed" => %{"relations" => %{"undeclared" => []}}

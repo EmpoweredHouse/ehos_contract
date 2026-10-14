@@ -227,7 +227,7 @@ defmodule EhOsContract.Conformance do
           %{key: :deadline, value: {value.amount, value.unit}}
         end,
       duration: duration(model, opts),
-      promises: promises(model, opts),
+      promises: promise_verdicts(model, opts),
       # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
       out_of_order: EhOsContract.StageOrder.evaluate(model, opts)
     }
@@ -326,7 +326,19 @@ defmodule EhOsContract.Conformance do
     end
   end
 
-  defp promises(model, opts) do
+  @doc """
+  The verdicts of each promise of the process module `model`, over the runs it opened
+  in the period `opts` names, as the report gives them under `promises`: the promise's
+  name and its events' labels, its window, and how many runs kept it (`satisfied`, of
+  them `satisfied_via_eventually` and `satisfied_via_or_else`), broke it (`violated`),
+  still wait (`pending`) or broke it while an external it depends on was down
+  (`suspended`), out of `instances`, judged under its current declaration — runs judged
+  under an earlier one are counted in `under_earlier_declaration` alone. A promise the
+  owner has yet to confirm (`unverified`) is left out. `opts` takes `:since`, `:until`
+  and `:now`, as `report/2` does; raises for a contract, which has no process.
+  """
+  @spec promise_verdicts(map(), keyword()) :: [map()]
+  def promise_verdicts(model, opts \\ []) do
     label = fn name ->
       case name && Model.declaring(model, name) do
         {_contract, event} -> event.label
