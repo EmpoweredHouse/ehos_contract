@@ -265,12 +265,12 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       html = draw(c.document, put_in(c.overlay, ["nodes", c.promise], verdicts), :process)
       label = at(html, "data-ehg-relation", c.arrow)
 
-      assert count(html, "data-ehg-relation", c.arrow) == ["3 kept, 1 broken, 2 pending"]
+      assert count(html, "data-ehg-relation", c.arrow) == ["· 3 kept, 1 broken, 2 pending"]
       assert "is-failing" in classes(label)
 
       # Over an empty log: no run opened it.
       html = draw(c.document, c.overlay, :process)
-      assert count(html, "data-ehg-relation", c.arrow) == ["none opened"]
+      assert count(html, "data-ehg-relation", c.arrow) == ["· none opened"]
       refute "is-failing" in classes(at(html, "data-ehg-relation", c.arrow))
     end
 
@@ -279,7 +279,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       overlay = update_in(c.overlay, ["nodes"], &Map.delete(&1, c.promise))
 
       assert count(draw(c.document, overlay, :process), "data-ehg-relation", c.arrow) ==
-               ["unconfirmed"]
+               ["· unconfirmed"]
 
       assert count(draw(c.document, nil, :process), "data-ehg-relation", c.arrow) == []
     end

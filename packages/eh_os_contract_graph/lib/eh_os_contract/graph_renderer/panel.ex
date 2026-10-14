@@ -1552,7 +1552,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     Enum.reject(
       [
-        "Opened in #{count(runs, "run")}.",
+        if(runs == 0, do: "No run has opened it.", else: "Opened in #{count(runs, "run")}."),
         n.("satisfied") > 0 &&
           "Kept in #{n.("satisfied")}: #{n.("satisfied_via_eventually")} by the event that " <>
             "keeps it, #{n.("satisfied_via_or_else")} the other way.",

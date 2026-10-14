@@ -225,7 +225,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     <span :if={@marks.count} class="ehg-count">×{@marks.count}</span><span
       :if={@marks[:verdict]}
       class="ehg-count"
-    >{@marks[:verdict]}</span>
+    >· {@marks[:verdict]}</span>
     """
   end
 

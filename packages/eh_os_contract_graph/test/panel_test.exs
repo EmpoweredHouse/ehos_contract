@@ -593,6 +593,9 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       refute text =~ "From the log"
 
+      text = open(c.document, c.promise, :process, c.overlay)
+      assert text =~ "From the log No run has opened it."
+
       # Without an overlay nothing is said of the log at all.
       refute open(c.document, c.promise, :process) =~ "Unconfirmed"
     end
