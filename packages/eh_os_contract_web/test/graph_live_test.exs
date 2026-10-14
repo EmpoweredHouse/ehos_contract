@@ -147,6 +147,17 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ ~s(id="overlay-graph")
   end
 
+  test "a malformed event is ignored, and the page lives on" do
+    view = live_graph()
+
+    for {event, params} <- [{"select", %{}}, {"select", %{"selected" => ["x"]}}, {"nope", %{}}] do
+      html = render_change(view, event, params)
+      assert html =~ ~r/value="contract:web_test_appeals.appeals"[^>]*selected/
+    end
+
+    assert Process.alive?(view.pid)
+  end
+
   test "two registered contracts are each reachable, by id" do
     # The selector keys by the contract's id (plan DD, P1b, #186).
     view = live_graph()

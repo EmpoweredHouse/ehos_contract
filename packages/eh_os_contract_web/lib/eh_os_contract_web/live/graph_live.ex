@@ -93,6 +93,10 @@ defmodule EhOsContract.Web.Live.Graph do
     end
   end
 
+  # An event the page does not send — another name, or without `selected` — is ignored
+  # rather than crashing the viewer's page.
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
   @spec select(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
   defp select(socket, nil) do
     assign(socket, selected: nil, kind: nil, document: nil, overlay: nil, units: [])
