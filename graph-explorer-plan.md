@@ -215,7 +215,8 @@ with many commands) is split, or focused on a selected card's neighbourhood.
 - **One canvas** on the Graph screen, with navigation between a domain, a contract, a process and a unit, instead of
 every picture stacked on one page.
 - **The data as it is:** this is the renderer's and the screen's work, not new facts in the graph documents. Anything
-the engine must add is raised first.
+the engine must add is raised first. This plan's additions hold to that, with one exception: the "records only" mark
+(5.8) is a new fact, but it is the debt stage's, which #297 waits for (12.8).
 - **A mock-up of one view** (a process, e.g. the clinic's visit) for approval before the code.
 - Left by #301 (a process's picture on today's screen) and noted on #297: a process card has no colour of its own yet,
 and long contract ids break mid-word on event cards. #301 also leaves to it how the screen loads a picture: today the
@@ -226,6 +227,8 @@ log's numbers are counted again over the whole history on every selection.
 | Addition | Section |
 | --- | --- |
 | How the navigation works: entering a home with the camera's flight, its inside hidden until entered, its neighbours as doors | 5.1, 5.2 |
+| How a large inside stays readable: #297's readable scale and focus, with the rules off by default; focus is the trace's one step | 5.2 |
+| How a process is opened: its line, and its declared shape as #301 draws it | 5.4, 5.5 |
 | Badges summing up the drift on the map, saying where to go in | 5.1 |
 | Layers that show or hide one kind of thing | 5.3 |
 | Processes as metro lines across the contracts | 5.4 |
@@ -312,12 +315,28 @@ goes to the neighbour: the camera flies out and into it.
 - **Nothing lost:** inside a contract, a button "show every unit's inside" gives today's full contract graph (7.5).
 The reader asks for it, so it does not break the rule of hidden insides.
 
+**A large inside.** A unit is the deepest level, so its inside shows whole: for AppUnite's computers that is 13
+commands, 16 events, 10 rules and the state, about 40 cards, whichever way the reader came. Three things together keep
+it readable, the first and the last from #297 (5.0):
+
+1. **A readable scale.** Cards are never shrunk below the size they can be read at. When an inside does not fit the
+screen, the camera starts where reading starts, on the left with the commands, and the reader pans to the rest. No
+column of tiny boxes.
+2. **Rules off by default** (the layer, 5.3): the computer goes from about 40 cards to about 30.
+3. **Focus.** On a selected card, "focus" keeps only the card and what is directly tied to it, laid out again; the rest
+goes, and comes back with Escape. On a command: the events it emits, the rules that may refuse it, the scenario counts.
+On an event: the commands that emit it, and the state it builds. That is four to eight cards. It is the same
+mechanism as the trace's one step (6), which fades the rest where focus hides it, so it is built once, with the canvas.
+
+Splitting an inside by the lifecycle's statuses ("in the office", "issued", "being returned") was weighed and left: one
+command may be allowed in several statuses, so the groups would overlap.
+
 **Why this way:**
 
 - **Every level has a small layout of its own.** The map is laid out once and never moves; there are no boxes in boxes
 in boxes. The risk of jumping cards (12.1) all but goes.
 - **One home on the screen at a time.** The design notes' limit, a graph is unreadable past fifteen to twenty nodes,
-holds by itself.
+holds by itself, except inside a large unit, where focus holds it.
 - **The animation hides the server's answer time.** The camera moves at once, and the inside arrives meanwhile.
 - **The reader keeps their bearings.** The flight shows where they came from; the path and the doors say where they are.
 - **The cost:** two contracts' details are never shown at once; neighbours are doors.
@@ -347,6 +366,8 @@ a door to the next contract.
 service needs no report to P1).
 - The line also carries the process's numbers from the log: how many runs, how many broken promises.
 - Several lines can be on at once.
+- **Opening a process** (from the list, or a click on its line) shows its declared shape (5.5): the picture #301 draws,
+with its promises and their verdicts. That is #297's navigation to a process.
 
 ### 5.5 Lenses: pictures of another shape
 
@@ -437,7 +458,8 @@ off").
 ### 6.4 When
 
 Second, after the basic canvas. A trace is a highlight over a graph already drawn, so it adds well to a finished
-canvas. The data is there: every relation it needs is in the graph documents.
+canvas. The data is there: every relation it needs is in the graph documents. Its one step comes earlier, with the
+canvas, as focus (5.2).
 
 ---
 
@@ -683,9 +705,10 @@ between a domain, a contract, a process and a unit, EventCatalog-like cards, a l
 (C1), and a mock-up of one view for approval before the code. **Settled 14 October:** #297 is the base and this plan
 an addition to it (5.0); this branch's draft pull request is part of #297, and #297's text is updated later. Still to
 do: agree it with #297's author before either is built.
-- **12.8 The debt stage before #297 holds the "records only" mark too.** The debt stage (C1 in `PLAN.md`), which #297
-waits for, lists "Records only" in the graph among its debts, as this plan's first stage does (14). Whichever comes
-first does it once.
+- **12.8 One piece of work is written down twice: the "records only" mark (5.8).** Before #297, `PLAN.md` lists a stage
+of leftovers that earlier stages' closing comments named (C1, "debt"), and #297 waits for it. One of its three leftovers
+is the "records only" mark on the graph, which is also in this plan's first stage (14). It is done once, by whichever
+of the two comes first, and crossed off the other.
 
 ---
 
@@ -710,11 +733,12 @@ nest (subdomain → context → contract). A colour is the simpler layout; a fra
 6. **The "records only" mark on the graph:** with something else, or as a small step of its own?
 7. **The way of drawing:** agree to a prototype before deciding (10.3)?
 8. **A mock-up — settled 14 October:** a clickable mock-up, a local HTML file outside the repository, on the test set's
-data (11). The core first: the map, entering a contract and a unit with the camera's flight, doors, the badges, the
-"records only" mark and a simple panel; layers, process lines, the trace and hover in later rounds. The open choices
+data (11). The core first: the map, entering a contract and a unit with the camera's flight, doors, focus, the badges,
+the "records only" mark and a simple panel; layers, process lines, the trace and hover in later rounds. The open choices
 are switches on it, to be compared live: what shows around a home (decision 2), frames or a colour for subdomains
-(decision 3), what the start shows (decision 1), and where the trace's arrows are (decision 4). It also serves as
-#297's mock-up.
+(decision 3), what the start shows (decision 1), where the trace's arrows are (decision 4), and going deeper with the
+camera's flight or by swapping the picture, as EventCatalog does (the likely reading of #297, which does not say). It
+also serves as #297's mock-up, whose one view, the clinic's visit, comes with the process lines' round.
 9. **The test set (11) — settled 14 October:** a copy of Rehmed with the missing cases added, committed on this branch,
 its fate decided when the branch is merged. Assumed, to be objected to if wrong: its labels are Polish, as Rehmed's.
 10. **How does this fit with #220, "a process module gets a picture"?** Its first pull request (processes in the graph
