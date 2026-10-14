@@ -221,7 +221,20 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert left.group == "stage:rehmed.clinical_visit:departure"
       assert left.lines == ["rehmed.scheduling"]
 
-      assert kinds(view) == ~w(actor event process)
+      assert kinds(view) == ~w(actor event external process)
+    end
+
+    test "hangs the external system off the events resting on it, with no arrowhead", %{
+      view: view
+    } do
+      p1 = "external:Rehmed.Domain:p1"
+      assert card(view, p1).group == nil
+      resting = for r <- view.relations, r.to == p1, do: {r.from, r.line, r.head}
+
+      assert Enum.sort(resting) == [
+               {"event:rehmed.statutory_reporting:p1_report_failed", "dotted", false},
+               {"event:rehmed.statutory_reporting:p1_report_sent", "dotted", false}
+             ]
     end
 
     test "draws the process with its run, and the actor accountable for it", %{view: view} do

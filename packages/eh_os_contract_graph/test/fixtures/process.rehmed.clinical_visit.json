@@ -1,5 +1,5 @@
 {
-  "digest": "32e8566434a6",
+  "digest": "b60341b0e30f",
   "domain": "Rehmed.Domain",
   "kind": "process",
   "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
@@ -127,6 +127,23 @@
         "type": "rehmed.statutory_reporting.p1_reporting_not_required"
       }
     ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Rehmed.Domain:p1",
+        "label": "Rejestr zdarzeń medycznych P1",
+        "name": "p1",
+        "operations": [
+          {
+            "label": "Przyjmij zgłoszenie zdarzenia medycznego",
+            "name": "submit_report",
+            "source": "X-01, AGG-10"
+          }
+        ],
+        "source": "X-01",
+        "unavailable_looks_like": "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany"
+      }
+    ],
     "process": [
       {
         "correlate": [
@@ -182,6 +199,18 @@
         "from": "actor:Rehmed.Domain:manager",
         "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.clinical_visit",
         "to": "process:rehmed.clinical_visit"
+      }
+    ],
+    "depends_on": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_sent:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_failed",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_failed:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
       }
     ],
     "fulfils": [

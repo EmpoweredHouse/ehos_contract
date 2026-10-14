@@ -85,7 +85,8 @@ and the `ehos-dev:release` skill makes one.
   every one of which a document carries, empty or not. Moves no verdict.
 - **A process module has a `graph.v1` document** (plan DD, stage P2e, #220): `EhOsContract.Graph.Document.process/1`
   gives one of kind `"process"` — the process with its correlation and deadline, its stages, the events they
-  include with each one's stage, contract and whether it ends a run, those contracts and their contexts, its
+  include with each one's stage, contract and whether it ends a run, those contracts and their contexts, the
+  external systems those events rest on with their `depends_on` relations, as in the contract's document, its
   promises with the events that open, fulfil or settle each otherwise (`opens`, `fulfils`, `or_else`), and the
   actor `accountable_for` it when the domain declares that actor. An event keeps the id it has in its contract's
   document, so the two join. Its shape is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.

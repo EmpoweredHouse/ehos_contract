@@ -1348,6 +1348,23 @@ defmodule EhOsContract.GraphDocumentTest do
       assert JSV.validate(d, @schema) |> elem(0) == :ok
     end
 
+    # An outage of a system an event rests on suspends a promise, so the picture of the
+    # process names the system, as the contract's document does.
+    test "names the external systems its events rest on, as the contract's document does" do
+      d = Document.process(UniversalityGate.TreatmentEpisodeRun)
+      contract = Document.contract(UniversalityGate.TreatmentEpisode)
+      registry = Document.id([:external, UniversalityGate.Domain, :payer_registry])
+      checked = "event:universality_gate.treatment_episode:payer_eligibility_checked"
+
+      assert [%{"id" => ^registry, "label" => label}] = d["nodes"]["external"]
+      assert label == node(contract, "external", registry)["label"]
+      assert [%{"from" => ^checked, "to" => ^registry}] = d["relations"]["depends_on"]
+      assert d["relations"]["depends_on"] == contract["relations"]["depends_on"]
+
+      assert Document.process(DispatchRig.AccountReview)["nodes"]["external"] == []
+      assert JSV.validate(d, @schema) |> elem(0) == :ok
+    end
+
     test "is a process module's alone, and does not depend on anything but it" do
       assert_raise ArgumentError, ~r/is a contract, not a process module/, fn ->
         Document.process(DispatchRig.Ledger)

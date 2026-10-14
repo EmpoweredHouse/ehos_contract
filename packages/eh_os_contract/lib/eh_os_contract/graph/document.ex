@@ -77,7 +77,8 @@ defmodule EhOsContract.Graph.Document do
   of facts under `nodes` and `relations` — the process with its correlation and
   deadline, its stages in their order, the events its stages include, each with its
   `stage`, the `contract` that declares it and `terminal` when it ends a run, those
-  contracts and their contexts, its promises with the events that open (`opens`),
+  contracts and their contexts, the external systems those events rest on
+  (`depends_on`), its promises with the events that open (`opens`),
   fulfil (`fulfils`) or otherwise settle (`or_else`) each, and the actor
   `accountable_for` it — with what it is: its `id:` as `process`, its `module`, the
   domain it names, its `label` and `version`, and the document's `digest`.

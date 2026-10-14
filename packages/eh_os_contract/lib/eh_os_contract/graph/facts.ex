@@ -62,9 +62,9 @@ defmodule EhOsContract.Graph.Facts do
                   ~w(consumed_by refers_to publishes subscribed_by backed_by accountable_for
                      includes)a
 
-  @process_kinds ~w(process stage promise event contract context actor)a
+  @process_kinds ~w(process stage promise event contract context actor external)a
 
-  @process_types ~w(accountable_for opens fulfils or_else)a
+  @process_types ~w(accountable_for opens fulfils or_else depends_on)a
 
   # What tells apart two relations of one type between the same two nodes: a
   # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
@@ -913,8 +913,9 @@ defmodule EhOsContract.Graph.Facts do
   The facts of the process module `process`: the process, its stages, the events its
   stages include — each under the id it has in the document of the contract that
   declares it, so the two documents join — with the stage it sits in and whether it
-  ends a run, the contracts those events come from and their contexts, its promises
-  with the events that open, fulfil or settle each otherwise, and the actor
+  ends a run, the contracts those events come from and their contexts, the external
+  systems those events rest on (`depends_on`, as in the contract's document), its
+  promises with the events that open, fulfil or settle each otherwise, and the actor
   accountable for it. Every kind and type present, empty or not.
   """
   @spec process(module() | map()) :: %{nodes: map(), relations: map()}
@@ -960,6 +961,16 @@ defmodule EhOsContract.Graph.Facts do
           from = event && event_id[event],
           do: {type, relation(from, promise_id.(pr.name))}
 
+    # What an included event rests on, as its contract declares it: an outage of it is
+    # what suspends a promise.
+    resting =
+      for e <- included,
+          x = e.declaration[:depends_on],
+          x != nil,
+          do: {event_id[e.name], x}
+
+    rests = for {from, x} <- resting, do: {:depends_on, relation(from, id(:external, d, x))}
+
     actors = List.wrap(accountable(domain, p.accountable))
 
     accountable =
@@ -993,10 +1004,15 @@ defmodule EhOsContract.Graph.Facts do
       # The same node as in the domain's document.
       contract: Enum.map(contracts, &contract_node(&1, d)),
       context: Enum.map(declared(domain.contexts, contexts), &node(:context, d, &1)),
-      actor: for(a <- actors, do: actor(a, ctx))
+      actor: for(a <- actors, do: actor(a, ctx)),
+      external:
+        for(
+          x <- declared(domain.externals, Enum.map(resting, &elem(&1, 1))),
+          do: external(x, ctx)
+        )
     }
 
-    group(nodes, @process_kinds, typed(promised ++ accountable), @process_types)
+    group(nodes, @process_kinds, typed(promised ++ accountable ++ rests), @process_types)
   end
 
   # A contract as a node of a domain's or a process module's document. A contract has no

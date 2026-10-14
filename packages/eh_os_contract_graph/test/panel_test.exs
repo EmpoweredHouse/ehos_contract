@@ -556,6 +556,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
                "Its fields, and the unit that records it, are in the contract's own document."
 
       assert text =~ "It ends the run."
+      assert text =~ "Rests on Rejestr zdarzeń medycznych P1 external"
       # The overlay leaves out an event that did not happen.
       assert text =~ "From the log Recorded 0 times."
     end

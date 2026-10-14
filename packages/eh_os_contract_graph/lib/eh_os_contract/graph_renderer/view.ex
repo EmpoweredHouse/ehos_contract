@@ -19,7 +19,7 @@ defmodule EhOsContract.GraphRenderer.View do
   | `:contract` | a contract | its full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
   | `{:unit, id}` | a contract | one unit's state, commands, events and rules, and how many scenarios pin each path |
   | `{:lifecycle, id}` | a contract | an aggregate's statuses and the events that move it between them |
-  | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with the contract that declares them, those that end a run, and its promises with their windows |
+  | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with the contract that declares them, those that end a run, its promises with their windows, and the systems its events rest on |
   | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
   | `:system` | a domain | its contracts in their contexts, what one consumes from another, whose units' numbers one keeps, its publications, and its process modules with the contracts whose events each includes |
 
@@ -351,8 +351,9 @@ defmodule EhOsContract.GraphRenderer.View do
   # it includes, each saying the contract that declares it, those that end a run in a
   # colour of their own; each promise as a heavy arrow from the event that opens it to
   # the one that keeps it, with its window, and a dotted one to the event that keeps it
-  # the other way. A stage with more than one event says on its title that it claims no
-  # order inside. Empty for another kind of document.
+  # the other way; and the external systems its events rest on, hung off them by a dotted
+  # line, since an outage of one suspends a promise. A stage with more than one event says
+  # on its title that it claims no order inside. Empty for another kind of document.
   # Called by `build/3`; public for its tests.
   @doc false
   @spec process(map()) :: t()
@@ -403,7 +404,18 @@ defmodule EhOsContract.GraphRenderer.View do
 
     promises = for p <- nodes(document, "promise"), arrow <- promise(document, p), do: arrow
 
-    finish("TB", processes ++ actors ++ events, accountable ++ order ++ promises, groups)
+    systems = for x <- nodes(document, "external"), do: card("external", x)
+
+    rests =
+      for r <- relations(document, "depends_on"),
+          do: arrow("depends_on", r, line: "dotted", head: false)
+
+    finish(
+      "TB",
+      processes ++ actors ++ events ++ systems,
+      accountable ++ order ++ promises ++ rests,
+      groups
+    )
   end
 
   def process(_document), do: finish("TB", [], [], [])

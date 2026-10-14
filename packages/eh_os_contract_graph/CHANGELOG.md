@@ -28,7 +28,8 @@ and the `ehos-dev:release` skill makes one.
   accountable for it; its stages as boxes in their order, each after the one before; in each, the events it
   includes, each naming the contract that declares it, those that end a run in green; each promise a heavy arrow
   from the event that opens it to the one that keeps it, with its window, and a dotted one to the event that keeps
-  it the other way. With the process's overlay, the process card counts its runs, each event how often it happened
+  it the other way; and the external systems the events rest on, whose outage suspends a promise, hung off them
+  by a dotted line. With the process's overlay, the process card counts its runs, each event how often it happened
   (×0 for one the log does not have), and a promise's arrow its verdicts — "3 kept, 1 broken, 2 pending", in the
   error colour when a run broke it — or "unconfirmed" for one the owner has yet to confirm, which no run is judged
   against. The panels say a process's run, deadline, accountable actor, contracts, stages, promises and runs; a

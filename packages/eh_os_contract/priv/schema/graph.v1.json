@@ -2483,7 +2483,7 @@
     },
     "process_document": {
       "type": "object",
-      "description": "A process module's document: one run of the process, its stages, the events its stages include, its promises and who answers for it.",
+      "description": "A process module's document: one run of the process, its stages, the events its stages include, the external systems they rest on, its promises and who answers for it.",
       "required": [
         "schema",
         "kind",
@@ -2536,7 +2536,8 @@
             "event",
             "contract",
             "context",
-            "actor"
+            "actor",
+            "external"
           ],
           "additionalProperties": false,
           "properties": {
@@ -2581,6 +2582,12 @@
               "items": {
                 "$ref": "#/$defs/node_actor"
               }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_external"
+              }
             }
           }
         },
@@ -2591,7 +2598,8 @@
             "accountable_for",
             "opens",
             "fulfils",
-            "or_else"
+            "or_else",
+            "depends_on"
           ],
           "additionalProperties": false,
           "properties": {
@@ -2617,6 +2625,12 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/relation_or_else"
+              }
+            },
+            "depends_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_depends_on"
               }
             }
           }
