@@ -101,6 +101,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
        given: given,
        view: view,
        overlay: overlay,
+       # What the overlay says of each card and arrow, read once per view and overlay
+       # rather than at every render a selection makes.
+       node_marks: Map.new(view.nodes, &{&1.id, Marks.node(overlay, &1.id)}),
+       relation_marks: Map.new(view.relations, &{&1.id, marks(overlay, &1)}),
        stale_overlay?: given != nil and overlay == nil,
        selected: if(selected && picked(view, document, selected), do: selected)
      )}
@@ -172,7 +176,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             :for={node <- @view.nodes}
             type="button"
             class={[
-              "ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id))
+              "ehg-card" | classes(node.id, @focus, @near, @node_marks[node.id])
             ]}
             data-ehg-node={node.id}
             data-kind={node.kind}
@@ -187,15 +191,15 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
             <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
             <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <.count marks={Marks.node(@overlay, node.id)} />
+            <.count marks={@node_marks[node.id]} />
           </button>
           <button
             :for={relation <- @view.relations}
             type="button"
             class={[
               "ehg-relation",
-              blank?(relation, marks(@overlay, relation)) && "ehg-blank"
-              | classes(relation.id, @focus, @near, marks(@overlay, relation))
+              blank?(relation, @relation_marks[relation.id]) && "ehg-blank"
+              | classes(relation.id, @focus, @near, @relation_marks[relation.id])
             ]}
             data-ehg-relation={relation.id}
             data-from={relation.from}
@@ -206,7 +210,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             phx-value-id={relation.id}
             phx-target={@myself}
           >
-            {relation.words}<.count marks={marks(@overlay, relation)} />
+            {relation.words}<.count marks={@relation_marks[relation.id]} />
           </button>
         </div>
       </div>
