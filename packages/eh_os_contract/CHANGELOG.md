@@ -95,6 +95,10 @@ and the `ehos-dev:release` skill makes one.
   process module given, an `includes` relation from it to each given contract whose events it includes, and the
   actor `accountable_for` it; the domain's overlay puts each one's runs on its node. The task gives them; see
   "Changed" for what a reader of the schema has to do. Moves no verdict.
+- **Three functions behind the overlays are public** (plan DD, stage P2e, #220):
+  `EhOsContract.Conformance.promise_verdicts/2` judges a process's confirmed promises as the report does,
+  `EhOsContract.Paths.occurrences_by_type/2` counts events of the given types in one query, and
+  `EhOsContract.Paths.runs_by_process/2` counts the runs of several process modules in one query.
 
 ### Changed
 
