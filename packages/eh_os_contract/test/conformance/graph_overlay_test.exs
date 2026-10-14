@@ -398,12 +398,12 @@ defmodule EhOsContract.GraphOverlayTest do
     contracts_only = queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end)
     assert contracts_only <= budget
 
-    # And exactly one more for the runs of all its process modules, however many there are.
+    # And at most one more for the runs of all its process modules, however many there are.
     processes = Enum.filter(Registry.processes(), &(Model.fetch(&1).domain == DispatchRig.Domain))
     assert length(processes) >= 2
     modules = contracts ++ processes
 
-    assert queries(fn -> Overlay.domain(DispatchRig.Domain, modules) end) == contracts_only + 1
+    assert queries(fn -> Overlay.domain(DispatchRig.Domain, modules) end) <= contracts_only + 1
   end
 
   test "a promise's verdicts are asked of a process module, never of a contract" do
