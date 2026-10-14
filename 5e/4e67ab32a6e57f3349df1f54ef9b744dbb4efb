@@ -1,0 +1,19 @@
+## Review
+
+Two rounds.
+
+Round 1, correctness:
+- My issue comment claimed tests for record and the inbox that did not exist, and said a timer takes the dispatch path; it reaches the process manager as an elapsed event. **Fixed**: tests for the timer's path, nesting and invalid identifiers were added, and the comment was corrected on the issue.
+- An erasure runs with no correlation, though the docs said every reaction carries one. **No change needed** in the code, since an erasure belongs to no piece of work. **Fixed** in the docs.
+- A non-text `correlation_id:` raised `FunctionClauseError` where dispatch used to refuse. **Fixed** (below).
+- Two restore assertions passed without the change too. **No change needed**: they guard the restore. A nested test was added.
+
+Round 1, security and performance:
+- A host's `correlation_id:` to `dispatch/3` or `record/3`, and a message from another application, reached the metadata unchecked: any text, of any length. **Fixed**: only a UUID's text is set.
+- Cost: about 1.4 µs per unit of work. **No change needed.**
+
+Round 2, on the fixes (one review, both concerns):
+- An upper-case identifier was written as sent, while the same work's events come back from the log in lower case. **Fixed**: the cast value is written.
+- The tests never reached the UUID check itself. **Fixed**: 36 bytes that are not a UUID were added.
+- The docs said "none" and "left off" where the code leaves the metadata as it was. **Fixed** in the docs and the changelog line.
+- The test printed Ecto's debug queries from its setup. **Fixed**: the debug level is set after the setup.
