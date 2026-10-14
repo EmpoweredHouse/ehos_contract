@@ -55,9 +55,11 @@ they are the same event.
 
 **3.3 Processes are not shown at all.** In early October processes moved out of contracts into modules of their own,
 since one run (a visit, say) goes through several contracts. On 13 October a contract lost the ability to declare a
-process at all (#221), and the "declared shape" picture left the Graph screen. The graph does not know process
-modules yet. That is a regression to be repaired anyway, and it has a planned stage (#220) with three pull requests:
-processes in the graph document, their picture on the screen, their pages and Mix tasks.
+process at all (#221), and the "declared shape" picture left the Graph screen. That is a regression to be repaired
+anyway, and it has a stage (#220) with three pull requests: processes in the graph document, their picture on the
+screen, their pages and Mix tasks. **The first is in `main` since 14 October (#299)**: a process module has a graph
+document of its own, with an overlay of its runs, and the domain's document has a node per process with an arrow to
+each contract it includes. Nothing draws them on the screen yet.
 
 **3.4 A large contract cannot be read.** The full graph of AppUnite's computers is 33 cards and 49 arrows in one
 picture (the whole contract has 62 elements and 111 relations; the rest is on the unit's and the lifecycle's
@@ -536,7 +538,7 @@ A copy of Rehmed under a domain of its own, with what Rehmed lacks added:
 | a field holding another contract's unit's number, held by several contracts | yes (`visit_id`, three) | kept |
 | an event consumed by two or three contracts | no | added |
 | an event renamed when consumed | no | added |
-| a publication to another application | no | added |
+| a publication to another application | no | **not possible** in the sandbox (11.3); seen on TaxVision's one publication |
 | an event received from another application | no | added |
 | two processes sharing an event (crossing metro lines) | no | added |
 | a process over one contract | no | added |
@@ -547,47 +549,58 @@ A copy of Rehmed under a domain of its own, with what Rehmed lacks added:
 And:
 
 - **Data in the log.** Without it every number is zero, since the development database is empty today. It needs
-sample traffic with deliberate drift:
+sample traffic with deliberate drift (done: `mix graph_lab.traffic`, 14 October):
   - a path never taken;
   - a move the lifecycle does not allow;
   - a broken promise;
   - a step that fails;
   - things that wait.
 - **Labels.** The copy keeps Rehmed's Polish labels, and what is added is labelled in Polish too, so that the set reads
-as one client. The pitfalls of Polish text in `CLAUDE.md` apply. (This follows from copying Rehmed; say so if it should
-be otherwise.)
-- **Its first line says what it is:** a copy of Rehmed changed to test the graph, not a client's material, as the
-invented medical domain in the engine's tests says of itself.
+as one client. The pitfalls of Polish text in `CLAUDE.md` apply.
+- **Its first line says what it is:** a test set for drawing the graph, not a client's material, as the invented
+medical domain in the engine's tests says of itself.
+- **It stands on its own** (Filip's decision, 14 October): it names Rehmed nowhere, shares no table with it, and
+changes at will for the graph's sake. Rehmed stays as it is, untouched.
 
 ### 11.3 Conditions: on this branch, correct, and in the gate
 
 - **Committed on this branch** (Filip's decision, 14 October, replacing "in `.gitignore`" of 12 October). What becomes
 of it is decided when the branch is merged: deleted, moved to a package's tests, or kept as standing material for
 drawing.
-- **A domain of its own:** its own `name:`, so that no id of it collides with Rehmed's (e.g. `graph_lab.scheduling`),
-its own module namespace and its own boundaries.
+- **A domain of its own:** its own `name:`, so that no id of it collides with Rehmed's (`graph-lab.scheduling`), its
+own module namespace (`GraphLab`) and its own boundaries. The name has a dash because of how the set is shown alone
+(below).
 - **Correct, and in the gate.** It compiles with `--warnings-as-errors` and `mix check` passes, locally and on CI,
 since it is committed.
   - **The gain:** three of the sandbox's graph tests go through every registered document. They check that every element
   has a card and a panel, that the log's numbers lay over it, and that the document matches the schema. The set gets
   those checks for free.
   - **The count:** one sandbox test compares the exact count of `mix eh_os_contract.check` findings for the whole
-  sandbox (today "0 errors, 31 warnings, 22 notices", `sandbox/test/e10_outputs_test.exs`). The copy brings Rehmed's
-  warnings and notices with it, so the branch updates that count, and the update goes with the set when the branch is
-  merged.
-- **No migration.** Rehmed's read model keeps its rows in a table of its own, and a migration on an unmerged branch
-changes the test database of every checkout on the machine (`CLAUDE.md`). The copy's read models must need no new
-table.
-- **The host's configuration stays as it is.** The sandbox has one supplier of host-given fields, Rehmed's, for the
-whole host. The copy either uses no host-given field or works with that supplier unchanged.
+  sandbox (it was "0 errors, 31 warnings, 22 notices", `sandbox/test/e10_outputs_test.exs`). The copy brings warnings
+  and notices of the same kinds as Rehmed's, so the branch updates that count to 47 warnings and 31 notices, and the
+  update goes with the set when the branch is merged.
+- **Its own table, by a migration on the branch** (Filip's decision, 14 October, replacing "no migration"). Its read
+model keeps its rows in `graph_lab_daily_payments`. A migration on an unmerged branch changes the test database of
+every checkout on the machine (`CLAUDE.md`): this one only adds a table and its row in `schema_migrations`, which
+other branches ignore.
+- **The host's configuration stays as it is.** Three things follow:
+  - **The set cannot publish.** The sandbox is one application to EHOS, named `taxvision`, and an application
+  publishes only under its own name: the credential verifier stops a host at boot when another of its domains
+  declares a publication. So the set receives an event from another application, but publishes none; a publication
+  is seen on TaxVision's.
+  - The settlement's total, which the host supplies, is supplied by Rehmed's stand-in, which answers nothing for the
+  set: only the HTTP door would ask it, and the set is not dispatched through it.
+  - The set's service catalogue is not the host's, so only the traffic task points the engine at it, for its own run.
 - **Traffic goes into the development database**, never the test one (no `MIX_ENV=test mix run`, `CLAUDE.md`).
-- **The dashboard shows only the set**, through the existing "exclude a namespace" configuration, as Rehmed is shown
-alone today.
+- **The dashboard shows only the set**: the other trees left out through the "exclude a namespace" configuration,
+**and** the verifier's expected application named `graph-lab`, both on the command line. Leaving TaxVision out alone
+no longer boots: the verifier stops a host whose configured application names none of the domains it runs. EHOS
+never names an application with `_`, hence the dash. `mix graph_lab.traffic` prints the whole command.
 
 ### 11.4 What it does not solve
 
-- **A second Rehmed to keep.** Changes to Rehmed are not mirrored in the copy, and the two drift apart. That does not
-matter for drawing, and it is weighed when the branch is merged.
+- **Rehmed's changes do not reach it.** It is its own from now on, and drifts from Rehmed. That does not matter for
+drawing, and it is weighed when the branch is merged.
 - **The renderer package's own tests** still run on documents once taken from the clients' material. Whether to add the
 set's documents to them is part of deciding what becomes of it.
 
@@ -597,20 +610,26 @@ set's documents to them is part of deciding what becomes of it.
 
 - **12.1 A poor or jumping layout.** Small when entering, since every level has a small layout of its own (10.2). The
 prototype checks it.
-- **12.2 Processes are not in the graph's data yet.** Without them there are no metro lines and no declared shape. They
-have to be added to the graph document first (#220, unblocked: a contract no longer declares a process).
-- **12.2a #220 plans a process picture on today's screen itself** (one of its three pull requests: renderer and
-screen). That overlaps with this plan's process lines and "declared shape" lens (decision 10).
-- **12.3 The graph document's format is released (0.3.0).** Processes and the mark are added to it. First the rule
-"the format changes only by addition" has to be written down, so that a reader on an older version (the Console, say)
-keeps working.
+- **12.2 Processes in the graph's data — resolved 14 October** (#299, the first pull request of #220): a process module's
+document and overlay, and process nodes in the domain's document.
+- **12.2a #220 plans a process picture on today's screen itself** (its second pull request: renderer and screen, still
+to come). That overlaps with this plan's process lines and "declared shape" lens (decision 10).
+- **12.3 The graph document's format is released (0.3.0).** The processes were added to the domain's document as a
+breaking change (the web package's changelog says a reader holding the document to 0.3.0's schema refuses the new
+keys). The "records only" mark is still to be added, and the rule "the format changes only by addition" is still
+unwritten, so that a reader on an older version (the Console, say) keeps working.
 - **12.4 An assumption in the design notes.** From August: "navigation is per-process, never global"
 (`docs/adr/technology-notes.md`). One canvas changes that. The repository's rules ask for a dated amendment, not a
 rewrite. The reason behind it, readability, is kept by hidden insides.
 - **12.5 Too much at once.** The plan has many parts, and a pull request that cannot be read with attention is not
 really reviewed. Hence the stages (14).
-- **12.6 The test set is a second Rehmed** (11.4): it drifts from Rehmed and raises the sandbox's count of `check`
-findings while it lives on the branch.
+- **12.6 The test set lives on the branch** (11.3, 11.4): it raises the sandbox's count of `check` findings and adds a
+migration while it lives there.
+- **12.7 Another issue covers the same ground: #297**, opened on 14 October by a teammate ("Draw the graph like a
+catalog: cards of their kind, a legend, search, one canvas"). It plans one canvas on the Graph screen with navigation
+between a domain, a contract, a process and a unit, EventCatalog-like cards, a legend and search, after the debt stage
+(C1), and a mock-up of one view for approval before the code. This plan and #297 have to become one before either is
+built.
 
 ---
 
@@ -639,24 +658,27 @@ set's data (11), and on Rehmed's until it exists.
 9. **The test set (11) — settled 14 October:** a copy of Rehmed with the missing cases added, committed on this branch,
 its fate decided when the branch is merged. Assumed, to be objected to if wrong: its labels are Polish, as Rehmed's.
 10. **How does this fit with #220, "a process module gets a picture"?** Its first pull request (processes in the graph
-document) is common to both plans. Its second (a process picture on the screen) can either:
+document) is common to both plans, and is in `main` since 14 October (#299). Its second (a process picture on the
+screen) can either:
     - be built at once as this plan's process lines and "declared shape" lens in the new canvas (less double work, but
     #220 waits for the canvas);
     - or be built first on today's screen, as #220 plans, and moved into the new canvas later (processes come back to
     the screen sooner, but the picture is built twice).
+11. **This plan and #297 (12.7):** one issue for both, agreed with its author — this plan's content carried into #297,
+or #297 closed in favour of the issue this plan becomes?
 
 ---
 
 ## 14. Order (provisional, no technical detail)
 
-1. The test set for drawing (11): a copy of Rehmed with the missing cases, and traffic in the development database,
-committed on this branch.
+1. ~~The test set for drawing (11): a copy of Rehmed with the missing cases, and traffic in the development database,
+committed on this branch.~~ Done 14 October: `sandbox/lib/graph_lab/`, `mix graph_lab.traffic`.
 2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8).
 3. The decisions of 13.
 4. A GitHub issue with this plan, and a short paragraph in `PLAN.md`.
 5. Stages, each with its own pull request:
-   1. the rule for changing the format, then processes in the graph document (#220's first pull request) and the
-   "records only" mark;
+   1. the rule for changing the format, and the "records only" mark (processes in the graph document, #220's first pull
+   request, are in `main` since 14 October);
    2. the map and entering homes, with today's panel;
    3. layers, search, lenses;
    4. processes as lines;
