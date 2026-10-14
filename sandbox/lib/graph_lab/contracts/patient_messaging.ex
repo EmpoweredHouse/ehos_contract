@@ -1,6 +1,6 @@
 defmodule GraphLab.Contracts.PatientMessaging do
   @moduledoc """
-  **Added to the test set to test the graph on; not client material** (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
   The text messages a patient gets about a visit: a reminder when it is booked, a notice
   when it is cancelled, a survey when the patient has left.
@@ -47,6 +47,7 @@ defmodule GraphLab.Contracts.PatientMessaging do
       depends_on: :sms_gateway,
       source: "dodane do testów grafu" do
       field :kind, :message_kind
+      field :gateway_message_id, :id, issued_by: :sms_gateway
     end
   end
 

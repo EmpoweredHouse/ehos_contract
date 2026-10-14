@@ -1,7 +1,7 @@
 defmodule GraphLab.Contracts do
   @moduledoc """
-  The test set's contracts (`GraphLab`): one per context, but settlement's, which has two
-  — the visit settlement and the till.
+  The test set's contracts (`GraphLab`): seven, in six of the domain's seven contexts —
+  settlement has two, the visit settlement and the till, and configuration none.
   """
 
   use Boundary,

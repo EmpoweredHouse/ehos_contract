@@ -7,8 +7,10 @@ defmodule GraphLab.Contracts.Settlement do
   method.
 
   A process manager starts on scheduling's `visit_completed`, which makes settlement the
-  third contract consuming that event, and flags a visit nobody settled eight hours
-  later. No material names that interval: it is here for the graph.
+  third contract consuming that event, and flags a visit nobody settled by the end of
+  reception's day, 20:00 at the clinic; a payment taken in the meantime calls it off. No
+  material names that hour: it is here for the graph, with the pricing rule the host
+  applies to give a settlement its total.
   """
 
   use EhOsContract.Contract,
@@ -134,8 +136,7 @@ defmodule GraphLab.Contracts.Settlement do
     event :visit_handed_over, "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
       source: "E-115, K5-20"
 
-    # `E-55`. A split across methods is allowed, and is where the incumbent flips
-    # the sign.
+    # `E-55`. A split across methods is allowed.
     event :payment_recorded, "Pacjent opłacił wizytę", source: "E-55" do
       field :method, :payment_method
       field :amount, :money
@@ -151,18 +152,17 @@ defmodule GraphLab.Contracts.Settlement do
       field :total, :money
     end
 
-    # What crosses to external payers (`30-contexts.md`: "which visits a payer owes
-    # for"), next to either close: a mixed visit is paid by the patient for what the
-    # payer does not cover (`P-31`). The model has no fact for it, so this one is
-    # ours, and no amount: the payer's invoice is
-    # made outside the system (`H62`).
+    # What crosses to external payers, next to either close: a mixed visit is paid by the
+    # patient for what the payer does not cover (`P-31`). No amount: the payer's invoice
+    # is made outside the system (`H62`).
     event :visit_charged_to_payer, "Wizyta obciąża płatnika zewnętrznego",
       source: "30-contexts.md, CTX-05 → CTX-06" do
       field :payer_id, :id
       field :period_id, :id
     end
 
-    # `E-84`. `delta` may be negative, so a refund needs no event of its own.
+    # `E-84`. `delta` may be negative: the till owes the patient such a correction as a
+    # refund.
     event :settlement_corrected, "Zaksięgowano korektę po zamknięciu dnia", source: "E-84" do
       field :delta, :money
       field :business_date, :date
@@ -175,14 +175,36 @@ defmodule GraphLab.Contracts.Settlement do
   # The settlement's counterpart of the documentation chase.
   process_manager :settlement_chase, "Pogoń za rozliczeniem wizyty" do
     correlate :visit_id
-    starts_on :visit_completed, sets: :settlement_due
 
-    timer :settlement_due, "Koniec dnia bez rozliczenia",
-      wait: {8, :hour},
+    state do
+      field :due_at, :timestamp, optional: true
+    end
+
+    starts_on :visit_completed, sets: :settlement_due
+    on :payment_recorded, cancels: :settlement_due
+
+    timer :settlement_due, "Koniec dnia recepcji (20:00) bez rozliczenia",
+      at: :due_at,
       issues: :flag_unsettled_visit
 
     ends_on :visit_closed_commercially
     ends_on :visit_closed_without_payment
+  end
+
+  # The rule the host's systems apply to give a settlement its total, which the host
+  # supplies rather than reception (`close_settlement`'s `total`).
+  domain_service :pricing, "Wycena wizyty" do
+    function :patient_part, "Część ceny wizyty, którą płaci pacjent" do
+      argument :price, :money, label: "Cena wizyty"
+      argument :covered, :money, label: "Część pokryta przez płatnika"
+      returns :money
+
+      rule :the_rest_of_the_price, "Pacjent płaci to, czego nie pokrywa płatnik",
+        examples: [{[20_000, 0], 20_000}, {[20_000, 15_000], 5_000}]
+
+      rule :never_below_zero, "Płatnik pokrywający więcej niż cenę nie daje pacjentowi zwrotu",
+        examples: [{[20_000, 25_000], 0}]
+    end
   end
 
   read_model :daily_totals, "Zestawienie dnia per metoda płatności",
@@ -198,7 +220,7 @@ defmodule GraphLab.Contracts.Settlement do
     param :business_date, :date
   end
 
-  scenario "osiem godzin po wyjściu pacjenta bez rozliczenia — wizyta oznaczona" do
+  scenario "koniec dnia recepcji bez rozliczenia — wizyta oznaczona" do
     target :settlement_chase
     given :visit_completed
     on :settlement_due
@@ -210,13 +232,27 @@ defmodule GraphLab.Contracts.Settlement do
     expect :unsettled_visit_flagged
   end
 
+  scenario "płatność przyjęta — pogoń odwołuje termin końca dnia" do
+    target :settlement_chase
+    given :visit_completed
+    on :payment_recorded, %{method: :card, amount: 20_000}
+    cancels :settlement_due
+  end
+
+  scenario "korekta po rozliczeniu należy do dnia zamknięcia" do
+    given :payment_recorded, %{method: :card, amount: 20_000}
+    given :visit_closed_commercially, %{total: 20_000}
+    command :book_correction, %{delta: -1_000}
+    expect :settlement_corrected, %{delta: -1_000, business_date: "2026-01-01"}
+  end
+
   scenario "korekta przed rozliczeniem wizyty — odrzucona" do
     command :book_correction, %{delta: -1_000}
     rejected :only_a_settled_visit_is_corrected
   end
 
-  # VLW 00:19:58: an unpaid penalty is collected with the next visit, "pay 200 zł at
-  # once, not 150". A 150 zł visit and a 50 zł penalty are 200 zł.
+  # An unpaid penalty is collected with the next visit: a 150 zł visit and a 50 zł penalty
+  # are 200 zł.
   scenario "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka" do
     given :payment_recorded, %{method: :card, amount: 20_000}
     command :close_settlement, %{total: 20_000}

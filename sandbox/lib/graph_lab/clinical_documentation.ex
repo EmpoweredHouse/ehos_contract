@@ -1,10 +1,10 @@
 defmodule GraphLab.ClinicalDocumentation do
   @moduledoc """
   The implementation of `GraphLab.Contracts.ClinicalDocumentation`: the documentation's
-  decision and the chase after it.
+  decision, the chase after it, and the visit's note.
   """
 
   use Boundary,
     deps: [EhOsContract, GraphLab.Contracts],
-    exports: [VisitDocumentation, DocumentationChase]
+    exports: [VisitDocumentation, DocumentationChase, VisitNote]
 end

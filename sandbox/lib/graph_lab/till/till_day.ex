@@ -1,13 +1,16 @@
 defmodule GraphLab.Till.TillDay do
   @moduledoc """
-  Decides the till's day in the test set (`GraphLab`): it closes only once the cash is
-  counted, with the last count. A day already closed is refused by the lifecycle before
-  this decision runs.
+  Decides the till's day in the test set (`GraphLab`): it opens once, and closes only
+  once the cash is counted, with the last count. A day that is not open is refused a
+  count or a close by the lifecycle before this decision runs.
   """
 
   use GraphLab.Contracts.Till, aggregate: :till_day
 
   @impl true
+  def open_till_day(_command, %State{status: status}) when status != nil,
+    do: reject(:a_day_is_opened_once)
+
   def open_till_day(%OpenTillDay{day_id: id}, _state), do: emit(%DayOpened{day_id: id})
 
   @impl true

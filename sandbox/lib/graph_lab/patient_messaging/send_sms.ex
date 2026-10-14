@@ -1,7 +1,8 @@
 defmodule GraphLab.PatientMessaging.SendSms do
   @moduledoc """
-  Sends a queued message through the SMS gateway and records its delivery report as
-  the integration, in the test set (`GraphLab`).
+  Sends a queued message through the SMS gateway and records its delivery report, with
+  the number the gateway gave the message, as the gateway's integration, in the test
+  set (`GraphLab`).
 
   **There is no gateway behind the sandbox**, so the send is the gateway saying
   delivered, unless the application environment says it is down:
@@ -14,30 +15,31 @@ defmodule GraphLab.PatientMessaging.SendSms do
   use GraphLab.Contracts.PatientMessaging, effect: :send_sms
 
   alias EhOsContract.Actor
+  alias GraphLab.Contracts.PatientMessaging
   alias GraphLab.Contracts.PatientMessaging.Events.MessageDelivered
 
   @impl true
   def message_queued(%MessageQueued{visit_id: id, kind: kind, __meta__: meta}) do
-    with :up <- gateway(),
+    with {:ok, number} <- send_through_gateway(meta.id),
          {:ok, _receipt} <-
            EhOsContract.record(
-             GraphLab.Contracts.PatientMessaging,
-             %MessageDelivered{visit_id: id, kind: kind},
+             PatientMessaging,
+             %MessageDelivered{visit_id: id, kind: kind, gateway_message_id: number},
              actor: Actor.system(:sms_integration),
              idempotency_key: "message-delivered:#{meta.id}",
              causation_id: meta.id,
              correlation_id: meta.correlation_id
            ) do
       :ok
-    else
-      :down -> {:error, :gateway_down}
-      error -> error
     end
   end
 
-  defp gateway do
-    :eh_os_contract_host
-    |> Application.get_env(__MODULE__, [])
-    |> Keyword.get(:gateway, :up)
+  # The gateway's answer: the number it gives the message, or that it is down.
+  defp send_through_gateway(event_id) do
+    case Application.get_env(:eh_os_contract_host, __MODULE__, [])
+         |> Keyword.get(:gateway, :up) do
+      :up -> {:ok, "sms-" <> event_id}
+      :down -> {:error, :gateway_down}
+    end
   end
 end

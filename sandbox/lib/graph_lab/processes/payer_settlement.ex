@@ -15,15 +15,17 @@ defmodule GraphLab.Processes.PayerSettlement do
 
   correlate [:payer_id, :period_id]
 
-  stage :charging, include: [{GraphLab.Contracts.Settlement, :visit_charged_to_payer}]
+  stage :charging, "Obciążenie płatnika",
+    include: [{GraphLab.Contracts.Settlement, :visit_charged_to_payer}]
 
-  stage :reconciliation,
+  stage :reconciliation, "Uzgodnienie wizyt",
     include: [
       {GraphLab.Contracts.ExternalPayers,
        [:visit_marked_settled_with_payer, :visit_excluded_from_invoice]}
     ]
 
-  stage :invoicing, include: [{GraphLab.Contracts.ExternalPayers, :payer_invoice_issued}]
+  stage :invoicing, "Faktura",
+    include: [{GraphLab.Contracts.ExternalPayers, :payer_invoice_issued}]
 
   ends_on :payer_invoice_issued
 end

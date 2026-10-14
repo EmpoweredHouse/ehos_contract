@@ -1,12 +1,16 @@
 defmodule GraphLab.Till.CashRefund do
   @moduledoc """
-  Decides a cash refund in the test set (`GraphLab`): owed on the policy's word, paid
-  out once. A second payout is refused by the lifecycle before this decision runs.
+  Decides a cash refund in the test set (`GraphLab`): owed once per visit, on the
+  policy's word, and paid out once. A payout of a refund not owed is refused by the
+  lifecycle before this decision runs.
   """
 
   use GraphLab.Contracts.Till, aggregate: :cash_refund
 
   @impl true
+  def owe_refund(_command, %State{status: status}) when status != nil,
+    do: reject(:a_refund_is_owed_once)
+
   def owe_refund(%OweRefund{visit_id: id, amount: amount}, _state),
     do: emit(%RefundOwed{visit_id: id, amount: amount})
 

@@ -1,6 +1,6 @@
 defmodule GraphLab.Processes.TillDay do
   @moduledoc """
-  **Added to the test set to test the graph on; not client material** (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
   Reception's till from its opening to its close: a process whose every event is one
   contract's, `GraphLab.Contracts.Till`, with a promise and a deadline.
@@ -14,9 +14,9 @@ defmodule GraphLab.Processes.TillDay do
 
   correlate :day_id
 
-  stage :opening, include: [{GraphLab.Contracts.Till, :day_opened}]
-  stage :counting, include: [{GraphLab.Contracts.Till, :cash_counted}]
-  stage :closing, include: [{GraphLab.Contracts.Till, :day_closed}]
+  stage :opening, "Otwarcie", include: [{GraphLab.Contracts.Till, :day_opened}]
+  stage :counting, "Przeliczenie gotówki", include: [{GraphLab.Contracts.Till, :cash_counted}]
+  stage :closing, "Zamknięcie", include: [{GraphLab.Contracts.Till, :day_closed}]
 
   ends_on :day_closed
 

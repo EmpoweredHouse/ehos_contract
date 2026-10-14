@@ -1,7 +1,7 @@
 defmodule GraphLab.StatutoryReporting.SendP1Report do
   @moduledoc """
-  Sends a queued report to the P1 registry and records its answer as the
-  integration (D6).
+  Sends a queued report to the P1 registry and records its answer as the registry's
+  integration, a system actor.
 
   **There is no P1 behind the sandbox**, so this send is the registry saying yes:
   it records `p1_report_sent` and nothing else. A host with the registry calls it

@@ -82,7 +82,7 @@ defmodule GraphLab.Settlement.VisitSettlement do
     do: emit(%UnsettledVisitFlagged{visit_id: id})
 
   # The day a correction belongs to is the close's, never the day it was entered,
-  # which is the incumbent's defect. Before a close there is no day, and
+  # which is the defect the rule exists for. Before a close there is no day, and
   # nothing to correct.
   @impl true
   def book_correction(_command, %State{closed_on: nil}),

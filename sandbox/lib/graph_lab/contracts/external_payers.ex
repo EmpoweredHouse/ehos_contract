@@ -61,8 +61,10 @@ defmodule GraphLab.Contracts.ExternalPayers do
 
     # The mockup's exclude on the monthly screen. The event model has no command
     # for it; the invariant it serves has the reason in it.
+    # A manager acts on the payers they are granted (`scope:`).
     command :exclude_visit_from_invoice, "Wyłącz wizytę z rozliczenia",
       by: :manager,
+      scope: :payer_id,
       emits: :visit_excluded_from_invoice,
       rejects: [:invoiced_period_does_not_change, :only_a_charged_visit_is_marked_or_excluded],
       source: "51-mock.md §4.8; AGG-11 niezmiennik 4" do
@@ -72,6 +74,7 @@ defmodule GraphLab.Contracts.ExternalPayers do
 
     command :issue_payer_invoice, "Wystaw fakturę płatnikowi",
       by: :manager,
+      scope: :payer_id,
       emits: :payer_invoice_issued,
       rejects: [
         :invoiced_period_does_not_change,

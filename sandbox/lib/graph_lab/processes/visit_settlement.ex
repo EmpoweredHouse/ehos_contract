@@ -1,6 +1,6 @@
 defmodule GraphLab.Processes.VisitSettlement do
   @moduledoc """
-  **Added to the test set to test the graph on; not client material** (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
   A visit from the patient leaving the room to its commercial close at reception. It
   shares `visit_completed` with `GraphLab.Processes.ClinicalVisit`, so two process lines
@@ -16,9 +16,10 @@ defmodule GraphLab.Processes.VisitSettlement do
 
   correlate :visit_id
 
-  stage :departure, include: [{GraphLab.Contracts.Scheduling, :visit_completed}]
+  stage :departure, "Wyjście pacjenta",
+    include: [{GraphLab.Contracts.Scheduling, :visit_completed}]
 
-  stage :settlement,
+  stage :settlement, "Rozliczenie",
     include: [
       {GraphLab.Contracts.Settlement,
        [
@@ -46,6 +47,17 @@ defmodule GraphLab.Processes.VisitSettlement do
 
     given :visit_closed_commercially, %{visit_id: "visit-anna", total: 20_000},
       at: "2026-09-07T10:00:00+02:00"
+
+    promise :settled_the_same_day, at: "2026-09-08T09:00:00+02:00"
+  end
+
+  scenario "wizyta na płatnika zamknięta bez płatności — termin dotrzymany inną drogą",
+    verdict: :satisfied,
+    via: :or_else do
+    given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00+02:00"
+
+    given :visit_closed_without_payment, %{visit_id: "visit-anna", total: 18_000},
+      at: "2026-09-07T11:00:00+02:00"
 
     promise :settled_the_same_day, at: "2026-09-08T09:00:00+02:00"
   end

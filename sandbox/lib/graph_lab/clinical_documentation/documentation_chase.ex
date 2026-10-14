@@ -1,7 +1,7 @@
 defmodule GraphLab.ClinicalDocumentation.DocumentationChase do
   @moduledoc """
   A day after the patient leaves, creates the overdue-documentation task, unless the
-  visit was closed clinically first (client decision, 2026-08-13).
+  visit was closed clinically first.
   """
 
   use GraphLab.Contracts.ClinicalDocumentation, process_manager: :documentation_chase

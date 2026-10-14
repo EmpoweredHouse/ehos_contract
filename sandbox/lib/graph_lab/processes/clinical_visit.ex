@@ -20,10 +20,15 @@ defmodule GraphLab.Processes.ClinicalVisit do
 
   correlate :visit_id
 
-  stage :departure, include: [{GraphLab.Contracts.Scheduling, :visit_completed}]
-  stage :closing, include: [{GraphLab.Contracts.ClinicalDocumentation, :visit_closed_clinically}]
+  stage :departure, "Wyjście pacjenta",
+    include: [{GraphLab.Contracts.Scheduling, :visit_completed}]
 
-  stage :reporting,
+  stage :closing, "Dokumentacja i zamknięcie kliniczne",
+    include: [
+      {GraphLab.Contracts.ClinicalDocumentation, [:note_written, :visit_closed_clinically]}
+    ]
+
+  stage :reporting, "Zgłoszenie do P1",
     include: [
       {GraphLab.Contracts.StatutoryReporting,
        [:p1_report_queued, :p1_report_sent, :p1_report_failed, :p1_reporting_not_required]}

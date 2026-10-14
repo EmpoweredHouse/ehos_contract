@@ -62,7 +62,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
 
     # The codes come with the close, from the screen the specialist closes on; the state
     # could not hold them: a personal field folds under a patient the first event
-    # names, and before it the state has no patient (F5). Whether the service is
+    # names, and before it the state has no patient. Whether the service is
     # reported is the booking's, in the state.
     command :close_visit_clinically, "Zamknij wizytę klinicznie",
       by: :specialist,
@@ -72,7 +72,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
       actor_is(:specialist_id, or_rejects: :closed_by_its_specialist)
 
       field :patient_id, :id, subject: :patient
-      field :pesel, :string, personal: :patient_id
+      field :pesel, :pesel, personal: :patient_id
       field :icd10, :string, personal: :patient_id, optional: true
       field :icd9, :string, personal: :patient_id, optional: true
       field :practitioner_number, :id
@@ -99,11 +99,30 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
     # is not reported closes without them.
     event :visit_closed_clinically, "Zamknięto wizytę przez specjalistę", source: "E-52" do
       field :patient_id, :id, subject: :patient
-      field :pesel, :string, personal: :patient_id
+      field :pesel, :pesel, personal: :patient_id
       field :icd10, :string, personal: :patient_id, optional: true
       field :icd9, :string, personal: :patient_id, optional: true
       field :practitioner_number, :id
       field :p1_reported, :boolean
+    end
+  end
+
+  # A unit that only records: the note cannot be refused, so in this core context it is
+  # the "decides nothing" case the graph is to mark.
+  aggregate :visit_note, "Notatka z wizyty" do
+    identity visit_id: {:id, :visit}
+
+    command :write_note, "Zapisz notatkę z wizyty",
+      by: :specialist,
+      emits: :note_written,
+      source: "dodane do testów grafu" do
+      field :patient_id, :id, subject: :patient
+      field :text, :string, personal: :patient_id
+    end
+
+    event :note_written, "Zapisano notatkę z wizyty", source: "dodane do testów grafu" do
+      field :patient_id, :id, subject: :patient
+      field :text, :string, personal: :patient_id
     end
   end
 
@@ -179,6 +198,11 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
     given :visit_closed_clinically, Map.put(@close, :p1_reported, false)
     command :close_visit_clinically, @close
     rejected :closed_clinically_once
+  end
+
+  scenario "specjalista zapisuje notatkę z wizyty" do
+    command :write_note, %{patient_id: "patient-anna", text: "Ból odcinka lędźwiowego, poprawa"}
+    expect :note_written
   end
 
   scenario "doba po wyjściu pacjenta bez zamknięcia — zadanie o zaległej dokumentacji" do

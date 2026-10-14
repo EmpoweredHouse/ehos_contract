@@ -14,7 +14,7 @@ defmodule GraphLab.Domain do
   """
 
   use EhOsContract.Domain, name: :"graph-lab", language: :pl, time_zone: "Europe/Warsaw"
-  use Boundary, deps: [EhOsContract], exports: [Values]
+  use Boundary, deps: [EhOsContract], exports: [{Values, []}]
 
   subdomain :core, "Rdzeń", type: :core, source: "30-contexts.md, Core Domain Chart"
 
@@ -96,7 +96,8 @@ defmodule GraphLab.Domain do
   actor :reception, :human, "Recepcja"
   actor :specialist, :human, "Specjalista"
 
-  actor :manager, :human, "Manager gabinetu" do
+  # A manager is granted the payers whose invoices they issue.
+  actor :manager, :human, "Manager gabinetu", scope: [:payer_id] do
     responsibility :overdue_reports,
                    "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
                    source: "P-25"
@@ -134,15 +135,24 @@ defmodule GraphLab.Domain do
              "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi",
            source: "X-02, X-03, X-04"
 
-  # It answers each message with a delivery report.
+  # It answers each message with a delivery report, and the message's number in it.
   external :sms_gateway, "Bramka SMS",
     direction: :bidirectional,
+    expected_latency: {5, :second},
     unavailable_looks_like: "wiadomości wiszą w kolejce albo bramka odrzuca wysyłkę",
     source: "dodane do testów grafu" do
     operation :send_sms, "Wyślij SMS", source: "dodane do testów grafu"
   end
 
   value :money, :integer, unit: :grosze, label: "Kwota"
+
+  # Eleven digits; the checksum is not checked (`GraphLab.Pesel`).
+  value :pesel, :string, label: "PESEL" do
+    invariant :eleven_digits, "PESEL to jedenaście cyfr",
+      violated_by: ["1234567890", "123456789012", "1234567890A", "123 456 789"],
+      satisfied_by: ["12345678901"],
+      source: "dodane do testów grafu"
+  end
 
   value :payment_method,
         {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]},

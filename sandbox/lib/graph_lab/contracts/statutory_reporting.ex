@@ -23,7 +23,7 @@ defmodule GraphLab.Contracts.StatutoryReporting do
       emits: :p1_report_queued,
       source: "P-07" do
       field :patient_id, :id, subject: :patient
-      field :pesel, :string, personal: :patient_id
+      field :pesel, :pesel, personal: :patient_id
       field :icd10, :string, personal: :patient_id
       field :icd9, :string, personal: :patient_id
       field :practitioner_number, :id
@@ -36,7 +36,7 @@ defmodule GraphLab.Contracts.StatutoryReporting do
     # `AGG-10`, state `Zakolejkowane`: the payload the registry will get.
     event :p1_report_queued, "Zgłoszenie P1 zakolejkowane", source: "AGG-10" do
       field :patient_id, :id, subject: :patient
-      field :pesel, :string, personal: :patient_id
+      field :pesel, :pesel, personal: :patient_id
       field :icd10, :string, personal: :patient_id
       field :icd9, :string, personal: :patient_id
       field :practitioner_number, :id

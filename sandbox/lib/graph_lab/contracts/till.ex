@@ -1,6 +1,6 @@
 defmodule GraphLab.Contracts.Till do
   @moduledoc """
-  **Added to the test set to test the graph on; not client material** (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
   Reception's till: the day it is open, from the opening to the close after the cash is
   counted (`E-83`, `AGG-07`), and the cash a patient is
@@ -20,7 +20,10 @@ defmodule GraphLab.Contracts.Till do
       field :counted, :money, optional: true
     end
 
-    invariant :a_closed_day_does_not_change, "Zamkniętego dnia kasowego się nie zmienia",
+    invariant :a_day_is_opened_once, "Dzień kasowy otwiera się raz",
+      source: "AGG-07; dodane do testów grafu"
+
+    invariant :only_an_open_day_changes, "Przelicza się i zamyka tylko otwarty dzień kasowy",
       source: "AGG-07; dodane do testów grafu"
 
     invariant :cash_counted_before_close,
@@ -38,24 +41,26 @@ defmodule GraphLab.Contracts.Till do
     command :open_till_day, "Otwórz dzień kasowy",
       by: :reception,
       emits: :day_opened,
+      rejects: :a_day_is_opened_once,
       source: "dodane do testów grafu"
 
     command :count_cash, "Przelicz gotówkę w kasie",
       by: :reception,
       emits: :cash_counted,
       from: :open,
-      or_rejects: :a_closed_day_does_not_change,
-      rejects: :a_closed_day_does_not_change,
+      or_rejects: :only_an_open_day_changes,
+      rejects: :only_an_open_day_changes,
       source: "dodane do testów grafu" do
       field :counted, :money
     end
 
+    # The day closes with the last count.
     command :close_till_day, "Zamknij dzień kasowy",
-      by: :manager,
+      by: :reception,
       emits: :day_closed,
       from: :open,
-      or_rejects: :a_closed_day_does_not_change,
-      rejects: [:a_closed_day_does_not_change, :cash_counted_before_close],
+      or_rejects: :only_an_open_day_changes,
+      rejects: [:only_an_open_day_changes, :cash_counted_before_close],
       source: "E-83"
 
     event :day_opened, "Otwarto dzień kasowy", source: "dodane do testów grafu"
@@ -72,8 +77,14 @@ defmodule GraphLab.Contracts.Till do
   aggregate :cash_refund, "Zwrot gotówki pacjentowi" do
     identity visit_id: {:id, :visit}
 
-    invariant :a_refund_is_paid_out_once, "Zwrot wypłaca się raz",
+    # A second correction downwards of the same visit is refused here, and the
+    # correction stands: the refusal is the refund's answer to the policy.
+    invariant :a_refund_is_owed_once, "Zwrot z kasy zapisuje się raz na wizytę",
       source: "dodane do testów grafu"
+
+    invariant :only_an_owed_refund_is_paid_out,
+              "Wypłaca się tylko zapisany i jeszcze niewypłacony zwrot",
+              source: "dodane do testów grafu"
 
     lifecycle do
       status :owed, "Do wypłaty"
@@ -86,6 +97,7 @@ defmodule GraphLab.Contracts.Till do
     # Issued by the policy on a correction downwards, never by a person.
     command :owe_refund, "Zapisz zwrot do wypłaty",
       emits: :refund_owed,
+      rejects: :a_refund_is_owed_once,
       source: "E-84; dodane do testów grafu" do
       field :amount, :money
     end
@@ -94,8 +106,8 @@ defmodule GraphLab.Contracts.Till do
       by: :reception,
       emits: :refund_paid_out,
       from: :owed,
-      or_rejects: :a_refund_is_paid_out_once,
-      rejects: :a_refund_is_paid_out_once,
+      or_rejects: :only_an_owed_refund_is_paid_out,
+      rejects: :only_an_owed_refund_is_paid_out,
       source: "dodane do testów grafu"
 
     event :refund_owed, "Zwrot czeka na wypłatę z kasy", source: "dodane do testów grafu" do
@@ -119,11 +131,25 @@ defmodule GraphLab.Contracts.Till do
     expect :day_opened
   end
 
+  scenario "dzień kasowy już otwarty — drugie otwarcie odrzucone" do
+    given :day_opened
+    command :open_till_day
+    rejected :a_day_is_opened_once
+  end
+
   scenario "gotówka przeliczona — dzień kasowy się zamyka" do
     given :day_opened
     given :cash_counted, %{counted: 120_000}
     command :close_till_day
     expect :day_closed, %{counted: 120_000}
+  end
+
+  scenario "gotówka przeliczona dwa razy — dzień zamyka się z ostatnim przeliczeniem" do
+    given :day_opened
+    given :cash_counted, %{counted: 120_000}
+    given :cash_counted, %{counted: 118_500}
+    command :close_till_day
+    expect :day_closed, %{counted: 118_500}
   end
 
   scenario "gotówka nieprzeliczona — zamknięcie dnia odrzucone" do
@@ -137,7 +163,15 @@ defmodule GraphLab.Contracts.Till do
     given :cash_counted, %{counted: 120_000}
     given :day_closed, %{counted: 120_000}
     command :count_cash, %{counted: 125_000}
-    rejected :a_closed_day_does_not_change
+    rejected :only_an_open_day_changes
+  end
+
+  scenario "dzień zamknięty — drugie zamknięcie odrzucone" do
+    given :day_opened
+    given :cash_counted, %{counted: 120_000}
+    given :day_closed, %{counted: 120_000}
+    command :close_till_day
+    rejected :only_an_open_day_changes
   end
 
   scenario "korekta o 10 zł w dół — zwrot do wypłaty",
@@ -153,6 +187,17 @@ defmodule GraphLab.Contracts.Till do
     issues :owe_refund, %{visit_id: "visit-anna", amount: 1_000}
   end
 
+  scenario "zwrot zapisany do wypłaty" do
+    command :owe_refund, %{amount: 1_000}
+    expect :refund_owed, %{amount: 1_000}
+  end
+
+  scenario "zwrot już zapisany — drugi zwrot dla tej wizyty odrzucony" do
+    given :refund_owed, %{amount: 1_000}
+    command :owe_refund, %{amount: 500}
+    rejected :a_refund_is_owed_once
+  end
+
   scenario "zwrot zapisany — recepcja wypłaca go z kasy" do
     given :refund_owed, %{amount: 1_000}
     command :pay_out_refund
@@ -163,6 +208,6 @@ defmodule GraphLab.Contracts.Till do
     given :refund_owed, %{amount: 1_000}
     given :refund_paid_out
     command :pay_out_refund
-    rejected :a_refund_is_paid_out_once
+    rejected :only_an_owed_refund_is_paid_out
   end
 end
