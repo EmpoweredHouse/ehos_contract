@@ -995,19 +995,25 @@ defmodule EhOsContract.Graph.Facts do
         ),
       promise: promises,
       event: events,
-      # Named by its id, as in the domain's document, where the same node is.
-      contract:
-        for m <- contracts do
-          with_attrs(%{id: contract_id.(m.module), name: m.id, label: nil, source: nil},
-            context: id(:context, d, m.context),
-            module: m.module
-          )
-        end,
+      # The same node as in the domain's document.
+      contract: Enum.map(contracts, &contract_node(&1, d)),
       context: Enum.map(declared(domain.contexts, contexts), &node(:context, d, &1)),
       actor: for(a <- actors, do: actor(a, ctx))
     }
 
     group(nodes, @process_kinds, typed(promised ++ accountable), @process_types)
+  end
+
+  # A contract as a node of a domain's or a process module's document. A contract has no
+  # words of its own in the DSL. Named by its id, as everything outside the code names it
+  # (plan DD, P1a, #183); its module beside it, for a reader in the code. A contract
+  # declares no process (plan DD, P2h, #221), so the optional `process` and `correlate`
+  # of the shape are left out.
+  defp contract_node(m, d) do
+    with_attrs(%{id: id(:contract, m.id), name: m.id, label: nil, source: nil},
+      context: id(:context, d, m.context),
+      module: m.module
+    )
   end
 
   # The actor who answers for a process module, as the domain declares it, or nil: one
@@ -1199,17 +1205,7 @@ defmodule EhOsContract.Graph.Facts do
             terms: Enum.map(c.terms, &term(&1, c.language || domain.language, code))
           )
         end,
-      # A contract has no words of its own in the DSL. Named by its id, as everything
-      # outside the code names it (plan DD, P1a, #183); its module beside it, for a reader
-      # in the code. A contract declares no process (plan DD, P2h, #221), so the
-      # optional `process` and `correlate` of the shape are left out.
-      contract:
-        for m <- models do
-          with_attrs(%{id: contract_id.(m.module), name: m.id, label: nil, source: nil},
-            context: id(:context, d, m.context),
-            module: m.module
-          )
-        end,
+      contract: Enum.map(models, &contract_node(&1, d)),
       event: events,
       publication:
         for(w <- wire, do: %{id: id(:publication, d, w), name: w, label: nil, source: nil}),
