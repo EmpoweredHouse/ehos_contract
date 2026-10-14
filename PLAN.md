@@ -21,8 +21,11 @@ table** in "Dopisek 5 października — DD"; each stage's scope, decisions and r
 marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**Next** (the revision of 13 October, below the "Postęp" table): P2i (#295) and P2h (#296) are merged; P2e (#220, in progress), C1, G1 (#297); then M1, O2, V5 and L4 rewritten
-before they start. V1–V4 are required before the first application keeps data it may not lose.
+**Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
+removing a contract's own process (P2h, #296) are merged; a process module's picture and page (P2e, #220, in
+progress), the debt the closing comments left (C1), the graph drawn like a catalog (G1, #297); then the context map
+(M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
+rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
