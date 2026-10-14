@@ -74,7 +74,7 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
 
   # Plan DD, P2e (#220).
   test "a promise's verdicts in words, broken in the error state, and none for one unconfirmed" do
-    promise = fn entry -> Marks.promise(%{"nodes" => %{"p" => entry}}, "p") end
+    promise = fn entry -> Marks.promise(%{"nodes" => %{"p" => entry}}, %{"id" => "p"}) end
 
     zero = %{
       "instances" => 0,
@@ -95,9 +95,13 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
            }) ==
              %{count: nil, states: [:failing], verdict: "2 kept, 1 broken, 2 suspended"}
 
-    assert Marks.promise(%{"nodes" => %{}}, "p") ==
-             %{count: nil, states: [], verdict: "unconfirmed"}
-
-    assert Marks.promise(nil, "p") == %{count: nil, states: []}
+    # Unconfirmed is the document's word, overlay or not; a promise the overlay merely does
+    # not list — of a stale overlay, say — is claimed to be nothing.
+    unverified = %{"id" => "p", "unverified" => true}
+    unconfirmed = %{count: nil, states: [], verdict: "unconfirmed"}
+    assert Marks.promise(%{"nodes" => %{}}, unverified) == unconfirmed
+    assert Marks.promise(nil, unverified) == unconfirmed
+    assert Marks.promise(%{"nodes" => %{}}, %{"id" => "p"}) == %{count: nil, states: []}
+    assert Marks.promise(nil, %{"id" => "p"}) == %{count: nil, states: []}
   end
 end

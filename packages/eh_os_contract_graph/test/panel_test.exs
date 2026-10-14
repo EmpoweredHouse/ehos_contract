@@ -585,20 +585,26 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert open(c.document, arrow, :process, overlay) =~ "From the log Opened in 7 runs."
     end
 
-    test "a promise the overlay judges none of is unconfirmed, not zero", c do
+    test "a promise the owner has yet to confirm says so, overlay or not", c do
+      unverified =
+        update_in(c.document, ["nodes", "promise"], fn [p] -> [Map.put(p, "unverified", true)] end)
+
       overlay = update_in(c.overlay, ["nodes"], &Map.delete(&1, c.promise))
-      text = open(c.document, c.promise, :process, overlay)
 
-      assert text =~
-               "Unconfirmed: no run is judged against it until the process owner confirms it."
+      for overlay <- [overlay, nil] do
+        text = open(unverified, c.promise, :process, overlay)
 
-      refute text =~ "From the log"
+        assert text =~
+                 "Unconfirmed: no run is judged against it until the process owner confirms it."
+
+        refute text =~ "From the log"
+      end
 
       text = open(c.document, c.promise, :process, c.overlay)
       assert text =~ "From the log No run has opened it."
 
-      # Without an overlay nothing is said of the log at all.
-      refute open(c.document, c.promise, :process) =~ "Unconfirmed"
+      # A confirmed one missing from an overlay is not claimed unconfirmed.
+      refute open(c.document, c.promise, :process, overlay) =~ "Unconfirmed"
     end
 
     test "in its domain: its module, the contracts whose events it includes, who answers for it" do

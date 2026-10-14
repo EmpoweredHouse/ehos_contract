@@ -9,7 +9,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # | --- | --- | --- |
   # | an event's `occurrences`, a process's `runs`, a unit's `aggregates` | that number | — |
   # | a promise's verdicts | none: the verdicts in words | `:failing` when a run broke it |
-  # | a promise a process's overlay does not list | none: "unconfirmed" | — |
+  # | a promise the owner has yet to confirm (`unverified`), with or without an overlay | none: "unconfirmed" | — |
   # | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
   # | a lifecycle's transition | `count` | `:untraversed`, `:pending` |
   # | a move the lifecycle does not allow | `count` | `:undeclared` |
@@ -44,15 +44,19 @@ defmodule EhOsContract.GraphRenderer.Marks do
   end
 
   @doc """
-  The marks of promise `id`: its verdicts in words — `2 kept, 1 broken`, `none opened` —
-  and `:failing` when a run broke it; `unconfirmed` where the overlay judges none of its
-  runs, the owner having yet to confirm it; none without an overlay.
+  The marks of `promise`, a promise node: `unconfirmed` when the document says the owner
+  has yet to confirm it, which no run is judged against, overlay or not; otherwise its
+  verdicts in words — `2 kept, 1 broken`, `none opened` — and `:failing` when a run broke
+  it; none without an overlay or an entry.
   """
-  @spec promise(map() | nil, String.t()) :: t()
-  def promise(nil, _id), do: @none
+  @spec promise(map() | nil, map()) :: t()
+  def promise(_overlay, %{"unverified" => true}),
+    do: %{count: nil, states: [], verdict: "unconfirmed"}
 
-  def promise(overlay, id) do
-    case get_in(overlay, ["nodes", id]) do
+  def promise(nil, _promise), do: @none
+
+  def promise(overlay, promise) do
+    case get_in(overlay, ["nodes", promise["id"]]) do
       %{"instances" => _} = verdicts ->
         %{
           count: nil,
@@ -61,7 +65,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
         }
 
       _ ->
-        %{count: nil, states: [], verdict: "unconfirmed"}
+        @none
     end
   end
 

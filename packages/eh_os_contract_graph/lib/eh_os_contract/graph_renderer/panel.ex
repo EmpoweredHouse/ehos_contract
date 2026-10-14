@@ -1529,10 +1529,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
   attr :ctx, :map, required: true
 
   # A promise the owner has yet to confirm is judged against no run, so the log has
-  # nothing to say of it: said so, where a reader would look for its verdicts.
+  # nothing to say of it: said so, as the document says it, where a reader would look
+  # for its verdicts.
   defp unconfirmed(assigns) do
     ~H"""
-    <p :if={@ctx.overlay && !get_in(@ctx.overlay, ["nodes", @promise["id"]])} class="ehg-empty">
+    <p :if={@promise["unverified"]} class="ehg-empty">
       Unconfirmed: no run is judged against it until the process owner confirms it.
     </p>
     """

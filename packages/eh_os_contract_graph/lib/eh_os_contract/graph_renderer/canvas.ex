@@ -231,8 +231,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # A promise's arrow carries the promise's verdicts, which the overlay keeps on the
   # promise; any other relation, its own numbers.
-  defp marks(overlay, %{type: "promise"} = relation),
-    do: Marks.promise(overlay, relation.facts["id"])
+  defp marks(overlay, %{type: "promise"} = relation), do: Marks.promise(overlay, relation.facts)
 
   defp marks(overlay, relation), do: Marks.relation(overlay, relation.id)
 

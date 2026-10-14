@@ -274,13 +274,20 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       refute "is-failing" in classes(at(html, "data-ehg-relation", c.arrow))
     end
 
-    test "a promise the overlay does not judge is unconfirmed, and without an overlay nothing",
-         c do
+    test "a promise the owner has yet to confirm is unconfirmed, overlay or not", c do
+      unverified =
+        update_in(c.document, ["nodes", "promise"], fn [p] -> [Map.put(p, "unverified", true)] end)
+
       overlay = update_in(c.overlay, ["nodes"], &Map.delete(&1, c.promise))
 
-      assert count(draw(c.document, overlay, :process), "data-ehg-relation", c.arrow) ==
-               ["· unconfirmed"]
+      for overlay <- [overlay, nil] do
+        assert count(draw(unverified, overlay, :process), "data-ehg-relation", c.arrow) ==
+                 ["· unconfirmed"]
+      end
 
+      # One merely missing from the overlay is not claimed unconfirmed, and with no overlay
+      # a confirmed one says nothing.
+      assert count(draw(c.document, overlay, :process), "data-ehg-relation", c.arrow) == []
       assert count(draw(c.document, nil, :process), "data-ehg-relation", c.arrow) == []
     end
   end
