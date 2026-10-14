@@ -23,11 +23,33 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A process module's picture** (plan DD, stage P2e, #220): the view `:process` draws a process module's
+  `graph.v1` document top to bottom — the process, with what one run is and its deadline, and the actor
+  accountable for it; its stages as boxes in their order, each after the one before; in each, the events it
+  includes, each naming the contract that declares it, those that end a run in green; each promise a heavy arrow
+  from the event that opens it to the one that keeps it, with its window, and a dotted one to the event that keeps
+  it the other way. With the process's overlay, the process card counts its runs, each event how often it happened
+  (×0 for one the log does not have), and a promise's arrow its verdicts — "3 kept, 1 broken, 2 pending", in the
+  error colour when a run broke it — or "unconfirmed" for one the owner has yet to confirm, which no run is judged
+  against. The panels say a process's run, deadline, accountable actor, contracts, stages, promises and runs; a
+  stage's place and events; a promise's window, events and verdicts; and an event's contract and stage, its fields
+  being in the contract's own document.
+- **The system view draws a domain's process modules** (plan DD, stage P2e, #220): a card for each, a dotted
+  "includes" arrow to each contract whose events it includes, the actor accountable for it, and its runs from the
+  domain's overlay. A process's panel names its module and the contracts it includes, and a contract's the
+  processes that include its events.
 - **A contract keeping the number of a sibling's unit, drawn** (plan DD, stage L3, #286). The system view draws a
   dotted arrow from the sibling to the contract keeping its unit's number, "number of visit", the way the number
   travels, as a consumed event's arrow does; its panel says which units, and a contract's panel lists the units
   whose numbers it keeps ("Keeps the number of") and the contracts keeping its units' ("Its units' numbers are
   kept by"). It reads the domain document's `refers_to` relations, which the engine writes from this release.
+
+### Removed
+
+- **Breaking:** the view `:declared`, a contract's process (plan DD, stage P2e, #220). A contract declares no
+  process since the engine's #221, so the view was always empty; draw a process module's document with `:process`
+  instead. A contract's full graph no longer draws an event because a process includes it, and the system view's
+  contract card no longer names a process, both of which only a contract's own process gave.
 
 ## [0.1.0] - 2026-10-11
 

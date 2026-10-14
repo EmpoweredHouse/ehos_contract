@@ -17,19 +17,26 @@ defmodule EhOsContract.GraphRendererTest do
   @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
   @fixtures Path.expand("../../packages/eh_os_contract_graph/test/fixtures", __DIR__)
 
+  # Every contract's, every process module's (plan DD, P2e, #220) and every domain's, with
+  # its process modules, as the dashboard draws them.
   defp documents do
     contracts = Registry.contracts()
+    processes = Registry.processes()
 
     for(c <- contracts, do: {inspect(c), Document.contract(c)}) ++
-      for d <- Registry.domains(), do: {inspect(d), Document.domain(d, contracts)}
+      for(p <- processes, do: {inspect(p), Document.process(p)}) ++
+      for d <- Registry.domains(), do: {inspect(d), Document.domain(d, contracts ++ processes)}
   end
 
   defp overlays do
     contracts = Registry.contracts()
+    processes = Registry.processes()
+    modules = contracts ++ processes
 
     for(c <- contracts, do: {inspect(c), Document.contract(c), Overlay.contract(c)}) ++
+      for(p <- processes, do: {inspect(p), Document.process(p), Overlay.process(p)}) ++
       for d <- Registry.domains(),
-          do: {inspect(d), Document.domain(d, contracts), Overlay.domain(d, contracts)}
+          do: {inspect(d), Document.domain(d, modules), Overlay.domain(d, modules)}
   end
 
   defp draw(document, overlay \\ nil),
@@ -126,7 +133,7 @@ defmodule EhOsContract.GraphRendererTest do
     # whole documents.
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
     taken = names -- ["edge_cases.json", "messaging.json"]
-    assert length(taken) == 6
+    assert length(taken) == 7
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()

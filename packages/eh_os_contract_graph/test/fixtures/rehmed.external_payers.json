@@ -1,7 +1,7 @@
 {
   "context": "context:Rehmed.Domain:external_payers",
   "contract": "rehmed.external_payers",
-  "digest": "08e35949050e",
+  "digest": "86708fc7ba4f",
   "domain": "Rehmed.Domain",
   "kind": "contract",
   "module": "Rehmed.Contracts.ExternalPayers",
@@ -165,7 +165,6 @@
         "name": "visit_marked_settled_with_payer",
         "schema_version": 1,
         "source": "E-86",
-        "stage": "stage:rehmed.external_payers:payer_settlement:reconciliation",
         "type": "rehmed.external_payers.visit_marked_settled_with_payer",
         "unit": "unit:rehmed.external_payers:payer_period"
       },
@@ -201,7 +200,6 @@
         "name": "visit_excluded_from_invoice",
         "schema_version": 1,
         "source": "AGG-11 niezmiennik 4",
-        "stage": "stage:rehmed.external_payers:payer_settlement:reconciliation",
         "type": "rehmed.external_payers.visit_excluded_from_invoice",
         "unit": "unit:rehmed.external_payers:payer_period"
       },
@@ -231,8 +229,6 @@
         "name": "payer_invoice_issued",
         "schema_version": 1,
         "source": "E-87",
-        "stage": "stage:rehmed.external_payers:payer_settlement:invoicing",
-        "terminal": true,
         "type": "rehmed.external_payers.payer_invoice_issued",
         "unit": "unit:rehmed.external_payers:payer_period"
       },
@@ -259,12 +255,10 @@
           }
         ],
         "id": "event:rehmed.external_payers:visit_charged_to_payer",
-        "included": true,
         "label": "Wizyta obciąża płatnika zewnętrznego",
         "name": "visit_charged_to_payer",
         "schema_version": 1,
         "source": "30-contexts.md, CTX-05 → CTX-06",
-        "stage": "stage:rehmed.external_payers:payer_settlement:charging",
         "type": "rehmed.settlement.visit_charged_to_payer"
       }
     ],
@@ -300,46 +294,10 @@
       }
     ],
     "policy": [],
-    "process": [
-      {
-        "correlate": [
-          "payer_id",
-          "period_id"
-        ],
-        "id": "process:rehmed.external_payers:payer_settlement",
-        "label": "Miesięczne rozliczenie z płatnikiem zewnętrznym",
-        "name": "payer_settlement",
-        "source": null
-      }
-    ],
     "process_manager": [],
-    "promise": [],
     "publication": [],
     "query": [],
     "read_model": [],
-    "stage": [
-      {
-        "id": "stage:rehmed.external_payers:payer_settlement:charging",
-        "label": null,
-        "name": "charging",
-        "process": "process:rehmed.external_payers:payer_settlement",
-        "source": null
-      },
-      {
-        "id": "stage:rehmed.external_payers:payer_settlement:reconciliation",
-        "label": null,
-        "name": "reconciliation",
-        "process": "process:rehmed.external_payers:payer_settlement",
-        "source": null
-      },
-      {
-        "id": "stage:rehmed.external_payers:payer_settlement:invoicing",
-        "label": null,
-        "name": "invoicing",
-        "process": "process:rehmed.external_payers:payer_settlement",
-        "source": null
-      }
-    ],
     "status": [],
     "subject": [],
     "timer": [],
@@ -407,13 +365,6 @@
     "value": []
   },
   "relations": {
-    "accountable_for": [
-      {
-        "from": "actor:Rehmed.Domain:manager",
-        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.external_payers:payer_settlement",
-        "to": "process:rehmed.external_payers:payer_settlement"
-      }
-    ],
     "allowed_in": [],
     "backed_by": [],
     "builds": [],
@@ -451,7 +402,6 @@
     "ends": [],
     "enters": [],
     "fires": [],
-    "fulfils": [],
     "handled_by": [],
     "issues": [],
     "may_ask": [],
@@ -473,8 +423,6 @@
       }
     ],
     "may_record": [],
-    "opens": [],
-    "or_else": [],
     "projected_into": [],
     "published_as": [],
     "reads": [],
@@ -819,5 +767,5 @@
     ]
   },
   "schema": "eh_os_contract.graph.v1",
-  "version": "d85b172285e1"
+  "version": "6434f2756490"
 }

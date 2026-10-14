@@ -71,4 +71,42 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
     assert relation(%{"by_trigger" => %{"a" => step(%{}), "b" => step(%{"untraversed" => true})}}) ==
              %{count: nil, states: []}
   end
+
+  # Plan DD, P2e (#220).
+  test "a process's overlay lists only the events that happened: one it leaves out is 0" do
+    process = %{"kind" => "process", "nodes" => %{}}
+
+    assert Marks.node(process, "e", "event") == %{count: 0, states: []}
+    assert Marks.node(process, "a", "actor") == %{count: nil, states: []}
+    assert Marks.node(%{"kind" => "contract", "nodes" => %{}}, "e", "event").count == nil
+    assert Marks.node(nil, "e", "event").count == nil
+  end
+
+  test "a promise's verdicts in words, broken in the error state, and none for one unconfirmed" do
+    promise = fn entry -> Marks.promise(%{"nodes" => %{"p" => entry}}, "p") end
+
+    zero = %{
+      "instances" => 0,
+      "satisfied" => 0,
+      "violated" => 0,
+      "pending" => 0,
+      "suspended" => 0
+    }
+
+    assert promise.(zero) == %{count: nil, states: [], verdict: "none opened"}
+
+    assert promise.(%{
+             zero
+             | "instances" => 5,
+               "satisfied" => 2,
+               "violated" => 1,
+               "suspended" => 2
+           }) ==
+             %{count: nil, states: [:failing], verdict: "2 kept, 1 broken, 2 suspended"}
+
+    assert Marks.promise(%{"nodes" => %{}}, "p") ==
+             %{count: nil, states: [], verdict: "unconfirmed"}
+
+    assert Marks.promise(nil, "p") == %{count: nil, states: []}
+  end
 end

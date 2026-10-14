@@ -17,11 +17,12 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # | Selected | The panel shows |
   # | --- | --- |
   # | a command | its fields, who may issue it (people with the grant EHOS gives, reactions, timers, and the one person its unit's state names, where it says so), its scope, what its decision reads, the statuses it is allowed in, the rules it may be refused on |
-  # | an event | its fields, who records it, where it comes from, whether it ends the run, the systems it rests on |
+  # | an event | its fields, who records it, where it comes from, the systems it rests on; in a process's document, its contract, its stage and whether it ends a run, its fields being in the contract's document |
   # | a policy, a process manager | what it takes and issues, its rules, delivery and idempotency, its scenarios — a manager's by what triggers them |
   # | an effect | the event it handles, the system and the operation it calls, its rules, delivery and idempotency |
   # | a read model, a query | what builds it and its fields; the query's parameters, who may ask, what it reads and returns, its scenarios |
   # | a context, an external system, an actor | the context's terms, relations, contracts and entities; the system's operations, outage and who uses it; the actor's role, responsibilities and what the role may do |
+  # | a process, a stage, a promise | the process's run, deadline, who answers for it, the contracts whose events it includes, its stages and promises; a stage's place and events; a promise's window, its events, and its verdicts from the log or that it is unconfirmed |
   # | a relation | its two ends, what it says, and the scenarios that cover it |
   #
   # A field is shown the same way everywhere it appears: its name, label, type, whether
@@ -45,8 +46,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
   @doc "The panel of what is selected."
   @spec panel(map()) :: Phoenix.LiveView.Rendered.t()
   def panel(assigns) do
-    # Every part takes the joins and the click's target together.
-    assigns |> assign(:ctx, %{lookup: assigns.lookup, target: assigns.target}) |> selected()
+    # Every part takes the joins, the click's target and the overlay together.
+    assigns
+    |> assign(:ctx, %{lookup: assigns.lookup, target: assigns.target, overlay: assigns.overlay})
+    |> selected()
   end
 
   defp selected(%{picked: {:relation, relation}} = assigns) do
@@ -54,7 +57,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       assign(assigns,
         relation: relation,
         covering: Lookup.covering(assigns.lookup, relation.id),
-        log: get_in(assigns.overlay || %{}, ["relations", relation.id])
+        log: relation_log(assigns.overlay, relation)
       )
 
     ~H"""
@@ -77,12 +80,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     kind = if element.kind == "start", do: "unit", else: element.kind
     node = element.facts
 
-    assigns =
-      assign(assigns,
-        kind: kind,
-        node: node,
-        log: get_in(assigns.overlay || %{}, ["nodes", node["id"]])
-      )
+    assigns = assign(assigns, kind: kind, node: node, log: node_log(assigns.overlay, kind, node))
 
     ~H"""
     <.frame
@@ -213,6 +211,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
           do: ", schema version #{@node["schema_version"]}"}.
       </p>
       <p :if={@node["stage"]}>In the stage <.ref id={@node["stage"]} ctx={@ctx} />.</p>
+      <p :if={@node["stage"] && @node["contract"] && !Map.has_key?(@node, "fields")} class="ehg-quiet">
+        Its fields, and the unit that records it, are in the contract's own document.
+      </p>
     </.part>
     <.part :if={@people != [] or (@node["capability"] && @received == [])} title="Recorded by">
       <.refs relations={@people} side="from" ctx={@ctx} />
@@ -667,17 +668,27 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
+  # A process in its own document, with its stages and promises, or in its domain's, with
+  # the contracts whose events it includes.
   defp body(%{kind: "process"} = assigns) do
     {id, l} = {assigns.node["id"], assigns.ctx.lookup}
+    stages = Lookup.owned(l, "stage", "process", id)
+    includes = Lookup.out(l, id, "includes")
 
     assigns =
       assign(assigns,
-        stages: Lookup.owned(l, "stage", "process", id),
+        stages: stages,
         promises: Lookup.owned(l, "promise", "process", id),
-        accountable: Lookup.into(l, id, "accountable_for")
+        accountable: Lookup.into(l, id, "accountable_for"),
+        includes: includes,
+        # A process's own document holds the contracts its events come from, and no other.
+        contracts: if(includes == [] and stages != [], do: Lookup.nodes(l, "contract"), else: [])
       )
 
     ~H"""
+    <p :if={@node["module"]}>
+      The process module <code>{@node["name"]}</code>, in the code <code>{@node["module"]}</code>.
+    </p>
     <p :if={@node["correlate"] not in [nil, []]}>
       One run per <code>{Enum.join(@node["correlate"], ", ")}</code>.
     </p>
@@ -687,6 +698,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
     </p>
     <.part :if={@accountable != []} title="Accountable">
       <.refs relations={@accountable} side="from" ctx={@ctx} />
+    </.part>
+    <.part :if={@includes != [] or @contracts != []} title="Includes events of">
+      <.refs relations={@includes} side="to" ctx={@ctx} />
+      <.nodes list={@contracts} ctx={@ctx} />
     </.part>
     <.part :if={@stages != []} title="Stages, in order"><.nodes list={@stages} ctx={@ctx} /></.part>
     <.part :if={@promises != []} title="Promises"><.nodes list={@promises} ctx={@ctx} /></.part>
@@ -733,6 +748,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@or_else != []} title="Kept the other way by">
       <.refs relations={@or_else} side="from" ctx={@ctx} />
     </.part>
+    <.unconfirmed promise={@node} ctx={@ctx} />
     """
   end
 
@@ -789,18 +805,14 @@ defmodule EhOsContract.GraphRenderer.Panel do
         referred_by: Lookup.into(l, id, "refers_to"),
         publishes: Lookup.out(l, id, "publishes"),
         subscribes: Lookup.into(l, id, "subscribed_by"),
-        accountable: Lookup.into(l, id, "accountable_for")
+        included: Lookup.into(l, id, "includes")
       )
 
     ~H"""
     <p>The contract <code>{@node["name"]}</code>, in the code <code>{@node["module"]}</code>.</p>
-    <p :if={@node["process"]}>Its process: {@node["process"]["label"] || @node["process"]["name"]}.</p>
-    <p :if={@node["correlate"] not in [nil, []]}>
-      One run per <code>{Enum.join(@node["correlate"], ", ")}</code>.
-    </p>
     <p :if={@node["context"]}>In the context <.ref id={@node["context"]} ctx={@ctx} />.</p>
-    <.part :if={@accountable != []} title="Accountable">
-      <.refs relations={@accountable} side="from" ctx={@ctx} />
+    <.part :if={@included != []} title="Processes that include its events">
+      <.refs relations={@included} side="from" ctx={@ctx} />
     </.part>
     <.part :if={@from != []} title="Takes events from">
       <div :for={r <- @from} class="ehg-trigger">
@@ -911,6 +923,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       The promise <.ref id={@facts["id"]} ctx={@ctx} />{promise_window(@facts)}: the first event
       opens it, and the second keeps it{if @type == "or_else", do: " the other way"}.
     </p>
+    <.unconfirmed promise={@facts} ctx={@ctx} />
     """
   end
 
@@ -1495,6 +1508,61 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <p :for={sentence <- @sentences}>{sentence}</p>
     </.part>
     """
+  end
+
+  # What the log says of the node or relation a panel is of. A process's overlay leaves out
+  # an event that happened no time; a promise's arrow says what the log says of the
+  # promise.
+  defp node_log(nil, _kind, _node), do: nil
+
+  defp node_log(overlay, kind, node) do
+    case get_in(overlay, ["nodes", node["id"]]) do
+      nil when kind == "event" ->
+        if overlay["kind"] == "process", do: %{"occurrences" => 0}
+
+      entry ->
+        entry
+    end
+  end
+
+  defp relation_log(nil, _relation), do: nil
+
+  defp relation_log(overlay, %{type: type, facts: %{"process" => _} = promise})
+       when type in ["promise", "or_else"],
+       do: get_in(overlay, ["nodes", promise["id"]])
+
+  defp relation_log(overlay, relation), do: get_in(overlay, ["relations", relation.id])
+
+  attr :promise, :map, required: true
+  attr :ctx, :map, required: true
+
+  # A promise the owner has yet to confirm is judged against no run, so the log has
+  # nothing to say of it: said so, where a reader would look for its verdicts.
+  defp unconfirmed(assigns) do
+    ~H"""
+    <p :if={@ctx.overlay && !get_in(@ctx.overlay, ["nodes", @promise["id"]])} class="ehg-empty">
+      Unconfirmed: no run is judged against it until the process owner confirms it.
+    </p>
+    """
+  end
+
+  # A promise's verdicts over the runs that opened it, as the report gives them.
+  defp log_sentences(%{"instances" => runs} = verdicts, _lookup) do
+    n = &(verdicts[&1] || 0)
+
+    Enum.reject(
+      [
+        "Opened in #{count(runs, "run")}.",
+        n.("satisfied") > 0 &&
+          "Kept in #{n.("satisfied")}: #{n.("satisfied_via_eventually")} by the event that " <>
+            "keeps it, #{n.("satisfied_via_or_else")} the other way.",
+        n.("violated") > 0 && "Broken in #{n.("violated")}.",
+        n.("pending") > 0 && "Pending in #{n.("pending")}: not kept yet.",
+        n.("suspended") > 0 &&
+          "Suspended in #{n.("suspended")}: broken while a system it depends on was down."
+      ],
+      &(&1 in [nil, false])
+    )
   end
 
   defp log_sentences(%{"by_trigger" => by_trigger}, lookup) do

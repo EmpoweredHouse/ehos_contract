@@ -67,10 +67,8 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   end
 
   describe "views/1" do
-    test "lists a contract's declared shape, its full graph, and each unit with its lifecycle" do
+    test "lists a contract's full graph, and each unit with its lifecycle" do
       assert View.views(Fixtures.document("rehmed.statutory_reporting")) == [
-               {:declared,
-                "Declared shape — Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"},
                {:contract, "Full graph"},
                {{:unit, "unit:rehmed.statutory_reporting:p1_report"},
                 "aggregate p1_report — Zgłoszenie P1"}
@@ -80,6 +78,13 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
               "Lifecycle — Zapotrzebowanie na komputer"} in View.views(
                Fixtures.document("appunite_equipment.demands")
              )
+    end
+
+    test "lists a process module's picture" do
+      assert View.views(Fixtures.document("process.rehmed.clinical_visit")) == [
+               {:process,
+                "Process — Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"}
+             ]
     end
 
     test "lists a domain's context map and system" do
@@ -100,7 +105,9 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert View.build(document, {:lifecycle, "unit:rehmed.settlement:visit_settlement"}).nodes ==
                []
 
-      assert View.build(document, :declared).nodes == []
+      # A view of another kind of document than its own is empty.
+      assert View.build(document, :process).nodes == []
+      assert View.build(Fixtures.document("domain.rehmed"), :process).nodes == []
     end
   end
 
@@ -182,15 +189,14 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
   end
 
-  describe "declared/1, the declared shape" do
+  describe "process/1, a process module" do
     setup do
-      [view: View.declared(Fixtures.document("rehmed.statutory_reporting"))]
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      [document: document, view: View.process(document)]
     end
 
     test "draws the stages top to bottom, in order, each after the one before", %{view: view} do
-      stages =
-        for s <- ~w(departure closing reporting),
-            do: "stage:rehmed.statutory_reporting:clinical_visit:#{s}"
+      stages = for s <- ~w(departure closing reporting), do: "stage:rehmed.clinical_visit:#{s}"
 
       assert view.direction == "TB"
       assert Enum.map(view.groups, & &1.id) == stages
@@ -202,48 +208,60 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
                Enum.zip(Enum.drop(stages, -1), Enum.drop(stages, 1))
     end
 
-    test "puts each event in its stage, the ends in a colour of their own", %{view: view} do
+    test "puts each event in its stage with its contract, the ends in a colour of their own", %{
+      view: view
+    } do
       sent = card(view, "event:rehmed.statutory_reporting:p1_report_sent")
-      assert sent.group == "stage:rehmed.statutory_reporting:clinical_visit:reporting"
+      assert sent.group == "stage:rehmed.clinical_visit:reporting"
       assert sent.variant == "terminal"
+      assert sent.lines == ["rehmed.statutory_reporting"]
       assert card(view, "event:rehmed.statutory_reporting:p1_report_queued").variant == nil
-      assert card(view, "event:rehmed.statutory_reporting:visit_completed").group =~ "departure"
-      assert kinds(view) == ~w(event external)
+
+      left = card(view, "event:rehmed.scheduling:visit_completed")
+      assert left.group == "stage:rehmed.clinical_visit:departure"
+      assert left.lines == ["rehmed.scheduling"]
+
+      assert kinds(view) == ~w(actor event process)
+    end
+
+    test "draws the process with its run, and the actor accountable for it", %{view: view} do
+      process = card(view, "process:rehmed.clinical_visit")
+      assert process.group == nil
+      assert process.lines == ["one run per visit_id"]
+
+      assert [%{words: "accountable for", head: false}] =
+               between(view, "actor:Rehmed.Domain:manager", process.id)
+    end
+
+    test "says a process's deadline, and that it is not confirmed", %{document: document} do
+      timed =
+        update_in(document, ["nodes", "process"], fn [p] ->
+          [Map.put(p, "deadline", %{"amount" => 30, "unit" => "day", "unverified" => true})]
+        end)
+
+      assert card(View.process(timed), "process:rehmed.clinical_visit").lines ==
+               ["one run per visit_id", "ends within 30 days · not confirmed"]
     end
 
     test "draws the promise as a heavy arrow with its window, and its other way dotted", %{
       view: view
     } do
-      opened = "event:rehmed.statutory_reporting:visit_completed"
+      opened = "event:rehmed.scheduling:visit_completed"
 
-      assert [%{type: "promise", words: "within 2 days", line: "thick"}] =
+      assert [%{type: "promise", words: "within 2 days", line: "thick"} = promise] =
                between(view, opened, "event:rehmed.statutory_reporting:p1_report_sent")
+
+      assert promise.facts["id"] ==
+               "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
 
       assert [%{type: "or_else", words: "or else", line: "dotted"}] =
                between(view, opened, "event:rehmed.statutory_reporting:p1_reporting_not_required")
     end
 
-    test "hangs the external system off the events resting on it, with no arrowhead", %{
-      view: view
-    } do
-      p1 = "external:Rehmed.Domain:p1"
-      resting = for r <- view.relations, r.to == p1, do: {r.from, r.line, r.head}
+    test "draws a stage nothing sits in", %{document: document} do
+      emptied = put_in(document, ["nodes", "event"], [])
 
-      assert Enum.sort(resting) == [
-               {"event:rehmed.statutory_reporting:p1_report_failed", "dotted", false},
-               {"event:rehmed.statutory_reporting:p1_report_sent", "dotted", false}
-             ]
-    end
-
-    test "draws a stage nothing sits in" do
-      document = Fixtures.document("rehmed.statutory_reporting")
-
-      emptied =
-        update_in(document, ["nodes", "event"], fn events ->
-          Enum.map(events, &Map.put(&1, "stage", nil))
-        end)
-
-      view = View.declared(emptied)
+      view = View.process(emptied)
       assert length(view.groups) == 3
       assert view.nodes |> Enum.filter(&(&1.kind == "event")) == []
       assert Enum.count(view.relations, &(&1.type == "precedes")) == 2
@@ -398,25 +416,50 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       view = View.system(c.document)
       reporting = card(view, "contract:rehmed.statutory_reporting")
 
-      assert reporting.label ==
-               "StatutoryReporting · Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"
+      assert reporting.label == "StatutoryReporting"
 
       assert card(view, "contract:rehmed.settlement").label == "Settlement"
       assert reporting.group == "context:Rehmed.Domain:statutory_reporting"
-      assert kinds(view) == ~w(contract)
+      assert kinds(view) == ~w(actor contract process)
 
       assert Enum.find(view.groups, &(&1.id == reporting.group)).title ==
                "Zgodność i sprawozdawczość · context"
 
-      assert [%{words: "visit_completed", line: "solid", head: true}] =
+      assert [%{words: "visit_closed_clinically", line: "solid", head: true}] =
                view
-               |> between("contract:rehmed.scheduling", reporting.id)
+               |> between("contract:rehmed.clinical_documentation", reporting.id)
                |> Enum.filter(&(&1.type == "consumed_by"))
 
       # Plan DD, L3 (#286): a contract keeping the number of a sibling's unit, drawn the
       # way the number travels, as a consumed event is.
       assert [%{words: "number of visit", line: "dotted", head: true}] =
                between(view, "contract:rehmed.scheduling", "contract:rehmed.settlement")
+    end
+
+    # Plan DD, P2e (#220).
+    test "draws each process module, the contracts whose events it includes, and who answers for it",
+         c do
+      view = View.system(c.document)
+      visit = card(view, "process:rehmed.clinical_visit")
+
+      assert visit.label == "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"
+      assert visit.group == nil
+
+      included =
+        for %{type: "includes", from: "process:rehmed.clinical_visit"} = r <- view.relations,
+            do: {r.to, r.words, r.line, r.head}
+
+      assert Enum.sort(included) == [
+               {"contract:rehmed.clinical_documentation", "includes", "dotted", true},
+               {"contract:rehmed.scheduling", "includes", "dotted", true},
+               {"contract:rehmed.statutory_reporting", "includes", "dotted", true}
+             ]
+
+      assert [%{words: "accountable for", head: false}] =
+               between(view, "actor:Rehmed.Domain:manager", visit.id)
+
+      # Only an actor who answers for a process is drawn.
+      assert for(%{kind: "actor"} = a <- view.nodes, do: a.id) == ["actor:Rehmed.Domain:manager"]
     end
   end
 end
