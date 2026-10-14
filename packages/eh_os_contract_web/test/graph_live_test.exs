@@ -74,12 +74,41 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     # Above them, each domain's context map, and its system with the log (plan EG2).
     domain = EhOsContract.Web.TestHost.Fixtures.Domain
-    domain_document = Document.domain(domain, EhOsContract.Registry.contracts())
+
+    domain_document =
+      Document.domain(
+        domain,
+        EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
+      )
 
     assert html =~ "Context map — domain web_test_host"
     assert cards(html, "map-graph-web_test_host") == drawn(domain_document, :context_map)
     assert html =~ "The system, declared versus observed — domain web_test_host"
     assert cards(html, "system-graph-web_test_host") == drawn(domain_document, :system)
+  end
+
+  # Plan DD, P2e (#220): the screen is given the document the API serves, process
+  # modules included, so a digest names one document wherever it is read.
+  test "each domain's document and overlay are the ones the API serves" do
+    view = live_graph()
+    %{domains: domains} = :sys.get_state(view.pid).socket.assigns
+
+    served =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_read"])
+      |> Plug.Conn.put_req_header("accept", "application/json")
+
+    for %{document: document, overlay: overlay} <- domains do
+      path = "/api/graph/domain/" <> document["domain"]
+
+      assert Jason.decode!(get(served, path).resp_body) == document
+      assert overlay["document_digest"] == document["digest"]
+
+      assert Jason.decode!(get(served, path <> "/overlay").resp_body)["nodes"] ==
+               overlay["nodes"]
+    end
+
+    assert Enum.any?(domains, &(&1.document["nodes"]["process"] != []))
   end
 
   # Point 2 of the working plan (`PLAN.md`, "Szczegóły ekranu Graph"): the domain's actors under its map, a row opening the

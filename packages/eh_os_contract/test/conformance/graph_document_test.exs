@@ -60,12 +60,15 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  # The registry's, and this file's, one of them with fields that identify units.
+  # The registry's, and this file's, one of them with fields that identify units; and
+  # every process module's.
   defp documents do
     contracts = Registry.contracts() ++ [Openings, Notes]
+    modules = contracts ++ Registry.processes()
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
-      for d <- Registry.domains(), do: {d, Document.domain(d, contracts)}
+      for(p <- Registry.processes(), do: {p, Document.process(p)}) ++
+      for d <- Registry.domains(), do: {d, Document.domain(d, modules)}
   end
 
   # The fields naming an owner, by kind: a value's `unit` is a unit of measure.
@@ -264,13 +267,20 @@ defmodule EhOsContract.GraphDocumentTest do
 
       if document["kind"] == "contract",
         do: assert(resolves?.(document["context"]), inspect(module))
+
+      if document["kind"] == "process",
+        do: assert(resolves?.(Document.id([:process, document["process"]])), inspect(module))
     end
   end
 
   test "the schema names every node kind and relation type the engine builds, and no other" do
     schema = Document.schema_path() |> File.read!() |> Jason.decode!()
 
-    for {kind, document} <- [contract: "contract_document", domain: "domain_document"] do
+    for {kind, document} <- [
+          contract: "contract_document",
+          process: "process_document",
+          domain: "domain_document"
+        ] do
       %{nodes: nodes, relations: relations} = EhOsContract.Graph.Facts.kinds(kind)
       props = schema["$defs"][document]["properties"]
 
@@ -1234,6 +1244,149 @@ defmodule EhOsContract.GraphDocumentTest do
                node(d, "external", external)
 
       assert Enum.any?(d["relations"]["depends_on"], &(&1["to"] == external))
+    end
+  end
+
+  # Plan DD, P2e (#220): a process module's own document, and its node in the domain's.
+  describe "a process module's document" do
+    test "says what one run is: its stages, the events they include, its promise, who answers" do
+      d = Document.process(DispatchRig.AccountReview)
+      ledger = Document.contract(DispatchRig.Ledger)
+      pid = "process:dispatch_rig.account_review"
+      event = &Document.id([:event, "dispatch_rig.ledger", &1])
+      stage = &Document.id([:stage, "dispatch_rig.account_review", &1])
+      promise = "promise:dispatch_rig.account_review:balance_confirmed_after_withdrawal"
+
+      assert %{
+               "kind" => "process",
+               "process" => "dispatch_rig.account_review",
+               "module" => "DispatchRig.AccountReview",
+               "domain" => "DispatchRig.Domain",
+               "label" => "Account review"
+             } = d
+
+      assert d["version"] == Model.fetch(DispatchRig.AccountReview).version
+
+      assert [
+               %{
+                 "id" => ^pid,
+                 "correlate" => ["account_id"],
+                 "deadline" => %{"amount" => 2, "unit" => "day", "unverified" => false}
+               }
+             ] = d["nodes"]["process"]
+
+      assert Enum.map(d["nodes"]["stage"], & &1["id"]) ==
+               [stage.(:withdrawal), stage.(:confirmation)]
+
+      # An event keeps the id it has in its contract's document, so the two join.
+      assert [withdrawn, confirmed] = d["nodes"]["event"]
+
+      assert %{
+               "id" => "event:dispatch_rig.ledger:withdrawn",
+               "contract" => "contract:dispatch_rig.ledger",
+               "type" => "dispatch_rig.ledger.withdrawn"
+             } = withdrawn
+
+      assert withdrawn["stage"] == stage.(:withdrawal)
+      refute Map.has_key?(withdrawn, "terminal")
+      assert %{"terminal" => true} = confirmed
+      assert confirmed["stage"] == stage.(:confirmation)
+
+      for e <- d["nodes"]["event"] do
+        assert %{"label" => label} = node(ledger, "event", e["id"])
+        assert e["label"] == label
+      end
+
+      assert [%{"id" => "contract:dispatch_rig.ledger", "module" => "DispatchRig.Ledger"}] =
+               d["nodes"]["contract"]
+
+      assert [%{"id" => ^promise, "within" => %{"amount" => 1, "unit" => "day"}}] =
+               d["nodes"]["promise"]
+
+      assert relation(d, "opens", event.(:withdrawn), promise)
+      assert relation(d, "fulfils", event.(:balance_confirmed), promise)
+      assert d["relations"]["or_else"] == []
+
+      auditor = Document.id([:actor, DispatchRig.Domain, :auditor])
+      assert relation(d, "accountable_for", auditor, pid)
+      assert node(d, "actor", auditor)
+    end
+
+    test "a promise the owner has yet to confirm says so, and an or_else is a relation" do
+      d = Document.process(ProcessShapes.Handling)
+      promise = "promise:process_shapes.handling:completed_or_refusal_notified"
+      event = &Document.id([:event, "process_shapes.promised", &1])
+
+      assert [%{"id" => ^promise}] = d["nodes"]["promise"]
+      assert relation(d, "or_else", event.(:refusal_notified), promise)
+
+      assert [%{"deadline" => %{"unverified" => true}}] = d["nodes"]["process"]
+      assert d["nodes"]["actor"] == [] and d["relations"]["accountable_for"] == []
+
+      assert Enum.count(d["nodes"]["event"], & &1["terminal"]) == 2
+    end
+
+    test "draws who answers for it only where the domain declares them, as the domain's does" do
+      %{module: module} =
+        EhOsContract.DslCase.compile_process(
+          "GraphUndeclaredOwner",
+          """
+            correlate :account_id
+            stage :withdrawal, include: [{DispatchRig.Ledger, :withdrawn}]
+          """,
+          id: "dispatch_rig.graph_undeclared_owner",
+          domain: DispatchRig.Domain,
+          accountable: :nobody_declared
+        )
+
+      d = Document.process(module)
+      assert d["nodes"]["actor"] == [] and d["relations"]["accountable_for"] == []
+
+      domain = Document.domain(DispatchRig.Domain, [DispatchRig.Ledger, module])
+      assert [_] = domain["nodes"]["process"]
+      assert domain["relations"]["accountable_for"] == []
+      assert JSV.validate(d, @schema) |> elem(0) == :ok
+    end
+
+    test "is a process module's alone, and does not depend on anything but it" do
+      assert_raise ArgumentError, ~r/is a contract, not a process module/, fn ->
+        Document.process(DispatchRig.Ledger)
+      end
+
+      assert Document.process(DispatchRig.AccountReview) ==
+               Document.process(Model.fetch(DispatchRig.AccountReview))
+    end
+  end
+
+  describe "a domain's process modules" do
+    test "are nodes, with an arrow to each contract they include and from who answers" do
+      modules = Registry.contracts() ++ Registry.processes()
+      d = Document.domain(DispatchRig.Domain, modules)
+      review = "process:dispatch_rig.account_review"
+
+      assert %{
+               "name" => "dispatch_rig.account_review",
+               "label" => "Account review",
+               "module" => "DispatchRig.AccountReview",
+               "correlate" => ["account_id"]
+             } = node(d, "process", review)
+
+      # One node id in both documents.
+      assert [%{"id" => ^review}] =
+               Document.process(DispatchRig.AccountReview)["nodes"]["process"]
+
+      assert relation(d, "includes", review, "contract:dispatch_rig.ledger")
+      auditor = Document.id([:actor, DispatchRig.Domain, :auditor])
+      assert relation(d, "accountable_for", auditor, review)
+
+      # Another domain's are left out, and without process modules there are none.
+      refute Enum.any?(d["nodes"]["process"], &(&1["name"] == "process_shapes.handling"))
+      assert Document.domain(DispatchRig.Domain, Registry.contracts())["nodes"]["process"] == []
+
+      # A contract left out of the list gets no arrow.
+      alone = Document.domain(DispatchRig.Domain, [DispatchRig.AccountReview])
+      assert [_] = alone["nodes"]["process"]
+      assert alone["relations"]["includes"] == []
     end
   end
 end

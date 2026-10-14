@@ -267,6 +267,55 @@ defmodule EhOsContract.Web.ApiTest do
       assert first["module"] == inspect(contract)
       assert first["digest"] == Document.contract(contract)["digest"]
       assert [%{"domain" => _, "name" => _, "digest" => _} | _] = ds
+
+      # Plan DD, P2e (#220): the process modules beside the contracts.
+      assert %{"processes" => [process]} = Jason.decode!(conn.resp_body)
+      module = EhOsContract.Web.TestHost.Fixtures.CaseRun
+
+      assert process == %{
+               "process" => "web_test_host.case_run",
+               "module" => inspect(module),
+               "version" => EhOsContract.Model.fetch(module).version,
+               "digest" => Document.process(module)["digest"]
+             }
+    end
+
+    test "a process module's document, with its digest as the ETag, and its overlay",
+         %{conn: conn} do
+      module = EhOsContract.Web.TestHost.Fixtures.CaseRun
+      document = Document.process(module)
+      served = get(conn, "/api/graph/process/web_test_host.case_run")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(document)
+      assert get_resp_header(served, "etag") == [~s("#{document["digest"]}")]
+
+      cached =
+        conn
+        |> put_req_header("if-none-match", ~s("#{document["digest"]}"))
+        |> get("/api/graph/process/web_test_host.case_run")
+
+      assert cached.status == 304
+
+      overlay =
+        get(conn, "/api/graph/process/web_test_host.case_run/overlay?since=2026-01-01T00:00:00Z")
+
+      assert overlay.status == 200
+
+      assert %{
+               "schema" => "eh_os_contract.graph_overlay.v1",
+               "kind" => "process",
+               "process" => "web_test_host.case_run",
+               "since" => "2026-01-01T00:00:00Z",
+               "document_digest" => digest
+             } = Jason.decode!(overlay.resp_body)
+
+      assert digest == document["digest"]
+
+      backwards = "since=2026-02-01T00:00:00Z&until=2026-01-01T00:00:00Z"
+
+      assert get(conn, "/api/graph/process/web_test_host.case_run/overlay?#{backwards}").status ==
+               400
     end
 
     test "a contract's document is the function's, byte for byte, with its digest as the ETag",
@@ -328,16 +377,19 @@ defmodule EhOsContract.Web.ApiTest do
       assert %{"until" => "2026-02-01T00:00:00Z", "since" => nil} = Jason.decode!(until.resp_body)
     end
 
-    test "a domain's document and overlay", %{conn: conn} do
-      domain = List.first(EhOsContract.Registry.domains())
-      contracts = EhOsContract.Registry.contracts()
+    test "a domain's document and overlay, with its process modules", %{conn: conn} do
+      domain = EhOsContract.Web.TestHost.Fixtures.Domain
+      modules = EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
       served = get(conn, "/api/graph/domain/#{inspect(domain)}")
 
       assert served.status == 200
-      assert served.resp_body == Document.encode(Document.domain(domain, contracts))
+      assert served.resp_body == Document.encode(Document.domain(domain, modules))
+
+      assert [%{"name" => "web_test_host.case_run"}] =
+               Jason.decode!(served.resp_body)["nodes"]["process"]
 
       overlay = Jason.decode!(get(conn, "/api/graph/domain/#{inspect(domain)}/overlay").resp_body)
-      assert overlay == Jason.decode!(Document.encode(Overlay.domain(domain, contracts)))
+      assert overlay == Jason.decode!(Document.encode(Overlay.domain(domain, modules)))
     end
 
     test "what the registry does not hold is 404, and an unauthenticated caller gets nothing",
@@ -351,7 +403,12 @@ defmodule EhOsContract.Web.ApiTest do
             "/api/graph/#{module}",
             "/api/graph/#{module}/overlay",
             "/api/graph/domain/Not.A.Domain",
-            "/api/graph/domain/Not.A.Domain/overlay"
+            "/api/graph/domain/Not.A.Domain/overlay",
+            "/api/graph/process/not_a.process",
+            "/api/graph/process/not_a.process/overlay",
+            # A contract is not a process module, nor the other way round.
+            "/api/graph/process/web_test_host.case_handling",
+            "/api/graph/web_test_host.case_run"
           ],
           do: assert(get(conn, path).status == 404, path)
 
@@ -362,7 +419,9 @@ defmodule EhOsContract.Web.ApiTest do
             "/api/graph/Anything",
             "/api/graph/Anything/overlay",
             "/api/graph/domain/Anything",
-            "/api/graph/domain/Anything/overlay"
+            "/api/graph/domain/Anything/overlay",
+            "/api/graph/process/Anything",
+            "/api/graph/process/Anything/overlay"
           ],
           do: assert(get(public, path).status == 403, path)
     end
