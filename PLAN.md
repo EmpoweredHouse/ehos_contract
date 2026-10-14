@@ -21,7 +21,7 @@ table** in "Dopisek 5 października — DD"; each stage's scope, decisions and r
 marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**Next** (the revision of 13 October, below the "Postęp" table): P2i is merged (#295); P2h (#221, in progress), P2e, C1; then M1, O2, V5 and L4 rewritten
+**Next** (the revision of 13 October, below the "Postęp" table): P2i (#295) and P2h (#296) are merged; P2e (#220, in progress), C1, G1 (#297); then M1, O2, V5 and L4 rewritten
 before they start. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
@@ -1881,10 +1881,10 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☑ #207 | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
-| P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ☐ | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
+| P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ◐ `dd/220-process-graph-and-page` | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
-| P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ◐ `dd/221-remove-contract-process` | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
+| P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☑ #296 | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☑ #295 | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
 | M1 | 3 | mapa kontekstów L3, wartości jako referencje | L3; its paragraph rewritten first | ⏸ to be rewritten after L3 (13 October) | — |
@@ -1912,6 +1912,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☐ | — |
+| G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☐ | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision
 
@@ -2104,9 +2105,14 @@ their runs under the module's id (`included_runs/3`). No reader shows them yet (
 The registry loads process modules; the report gives each its process section (runs, duration, promises) and the report
 task prints them; a deployment row per process module; L5 counts an event a module includes as read and applies the
 process rules to modules. Not the conformance wire or the dashboard (P2e or with EHOS). Sandbox outputs unchanged.
-**P2e — a process module gets a picture and a page** (#220). **Waits for E13a** (#217): E13 replaces Mermaid with
-`graph.v1`, a new renderer and graph screen, so this stage is written against `graph.v1` once E13a is in `main` (the
-user's decision of 7 October, after seeing the overlap). No dashboard access rule: whoever sees the dashboard sees it.
+**P2e — a process module gets a picture and a page** (#220; tightened 13 October 2026). A `graph.v1` document of kind
+`process` (stages, the events each contract contributes, promises, `ends_on`, deadline, accountable) with an overlay
+of runs, occurrences and each promise's verdicts; the domain's document gets process nodes with their runs and an
+arrow to each contract they include (a new node kind, breaking). `mix eh_os_contract.graph --process <id>` and
+`/graph/process/<id>`; the renderer's declared view reads the process document, and the Graph screen lists process
+modules; `pages` writes a process's page, and `view`, `glossary` and the status screen show it. Three pull requests:
+engine, renderer and screen, pages and tasks. The user's decisions of 13 October are on the issue. Drawing every view
+like a catalog is G1 (#297), after C1.
 **P2f — the test material's processes become process modules** (#222; tightened 7 October 2026; a PR per client, each
 based on `main`). Rehmed `clinical_visit` and `payer_settlement`, TaxVision `accounting_month`, AppUnite `assignment`
 (the `Assignments` contract goes). The text report's numbers per process unchanged on seeded events; dashboard and
