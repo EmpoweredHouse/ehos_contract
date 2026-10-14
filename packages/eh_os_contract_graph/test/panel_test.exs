@@ -607,6 +607,25 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       refute open(c.document, c.promise, :process, overlay) =~ "Unconfirmed"
     end
 
+    test "its contracts are its document's, whether or not it has stages", c do
+      text = open(c.document, "process:rehmed.clinical_visit", :process)
+
+      assert text =~
+               "Includes events of rehmed.scheduling contract rehmed.clinical_documentation contract rehmed.statutory_reporting contract"
+
+      text = open(put_in(c.document, ["nodes", "stage"], []), "process:rehmed.clinical_visit")
+      assert text =~ "Includes events of rehmed.scheduling contract"
+      refute text =~ "Stages, in order"
+
+      # In the domain's, only those it includes, of all the domain's contracts.
+      text = open("domain.rehmed", "process:rehmed.payer_settlement", :system)
+
+      assert text =~
+               "Includes events of rehmed.settlement contract rehmed.external_payers contract"
+
+      refute text =~ "rehmed.scheduling"
+    end
+
     test "in its domain: its module, the contracts whose events it includes, who answers for it" do
       text = open("domain.rehmed", "process:rehmed.clinical_visit", :system)
 

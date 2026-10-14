@@ -677,17 +677,16 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # the contracts whose events it includes.
   defp body(%{kind: "process"} = assigns) do
     {id, l} = {assigns.node["id"], assigns.ctx.lookup}
-    stages = Lookup.owned(l, "stage", "process", id)
-    includes = Lookup.out(l, id, "includes")
 
     assigns =
       assign(assigns,
-        stages: stages,
+        stages: Lookup.owned(l, "stage", "process", id),
         promises: Lookup.owned(l, "promise", "process", id),
         accountable: Lookup.into(l, id, "accountable_for"),
-        includes: includes,
-        # A process's own document holds the contracts its events come from, and no other.
-        contracts: if(includes == [] and stages != [], do: Lookup.nodes(l, "contract"), else: [])
+        # A domain's document joins a process to its contracts by `includes`; a process's
+        # own holds the contracts its events come from, and no other.
+        includes: Lookup.out(l, id, "includes"),
+        contracts: if(Lookup.of(l) == "process", do: Lookup.nodes(l, "contract"), else: [])
       )
 
     ~H"""
