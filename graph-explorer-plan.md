@@ -498,8 +498,9 @@ the script and the cards.
 
 ### 11.1 Why
 
-Filip's idea (12 October): one new set in the sandbox, made **only** to test the drawing on. The new graph is checked
-on it alone; TaxVision, Rehmed and AppUnite are not mixed with it on one canvas. It is the plan's first step (14).
+Filip's idea (12 October), given its shape on 14 October: one new set in the sandbox, made **only** to test the drawing
+on: **a copy of Rehmed, changed to cover the cases the clients' material lacks**. The new graph is checked on it alone;
+TaxVision, Rehmed and AppUnite are not mixed with it on one canvas. It is the plan's first step (14).
 
 Because:
 
@@ -511,34 +512,40 @@ Because:
   - domain with more than five contracts.
 - **They must not be forced into the clients' material.** The repository's rule: a client's contracts come from the
 workshop material, not from what a test needs.
+- **A copy of Rehmed is the simplest start.** Rehmed already has most of what the graph has to show, in a domain we
+know.
 - **One canvas is always one domain anyway**, one application. That the sandbox's dashboard shows three clients on one
 page today is only because one sandbox host registers all three.
 
 ### 11.2 What it holds
 
-Everything the three clients have together, and the missing cases. One set has to be enough to test everything:
+A copy of Rehmed under a domain of its own, with what Rehmed lacks added:
 
-- **Structure:**
-  - all three kinds of subdomain;
-  - a context with several contracts, and one with none;
-  - about 15 to 20 contracts, to test the Console's scale;
-  - at least one large contract, like AppUnite's computers.
-- **Inside a contract:**
-  - aggregates with a lifecycle and without one;
-  - consistency boundaries;
-  - a contract with several units;
-  - policies, process managers with timers, effects, read models, queries, rules, scenarios;
-  - a unit that records only, outside the core. In the core that is a warning, and the set has to be correct (11.3).
-- **Between contracts:**
-  - an event consumed by two or three contracts;
-  - an event renamed when consumed;
-  - a field holding the number of another contract's unit, including a unit whose number several contracts hold;
-  - a publication to another application, and an event from another application.
-- **Processes:**
-  - several, including two that share an event (crossing metro lines);
-  - a process over one contract, and one over many;
-  - promises with "or else";
-  - a process with no end.
+| Case | In Rehmed | In the copy |
+| --- | --- | --- |
+| all three kinds of subdomain | yes | kept |
+| a context with no contract | yes (configuration) | kept |
+| a context with several contracts | no | added |
+| more than five contracts | no (five) | at least one more |
+| an aggregate with a lifecycle | no | added to one aggregate |
+| an aggregate without one | yes | kept |
+| dynamic consistency boundaries | yes (two) | kept |
+| a contract with several units | no | added |
+| policies, process managers with timers, effects, read models, queries, rules, scenarios | yes | kept |
+| a unit that records only, outside the core | yes (`p1_report`) | kept |
+| a field holding another contract's unit's number, held by several contracts | yes (`visit_id`, three) | kept |
+| an event consumed by two or three contracts | no | added |
+| an event renamed when consumed | no | added |
+| a publication to another application | no | added |
+| an event received from another application | no | added |
+| two processes sharing an event (crossing metro lines) | no | added |
+| a process over one contract | no | added |
+| a process with no end | no | added |
+| promises with "or else" | yes | kept |
+| a large contract, like AppUnite's computers | no (the largest has 28 elements) | grown if cheap; otherwise the scale is tested on AppUnite |
+
+And:
+
 - **Data in the log.** Without it every number is zero, since the development database is empty today. It needs
 sample traffic with deliberate drift:
   - a path never taken;
@@ -546,33 +553,43 @@ sample traffic with deliberate drift:
   - a broken promise;
   - a step that fails;
   - things that wait.
-- **Its first line says it is invented**, as the invented medical domain in the engine's tests does.
+- **Labels.** The copy keeps Rehmed's Polish labels, and what is added is labelled in Polish too, so that the set reads
+as one client. The pitfalls of Polish text in `CLAUDE.md` apply. (This follows from copying Rehmed; say so if it should
+be otherwise.)
+- **Its first line says what it is:** a copy of Rehmed changed to test the graph, not a client's material, as the
+invented medical domain in the engine's tests says of itself.
 
-### 11.3 Conditions: in `.gitignore`, correct, and in the gate
+### 11.3 Conditions: on this branch, correct, and in the gate
 
-- **In `.gitignore`.** What becomes of it is decided after the graph is built: deleted, moved to a package's tests, or
-kept as standing material for drawing. It leaves no trace in git.
-- **In the local gate, and correct** (Filip's decision, 12 October). It compiles with the rest of the sandbox, so our
-local `mix check` covers it too.
+- **Committed on this branch** (Filip's decision, 14 October, replacing "in `.gitignore`" of 12 October). What becomes
+of it is decided when the branch is merged: deleted, moved to a package's tests, or kept as standing material for
+drawing.
+- **A domain of its own:** its own `name:`, so that no id of it collides with Rehmed's (e.g. `graph_lab.scheduling`),
+its own module namespace and its own boundaries.
+- **Correct, and in the gate.** It compiles with `--warnings-as-errors` and `mix check` passes, locally and on CI,
+since it is committed.
   - **The gain:** three of the sandbox's graph tests go through every registered document. They check that every element
   has a card and a panel, that the log's numbers lay over it, and that the document matches the schema. The set gets
   those checks for free.
-  - **The catch:** one sandbox test compares the exact count of `mix eh_os_contract.check` findings for the whole
-  sandbox (today "0 errors, 31 warnings, 22 notices"). So the set must give **no error, no warning and no notice**, or
-  that test goes red for us. Hence no core unit that records only. Should no warnings prove impossible, this point is
-  revisited.
-- **No tables of its own.** Every checkout on a machine shares the databases (a trap `CLAUDE.md` describes). Its
-traffic goes into the development database, never the test one.
+  - **The count:** one sandbox test compares the exact count of `mix eh_os_contract.check` findings for the whole
+  sandbox (today "0 errors, 31 warnings, 22 notices", `sandbox/test/e10_outputs_test.exs`). The copy brings Rehmed's
+  warnings and notices with it, so the branch updates that count, and the update goes with the set when the branch is
+  merged.
+- **No migration.** Rehmed's read model keeps its rows in a table of its own, and a migration on an unmerged branch
+changes the test database of every checkout on the machine (`CLAUDE.md`). The copy's read models must need no new
+table.
+- **The host's configuration stays as it is.** The sandbox has one supplier of host-given fields, Rehmed's, for the
+whole host. The copy either uses no host-given field or works with that supplier unchanged.
+- **Traffic goes into the development database**, never the test one (no `MIX_ENV=test mix run`, `CLAUDE.md`).
 - **The dashboard shows only the set**, through the existing "exclude a namespace" configuration, as Rehmed is shown
 alone today.
 
 ### 11.4 What it does not solve
 
-- **A reviewer and CI do not see the set.** A pull request of the renderer will be shown in screenshots, unless it is
-decided earlier that the set (or only the graph documents exported from it, with no code) goes into the repository.
-- **CI does not check it.** Locally the sandbox's graph tests cover it (11.3), but the renderer package's own tests run
-on documents once taken from the clients' material. Whether to add the set's documents to them is part of deciding
-what becomes of it.
+- **A second Rehmed to keep.** Changes to Rehmed are not mirrored in the copy, and the two drift apart. That does not
+matter for drawing, and it is weighed when the branch is merged.
+- **The renderer package's own tests** still run on documents once taken from the clients' material. Whether to add the
+set's documents to them is part of deciding what becomes of it.
 
 ---
 
@@ -592,7 +609,8 @@ keeps working.
 rewrite. The reason behind it, readability, is kept by hidden insides.
 - **12.5 Too much at once.** The plan has many parts, and a pull request that cannot be read with attention is not
 really reviewed. Hence the stages (14).
-- **12.6 The test set lives only locally** (11.4). Nobody else sees it until what becomes of it is decided.
+- **12.6 The test set is a second Rehmed** (11.4): it drifts from Rehmed and raises the sandbox's count of `check`
+findings while it lives on the branch.
 
 ---
 
@@ -618,11 +636,8 @@ nest (subdomain → context → contract). A colour is the simpler layout; a fra
 7. **The way of drawing:** agree to a prototype before deciding (10.3)?
 8. **A mock-up:** before the issue, a clickable HTML mock-up outside the repository, to see how it reads? On the test
 set's data (11), and on Rehmed's until it exists.
-9. **The test set (11):**
-   - the conditions of 11.3 (in `.gitignore`, in the gate, correct) agreed on 12 October;
-   - how large (how many contracts);
-   - whether it goes into the repository before the first renderer pull request, at least as graph documents, so the
-   reviewer sees the same (11.4).
+9. **The test set (11) — settled 14 October:** a copy of Rehmed with the missing cases added, committed on this branch,
+its fate decided when the branch is merged. Assumed, to be objected to if wrong: its labels are Polish, as Rehmed's.
 10. **How does this fit with #220, "a process module gets a picture"?** Its first pull request (processes in the graph
 document) is common to both plans. Its second (a process picture on the screen) can either:
     - be built at once as this plan's process lines and "declared shape" lens in the new canvas (less double work, but
@@ -634,7 +649,8 @@ document) is common to both plans. Its second (a process picture on the screen) 
 
 ## 14. Order (provisional, no technical detail)
 
-1. The test set for drawing (11): an invented domain and traffic in the log, locally, in `.gitignore`.
+1. The test set for drawing (11): a copy of Rehmed with the missing cases, and traffic in the development database,
+committed on this branch.
 2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8).
 3. The decisions of 13.
 4. A GitHub issue with this plan, and a short paragraph in `PLAN.md`.
