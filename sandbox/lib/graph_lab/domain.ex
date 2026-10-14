@@ -1,12 +1,10 @@
 defmodule GraphLab.Domain do
   @moduledoc """
-  **A copy of `Rehmed.Domain` changed to test the graph on; not client material**
-  (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
-  Rehmed's vocabulary under a name of its own, so that no id collides with Rehmed's, with
-  one context added, patient messaging, and what it needs: the SMS gateway, its
-  integration and the kinds of message. Why each of Rehmed's declarations is as it is,
-  `Rehmed.Domain` says.
+  The clinic's vocabulary: subdomains, contexts and how they relate, actors, the patient
+  whose data the contracts carry, the service catalogue, the P1 register, the SMS gateway,
+  and the values.
 
   The name is `:"graph-lab"`, with a dash, because it is the name EHOS would know the
   application by: the credential verifier lets a host start only when the audience it is
@@ -66,8 +64,6 @@ defmodule GraphLab.Domain do
 
   context :configuration, "Konfiguracja i ludzie", subdomain: :supporting, source: "CTX-10"
 
-  # Added for the graph: Rehmed's map has patient messaging as a thread through the
-  # other contexts, and no contract for it.
   context :patient_messaging, "Komunikacja z pacjentem",
     subdomain: :generic,
     source: "dodane do testów grafu" do
@@ -94,7 +90,6 @@ defmodule GraphLab.Domain do
   relation :open_host_service, upstream: :configuration, downstream: :scheduling
   relation :open_host_service, upstream: :configuration, downstream: :settlement
 
-  # Added for the graph.
   relation :customer_supplier, upstream: :scheduling, downstream: :patient_messaging
   relation :conformist, upstream: :sms_gateway, downstream: :patient_messaging
 
@@ -111,7 +106,6 @@ defmodule GraphLab.Domain do
     backed_by: :p1,
     context: :statutory_reporting
 
-  # Added for the graph.
   actor :sms_integration, :system, "Integracja z bramką SMS",
     backed_by: :sms_gateway,
     context: :patient_messaging
@@ -140,7 +134,7 @@ defmodule GraphLab.Domain do
              "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi",
            source: "X-02, X-03, X-04"
 
-  # Added for the graph: it answers each message with a delivery report.
+  # It answers each message with a delivery report.
   external :sms_gateway, "Bramka SMS",
     direction: :bidirectional,
     unavailable_looks_like: "wiadomości wiszą w kolejce albo bramka odrzuca wysyłkę",
@@ -154,7 +148,6 @@ defmodule GraphLab.Domain do
         {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]},
         source: "E-55"
 
-  # Added for the graph.
   value :message_kind,
         {:enum, [reminder: "Przypomnienie", cancellation: "Odwołanie", survey: "Ankieta"]},
         source: "dodane do testów grafu"

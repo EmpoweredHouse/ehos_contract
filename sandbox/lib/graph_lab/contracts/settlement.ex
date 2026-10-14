@@ -1,13 +1,14 @@
 defmodule GraphLab.Contracts.Settlement do
   @moduledoc """
-  **A copy of `Rehmed.Contracts.Settlement` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
-  Added for the graph, and invented: the chase after a visit nobody settled by the end of
-  the day, shaped as clinical documentation's. It starts on scheduling's
-  `visit_completed`, which makes settlement the third contract consuming that event, and
-  it issues a command of its own unit when its timer fires. Rehmed's material names no
-  such interval (`Rehmed.Contracts.Settlement`, "No process, and no promise").
+  Settlement: what a visit costs, what was paid for it, how it closes — paid, without
+  payment, or charged to an external payer — its corrections, and the day's payments per
+  method.
+
+  A process manager starts on scheduling's `visit_completed`, which makes settlement the
+  third contract consuming that event, and flags a visit nobody settled eight hours
+  later. No material names that interval: it is here for the graph.
   """
 
   use EhOsContract.Contract,
@@ -26,7 +27,7 @@ defmodule GraphLab.Contracts.Settlement do
       field :payments, {:list, :money}, default: []
       field :closed_on, :date, optional: true
       # What the close settled, and whether anything but a correction followed it: what
-      # `holds?/2` reads to say the invariants hold (plan DD, PC2, #266).
+      # `holds?/2` reads to say the invariants hold.
       field :total, :money, optional: true
       field :changed_after_close, :boolean, default: false
     end
@@ -49,9 +50,7 @@ defmodule GraphLab.Contracts.Settlement do
               source: "AGG-03 niezmiennik 4"
 
     # A correction is booked after the day closed (`E-84`): before the visit is settled
-    # there is no day it belongs to, and nothing to correct. Found by the settlement's
-    # properties (plan DD, PC2, #266), where the decider had relied on dispatch
-    # refusing the event it decided.
+    # there is no day it belongs to, and nothing to correct.
     invariant :only_a_settled_visit_is_corrected,
               "Korektę księguje się tylko na rozliczonej wizycie",
               source: "E-84; AGG-03 niezmiennik 4"
@@ -104,7 +103,7 @@ defmodule GraphLab.Contracts.Settlement do
       ],
       source: "C-30, aktor A-02" do
       # The total by the rule above, not reception's to say: the host gives it from the
-      # visit's price and who pays (plan T1s, `GraphLab.Supplier`).
+      # visit's price and who pays (`EhOsContract.Supplier`).
       field :total, :money, supplied_by: :host
       field :payer_id, :id, optional: true
       field :period_id, :id, optional: true
@@ -114,7 +113,7 @@ defmodule GraphLab.Contracts.Settlement do
                  source: "AGG-11 niezmiennik 4: płatnik × okres"
     end
 
-    # Added for the graph: issued by the chase only, so no actor may.
+    # Issued by the chase only, so no actor may.
     command :flag_unsettled_visit, "Oznacz wizytę nierozliczoną",
       emits: :unsettled_visit_flagged,
       source: "dodane do testów grafu"
@@ -155,7 +154,7 @@ defmodule GraphLab.Contracts.Settlement do
     # What crosses to external payers (`30-contexts.md`: "which visits a payer owes
     # for"), next to either close: a mixed visit is paid by the patient for what the
     # payer does not cover (`P-31`). The model has no fact for it, so this one is
-    # ours (plan, the decision before E9b), and no amount: the payer's invoice is
+    # ours, and no amount: the payer's invoice is
     # made outside the system (`H62`).
     event :visit_charged_to_payer, "Wizyta obciąża płatnika zewnętrznego",
       source: "30-contexts.md, CTX-05 → CTX-06" do
@@ -173,7 +172,7 @@ defmodule GraphLab.Contracts.Settlement do
       source: "dodane do testów grafu"
   end
 
-  # Added for the graph: the settlement's counterpart of the documentation chase.
+  # The settlement's counterpart of the documentation chase.
   process_manager :settlement_chase, "Pogoń za rozliczeniem wizyty" do
     correlate :visit_id
     starts_on :visit_completed, sets: :settlement_due

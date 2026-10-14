@@ -1,18 +1,17 @@
 defmodule GraphLab.Contracts.Scheduling do
   @moduledoc """
-  **A copy of `Rehmed.Contracts.Scheduling` changed to test the graph on; not client
-  material** (`GraphLab`).
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
 
-  Rehmed's visit, from the booking to one of its three ends, with two additions:
+  Scheduling: a visit from its booking to one of its three ends — the patient seen, the
+  visit cancelled, or the patient not coming.
 
-  - **A lifecycle.** `AGG-01`'s state machine, which Rehmed keeps as one flag, is the
-    visit's lifecycle here, and the commands that end a visit early name the statuses
-    they are issued in. A patient leaving the room that reception never saw arrive is
-    still recorded, and moves nothing: the report shows it as a move the lifecycle does
-    not allow.
-  - **The confirmation, from another application.** Rehmed leaves confirmation out
-    (`U-10`). Here the patient confirms in the patient app, another application that
-    publishes it, and a policy confirms the visit; reception may confirm by phone.
+  - **A lifecycle.** The visit's statuses, and the commands that end it early name the
+    statuses they are issued in. A patient leaving the room whom reception never saw
+    arrive is still recorded, and moves nothing: the report shows it as a move the
+    lifecycle does not allow.
+  - **The confirmation, from another application.** The patient confirms in the patient
+    app, which publishes it, and a policy confirms the visit; reception may confirm by
+    phone.
   """
 
   use EhOsContract.Contract,
@@ -20,7 +19,7 @@ defmodule GraphLab.Contracts.Scheduling do
     context: :scheduling,
     id: "graph-lab.scheduling"
 
-  # Added for the graph: an event of another application, which arrives in an inbox.
+  # An event of another application, which arrives in an inbox.
   subscribe "patient-app.visit.confirmed.v1", as: :confirmed_in_app do
     field :visit_id, {:id, :visit}
   end
@@ -36,7 +35,7 @@ defmodule GraphLab.Contracts.Scheduling do
               "Potwierdza się tylko wizytę umówioną i jeszcze niepotwierdzoną",
               source: "dodane do testów grafu"
 
-    # Added for the graph: `AGG-01`'s states, in its own words.
+    # `AGG-01`'s states, in its own words.
     lifecycle do
       status :booked, "Umówiona"
       status :confirmed, "Potwierdzona"

@@ -4,10 +4,8 @@ defmodule GraphLab.Processes.VisitSettlement do
 
   A visit from the patient leaving the room to its commercial close at reception. It
   shares `visit_completed` with `GraphLab.Processes.ClinicalVisit`, so two process lines
-  cross at that event. Its promise is invented for the graph, since Rehmed's material
-  names no interval for a settlement (`Rehmed.Contracts.Settlement`): a visit is settled
-  within twelve hours of the patient leaving, or closed without payment when a payer
-  covers it.
+  cross at that event. Its promise is invented for the graph: a visit is settled within
+  twelve hours of the patient leaving, or closed without payment when a payer covers it.
   """
 
   use EhOsContract.Process,

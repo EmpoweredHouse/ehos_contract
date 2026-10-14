@@ -1,7 +1,7 @@
 defmodule GraphLab.Contracts do
   @moduledoc """
-  The test set's contracts (`GraphLab`): Rehmed's five, copied, and two added — the
-  till, a second contract in settlement's context, and patient messaging.
+  The test set's contracts (`GraphLab`): one per context, but settlement's, which has two
+  — the visit settlement and the till.
   """
 
   use Boundary,

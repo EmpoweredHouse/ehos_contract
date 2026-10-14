@@ -1,7 +1,11 @@
 defmodule GraphLab.Contracts.ExternalPayers do
   @moduledoc """
-  **A copy of `Rehmed.Contracts.ExternalPayers` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
+
+  External payers: one payer's period, a consistency boundary over the visits settlement
+  charged to the payer in it. Each is marked settled with the payer or excluded with a
+  reason before the period is invoiced, and nothing in the period changes after the
+  invoice.
   """
 
   use EhOsContract.Contract,

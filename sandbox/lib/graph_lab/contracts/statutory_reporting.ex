@@ -1,7 +1,11 @@
 defmodule GraphLab.Contracts.StatutoryReporting do
   @moduledoc """
-  **A copy of `Rehmed.Contracts.StatutoryReporting` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
+
+  Statutory reporting: the report a visit owes the medical events register. A policy
+  queues it on the clinical close, or waives it for a service that is not reported; an
+  effect sends it, and the register's integration records the answer. The report records
+  only: none of its commands can be refused.
   """
 
   use EhOsContract.Contract,

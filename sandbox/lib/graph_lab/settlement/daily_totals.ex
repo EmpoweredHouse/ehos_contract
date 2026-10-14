@@ -1,18 +1,13 @@
 defmodule GraphLab.Settlement.DailyTotals do
   @moduledoc """
-  Projects `R-07`, the day's payments per method, into `rehmed_daily_payments`: one
+  Projects `R-07`, the day's payments per method, into `graph_lab_daily_payments`: one
   row per payment, keyed by the event, so a second delivery writes nothing. The
   query sums them.
-
-  **The table is Rehmed's.** The test set (`GraphLab`) needs no migration: one on an
-  unmerged branch changes the test database of every checkout on the machine. So its
-  payments land beside Rehmed's in the development database; in a test, each is rolled
-  back with its transaction.
   """
 
   use GraphLab.Contracts.Settlement, read_model: :daily_totals
 
-  @table "rehmed_daily_payments"
+  @table "graph_lab_daily_payments"
 
   @impl true
   def payment_recorded(%PaymentRecorded{method: method, amount: amount, __meta__: meta}) do

@@ -1,5 +1,5 @@
 # The test set for drawing the graph (`GraphLab`): one test per scenario of each of its
-# contracts and process modules, run against its implementations, as Rehmed's are.
+# contracts and process modules, run against its implementations.
 
 defmodule GraphLab.SchedulingScenariosTest do
   @moduledoc false

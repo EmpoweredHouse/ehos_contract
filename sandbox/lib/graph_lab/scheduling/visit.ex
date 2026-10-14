@@ -1,9 +1,8 @@
 defmodule GraphLab.Scheduling.Visit do
   @moduledoc """
-  Decides a visit's booking, its confirmation and its early ends (`AGG-01`), in the
-  test set (`GraphLab`). Unlike `Rehmed.Scheduling.Visit` it refuses nothing itself: the
-  lifecycle says in which statuses each command may be issued, and the engine refuses
-  the others before this decision runs.
+  Decides a visit's booking, its confirmation and its early ends (`AGG-01`), in the test
+  set (`GraphLab`). It refuses nothing itself: the lifecycle says in which statuses each
+  command may be issued, and the engine refuses the others before this decision runs.
   """
 
   use GraphLab.Contracts.Scheduling, aggregate: :visit

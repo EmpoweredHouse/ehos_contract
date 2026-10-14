@@ -8,7 +8,7 @@ defmodule GraphLab.Settlement.DailyTotalsFor do
   @impl true
   def daily_totals_for(%DailyTotalsFor{business_date: day}, _ctx) do
     query =
-      from(p in "rehmed_daily_payments",
+      from(p in "graph_lab_daily_payments",
         where: p.business_date == ^day,
         group_by: p.method,
         order_by: p.method,

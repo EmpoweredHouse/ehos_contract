@@ -33,7 +33,7 @@ defmodule Mix.Tasks.GraphLab.Traffic do
 
   **What it changes for its own run only:** nothing reacts by itself — it pushes the
   reactions through with `EhOsContract.Testing.drain/1` at the moment of each step — and
-  the engine reads services from `GraphLab.Entities`, not from Rehmed's catalogue. The
+  the engine reads services from `GraphLab.Entities`, not from the catalogue the host configures. The
   host's configuration stays as it is.
   """
 

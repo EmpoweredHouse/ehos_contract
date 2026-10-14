@@ -1,11 +1,16 @@
 defmodule GraphLab.Processes.ClinicalVisit do
   @moduledoc """
-  **A copy of `Rehmed.Processes.ClinicalVisit` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
+
+  The clinical visit as one run: from the patient leaving the room, through the clinical
+  close, to the report to the medical events register. The promise counts the statutory
+  two days from the patient leaving, and a waived report keeps it for a service that is
+  not reported. A rejection by the register does not end the run: the report is still
+  owed.
   """
 
   # The old watchdog "notified the manager at the moment the deadline had already
-  # passed" (distillation, process 3), and overdue work surfaces to the manager as a
+  # passed", and overdue work surfaces to the manager as a
   # count (`P-25`): the manager is who a breach is addressed to.
   use EhOsContract.Process,
     id: "graph-lab.clinical_visit",

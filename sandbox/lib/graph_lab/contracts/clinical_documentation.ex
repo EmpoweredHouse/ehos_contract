@@ -1,7 +1,12 @@
 defmodule GraphLab.Contracts.ClinicalDocumentation do
   @moduledoc """
-  **A copy of `Rehmed.Contracts.ClinicalDocumentation` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
+
+  Clinical documentation: the codes of a visit and the specialist's clinical close, which
+  hands the medical event to statutory reporting. The visit's documentation is a
+  consistency boundary that reads the booking beside its own events: whether the service
+  is reported to P1, and which specialist may close the visit, come from it. A process
+  manager chases a visit nobody closed a day after the patient left.
   """
 
   use EhOsContract.Contract,
@@ -11,7 +16,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
 
   consumes GraphLab.Contracts.Scheduling, [:visit_booked, :visit_completed]
 
-  # A boundary, not an aggregate (plan DD, A2 (#249)): what the close depends on was
+  # A boundary, not an aggregate: what the close depends on was
   # recorded by scheduling when the visit was booked — the service's P1 flag (`AGG-15`)
   # and the specialist the visit is booked with — so the documentation reads that event
   # of its visit beside its own. The specialist comes from reception's booking, not from
@@ -80,7 +85,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
 
     # `E-44`, observed; about two minutes per code on a paper cheat-sheet today.
     # Corrected codes are a new fact rather than an overwrite, which is what the
-    # regulation's "data obtained later" path suggests (distillation, process 2).
+    # regulation's "data obtained later" path suggests.
     event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do
       field :patient_id, :id, subject: :patient
       field :icd10, :string, personal: :patient_id

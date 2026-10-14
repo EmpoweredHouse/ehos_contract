@@ -3,8 +3,7 @@ defmodule GraphLab.Contracts.PatientMessaging do
   **Added to the test set to test the graph on; not client material** (`GraphLab`).
 
   The text messages a patient gets about a visit: a reminder when it is booked, a notice
-  when it is cancelled, a survey when the patient has left. Rehmed's map has patient
-  messaging as a thread through its other contexts, with no contract of its own.
+  when it is cancelled, a survey when the patient has left.
 
   It is here for three shapes of the graph: an event consumed under another name —
   scheduling's `visit_completed` is `patient_left` here, the words of this context — one

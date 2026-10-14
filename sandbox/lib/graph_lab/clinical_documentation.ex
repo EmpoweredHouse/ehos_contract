@@ -1,7 +1,7 @@
 defmodule GraphLab.ClinicalDocumentation do
   @moduledoc """
-  The implementation of `GraphLab.Contracts.ClinicalDocumentation`, as
-  `Rehmed.ClinicalDocumentation`'s.
+  The implementation of `GraphLab.Contracts.ClinicalDocumentation`: the documentation's
+  decision and the chase after it.
   """
 
   use Boundary,

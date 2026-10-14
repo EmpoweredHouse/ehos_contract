@@ -1,7 +1,10 @@
 defmodule GraphLab.Processes.PayerSettlement do
   @moduledoc """
-  **A copy of `Rehmed.Processes.PayerSettlement` changed to test the graph on; not client
-  material** (`GraphLab`). Why each declaration is as it is, that module says.
+  **Part of the test set for drawing the graph; not client material** (`GraphLab`).
+
+  One external payer's month as one run: the visits charged to the payer, each marked
+  settled with the payer or excluded with a reason, then the invoice. A month whose every
+  charged visit was excluded has nothing to invoice, and never ends.
   """
 
   use EhOsContract.Process,

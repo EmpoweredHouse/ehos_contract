@@ -1,7 +1,7 @@
 defmodule GraphLab.StatutoryReporting do
   @moduledoc """
-  The implementation of `GraphLab.Contracts.StatutoryReporting`, as
-  `Rehmed.StatutoryReporting`'s.
+  The implementation of `GraphLab.Contracts.StatutoryReporting`: the report's decision,
+  the policy on the clinical close, and the send.
   """
 
   use Boundary,
