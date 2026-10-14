@@ -51,16 +51,20 @@ defmodule EhOsContract.Web.Live.Graph do
       )
       |> Enum.sort_by(& &1.id)
 
+    # The domain's document and overlay are the ones the API serves, with the process
+    # modules beside the contracts (plan DD, P2e, #220), so one digest names them.
+    modules = registered ++ EhOsContract.Registry.processes()
+
     # Every registered domain has a map; one with a v2 contract has a system too.
     domains =
       for domain <- EhOsContract.Registry.domains() do
-        document = Document.domain(domain, registered)
+        document = Document.domain(domain, modules)
 
         %{
           name: document["name"],
           document: document,
           system?: List.keymember?(View.views(document), :system, 0),
-          overlay: if(connected?(socket), do: Overlay.domain(domain, registered))
+          overlay: if(connected?(socket), do: Overlay.domain(domain, modules))
         }
       end
 
