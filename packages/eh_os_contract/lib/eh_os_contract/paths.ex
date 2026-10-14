@@ -240,17 +240,46 @@ defmodule EhOsContract.Paths do
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
-    types = Enum.map(Model.process_events(model), & &1.type)
+    [{process, Enum.map(Model.process_events(model), & &1.type)}]
+    |> count_runs(opts)
+    |> Map.get(process, 0)
+  end
+
+  @doc """
+  Distinct runs of each of the process modules `models` in the period `opts` names, as
+  `runs_of/3` counts one's under its `id:`: `%{id => runs}`, every module's id present,
+  in one query however many there are.
+
+      EhOsContract.Paths.runs_by_process([Model.fetch(MyApp.Processes.Loan)], since: since)
+      #=> %{"my_app.loan" => 41}
+  """
+  @spec runs_by_process([map()], keyword()) :: %{String.t() => non_neg_integer()}
+  def runs_by_process(models, opts \\ []) do
+    filed = for m <- models, do: {m.id, Enum.map(Model.process_events(m), & &1.type)}
+    counted = count_runs(filed, opts)
+    Map.new(filed, fn {process, _types} -> {process, Map.get(counted, process, 0)} end)
+  end
+
+  # Distinct runs per process, each over the types of the events it includes.
+  defp count_runs([], _opts), do: %{}
+
+  defp count_runs(filed, opts) do
+    included =
+      Enum.reduce(filed, dynamic(false), fn {process, types}, acc ->
+        dynamic([r, event: e], ^acc or (r.process == ^process and e.type in ^types))
+      end)
 
     from(r in EventRun,
       join: e in Event,
       as: :event,
       on: e.position == r.position,
-      where: r.process == ^process and e.type in ^types,
-      select: count(r.instance_id, :distinct)
+      where: ^included,
+      group_by: r.process,
+      select: {r.process, count(r.instance_id, :distinct)}
     )
     |> bounded(opts)
-    |> repo().one()
+    |> repo().all()
+    |> Map.new()
   end
 
   @doc """
@@ -261,18 +290,35 @@ defmodule EhOsContract.Paths do
   def occurrences(model, opts \\ []) do
     by_type = Map.new(model.events, &{&1.type, &1.name})
 
-    types = Map.keys(by_type)
+    by_type
+    |> Map.keys()
+    |> occurrences_by_type(opts)
+    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+  end
 
+  @doc """
+  How often events of each of `types` happened in the period `opts` names (`:since`,
+  `:until`): `%{type => occurrences}`, whatever contract or run they fall in. A type
+  the log does not hold in the period has no entry. One query, however many types.
+
+      EhOsContract.Paths.occurrences_by_type(["rehmed.scheduling.visit_completed"])
+      #=> %{"rehmed.scheduling.visit_completed" => 12}
+  """
+  @spec occurrences_by_type([String.t()], keyword()) :: %{String.t() => non_neg_integer()}
+  def occurrences_by_type(types, opts \\ [])
+  def occurrences_by_type([], _opts), do: %{}
+
+  def occurrences_by_type(types, opts) do
     from(e in Event,
       as: :event,
-      where: e.type in ^types,
+      where: e.type in ^Enum.uniq(types),
       group_by: e.type,
       # `position`, not `id`: without a period the `(type, position)` index answers it alone.
       select: {e.type, count(e.position)}
     )
     |> bounded(opts)
     |> repo().all()
-    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+    |> Map.new()
   end
 
   # --- declarations --------------------------------------------------------------------

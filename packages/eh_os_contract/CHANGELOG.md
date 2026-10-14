@@ -83,8 +83,40 @@ and the `ehos-dev:release` skill makes one.
   relation type, `refers_to`, from a contract to a sibling whose units' numbers it keeps, one per pair, with
   the units' names in `units`. The schema in `priv/schema/graph.v1.json` lists it among a domain's relations,
   every one of which a document carries, empty or not. Moves no verdict.
+- **A process module has a `graph.v1` document** (plan DD, stage P2e, #220): `EhOsContract.Graph.Document.process/1`
+  gives one of kind `"process"` — the process with its correlation and deadline, its stages, the events they
+  include with each one's stage, contract and whether it ends a run, those contracts and their contexts, its
+  promises with the events that open, fulfil or settle each otherwise (`opens`, `fulfils`, `or_else`), and the
+  actor `accountable_for` it when the domain declares that actor. An event keeps the id it has in its contract's
+  document, so the two join. Its shape is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.
+- **What the log says over a process module** (plan DD, stage P2e, #220): `EhOsContract.Graph.Overlay.process/2`
+  puts its runs on the process, how often each event it includes happened on the event, and on each promise its
+  verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
+  `EhOsContract.Conformance.process/2` reports them; a promise not yet confirmed has none, as in the report. Its
+  shape is the new `process_overlay` of `priv/schema/graph_overlay.v1.json`. Moves no verdict.
+- **`mix eh_os_contract.graph --process <id>`** gives a process module's document, and with `--overlay` what the
+  log says over it (plan DD, stage P2e, #220). It refuses an id no process module has, a contract's included, and
+  `--process` beside `--contract` or `--domain`.
+- **A domain's `graph.v1` document has its process modules** (plan DD, stage P2e, #220): a `process` node for each
+  process module given, an `includes` relation from it to each given contract whose events it includes, and the
+  actor `accountable_for` it when the domain declares that actor, as in the process's own document; the domain's
+  overlay puts each one's runs on its node. The task gives them; see "Changed" for what a reader of the schema has
+  to do. Moves no verdict.
+- **Three functions behind the overlays are public** (plan DD, stage P2e, #220):
+  `EhOsContract.Conformance.promise_verdicts/2` judges a process's confirmed promises as the report does,
+  `EhOsContract.Paths.occurrences_by_type/2` counts events of the given types in one query, and
+  `EhOsContract.Paths.runs_by_process/2` counts the runs of several process modules in one query.
 
 ### Changed
+
+- **Breaking:** a domain's `graph.v1` document carries a new node kind, `process`, and a new relation type,
+  `includes` (plan DD, stage P2e, #220), which `priv/schema/graph.v1.json` lists among those every domain document
+  carries, empty or not; its `oneOf` has a third document, a process module's, and the overlay schema a third
+  overlay. A reader that holds a domain document to the schema shipped in 0.3.0 refuses the new keys, and the new
+  schema refuses a document without them: take the schema with the engine. `Document.domain/2` and
+  `Overlay.domain/3` take the domain's process modules in the same list as its contracts
+  (`Registry.contracts() ++ Registry.processes()`); given contracts alone, the document has no process nodes.
+  A contract's document is unchanged.
 
 - **The docs and the plugin's skills teach a process as a module** (plan DD, stage P2i, #294). The examples of
   the README, `docs/introduction.md`, `docs/contract.md` and `docs/concepts/` write a run with

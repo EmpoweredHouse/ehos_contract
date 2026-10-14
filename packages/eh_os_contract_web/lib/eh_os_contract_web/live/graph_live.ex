@@ -18,9 +18,9 @@ defmodule EhOsContract.Web.Live.Graph do
   # process, and a contract without one could not be reached). Its picture is **declared
   # versus observed** — the contract's full graph with the log laid over it (v2 plan E7c,
   # plan EG1): the steps, and the actors, read models, queries and external systems
-  # around them. A contract declares no process (plan DD, P2h, #221), so the declared
-  # shape of a process — stages, endings, promise windows — is not drawn here until
-  # process modules are (P2e, #220).
+  # around them. A contract declares no process (plan DD, P2h, #221). Each domain's
+  # document and overlay hold its process modules, as the API's do (plan DD, P2e, #220);
+  # drawing them and a process's own picture comes with the renderer's part of P2e.
   #
   # **Above it, each domain** (plan EG2): its context map — subdomains, contexts,
   # externals and their relations — with its actors under it, people and systems apart,
@@ -51,16 +51,20 @@ defmodule EhOsContract.Web.Live.Graph do
       )
       |> Enum.sort_by(& &1.id)
 
+    # The domain's document and overlay are the ones the API serves, with the process
+    # modules beside the contracts (plan DD, P2e, #220), so one digest names them.
+    modules = registered ++ EhOsContract.Registry.processes()
+
     # Every registered domain has a map; one with a v2 contract has a system too.
     domains =
       for domain <- EhOsContract.Registry.domains() do
-        document = Document.domain(domain, registered)
+        document = Document.domain(domain, modules)
 
         %{
           name: document["name"],
           document: document,
           system?: List.keymember?(View.views(document), :system, 0),
-          overlay: if(connected?(socket), do: Overlay.domain(domain, registered))
+          overlay: if(connected?(socket), do: Overlay.domain(domain, modules))
         }
       end
 

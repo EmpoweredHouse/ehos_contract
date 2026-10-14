@@ -16,9 +16,11 @@ defmodule EhOsContract.GraphDocumentTest do
 
   defp documents do
     contracts = Registry.contracts()
+    modules = contracts ++ Registry.processes()
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
-      for d <- Registry.domains(), do: {d, Document.domain(d, contracts)}
+      for(p <- Registry.processes(), do: {p, Document.process(p)}) ++
+      for d <- Registry.domains(), do: {d, Document.domain(d, modules)}
   end
 
   test "every contract and every domain gives a document, all of them" do
@@ -111,11 +113,79 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   test "a domain's document does not depend on the order its contracts are given in" do
-    contracts = Registry.contracts()
+    modules = Registry.contracts() ++ Registry.processes()
 
     for domain <- Registry.domains() do
-      assert Document.domain(domain, Enum.reverse(contracts)) ==
-               Document.domain(domain, contracts)
+      assert Document.domain(domain, Enum.reverse(modules)) ==
+               Document.domain(domain, modules)
     end
+  end
+
+  # Plan DD, P2e (#220): the clinic's visit, from three contexts' events.
+  test "the clinical visit's document has its stages, the events from three contracts and its promise" do
+    d = Document.process(Rehmed.Processes.ClinicalVisit)
+    stage = &Document.id([:stage, "rehmed.clinical_visit", &1])
+
+    assert %{"kind" => "process", "process" => "rehmed.clinical_visit"} = d
+
+    assert Enum.map(d["nodes"]["stage"], & &1["id"]) ==
+             [stage.(:departure), stage.(:closing), stage.(:reporting)]
+
+    assert Enum.map(d["nodes"]["contract"], & &1["name"]) ==
+             ~w(rehmed.scheduling rehmed.clinical_documentation rehmed.statutory_reporting)
+
+    events = Map.new(d["nodes"]["event"], &{&1["id"], &1})
+
+    # Each event under the id it has in its contract's document.
+    for contract <- [
+          Rehmed.Contracts.Scheduling,
+          Rehmed.Contracts.ClinicalDocumentation,
+          Rehmed.Contracts.StatutoryReporting
+        ],
+        own = Document.contract(contract)["nodes"]["event"],
+        e <- own,
+        Map.has_key?(events, e["id"]) do
+      assert events[e["id"]]["label"] == e["label"]
+    end
+
+    assert %{"stage" => departure} = events["event:rehmed.scheduling:visit_completed"]
+    assert departure == stage.(:departure)
+
+    terminal = for {id, %{"terminal" => true}} <- events, do: id
+
+    assert Enum.sort(terminal) == [
+             "event:rehmed.statutory_reporting:p1_report_sent",
+             "event:rehmed.statutory_reporting:p1_reporting_not_required"
+           ]
+
+    promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+
+    assert [%{"id" => ^promise, "source" => "Dz.U. 2025 poz. 866"}] = d["nodes"]["promise"]
+
+    for {type, event} <- [
+          {"opens", "event:rehmed.scheduling:visit_completed"},
+          {"fulfils", "event:rehmed.statutory_reporting:p1_report_sent"},
+          {"or_else", "event:rehmed.statutory_reporting:p1_reporting_not_required"}
+        ] do
+      assert [%{"from" => ^event, "to" => ^promise}] = d["relations"][type], type
+    end
+
+    manager = Document.id([:actor, Rehmed.Domain, :manager])
+    assert [%{"from" => ^manager}] = d["relations"]["accountable_for"]
+
+    # Rehmed's system has its two process modules, each with an arrow to what it includes.
+    domain =
+      Document.domain(Rehmed.Domain, Registry.contracts() ++ Registry.processes())
+
+    assert Enum.map(domain["nodes"]["process"], & &1["name"]) ==
+             ~w(rehmed.clinical_visit rehmed.payer_settlement)
+
+    included =
+      for r <- domain["relations"]["includes"],
+          r["from"] == "process:rehmed.clinical_visit",
+          do: r["to"]
+
+    assert Enum.sort(included) ==
+             Enum.sort(Enum.map(d["nodes"]["contract"], & &1["id"]))
   end
 end

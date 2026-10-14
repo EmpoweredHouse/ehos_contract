@@ -8,6 +8,9 @@
       "$ref": "#/$defs/contract_overlay"
     },
     {
+      "$ref": "#/$defs/process_overlay"
+    },
+    {
       "$ref": "#/$defs/domain_overlay"
     }
   ],
@@ -172,7 +175,7 @@
         },
         "nodes": {
           "type": "object",
-          "description": "Numbers by the id of a node of the document.",
+          "description": "Numbers by the id of a node of the document: each process module's runs.",
           "additionalProperties": {
             "oneOf": [
               {
@@ -242,9 +245,160 @@
       ],
       "format": "date-time"
     },
+    "process_overlay": {
+      "type": "object",
+      "description": "A process module's overlay.",
+      "required": [
+        "schema",
+        "kind",
+        "process",
+        "module",
+        "version",
+        "document_digest",
+        "since",
+        "until",
+        "nodes",
+        "relations",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "eh_os_contract.graph_overlay.v1"
+        },
+        "kind": {
+          "const": "process"
+        },
+        "process": {
+          "type": "string",
+          "description": "The id: of the process module it is of."
+        },
+        "module": {
+          "type": "string",
+          "description": "The process module, for a reader in the code."
+        },
+        "version": {
+          "type": "string",
+          "description": "The process module's version the log was read against."
+        },
+        "document_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "description": "The digest of the graph.v1 document this overlay joins onto: a reader joins it only onto that one."
+        },
+        "since": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's start, inclusive; null when unbounded."
+        },
+        "until": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's end, inclusive; null when unbounded."
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Numbers by the id of a node of the document: the process's runs, an event's occurrences, a promise's verdicts. An event that did not happen in the period, and a promise the owner has yet to confirm, have no entry.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/runs"
+              },
+              {
+                "$ref": "#/$defs/event_numbers"
+              },
+              {
+                "$ref": "#/$defs/promise_numbers"
+              }
+            ]
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "None: a process's numbers are on its nodes.",
+          "maxProperties": 0
+        },
+        "observed": {
+          "type": "object",
+          "description": "Relations the log shows that the document does not declare: none for a process.",
+          "required": [
+            "relations"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "relations": {
+              "type": "object",
+              "description": "By type.",
+              "required": [
+                "undeclared"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "undeclared": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/undeclared"
+                  },
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "promise_numbers": {
+      "type": "object",
+      "description": "A promise: its verdicts over the runs it opened in the period, as the conformance report judges them under the promise's current declaration.",
+      "required": [
+        "satisfied",
+        "satisfied_via_eventually",
+        "satisfied_via_or_else",
+        "violated",
+        "pending",
+        "suspended",
+        "instances"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "satisfied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept: what it promised happened in time, one way or the other."
+        },
+        "satisfied_via_eventually": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it promised."
+        },
+        "satisfied_via_or_else": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it accepts otherwise."
+        },
+        "violated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken: the window passed and neither came."
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Its window is still open."
+        },
+        "suspended": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken while an external it depends on was down: not counted as broken."
+        },
+        "instances": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The runs it was judged on."
+        }
+      }
+    },
     "runs": {
       "type": "object",
-      "description": "A process, or a domain's contract with one: its runs in the period.",
+      "description": "A process: its runs in the period.",
       "required": [
         "runs"
       ],
