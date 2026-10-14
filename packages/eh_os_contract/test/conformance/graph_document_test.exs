@@ -1326,6 +1326,28 @@ defmodule EhOsContract.GraphDocumentTest do
       assert Enum.count(d["nodes"]["event"], & &1["terminal"]) == 2
     end
 
+    test "draws who answers for it only where the domain declares them, as the domain's does" do
+      %{module: module} =
+        EhOsContract.DslCase.compile_process(
+          "GraphUndeclaredOwner",
+          """
+            correlate :account_id
+            stage :withdrawal, include: [{DispatchRig.Ledger, :withdrawn}]
+          """,
+          id: "dispatch_rig.graph_undeclared_owner",
+          domain: DispatchRig.Domain,
+          accountable: :nobody_declared
+        )
+
+      d = Document.process(module)
+      assert d["nodes"]["actor"] == [] and d["relations"]["accountable_for"] == []
+
+      domain = Document.domain(DispatchRig.Domain, [DispatchRig.Ledger, module])
+      assert [_] = domain["nodes"]["process"]
+      assert domain["relations"]["accountable_for"] == []
+      assert JSV.validate(d, @schema) |> elem(0) == :ok
+    end
+
     test "is a process module's alone, and does not depend on anything but it" do
       assert_raise ArgumentError, ~r/is a contract, not a process module/, fn ->
         Document.process(DispatchRig.Ledger)

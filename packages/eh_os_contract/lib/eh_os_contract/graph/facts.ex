@@ -965,7 +965,7 @@ defmodule EhOsContract.Graph.Facts do
           from = event && event_id[event],
           do: {type, relation(from, promise_id.(pr.name))}
 
-    actors = declared(domain.actors, List.wrap(p.accountable))
+    actors = List.wrap(accountable(domain, p.accountable))
 
     accountable =
       for a <- actors, do: {:accountable_for, relation(id(:actor, d, a.name), pid)}
@@ -1009,6 +1009,12 @@ defmodule EhOsContract.Graph.Facts do
 
     group(nodes, @process_kinds, typed(promised ++ accountable), @process_types)
   end
+
+  # The actor who answers for a process module, as the domain declares it, or nil: one
+  # the domain does not declare is no node and no arrow, in the process's document as in
+  # the domain's, where only declared actors are nodes.
+  defp accountable(_domain, nil), do: nil
+  defp accountable(domain, name), do: Enum.find(domain.actors, &(&1.name == name))
 
   # --- a domain ------------------------------------------------------------------------
 
@@ -1170,12 +1176,11 @@ defmodule EhOsContract.Graph.Facts do
           MapSet.member?(here, contract),
           do: {:includes, relation(process_id.(p), contract_id.(contract))}
 
-    actors = MapSet.new(domain.actors, & &1.name)
-
     accountable =
       for p <- processes,
-          MapSet.member?(actors, p.accountable),
-          do: {:accountable_for, relation(id(:actor, d, p.accountable), process_id.(p))}
+          a = accountable(domain, p.accountable),
+          a != nil,
+          do: {:accountable_for, relation(id(:actor, d, a.name), process_id.(p))}
 
     nodes = %{
       process:
