@@ -3,6 +3,24 @@
   "kind": "process",
   "module": "Rehmed.Processes.ClinicalVisit",
   "nodes": {
+    "event:rehmed.clinical_documentation:visit_closed_clinically": {
+      "occurrences": 0
+    },
+    "event:rehmed.scheduling:visit_completed": {
+      "occurrences": 0
+    },
+    "event:rehmed.statutory_reporting:p1_report_failed": {
+      "occurrences": 0
+    },
+    "event:rehmed.statutory_reporting:p1_report_queued": {
+      "occurrences": 0
+    },
+    "event:rehmed.statutory_reporting:p1_report_sent": {
+      "occurrences": 0
+    },
+    "event:rehmed.statutory_reporting:p1_reporting_not_required": {
+      "occurrences": 0
+    },
     "process:rehmed.clinical_visit": {
       "runs": 0
     },

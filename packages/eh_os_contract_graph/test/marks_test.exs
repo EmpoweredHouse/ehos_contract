@@ -73,15 +73,6 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
   end
 
   # Plan DD, P2e (#220).
-  test "a process's overlay lists only the events that happened: one it leaves out is 0" do
-    process = %{"kind" => "process", "nodes" => %{}}
-
-    assert Marks.node(process, "e", "event") == %{count: 0, states: []}
-    assert Marks.node(process, "a", "actor") == %{count: nil, states: []}
-    assert Marks.node(%{"kind" => "contract", "nodes" => %{}}, "e", "event").count == nil
-    assert Marks.node(nil, "e", "event").count == nil
-  end
-
   test "a promise's verdicts in words, broken in the error state, and none for one unconfirmed" do
     promise = fn entry -> Marks.promise(%{"nodes" => %{"p" => entry}}, "p") end
 

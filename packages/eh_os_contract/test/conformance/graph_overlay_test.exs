@@ -303,7 +303,8 @@ defmodule EhOsContract.GraphOverlayTest do
       # A period after everything counts nothing.
       later = Overlay.process(AccountReview, since: DateTime.add(DateTime.utc_now(), 3600))
       assert later["nodes"]["process:dispatch_rig.account_review"] == %{"runs" => 0}
-      refute Map.has_key?(later["nodes"], event.(:withdrawn))
+      # An event that did not happen is 0, not missing, so no reader infers the zero.
+      assert later["nodes"][event.(:withdrawn)] == %{"occurrences" => 0}
     end
 
     # The ids are the facts' to make: the overlay reads them from its document, so it

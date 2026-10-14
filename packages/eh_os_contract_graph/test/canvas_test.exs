@@ -232,7 +232,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     defp count(html, attribute, id),
       do: html |> at(attribute, id) |> LazyHTML.query(".ehg-count") |> Enum.map(&LazyHTML.text/1)
 
-    test "its runs on the process, and an event it does not list happened no time", c do
+    test "its runs on the process, and each event's occurrences, 0 included", c do
       overlay =
         c.overlay
         |> put_in(["nodes", "process:rehmed.clinical_visit", "runs"], 3)

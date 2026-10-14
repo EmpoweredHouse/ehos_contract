@@ -80,7 +80,12 @@ defmodule EhOsContract.GraphRenderer.Panel do
     kind = if element.kind == "start", do: "unit", else: element.kind
     node = element.facts
 
-    assigns = assign(assigns, kind: kind, node: node, log: node_log(assigns.overlay, kind, node))
+    assigns =
+      assign(assigns,
+        kind: kind,
+        node: node,
+        log: get_in(assigns.overlay || %{}, ["nodes", node["id"]])
+      )
 
     ~H"""
     <.frame
@@ -1510,21 +1515,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
-  # What the log says of the node or relation a panel is of. A process's overlay leaves out
-  # an event that happened no time; a promise's arrow says what the log says of the
-  # promise.
-  defp node_log(nil, _kind, _node), do: nil
-
-  defp node_log(overlay, kind, node) do
-    case get_in(overlay, ["nodes", node["id"]]) do
-      nil when kind == "event" ->
-        if overlay["kind"] == "process", do: %{"occurrences" => 0}
-
-      entry ->
-        entry
-    end
-  end
-
+  # What the log says of the relation a panel is of: a promise's arrow says what the log
+  # says of the promise.
   defp relation_log(nil, _relation), do: nil
 
   defp relation_log(overlay, %{type: type, facts: %{"process" => _} = promise})

@@ -8,7 +8,6 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # | Entry | Count | States |
   # | --- | --- | --- |
   # | an event's `occurrences`, a process's `runs`, a unit's `aggregates` | that number | — |
-  # | an event a process's overlay does not list | 0 | — |
   # | a promise's verdicts | none: the verdicts in words | `:failing` when a run broke it |
   # | a promise a process's overlay does not list | none: "unconfirmed" | — |
   # | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
@@ -20,9 +19,6 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # The last row is left empty on purpose: a relation several steps end at has a number
   # for each trigger, and the panel lists them; no one number stands for the relation.
   #
-  # A process's overlay lists only the events that happened in its period, so one it
-  # leaves out happened no time; and it gives no verdicts for a promise the owner has
-  # yet to confirm, which is therefore said to be unconfirmed rather than given zeros.
   @moduledoc false
 
   @type state :: :untraversed | :pending | :waiting | :failing | :undeclared
@@ -34,30 +30,16 @@ defmodule EhOsContract.GraphRenderer.Marks do
 
   @none %{count: nil, states: []}
 
-  @doc """
-  The marks of node `id`, of `kind`; none without an overlay or an entry, but an event a
-  process's overlay leaves out, which happened no time.
-  """
-  @spec node(map() | nil, String.t(), String.t() | nil) :: t()
-  def node(overlay, id, kind \\ nil)
-  def node(nil, _id, _kind), do: @none
+  @doc "The marks of node `id`; none without an overlay or an entry."
+  @spec node(map() | nil, String.t()) :: t()
+  def node(nil, _id), do: @none
 
-  def node(overlay, id, kind) do
+  def node(overlay, id) do
     case get_in(overlay, ["nodes", id]) do
-      %{"occurrences" => n} ->
-        %{count: n, states: []}
-
-      %{"runs" => n} ->
-        %{count: n, states: []}
-
-      %{"aggregates" => n} ->
-        %{count: n, states: []}
-
-      nil when kind == "event" and :erlang.map_get("kind", overlay) == "process" ->
-        %{count: 0, states: []}
-
-      _ ->
-        @none
+      %{"occurrences" => n} -> %{count: n, states: []}
+      %{"runs" => n} -> %{count: n, states: []}
+      %{"aggregates" => n} -> %{count: n, states: []}
+      _ -> @none
     end
   end
 

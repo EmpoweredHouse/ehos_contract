@@ -172,7 +172,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             :for={node <- @view.nodes}
             type="button"
             class={[
-              "ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id, node.kind))
+              "ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id))
             ]}
             data-ehg-node={node.id}
             data-kind={node.kind}
@@ -187,7 +187,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
             <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
             <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <.count marks={Marks.node(@overlay, node.id, node.kind)} />
+            <.count marks={Marks.node(@overlay, node.id)} />
           </button>
           <button
             :for={relation <- @view.relations}

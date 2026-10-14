@@ -91,8 +91,8 @@ and the `ehos-dev:release` skill makes one.
   actor `accountable_for` it when the domain declares that actor. An event keeps the id it has in its contract's
   document, so the two join. Its shape is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.
 - **What the log says over a process module** (plan DD, stage P2e, #220): `EhOsContract.Graph.Overlay.process/2`
-  puts its runs on the process, how often each event it includes happened on the event, and on each promise its
-  verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
+  puts its runs on the process, how often each event it includes happened on the event (0 for one that did not),
+  and on each promise its verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
   `EhOsContract.Conformance.process/2` reports them; a promise not yet confirmed has none, as in the report. Its
   shape is the new `process_overlay` of `priv/schema/graph_overlay.v1.json`. Moves no verdict.
 - **`mix eh_os_contract.graph --process <id>`** gives a process module's document, and with `--overlay` what the
