@@ -37,7 +37,12 @@ defmodule EhOsContractHost.E10OutputsTest do
     # Three cross a relation neither context map declares — Rehmed's external payers and
     # statutory reporting keep scheduling's visit, TaxVision's KSeF inbox the client
     # company — and settlement's visit now crosses the relation to scheduling.
-    assert output =~ "eh_os_contract.check: 0 errors, 31 warnings, 22 notices"
+    # The test set for drawing the graph (`GraphLab`, on the branch graph/explorer-plan
+    # only) adds 16 warnings and 9 notices: Rehmed's, which it copies, less six events
+    # nobody reads in Rehmed that its lifecycles and patient messaging read; plus
+    # settlement's chase, shaped as documentation's and warned of alike, and the glossary
+    # notice of the context it adds.
+    assert output =~ "eh_os_contract.check: 0 errors, 47 warnings, 31 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
