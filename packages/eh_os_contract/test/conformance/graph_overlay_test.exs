@@ -77,8 +77,15 @@ defmodule EhOsContract.GraphOverlayTest do
       c |> Overlay.contract() |> valid!() |> joins!(Document.contract(c))
     end
 
+    for p <- Registry.processes() do
+      p |> Overlay.process() |> valid!() |> joins!(Document.process(p))
+    end
+
+    modules = contracts ++ Registry.processes()
+
     for d <- Registry.domains() do
       d |> Overlay.domain(contracts) |> valid!() |> joins!(Document.domain(d, contracts))
+      d |> Overlay.domain(modules) |> valid!() |> joins!(Document.domain(d, modules))
     end
   end
 
@@ -219,6 +226,127 @@ defmodule EhOsContract.GraphOverlayTest do
 
     assert %{"events" => 2, "failing" => false} = o["relations"][between]
     assert o["version"] == Model.fetch(DispatchRig.Domain).version
+  end
+
+  # Plan DD, P2e (#220): a process module's runs, its events and its promise's verdicts,
+  # the report's own.
+  describe "a process module's" do
+    alias DispatchRig.AccountReview
+    alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
+    alias DispatchRig.Ledger.Events.BalanceConfirmed
+
+    defp review(account, confirmed?) do
+      clerk = Actor.credential("u-1", ~w(dispatch_rig.open_account dispatch_rig.deposit
+        dispatch_rig.withdraw))
+
+      for command <- [
+            %OpenAccount{account_id: account, branch_id: "b-7"},
+            %Deposit{account_id: account, amount: 100},
+            %Withdraw{account_id: account, amount: 50}
+          ] do
+        {:ok, _} = EhOsContract.dispatch(DispatchRig.Ledger, command, actor: clerk)
+      end
+
+      if confirmed? do
+        auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+        {:ok, _} =
+          EhOsContract.record(DispatchRig.Ledger, %BalanceConfirmed{account_id: account},
+            actor: auditor
+          )
+      end
+    end
+
+    test "runs on the process, occurrences on its events, verdicts on its promise" do
+      review("a-1", true)
+      review("a-2", false)
+
+      d = Document.process(AccountReview)
+      o = AccountReview |> Overlay.process() |> valid!() |> joins!(d)
+      report = Conformance.process(Model.fetch(AccountReview))
+      event = &Document.id([:event, "dispatch_rig.ledger", &1])
+
+      assert %{"kind" => "process", "process" => "dispatch_rig.account_review"} = o
+      assert o["version"] == Model.fetch(AccountReview).version
+      assert o["nodes"]["process:dispatch_rig.account_review"] == %{"runs" => report.runs}
+      assert report.runs == 2
+
+      assert o["nodes"][event.(:withdrawn)] == %{"occurrences" => 2}
+      assert o["nodes"][event.(:balance_confirmed)] == %{"occurrences" => 1}
+
+      # Only the events it includes: the ledger's deposits are not on its picture.
+      refute Map.has_key?(o["nodes"], event.(:deposited))
+
+      [promise] = report.promises
+
+      assert o["nodes"][
+               "promise:dispatch_rig.account_review:balance_confirmed_after_withdrawal"
+             ] == %{
+               "satisfied" => 1,
+               "satisfied_via_eventually" => 1,
+               "satisfied_via_or_else" => 0,
+               "violated" => 0,
+               "pending" => 1,
+               "suspended" => 0,
+               "instances" => 2
+             }
+
+      assert promise.pending == 1
+      assert o["relations"] == %{}
+
+      # A period after everything counts nothing.
+      later = Overlay.process(AccountReview, since: DateTime.add(DateTime.utc_now(), 3600))
+      assert later["nodes"]["process:dispatch_rig.account_review"] == %{"runs" => 0}
+      refute Map.has_key?(later["nodes"], event.(:withdrawn))
+    end
+
+    test "a promise the owner has yet to confirm has no verdicts, as in the report" do
+      process = compile_unverified_promise()
+      o = process |> Overlay.process() |> valid!() |> joins!(Document.process(process))
+
+      assert [%{"unverified" => true, "id" => id}] =
+               Document.process(process)["nodes"]["promise"]
+
+      refute Map.has_key?(o["nodes"], id)
+    end
+
+    test "the domain's puts each process module's runs on its node" do
+      review("a-1", true)
+      modules = Registry.contracts() ++ Registry.processes()
+
+      o =
+        DispatchRig.Domain
+        |> Overlay.domain(modules)
+        |> valid!()
+        |> joins!(Document.domain(DispatchRig.Domain, modules))
+
+      assert o["nodes"]["process:dispatch_rig.account_review"] == %{"runs" => 1}
+      assert o["nodes"]["process:dispatch_rig.branch_run"] == %{"runs" => 1}
+    end
+  end
+
+  defp compile_unverified_promise do
+    %{module: module} =
+      EhOsContract.DslCase.compile_process(
+        "UnverifiedReview",
+        """
+          correlate :account_id
+          stage :withdrawal, include: [{DispatchRig.Ledger, :withdrawn}]
+          stage :confirmation, include: [{DispatchRig.Ledger, :balance_confirmed}]
+          ends_on :balance_confirmed
+
+          promise :confirmed do
+            from :withdrawn
+            eventually :balance_confirmed
+            within {1, :day}
+            unverified true
+          end
+        """,
+        id: "dispatch_rig.unverified_review",
+        domain: DispatchRig.Domain
+      )
+
+    module
   end
 
   # How many queries `fun` sends to the repo.

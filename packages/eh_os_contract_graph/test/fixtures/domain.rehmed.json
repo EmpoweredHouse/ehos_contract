@@ -416,6 +416,7 @@
         "unavailable_looks_like": "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi"
       }
     ],
+    "process": [],
     "publication": [],
     "subdomain": [
       {
@@ -586,6 +587,7 @@
         "to": "context:Rehmed.Domain:external_payers"
       }
     ],
+    "includes": [],
     "open_host_service": [
       {
         "from": "context:Rehmed.Domain:configuration",

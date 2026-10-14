@@ -54,20 +54,26 @@ defmodule EhOsContract.Graph.Facts do
   @patterns ~w(partnership shared_kernel separate_ways customer_supplier conformist
                anticorruption_layer open_host_service published_language)a
 
-  @domain_kinds ~w(subdomain context contract event publication actor external value entity
-                   subject)a
+  @domain_kinds ~w(subdomain context contract process event publication actor external value
+                   entity subject)a
 
   @domain_types @patterns ++
-                  ~w(consumed_by refers_to publishes subscribed_by backed_by accountable_for)a
+                  ~w(consumed_by refers_to publishes subscribed_by backed_by accountable_for
+                     includes)a
+
+  @process_kinds ~w(process stage promise event contract context actor)a
+
+  @process_types ~w(accountable_for opens fulfils or_else)a
 
   # What tells apart two relations of one type between the same two nodes: a
   # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
   @discriminators [:event, :on, :phase, :operation, :name, :as, :match, :where]
 
-  @doc "The node kinds and relation types of a contract's graph, and of a domain's."
-  @spec kinds(:contract | :domain) :: %{nodes: [atom()], relations: [atom()]}
+  @doc "The node kinds and relation types of a contract's graph, a domain's and a process's."
+  @spec kinds(:contract | :domain | :process) :: %{nodes: [atom()], relations: [atom()]}
   def kinds(:contract), do: %{nodes: @contract_kinds, relations: @contract_types}
   def kinds(:domain), do: %{nodes: @domain_kinds, relations: @domain_types}
+  def kinds(:process), do: %{nodes: @process_kinds, relations: @process_types}
 
   # --- a contract ----------------------------------------------------------------------
 
@@ -906,27 +912,129 @@ defmodule EhOsContract.Graph.Facts do
     end
   end
 
+  # --- a process module (plan DD, P2e, #220) ---------------------------------------------
+
+  @doc """
+  The facts of the process module `process`: the process, its stages, the events its
+  stages include — each under the id it has in the document of the contract that
+  declares it, so the two documents join — with the stage it sits in and whether it
+  ends a run, the contracts those events come from and their contexts, its promises
+  with the events that open, fulfil or settle each otherwise, and the actor
+  accountable for it. Every kind and type present, empty or not.
+  """
+  @spec process(module() | map()) :: %{nodes: map(), relations: map()}
+  def process(process) do
+    model = Model.fetch(process)
+    %{} = p = Model.process(model)
+    domain = domain_model(model.domain)
+    d = model.domain
+    ctx = context(d, domain, %{})
+    pid = id(:process, p.name)
+    stage_id = &Document.id([:stage, p.name, &1])
+    promise_id = &Document.id([:promise, p.name, &1])
+
+    included = Model.process_events(model)
+    contracts = included |> Enum.map(& &1.contract) |> Enum.uniq() |> Enum.map(&Model.fetch/1)
+    ids = Map.new(contracts, &{&1.module, &1.id})
+    contract_id = &id(:contract, ids[&1])
+    event_id = Map.new(included, &{&1.name, Document.id([:event, ids[&1.contract], &1.name])})
+
+    events =
+      for e <- included do
+        node(:event, ids[e.contract], e.declaration,
+          contract: contract_id.(e.contract),
+          stage: stage_id.(e.stage),
+          terminal: e.terminal,
+          type: e.type
+        )
+      end
+
+    # A promise has no words of its own in the DSL.
+    promises =
+      for pr <- p.promises do
+        with_attrs(%{id: promise_id.(pr.name), name: pr.name, label: nil, source: pr[:source]},
+          process: pid,
+          within: pr.within,
+          unverified: pr.unverified
+        )
+      end
+
+    promised =
+      for pr <- p.promises,
+          {type, event} <- [opens: pr.from, fulfils: pr.eventually, or_else: pr.or_else],
+          from = event && event_id[event],
+          do: {type, relation(from, promise_id.(pr.name))}
+
+    actors = declared(domain.actors, List.wrap(p.accountable))
+
+    accountable =
+      for a <- actors, do: {:accountable_for, relation(id(:actor, d, a.name), pid)}
+
+    contexts =
+      (Enum.map(contracts, & &1.context) ++ Enum.map(actors, &Map.get(&1, :context)))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    nodes = %{
+      process: [
+        with_attrs(%{id: pid, name: p.name, label: p.label, source: p[:source]},
+          correlate: p.correlate,
+          deadline: p.deadline
+        )
+      ],
+      stage:
+        for(
+          s <- p.stages,
+          do: %{
+            id: stage_id.(s.name),
+            name: s.name,
+            label: s.label,
+            source: s[:source],
+            process: pid
+          }
+        ),
+      promise: promises,
+      event: events,
+      # Named by its id, as in the domain's document, where the same node is.
+      contract:
+        for m <- contracts do
+          with_attrs(%{id: contract_id.(m.module), name: m.id, label: nil, source: nil},
+            context: id(:context, d, m.context),
+            module: m.module
+          )
+        end,
+      context: Enum.map(declared(domain.contexts, contexts), &node(:context, d, &1)),
+      actor: for(a <- actors, do: actor(a, ctx))
+    }
+
+    group(nodes, @process_kinds, typed(promised ++ accountable), @process_types)
+  end
+
   # --- a domain ------------------------------------------------------------------------
 
   @doc """
-  The facts of `domain` over `contracts` (those naming another domain are left out):
-  its subdomains, contexts, actors, externals, values, entities and subjects; its
-  contracts and the events that cross a contract's edge; the context-mapping patterns
-  and what flows between contracts and to other applications.
+  The facts of `domain` over `modules`, its contracts and process modules (those naming
+  another domain are left out): its subdomains, contexts, actors, externals, values,
+  entities and subjects; its contracts and the events that cross a contract's edge; the
+  context-mapping patterns and what flows between contracts and to other applications;
+  its process modules, the contracts whose events each includes and who answers for it.
   """
   @spec domain(module() | map(), [module() | map()]) :: %{nodes: map(), relations: map()}
-  def domain(domain, contracts) do
+  def domain(domain, modules) do
     domain = domain |> Model.fetch() |> Model.Export.redact_domain()
     d = domain.module
     ctx = context(d, domain, %{})
     contexts = MapSet.new(domain.contexts, & &1.name)
     code = EhOsContract.CodeWords.code_language(domain)
 
-    models =
-      contracts
+    fetched =
+      modules
       |> Enum.map(&Model.fetch/1)
       |> Enum.filter(&(&1.domain == d))
       |> Enum.sort_by(& &1.id)
+
+    models = Enum.filter(fetched, &(&1.kind == :contract))
+    processes = Enum.filter(fetched, &(&1.kind == :process))
 
     here = MapSet.new(models, & &1.module)
     # Everything of a contract is named by its `id:` (plan DD, ID3, #173), which the
@@ -1052,7 +1160,31 @@ defmodule EhOsContract.Graph.Facts do
         {:backed_by, relation(id(:actor, d, a.name), id(:external, d, a.backed_by))}
       end
 
+    # A process module (plan DD, P2e, #220): an arrow to each contract of these whose
+    # events it includes, and from the actor who answers for it.
+    process_id = &id(:process, &1.id)
+
+    includes =
+      for p <- processes,
+          contract <- p |> Model.process_events() |> Enum.map(& &1.contract) |> Enum.uniq(),
+          MapSet.member?(here, contract),
+          do: {:includes, relation(process_id.(p), contract_id.(contract))}
+
+    actors = MapSet.new(domain.actors, & &1.name)
+
+    accountable =
+      for p <- processes,
+          MapSet.member?(actors, p.accountable),
+          do: {:accountable_for, relation(id(:actor, d, p.accountable), process_id.(p))}
+
     nodes = %{
+      process:
+        for p <- processes do
+          with_attrs(%{id: process_id.(p), name: p.id, label: p.label, source: p.source},
+            module: p.module,
+            correlate: p.correlate
+          )
+        end,
       subdomain: for(s <- domain.subdomains, do: node(:subdomain, d, s, type: s.type)),
       context:
         for c <- domain.contexts do
@@ -1089,7 +1221,7 @@ defmodule EhOsContract.Graph.Facts do
     }
 
     relations =
-      typed(patterns ++ backed)
+      typed(patterns ++ backed ++ includes ++ accountable)
       |> Map.merge(%{
         consumed_by: consumed_by,
         refers_to: refers_to,
@@ -1120,6 +1252,7 @@ defmodule EhOsContract.Graph.Facts do
     do: Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0)
 
   defp id(kind, scope, name), do: Document.id([kind, scope, name])
+  defp id(kind, name), do: Document.id([kind, name])
 
   # A node of a declaration: its id, name, label and source — the label the client's
   # words or `nil`, never the name in their place — and what else is given.

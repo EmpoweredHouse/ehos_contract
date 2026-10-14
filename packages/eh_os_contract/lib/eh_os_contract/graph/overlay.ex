@@ -13,9 +13,12 @@ defmodule EhOsContract.Graph.Overlay do
   taken or not yet; a lifecycle transition's count, "not yet" and "never", and an
   aggregate's count; between contracts, the events the log holds and what waits or
   fails at the consumer. A run is a process module's, and a contract's overlay counts
-  none. They are counted as
-  `EhOsContract.Conformance.report/2` counts them; between contracts, from the
-  consumer's steps and one count of the consumed events.
+  none: a process module's overlay (`process/2`) has its runs, how often each event it
+  includes happened and each promise's verdicts, and a domain's has each process
+  module's runs. They are counted as
+  `EhOsContract.Conformance.report/2` and `EhOsContract.Conformance.process/2` count
+  them; between contracts, from the consumer's steps and one count of the consumed
+  events.
 
   Its JSON Schema is at `schema_path/0`, beside the document's.
 
@@ -76,6 +79,10 @@ defmodule EhOsContract.Graph.Overlay do
 
   @schema "eh_os_contract.graph_overlay.v1"
 
+  # A promise's verdicts, as `Conformance.process/2` reports them.
+  @verdicts ~w(satisfied satisfied_via_eventually satisfied_via_or_else violated pending
+               suspended instances)a
+
   @doc """
   The overlay of `contract` over the period `opts` names (`:since`, `:until`, as in
   the report), against `Document.contract/1` of the same contract.
@@ -117,21 +124,83 @@ defmodule EhOsContract.Graph.Overlay do
   end
 
   @doc """
-  The overlay of `domain` over `contracts` (those naming another domain are left
-  out) and the period `opts` names, against `Document.domain/2` of the same: what
-  crosses between two contracts. Its `nodes` are empty: a contract has no runs, a
-  process module's are its own.
+  The overlay of the process module `process` over the period `opts` names (`:since`,
+  `:until`, as in the report), against `Document.process/1` of the same: on the
+  process node its `runs`; on each event it includes that happened in the period, its
+  `occurrences`, whatever run, if any, each falls in; and on each promise its verdicts
+  over the runs it opened — `satisfied`, of them `satisfied_via_eventually` and
+  `satisfied_via_or_else`, `violated`, `pending`, `suspended` and `instances` — as
+  `EhOsContract.Conformance.process/2` reports them, under the promise's current
+  declaration. A promise the owner has yet to confirm (`unverified`) has none, as the
+  report judges none. Its `relations` are empty.
+
+      EhOsContract.Graph.Overlay.process(Rehmed.Processes.ClinicalVisit,
+        since: ~U[2026-07-01 00:00:00Z]
+      )
+  """
+  @spec process(module() | map(), keyword()) :: map()
+  def process(process, opts \\ []) do
+    model = Model.fetch(process)
+    document = Document.process(model)
+    period = Keyword.take(opts, [:since, :until])
+    report = Conformance.process(model, period)
+    included = Model.process_events(model)
+    ids = included |> Enum.map(& &1.contract) |> Enum.uniq() |> Map.new(&{&1, Model.fetch(&1).id})
+
+    # Counted by type: the events of a run come from several contracts.
+    by_type =
+      Paths.occurrences(%{events: for(e <- included, do: %{type: e.type, name: e.type})}, period)
+
+    events =
+      for e <- included,
+          occurrences = by_type[e.type],
+          do: {Document.id([:event, ids[e.contract], e.name]), %{occurrences: occurrences}}
+
+    promises =
+      for pr <- report.promises do
+        {Document.id([:promise, model.id, pr.promise]), Map.take(pr, @verdicts)}
+      end
+
+    seal(
+      %{
+        "kind" => "process",
+        "process" => model.id,
+        "module" => Model.json_data(model.module),
+        "version" => model.version,
+        "document_digest" => document["digest"],
+        "nodes" =>
+          Map.new(
+            [{Document.id([:process, model.id]), %{runs: report.runs}}] ++ events ++ promises
+          ),
+        "relations" => %{},
+        "observed" => %{"relations" => %{"undeclared" => []}}
+      },
+      period
+    )
+  end
+
+  @doc """
+  The overlay of `domain` over `modules`, its contracts and process modules (those
+  naming another domain are left out), and the period `opts` names, against
+  `Document.domain/2` of the same: what crosses between two contracts, and on each
+  process module's node its `runs`.
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
-  def domain(domain, contracts, opts \\ []) do
+  def domain(domain, modules, opts \\ []) do
     model = Model.fetch(domain)
-    document = Document.domain(model, contracts)
+    document = Document.domain(model, modules)
     period = Keyword.take(opts, [:since, :until])
 
-    models =
-      contracts
+    fetched =
+      modules
       |> Enum.map(&Model.fetch/1)
       |> Enum.filter(&(&1.domain == model.module))
+
+    models = Enum.filter(fetched, &(&1.kind == :contract))
+
+    runs =
+      for %{kind: :process} = p <- fetched,
+          do: {Document.id([:process, p.id]), %{runs: Paths.runs_of(p, p.id, period)}}
 
     id = &Document.id([:contract, &1.id])
 
@@ -141,7 +210,7 @@ defmodule EhOsContract.Graph.Overlay do
         "domain" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => %{},
+        "nodes" => Map.new(runs),
         "relations" => Map.new(between(document, models, id, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
