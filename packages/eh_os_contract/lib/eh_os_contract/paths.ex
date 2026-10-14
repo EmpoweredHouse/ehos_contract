@@ -261,18 +261,35 @@ defmodule EhOsContract.Paths do
   def occurrences(model, opts \\ []) do
     by_type = Map.new(model.events, &{&1.type, &1.name})
 
-    types = Map.keys(by_type)
+    by_type
+    |> Map.keys()
+    |> occurrences_by_type(opts)
+    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+  end
 
+  @doc """
+  How often events of each of `types` happened in the period `opts` names (`:since`,
+  `:until`): `%{type => occurrences}`, whatever contract or run they fall in. A type
+  the log does not hold in the period has no entry. One query, however many types.
+
+      EhOsContract.Paths.occurrences_by_type(["rehmed.scheduling.visit_completed"])
+      #=> %{"rehmed.scheduling.visit_completed" => 12}
+  """
+  @spec occurrences_by_type([String.t()], keyword()) :: %{String.t() => non_neg_integer()}
+  def occurrences_by_type(types, opts \\ [])
+  def occurrences_by_type([], _opts), do: %{}
+
+  def occurrences_by_type(types, opts) do
     from(e in Event,
       as: :event,
-      where: e.type in ^types,
+      where: e.type in ^Enum.uniq(types),
       group_by: e.type,
       # `position`, not `id`: without a period the `(type, position)` index answers it alone.
       select: {e.type, count(e.position)}
     )
     |> bounded(opts)
     |> repo().all()
-    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+    |> Map.new()
   end
 
   # --- declarations --------------------------------------------------------------------

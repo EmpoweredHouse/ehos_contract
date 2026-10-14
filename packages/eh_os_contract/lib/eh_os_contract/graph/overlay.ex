@@ -72,9 +72,7 @@ defmodule EhOsContract.Graph.Overlay do
 
   require Logger
 
-  import Ecto.Query
-
-  alias EhOsContract.{Conformance, Event, Model, Paths}
+  alias EhOsContract.{Conformance, Model, Paths}
   alias EhOsContract.Graph.Document
 
   @schema "eh_os_contract.graph_overlay.v1"
@@ -148,8 +146,7 @@ defmodule EhOsContract.Graph.Overlay do
     ids = included |> Enum.map(& &1.contract) |> Enum.uniq() |> Map.new(&{&1, Model.fetch(&1).id})
 
     # Counted by type: the events of a run come from several contracts.
-    by_type =
-      Paths.occurrences(%{events: for(e <- included, do: %{type: e.type, name: e.type})}, period)
+    by_type = Paths.occurrences_by_type(Enum.map(included, & &1.type), period)
 
     events =
       for e <- included,
@@ -234,7 +231,7 @@ defmodule EhOsContract.Graph.Overlay do
     consumers = pairs |> Enum.map(&elem(&1, 1)) |> Enum.uniq_by(& &1.module)
     steps = Map.new(consumers, &{&1.module, Paths.observe(&1, period)})
     types = for {sibling, _m, c} <- pairs, e <- sibling.events, e.name in c.events, do: e.type
-    counts = counts(types, period)
+    counts = Paths.occurrences_by_type(types, period)
 
     for {sibling, m, c} <- pairs,
         rid <- find(document, "consumed_by", id.(sibling), id.(m), %{}) do
@@ -250,29 +247,6 @@ defmodule EhOsContract.Graph.Overlay do
        }}
     end)
   end
-
-  # How many events of each type the log holds, in the period. `count(position)`
-  # rather than of the id, so the `(type, position)` index answers it alone.
-  defp counts([], _period), do: %{}
-
-  defp counts(types, period) do
-    from(e in Event,
-      as: :event,
-      where: e.type in ^Enum.uniq(types),
-      group_by: e.type,
-      select: {e.type, count(e.position)}
-    )
-    |> since(period[:since])
-    |> until(period[:until])
-    |> repo().all()
-    |> Map.new()
-  end
-
-  defp since(query, nil), do: query
-  defp since(query, at), do: where(query, [event: e], e.occurred_at >= ^at)
-
-  defp until(query, nil), do: query
-  defp until(query, at), do: where(query, [event: e], e.occurred_at <= ^at)
 
   # One `consumes` of a sibling: how many of its events the log holds, and what waits or
   # fails at the consumer's steps that start from them, under the names they have there.
@@ -292,8 +266,6 @@ defmodule EhOsContract.Graph.Overlay do
       failing: Enum.any?(steps, &Conformance.failing?/1)
     }
   end
-
-  defp repo, do: EhOsContract.Config.fetch!(:repo)
 
   @doc "Where the JSON Schema of an overlay is: in the package's `priv/schema`."
   @spec schema_path() :: Path.t()

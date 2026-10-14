@@ -105,6 +105,12 @@ defmodule EhOsContract.GraphOverlayTest do
     id = &Document.id([&1, "dispatch_rig.ledger", &2])
 
     assert o["nodes"][id.(:event, :deposited)] == %{"occurrences" => 2}
+
+    # Counted by type, whatever declares it; a type the log does not hold has no entry.
+    assert Paths.occurrences_by_type(["dispatch_rig.ledger.deposited", "nowhere.nothing"]) ==
+             %{"dispatch_rig.ledger.deposited" => 2}
+
+    assert Paths.occurrences_by_type([]) == %{}
     assert o["nodes"][id.(:event, :account_opened)] == %{"occurrences" => 2}
 
     # A contract has no runs: they are a process module's.
