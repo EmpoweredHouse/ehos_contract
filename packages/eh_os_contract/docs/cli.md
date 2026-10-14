@@ -100,7 +100,7 @@ The domain is found among the modules of `config :eh_os_contract, applications:`
 
 ## mix eh_os_contract.graph
 
-Gives a contract's, a process module's or a domain's graph.v1 document, or what the log says over it
+Gives a contract's, a process's or a domain's graph.v1 document, or the log over it
 
 The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
 contract or process module the registry finds — that is, of the binary that runs — or
@@ -116,8 +116,9 @@ of its domain, and with `--overlay` what the log says over it
 `id:`; a process module may share its id with a contract, so they are two options.
 Without either the task gives the domain's document — its context map, its contracts
 and process modules and what flows between them, its actors — and `--domain` names
-the domain by its `name:`, which it may leave out when the application has one. The bytes are the ones the API serves, every object's keys in
-order, so two of them compare with `diff`. A document holds every fact of its
+the domain by its `name:`, which it may leave out when the application has one. The
+bytes are the ones the API serves, every object's keys in order, so two of them
+compare with `diff`. A document holds every fact of its
 contract or domain, whatever a renderer draws of them; the pictures are the
 renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 

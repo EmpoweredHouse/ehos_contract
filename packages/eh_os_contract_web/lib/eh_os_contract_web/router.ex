@@ -122,11 +122,11 @@ defmodule EhOsContract.Web.Router do
   | `<path>/openapi/<id>` | the contract's OpenAPI document |
   | `<path>/asyncapi` | every contract, with its version and its AsyncAPI document's digest |
   | `<path>/asyncapi/<id>` | the contract's AsyncAPI document |
-  | `<path>/graph` | every contract, process module and domain, with its version and its graph document's digest |
+  | `<path>/graph` | every contract, process module and domain: its version, its document's digest |
   | `<path>/graph/<id>` | the contract's graph document (`EhOsContract.Graph.Document`) |
   | `<path>/graph/<id>/overlay?since=<ISO 8601>&until=<ISO 8601>` | what the log says over the contract's graph document (`EhOsContract.Graph.Overlay`) |
   | `<path>/graph/process/<id>` | the process module's graph document |
-  | `<path>/graph/process/<id>/overlay?since=<ISO 8601>&until=<ISO 8601>` | what the log says over the process module's graph document |
+  | `<path>/graph/process/<id>/overlay?since=<ISO 8601>&until=<ISO 8601>` | what the log says over it |
   | `<path>/graph/domain/<module>` | the domain's graph document |
   | `<path>/graph/domain/<module>/overlay?since=<ISO 8601>&until=<ISO 8601>` | what the log says over the domain's graph document |
 
@@ -134,9 +134,9 @@ defmodule EhOsContract.Web.Router do
   graph document in `"digest"`) and as its `ETag`, so a consumer compares what an
   instance serves with what its build recorded with a `HEAD` and no body. An overlay has
   neither: the log moves under it, and one whose `since` is after its `until` is 400. A
-  contract or process module id not registered is 404 with
-  `{"error": "not_found", "detail": ...}` on the document routes. On `conformance`, an unknown contract or process, both named at once,
-  or a parameter that does not parse, is 400 with
+  contract or process module id not registered is 404 with `{"error": "not_found",
+  "detail": ...}` on the document routes. On `conformance`, an unknown contract or
+  process, both named at once, or a parameter that does not parse, is 400 with
   `{"error": "bad_request", "detail": ...}`.
 
   None of it is business data, but all of it is the client's business in its own
