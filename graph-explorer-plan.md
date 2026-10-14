@@ -8,6 +8,10 @@
 > referred to ("3.2", "decision 4").
 >
 > Client labels (Rehmed's, in Polish) are quoted as the client wrote them, with an English gloss on first use.
+>
+> **It builds on #297** ("Draw the graph like a catalog: cards of their kind, a legend, search, one canvas", opened on
+> 14 October by a teammate; stage G1 of `PLAN.md`). What #297 asks for is the base (5.0); everything else here is an
+> addition to it (Filip's decision, 14 October). #297's text is updated later, once this plan is agreed.
 
 ---
 
@@ -59,14 +63,19 @@ process at all (#221), and the "declared shape" picture left the Graph screen. T
 anyway, and it has a stage (#220) with three pull requests: processes in the graph document, their picture on the
 screen, their pages and Mix tasks. **The first is in `main` since 14 October (#299)**: a process module has a graph
 document of its own, with an overlay of its runs, and the domain's document has a node per process with an arrow to
-each contract it includes. Nothing draws them on the screen yet.
+each contract it includes. The second, #301 (open since 14 October), draws them on today's screen (12.2a).
 
 **3.4 A large contract cannot be read.** The full graph of AppUnite's computers is 33 cards and 49 arrows in one
 picture (the whole contract has 62 elements and 111 relations; the rest is on the unit's and the lifecycle's
-pictures). Nothing can be put away.
+pictures). Nothing can be put away. A unit with forty commands and events comes out as a column of tiny boxes, since
+a large view is fitted into a small box (#297).
 
 **3.5 Nothing says where to start.** The numbers from the log (what was never taken, what happened without being
 declared) are on each contract's picture. Finding a problem means going through every contract in turn.
+
+**3.6 No legend, and nothing can be searched (#297).** A card names its kind in a small word ("command", "event"), but
+has no icon, no description and no context it belongs to; nothing says what a colour or an arrow's line means; and
+there is no way to search for an element.
 
 ---
 
@@ -190,6 +199,42 @@ process is a **line** through the cards, like a metro line through its stations.
 ---
 
 ## 5. The idea: one canvas
+
+### 5.0 The base: what #297 asks for
+
+#297 is the base this plan adds to. What it asks for, in its own order:
+
+- **Cards of their kind,** as EventCatalog draws them: a badge and an icon for the kind (command, event, query,
+service…), the label, the name, and the context it belongs to in a footer. The numbers from the log go on the card
+itself: how many runs, how often an event happened, whether a promise was kept, which declared paths nobody took.
+- **Labelled arrows, read left to right:** from who asks to who listens, issuer → unit → events → readers.
+- **A readable scale,** with zoom and "fit", instead of fitting a large view into a small box. **A large view** (a unit
+with many commands) is split, or focused on a selected card's neighbourhood.
+- **A legend** on the canvas: what each kind of card and arrow means.
+- **Search** on the canvas: it moves the view to the card it finds and selects it.
+- **One canvas** on the Graph screen, with navigation between a domain, a contract, a process and a unit, instead of
+every picture stacked on one page.
+- **The data as it is:** this is the renderer's and the screen's work, not new facts in the graph documents. Anything
+the engine must add is raised first.
+- **A mock-up of one view** (a process, e.g. the clinic's visit) for approval before the code.
+- Left by #301 (a process's picture on today's screen) and noted on #297: a process card has no colour of its own yet,
+and long contract ids break mid-word on event cards. #301 also leaves to it how the screen loads a picture: today the
+log's numbers are counted again over the whole history on every selection.
+
+**What this plan adds to it:**
+
+| Addition | Section |
+| --- | --- |
+| How the navigation works: entering a home with the camera's flight, its inside hidden until entered, its neighbours as doors | 5.1, 5.2 |
+| Badges summing up the drift on the map, saying where to go in | 5.1 |
+| Layers that show or hide one kind of thing | 5.3 |
+| Processes as metro lines across the contracts | 5.4 |
+| Lenses: the lifecycle and the process's declared shape as "show as" | 5.5 |
+| A path, "you are here", and search that enters where it has to | 5.6 |
+| The "records only" mark | 5.8 |
+| Highlighting on hover | 5.9 |
+| The trace: what follows from an element and what leads to it | 6 |
+| A test set for drawing, with traffic in the log | 11 |
 
 ### 5.1 The start: the application's map
 
@@ -413,6 +458,7 @@ canvas. The data is there: every relation it needs is in the graph documents.
 
 **New content, not shown today:**
 
+- cards of their kind, a legend and search (#297, 5.0);
 - processes and their promises (5.4);
 - chains across contracts (6);
 - the "records only" mark (5.8);
@@ -441,7 +487,8 @@ four questions about whether the code does what the contract says.
 - **The state of the client's business** ("which company has no open July"). The dashboard shows whether the code
 matches the contract, not the company's data (`CLAUDE.md`).
 - **EventCatalog's newer force-directed layout:** positions drift, and cards with fields do not fit.
-- **EventCatalog's focus-mode window:** we have the side panel.
+- **EventCatalog's focus-mode window:** we have the side panel. Focusing a large view on a selected card's
+neighbourhood, on the canvas itself, is #297's and stays (5.0).
 - **A minimap:** judged unnecessary before. Revisited if the canvas turns out too big.
 - **A link to a particular view, for now** (Filip's decision, 12 October). When it is needed, e.g. in the EHOS Console,
 it is cheap: where the reader is and what is on is held by the server anyway, so it only has to be written into the
@@ -614,8 +661,11 @@ set's documents to them is part of deciding what becomes of it.
 prototype checks it.
 - **12.2 Processes in the graph's data — resolved 14 October** (#299, the first pull request of #220): a process module's
 document and overlay, and process nodes in the domain's document.
-- **12.2a #220 plans a process picture on today's screen itself** (its second pull request: renderer and screen, still
-to come). That overlaps with this plan's process lines and "declared shape" lens (decision 10).
+- **12.2a #220 draws a process picture on today's screen itself:** its second pull request, #301, opened on 14 October,
+draws a process module's picture (stages, the events in them, promises with their windows and verdicts) and puts each
+process on the domain's system picture as a node of its own, with a dotted "includes" arrow to each contract. It
+changes the very files this plan's canvas would: the renderer's views, cards and panel, and the Graph screen. It
+overlaps with this plan's process lines and "declared shape" lens (decision 10).
 - **12.3 The graph document's format is released (0.3.0).** The processes were added to the domain's document as a
 breaking change (the web package's changelog says a reader holding the document to 0.3.0's schema refuses the new
 keys). The "records only" mark is still to be added, and the rule "the format changes only by addition" is still
@@ -630,8 +680,12 @@ migration while it lives there.
 - **12.7 Another issue covers the same ground: #297**, opened on 14 October by a teammate ("Draw the graph like a
 catalog: cards of their kind, a legend, search, one canvas"). It plans one canvas on the Graph screen with navigation
 between a domain, a contract, a process and a unit, EventCatalog-like cards, a legend and search, after the debt stage
-(C1), and a mock-up of one view for approval before the code. This plan and #297 have to become one before either is
-built.
+(C1), and a mock-up of one view for approval before the code. **Settled 14 October:** #297 is the base and this plan
+an addition to it (5.0); this branch's draft pull request is part of #297, and #297's text is updated later. Still to
+do: agree it with #297's author before either is built.
+- **12.8 The debt stage before #297 holds the "records only" mark too.** The debt stage (C1 in `PLAN.md`), which #297
+waits for, lists "Records only" in the graph among its debts, as this plan's first stage does (14). Whichever comes
+first does it once.
 
 ---
 
@@ -655,8 +709,12 @@ nest (subdomain → context → contract). A colour is the simpler layout; a fra
 5. **Today's pictures:** do they go at once, or stay for a while, e.g. as a "classic view"?
 6. **The "records only" mark on the graph:** with something else, or as a small step of its own?
 7. **The way of drawing:** agree to a prototype before deciding (10.3)?
-8. **A mock-up:** before the issue, a clickable HTML mock-up outside the repository, to see how it reads? On the test
-set's data (11), and on Rehmed's until it exists.
+8. **A mock-up — settled 14 October:** a clickable mock-up, a local HTML file outside the repository, on the test set's
+data (11). The core first: the map, entering a contract and a unit with the camera's flight, doors, the badges, the
+"records only" mark and a simple panel; layers, process lines, the trace and hover in later rounds. The open choices
+are switches on it, to be compared live: what shows around a home (decision 2), frames or a colour for subdomains
+(decision 3), what the start shows (decision 1), and where the trace's arrows are (decision 4). It also serves as
+#297's mock-up.
 9. **The test set (11) — settled 14 October:** a copy of Rehmed with the missing cases added, committed on this branch,
 its fate decided when the branch is merged. Assumed, to be objected to if wrong: its labels are Polish, as Rehmed's.
 10. **How does this fit with #220, "a process module gets a picture"?** Its first pull request (processes in the graph
@@ -666,8 +724,10 @@ screen) can either:
     #220 waits for the canvas);
     - or be built first on today's screen, as #220 plans, and moved into the new canvas later (processes come back to
     the screen sooner, but the picture is built twice).
-11. **This plan and #297 (12.7):** one issue for both, agreed with its author — this plan's content carried into #297,
-or #297 closed in favour of the issue this plan becomes?
+
+    **Decided in practice on 14 October:** #301 builds it on today's screen, the second way.
+11. **This plan and #297 (12.7) — settled 14 October:** #297 is the base and this plan an addition to it; this plan's
+content is carried into #297 later, to be agreed with its author then.
 
 ---
 
@@ -675,13 +735,14 @@ or #297 closed in favour of the issue this plan becomes?
 
 1. ~~The test set for drawing (11): a copy of Rehmed with the missing cases, and traffic in the development database,
 committed on this branch.~~ Done 14 October: `sandbox/lib/graph_lab/`, `mix graph_lab.traffic`.
-2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8).
+2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8). A draft pull request of this
+branch, part of #297, holds the plan and the test set meanwhile.
 3. The decisions of 13.
-4. A GitHub issue with this plan, and a short paragraph in `PLAN.md`.
+4. #297 updated with this plan, its own content kept as the base, and a short paragraph in `PLAN.md`.
 5. Stages, each with its own pull request:
-   1. the rule for changing the format, and the "records only" mark (processes in the graph document, #220's first pull
-   request, are in `main` since 14 October);
-   2. the map and entering homes, with today's panel;
+   1. the rule for changing the format, and the "records only" mark unless the debt stage has done it (12.8; processes
+   in the graph document, #220's first pull request, are in `main` since 14 October);
+   2. the map and entering homes, with today's panel, on #297's cards, with its legend;
    3. layers, search, lenses;
    4. processes as lines;
    5. the trace;
