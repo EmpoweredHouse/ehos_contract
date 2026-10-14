@@ -49,8 +49,8 @@ defmodule GraphLab.Contracts.ExternalPayers do
               "Faktura obejmuje co najmniej jedną wizytę oznaczoną u płatnika",
               source: "AGG-11; S-60: moduł miesięczny po weryfikacji danych"
 
-    # `S-58`: at reception, per visit, at the moment of settlement — a step on the
-    # settlement screen, not a monthly sweep (2026-08-14).
+    # At reception, per visit, at the moment of settlement — a step on the settlement
+    # screen, not a monthly sweep (`S-58`).
     command :mark_settled_with_payer, "Oznacz rozliczenie u płatnika",
       by: :reception,
       emits: :visit_marked_settled_with_payer,
@@ -85,7 +85,7 @@ defmodule GraphLab.Contracts.ExternalPayers do
       field :invoice_id, :id
     end
 
-    # `E-86`, the load-bearing click: if it is not made, the payer never pays.
+    # The load-bearing click: if it is not made, the payer never pays (`E-86`).
     event :visit_marked_settled_with_payer, "Oznaczono wizytę jako rozliczoną u płatnika",
       source: "E-86" do
       field :visit_id, {:id, :visit}

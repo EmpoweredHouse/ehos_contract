@@ -1,5 +1,5 @@
 defmodule GraphLab.Settlement.DailyTotalsFor do
-  @moduledoc "Answers reception's `R-07`: the day's total per payment method."
+  @moduledoc "Answers reception's question about the day: its total per payment method (`R-07`)."
 
   use GraphLab.Contracts.Settlement, query: :daily_totals_for
 

@@ -33,7 +33,7 @@ defmodule GraphLab.Contracts.StatutoryReporting do
       emits: :p1_reporting_not_required,
       source: "P-07, warunek: usługa raportowana (AGG-15)"
 
-    # `AGG-10`, state `Zakolejkowane`: the payload the registry will get.
+    # The payload the registry will get, queued (`AGG-10`).
     event :p1_report_queued, "Zgłoszenie P1 zakolejkowane", source: "AGG-10" do
       field :patient_id, :id, subject: :patient
       field :pesel, :pesel, personal: :patient_id
@@ -42,13 +42,12 @@ defmodule GraphLab.Contracts.StatutoryReporting do
       field :practitioner_number, :id
     end
 
-    # `E-54`, observed.
     event :p1_report_sent, "Wysłano informację do systemu P1",
       recorded_by: :p1_integration,
       depends_on: :p1,
       source: "E-54"
 
-    # `AGG-10`'s error state: a rejection or no connection. Not an end: the
+    # The report's error state, a rejection or no connection (`AGG-10`). Not an end: the
     # report is retried.
     event :p1_report_failed, "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
       recorded_by: :p1_integration,
@@ -65,7 +64,7 @@ defmodule GraphLab.Contracts.StatutoryReporting do
          delivery: :at_least_once,
          idempotency: [key: :event_id, owner: :infrastructure],
          source: "P-07" do
-    # The service's flag decides, "one flag, not two" (2026-08-17, `AGG-15`).
+    # The service's flag decides, one flag for the service and its report (`AGG-15`).
     constraint :only_reported_services,
                "Do P1 zgłaszamy tylko zamknięcia usług raportowanych do P1; pozostałe pomijamy",
                source: "P-07"

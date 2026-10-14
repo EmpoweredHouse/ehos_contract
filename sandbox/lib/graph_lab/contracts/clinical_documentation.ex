@@ -7,6 +7,9 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
   consistency boundary that reads the booking beside its own events: whether the service
   is reported to P1, and which specialist may close the visit, come from it. A process
   manager chases a visit nobody closed a day after the patient left.
+
+  The visit's note is a second unit, one that only records: nothing refuses a note, so in
+  this core context it is the case of a unit that decides nothing.
   """
 
   use EhOsContract.Contract,
@@ -33,13 +36,13 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
       field :specialist_id, :id, optional: true
     end
 
-    # `AGG-02`'s clinical close is its final state, and each close queues a report to
-    # P1: a second close would send the registry the same visit twice.
+    # The clinical close is the documentation's final state (`AGG-02`), and each close
+    # queues a report to P1: a second close would send the registry the same visit twice.
     invariant :closed_clinically_once, "Wizytę zamyka się klinicznie raz",
       source: "AGG-02, stan ZamkniętaKlinicznie"
 
-    # Enforced by the clinic today; the engine compares the specialist the visit is
-    # booked with and whoever closes (`actor_is`). With no booking, nobody is named, and
+    # The engine compares the specialist the visit is booked with and whoever closes
+    # (`actor_is`). With no booking, nobody is named, and
     # every close is refused.
     invariant :closed_by_its_specialist,
               "Wizytę zamyka klinicznie tylko specjalista, który ją wykonał",
@@ -83,7 +86,6 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
       emits: :documentation_overdue_task_created,
       source: "P-23; decyzja klienta 2026-08-13"
 
-    # `E-44`, observed; about two minutes per code on a paper cheat-sheet today.
     # Corrected codes are a new fact rather than an overwrite, which is what the
     # regulation's "data obtained later" path suggests.
     event :diagnosis_coded, "Wybrano ICD10 / ICD9", source: "E-44" do
@@ -95,8 +97,8 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
     event :documentation_overdue_task_created, "Utworzono zadanie o zaległej dokumentacji",
       source: "P-23, P-25; decyzja klienta 2026-08-13"
 
-    # `E-52`, "triggers P1 dispatch". The codes are optional because a service that
-    # is not reported closes without them.
+    # The close that sends the report to P1 (`E-52`). The codes are optional because a
+    # service that is not reported closes without them.
     event :visit_closed_clinically, "Zamknięto wizytę przez specjalistę", source: "E-52" do
       field :patient_id, :id, subject: :patient
       field :pesel, :pesel, personal: :patient_id
@@ -164,8 +166,8 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
     expect :visit_closed_clinically, %{icd10: "M54.5", icd9: "93.39", p1_reported: true}
   end
 
-  # `AGG-02` invariant 3: the specialist who saw the patient closes the visit, not a
-  # colleague with the same permission.
+  # The specialist who saw the patient closes the visit, not a colleague with the same
+  # permission (`AGG-02`, invariant 3).
   scenario "wizytę zamyka inny specjalista — zamknięcie odrzucone" do
     actor :specialist
     as "specialist-ola"
@@ -182,7 +184,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
     rejected :codes_before_clinical_close
   end
 
-  # H21: beauty, fitness and the stable are never reported, so nothing gates them.
+  # Beauty, fitness and the stable are never reported (`H21`), so nothing gates them.
   scenario "usługa niezgłaszana do P1 zamyka się bez kodów" do
     actor :specialist
     as "specialist-ewa"
@@ -201,7 +203,7 @@ defmodule GraphLab.Contracts.ClinicalDocumentation do
   end
 
   scenario "specjalista zapisuje notatkę z wizyty" do
-    command :write_note, %{patient_id: "patient-anna", text: "Ból odcinka lędźwiowego, poprawa"}
+    command :write_note, %{patient_id: "patient-anna", text: "Lower back pain, improving"}
     expect :note_written
   end
 

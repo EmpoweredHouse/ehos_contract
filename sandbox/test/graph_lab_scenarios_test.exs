@@ -1,5 +1,11 @@
 # The test set for drawing the graph (`GraphLab`): one test per scenario of each of its
-# contracts and process modules, run against its implementations.
+# contracts and process modules, run against its implementations, and one per example of
+# its domain's values.
+
+defmodule GraphLab.DomainScenariosTest do
+  @moduledoc false
+  use EhOsContract.ScenarioCase, domain: GraphLab.Domain
+end
 
 defmodule GraphLab.SchedulingScenariosTest do
   @moduledoc false

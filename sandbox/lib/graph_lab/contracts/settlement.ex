@@ -7,10 +7,10 @@ defmodule GraphLab.Contracts.Settlement do
   method.
 
   A process manager starts on scheduling's `visit_completed`, which makes settlement the
-  third contract consuming that event, and flags a visit nobody settled by the end of
-  reception's day, 20:00 at the clinic; a payment taken in the meantime calls it off. No
-  material names that hour: it is here for the graph, with the pricing rule the host
-  applies to give a settlement its total.
+  third contract consuming that event, and flags a visit nobody paid for or settled by
+  the end of reception's day, 20:00 at the clinic; a payment taken in the meantime calls
+  it off. No material names that hour: it is here for the graph. So is the domain service
+  the close decides with, the rule that payment lines sum to the total.
   """
 
   use EhOsContract.Contract,
@@ -57,9 +57,8 @@ defmodule GraphLab.Contracts.Settlement do
               "Korektę księguje się tylko na rozliczonej wizycie",
               source: "E-84; AGG-03 niezmiennik 4"
 
-    # `E-45`, and the one write a specialist may not defer: adding a service changes
-    # the price and the duration, and the patient does not leave until it is
-    # confirmed. No amount: the fact is that a service joined.
+    # The one write a specialist may not defer: adding a service changes the price and
+    # the duration, and the patient does not leave until it is confirmed (`E-45`). No amount: the fact is that a service joined.
     command :add_service_line, "Dodaj usługę do rozliczenia",
       by: :specialist,
       emits: :service_line_added,
@@ -83,8 +82,8 @@ defmodule GraphLab.Contracts.Settlement do
       field :amount, :money
     end
 
-    # `C-30` produces `E-53 / E-56`: both endings are this command's. The total comes
-    # with it, since the price freezes at the close (`H177`, mockup).
+    # Both endings, paid and without payment, are this command's (`C-30`). The total
+    # comes with it, since the price freezes at the close.
     #
     # With payments, the total is what they sum to, so for a visit a payer covers in
     # part it is the patient's part: the payer's line settles at 0 (`P-31`). Without
@@ -132,11 +131,11 @@ defmodule GraphLab.Contracts.Settlement do
       field :service_id, {:id, :service}
     end
 
-    # `E-115`, since `K5-20` only after a change of scope.
+    # Only after a change of scope (`K5-20`).
     event :visit_handed_over, "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
       source: "E-115, K5-20"
 
-    # `E-55`. A split across methods is allowed.
+    # A split across methods is allowed (`E-55`).
     event :payment_recorded, "Pacjent opłacił wizytę", source: "E-55" do
       field :method, :payment_method
       field :amount, :money
@@ -161,8 +160,8 @@ defmodule GraphLab.Contracts.Settlement do
       field :period_id, :id
     end
 
-    # `E-84`. `delta` may be negative: the till owes the patient such a correction as a
-    # refund.
+    # `delta` may be negative: the till owes the patient such a correction as a refund
+    # (`E-84`).
     event :settlement_corrected, "Zaksięgowano korektę po zamknięciu dnia", source: "E-84" do
       field :delta, :money
       field :business_date, :date
@@ -183,7 +182,7 @@ defmodule GraphLab.Contracts.Settlement do
     starts_on :visit_completed, sets: :settlement_due
     on :payment_recorded, cancels: :settlement_due
 
-    timer :settlement_due, "Koniec dnia recepcji (20:00) bez rozliczenia",
+    timer :settlement_due, "Koniec dnia recepcji (20:00) bez płatności",
       at: :due_at,
       issues: :flag_unsettled_visit
 
@@ -191,19 +190,21 @@ defmodule GraphLab.Contracts.Settlement do
     ends_on :visit_closed_without_payment
   end
 
-  # The rule the host's systems apply to give a settlement its total, which the host
-  # supplies rather than reception (`close_settlement`'s `total`).
-  domain_service :pricing, "Wycena wizyty" do
-    function :patient_part, "Część ceny wizyty, którą płaci pacjent" do
-      argument :price, :money, label: "Cena wizyty"
-      argument :covered, :money, label: "Część pokryta przez płatnika"
-      returns :money
+  # What the close decides with: a visit with payments is paid when they sum to its
+  # total (`AGG-03`, invariant 1).
+  domain_service :payment_rules, "Reguły płatności za wizytę" do
+    function :paid_in_full, "Czy płatności pokrywają wartość rozliczenia" do
+      argument :paid, :money, label: "Suma płatności"
+      argument :total, :money, label: "Wartość rozliczenia"
+      returns :boolean
 
-      rule :the_rest_of_the_price, "Pacjent płaci to, czego nie pokrywa płatnik",
-        examples: [{[20_000, 0], 20_000}, {[20_000, 15_000], 5_000}]
-
-      rule :never_below_zero, "Płatnik pokrywający więcej niż cenę nie daje pacjentowi zwrotu",
-        examples: [{[20_000, 25_000], 0}]
+      rule :lines_sum_to_total,
+           "Wizyta jest opłacona, gdy linie płatności sumują się do jej wartości",
+           examples: [
+             {[20_000, 20_000], true},
+             {[15_000, 20_000], false},
+             {[25_000, 20_000], false}
+           ]
     end
   end
 
@@ -283,8 +284,8 @@ defmodule GraphLab.Contracts.Settlement do
     expect :visit_charged_to_payer, %{payer_id: "payer-luxmed", period_id: "2026-09"}
   end
 
-  # P-31: the service booked for LuxMed settles at 0, and what was added in the room
-  # the patient pays.
+  # The service booked for LuxMed settles at 0, and what was added in the room the
+  # patient pays (`P-31`).
   scenario "wizyta mieszana — pacjent płaci 50 zł za dodaną usługę, reszta obciąża LuxMed" do
     given :service_line_added, %{service_id: "service-ultrasound"}
     given :visit_handed_over

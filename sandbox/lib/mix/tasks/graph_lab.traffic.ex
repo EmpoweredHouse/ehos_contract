@@ -44,8 +44,10 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   client trees left out (`config :eh_os_contract, exclude:`), and the credential
   verifier's audience naming the set's domain, both on the command line.
 
-  Two things carry the time the task ran rather than the time of their step: a refusal's
-  record, and the deployment's "since".
+  Events carry the time of their step; two things carry the time the task ran: every
+  command's record, accepted or refused, which the database stamps, and the process
+  modules' "deployed since". A view of a period therefore counts the week's decisions
+  as made today, while it counts their events when they happened.
 
   **What it changes for its own run only:** nothing reacts by itself — subscriptions and
   Oban are manual — and the engine reads services from `GraphLab.Entities`, not from the
@@ -156,6 +158,10 @@ defmodule Mix.Tasks.GraphLab.Traffic do
       Clock.at(at, fn -> Testing.drain() end)
     end
 
+    # Once more at the real time, so the timers still waiting are scheduled against it
+    # rather than against the last half hour.
+    Testing.drain()
+
     Mix.shell().info("""
 
     Done. The dashboard with the test set alone:
@@ -169,7 +175,13 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   # Each step: how many hours ago it happened, what happened, and the call.
   defp steps(now) do
     period = Calendar.strftime(DateTime.add(now, -126 * 3600), "%Y-%m")
-    day = fn hours_ago -> now |> DateTime.add(-round(hours_ago * 3600)) |> DateTime.to_date() end
+    # A till day is named by the clinic's date, in Warsaw.
+    day = fn hours_ago ->
+      now
+      |> DateTime.add(-round(hours_ago * 3600))
+      |> DateTime.shift_zone!("Europe/Warsaw")
+      |> DateTime.to_date()
+    end
 
     visits(period) ++ payers(period) ++ till(day)
   end
@@ -182,11 +194,11 @@ defmodule Mix.Tasks.GraphLab.Traffic do
       {149, "Anna's visit confirmed by phone", fn -> confirm("anna") end},
       {146, "Anna arrived", fn -> arrived("anna") end},
       {145, "Anna left the room", fn -> left("anna") end},
-      {144.8, "Anna's note written", fn -> note("anna") end},
+      {144.9, "Anna paid by card", fn -> pay("anna", :card, 20_000) end},
+      {144.8, "Anna's visit settled", fn -> settle("anna", 20_000) end},
+      {144.7, "Anna's note written", fn -> note("anna") end},
       {144.5, "Anna's diagnosis coded", fn -> code("anna") end},
       {144, "Anna's visit closed clinically", fn -> close_clinically("anna", true) end},
-      {143.5, "Anna paid by card", fn -> pay("anna", :card, 20_000) end},
-      {143, "Anna's visit settled", fn -> settle("anna", 20_000) end},
       {120, "Anna's settlement corrected by 10 zł down", fn -> correct("anna", -1_000) end},
       {119.5, "Anna's refund paid out",
        fn -> ok(Till, %PayOutRefund{visit_id: id("anna")}, @reception) end},
@@ -205,9 +217,9 @@ defmodule Mix.Tasks.GraphLab.Traffic do
       {100, "Irena booked for physiotherapy", fn -> book("irena", @physiotherapy, 2) end},
       {98, "Irena arrived", fn -> arrived("irena") end},
       {97, "Irena left the room", fn -> left("irena") end},
+      {96.8, "Irena's visit closed for LuxMed", fn -> settle_for_payer("irena", period) end},
       {96.5, "Irena's note written", fn -> note("irena") end},
       {96, "Irena's visit closed clinically", fn -> close_clinically("irena", true) end},
-      {95, "Irena's visit closed for LuxMed", fn -> settle_for_payer("irena", period) end},
 
       # Filip: the report to P1 goes three days after the visit — the promise is broken.
       {101, "Filip booked for physiotherapy", fn -> book("filip", @physiotherapy, 2) end},
@@ -357,7 +369,11 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   defp note(name) do
     ok(
       ClinicalDocumentation,
-      %WriteNote{visit_id: id(name), patient_id: "patient-#{name}", text: "Wywiad i badanie"},
+      %WriteNote{
+        visit_id: id(name),
+        patient_id: "patient-#{name}",
+        text: "History and examination"
+      },
       @specialist
     )
   end

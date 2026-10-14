@@ -35,7 +35,7 @@ defmodule GraphLab.Contracts.Scheduling do
               "Potwierdza się tylko wizytę umówioną i jeszcze niepotwierdzoną",
               source: "dodane do testów grafu"
 
-    # `AGG-01`'s states, in its own words.
+    # The visit's states, in the clinic's words (`AGG-01`).
     lifecycle do
       status :booked, "Umówiona"
       status :confirmed, "Potwierdzona"

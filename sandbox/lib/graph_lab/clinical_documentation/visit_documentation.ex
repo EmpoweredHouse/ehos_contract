@@ -2,7 +2,7 @@ defmodule GraphLab.ClinicalDocumentation.VisitDocumentation do
   @moduledoc """
   Decides the codes and the clinical close of a visit (`AGG-02`). A service
   reported to P1, by the flag recorded when the visit was booked, is refused a close
-  without both codes (`DEC-19`), and a visit is closed once: each close queues a report
+  without both codes, and a visit is closed once: each close queues a report
   to P1. Who may close it — the specialist the visit is booked with — the engine checks
   before this decision runs.
   """

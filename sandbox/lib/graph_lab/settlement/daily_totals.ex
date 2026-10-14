@@ -1,8 +1,8 @@
 defmodule GraphLab.Settlement.DailyTotals do
   @moduledoc """
-  Projects `R-07`, the day's payments per method, into `graph_lab_daily_payments`: one
-  row per payment, keyed by the event, so a second delivery writes nothing. The
-  query sums them.
+  Projects the day's payments per method (`R-07`) into `graph_lab_daily_payments`: one
+  row per payment, keyed by the event, so a second delivery writes nothing. The day is
+  the clinic's, in Warsaw. The query sums them.
   """
 
   use GraphLab.Contracts.Settlement, read_model: :daily_totals
@@ -16,7 +16,8 @@ defmodule GraphLab.Settlement.DailyTotals do
       [
         %{
           event_id: Ecto.UUID.dump!(meta.id),
-          business_date: DateTime.to_date(meta.occurred_at),
+          business_date:
+            meta.occurred_at |> DateTime.shift_zone!("Europe/Warsaw") |> DateTime.to_date(),
           method: Atom.to_string(method),
           amount: amount
         }

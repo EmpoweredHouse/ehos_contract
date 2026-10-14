@@ -16,6 +16,8 @@ defmodule GraphLab.Settlement.VisitSettlement do
 
   use GraphLab.Contracts.Settlement, aggregate: :visit_settlement
 
+  alias GraphLab.Contracts.Settlement.DomainServices.PaymentRules
+
   @impl true
   def add_service_line(_command, %State{closed_on: %Date{}}),
     do: reject(:closed_settlement_changes_only_by_correction)
@@ -51,28 +53,29 @@ defmodule GraphLab.Settlement.VisitSettlement do
   # as its total, paid, and charges the payer for the rest (`P-31`).
   def close_settlement(%CloseSettlement{} = close, %State{payments: paid}) do
     %CloseSettlement{visit_id: id, total: total, payer_id: payer, period_id: period} = close
+    sum = Enum.sum(paid)
 
-    case {Enum.sum(paid), payer} do
-      {0, nil} ->
+    cond do
+      sum == 0 and payer == nil ->
         emit(%VisitClosedWithoutPayment{visit_id: id, total: total})
 
-      {0, _payer} ->
+      sum == 0 ->
         emit([
           %VisitClosedWithoutPayment{visit_id: id, total: total},
           %VisitChargedToPayer{visit_id: id, payer_id: payer, period_id: period}
         ])
 
-      {^total, nil} ->
+      not PaymentRules.paid_in_full(sum, total) ->
+        reject(:payment_lines_sum_to_total)
+
+      payer == nil ->
         emit(%VisitClosedCommercially{visit_id: id, total: total})
 
-      {^total, _payer} ->
+      true ->
         emit([
           %VisitClosedCommercially{visit_id: id, total: total},
           %VisitChargedToPayer{visit_id: id, payer_id: payer, period_id: period}
         ])
-
-      _short_or_over ->
-        reject(:payment_lines_sum_to_total)
     end
   end
 
@@ -101,12 +104,15 @@ defmodule GraphLab.Settlement.VisitSettlement do
     do: after_close(%{state | payments: [a | state.payments]}, state)
 
   def evolve(state, %VisitClosedCommercially{total: total, __meta__: m}),
-    do: after_close(%{state | closed_on: DateTime.to_date(m.occurred_at), total: total}, state)
+    do: after_close(%{state | closed_on: clinic_day(m.occurred_at), total: total}, state)
 
   def evolve(state, %VisitClosedWithoutPayment{total: total, __meta__: m}),
-    do: after_close(%{state | closed_on: DateTime.to_date(m.occurred_at), total: total}, state)
+    do: after_close(%{state | closed_on: clinic_day(m.occurred_at), total: total}, state)
 
   def evolve(state, _changes_nothing), do: state
+
+  # The day a close belongs to is the clinic's, in Warsaw.
+  defp clinic_day(at), do: at |> DateTime.shift_zone!("Europe/Warsaw") |> DateTime.to_date()
 
   defp after_close(next, %State{closed_on: nil}), do: next
   defp after_close(next, _closed), do: %{next | changed_after_close: true}

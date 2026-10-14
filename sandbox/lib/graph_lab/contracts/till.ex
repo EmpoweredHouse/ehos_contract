@@ -5,7 +5,7 @@ defmodule GraphLab.Contracts.Till do
   Reception's till: the day it is open, from the opening to the close after the cash is
   counted (`E-83`, `AGG-07`), and the cash a patient is
   refunded when a settlement is corrected downwards. It is the second contract of
-  settlement's context, the one contract with two units, each with a lifecycle, and its
+  settlement's context, a contract with two units, each with a lifecycle, and its
   own process, `GraphLab.Processes.TillDay`.
   """
 

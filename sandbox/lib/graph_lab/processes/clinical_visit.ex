@@ -9,9 +9,8 @@ defmodule GraphLab.Processes.ClinicalVisit do
   owed.
   """
 
-  # The old watchdog "notified the manager at the moment the deadline had already
-  # passed", and overdue work surfaces to the manager as a
-  # count (`P-25`): the manager is who a breach is addressed to.
+  # Overdue work surfaces to the manager as a count (`P-25`): the manager is who a breach
+  # is addressed to.
   use EhOsContract.Process,
     id: "graph-lab.clinical_visit",
     domain: GraphLab.Domain,

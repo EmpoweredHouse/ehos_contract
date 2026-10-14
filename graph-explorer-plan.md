@@ -535,6 +535,8 @@ A copy of Rehmed under a domain of its own, with what Rehmed lacks added:
 | a contract with several units | no | added |
 | policies, process managers with timers, effects, read models, queries, rules, scenarios | yes | kept |
 | a unit that records only, outside the core | yes (`p1_report`) | kept |
+| a unit that records only, in the core (5.8's suspicious case) | no | added (the visit's note) |
+| what only TaxVision or AppUnite have: a timer at a time its state holds, a reaction that cancels a timer, a domain service, a scoped command, a value's rule, a field an external system gives, an expected latency, labelled stages | no | added (after the set's review, 14 October) |
 | a field holding another contract's unit's number, held by several contracts | yes (`visit_id`, three) | kept |
 | an event consumed by two or three contracts | no | added |
 | an event renamed when consumed | no | added |
@@ -576,9 +578,9 @@ since it is committed.
   has a card and a panel, that the log's numbers lay over it, and that the document matches the schema. The set gets
   those checks for free.
   - **The count:** one sandbox test compares the exact count of `mix eh_os_contract.check` findings for the whole
-  sandbox (it was "0 errors, 31 warnings, 22 notices", `sandbox/test/e10_outputs_test.exs`). The copy brings warnings
-  and notices of the same kinds as Rehmed's, so the branch updates that count to 47 warnings and 31 notices, and the
-  update goes with the set when the branch is merged.
+  sandbox (it was "0 errors, 31 warnings, 22 notices", `sandbox/test/e10_outputs_test.exs`). The set brings warnings
+  and notices of its own — most of the same kinds as Rehmed's, and a core unit that only records, on purpose — so the
+  branch updates that count to 47 warnings and 32 notices, and the update goes with the set when the branch is merged.
 - **Its own table, by a migration on the branch** (Filip's decision, 14 October, replacing "no migration"). Its read
 model keeps its rows in `graph_lab_daily_payments`. A migration on an unmerged branch changes the test database of
 every checkout on the machine (`CLAUDE.md`): this one only adds a table and its row in `schema_migrations`, which
