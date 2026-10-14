@@ -102,7 +102,7 @@ defmodule EhOsContract.GraphRenderer.View do
   where it declares one, the unit's lifecycle.
 
       View.views(process_document)
-      #=> [{:process, "Process — Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"}]
+      #=> [{:process, "Process — A loan, from lending to return"}]
   """
   @spec views(map()) :: [{spec(), String.t()}]
   def views(%{"kind" => "domain"} = document) do
