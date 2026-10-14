@@ -327,7 +327,8 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  The verdicts of each promise of the process module `model`, over the runs it opened
+  The verdicts of each promise of a process module, given its model
+  (`EhOsContract.Model.fetch/1`), over the runs it opened
   in the period `opts` names, as the report gives them under `promises`: the promise's
   name and its events' labels, its window, and how many runs kept it (`satisfied`, of
   them `satisfied_via_eventually` and `satisfied_via_or_else`), broke it (`violated`),
@@ -335,10 +336,19 @@ defmodule EhOsContract.Conformance do
   (`suspended`), out of `instances`, judged under its current declaration — runs judged
   under an earlier one are counted in `under_earlier_declaration` alone. A promise the
   owner has yet to confirm (`unverified`) is left out. `opts` takes `:since`, `:until`
-  and `:now`, as `report/2` does; raises for a contract, which has no process.
+  and `:now`, as `report/2` does. Raises `ArgumentError` for a contract's model, which
+  has no process, before it reads anything.
+
+      EhOsContract.Conformance.promise_verdicts(Model.fetch(MyApp.Processes.Loan), since: since)
+      #=> [%{promise: :back_within_a_month, satisfied: 38, violated: 2, pending: 1, ...}]
   """
   @spec promise_verdicts(map(), keyword()) :: [map()]
   def promise_verdicts(model, opts \\ []) do
+    process =
+      Model.process(model) ||
+        raise ArgumentError,
+              "#{inspect(model.module)} is not a process module: it has no promises"
+
     label = fn name ->
       case name && Model.declaring(model, name) do
         {_contract, event} -> event.label
@@ -348,7 +358,7 @@ defmodule EhOsContract.Conformance do
 
     boundaries = Deployment.declaration_boundaries(model.module)
 
-    for promise <- Model.process(model).promises, not promise.unverified do
+    for promise <- process.promises, not promise.unverified do
       verdicts = Trace.evaluate(model.module, promise.name, opts)
       boundary = Map.get(boundaries, "promise:#{promise.name}")
       {current, earlier} = split_by_declaration(verdicts, boundary)

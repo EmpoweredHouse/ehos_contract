@@ -249,6 +249,9 @@ defmodule EhOsContract.Paths do
   Distinct runs of each of the process modules `models` in the period `opts` names, as
   `runs_of/3` counts one's under its `id:`: `%{id => runs}`, every module's id present,
   in one query however many there are.
+
+      EhOsContract.Paths.runs_by_process([Model.fetch(MyApp.Processes.Loan)], since: since)
+      #=> %{"my_app.loan" => 41}
   """
   @spec runs_by_process([map()], keyword()) :: %{String.t() => non_neg_integer()}
   def runs_by_process(models, opts \\ []) do

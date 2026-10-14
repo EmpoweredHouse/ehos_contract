@@ -395,14 +395,21 @@ defmodule EhOsContract.GraphOverlayTest do
     # contracts.
     budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + 1
 
-    assert queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end) <= budget
+    contracts_only = queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end)
+    assert contracts_only <= budget
 
-    # And one more for the runs of all its process modules, however many there are.
+    # And exactly one more for the runs of all its process modules, however many there are.
     processes = Enum.filter(Registry.processes(), &(Model.fetch(&1).domain == DispatchRig.Domain))
     assert length(processes) >= 2
     modules = contracts ++ processes
 
-    assert queries(fn -> Overlay.domain(DispatchRig.Domain, modules) end) <= budget + 1
+    assert queries(fn -> Overlay.domain(DispatchRig.Domain, modules) end) == contracts_only + 1
+  end
+
+  test "a promise's verdicts are asked of a process module, never of a contract" do
+    assert_raise ArgumentError, ~r/is not a process module/, fn ->
+      Conformance.promise_verdicts(Model.fetch(DispatchRig.Branch))
+    end
   end
 
   test "the overlay says its period, and counts only what happened in it" do

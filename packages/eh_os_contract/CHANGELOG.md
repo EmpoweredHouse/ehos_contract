@@ -81,8 +81,8 @@ and the `ehos-dev:release` skill makes one.
   gives one of kind `"process"` — the process with its correlation and deadline, its stages, the events they
   include with each one's stage, contract and whether it ends a run, those contracts and their contexts, its
   promises with the events that open, fulfil or settle each otherwise (`opens`, `fulfils`, `or_else`), and the
-  actor `accountable_for` it. An event keeps the id it has in its contract's document, so the two join. Its shape
-  is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.
+  actor `accountable_for` it when the domain declares that actor. An event keeps the id it has in its contract's
+  document, so the two join. Its shape is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.
 - **What the log says over a process module** (plan DD, stage P2e, #220): `EhOsContract.Graph.Overlay.process/2`
   puts its runs on the process, how often each event it includes happened on the event, and on each promise its
   verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
@@ -93,8 +93,9 @@ and the `ehos-dev:release` skill makes one.
   `--process` beside `--contract` or `--domain`.
 - **A domain's `graph.v1` document has its process modules** (plan DD, stage P2e, #220): a `process` node for each
   process module given, an `includes` relation from it to each given contract whose events it includes, and the
-  actor `accountable_for` it; the domain's overlay puts each one's runs on its node. The task gives them; see
-  "Changed" for what a reader of the schema has to do. Moves no verdict.
+  actor `accountable_for` it when the domain declares that actor, as in the process's own document; the domain's
+  overlay puts each one's runs on its node. The task gives them; see "Changed" for what a reader of the schema has
+  to do. Moves no verdict.
 - **Three functions behind the overlays are public** (plan DD, stage P2e, #220):
   `EhOsContract.Conformance.promise_verdicts/2` judges a process's confirmed promises as the report does,
   `EhOsContract.Paths.occurrences_by_type/2` counts events of the given types in one query, and
