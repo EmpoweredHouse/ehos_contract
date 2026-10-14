@@ -31,8 +31,8 @@ and the `ehos-dev:release` skill makes one.
   it the other way; and the external systems the events rest on, whose outage suspends a promise, hung off them
   by a dotted line. With the process's overlay, the process card counts its runs, each event how often it happened
   (×0 included), and a promise's arrow its verdicts — "3 kept, 1 broken, 2 pending", in the
-  error colour when a run broke it — or "unconfirmed" for one the owner has yet to confirm, which no run is judged
-  against. The panels say a process's run, deadline, accountable actor, contracts, stages, promises and runs; a
+  error colour when a run broke it. A promise the owner has yet to confirm, which no run is judged against, reads
+  "unconfirmed", with or without an overlay. The panels say a process's run, deadline, accountable actor, contracts, stages, promises and runs; a
   stage's place and events; a promise's window, events and verdicts; and an event's contract and stage, its fields
   being in the contract's own document.
 - **The system view draws a domain's process modules** (plan DD, stage P2e, #220): a card for each, a dotted
