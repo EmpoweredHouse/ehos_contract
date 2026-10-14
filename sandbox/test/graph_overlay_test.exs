@@ -13,15 +13,17 @@ defmodule EhOsContract.GraphOverlayTest do
 
   test "every overlay holds to its schema and names its document's digest" do
     contracts = Registry.contracts()
+    modules = contracts ++ Registry.processes()
 
     overlays =
       for(c <- contracts, do: {Overlay.contract(c), Document.contract(c)}) ++
+        for(p <- Registry.processes(), do: {Overlay.process(p), Document.process(p)}) ++
         for d <- Registry.domains(),
-            do: {Overlay.domain(d, contracts), Document.domain(d, contracts)}
+            do: {Overlay.domain(d, modules), Document.domain(d, modules)}
 
     for {overlay, document} <- overlays do
       assert {:ok, _} = JSV.validate(overlay, @schema),
-             inspect(overlay["contract"] || overlay["domain"])
+             inspect(overlay["contract"] || overlay["process"] || overlay["domain"])
 
       assert overlay["document_digest"] == document["digest"]
 
@@ -34,5 +36,22 @@ defmodule EhOsContract.GraphOverlayTest do
       for id <- Map.keys(overlay["nodes"]), do: assert(MapSet.member?(ids, id), id)
       for id <- Map.keys(overlay["relations"]), do: assert(MapSet.member?(relations, id), id)
     end
+  end
+
+  # Plan DD, P2e (#220): with nothing in the log, the visit has no runs, and its promise
+  # has verdicts all zero, not none: the report judges it.
+  test "the clinical visit's overlay has its runs and its promise's verdicts" do
+    o = Overlay.process(Rehmed.Processes.ClinicalVisit)
+
+    assert {:ok, _} = JSV.validate(o, @schema)
+    assert o["nodes"]["process:rehmed.clinical_visit"] == %{"runs" => 0}
+
+    assert %{"violated" => 0, "instances" => 0, "suspended" => 0} =
+             o["nodes"][
+               "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+             ]
+
+    domain = Overlay.domain(Rehmed.Domain, Registry.contracts() ++ Registry.processes())
+    assert domain["nodes"]["process:rehmed.payer_settlement"] == %{"runs" => 0}
   end
 end
