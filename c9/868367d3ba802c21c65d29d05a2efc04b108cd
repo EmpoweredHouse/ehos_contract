@@ -1,0 +1,24 @@
+## Review
+
+Two reviews ran in parallel on `origin/main..HEAD`: correctness (`code-review`, high) and security and performance (no `engineering:code-review` plugin here, so the subagent reviewed against the list in `pre-pr-review`).
+
+**Correctness, 11 findings**
+- Fixed, each in its own commit with a test that fails on the old code:
+  - A dotted arrow with no head was explained only as headless (bc855270).
+  - The legend's swatches had no head and other widths than the arrows (bc855270).
+  - The legend did not explain an event that ends a run or a final status (bdd0e0be).
+  - The per-kind colour rules were unscoped `[data-kind]` selectors in a page-wide stylesheet (d354421a). Security and performance found this too.
+  - The legend was a `<dl>` a screen reader could not read (3f368eeb).
+- Fixed without a test, since they are colours and words (c9868367):
+  - A process manager's hue was all but a policy's.
+  - No **Breaking** line for the removed `--eh-os-contract-graph-fill` and `-stroke`.
+  - The dashboard's changelog left out "another application".
+  - The comment on breaking names was out of date.
+- Skipped: the footer of a consumed event reads its contract out of the `declared_as` id, which `graph.v1` says not to read apart. The engine should write the declaring contract on the node; that changes the document, so it goes on #297 for the next pull request.
+- No change needed: names are split on every render. LiveView's change tracking does not re-render a card's name on a selection, as the security and performance review confirmed.
+
+**Security and performance, 3 findings**
+- Unscoped selectors: the same finding as above, fixed.
+- An empty footer from a malformed `declared_as`: fixed (7c5104df).
+- Each card carries its own copy of its icon's SVG, about 6–15 KB on a 60-node contract: skipped, small, and a sprite can come later.
+- Nothing found in injection (all client text goes through HEEx escaping, no `raw/1`), the Content-Security-Policy (no `style` attribute, nothing loaded from outside), unbounded work, or repaints during a pan.
