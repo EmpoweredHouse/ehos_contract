@@ -76,8 +76,15 @@ defmodule EhOsContract.Duration do
   confirmed (`unverified: true`) "2 days (unverified)". Unlike `humanize/1`, it stands
   on its own rather than after a word: the pages and the domain's tree.
   """
-  @spec declared(%{amount: non_neg_integer(), unit: atom()} | {non_neg_integer(), atom()}) ::
-          String.t()
+  @spec declared(
+          %{
+            required(:amount) => non_neg_integer(),
+            required(:unit) => atom(),
+            optional(:unverified) => boolean(),
+            optional(atom()) => term()
+          }
+          | {non_neg_integer(), atom()}
+        ) :: String.t()
   def declared({amount, unit}), do: declared(%{amount: amount, unit: unit})
 
   def declared(%{amount: amount, unit: unit} = d) do
