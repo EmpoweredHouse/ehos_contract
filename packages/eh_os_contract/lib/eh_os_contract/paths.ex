@@ -174,8 +174,13 @@ defmodule EhOsContract.Paths do
         reaction(model, :process_manager, r.reaction, event, type, r.command, label)
       end
 
+    # A timer's firing: what the timer itself issues, and what an `on` naming the timer
+    # issues, which runs on the same firing. One path per manager, timer and command.
     timers =
-      for %{trigger: :timer, reaction: pm, way: timer, command: command} <- issued do
+      for %{kind: :process_manager, reaction: pm, command: command} = r <- issued,
+          EhOsContract.Reactions.timer?(r),
+          timer = Enum.find(pm.timers, &(&1.name == r.on)),
+          uniq: true do
         %{
           from: ref(:timer, timer.name, timer.label),
           via: ref(:process_manager, pm.name, pm.label),

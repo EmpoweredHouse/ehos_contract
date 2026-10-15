@@ -129,6 +129,9 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **Moves a verdict:** a command a process manager issues from an `on` naming one of its timers is a declared path
+  from that timer (plan DD, stage C1, #304), as one the timer itself issues is. Before, the report counted neither
+  its runs nor its absence, so a path the code takes could not be reported untraversed.
 - **Breaking:** **A key names each field once** (plan DD, stage C1, #304). A process manager whose `correlate`
   names a field twice, `correlate: [:visit_id, :visit_id]`, no longer compiles (P4), nor a dynamic consistency
   boundary's `consults` whose `match:` does (A4); each message names the field, as a process module's (R2)
