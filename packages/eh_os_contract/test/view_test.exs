@@ -136,15 +136,15 @@ defmodule EhOsContract.ViewTest do
              """
 
     # One branch keeps a context, so no process under it; the root line still counts the
-    # whole domain, as it counts its contexts and contracts (the review of P2e's third
-    # pull request: it counted the processes shown).
+    # whole domain, as it counts its contexts and contracts (plan DD, P2e (#220),
+    # review: it counted the processes shown).
     [context] = UniversalityGate.Domain.__eh_os_contract_model__().contexts
     branch = View.render(UniversalityGate.Domain, modules, path: [context.name])
     assert branch =~ "domain universality_gate  1 context · 1 contract · 1 process\n"
     refute branch =~ "─ process"
   end
 
-  # The review of P2e's third pull request: a stage listed a contract twice when its
+  # Plan DD, P2e (#220), review: a stage listed a contract twice when its
   # events were not adjacent, and a stage with nothing resolved ended in "← ".
   test "a stage's events by contract in first-appearance order, and a stage with none" do
     run = EhOsContract.Model.fetch(DispatchRig.LedgerRun)

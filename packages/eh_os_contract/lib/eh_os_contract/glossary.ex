@@ -12,11 +12,11 @@ defmodule EhOsContract.Glossary do
   # Given the contracts, each term also says its word in code and the declarations of
   # its context's contracts named with it (plan DD, L1 (#269)): the names
   # `EhOsContract.CodeWords` reads, which the check's two rules about words read too.
-  # Given the process modules as well, it lists after them each process module that
-  # includes events of the context's contracts and whose names say the term: its id,
-  # its stages, its promises and the fields that tell its runs apart (plan DD, P2e,
-  # #220). A process crosses contexts, so it is listed under the term of each context
-  # it takes events from. The check's rules do not read a process module's names.
+  # Given the process modules as well (plan DD, P2e (#220)), it lists after them each
+  # process module that includes events of the context's contracts and whose names say
+  # the term: its id, its stages, its promises and the fields that tell its runs apart.
+  # A process crosses contexts, so it is listed under the term of each context it takes
+  # events from. The check's rules do not read a process module's names.
   #
   # Contexts and terms come in the order the domain declares them, as every reader of
   # the model prints (v2 §9).

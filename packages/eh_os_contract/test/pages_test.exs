@@ -486,7 +486,7 @@ defmodule EhOsContract.PagesTest do
                  "[`referral_received`](events/referral_received.md), "
     end
 
-    # The review of P2e's third pull request: a stage listed a contract twice when its
+    # Plan DD, P2e (#220), review: a stage listed a contract twice when its
     # events were not adjacent, and a stage with nothing resolved ended in "— ".
     test "a stage's events by contract in first-appearance order, and a stage with none" do
       page =
@@ -504,7 +504,7 @@ defmodule EhOsContract.PagesTest do
       assert page =~ "2. `elsewhere` — _no included event resolves to a contract of the domain_\n"
     end
 
-    # The review of P2e's third pull request: a model built without `correlate` raised.
+    # Plan DD, P2e (#220), review: a model built without `correlate` raised.
     test "a process module without correlate says nothing of what tells its runs apart" do
       page =
         Pages.render(UniversalityGate.Domain, [

@@ -10,7 +10,7 @@ defmodule EhOsContract.View do
   # what it is produced by or takes. `details: true` adds what a row declares
   # underneath it — identity, fields, invariants, constraints.
   #
-  # The domain's process modules follow its contexts (plan DD, P2e, #220): each with its
+  # The domain's process modules follow its contexts (plan DD, P2e (#220)): each with its
   # stages in order and, in each, the events it includes, by the contract that declares
   # them. A process crosses contexts, so it hangs under the domain, not under one.
   #

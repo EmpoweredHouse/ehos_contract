@@ -223,7 +223,7 @@ defmodule EhOsContract.CheckCodeWordsTest do
     refute Glossary.render(@domain, contracts: [@scheduling, @payers]) =~ "visit_run"
   end
 
-  # The review of P2e's third pull request: the id's segments were one list of words,
+  # Plan DD, P2e (#220), review: the id's segments were one list of words,
   # so `code_words.settlement.date_run` said "settlement date" across the dot.
   test "a process module's id is named with a term only within one segment" do
     compile(

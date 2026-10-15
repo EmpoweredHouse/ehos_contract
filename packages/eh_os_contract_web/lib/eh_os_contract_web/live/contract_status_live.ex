@@ -18,7 +18,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   # declares a lifecycle, the same first two questions of its transitions (plan LC4b).
   # A contract declares no process (plan DD, P2h, #221): runs and promises are a
   # process module's. Each process module the registry finds has a section of its own
-  # after the contracts (plan DD, P2e, #220), as `mix eh_os_contract.report` prints its
+  # after the contracts (plan DD, P2e (#220)), as `mix eh_os_contract.report` prints its
   # report: its deployment, its runs, its duration against a confirmed deadline, its
   # stages out of order and its promises' verdicts.
   @moduledoc false

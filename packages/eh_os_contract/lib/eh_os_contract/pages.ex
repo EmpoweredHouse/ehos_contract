@@ -19,7 +19,7 @@ defmodule EhOsContract.Pages do
   #
   # A process module's document has a directory of its own, as its API path has
   # (`/graph/process/<id>`): a process module may share its `id:` with a contract
-  # (plan DD, P2e, #220).
+  # (plan DD, P2e (#220)).
   #
   # A contract's directory is its module's last segment, underscored. Each kind has a
   # directory of its own, since a contract's namespaces overlap: a read model may share
@@ -863,7 +863,7 @@ defmodule EhOsContract.Pages do
     ]
   end
 
-  # --- a process module (plan DD, P2e, #220) ---------------------------------------------
+  # --- a process module (plan DD, P2e (#220)) ---------------------------------------------
 
   # What a process module declares, the events of its stages each linked to its page in
   # the contract that declares it. The words are the ones the contract's page used for

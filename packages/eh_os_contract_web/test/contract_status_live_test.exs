@@ -5,7 +5,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   hollow; the `render/1` cases below it show the sections a real log rarely
   produces render correctly. A contract declares no process (plan DD, P2h, #221): its
   runs and promises are a process module's, which has a section of its own (plan DD,
-  P2e, #220). `EhOsContract.Registry.load!/0`
+  P2e (#220)). `EhOsContract.Registry.load!/0`
   runs once at boot (test_helper.exs), the same way a real host would call it once
   at startup.
   """
@@ -191,7 +191,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     for q <- qualifications, do: assert(html =~ escape(q))
   end
 
-  # The review of P2e's third pull request: the screen left out what changed since the
+  # Plan DD, P2e (#220), review: the screen left out what changed since the
   # previous version, which the text report prints.
   test "a process module's deployment says what changed since the previous version" do
     report = EhOsContract.Conformance.report(CaseRun, [])
