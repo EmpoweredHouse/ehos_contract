@@ -185,6 +185,18 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       received = View.contract(Fixtures.document("messaging"))
       assert card(received, "event:messaging:copy_lent").foot == "another application"
 
+      bare =
+        update_in(
+          Fixtures.document("appunite_equipment.demands"),
+          ["nodes", "event"],
+          fn events ->
+            for e <- events,
+                do: if(e["declared_as"], do: %{e | "declared_as" => "event::issued"}, else: e)
+          end
+        )
+
+      assert card(View.contract(bare), "event:appunite_equipment.demands:issued").foot == nil
+
       own = View.contract(Fixtures.document("rehmed.settlement"))
       assert for(%{kind: "event"} = e <- own.nodes, do: e.foot) |> Enum.uniq() == [nil]
     end

@@ -326,8 +326,12 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # Where an event of a contract's full graph is declared, when not in one of its units: the
   # sibling contract it is consumed from, or another application it is received from.
-  defp home(%{"declared_as" => "event:" <> declared}),
-    do: declared |> String.split(":") |> hd()
+  defp home(%{"declared_as" => "event:" <> declared}) do
+    case String.split(declared, ":") do
+      [contract, _ | _] when contract != "" -> contract
+      _malformed -> nil
+    end
+  end
 
   defp home(%{"unit" => unit}) when is_binary(unit), do: nil
   defp home(_received), do: "another application"
