@@ -389,7 +389,12 @@ defmodule EhOsContract.GraphRenderer.View do
   defp lines(_kind, _node, _pinned), do: []
 
   # Where an event of a contract is declared, when not in one of its units: the sibling
-  # contract it is consumed from, or another application it is received from.
+  # contract it is consumed from, as the document says it (`declared_in`), or another
+  # application it is received from. A document from before `declared_in` says it only in
+  # the sibling's event id, which is read then.
+  defp home(%{"declared_in" => contract}) when is_binary(contract) and contract != "",
+    do: contract
+
   defp home(%{"declared_as" => "event:" <> declared}) do
     case String.split(declared, ":") do
       [contract, _ | _] when contract != "" -> contract

@@ -34,12 +34,25 @@ defmodule EhOsContract.Graph.Document do
   so moving the contract's module moves no id: an event it consumes is a node under the
   name it has *here*, which a rename may make another than its sibling's, so it is
   `event:<this contract's id>:<local name>` and says which sibling event it is in
-  `declared_as`. An actor, an external system, a context, a subdomain and a publication
+  `declared_as`, and which contract declares it in `declared_in`. An actor, an external system, a context, a subdomain and a publication
   are the domain's, scoped to the domain's module. A process module's stages and
   promises are scoped to its `id:`; the events it includes keep the ids they have in
   the documents of the contracts that declare them, and a contract or a process module
   has one id in every document it is in, so the documents join on them. Nothing should
   read an id apart: a client's name may hold any character, a colon included.
+
+  ## Changes only by addition
+
+  **A document and its overlay change only by adding to them.** A key once in the
+  schema keeps its name, its type and its meaning, a node kind or relation type its
+  name, and a key a document always carries is always carried: a later version may add
+  a key, a kind or a type, and nothing else. A reader on an older version — the EHOS
+  Console reading applications that run several versions of the library — keeps reading
+  what it knows and leaves what it does not. So a reader ignores a key it does not know
+  rather than refusing the document, though the schema, which describes the version it
+  ships with, closes each object. `test/conformance/graph_schema_test.exs` holds both
+  schemas to the last ones a change was allowed to remove from; such a change is
+  breaking, said in the changelog, and moves that baseline with it.
   """
 
   alias EhOsContract.{Graph, Model}

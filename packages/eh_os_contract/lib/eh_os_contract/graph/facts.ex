@@ -173,7 +173,7 @@ defmodule EhOsContract.Graph.Facts do
 
     own =
       for e <- model.events,
-          do: %{name: e.name, declared: e, from: nil, received: false}
+          do: %{name: e.name, declared: e, from: nil, in: nil, received: false}
 
     consumed =
       for %{kind: :contract, from: from, events: names, renames: renames} <- model.consumes,
@@ -181,7 +181,14 @@ defmodule EhOsContract.Graph.Facts do
           original <- names do
         declared = Enum.find(sibling.events, &(&1.name == original))
         name = Map.get(renames, original, original)
-        %{name: name, declared: declared, from: id(:event, sibling.id, original), received: false}
+
+        %{
+          name: name,
+          declared: declared,
+          from: id(:event, sibling.id, original),
+          in: sibling.id,
+          received: false
+        }
       end
 
     received =
@@ -190,6 +197,7 @@ defmodule EhOsContract.Graph.Facts do
             name: as,
             declared: %{name: as, label: nil, fields: fields},
             from: nil,
+            in: nil,
             received: true
           }
 
@@ -212,6 +220,7 @@ defmodule EhOsContract.Graph.Facts do
         node(:event, c, %{name: e.name, label: declared.label, source: declared[:source]},
           unit: own? && id(:unit, c, declared.unit),
           declared_as: e.from,
+          declared_in: e.in,
           fields: fields(declared.fields, ctx, if(not e.received, do: :event)),
           type: declared[:type],
           schema_version: declared[:schema_version],

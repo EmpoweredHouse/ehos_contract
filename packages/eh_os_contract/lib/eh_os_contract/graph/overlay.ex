@@ -68,6 +68,9 @@ defmodule EhOsContract.Graph.Overlay do
   A step the facts end at no relation, or at two that are not such a manager's
   phases, is a shape of the DSL this module does not know: its relations get no
   numbers and a warning is logged, and a test over every fixture fails on it.
+
+  Like the document it joins onto, an overlay changes only by addition
+  (`EhOsContract.Graph.Document`, "Changes only by addition").
   """
 
   require Logger
@@ -180,8 +183,11 @@ defmodule EhOsContract.Graph.Overlay do
   @doc """
   The overlay of `domain` over `modules`, its contracts and process modules (those
   naming another domain are left out), and the period `opts` names, against
-  `Document.domain/2` of the same: what crosses between two contracts, and on each
-  process module's node its `runs`.
+  `Document.domain/2` of the same: what crosses between two contracts; on each
+  process module's node its `runs`; and on each contract's node its drift, as the
+  conformance report counts it — `untraversed`, how many of its declared steps and
+  lifecycle transitions were never taken, and `undeclared`, how many moves its
+  lifecycles do not allow happened (`EhOsContract.Conformance.steps/2`, `lifecycles/2`).
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
   def domain(domain, modules, opts \\ []) do
@@ -205,13 +211,29 @@ defmodule EhOsContract.Graph.Overlay do
 
     id = &Document.id([:contract, &1.id])
 
+    # Plan DD, G1 (#297): where it is worth going in, on the map. The same steps and
+    # lifecycles the contract's own overlay reads.
+    drift =
+      for m <- models do
+        steps = m |> Conformance.steps(period) |> Enum.uniq()
+        lifecycles = Conformance.lifecycles(m, period)
+
+        {id.(m),
+         %{
+           untraversed:
+             Enum.count(steps, & &1.untraversed) +
+               Enum.sum(for l <- lifecycles, do: length(l.untraversed)),
+           undeclared: Enum.sum(for l <- lifecycles, do: length(l.undeclared))
+         }}
+      end
+
     seal(
       %{
         "kind" => "domain",
         "domain" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(runs),
+        "nodes" => Map.new(runs ++ drift),
         "relations" => Map.new(between(document, models, id, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },

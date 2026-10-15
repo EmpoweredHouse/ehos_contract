@@ -257,6 +257,10 @@
   font-family: var(--mono, monospace);
   font-size: 10.5px;
 }
+.ehg-card .ehg-drift {
+  background: var(--error-soft);
+  color: var(--error-ink);
+}
 .ehg-relation {
   padding: 1px 5px;
   border: 0;

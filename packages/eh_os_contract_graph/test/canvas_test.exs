@@ -221,6 +221,32 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert "a heavy arrow: a promise, with its window" in texts
     end
 
+    test "a contract's card on the domain's map says its drift" do
+      document = Fixtures.document("domain.rehmed")
+
+      overlay = %{
+        "document_digest" => document["digest"],
+        "nodes" => %{
+          "contract:rehmed.settlement" => %{"untraversed" => 2, "undeclared" => 0},
+          "contract:rehmed.scheduling" => %{"untraversed" => 0, "undeclared" => 0}
+        },
+        "relations" => %{},
+        "observed" => %{"relations" => %{"undeclared" => []}}
+      }
+
+      html = draw(document, overlay, :system)
+
+      assert html
+             |> at("data-ehg-node", "contract:rehmed.settlement")
+             |> LazyHTML.query(".ehg-drift")
+             |> LazyHTML.text() == "2 never taken"
+
+      assert html
+             |> at("data-ehg-node", "contract:rehmed.scheduling")
+             |> LazyHTML.query(".ehg-drift")
+             |> Enum.count() == 0
+    end
+
     test "a client's text is text, and an id of any characters survives into the page" do
       document = Fixtures.document("edge_cases")
       html = draw(document)

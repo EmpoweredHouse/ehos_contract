@@ -339,6 +339,12 @@
   font-size: 10.5px;
 }
 
+/* A contract's drift on the domain's map: where it is worth going in, in the error colour. */
+.ehg-card .ehg-drift {
+  background: var(--error-soft);
+  color: var(--error-ink);
+}
+
 .ehg-relation {
   padding: 1px 5px;
   border: 0;

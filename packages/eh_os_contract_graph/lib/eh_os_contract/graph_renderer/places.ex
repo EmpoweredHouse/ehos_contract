@@ -46,6 +46,11 @@ defmodule EhOsContract.GraphRenderer.Places do
       when is_binary(unit),
       do: {{:unit, c, unit}, "Open its unit"}
 
+  def destination(%{"kind" => "contract"}, "event", %{"declared_in" => contract})
+      when is_binary(contract) and contract != "",
+      do: {{:contract, contract}, "Open its contract"}
+
+  # A document from before `declared_in` says the contract only in the sibling's event id.
   def destination(%{"kind" => "contract"}, "event", %{"declared_as" => "event:" <> declared}) do
     case String.split(declared, ":") do
       [contract, _ | _] when contract != "" -> {{:contract, contract}, "Open its contract"}
