@@ -360,25 +360,25 @@
   --eh-os-contract-graph-ends: #2e7d32;
 }
 
-[data-kind="command"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-command); }
-[data-kind="event"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-event); }
-[data-kind="policy"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-policy); }
-[data-kind="process_manager"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process-manager); }
-[data-kind="effect"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-effect); }
-[data-kind="timer"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-timer); }
-[data-kind="actor"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-actor); }
-[data-kind="unit"],
-[data-kind="status"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-unit); }
-[data-kind="read_model"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-read-model); }
-[data-kind="query"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-query); }
-[data-kind="invariant"],
-[data-kind="constraint"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-rule); }
-[data-kind="external"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-external); }
-[data-kind="process"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process); }
-[data-kind="context"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-context); }
-[data-kind="contract"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-contract); }
-[data-kind="publication"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-publication); }
-[data-kind="domain_service"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-service); }
+.ehg [data-kind="command"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-command); }
+.ehg [data-kind="event"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-event); }
+.ehg [data-kind="policy"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-policy); }
+.ehg [data-kind="process_manager"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process-manager); }
+.ehg [data-kind="effect"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-effect); }
+.ehg [data-kind="timer"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-timer); }
+.ehg [data-kind="actor"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-actor); }
+.ehg [data-kind="unit"],
+.ehg [data-kind="status"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-unit); }
+.ehg [data-kind="read_model"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-read-model); }
+.ehg [data-kind="query"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-query); }
+.ehg [data-kind="invariant"],
+.ehg [data-kind="constraint"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-rule); }
+.ehg [data-kind="external"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-external); }
+.ehg [data-kind="process"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process); }
+.ehg [data-kind="context"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-context); }
+.ehg [data-kind="contract"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-contract); }
+.ehg [data-kind="publication"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-publication); }
+.ehg [data-kind="domain_service"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-service); }
 
 /* An external system is outside the application: its border dashed. */
 .ehg-card[data-kind="external"] {

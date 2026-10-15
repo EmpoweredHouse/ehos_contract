@@ -280,57 +280,57 @@
   --eh-os-contract-graph-service: #546e7a;
   --eh-os-contract-graph-ends: #2e7d32;
 }
-[data-kind=command] {
+.ehg [data-kind=command] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-command);
 }
-[data-kind=event] {
+.ehg [data-kind=event] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-event);
 }
-[data-kind=policy] {
+.ehg [data-kind=policy] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-policy);
 }
-[data-kind=process_manager] {
+.ehg [data-kind=process_manager] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process-manager);
 }
-[data-kind=effect] {
+.ehg [data-kind=effect] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-effect);
 }
-[data-kind=timer] {
+.ehg [data-kind=timer] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-timer);
 }
-[data-kind=actor] {
+.ehg [data-kind=actor] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-actor);
 }
-[data-kind=unit],
-[data-kind=status] {
+.ehg [data-kind=unit],
+.ehg [data-kind=status] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-unit);
 }
-[data-kind=read_model] {
+.ehg [data-kind=read_model] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-read-model);
 }
-[data-kind=query] {
+.ehg [data-kind=query] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-query);
 }
-[data-kind=invariant],
-[data-kind=constraint] {
+.ehg [data-kind=invariant],
+.ehg [data-kind=constraint] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-rule);
 }
-[data-kind=external] {
+.ehg [data-kind=external] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-external);
 }
-[data-kind=process] {
+.ehg [data-kind=process] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process);
 }
-[data-kind=context] {
+.ehg [data-kind=context] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-context);
 }
-[data-kind=contract] {
+.ehg [data-kind=contract] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-contract);
 }
-[data-kind=publication] {
+.ehg [data-kind=publication] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-publication);
 }
-[data-kind=domain_service] {
+.ehg [data-kind=domain_service] {
   --eh-os-contract-graph-hue: var(--eh-os-contract-graph-service);
 }
 .ehg-card[data-kind=external] {

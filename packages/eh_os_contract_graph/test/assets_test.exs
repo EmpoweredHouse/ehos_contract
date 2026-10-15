@@ -86,6 +86,23 @@ defmodule EhOsContract.GraphRenderer.AssetsTest do
         do: assert(String.starts_with?(name, "--eh-os-contract-graph-"), name)
   end
 
+  test "every rule of the stylesheet reaches only the package's own elements" do
+    css = File.read!(@stylesheet)
+
+    # A selector list of each rule, outside an at-rule's own condition, comments taken out.
+    selectors =
+      Regex.replace(~r{/\*.*?\*/}s, css, "")
+      |> then(&Regex.scan(~r/([^{};]+)\{/, &1, capture: :all_but_first))
+      |> Enum.map(fn [s] -> String.trim(s) end)
+      |> Enum.reject(&String.starts_with?(&1, "@"))
+      |> Enum.flat_map(&String.split(&1, ","))
+      |> Enum.map(&String.trim/1)
+
+    for selector <- selectors,
+        selector != ":root",
+        do: assert(selector =~ ~r/\.ehg/, "#{selector} reaches outside the package's elements")
+  end
+
   test "NOTICE names each vendored library the bundle carries" do
     notice = File.read!(Path.join(@root, "NOTICE"))
 
