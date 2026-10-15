@@ -410,15 +410,15 @@ defmodule EhOsContract.GraphOverlayTest do
     contracts = Registry.contracts()
     mine = Enum.filter(contracts, &(Model.fetch(&1).domain == DispatchRig.Domain))
 
-    # Each contract's steps and lifecycles once, for its drift (plan DD, G1, #297);
-    # DispatchRig.Branch, the one consumer, its steps again for what crosses; and one count
-    # for every pair of contracts.
+    # Each contract's steps and lifecycles once, for its drift (plan DD, G1, #297) — the
+    # consumers' steps, which say what crosses, among them, never read again — and one
+    # count for every pair of contracts.
     drift =
       queries(fn ->
         for c <- mine, do: {Conformance.steps(c, []), Conformance.lifecycles(Model.fetch(c), [])}
       end)
 
-    budget = drift + queries(fn -> Paths.observe(DispatchRig.Branch) end) + 1
+    budget = drift + 1
 
     contracts_only = queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end)
     assert contracts_only <= budget
