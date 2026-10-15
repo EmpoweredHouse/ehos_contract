@@ -526,6 +526,8 @@ export const EhOsContractGraph = {
     else if (how === "out") canvas.call(this.zoom.scaleBy, 0.8)
     else if (how === "all" && this.size) {
       const box = this.canvas.getBoundingClientRect()
+      // A canvas with no room inside its margins has no scale to fit to; the view stays as it is.
+      if (box.width <= 32 || box.height <= 32) return
       const { width, height } = this.size
       const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
       // However small the whole picture is, the zoom goes on from there rather than jumping to its least scale.

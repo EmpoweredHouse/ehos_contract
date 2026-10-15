@@ -4806,6 +4806,7 @@ var EhOsContractGraph = {
     else if (how === "out") canvas.call(this.zoom.scaleBy, 0.8);
     else if (how === "all" && this.size) {
       const box = this.canvas.getBoundingClientRect();
+      if (box.width <= 32 || box.height <= 32) return;
       const { width, height } = this.size;
       const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
       this.zoom.scaleExtent([Math.min(0.1, k), 2]);
