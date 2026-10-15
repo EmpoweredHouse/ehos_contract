@@ -323,6 +323,38 @@ and it had named only the fonts. Neither fact moves the choice, since all three 
 Recorded in `PLAN.md`, "E13 — pushed, `main` merged again, and an audit against `main`'s conventions (9 October)";
 [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217).
 
+## Amendment, 15 October 2026: one canvas, two viewpoints, and the Console draws with the same package
+
+The decision drew one picture at a time, chosen from a list, and left open where a reader moves between them.
+Three things were decided for stage G1, the user's decisions of 15 October.
+
+**Two viewpoints.** The canvas shows either the **structure**, the context map, then a contract, then a unit
+(with an aggregate's lifecycle as a switch on it), or the **processes**, a list, then one process laid out by
+its stages. A path, the search and the legend are common to both, and the two are linked both ways: an event's
+card in a process leads to its contract, and a contract to the processes its events take part in. The two
+answer different questions and need different layouts. The structure says who owns what, what is sent and who
+listens, does not change over time, and is grouped by owner. A process says what happens, in order, in one case
+(a visit, a month), and runs across several contracts at once. An event has one home in the structure and may
+stand in a stage of several processes. EventCatalog separates the same two: a flow has a page and a diagram of
+its own, whose steps point at services and messages documented elsewhere. *Rejected:* processes drawn as lines
+across the structure's map (the plan on #302), since one picture cannot have both layouts and several processes
+become crossing lines; a page per element as EventCatalog has, since we keep one canvas with navigation.
+
+**The renderer holds the navigation.** The canvas, its path, its viewpoints and the links between them are a
+component of this package, not of the dashboard's Graph screen, and draw only what the `graph.v1` documents and
+their overlays say. An application shows its own contracts in its dashboard; the EHOS Console reads the same
+documents from each application's JSON API and draws them with the same component, so the two never differ.
+*Rejected:* navigation on the dashboard's screen, which the Console would have to write again.
+
+**The Console joins applications; the package says how.** One application is one domain, and a domain knows of
+others only what it publishes and what it subscribes to. A function of this package joins several applications'
+domain documents by publication name into one landscape the same canvas draws; the Console fetches the documents
+and owns the screen. A process across applications does not exist in the model: between applications there is
+only publication and subscription. Since the Console reads documents from applications on different versions of
+the library, `graph.v1` changes only by addition.
+
+Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with
