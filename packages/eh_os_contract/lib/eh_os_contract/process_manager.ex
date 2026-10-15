@@ -189,12 +189,7 @@ defmodule EhOsContract.ProcessManager do
   end
 
   defp issue!(consumer, model, pm, name, source, issued, chain) do
-    issues =
-      (pm.starts_on ++ pm.on)
-      |> Enum.filter(&(&1.event == name))
-      |> Enum.flat_map(& &1.issues)
-      |> Kernel.++(Enum.flat_map(Enum.filter(pm.timers, &(&1.name == name)), & &1.issues))
-      |> Enum.uniq()
+    issues = EhOsContract.Reactions.commands_on(:process_manager, pm, name)
 
     commands =
       case issued do

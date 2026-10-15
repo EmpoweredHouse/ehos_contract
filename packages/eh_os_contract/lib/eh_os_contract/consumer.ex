@@ -100,7 +100,14 @@ defmodule EhOsContract.Consumer do
 
     case apply(module, consumer.callback, [event]) do
       {:ok, commands} when is_list(commands) ->
-        issue!(consumer, :policy, event.__meta__, commands, {model, policy.issues}, [link | chain])
+        issue!(
+          consumer,
+          :policy,
+          event.__meta__,
+          commands,
+          {model, EhOsContract.Reactions.commands(:policy, policy)},
+          [link | chain]
+        )
 
       other ->
         raise ArgumentError,

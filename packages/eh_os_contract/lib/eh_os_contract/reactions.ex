@@ -70,6 +70,23 @@ defmodule EhOsContract.Reactions do
   end
 
   @doc """
+  The commands one reaction issues, each once, in the order `issued_by/2` first lists
+  them.
+  """
+  @spec commands(:policy | :process_manager, map()) :: [atom()]
+  def commands(kind, reaction),
+    do: for(%{command: c} <- issued_by(kind, reaction), uniq: true, do: c)
+
+  @doc """
+  The commands one reaction issues on `on`, each once: a policy's, on an event it
+  handles; a process manager's, through the ways in on that event, or that timer's
+  firing — what the callback of that name may issue.
+  """
+  @spec commands_on(:policy | :process_manager, map(), atom()) :: [atom()]
+  def commands_on(kind, reaction, on),
+    do: for(%{command: c, on: ^on} <- issued_by(kind, reaction), uniq: true, do: c)
+
+  @doc """
   Whether the one reaction, a policy or a process manager, issues `command`, as
   `issued_by/2` would list it, without building the list: what dispatch asks of every
   command a reaction sends.

@@ -70,7 +70,10 @@ defmodule EhOsContract.Contract.Callbacks do
       callbacks:
         for(
           e <- policy.handles,
-          do: callback(e, [event(model, e)], issued(), issues: policy.issues)
+          do:
+            callback(e, [event(model, e)], issued(),
+              issues: EhOsContract.Reactions.commands_on(:policy, policy, e)
+            )
         ),
       evolve: nil
     }
@@ -91,20 +94,15 @@ defmodule EhOsContract.Contract.Callbacks do
     state = Module.concat(Model.module_for(model, :process_manager, name), State)
     timers = MapSet.new(pm.timers, & &1.name)
     reactions = pm.starts_on ++ pm.on
+    issued = EhOsContract.Reactions.issued_by(:process_manager, pm)
 
-    on_events =
-      for r <- reactions, r.issues != [], not MapSet.member?(timers, r.event) do
-        {r.event, r.issues}
-      end
+    # A callback per event that issues, and one per timer: a timer's own commands first,
+    # then those of an `on` naming it.
+    on_events = for r <- issued, not EhOsContract.Reactions.timer?(r), do: {r.on, r.command}
 
     on_timers =
-      for(t <- pm.timers, t.issues != [], do: {t.name, t.issues}) ++
-        for(
-          r <- reactions,
-          r.issues != [],
-          MapSet.member?(timers, r.event),
-          do: {r.event, r.issues}
-        )
+      for(%{trigger: :timer} = r <- issued, do: {r.on, r.command}) ++
+        for %{trigger: :on} = r <- issued, EhOsContract.Reactions.timer?(r), do: {r.on, r.command}
 
     callbacks =
       for(

@@ -441,7 +441,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     givens ++
       event_data(where, trigger, trigger.name, d) ++
-      issued(where, scenario, policy.issues, d) ++
+      issued(where, scenario, EhOsContract.Reactions.commands(:policy, policy), d) ++
       decisions_only(where, scenario) ++
       no_timers(where, scenario, "a policy") ++
       no_state(where, scenario) ++ outcome ++ no_actor(where, scenario)
@@ -508,10 +508,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     # A timer that fires delivers no event, so it has no data to check.
     delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
 
-    issues =
-      for %{on: on, command: command} <- EhOsContract.Reactions.issued_by(:process_manager, pm),
-          on == trigger.name,
-          do: command
+    issues = EhOsContract.Reactions.commands_on(:process_manager, pm, trigger.name)
 
     givens ++
       delivered ++

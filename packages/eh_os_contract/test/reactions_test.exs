@@ -64,6 +64,18 @@ defmodule EhOsContract.ReactionsTest do
              [opened: false, later: true, paid: false, later: true]
   end
 
+  test "what one reaction issues, and what its callback of one name may issue, each once" do
+    model = Model.fetch(@ledger)
+    [pm] = model.process_managers
+    policy = Enum.find(model.policies, &(&1.name == :echo_deposit))
+
+    assert Reactions.commands(:process_manager, pm) == [:flag_account]
+    assert Reactions.commands_on(:process_manager, pm, :review) == [:flag_account]
+    assert Reactions.commands_on(:process_manager, pm, :deposited) == []
+    assert Reactions.commands_on(:policy, policy, :deposited) == [:deposit]
+    assert Reactions.commands_on(:policy, policy, :withdrawn) == []
+  end
+
   test "the DSL's declarations give the same list as the model" do
     declarations = Rules.declarations(@ledger.spark_dsl_config())
 
