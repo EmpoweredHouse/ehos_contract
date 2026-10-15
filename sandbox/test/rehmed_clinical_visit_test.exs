@@ -80,7 +80,7 @@ defmodule Rehmed.ClinicalVisitTest do
           Map.merge(codes, %{
             visit_id: id,
             patient_id: "patient-anna",
-            pesel: "85010112345",
+            pesel: "85010112346",
             practitioner_number: "practitioner-ewa"
           })
         ),

@@ -1,7 +1,7 @@
 defmodule EhOsContractHost.Repo.Migrations.CreateGraphLabDailyPayments do
   @moduledoc """
   The table of `GraphLab.Settlement.DailyTotals`, the test set's day of payments: one row
-  per payment. On the branch `graph/explorer-plan` only, with the set.
+  per payment. It goes with the set: nothing else reads it.
   """
 
   use Ecto.Migration

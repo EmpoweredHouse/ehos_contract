@@ -24,4 +24,12 @@ defmodule GraphLab.Entities do
       :error -> :not_found
     end
   end
+
+  # An entity something else reads while the traffic task points the engine here: said by
+  # name, rather than a FunctionClauseError whose log would print the actor.
+  def fetch(_actor, domain, entity, _id) do
+    raise ArgumentError,
+          "#{inspect(__MODULE__)} keeps no #{inspect(entity)} of #{inspect(domain)}: only the " <>
+            "test set's service catalogue"
+  end
 end

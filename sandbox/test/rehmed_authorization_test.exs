@@ -60,7 +60,7 @@ defmodule Rehmed.AuthorizationTest do
   @close %{
     visit_id: "visit-anna",
     patient_id: "patient-anna",
-    pesel: "85010112345",
+    pesel: "85010112346",
     icd10: "M54.5",
     icd9: "93.39",
     practitioner_number: "practitioner-ewa"

@@ -81,14 +81,14 @@ defmodule GraphLab.Contracts.StatutoryReporting do
 
     on :visit_closed_clinically, %{
       patient_id: "patient-anna",
-      pesel: "85010112345",
+      pesel: "85010112346",
       icd10: "M54.5",
       icd9: "93.39",
       practitioner_number: "practitioner-ewa",
       p1_reported: true
     }
 
-    issues :queue_p1_report, %{pesel: "85010112345", icd10: "M54.5"}
+    issues :queue_p1_report, %{pesel: "85010112346", icd10: "M54.5"}
   end
 
   scenario "masaż zamknięty klinicznie — do P1 nic nie idzie",
@@ -97,7 +97,7 @@ defmodule GraphLab.Contracts.StatutoryReporting do
 
     on :visit_closed_clinically, %{
       patient_id: "patient-anna",
-      pesel: "85010112345",
+      pesel: "85010112346",
       practitioner_number: "practitioner-ewa",
       p1_reported: false
     }
@@ -108,13 +108,13 @@ defmodule GraphLab.Contracts.StatutoryReporting do
   scenario "zgłoszenie kolejkowane z ładunkiem zamknięcia" do
     command :queue_p1_report, %{
       patient_id: "patient-anna",
-      pesel: "85010112345",
+      pesel: "85010112346",
       icd10: "M54.5",
       icd9: "93.39",
       practitioner_number: "practitioner-ewa"
     }
 
-    expect :p1_report_queued, %{pesel: "85010112345"}
+    expect :p1_report_queued, %{pesel: "85010112346"}
   end
 
   scenario "usługa niezgłaszana — zgłoszenie pominięte" do

@@ -2,9 +2,9 @@ defmodule GraphLab do
   @moduledoc """
   **A test set for drawing the graph. It is not client material.**
 
-  The one explorable graph of the contracts (`graph-explorer-plan.md`, section 11) is
-  drawn and checked on this set alone: a clinic under a domain of its own,
-  `:"graph-lab"`, in which every shape the graph has to draw is at least once.
+  The graph of the contracts (plan DD, stage G1, #297; the set was first written on #302)
+  is drawn and checked on this set: a clinic under a domain of its own, `:"graph-lab"`,
+  in which every shape the graph has to draw is at least once.
 
   - **The map:** core, supporting and generic subdomains; a context with no contract
     (configuration) and one with two (settlement, beside the till), seven contracts in
@@ -31,8 +31,8 @@ defmodule GraphLab do
   publishes only under its own name, so a publication here would stop the host at boot.
 
   Its contracts change at will for the graph's sake: nothing outside the set depends on
-  them. A `source:` that says „dodane do testów grafu” marks what is there for the graph
-  alone; the other sources are labels kept as test data, with no material behind them in
+  them. A `source:` saying, in Polish, that it was added for the graph's tests marks what
+  is there for the graph alone; the other sources are labels kept as test data, with no material behind them in
   this repository. `mix graph_lab.traffic` fills the development database with runs of
   the set, with drift, and prints how to start the dashboard with this set alone.
   """
