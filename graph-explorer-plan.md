@@ -1,7 +1,8 @@
 # One explorable graph of the contracts — plan (working draft)
 
 > **A working draft, not an implementation plan.** It says what we want, for whom and why. It lives on the branch
-> `graph/explorer-plan` and is **deleted before that branch is merged**. Once it is agreed, it becomes a GitHub issue,
+> `graph/explorer-plan`, with its mock-up in `graph-explorer-mockup/`, and both are **deleted before that branch is
+> merged**. Once it is agreed, it becomes a GitHub issue,
 > and only then pull requests.
 >
 > **Comments:** write them anywhere between `%%%` markers. Sections and points are numbered so they can be
@@ -732,8 +733,9 @@ nest (subdomain → context → contract). A colour is the simpler layout; a fra
 5. **Today's pictures:** do they go at once, or stay for a while, e.g. as a "classic view"?
 6. **The "records only" mark on the graph:** with something else, or as a small step of its own?
 7. **The way of drawing:** agree to a prototype before deciding (10.3)?
-8. **A mock-up — settled 14 October:** a clickable mock-up, a local HTML file outside the repository, on the test set's
-data (11). The core first: the map, entering a contract and a unit with the camera's flight, doors, focus, the badges,
+8. **A mock-up — settled 14 October:** a clickable mock-up on the test set's data (11), committed on this branch in
+`graph-explorer-mockup/` (15 October, replacing "a local file outside the repository") and deleted with this plan
+before the branch is merged. The core first: the map, entering a contract and a unit with the camera's flight, doors, focus, the badges,
 the "records only" mark and a simple panel; layers, process lines, the trace and hover in later rounds. The open choices
 are switches on it, to be compared live: what shows around a home (decision 2), frames or a colour for subdomains
 (decision 3), what the start shows (decision 1), where the trace's arrows are (decision 4), and going deeper with the
@@ -759,8 +761,9 @@ content is carried into #297 later, to be agreed with its author then.
 
 1. ~~The test set for drawing (11): a copy of Rehmed with the missing cases, and traffic in the development database,
 committed on this branch.~~ Done 14 October: `sandbox/lib/graph_lab/`, `mix graph_lab.traffic`.
-2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8). A draft pull request of this
-branch, part of #297, holds the plan and the test set meanwhile.
+2. The mock-up, and a prototype of the hardest part on that set (decisions 7 and 8). Its core is built (15 October):
+`graph-explorer-mockup/`. A draft pull request of this branch, #302, part of #297, holds the plan, the test set and the
+mock-up meanwhile.
 3. The decisions of 13.
 4. #297 updated with this plan, its own content kept as the base, and a short paragraph in `PLAN.md`.
 5. Stages, each with its own pull request:
