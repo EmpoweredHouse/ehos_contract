@@ -359,8 +359,38 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert card(view, "event:rehmed.external_payers:visit_charged_to_payer").foot ==
                "rehmed.settlement"
 
-      own = for %{kind: "event", facts: %{"unit" => _}} = e <- view.nodes, do: e.foot
-      assert Enum.all?(own, &is_nil/1)
+      own = for %{kind: "event", facts: %{"unit" => u}} = e <- view.nodes, is_binary(u), do: e
+      assert Enum.all?(own, &(&1.foot == nil))
+    end
+
+    test "says which unit of the contract an event it consults from another unit is in" do
+      period = "unit:rehmed.external_payers:payer_period"
+      other = "unit:rehmed.external_payers:ledger"
+      event = "event:rehmed.external_payers:ledger_opened"
+
+      document =
+        Fixtures.document("rehmed.external_payers")
+        |> update_in(
+          ["nodes", "unit"],
+          &(&1 ++ [%{"id" => other, "name" => "ledger", "label" => "Księga"}])
+        )
+        |> update_in(
+          ["nodes", "event"],
+          &(&1 ++ [%{"id" => event, "name" => "ledger_opened", "unit" => other}])
+        )
+        |> update_in(["relations", "consulted_by"], fn rs ->
+          rs ++
+            [
+              %{
+                "id" => "consulted_by:ledger",
+                "from" => event,
+                "to" => period,
+                "match" => ["payer"]
+              }
+            ]
+        end)
+
+      assert card(View.unit(document, period), event).foot == "Księga"
     end
 
     test "lists the state's fields on its card, and counts the scenarios on each arrow" do

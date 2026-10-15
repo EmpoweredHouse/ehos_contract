@@ -547,8 +547,9 @@ defmodule EhOsContract.GraphRenderer.View do
   # --- one unit ---------------------------------------------------------------------------
 
   # Unit `id` of a contract's `document`, left to right: its state as a card listing its
-  # fields, its commands and the events they emit, the events of other contracts a
-  # boundary consults, its invariants and its commands' constraints. An arrow a command
+  # fields, its commands and the events they emit, the events from elsewhere a boundary
+  # consults, each with a footer saying the unit or the contract it lives in, its
+  # invariants and its commands' constraints. An arrow a command
   # may take — an event it emits, a rule it may be refused on — says how many of the
   # unit's scenarios pin it, and says nothing where none does. An aggregate's events
   # build its state; a boundary's consulted events say by which fields.
@@ -574,7 +575,7 @@ defmodule EhOsContract.GraphRenderer.View do
           not MapSet.member?(owned, r["from"]),
           by_id[r["from"]] != nil,
           uniq: true,
-          do: card("event", by_id[r["from"]], foot: home(by_id[r["from"]]))
+          do: card("event", by_id[r["from"]], foot: consulted_home(by_id[r["from"]], by_id))
 
     its_commands = MapSet.new(commands, & &1.id)
     invariants = for i <- nodes(document, "invariant"), i["of"] == id, do: card("invariant", i)
@@ -629,6 +630,13 @@ defmodule EhOsContract.GraphRenderer.View do
       []
     )
   end
+
+  # Where an event a unit consults lives: another unit of its contract, named by its title,
+  # or, for one of another contract, what `home/1` says.
+  defp consulted_home(%{"unit" => unit}, by_id) when is_binary(unit),
+    do: by_id[unit] && title(by_id[unit])
+
+  defp consulted_home(event, _by_id), do: home(event)
 
   # A unit's kind, and that it records only when the document says so: none of its
   # commands can be refused, so it decides nothing (plan DD, C1, #304).
