@@ -50,6 +50,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A unit's node in a contract's `graph.v1` document says it records only** (plan DD, stage C1, #304): a unit with
+  events none of whose commands can be refused carries `"records_only": true`, the same fact its page from
+  `mix eh_os_contract.pages` states; the key is absent otherwise, and the schema in `priv/schema/graph.v1.json`
+  has it as optional. Moves no verdict.
 - **A line logged while the engine works carries that work's correlation.** While it runs a command,
   records an event, or reacts to an event, a timer or a message, the Logger's metadata holds the
   work's correlation identifier as `correlation_id`, in lower case, and what was there before is
@@ -125,6 +129,16 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **Moves a verdict:** a command a process manager issues from an `on` naming one of its timers is a declared path
+  from that timer (plan DD, stage C1, #304), as one the timer itself issues is. Before, the report counted neither
+  its runs nor its absence, so a path the code takes could not be reported untraversed.
+- **Breaking:** **A key names each field once** (plan DD, stage C1, #304). A process manager whose `correlate`
+  names a field twice, `correlate: [:visit_id, :visit_id]`, no longer compiles (P4), nor a dynamic consistency
+  boundary's `consults` whose `match:` does (A4); each message names the field, as a process module's (R2)
+  already did. Name the field once. Moves no verdict.
+- **Breaking:** **A policy or an effect reacts to at least one event** (plan DD, stage C1, #304). One declared
+  with `handles: []` compiled and never ran, and dispatch still let such a policy issue what its `issues:`
+  named; neither compiles now (P1). Name the events it reacts to, or remove it. Moves no verdict.
 - **The report says what one run of a process module is** (plan DD, stage P2e, #220): "Runs in this period: 2, one
   per account_id." The sentences of a process module's runs and deployment are in `EhOsContract.Report.Sentence`,
   which the dashboard prints too. A process module's report carries what tells its runs apart, `correlate`, and

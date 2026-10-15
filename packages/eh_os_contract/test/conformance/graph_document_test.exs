@@ -320,6 +320,19 @@ defmodule EhOsContract.GraphDocumentTest do
       assert node(d, "actor", "actor:DispatchRig.Domain:clerk")
     end
 
+    # Plan DD, C1 (#304): what a unit's page says, its node says too.
+    test "a unit none of whose commands can be refused is marked as recording only" do
+      openings = Document.contract(Openings)
+      branch = node(openings, "unit", "unit:dispatch_rig.graph_openings:branch_note")
+      assert branch["records_only"] == true
+      assert {:ok, _} = JSV.validate(openings, @schema)
+
+      account =
+        node(Document.contract(DispatchRig.Ledger), "unit", "unit:dispatch_rig.ledger:account")
+
+      refute Map.has_key?(account, "records_only")
+    end
+
     test "a process manager's relations carry the way in they act on" do
       d = Document.contract(DispatchRig.Ledger)
       id = &Document.id([&1, scope(DispatchRig.Ledger) | List.wrap(&2)])

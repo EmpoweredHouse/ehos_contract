@@ -22,8 +22,8 @@ marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph 
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
-removing a contract's own process (P2h, #296) are merged; a process module's picture and page (P2e, #220, in
-progress), the debt the closing comments left (C1), the graph drawn like a catalog (G1, #297); then the context map
+removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
+merged; the debt the closing comments left (C1, #304, in progress), the graph drawn like a catalog (G1, #297); then the context map
 (M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
 rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
 
@@ -1884,7 +1884,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2b | 2 | DSL `EhOsContract.Process` | P2a | ☑ #207 | [#205](https://github.com/EmpoweredHouse/eh-os-contract/issues/205) |
 | P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☑ #212 | [#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210) |
 | P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☑ #216 | [#213](https://github.com/EmpoweredHouse/eh-os-contract/issues/213) |
-| P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ◐ `dd/220-process-graph-and-page` | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
+| P2e | 2 | grafy i strony procesu (three pull requests: engine, renderer and screen, pages and tasks) | P2h | ☑ #299, #301, #303 | [#220](https://github.com/EmpoweredHouse/eh-os-contract/issues/220) |
 | P2f | 2 | procesy sandboxa jako moduły | P2d | ☑ #225, #226, #227 | [#222](https://github.com/EmpoweredHouse/eh-os-contract/issues/222) |
 | P2g | 2 | rigi i testy o procesach | P2d | ☑ #231 | [#228](https://github.com/EmpoweredHouse/eh-os-contract/issues/228) |
 | P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☑ #296 | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
@@ -1914,7 +1914,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
-| C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☐ | — |
+| C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ◐ `dd/304-closing-comment-debt` | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☐ | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision

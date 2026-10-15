@@ -244,7 +244,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
     groups =
       for unit <- nodes(document, "unit"),
-          do: group("unit", unit, "#{title(unit)} · #{unit["unit_kind"]}")
+          do: group("unit", unit, "#{title(unit)} · #{unit_kind(unit)}")
 
     finish(
       "LR",
@@ -544,7 +544,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
     state =
       card("unit", unit,
-        tag: unit["unit_kind"],
+        tag: unit_kind(unit),
         lines: Enum.map(unit["state"] || [], &field(&1, unit["identity"] || []))
       )
 
@@ -555,6 +555,11 @@ defmodule EhOsContract.GraphRenderer.View do
       []
     )
   end
+
+  # A unit's kind, and that it records only when the document says so: none of its
+  # commands can be refused, so it decides nothing (plan DD, C1, #304).
+  defp unit_kind(%{"records_only" => true} = unit), do: "#{unit["unit_kind"]} · records only"
+  defp unit_kind(unit), do: unit["unit_kind"]
 
   defp scenarios(nil), do: nil
   defp scenarios(n), do: count(n, "scenario")

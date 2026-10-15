@@ -287,7 +287,9 @@ defmodule EhOsContract.Implementation do
 
         :policy ->
           policy = Enum.find(model.policies, &(&1.name == name))
-          Enum.map(policy.handles, event) ++ Enum.map(policy.issues, command)
+
+          Enum.map(policy.handles, event) ++
+            Enum.map(EhOsContract.Reactions.commands(:policy, policy), command)
 
         :effect ->
           Enum.map(Enum.find(model.effects, &(&1.name == name)).handles, event)

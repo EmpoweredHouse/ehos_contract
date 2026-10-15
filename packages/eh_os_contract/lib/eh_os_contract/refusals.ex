@@ -23,20 +23,4 @@ defmodule EhOsContract.Refusals do
     Enum.any?(model.events, &(&1.unit == unit.name)) and
       not Enum.any?(model.commands, &(&1.unit == unit.name and refuses?(&1)))
   end
-
-  @doc """
-  The commands of the contract `model` a reaction issues: a policy, or a process
-  manager on its start, on an event or when a timer fires.
-  """
-  @spec issued_by_reactions(map()) :: MapSet.t(atom())
-  def issued_by_reactions(model) do
-    policies = Enum.flat_map(model.policies, &List.wrap(&1.issues))
-
-    managers =
-      Enum.flat_map(model.process_managers, fn pm ->
-        Enum.flat_map(pm.starts_on ++ pm.on ++ pm.timers, &List.wrap(Map.get(&1, :issues, [])))
-      end)
-
-    MapSet.new(policies ++ managers)
-  end
 end

@@ -475,7 +475,10 @@ defmodule EhOsContract.Dispatcher do
 
   defp permit_code(model, declaration, %Actor{kind: :reaction, name: {:policy, name}}) do
     policy = Enum.find(model.policies, &(&1.name == name))
-    if policy && declaration.name in policy.issues, do: :ok, else: {:error, :not_declared}
+
+    if policy && EhOsContract.Reactions.issues?(:policy, policy, declaration.name),
+      do: :ok,
+      else: {:error, :not_declared}
   end
 
   # A process manager issues what its reactions and its timers name.
@@ -485,8 +488,9 @@ defmodule EhOsContract.Dispatcher do
         {:error, :not_declared}
 
       pm ->
-        issues = Enum.flat_map(pm.starts_on ++ pm.on ++ pm.timers, & &1.issues)
-        if declaration.name in issues, do: :ok, else: {:error, :not_declared}
+        if EhOsContract.Reactions.issues?(:process_manager, pm, declaration.name),
+          do: :ok,
+          else: {:error, :not_declared}
     end
   end
 

@@ -175,6 +175,21 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     end
   end
 
+  # Plan DD, C1 (#304): what a unit's page says, its panel says.
+  test "a unit's panel says it records only when the document does, and not otherwise" do
+    unit = "unit:taxvision.registry_watch:client"
+    document = Fixtures.document("taxvision.registry_watch")
+
+    recording =
+      update_in(document, ["nodes", "unit"], fn units ->
+        for u <- units, do: if(u["id"] == unit, do: Map.put(u, "records_only", true), else: u)
+      end)
+
+    said = "Records only: no command it takes can be refused."
+    assert open(recording, unit) =~ said
+    refute open(document, unit) =~ said
+  end
+
   describe "scenarios" do
     test "an arrow of a unit lists the scenarios behind its count, with their data (point 8)" do
       id =

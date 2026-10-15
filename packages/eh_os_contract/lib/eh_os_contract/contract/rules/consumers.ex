@@ -2,7 +2,7 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   # P1–P5 of v2 §6: what reacts to events, and what is read.
   #
   # - **P1.** A policy, and an effect, handles events of this contract or events it
-  #   consumes; a policy issues commands of this contract only.
+  #   consumes, at least one; a policy issues commands of this contract only.
   # - **P2.** An effect that `calls:` an external system cannot run
   #   `:in_transaction`: the call cannot be rolled back with the append.
   # - **P3.** A policy or an effect delivered `:at_least_once` names its
@@ -16,8 +16,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   #   the engine keys the commands a reaction issues, by the event's id, and an
   #   effect's call is not one — so `:infrastructure` also keys on `:event_id`.
   # - **P4.** A process manager starts on at least one event and correlates on at
-  #   least one field: with none, every run would share one record, one state and
-  #   one set of timers, and the first ending would end it for all. Its triggers are
+  #   least one field, each named once: with none, every run would share one record,
+  #   one state and one set of timers, and the first ending would end it for all. Its triggers are
   #   events or its own timers; its `sets:` and `cancels:` name its own timers; a
   #   timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
   #   one of them; what it issues is a command of this contract; it is delivered
@@ -88,6 +88,13 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         do: [{"P4: #{where} correlates on no field, so every run would share one record", pm}],
         else: []
 
+    # Plan DD, C1 (#304): as a process module's (R2), a run's key names each field once.
+    repeated =
+      for field <- pm.correlate |> DslRules.duplicates(& &1) |> Enum.uniq() do
+        {"P4: #{where} correlates on #{inspect(field)} twice; a run's key names each field once",
+         pm}
+      end
+
     triggers =
       for(s <- pm.starts_on, not MapSet.member?(events, s.event), do: {s, s.event, "starts on"}) ++
         for(e <- pm.ends_on, not MapSet.member?(events, e.event), do: {e, e.event, "ends on"}) ++
@@ -129,6 +136,7 @@ defmodule EhOsContract.Contract.Rules.Consumers do
 
     starts ++
       uncorrelated ++
+      repeated ++
       triggers ++ references ++ timer_shape ++ issued ++ delivery ++ not_downstream(where, pm)
   end
 
@@ -176,6 +184,15 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         {"P5: query #{inspect(query.name)} reads #{inspect(query.reads)}, which is not a read " <>
            "model of this contract", query}
       ]
+  end
+
+  # Plan DD, C1 (#304): `handles: []` meets `required:`, and a policy or an effect that
+  # handles nothing never runs; a policy's `issues:` would be permitted all the same.
+  defp handles(where, declaration, [], _events) do
+    [
+      {"P1: #{where} handles no event, so it never runs; name the events it reacts to",
+       declaration}
+    ]
   end
 
   defp handles(where, declaration, handles, events) do

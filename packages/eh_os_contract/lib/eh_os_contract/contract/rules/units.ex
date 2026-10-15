@@ -10,7 +10,7 @@ defmodule EhOsContract.Contract.Rules.Units do
   # - **A4.** A dynamic consistency boundary consults at least one event; each one
   #   is an event of this log — its own or a sibling contract's, not one received from
   #   another application (D12) — and says which by `match:`
-  #   or `where:`; `match:` names fields of the boundary's identity, which a local
+  #   or `where:`; `match:` names fields of the boundary's identity, each once, which a local
   #   consulted event carries as required, non-personal `:id` fields — its unit's
   #   identity, or fields of its own. Only such fields are tags of an appended event,
   #   and a boundary finds what it consults by its tags. For an event consumed from a
@@ -179,18 +179,16 @@ defmodule EhOsContract.Contract.Rules.Units do
     ]
   end
 
-  # For each command a reaction of this contract issues, who issues it, in words.
+  # For each command a reaction of this contract issues, who issues it, in words. Every
+  # way in counts, a timer's included: each runs inside the transaction that reacted.
   defp issuers(d) do
-    policies = for p <- d.policies, c <- p.issues, do: {c, "policy #{inspect(p.name)}"}
-
-    managers =
-      for pm <- d.process_managers,
-          reaction <- pm.starts_on ++ pm.on ++ pm.timers,
-          c <- reaction.issues,
-          do: {c, "process manager #{inspect(pm.name)}"}
-
-    Enum.group_by(policies ++ managers, &elem(&1, 0), &elem(&1, 1))
+    d
+    |> EhOsContract.Reactions.issued()
+    |> Enum.group_by(& &1.command, &"#{word(&1.kind)} #{inspect(&1.reaction.name)}")
   end
+
+  defp word(:policy), do: "policy"
+  defp word(:process_manager), do: "process manager"
 
   defp read_problems(command, unit) do
     names = Keyword.keys(command.reads)
@@ -335,8 +333,17 @@ defmodule EhOsContract.Contract.Rules.Units do
             do: [{"A4: #{where} consults #{event} with neither match: nor where:", consults}],
             else: []
 
+        # Plan DD, C1 (#304): the key it reads by names each field once, as a
+        # correlation does (P4, R2); the rules after this one read each field once, so a
+        # field named twice is reported here and not twice there.
+        repeated =
+          for field <- consults.match |> DslRules.duplicates(& &1) |> Enum.uniq() do
+            {"A4: #{where} consults #{event} matching #{inspect(field)} twice; a match names " <>
+               "each field once", consults}
+          end
+
         outside =
-          for field <- consults.match, field not in unit.identity do
+          for field <- Enum.uniq(consults.match), field not in unit.identity do
             {"A4: #{where} consults #{event} matching #{inspect(field)}, which is not in its " <>
                "identity #{inspect(unit.identity)}", consults}
           end
@@ -347,14 +354,16 @@ defmodule EhOsContract.Contract.Rules.Units do
               []
 
             tagged ->
-              for field <- consults.match, field in unit.identity, field not in tagged do
+              for field <- Enum.uniq(consults.match),
+                  field in unit.identity,
+                  field not in tagged do
                 {"A4: #{where} consults #{event} matching #{inspect(field)}, which the event " <>
                    "does not carry as a required, non-personal :id field, so no appended " <>
                    "#{event} is tagged with it and the boundary could never find one", consults}
               end
           end
 
-        unknown ++ criterion ++ outside ++ untagged
+        unknown ++ criterion ++ repeated ++ outside ++ untagged
       end)
 
     none ++ each

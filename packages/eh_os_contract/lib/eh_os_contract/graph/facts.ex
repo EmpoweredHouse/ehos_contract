@@ -291,7 +291,9 @@ defmodule EhOsContract.Graph.Facts do
              unit_kind: u.kind,
              identity: u.identity,
              generated: u[:generated],
-             state: fields(u.state.fields, ctx)
+             state: fields(u.state.fields, ctx),
+             # Plan DD, C1 (#304): as its page says it, derived, never declared.
+             records_only: EhOsContract.Refusals.records_only?(model, u)
            )
          end,
        status: statuses,

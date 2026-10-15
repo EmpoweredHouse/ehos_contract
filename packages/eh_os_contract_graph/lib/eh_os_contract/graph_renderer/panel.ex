@@ -433,6 +433,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <code>{Enum.join(List.wrap(@node["identity"]), ", ")}</code>{if @node["generated"],
         do: ", which the library generates (#{@node["generated"]}) when a command creates one"}.
     </p>
+    <p :if={@node["records_only"]}>Records only: no command it takes can be refused.</p>
     <.part :if={@node["state"] not in [nil, []]} title="State">
       <.fields fields={@node["state"]} of="unit" ctx={@ctx} />
     </.part>

@@ -62,14 +62,13 @@ defmodule EhOsContract.Check.Contracts do
   end
 
   # What each reaction of a contract reacts to and what it issues: a policy, and a
-  # process manager's start and its reactions to events. A timer's firing has no
-  # stage, so it cannot go back into one.
+  # process manager's start and its reactions to events. What goes out when a timer
+  # fires, its own or an `on` naming it, is left out: a firing has no stage, so it
+  # cannot go back into one.
   defp reactions(model) do
-    for(p <- model.policies, e <- List.wrap(p.handles), do: {:policy, p.name, e, p.issues}) ++
-      Enum.flat_map(model.process_managers, fn pm ->
-        for(s <- pm.starts_on, do: {:process_manager, pm.name, s.event, s.issues}) ++
-          for o <- pm.on, do: {:process_manager, pm.name, o.event, o.issues}
-      end)
+    for r <- EhOsContract.Reactions.issued(model),
+        not EhOsContract.Reactions.timer?(r),
+        do: {r.kind, r.reaction.name, r.on, r.command}
   end
 
   # Every process module with two stages or more, as `{module, stage of}`: the index of
@@ -91,9 +90,8 @@ defmodule EhOsContract.Check.Contracts do
   # A reaction of the contract to an event one stage of a process module includes,
   # issuing a command of the contract whose event sits in an earlier stage of it.
   defp backward(%{model: model} = c, staged) do
-    for {kind, name, event, issues} <- reactions(model),
+    for {kind, name, event, command} <- reactions(model),
         {:ok, reacted} <- [declared_as(model, event)],
-        command <- List.wrap(issues),
         %{} = issued <- [Enum.find(model.commands, &(&1.name == command))],
         into <- issued.emits,
         {process, stage_of} <- staged,

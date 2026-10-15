@@ -100,7 +100,17 @@ defmodule EhOsContract.Consumer do
 
     case apply(module, consumer.callback, [event]) do
       {:ok, commands} when is_list(commands) ->
-        issue!(consumer, :policy, event.__meta__, commands, {model, policy.issues}, [link | chain])
+        # The policy's `issues:` is what `Reactions.commands/2` answers for a policy that
+        # handles an event, as this one has just done (`ReactionsTest` holds the two
+        # equal); read directly, it costs nothing on every event.
+        issue!(
+          consumer,
+          :policy,
+          event.__meta__,
+          commands,
+          {model, List.wrap(policy.issues)},
+          [link | chain]
+        )
 
       other ->
         raise ArgumentError,

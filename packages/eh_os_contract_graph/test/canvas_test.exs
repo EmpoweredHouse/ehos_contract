@@ -142,6 +142,39 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
              |> LazyHTML.attribute("data-variant") == ["final"]
     end
 
+    # Plan DD, C1 (#304): a unit the document says records only says so on its card and on
+    # its box, beside its kind; one it does not, not.
+    test "a unit that records only says so beside its kind, on its card and on its box" do
+      unit = "unit:taxvision.registry_watch:client"
+      document = Fixtures.document("taxvision.registry_watch")
+
+      recording =
+        update_in(document, ["nodes", "unit"], fn units ->
+          for u <- units, do: if(u["id"] == unit, do: Map.put(u, "records_only", true), else: u)
+        end)
+
+      tag = fn doc ->
+        doc
+        |> draw(nil, {:unit, unit})
+        |> at("data-ehg-node", unit)
+        |> LazyHTML.query(".ehg-kind")
+        |> LazyHTML.text()
+      end
+
+      title = fn doc ->
+        doc
+        |> draw(nil, :contract)
+        |> LazyHTML.query("div.ehg-group[data-ehg-group] button.ehg-group-title")
+        |> LazyHTML.attribute("title")
+        |> Enum.find(&(&1 =~ "aggregate"))
+      end
+
+      assert tag.(recording) == "aggregate · records only"
+      assert title.(recording) =~ ~r/ · aggregate · records only$/u
+      assert tag.(document) == "aggregate"
+      refute title.(document) =~ "records only"
+    end
+
     test "a client's text is text, and an id of any characters survives into the page" do
       document = Fixtures.document("edge_cases")
       html = draw(document)

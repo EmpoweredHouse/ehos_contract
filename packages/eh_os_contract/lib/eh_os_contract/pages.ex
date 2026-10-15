@@ -1317,19 +1317,22 @@ defmodule EhOsContract.Pages do
     bullet([event_link(site, model, c.event), how])
   end
 
-  # The reactions of this contract that issue the command.
+  # The reactions of this contract that issue the command, each once however many of
+  # its ways in issue it, a timer's included.
   defp issued_by_reactions(model, c) do
-    policies =
-      for p <- model.policies,
-          c.name in List.wrap(p.issues),
-          do: bullet(["policy ", declaration_bullet_link(model, :policies, p)])
+    reactions =
+      for %{command: command} = r <- EhOsContract.Reactions.issued(model),
+          command == c.name,
+          uniq: true,
+          do: {r.kind, r.reaction}
 
-    managers =
-      for pm <- model.process_managers,
-          c.name in Enum.flat_map(pm.starts_on ++ pm.on ++ pm.timers, &Map.get(&1, :issues, [])),
-          do: bullet(["process manager ", declaration_bullet_link(model, :process_managers, pm)])
+    section("Issued by reactions", reactions, fn
+      {:policy, p} ->
+        bullet(["policy ", declaration_bullet_link(model, :policies, p)])
 
-    section("Issued by reactions", policies ++ managers, & &1)
+      {:process_manager, pm} ->
+        bullet(["process manager ", declaration_bullet_link(model, :process_managers, pm)])
+    end)
   end
 
   defp declaration_bullet_link(model, key, d), do: link(code(d.name), holder_path(model, key, d))
