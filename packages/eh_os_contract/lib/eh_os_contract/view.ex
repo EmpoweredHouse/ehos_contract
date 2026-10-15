@@ -123,8 +123,7 @@ defmodule EhOsContract.View do
        plural(length(p.stages), "stage"), details, stages}
   end
 
-  defp duration(%{amount: amount, unit: unit} = d),
-    do: "#{amount} #{if amount == 1, do: unit, else: "#{unit}s"}" <> unverified(d)
+  defp duration(d), do: EhOsContract.Duration.declared(d)
 
   defp unverified(%{unverified: true}), do: " (unverified)"
   defp unverified(_declaration), do: ""

@@ -11,6 +11,17 @@ defmodule EhOsContract.DurationTest do
 
   use ExUnit.Case, async: true
 
+  test "a declared duration keeps its numeral and says when it is unconfirmed" do
+    assert EhOsContract.Duration.declared(%{amount: 1, unit: :day}) == "1 day"
+    assert EhOsContract.Duration.declared({2, :hour}) == "2 hours"
+
+    assert EhOsContract.Duration.declared(%{amount: 30, unit: :day, unverified: true}) ==
+             "30 days (unverified)"
+
+    assert EhOsContract.Duration.declared(%{amount: 3, unit: :day, unverified: false}) ==
+             "3 days"
+  end
+
   describe "units" do
     test "only what converts to seconds without a calendar" do
       assert Enum.sort(EhOsContract.Duration.units()) == [:day, :hour, :minute, :second]

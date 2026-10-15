@@ -769,13 +769,10 @@ defmodule EhOsContract.Pages do
     do: bullet([link(code(d.name), holder_path(model, key, d)), label(d)])
 
   # `%{amount: 3, unit: :day}` as "3 days", and what the owner has not confirmed.
-  defp duration(%{amount: amount, unit: unit} = d) do
-    word = if amount == 1, do: "#{unit}", else: "#{unit}s"
-    "#{amount} #{word}" <> if(Map.get(d, :unverified), do: " (unverified)", else: "")
-  end
+  defp duration(%{amount: _, unit: _} = d), do: EhOsContract.Duration.declared(d)
 
-  defp duration({amount, unit}) when is_integer(amount),
-    do: duration(%{amount: amount, unit: unit})
+  defp duration({amount, unit} = d) when is_integer(amount) and is_atom(unit),
+    do: EhOsContract.Duration.declared(d)
 
   defp duration(other), do: code(shown(other))
 
