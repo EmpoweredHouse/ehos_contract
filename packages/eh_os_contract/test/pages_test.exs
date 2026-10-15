@@ -432,7 +432,7 @@ defmodule EhOsContract.PagesTest do
       assert page =~
                "[graph](../graph/process/universality_gate.treatment_episode_run.json)"
 
-      assert page =~ "Runs: one per episode_id."
+      assert page =~ "Runs: one per `episode_id`."
       assert page =~ "Accountable: `attending_physician` — Attending physician."
 
       # Said plainly where it is declared: the report leaves an unconfirmed one out.

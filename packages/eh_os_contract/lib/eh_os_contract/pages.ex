@@ -882,7 +882,9 @@ defmodule EhOsContract.Pages do
       if(p.source, do: ["", "_Source: #{p.source}_"], else: []),
       facts([
         # As the report and the dashboard say it; nothing for a model without `correlate`.
-        if(clause = EhOsContract.Report.Sentence.runs_per(p.correlate), do: "Runs: #{clause}."),
+        if(clause = EhOsContract.Report.Sentence.runs_per(Enum.map(p.correlate, &code/1)),
+          do: "Runs: #{clause}."
+        ),
         if(p.accountable, do: accountable(site, p.accountable)),
         if(p.deadline, do: deadline(p.deadline))
       ]),
