@@ -94,22 +94,6 @@ of the same document:
 <EhOsContract.GraphRenderer.Actors.table document={@domain_document} canvas="domain-map" />
 ```
 
-## Joining applications
-
-An application's domain document says which of its contracts publish an event to other applications, under
-which name on the wire, and which subscribe to one by its name; each knows only its own side.
-`EhOsContract.GraphRenderer.Landscape.join/1` takes several, each with its application's name, and matches the
-two sides by that name into one landscape, which the canvas draws with `view={:landscape}`:
-
-```elixir
-landscape = EhOsContract.GraphRenderer.Landscape.join([{"taxvision", taxvision}, {"ledger", ledger}])
-```
-
-A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
-boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
-subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
-the applications it sees together, from each one's `GET <mount>/graph/domain/<name>`.
-
 The script is an ES module, `priv/static/eh_os_contract_graph.esm.js`, which the host's own bundle imports
 and whose hook it registers:
 
@@ -130,6 +114,22 @@ whole page again whenever a stylesheet changes, and Safari stuttered while a sty
 frame. The one
 style anything sets is d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which the
 policy allows.
+
+## Joining applications
+
+An application's domain document says which of its contracts publish an event to other applications, under
+which name on the wire, and which subscribe to one by its name; each knows only its own side.
+`EhOsContract.GraphRenderer.Landscape.join/1` takes several, each with its application's name, and matches the
+two sides by that name into one landscape, which the canvas draws with `view={:landscape}`:
+
+```elixir
+landscape = EhOsContract.GraphRenderer.Landscape.join([{"taxvision", taxvision}, {"ledger", ledger}])
+```
+
+A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
+boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
+subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
+the applications it sees together, from each one's `GET <mount>/graph/domain/<name>`.
 
 ## Using it
 

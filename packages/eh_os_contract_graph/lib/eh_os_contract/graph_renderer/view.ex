@@ -822,11 +822,7 @@ defmodule EhOsContract.GraphRenderer.View do
   def system(document) do
     by_id = index(document)
 
-    contracts =
-      for c <- nodes(document, "contract") do
-        short = c["module"] |> to_string() |> String.split(".") |> List.last()
-        %{card("contract", c, group: c["context"]) | label: short}
-      end
+    contracts = for c <- nodes(document, "contract"), do: contract_card(c, c["context"])
 
     processes = for p <- nodes(document, "process"), do: card("process", p)
 
@@ -859,20 +855,12 @@ defmodule EhOsContract.GraphRenderer.View do
               line: "dotted"
             )
 
-    published =
-      for r <- relations(document, "publishes"),
-          do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
-
-    subscribed =
-      for r <- relations(document, "subscribed_by"),
-          do: arrow("subscribed_by", r, words: "as #{r["as"]}", line: "dotted")
-
     groups = for c <- nodes(document, "context"), do: group("context", c, "#{title(c)} · context")
 
     finish(
       "LR",
       contracts ++ publications ++ processes ++ actors,
-      consumed ++ referring ++ published ++ subscribed ++ includes ++ accountable,
+      consumed ++ referring ++ wire(document, by_id) ++ includes ++ accountable,
       groups
     )
   end
@@ -886,14 +874,7 @@ defmodule EhOsContract.GraphRenderer.View do
   @doc false
   @spec landscape(map()) :: t()
   def landscape(%{"kind" => "landscape"} = document) do
-    by_id = index(document)
-    name = &((by_id[&1] || %{})["name"] || &1)
-
-    contracts =
-      for c <- nodes(document, "contract") do
-        short = c["module"] |> to_string() |> String.split(".") |> List.last()
-        %{card("contract", c, group: c["in"]) | label: short}
-      end
+    contracts = for c <- nodes(document, "contract"), do: contract_card(c, c["in"])
 
     publications =
       for p <- nodes(document, "publication") do
@@ -901,24 +882,43 @@ defmodule EhOsContract.GraphRenderer.View do
         card("publication", p, outside)
       end
 
-    published =
-      for r <- relations(document, "publishes"),
-          do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
-
-    subscribed =
-      for r <- relations(document, "subscribed_by"),
-          do: arrow("subscribed_by", r, words: "as #{r["as"]}", line: "dotted")
-
     groups =
       for d <- nodes(document, "domain") do
         others = d["others"] || 0
         group("domain", d, join([d["label"], others > 0 && count(others, "more contract")]))
       end
 
-    finish("LR", contracts ++ publications, published ++ subscribed, groups)
+    finish("LR", contracts ++ publications, wire(document, index(document)), groups)
   end
 
   def landscape(_document), do: finish("LR", [], [], [])
+
+  # A contract's card on a map of contracts, named by its module's last segment, in `group`.
+  defp contract_card(contract, group) do
+    short =
+      case contract["module"] do
+        module when is_binary(module) and module != "" ->
+          module |> String.split(".") |> List.last()
+
+        _none ->
+          contract["name"]
+      end
+
+    %{card("contract", contract, group: group) | label: short}
+  end
+
+  # The publications' arrows: a dotted one from a contract to what it publishes, naming the
+  # event, and from a publication to a contract that subscribes, naming what it takes it as.
+  defp wire(document, by_id) do
+    name = &((by_id[&1] || %{})["name"] || &1)
+
+    for(
+      r <- relations(document, "publishes"),
+      do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
+    ) ++
+      for r <- relations(document, "subscribed_by"),
+          do: arrow("subscribed_by", r, words: "as #{r["as"]}", line: "dotted")
+  end
 
   # --- what the log saw -------------------------------------------------------------------
 
