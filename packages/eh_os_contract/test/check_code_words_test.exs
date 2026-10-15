@@ -190,6 +190,39 @@ defmodule EhOsContract.CheckCodeWordsTest do
     refute Glossary.render(@domain) =~ "In code"
   end
 
+  # Plan DD, P2e (#220): a process module named with a term is listed under it, in each
+  # context whose events it includes.
+  test "the glossary lists a process module named with a term, under its contexts' terms" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCodeWordsTest.VisitRun do
+        use EhOsContract.Process, id: "code_words.visit_run", domain: #{inspect(@domain)},
+          label: "Wizyta od umówienia"
+
+        correlate :visit_id
+        stage :booking, include: [{#{inspect(@scheduling)}, :visit_booked}]
+      end
+      """,
+      "visit_run.ex"
+    )
+
+    run = EhOsContract.CheckCodeWordsTest.VisitRun
+    text = Glossary.render(@domain, contracts: [@scheduling, @payers], processes: [run])
+
+    [scheduling, payers] = String.split(text, "## Płatnicy")
+
+    assert scheduling =~
+             """
+             - `EhOsContract.CheckCodeWordsTest.Scheduling`: aggregate `:visit`, command `:book_visit`, event `:visit_booked`
+             - process `code_words.visit_run`: its id, field `:visit_id`
+             """
+
+    # Control: the payers' "Visit date" is in no name of the run, and the run takes no
+    # event of the payers' context; without the process modules, no line.
+    refute payers =~ "visit_run"
+    refute Glossary.render(@domain, contracts: [@scheduling, @payers]) =~ "visit_run"
+  end
+
   test "code_language moves no version, and is in the model only when it is not English" do
     source = fn name, option ->
       """

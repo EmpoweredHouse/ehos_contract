@@ -10,6 +10,10 @@ defmodule EhOsContract.View do
   # what it is produced by or takes. `details: true` adds what a row declares
   # underneath it — identity, fields, invariants, constraints.
   #
+  # The domain's process modules follow its contexts (plan DD, P2e, #220): each with its
+  # stages in order and, in each, the events it includes, by the contract that declares
+  # them. A process crosses contexts, so it hangs under the domain, not under one.
+  #
   # Everything comes in declaration order, as every reader of the model prints
   # (v2 §9); labels are the client's, printed as declared.
   @moduledoc false
@@ -17,18 +21,20 @@ defmodule EhOsContract.View do
   @typep tree :: {String.t(), [String.t()], [tree()]}
 
   @doc """
-  The tree of `domain`, a domain module or its model, with `contracts`, the v2
-  contract modules or models naming it. `details: true` adds each row's
-  declarations; `path:` keeps one branch, `[context]` or `[context, unit]`.
+  The tree of `domain`, a domain module or its model, with `modules`, the v2
+  contract modules and process modules naming it, or their models. `details: true`
+  adds each row's declarations; `path:` keeps one branch, `[context]` or
+  `[context, unit]`, and leaves the process modules out.
   """
   @spec render(module() | map(), [module() | map()], keyword()) :: String.t()
-  def render(domain, contracts, opts \\ []) do
+  def render(domain, modules, opts \\ []) do
     domain = EhOsContract.Model.fetch(domain)
 
-    contracts =
-      contracts
+    {processes, contracts} =
+      modules
       |> Enum.map(&EhOsContract.Model.fetch/1)
       |> Enum.filter(&(&1.domain == domain.module))
+      |> Enum.split_with(&(&1.kind == :process))
 
     details? = Keyword.get(opts, :details, false)
 
@@ -59,12 +65,64 @@ defmodule EhOsContract.View do
          Enum.map(mine, &contract(&1, unit_filter, details?))}
       end
 
+    processes = if context_filter == nil, do: processes, else: []
+
     root =
       {"domain #{domain.name}  #{plural(length(domain.contexts), "context")} · " <>
-         plural(length(contracts), "contract"), [], contexts}
+         plural(length(contracts), "contract") <> processes_count(processes), [],
+       contexts ++ Enum.map(processes, &process(&1, details?))}
 
     root |> lines("", "") |> Enum.join("\n")
   end
+
+  defp processes_count([]), do: ""
+  defp processes_count(processes), do: " · " <> plural(length(processes), "process")
+
+  # A process module: what tells its runs apart, then each stage with what it includes;
+  # with details, what ends a run, its deadline and its promises.
+  defp process(model, details?) do
+    p = EhOsContract.Model.process(model)
+    events = EhOsContract.Model.process_events(model)
+
+    details =
+      if details? do
+        ends = for e <- events, e.terminal, do: e.name
+
+        if(ends == [], do: [], else: ["ends on #{list(ends)}"]) ++
+          if(p.deadline, do: ["deadline #{duration(p.deadline)}"], else: []) ++
+          for pr <- p.promises do
+            within = if pr.within, do: " within #{duration(pr.within)}", else: ""
+            or_else = if pr.or_else, do: ", or else #{pr.or_else}", else: ""
+
+            "promise #{pr.name}  #{pr.from} → #{pr.eventually}#{within}#{or_else}" <>
+              unverified(pr)
+          end
+      else
+        []
+      end
+
+    stages =
+      for stage <- p.stages do
+        included =
+          events
+          |> Enum.filter(&(&1.stage == stage.name))
+          |> Enum.chunk_by(& &1.contract)
+          |> Enum.map_join("; ", fn [first | _] = group ->
+            "#{inspect(first.contract)}: #{Enum.map_join(group, ", ", & &1.name)}"
+          end)
+
+        {"stage #{stage.name}  ← #{included}", [], []}
+      end
+
+    {"process #{p.name}  #{p.label} · one per #{list(p.correlate)} · " <>
+       plural(length(p.stages), "stage"), details, stages}
+  end
+
+  defp duration(%{amount: amount, unit: unit} = d),
+    do: "#{amount} #{if amount == 1, do: unit, else: "#{unit}s"}" <> unverified(d)
+
+  defp unverified(%{unverified: true}), do: " (unverified)"
+  defp unverified(_declaration), do: ""
 
   defp contract(model, unit_filter, details?) do
     children =
@@ -202,6 +260,7 @@ defmodule EhOsContract.View do
   defp list(names), do: names |> List.wrap() |> Enum.join(", ")
 
   defp plural(1, word), do: "1 #{word}"
+  defp plural(n, "process"), do: "#{n} processes"
   defp plural(n, word), do: "#{n} #{word}s"
 
   @spec lines(tree(), String.t(), String.t()) :: [String.t()]

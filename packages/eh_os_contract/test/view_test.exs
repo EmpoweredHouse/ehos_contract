@@ -117,6 +117,29 @@ defmodule EhOsContract.ViewTest do
              """
   end
 
+  # Plan DD, P2e (#220): a process module under the domain, after its contexts.
+  test "a process module, its stages in order with the events each includes" do
+    modules = [UniversalityGate.TreatmentEpisode, UniversalityGate.TreatmentEpisodeRun]
+    tree = View.render(UniversalityGate.Domain, modules, details: true)
+
+    assert tree =~ "domain universality_gate  1 context · 1 contract · 1 process\n"
+
+    assert tree =~
+             """
+             └─ process universality_gate.treatment_episode_run  Treatment episode: from referral to closing · one per episode_id · 4 stages
+                │  ends on payer_eligibility_denied, episode_closed, episode_abandoned
+                │  deadline 30 days (unverified)
+                │  promise referral_reaches_a_decision  referral_received → payer_eligibility_confirmed within 3 days, or else payer_eligibility_denied
+                │  promise episode_reaches_an_end  treatment_plan_approved → episode_closed within 90 days, or else episode_abandoned
+                ├─ stage qualification  ← UniversalityGate.TreatmentEpisode: referral_received, patient_identity_confirmed, payer_eligibility_checked, payer_eligibility_confirmed, payer_eligibility_denied
+                ├─ stage plan  ← UniversalityGate.TreatmentEpisode: treatment_plan_approved
+             """
+
+    # One branch keeps a context, so no process.
+    [context] = UniversalityGate.Domain.__eh_os_contract_model__().contexts
+    refute View.render(UniversalityGate.Domain, modules, path: [context.name]) =~ "process"
+  end
+
   test "control: a contract of another domain is not in the tree" do
     refute View.render(@domain, [ProcessShapes.Bare]) =~ "ProcessShapes"
   end
