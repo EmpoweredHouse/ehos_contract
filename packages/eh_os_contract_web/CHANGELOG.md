@@ -27,6 +27,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The graph screen's pictures can be searched, focused and zoomed** (plan DD, stage G1, eh-os-contract#297):
+  each has a bar with a search that finds a card by its words and moves to it, focus on the selection's
+  neighbourhood, a switch between the declaration alone and with the log, and zoom buttons; a large picture
+  starts at a readable scale instead of shrunk to fit. Moves no verdict.
+
 - **The graph screen draws cards of their kind, with a legend** (plan DD, stage G1, eh-os-contract#297): each card
   has a badge with its kind's icon, the client's label, the name in code and, where the picture does not say it,
   the contract it is declared in or that it comes from another application; each kind has a colour in both themes;

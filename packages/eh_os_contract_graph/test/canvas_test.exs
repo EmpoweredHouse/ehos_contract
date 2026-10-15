@@ -385,6 +385,198 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
   end
 
+  describe "the bar over the canvas" do
+    setup do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "view" => :process}
+        )
+
+      [view: view]
+    end
+
+    defp shown(view), do: view |> render() |> LazyHTML.from_fragment()
+
+    test "the search dims what it does not find, and Enter selects the first card it finds", %{
+      view: view
+    } do
+      view |> element("form.ehg-search") |> render_change(%{"q" => "wyszedł"})
+      html = shown(view)
+
+      refute "is-unmatched" in classes(
+               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+             )
+
+      assert "is-unmatched" in classes(
+               at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+             )
+
+      assert html |> LazyHTML.query(".ehg-found") |> LazyHTML.text() =~ "1 found"
+
+      view |> element("form.ehg-search") |> render_submit(%{"q" => "wyszedł"})
+      html = shown(view)
+
+      assert "is-selected" in classes(
+               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+             )
+
+      assert html |> LazyHTML.query(".ehg[data-reveal]") |> LazyHTML.attribute("data-reveal") == [
+               "1"
+             ]
+    end
+
+    test "focus draws the selection and what touches it, and the whole picture comes back", %{
+      view: view
+    } do
+      count = fn v -> v |> shown() |> LazyHTML.query("button.ehg-card") |> Enum.count() end
+      all = count.(view)
+      id = "event:rehmed.scheduling:visit_completed"
+
+      view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+
+      around =
+        "process.rehmed.clinical_visit"
+        |> Fixtures.document()
+        |> View.process()
+        |> View.around(id)
+
+      drawn =
+        view
+        |> shown()
+        |> LazyHTML.query("button.ehg-card")
+        |> LazyHTML.attribute("data-ehg-node")
+
+      assert drawn == Enum.map(around.nodes, & &1.id)
+      assert count.(view) < all
+
+      view |> element("button.ehg-tool", "Show the whole picture") |> render_click()
+      assert count.(view) == all
+    end
+
+    test "closing the panel leaves focus too", %{view: view} do
+      view
+      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> render_click()
+
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> with_target("#graph") |> render_click("deselect", %{})
+
+      refute has_element?(view, "button.ehg-tool", "Show the whole picture")
+    end
+
+    test "the search never dims where a new aggregate starts, which it does not search" do
+      document = Fixtures.document("edge_cases")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "view" => {:lifecycle, "unit:edge_cases:1st"}}
+        )
+
+      view |> element("form.ehg-search") |> render_change(%{"q" => "otwarta"})
+      start = view |> shown() |> LazyHTML.query(~s(button.ehg-card[data-kind="start"]))
+
+      assert Enum.count(start) == 1
+      refute "is-unmatched" in classes(start)
+    end
+
+    test "focus is offered for a card or a group, never for an arrow", %{view: view} do
+      view
+      |> with_target("#graph")
+      |> render_click("select", %{
+        "id" =>
+          "precedes:stage:rehmed.clinical_visit:departure:stage:rehmed.clinical_visit:closing"
+      })
+
+      refute has_element?(view, "button.ehg-tool", "Focus on the selection")
+    end
+
+    test "closing the panel by the selected card again leaves focus too", %{view: view} do
+      card = ~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"])
+      view |> element(card) |> render_click()
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> element(card) |> render_click()
+
+      refute has_element?(view, "button.ehg-tool", "Show the whole picture")
+    end
+
+    test "another canvas's selection closes this panel and keeps its focus", %{view: view} do
+      view
+      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> render_click()
+
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> with_target("#graph") |> render_click("closed", %{})
+
+      assert has_element?(view, "button.ehg-tool", "Show the whole picture")
+      refute has_element?(view, ".ehg-panel")
+    end
+
+    test "turning the log off forgets a selection only the log drew" do
+      document = Fixtures.document("edge_cases")
+      unit = "unit:edge_cases:1st"
+
+      overlay = %{
+        "document_digest" => document["digest"],
+        "nodes" => %{},
+        "relations" => %{},
+        "observed" => %{
+          "relations" => %{
+            "undeclared" => [
+              %{
+                "id" => "undeclared:closed:open",
+                "from" => "status:edge_cases:1st:closed",
+                "to" => "status:edge_cases:1st:open",
+                "event" => nil,
+                "count" => 1
+              }
+            ]
+          }
+        }
+      }
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "overlay" => overlay, "view" => {:lifecycle, unit}}
+        )
+
+      view |> with_target("#graph") |> render_click("select", %{"id" => "undeclared:closed:open"})
+      assert has_element?(view, ".ehg-panel")
+
+      view |> element(".ehg-switch input") |> render_click()
+      refute has_element?(view, ".ehg[data-selected]")
+    end
+
+    test "the log's switch draws the declaration alone, and back" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "overlay" => overlay, "view" => :process}
+        )
+
+      counts = fn -> view |> shown() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() end
+      with_log = counts.()
+      assert with_log > 0
+
+      view |> element(".ehg-switch input") |> render_click()
+      assert counts.() == 0
+
+      view |> element(".ehg-switch input") |> render_click()
+      assert counts.() == with_log
+    end
+
+    test "the zoom's buttons are the hook's, and send nothing to the server", %{view: view} do
+      zoom = view |> shown() |> LazyHTML.query("[data-ehg-zoom]")
+
+      assert LazyHTML.attribute(zoom, "data-ehg-zoom") == ~w(out in read all)
+      assert view |> shown() |> LazyHTML.query("[data-ehg-zoom][phx-click]") |> Enum.count() == 0
+    end
+  end
+
   describe "a selection" do
     setup do
       document = Fixtures.document("edge_cases")

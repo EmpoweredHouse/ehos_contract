@@ -111,6 +111,63 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
   end
 
+  describe "around/2" do
+    test "keeps a card, every card its relations reach, their boxes, and the relations between them" do
+      view = View.contract(Fixtures.document("rehmed.settlement"))
+      id = "command:rehmed.settlement:close_settlement"
+      around = View.around(view, id)
+
+      reached =
+        for r <- view.relations, r.from == id or r.to == id, end_id <- [r.from, r.to], do: end_id
+
+      assert MapSet.new(around.nodes, & &1.id) ==
+               MapSet.new([id | reached]) |> MapSet.intersection(MapSet.new(view.nodes, & &1.id))
+
+      kept = MapSet.new(around.nodes ++ around.groups, & &1.id)
+      boxes = MapSet.new(around.groups, & &1.id)
+      assert Enum.all?(around.relations, &(&1.from in kept and &1.to in kept))
+      assert Enum.all?(around.nodes, &(&1.group == nil or &1.group in boxes))
+      assert length(around.nodes) < length(view.nodes)
+    end
+
+    test "keeps a group's cards, and leaves a view as it is for an id it does not draw" do
+      view = View.contract(Fixtures.document("rehmed.settlement"))
+      unit = "unit:rehmed.settlement:visit_settlement"
+      members = for %{group: ^unit} = n <- view.nodes, do: n.id
+
+      assert Enum.all?(
+               members,
+               &(&1 in MapSet.new(View.around(view, unit).nodes, fn n -> n.id end))
+             )
+
+      assert View.around(view, "nothing:here") == view
+    end
+  end
+
+  describe "matches/2" do
+    test "finds cards by label, name, kind or footer, ignoring case, and nothing for a blank query" do
+      view = View.process(Fixtures.document("process.rehmed.clinical_visit"))
+
+      assert View.matches(view, "  ") == nil
+      assert View.matches(view, nil) == nil
+
+      assert "event:rehmed.statutory_reporting:p1_report_sent" in View.matches(
+               view,
+               "P1_REPORT_SENT"
+             )
+
+      assert "event:rehmed.scheduling:visit_completed" in View.matches(view, "wyszedł")
+
+      by_contract = View.matches(view, "rehmed.statutory_reporting")
+      assert Enum.all?(by_contract, &String.contains?(&1, "statutory_reporting"))
+
+      # An id's kind and context path are not the card's words: "event:" finds no card by
+      # its id alone.
+      assert View.matches(view, "event:rehmed") == MapSet.new()
+      assert View.matches(view, "no such thing") == MapSet.new()
+    end
+  end
+
   describe "legend/1" do
     test "lists the kinds of the cards the view draws, in a fixed order, and only those" do
       legend = View.legend(View.process(Fixtures.document("process.rehmed.clinical_visit")))
