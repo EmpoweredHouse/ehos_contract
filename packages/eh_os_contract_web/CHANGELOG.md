@@ -27,6 +27,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The graph screen draws cards of their kind, with a legend** (plan DD, stage G1, eh-os-contract#297): each card
+  has a badge with its kind's icon, the client's label, the name in code and, where the picture does not say it,
+  the contract it is declared in or that it comes from another application; each kind has a colour in both themes;
+  a legend under each picture says what its colours, icons and arrows mean. Moves no verdict.
+
 - **The graph screen draws process modules** (plan DD, stage P2e, eh-os-contract#220). Its selector lists them
   beside the contracts, each kind in a group of its own and each by its id; a process module selected is drawn as
   its stages, the events each includes and its promises, with its runs, each event's occurrences and each

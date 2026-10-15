@@ -890,6 +890,10 @@ Store the last computed state per process rather than recomputing on page load.
   navigation unit. *Unimplemented as of 5 August, and it took a second contract to notice:* the graph module
   has no narrowing to a process or a contract, because it was written while only one contract existed and the
   assumption "there is only one" was invisible. A gap against this line, not a preference against it.
+  *Amended 15 October 2026:* navigation is global, and readability is kept another way. One canvas moves
+  between the context map, a contract, a unit and a process, and shows one of them at a time; structure and
+  processes are two viewpoints of it, linked both ways (`docs/adr/graph-renderer.md`, the amendment of that
+  day; [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297)).
   > **28 September 2026, plan EG2 and after:** the graph screen now also draws two pictures per *domain* —
   > its context map and its system, contracts and what flows between them — above the per-process panels.
   > They stay readable because their nodes are contexts and contracts, not events: a domain has a handful of

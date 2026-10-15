@@ -23,6 +23,14 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **Cards of their kind, and a legend** (plan DD, stage G1, #297): every card has a badge with its kind's icon and
+  name, the client's label, the name in code, which may break after a dot, an underscore or a colon, and a footer
+  saying where the element lives when the picture does not: the contract that declares an event of a process, the
+  sibling contract an event is consumed from, or another application it is received from. Each kind has a colour
+  in Event Storming's families, a process's among them, on the design system's surfaces, in a dark and a light
+  theme. Under the canvas, a legend lists the kinds, the cards drawn other than their kind (an event that ends a
+  run, a final status) and the looks of the arrows the view draws, each look said in words to a screen reader
+  (`View.legend/1`).
 - **A unit that records only is marked** (plan DD, stage C1, #304): when the document says `records_only`, the
   unit's card and its box say "records only" beside its kind, and its panel says "Records only: no command it
   takes can be refused."
@@ -47,6 +55,16 @@ and the `ehos-dev:release` skill makes one.
   travels, as a consumed event's arrow does; its panel says which units, and a contract's panel lists the units
   whose numbers it keeps ("Keeps the number of") and the contracts keeping its units' ("Its units' numbers are
   kept by"). It reads the domain document's `refers_to` relations, which the engine writes from this release.
+
+### Changed
+
+- **Breaking:** a card of the `:process` view names the contract that declares its event in `foot`, a new key of a
+  view's node, rather than in `lines` (plan DD, stage G1, #297). A host reading `View.build/3`'s nodes reads it there.
+- **Breaking:** the custom properties `--eh-os-contract-graph-fill` and `--eh-os-contract-graph-stroke` are gone
+  (plan DD, stage G1, #297). A card is drawn on the host's surface in its kind's hue,
+  `--eh-os-contract-graph-hue`, taken from the palette's properties on `.ehg` (`--eh-os-contract-graph-event`,
+  `--eh-os-contract-graph-command`, …, one set for each theme); a host that recoloured a kind overrides those
+  instead. Its ink is the host's `--text-primary`, no longer black.
 
 ### Removed
 

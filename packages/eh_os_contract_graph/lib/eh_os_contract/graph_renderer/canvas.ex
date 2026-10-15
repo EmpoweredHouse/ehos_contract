@@ -65,7 +65,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Lookup, Marks, Panel, View}
+  alias EhOsContract.GraphRenderer.{Icons, Lookup, Marks, Panel, View}
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, selected: nil)}
@@ -187,11 +187,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             phx-value-id={node.id}
             phx-target={@myself}
           >
-            <span :if={node.tag} class="ehg-kind">{node.tag}</span>
+            <span :if={node.tag || @node_marks[node.id].count} class="ehg-top">
+              <span :if={node.tag} class="ehg-kind"><Icons.icon kind={node.kind} />{node.tag}</span>
+              <.count marks={@node_marks[node.id]} />
+            </span>
             <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
-            <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
+            <span :if={node.label && node.name} class="ehg-name"><.breakable text={node.name} /></span>
             <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <.count marks={@node_marks[node.id]} />
+            <span :if={node.foot} class="ehg-foot"><.breakable text={node.foot} /></span>
           </button>
           <button
             :for={relation <- @view.relations}
@@ -214,6 +217,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
           </button>
         </div>
       </div>
+      <.legend legend={View.legend(@view)} />
       <p :if={@stale_overlay?} class="ehg-note">
         The numbers from the log are of another version of this document and are not shown.
       </p>
@@ -230,6 +234,51 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       :if={@marks[:verdict]}
       class="ehg-count"
     >· {@marks[:verdict]}</span>
+    """
+  end
+
+  attr :legend, :map, required: true
+
+  # What a swatch of each look shows, said for a reader who cannot see it.
+  @looks %{
+    "solid" => "a solid arrow",
+    "dotted" => "a dotted arrow",
+    "thick" => "a heavy arrow",
+    "headless" => "a line with no head"
+  }
+
+  # What the cards' colours and icons and the arrows' looks mean, for what this view draws.
+  defp legend(assigns) do
+    assigns = assign(assigns, :looks, @looks)
+
+    ~H"""
+    <ul :if={@legend.kinds != [] or @legend.lines != []} class="ehg-legend" aria-label="Legend">
+      <li :for={{kind, words} <- @legend.kinds} class="ehg-legend-kind" data-kind={kind}>
+        <Icons.icon kind={kind} />{words}
+      </li>
+      <li :for={{variant, words} <- @legend.variants} class="ehg-legend-variant" data-variant={variant}>
+        <span class="ehg-legend-swatch" aria-hidden="true"></span>{words}
+      </li>
+      <li :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
+        <svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
+            :if={look != "headless"}
+            class="ehg-legend-head"
+            d="M18 1l5 3-5 3z"
+          /></svg><span class="ehg-hidden">{@looks[look]}: </span>{words}
+      </li>
+    </ul>
+    """
+  end
+
+  attr :text, :string, required: true
+
+  # A name in code that may break after a dot, an underscore or a colon, and inside a word
+  # only where one word alone is wider than the card.
+  defp breakable(assigns) do
+    assigns = assign(assigns, :parts, Regex.split(~r/(?<=[._:])/u, assigns.text))
+
+    ~H"""
+    <%= for {part, i} <- Enum.with_index(@parts) do %><wbr :if={i > 0} />{part}<% end %>
     """
   end
 

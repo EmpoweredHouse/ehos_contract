@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 13 October 2026 (waves 1–4, E13 and wave 5's L1–L3 in `main`; the remaining plan revised)
+## Handoff — state on 15 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module and C1 in `main`; G1 in progress)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -23,7 +23,7 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
 removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
-merged; the debt the closing comments left (C1, #304, in progress), the graph drawn like a catalog (G1, #297); then the context map
+merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297) is in progress; then the context map
 (M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
 rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
 
@@ -1914,8 +1914,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
-| C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ◐ `dd/304-closing-comment-debt` | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
-| G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☐ | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
+| C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
+| G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ◐ `dd/297-graph-like-a-catalog` | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision
 
@@ -2258,6 +2258,15 @@ refused (X3), and so is a `reads:` through such a field (A8). The model keeps
 `type: :id, refers_to:`; `crossings/2` counts a reference to another context's unit, so the context-map rules see it;
 pages, view and the graph show it. The test material moves to typed references in the same pull request.
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
+**G1 — the graph drawn like a catalog** (#297; tightened 15 October 2026). The renderer (`eh_os_contract_graph`)
+draws cards of their kind on `ehos_design`'s tokens, with the log's numbers on them, a promise as a labelled
+arrow with its verdicts, a legend, search and focus. One canvas with a path and two viewpoints, structure (context
+map, contract, unit) and processes, linked both ways, is a component of the renderer, so the EHOS Console draws the
+same from the JSON API, and the dashboard's Graph screen is its first user. The application's map shows its publications
+and subscriptions at the edge, `graph.v1` changes only by addition, and the overlays load off the mount. Last, a
+function of the renderer joins several applications' domain documents by publication. #302's test set
+(`sandbox/lib/graph_lab/`) comes in its own pull request; entering with the camera, layers and the trace (#302's
+plan) are a later stage.
 
 ---
 
