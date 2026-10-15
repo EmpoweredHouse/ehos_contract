@@ -98,9 +98,17 @@ defmodule EhOsContract.GraphRenderer.AssetsTest do
       |> Enum.flat_map(&String.split(&1, ","))
       |> Enum.map(&String.trim/1)
 
-    for selector <- selectors,
-        selector != ":root",
-        do: assert(selector =~ ~r/\.ehg/, "#{selector} reaches outside the package's elements")
+    # A class of the package, `.ehg` or `.ehg-*`, standing as a class of its own: not inside a
+    # pseudo-class's argument (`:not(.ehg)`), nor the tail of another name.
+    own = ~r/(?<![\w(:-])\.ehg(?:-[\w-]+)?(?=$|[\s.:#\[>~+,])/
+
+    for selector <- selectors, selector != ":root" do
+      assert selector =~ own, "#{selector} reaches outside the package's elements"
+
+      # What a sibling combinator reaches is the package's too: `.ehg ~ p` is not.
+      for sibling <- selector |> String.split(~r/\s*[~+]\s*/) |> Enum.drop(1),
+          do: assert(sibling =~ own, "#{selector} reaches outside the package's elements")
+    end
   end
 
   test "NOTICE names each vendored library the bundle carries" do
