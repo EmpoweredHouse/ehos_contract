@@ -1,0 +1,26 @@
+## Review
+
+Two reviews ran in parallel on `origin/main..HEAD`: correctness (`code-review`, high) and security and performance.
+
+**Fixed**
+- **A consumer's steps were read twice** (the second commit). The drift read every contract's steps, and what crosses between two contracts read each consumer's steps again. In GraphLab, six of seven contracts consume, so about forty of the overlay's queries were repeats, among them joins over each contract's whole history. The steps are now read once, and the query budget in the test no longer allows the second read; it failed on the code before.
+- **The schema test missed three cases** (the third commit), each with a test that failed on the code before:
+  - it was blind to a real property named `description`;
+  - it failed an inline `oneOf` alternative that only gained a key;
+  - it passed a widened `type` list.
+- **Words, states and one place for `declared_in`** (the fourth commit):
+  - The drift's docs, schema and changelog said "how many moves happened" and "as the report counts it". `undeclared` counts distinct moves, and both numbers count the lines the report lists under paths and lifecycles, without events written around dispatch. They now say so, and the card reads "1 move not allowed".
+  - The card's states took a value that is not a count as drift.
+  - The rule now says a reader does not hold a newer document to its own version's schema.
+  - The renderer reads `declared_in` in one function, `Places.declared_in/1`, not two.
+
+**Skipped**
+- **The domain's overlay reads every lifecycle's whole history** when the Graph screen mounts and on every `GET …/graph/domain/<name>/overlay`, with no period. A contract's overlay has always done the same for one contract when it is entered. On the sandbox this takes milliseconds; on a log of hundreds of thousands of events it would hold a connection for a second or more. A default window or a cache keyed by the log's last position is a decision of its own; it is raised on #297.
+- **`untraversed` adds untraversed steps and lifecycle transitions,** so one event never emitted can count twice, once in each section. That is the number of lines the report lists, and the docs now say so.
+- **The dev database lacks the commands' `(contract, outcome, recorded_at)` index.** It was added to the migration in place after the dev database was migrated. That is an environment problem, not this change.
+
+**No change needed**
+- **`declared_in` and the drift badge:** escaped by HEEx, and built from a contract id in code and from integers.
+- **Content-Security-Policy:** the CSS still passes its tests.
+- **Other domains and excluded contracts** cannot reach the drift.
+- **The baselines** are byte-identical to `origin/main`'s schemas.
