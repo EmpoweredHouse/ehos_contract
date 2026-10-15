@@ -179,18 +179,16 @@ defmodule EhOsContract.Contract.Rules.Units do
     ]
   end
 
-  # For each command a reaction of this contract issues, who issues it, in words.
+  # For each command a reaction of this contract issues, who issues it, in words. Every
+  # way in counts, a timer's included: each runs inside the transaction that reacted.
   defp issuers(d) do
-    policies = for p <- d.policies, c <- p.issues, do: {c, "policy #{inspect(p.name)}"}
-
-    managers =
-      for pm <- d.process_managers,
-          reaction <- pm.starts_on ++ pm.on ++ pm.timers,
-          c <- reaction.issues,
-          do: {c, "process manager #{inspect(pm.name)}"}
-
-    Enum.group_by(policies ++ managers, &elem(&1, 0), &elem(&1, 1))
+    d
+    |> EhOsContract.Refusals.issued_by_reactions()
+    |> Enum.group_by(& &1.command, &"#{word(&1.kind)} #{inspect(&1.reaction.name)}")
   end
+
+  defp word(:policy), do: "policy"
+  defp word(:process_manager), do: "process manager"
 
   defp read_problems(command, unit) do
     names = Keyword.keys(command.reads)

@@ -87,7 +87,8 @@ defmodule EhOsContract.Check.Completeness do
   # actor may issue too (`by:`) is a person's request like any other.
   defp core_commands_never_refusing(%{model: model} = c) do
     if core?(c) do
-      issued = EhOsContract.Refusals.issued_by_reactions(model)
+      # Every way a reaction issues, a timer's included: what one fires was decided too.
+      issued = MapSet.new(EhOsContract.Refusals.issued_by_reactions(model), & &1.command)
 
       for command <- model.commands,
           not EhOsContract.Refusals.refuses?(command),

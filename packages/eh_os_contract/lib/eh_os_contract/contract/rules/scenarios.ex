@@ -507,7 +507,11 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     # A timer that fires delivers no event, so it has no data to check.
     delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
-    issues = Enum.flat_map(reactions, & &1.issues) ++ if(timer, do: timer.issues, else: [])
+
+    issues =
+      for %{on: on, command: command} <- EhOsContract.Refusals.issued_by(:process_manager, pm),
+          on == trigger.name,
+          do: command
 
     givens ++
       delivered ++

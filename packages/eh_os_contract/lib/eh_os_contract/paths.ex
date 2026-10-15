@@ -137,21 +137,19 @@ defmodule EhOsContract.Paths do
         }
       end
 
+    issued = EhOsContract.Refusals.issued_by_reactions(model)
+
     policies =
-      for policy <- model.policies,
-          event <- policy.handles,
+      for %{kind: :policy, reaction: policy, on: event, command: command} <- issued,
           type = type_of(model, event),
-          type != nil,
-          command <- policy.issues do
+          type != nil do
         reaction(model, :policy, policy, event, type, command, label)
       end
 
     # Another application's event, which has no stored type here: taken through its inbox.
     received =
-      for policy <- model.policies,
-          event <- policy.handles,
-          match?({:published, _fields}, Model.consumed(model, event)),
-          command <- policy.issues do
+      for %{kind: :policy, reaction: policy, on: event, command: command} <- issued,
+          match?({:published, _fields}, Model.consumed(model, event)) do
         %{
           from: ref(:event, event, nil),
           via: ref(:policy, policy.name, policy.label),
@@ -165,17 +163,20 @@ defmodule EhOsContract.Paths do
         }
       end
 
+    # An event a process manager takes, `starts_on` or `on`; an `on` naming a timer has
+    # no stored type, and is left out with the events of no contract here.
     managers =
-      for pm <- model.process_managers,
-          {event, commands} <- reactions(pm),
+      for %{kind: :process_manager, trigger: trigger, on: event} = r <- issued,
+          trigger in [:starts_on, :on],
           type = type_of(model, event),
-          type != nil,
-          command <- commands do
-        reaction(model, :process_manager, pm, event, type, command, label)
+          type != nil do
+        reaction(model, :process_manager, r.reaction, event, type, r.command, label)
       end
 
     timers =
-      for pm <- model.process_managers, timer <- pm.timers, command <- timer.issues do
+      for %{trigger: :timer, reaction: pm, on: name, command: command} <- issued do
+        timer = Enum.find(pm.timers, &(&1.name == name))
+
         %{
           from: ref(:timer, timer.name, timer.label),
           via: ref(:process_manager, pm.name, pm.label),
@@ -334,13 +335,6 @@ defmodule EhOsContract.Paths do
       issued_by: "#{if kind == :policy, do: "policy", else: "pm"}:#{consumer.name}",
       command_type: Atom.to_string(command)
     }
-  end
-
-  # What each event a process manager takes issues: `starts_on` and `on`, in order.
-  defp reactions(pm) do
-    for reaction <- pm.starts_on ++ pm.on,
-        reaction.issues != [],
-        do: {reaction.event, reaction.issues}
   end
 
   defp ref(kind, name, label), do: %{kind: kind, name: name, label: label}

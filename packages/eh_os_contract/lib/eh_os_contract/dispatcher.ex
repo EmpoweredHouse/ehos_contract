@@ -485,8 +485,11 @@ defmodule EhOsContract.Dispatcher do
         {:error, :not_declared}
 
       pm ->
-        issues = Enum.flat_map(pm.starts_on ++ pm.on ++ pm.timers, & &1.issues)
-        if declaration.name in issues, do: :ok, else: {:error, :not_declared}
+        issued = EhOsContract.Refusals.issued_by(:process_manager, pm)
+
+        if Enum.any?(issued, &(&1.command == declaration.name)),
+          do: :ok,
+          else: {:error, :not_declared}
     end
   end
 

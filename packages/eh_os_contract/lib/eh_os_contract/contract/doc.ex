@@ -282,13 +282,15 @@ defmodule EhOsContract.Contract.Doc do
     Enum.join(["#{title}:" | lines], "\n")
   end
 
+  # What the callback may issue: a policy's every command, whatever event it handles; a
+  # process manager's, of the ways in through that event or that timer.
   defp issued(:policy, policy, _callback), do: List.wrap(policy.issues)
 
   defp issued(:process_manager, pm, callback) do
-    (Enum.filter(pm.starts_on ++ pm.on, &(&1.event == callback)) ++
-       Enum.filter(pm.timers, &(&1.name == callback)))
-    |> Enum.flat_map(&List.wrap(Map.get(&1, :issues, [])))
-    |> Enum.uniq()
+    for %{on: ^callback, command: command} <-
+          EhOsContract.Refusals.issued_by(:process_manager, pm),
+        uniq: true,
+        do: command
   end
 
   defp scenarios([]), do: nil
