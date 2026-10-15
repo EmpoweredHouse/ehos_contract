@@ -2260,12 +2260,13 @@ pages, view and the graph show it. The test material moves to typed references i
 **L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
 **G1 — the graph drawn like a catalog** (#297; tightened 15 October 2026). The renderer (`eh_os_contract_graph`)
 draws cards of their kind on `ehos_design`'s tokens, with the log's numbers on them, a promise as a labelled
-arrow with its verdicts, a legend, search and focus; one canvas with a path and navigation (context map, contract,
-unit, process, an event's card to its contract) is a component of the renderer, so the EHOS Console draws the same
-from the JSON API, and the dashboard's Graph screen is its first user. The application's map shows its publications
+arrow with its verdicts, a legend, search and focus. One canvas with a path and two viewpoints, structure (context
+map, contract, unit) and processes, linked both ways, is a component of the renderer, so the EHOS Console draws the
+same from the JSON API, and the dashboard's Graph screen is its first user. The application's map shows its publications
 and subscriptions at the edge, `graph.v1` changes only by addition, and the overlays load off the mount. Last, a
-function of the renderer joins several applications' domain documents by publication. Entering with the camera,
-layers, process lines and the trace (#302's plan) are a later stage.
+function of the renderer joins several applications' domain documents by publication. #302's test set
+(`sandbox/lib/graph_lab/`) comes in its own pull request; entering with the camera, layers and the trace (#302's
+plan) are a later stage.
 
 ---
 
