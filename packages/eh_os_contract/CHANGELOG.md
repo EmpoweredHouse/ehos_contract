@@ -48,6 +48,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-16
+
 ### Added
 
 - **`graph.v1` changes only by addition** (plan DD, stage G1, #297): a key, a node kind or a relation type once in

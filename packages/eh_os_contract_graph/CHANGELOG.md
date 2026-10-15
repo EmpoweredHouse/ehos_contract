@@ -21,6 +21,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 
 - **Several applications joined into one landscape** (plan DD, stage G1, #297):
