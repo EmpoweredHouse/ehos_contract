@@ -130,10 +130,11 @@ defmodule EhOsContract.GraphRendererTest do
 
   test "the renderer's fixtures taken from the client trees still hold to the schema" do
     # edge_cases.json and messaging.json are made by hand for what no client wrote, and are not
-    # whole documents.
+    # whole documents. domain.ledger.json is made by hand too, for joining applications, but is
+    # whole, so it holds to the schema as the taken ones do.
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
     taken = names -- ["edge_cases.json", "messaging.json"]
-    assert length(taken) == 7
+    assert length(taken) == 9
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()
