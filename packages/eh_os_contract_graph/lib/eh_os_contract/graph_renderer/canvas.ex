@@ -321,7 +321,8 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             type="button"
             class={[
               "ehg-card",
-              @matches && not MapSet.member?(@matches, node.id) && "is-unmatched"
+              @matches && node.kind != "start" && not MapSet.member?(@matches, node.id) &&
+                "is-unmatched"
               | classes(node.id, @lit, @near, @node_marks[node.id])
             ]}
             data-ehg-node={node.id}

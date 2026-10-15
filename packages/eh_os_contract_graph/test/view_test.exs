@@ -160,6 +160,10 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
 
       by_contract = View.matches(view, "rehmed.statutory_reporting")
       assert Enum.all?(by_contract, &String.contains?(&1, "statutory_reporting"))
+
+      # An id's kind and context path are not the card's words: "event:" finds no card by
+      # its id alone.
+      assert View.matches(view, "event:rehmed") == MapSet.new()
       assert View.matches(view, "no such thing") == MapSet.new()
     end
   end

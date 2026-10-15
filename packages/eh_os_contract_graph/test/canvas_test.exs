@@ -455,6 +455,21 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       refute has_element?(view, "button.ehg-tool", "Show the whole picture")
     end
 
+    test "the search never dims where a new aggregate starts, which it does not search" do
+      document = Fixtures.document("edge_cases")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "view" => {:lifecycle, "unit:edge_cases:1st"}}
+        )
+
+      view |> element("form.ehg-search") |> render_change(%{"q" => "otwarta"})
+      start = view |> shown() |> LazyHTML.query(~s(button.ehg-card[data-kind="start"]))
+
+      assert Enum.count(start) == 1
+      refute "is-unmatched" in classes(start)
+    end
+
     test "focus is offered for a card or a group, never for an arrow", %{view: view} do
       view
       |> with_target("#graph")

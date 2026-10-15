@@ -238,11 +238,11 @@ defmodule EhOsContract.GraphRenderer.View do
 
   @doc """
   The ids of the cards of `view` that `query` finds: those whose label, name in code,
-  kind, footer or id holds it, ignoring case. `nil` for a blank query, which finds
-  nothing and dims nothing.
+  kind or footer holds it, ignoring case. `nil` for a blank query, which finds nothing and
+  dims nothing. The dot where a new aggregate starts says nothing and is never searched.
 
-      View.matches(view, "odwołaj")
-      #=> MapSet.new(["command:rehmed.scheduling:cancel_visit"])
+      View.matches(view, "cancel")
+      #=> MapSet.new(["command:scheduling:cancel_visit"])
   """
   @spec matches(t(), String.t() | nil) :: MapSet.t(String.t()) | nil
   def matches(view, query) do
@@ -253,7 +253,7 @@ defmodule EhOsContract.GraphRenderer.View do
       term ->
         for node <- view.nodes,
             node.kind != "start",
-            [node.label, node.name, node.tag, node.foot, node.id]
+            [node.label, node.name, node.tag, node.foot]
             |> Enum.any?(&(is_binary(&1) and String.contains?(String.downcase(&1), term))),
             into: MapSet.new(),
             do: node.id
