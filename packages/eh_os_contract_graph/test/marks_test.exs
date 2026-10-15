@@ -27,6 +27,24 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
     assert Marks.relation(%{"relations" => %{}}, "r") == %{count: nil, states: []}
   end
 
+  test "a contract's drift is said in words, and nothing where there is none" do
+    drift = fn u, d ->
+      Marks.node(%{"nodes" => %{"c" => %{"untraversed" => u, "undeclared" => d}}}, "c")
+    end
+
+    assert drift.(2, 1) == %{
+             count: nil,
+             states: [:untraversed, :undeclared],
+             drift: "2 never taken, 1 move not allowed"
+           }
+
+    assert drift.(0, 3) == %{count: nil, states: [:undeclared], drift: "3 moves not allowed"}
+    assert drift.(0, 0) == %{count: nil, states: []}
+
+    # A number that is not a count says nothing, in words or in a state.
+    assert drift.(nil, 2) == %{count: nil, states: [:undeclared], drift: "2 moves not allowed"}
+  end
+
   test "a node's count is its occurrences, runs or aggregates" do
     for {key, n} <- [{"occurrences", 4}, {"runs", 2}, {"aggregates", 7}] do
       assert Marks.node(%{"nodes" => %{"n" => %{key => n}}}, "n") == %{count: n, states: []}

@@ -68,6 +68,9 @@ defmodule EhOsContract.Graph.Overlay do
   A step the facts end at no relation, or at two that are not such a manager's
   phases, is a shape of the DSL this module does not know: its relations get no
   numbers and a warning is logged, and a test over every fixture fails on it.
+
+  Like the document it joins onto, an overlay changes only by addition
+  (`EhOsContract.Graph.Document`, "Changes only by addition").
   """
 
   require Logger
@@ -180,8 +183,13 @@ defmodule EhOsContract.Graph.Overlay do
   @doc """
   The overlay of `domain` over `modules`, its contracts and process modules (those
   naming another domain are left out), and the period `opts` names, against
-  `Document.domain/2` of the same: what crosses between two contracts, and on each
-  process module's node its `runs`.
+  `Document.domain/2` of the same: what crosses between two contracts; on each
+  process module's node its `runs`; and on each contract's node its drift, as many as the
+  lines the conformance report lists for it — `untraversed`, its declared steps and its
+  lifecycles' transitions never taken, each counted once, and `undeclared`, the distinct
+  moves its lifecycles do not allow that happened, however often each did
+  (`EhOsContract.Conformance.steps/2`, `lifecycles/2`). Events written around dispatch,
+  which the report lists apart, are not counted here.
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
   def domain(domain, modules, opts \\ []) do
@@ -205,14 +213,33 @@ defmodule EhOsContract.Graph.Overlay do
 
     id = &Document.id([:contract, &1.id])
 
+    # Each contract's steps, read once: its drift, and for a consumer what crosses to it.
+    observed = Map.new(models, &{&1.module, Conformance.steps(&1, period)})
+
+    # Plan DD, G1 (#297): where it is worth going in, on the map. The same steps and
+    # lifecycles the contract's own overlay reads.
+    drift =
+      for m <- models do
+        steps = Enum.uniq(observed[m.module])
+        lifecycles = Conformance.lifecycles(m, period)
+
+        {id.(m),
+         %{
+           untraversed:
+             Enum.count(steps, & &1.untraversed) +
+               Enum.sum(for l <- lifecycles, do: length(l.untraversed)),
+           undeclared: Enum.sum(for l <- lifecycles, do: length(l.undeclared))
+         }}
+      end
+
     seal(
       %{
         "kind" => "domain",
         "domain" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(runs),
-        "relations" => Map.new(between(document, models, id, period)),
+        "nodes" => Map.new(runs ++ drift),
+        "relations" => Map.new(between(document, models, id, observed, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
       period
@@ -222,24 +249,21 @@ defmodule EhOsContract.Graph.Overlay do
   # What crosses from one contract to another, on the one relation the facts have for
   # the pair: how many of the consumed events the log holds, and what waits or fails at
   # the consumer's steps that start from them. A contract that consumes from a sibling
-  # twice has one relation and the sum of both. Only a consumer's steps are read, once
-  # however many siblings it consumes from, and the consumed events are counted in one
-  # query for every pair.
-  defp between(document, models, id, period) do
+  # twice has one relation and the sum of both. A consumer's steps are those the drift
+  # read, and the consumed events are counted in one query for every pair.
+  defp between(document, models, id, observed, period) do
     pairs =
       for m <- models,
           %{kind: :contract, from: from} = c <- m.consumes,
           sibling = Enum.find(models, &(&1.module == from)),
           do: {sibling, m, c}
 
-    consumers = pairs |> Enum.map(&elem(&1, 1)) |> Enum.uniq_by(& &1.module)
-    steps = Map.new(consumers, &{&1.module, Paths.observe(&1, period)})
     types = for {sibling, _m, c} <- pairs, e <- sibling.events, e.name in c.events, do: e.type
     counts = Paths.occurrences_by_type(types, period)
 
     for {sibling, m, c} <- pairs,
         rid <- find(document, "consumed_by", id.(sibling), id.(m), %{}) do
-      {rid, traffic(sibling, c, steps[m.module], counts)}
+      {rid, traffic(sibling, c, observed[m.module], counts)}
     end
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Enum.map(fn {rid, many} ->

@@ -8,6 +8,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # | Entry | Count | States |
   # | --- | --- | --- |
   # | an event's `occurrences`, a process's `runs`, a unit's `aggregates` | that number | — |
+  # | a contract's drift on the domain's map (`untraversed`, `undeclared`) | none: the drift in words, nothing where there is none | `:untraversed`, `:undeclared` where there is some |
   # | a promise's verdicts | none: the verdicts in words | `:failing` when a run broke it |
   # | a promise the owner has yet to confirm (`unverified`), with or without an overlay | none: "unconfirmed" | — |
   # | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
@@ -25,7 +26,8 @@ defmodule EhOsContract.GraphRenderer.Marks do
   @type t :: %{
           required(:count) => non_neg_integer() | nil,
           required(:states) => [state()],
-          optional(:verdict) => String.t()
+          optional(:verdict) => String.t(),
+          optional(:drift) => String.t()
         }
 
   @none %{count: nil, states: []}
@@ -39,8 +41,29 @@ defmodule EhOsContract.GraphRenderer.Marks do
       %{"occurrences" => n} -> %{count: n, states: []}
       %{"runs" => n} -> %{count: n, states: []}
       %{"aggregates" => n} -> %{count: n, states: []}
+      %{"untraversed" => u, "undeclared" => d} -> drift(u, d)
       _ -> @none
     end
+  end
+
+  # A contract's drift in words, where it says where to go in: "2 never taken, 1 move not
+  # allowed"; nothing where the log found none. A number that is not a count says nothing.
+  defp drift(untraversed, undeclared) do
+    some = &(is_integer(&1) and &1 > 0)
+    moves = if undeclared == 1, do: "move not allowed", else: "moves not allowed"
+
+    said =
+      for {n, words} <- [{untraversed, "never taken"}, {undeclared, moves}],
+          some.(n),
+          do: "#{n} #{words}"
+
+    if said == [],
+      do: @none,
+      else: %{
+        count: nil,
+        states: flags(untraversed: some.(untraversed), undeclared: some.(undeclared)),
+        drift: Enum.join(said, ", ")
+      }
   end
 
   @doc """

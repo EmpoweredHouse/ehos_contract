@@ -353,7 +353,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             phx-value-id={node.id}
             phx-target={@myself}
           >
-            <span :if={node.tag || @node_marks[node.id].count} class="ehg-top">
+            <span
+              :if={node.tag || @node_marks[node.id].count || @node_marks[node.id][:drift]}
+              class="ehg-top"
+            >
               <span :if={node.tag} class="ehg-kind"><Icons.icon kind={node.kind} />{node.tag}</span>
               <.count marks={@node_marks[node.id]} />
             </span>
@@ -406,7 +409,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     <span :if={@marks.count} class="ehg-count">×{@marks.count}</span><span
       :if={@marks[:verdict]}
       class="ehg-count"
-    >· {@marks[:verdict]}</span>
+    >· {@marks[:verdict]}</span><span :if={@marks[:drift]} class="ehg-count ehg-drift">{@marks[:drift]}</span>
     """
   end
 

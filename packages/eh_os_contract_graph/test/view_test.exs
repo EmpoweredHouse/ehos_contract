@@ -258,6 +258,21 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert for(%{kind: "event"} = e <- own.nodes, do: e.foot) |> Enum.uniq() == [nil]
     end
 
+    test "takes the contract an event is declared in from declared_in, before its id" do
+      document =
+        update_in(
+          Fixtures.document("appunite_equipment.demands"),
+          ["nodes", "event"],
+          fn events ->
+            for e <- events,
+                do: if(e["declared_as"], do: Map.put(e, "declared_in", "said.here"), else: e)
+          end
+        )
+
+      assert card(View.contract(document), "event:appunite_equipment.demands:issued").foot ==
+               "said.here"
+    end
+
     test "draws an event of another contract only where a reaction takes it" do
       view = View.contract(Fixtures.document("appunite_equipment.demands"))
       issued = card(view, "event:appunite_equipment.demands:issued")

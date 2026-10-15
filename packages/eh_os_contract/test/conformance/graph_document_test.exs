@@ -537,9 +537,16 @@ defmodule EhOsContract.GraphDocumentTest do
       d = Document.contract(model)
       here = Document.id([:event, model.id, :opened])
 
-      assert %{"declared_as" => sibling} = node(d, "event", here)
+      assert %{"declared_as" => sibling, "declared_in" => contract} = node(d, "event", here)
       assert sibling == Document.id([:event, scope(DispatchRig.Ledger), :account_opened])
       refute Enum.any?(nodes(d), &(&1["id"] == sibling))
+
+      # Plan DD, G1 (#297): the contract it is declared in, said rather than read out of
+      # the id; the contract's own events say none.
+      assert contract == scope(DispatchRig.Ledger)
+
+      for %{"unit" => _} = own <- d["nodes"]["event"],
+          do: refute(Map.has_key?(own, "declared_in"), own["id"])
     end
   end
 

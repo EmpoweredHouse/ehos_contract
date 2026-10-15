@@ -1721,6 +1721,10 @@
           "type": "string",
           "description": "The sibling's event id, under its name there, in the sibling's document: a reference into another document. Absent for the contract's own and for a received event."
         },
+        "declared_in": {
+          "type": "string",
+          "description": "The id of the sibling contract that declares it, the one its declared_as names: what a reader shows and opens, rather than reading it out of declared_as. Absent for the contract's own and for a received event."
+        },
         "fields": {
           "$ref": "#/$defs/fields"
         },

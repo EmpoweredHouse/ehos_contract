@@ -23,6 +23,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A contract's card on the domain's map says its drift** (plan DD, stage G1, #297): "2 never taken, 1 move not
+  allowed", from the domain's overlay, in the error colour; nothing where the log found none. An event a
+  contract consumes takes the contract that declares it from the document's `declared_in`, and reads it out of
+  the sibling event's id only in a document from before it.
 - **An explorer of a domain** (plan DD, stage G1, #297): `EhOsContract.GraphRenderer.Explorer` is one canvas
   with two viewpoints, the structure (the domain's system with a switch to its context map, a contract, a unit
   with a switch to its lifecycle) and the processes, a path back up, and the panel's "Open" where a card leads —

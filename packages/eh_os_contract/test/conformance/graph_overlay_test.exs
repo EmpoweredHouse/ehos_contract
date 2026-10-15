@@ -218,14 +218,30 @@ defmodule EhOsContract.GraphOverlayTest do
     assert o["relations"][moved] == %{"count" => 1}
   end
 
-  test "a domain's: the events between two contracts, and no contract's runs" do
+  test "a domain's: the events between two contracts, and each contract's drift" do
     seed_ledger()
     contracts = Registry.contracts()
     o = Overlay.domain(DispatchRig.Domain, contracts)
     contract = &Document.id([:contract, Model.fetch(&1).id])
 
-    # A run is a process module's, so no contract's node carries one.
-    assert o["nodes"] == %{}
+    # Plan DD, G1 (#297): a contract's node carries its drift, as the report counts it —
+    # its declared steps and transitions never taken, its moves no lifecycle allows — and
+    # no runs, which are a process module's.
+    for c <- [DispatchRig.Ledger, DispatchRig.Branch] do
+      steps = c |> Conformance.steps([]) |> Enum.uniq()
+      lifecycles = Conformance.lifecycles(Model.fetch(c), [])
+
+      assert o["nodes"][contract.(c)] == %{
+               "untraversed" =>
+                 Enum.count(steps, & &1.untraversed) +
+                   Enum.sum(for l <- lifecycles, do: length(l.untraversed)),
+               "undeclared" => Enum.sum(for l <- lifecycles, do: length(l.undeclared))
+             }
+    end
+
+    # Some of the ledger's declared paths the seed never takes.
+    assert o["nodes"][contract.(DispatchRig.Ledger)]["untraversed"] > 0
+    refute Enum.any?(Map.values(o["nodes"]), &Map.has_key?(&1, "runs"))
 
     between =
       Document.id([:consumed_by, contract.(DispatchRig.Ledger), contract.(DispatchRig.Branch)])
@@ -390,11 +406,19 @@ defmodule EhOsContract.GraphOverlayTest do
     end
   end
 
-  test "a domain's reads the steps of consumers only, and counts every pair at once" do
+  test "a domain's reads each contract's drift, the consumers' steps, and counts every pair at once" do
     contracts = Registry.contracts()
-    # DispatchRig.Branch is the one consumer: its steps, and one count for every pair of
-    # contracts.
-    budget = queries(fn -> Paths.observe(DispatchRig.Branch) end) + 1
+    mine = Enum.filter(contracts, &(Model.fetch(&1).domain == DispatchRig.Domain))
+
+    # Each contract's steps and lifecycles once, for its drift (plan DD, G1, #297) — the
+    # consumers' steps, which say what crosses, among them, never read again — and one
+    # count for every pair of contracts.
+    drift =
+      queries(fn ->
+        for c <- mine, do: {Conformance.steps(c, []), Conformance.lifecycles(Model.fetch(c), [])}
+      end)
+
+    budget = drift + 1
 
     contracts_only = queries(fn -> Overlay.domain(DispatchRig.Domain, contracts) end)
     assert contracts_only <= budget

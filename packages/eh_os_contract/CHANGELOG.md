@@ -50,6 +50,17 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **`graph.v1` changes only by addition** (plan DD, stage G1, #297): a key, a node kind or a relation type once in
+  a document or an overlay keeps its name, type and meaning, so a reader on an older version — the EHOS Console
+  reading applications on several — keeps working; a reader ignores what it does not know. A test holds both
+  shipped schemas to a baseline, which only a breaking change moves (`EhOsContract.Graph.Document`).
+- **A consumed event says which contract declares it** (plan DD, stage G1, #297): its node in a contract's
+  `graph.v1` document carries `declared_in`, the sibling contract's id, beside `declared_as`, so a reader need not
+  read it out of an id.
+- **A contract's drift on the domain's overlay** (plan DD, stage G1, #297): each contract's node in a domain's
+  overlay carries `untraversed`, its declared steps and lifecycle transitions never taken, and `undeclared`, the
+  distinct moves its lifecycles do not allow that happened, as many as the lines the conformance report lists
+  for them. The domain's overlay now reads every contract's steps and lifecycles, each once.
 - **A unit's node in a contract's `graph.v1` document says it records only** (plan DD, stage C1, #304): a unit with
   events none of whose commands can be refused carries `"records_only": true`, the same fact its page from
   `mix eh_os_contract.pages` states; the key is absent otherwise, and the schema in `priv/schema/graph.v1.json`

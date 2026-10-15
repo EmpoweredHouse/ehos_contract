@@ -205,4 +205,22 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
 
     refute has_element?(view, "button.ehg-open")
   end
+
+  test "an event a contract consumes opens the contract its document says declares it" do
+    view = start()
+    open(view, "contract:rehmed.external_payers")
+
+    # The payer's period consults it, so its unit's picture draws it.
+    view
+    |> element(
+      ~s([data-ehg-group="unit:rehmed.external_payers:payer_period"] button.ehg-group-title)
+    )
+    |> render_click()
+
+    view |> element("button.ehg-open") |> render_click()
+    render_async(view)
+    open(view, "event:rehmed.external_payers:visit_charged_to_payer")
+
+    assert text(page(view), ".ehg-path [aria-current]") =~ "rehmed.settlement"
+  end
 end
