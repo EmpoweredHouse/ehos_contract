@@ -18,6 +18,10 @@ defmodule GraphLab.Settlement.VisitSettlement do
 
   alias GraphLab.Contracts.Settlement.DomainServices.PaymentRules
 
+  # What an amount of `:money` holds: the domain declares it an `:integer`, a signed
+  # 64-bit one.
+  @money -9_223_372_036_854_775_808..9_223_372_036_854_775_807
+
   @impl true
   def add_service_line(_command, %State{closed_on: %Date{}}),
     do: reject(:closed_settlement_changes_only_by_correction)
@@ -65,7 +69,8 @@ defmodule GraphLab.Settlement.VisitSettlement do
           %VisitChargedToPayer{visit_id: id, payer_id: payer, period_id: period}
         ])
 
-      not PaymentRules.paid_in_full(sum, total) ->
+      # A sum past what money holds matches no total, and the rules take money only.
+      sum not in @money or not PaymentRules.paid_in_full(sum, total) ->
         reject(:payment_lines_sum_to_total)
 
       payer == nil ->

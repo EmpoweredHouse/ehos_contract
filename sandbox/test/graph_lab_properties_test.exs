@@ -32,3 +32,29 @@ defmodule GraphLab.PatientMessagingPropertiesTest do
   @moduledoc false
   use EhOsContract.PropertyCase, contract: GraphLab.Contracts.PatientMessaging
 end
+
+defmodule GraphLab.SettlementWalkTest do
+  use ExUnit.Case, async: true
+
+  alias GraphLab.Contracts.Settlement.Commands.{CloseSettlement, RecordPayment}
+
+  # Two payments whose sum is past what money holds match no total: the close is refused
+  # as payments that do not sum to it, rather than handing the payment rules a sum their
+  # declared type refuses.
+  test "payments summing past what money holds do not close the settlement" do
+    commands = [
+      {%RecordPayment{visit_id: "visit-1", method: :card, amount: 5_332_095_980_733_803_679},
+       %{}},
+      {%RecordPayment{visit_id: "visit-1", method: :cash, amount: 3_891_287_115_741_377_825},
+       %{}},
+      {%CloseSettlement{visit_id: "visit-1", total: 10_000}, %{}}
+    ]
+
+    assert %{closed_on: nil} =
+             EhOsContract.PropertyCase.walk(
+               GraphLab.Contracts.Settlement,
+               :visit_settlement,
+               commands
+             )
+  end
+end
