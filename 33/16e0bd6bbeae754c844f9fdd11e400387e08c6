@@ -1,0 +1,32 @@
+## Review
+
+Two reviews ran in parallel on `origin/main..HEAD`: correctness (`code-review`, high) and security and performance.
+
+**Fixed, with a test that failed on the code before the fix**
+- **Focus and the selection** (19d6ea04):
+  - Focus was offered for an arrow, which `View.around/2` cannot narrow to.
+  - A selection in another canvas cleared this canvas's focus. The hook now pushes `closed`, which closes the panel only.
+  - Clicking the selected card again closed the panel and kept the focus.
+  - Turning the log off kept a selection the log alone drew, an undeclared move.
+- **The search** (2c69f56a):
+  - It matched the id, whose kind and context path every card shares, so "rehmed" found everything.
+  - The dot where a new aggregate starts was dimmed by every query.
+
+**Fixed without a test**
+- **Performance** (19d6ea04): `render/1` worked out what the selection lights, so every keystroke of the search re-sent every card's, label's and group's class and the panel. The security and performance review measured about 1.1 KB on a 30-node picture with nothing changed, and estimated 15–25 KB at 300 nodes. It is now worked out when the state changes.
+- **Zoom and docs** (last commit):
+  - "Whole picture" could set a scale below the zoom's extent, so the next zoom jumped.
+  - The doc, the changelog and a stylesheet comment tied the start position to the direction; it depends on which edge the picture overflows.
+  - The doc example of `matches/2` was in Polish.
+- **A stronger test:** the focus test now checks the cards drawn are exactly `View.around/2`'s.
+
+**Skipped**
+- **`View.around/2` repeats the neighbourhood rule of `Canvas`'s selection lighting.** Both say "what a relation of it reaches", and joining them is a refactor of the selection.
+- **A selection made from the panel while focused can name a card outside the focus.** The panel opens and nothing is lit, which is acceptable.
+- **The hook's `fit`, `zoomTo` and `reveal` have no automated test.** They are checked in the browser (below).
+
+**No change needed**
+- **Search input:** it reaches only `String.trim`/`downcase`/`contains?`, and HEEx escapes its echo.
+- **The hook's selectors:** no new selector is built from document data.
+- **Content-Security-Policy:** no `style` attribute, and nothing new is loaded.
+- **Nothing is O(n²).**
