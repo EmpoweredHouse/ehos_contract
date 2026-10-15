@@ -35,6 +35,22 @@ defmodule EhOsContract.ReactionsTest do
     assert Enum.all?(issued, &(&1.trigger != :handles or &1.way == nil))
   end
 
+  test "whether a reaction issues a command is what its list says, for every command" do
+    model = Model.fetch(@ledger)
+
+    for {kind, reactions} <- [policy: model.policies, process_manager: model.process_managers],
+        reaction <- reactions,
+        command <- Enum.map(model.commands, & &1.name) do
+      listed? = Enum.any?(Reactions.issued_by(kind, reaction), &(&1.command == command))
+
+      assert Reactions.issues?(kind, reaction, command) == listed?,
+             inspect({reaction.name, command})
+    end
+
+    # What P1 refuses, and dispatch would otherwise permit: a policy on no event.
+    refute Reactions.issues?(:policy, %{handles: [], issues: [:deposit]}, :deposit)
+  end
+
   test "the DSL's declarations give the same list as the model" do
     declarations = Rules.declarations(@ledger.spark_dsl_config())
 

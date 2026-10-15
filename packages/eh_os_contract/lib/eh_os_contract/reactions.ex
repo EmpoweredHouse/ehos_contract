@@ -57,12 +57,7 @@ defmodule EhOsContract.Reactions do
   end
 
   def issued_by(:process_manager, pm) do
-    ways =
-      for(s <- pm.starts_on, do: {:starts_on, s.event, s}) ++
-        for(o <- pm.on, do: {:on, o.event, o}) ++
-        for t <- pm.timers, do: {:timer, t.name, t}
-
-    for {trigger, on, way} <- ways, command <- List.wrap(way.issues) do
+    for {trigger, on, way} <- ways(pm), command <- List.wrap(way.issues) do
       %{
         command: command,
         kind: :process_manager,
@@ -72,5 +67,24 @@ defmodule EhOsContract.Reactions do
         way: way
       }
     end
+  end
+
+  @doc """
+  Whether the one reaction, a policy or a process manager, issues `command`, as
+  `issued_by/2` would list it, without building the list: what dispatch asks of every
+  command a reaction sends.
+  """
+  @spec issues?(:policy | :process_manager, map(), atom()) :: boolean()
+  def issues?(:policy, policy, command),
+    do: List.wrap(policy.handles) != [] and command in List.wrap(policy.issues)
+
+  def issues?(:process_manager, pm, command),
+    do: Enum.any?(ways(pm), fn {_trigger, _on, way} -> command in List.wrap(way.issues) end)
+
+  # A process manager's ways in, in declaration order: its starts, its events, its timers.
+  defp ways(pm) do
+    for(s <- pm.starts_on, do: {:starts_on, s.event, s}) ++
+      for(o <- pm.on, do: {:on, o.event, o}) ++
+      for t <- pm.timers, do: {:timer, t.name, t}
   end
 end
