@@ -53,8 +53,10 @@ defmodule EhOsContract.Contract.Doc do
     declaration = declaration(model, kind, name)
     timer = kind == :process_manager && Enum.find(declaration.timers, &(&1.name == callback))
 
+    # What the callback may issue: a policy's every command, whatever event it handles; a
+    # process manager's, of the ways in through that event or that timer.
     issues =
-      issued(kind, declaration, callback)
+      EhOsContract.Reactions.commands_on(kind, declaration, callback)
       |> Enum.map(&command_line(model, &1))
 
     paragraphs([
@@ -281,11 +283,6 @@ defmodule EhOsContract.Contract.Doc do
 
     Enum.join(["#{title}:" | lines], "\n")
   end
-
-  # What the callback may issue: a policy's every command, whatever event it handles; a
-  # process manager's, of the ways in through that event or that timer.
-  defp issued(kind, reaction, callback),
-    do: EhOsContract.Reactions.commands_on(kind, reaction, callback)
 
   defp scenarios([]), do: nil
 
