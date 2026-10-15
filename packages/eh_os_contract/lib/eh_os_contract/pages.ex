@@ -884,7 +884,8 @@ defmodule EhOsContract.Pages do
       ]),
       if(p.source, do: ["", "_Source: #{p.source}_"], else: []),
       facts([
-        "One run per #{fields(p.correlate)}.",
+        # As the report and the dashboard say it; nothing for a model without `correlate`.
+        if(clause = EhOsContract.Report.Sentence.runs_per(p.correlate), do: "Runs: #{clause}."),
         if(p.accountable, do: accountable(site, p.accountable)),
         if(p.deadline, do: deadline(p.deadline))
       ]),
@@ -898,13 +899,6 @@ defmodule EhOsContract.Pages do
       resting(site, events),
       process_scenarios(Map.get(model, :scenarios, []))
     ]
-  end
-
-  defp fields(names) do
-    case Enum.map(names, &code/1) do
-      [one] -> one
-      many -> Enum.join(Enum.drop(many, -1), ", ") <> " and " <> List.last(many)
-    end
   end
 
   defp accountable(site, name) do

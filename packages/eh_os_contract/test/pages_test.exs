@@ -432,7 +432,7 @@ defmodule EhOsContract.PagesTest do
       assert page =~
                "[graph](../graph/process/universality_gate.treatment_episode_run.json)"
 
-      assert page =~ "One run per `episode_id`."
+      assert page =~ "Runs: one per episode_id."
       assert page =~ "Accountable: `attending_physician` — Attending physician."
 
       # Said plainly where it is declared: the report leaves an unconfirmed one out.
@@ -502,6 +502,17 @@ defmodule EhOsContract.PagesTest do
                  "[`account_moved`](../ledger/transfer/events/account_moved.md)\n"
 
       assert page =~ "2. `elsewhere` — _no included event resolves to a contract of the domain_\n"
+    end
+
+    # The review of P2e's third pull request: a model built without `correlate` raised.
+    test "a process module without correlate says nothing of what tells its runs apart" do
+      page =
+        Pages.render(UniversalityGate.Domain, [
+          UniversalityGate.TreatmentEpisode,
+          %{EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun) | correlate: []}
+        ])["processes/treatment_episode_run.md"]
+
+      refute page =~ "Runs:"
     end
 
     test "control: a contract none of whose events a process includes lists none" do
