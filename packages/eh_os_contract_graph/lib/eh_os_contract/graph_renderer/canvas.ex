@@ -110,22 +110,11 @@ defmodule EhOsContract.GraphRenderer.Canvas do
          do: socket.assigns.lookup,
          else: Lookup.new(document)
 
-    socket =
-      socket
-      |> assign(lookup: lookup, lookup_of: digest, spec: spec, given: given)
-      |> build()
-
-    selected = socket.assigns.selected
-    view = socket.assigns.view
-
     {:ok,
      socket
-     |> assign(selected: if(selected && picked(view, document, selected), do: selected))
-     |> assign(
-       focus:
-         if(socket.assigns.focus && element(view, socket.assigns.focus), do: socket.assigns.focus)
-     )
-     |> show()}
+     |> assign(lookup: lookup, lookup_of: digest, spec: spec, given: given)
+     |> build()
+     |> refresh()}
   end
 
   # The view and what the log says over it: the overlay the host gave, when it is of this
@@ -148,51 +137,98 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     )
   end
 
-  # What is drawn: the view, or the neighbourhood of what the reader focuses on; and which
-  # of its cards the search finds.
-  defp show(socket) do
-    %{view: view, focus: focus, query: query} = socket.assigns
-    shown = if focus, do: View.around(view, focus), else: view
-    assign(socket, shown: shown, matches: View.matches(shown, query))
+  # After any change: a selection or a focus the view no longer has is forgotten; then what
+  # is drawn, what the search finds in it, and what the selection lights.
+  defp refresh(socket) do
+    %{view: view, document: document, selected: selected, focus: focus} = socket.assigns
+
+    socket
+    |> assign(
+      selected: if(selected && picked(view, document, selected), do: selected),
+      focus: if(focus && focusable?(view, focus), do: focus)
+    )
+    |> show()
   end
+
+  # What is drawn: the view, or the neighbourhood of what the reader focuses on.
+  defp show(socket) do
+    %{view: view, focus: focus} = socket.assigns
+    socket |> assign(shown: if(focus, do: View.around(view, focus), else: view)) |> search()
+  end
+
+  # Which of the drawn cards the search finds.
+  defp search(socket) do
+    %{shown: shown, query: query} = socket.assigns
+    socket |> assign(matches: View.matches(shown, query)) |> light()
+  end
+
+  # What the selection lights and opens, worked out here rather than in `render/1`, so that
+  # a render whose selection has not changed sends none of it again.
+  defp light(socket) do
+    %{shown: shown, view: view, document: document, selected: selected} = socket.assigns
+
+    assign(socket,
+      near: near(shown, selected),
+      # A node the picture does not draw is shown in the panel and fades nothing.
+      lit: selected && element(shown, selected) && selected,
+      focusable?: selected != nil and focusable?(view, selected),
+      picked: selected && picked(view, document, selected)
+    )
+  end
+
+  # Focus is on a card or a group: an arrow has no neighbourhood of its own to draw.
+  defp focusable?(view, id), do: match?({kind, _} when kind in [:node, :group], element(view, id))
 
   @impl true
   def handle_event("select", %{"id" => id}, socket) do
-    selected =
-      cond do
-        id == socket.assigns.selected -> nil
-        picked(socket.assigns.view, socket.assigns.document, id) -> id
-        true -> socket.assigns.selected
-      end
+    cond do
+      # The selected card clicked again closes the panel, and focus with it.
+      id == socket.assigns.selected ->
+        {:noreply, socket |> assign(selected: nil, focus: nil) |> refresh()}
 
-    {:noreply, assign(socket, selected: selected)}
+      picked(socket.assigns.view, socket.assigns.document, id) ->
+        {:noreply, socket |> assign(selected: id) |> light()}
+
+      true ->
+        {:noreply, socket}
+    end
   end
 
   # A name in the panel shows its node, and never closes the panel, even when it names what
   # the panel is of.
   def handle_event("show", %{"id" => id}, socket) do
     if picked(socket.assigns.view, socket.assigns.document, id),
-      do: {:noreply, assign(socket, selected: id)},
+      do: {:noreply, socket |> assign(selected: id) |> light()},
       else: {:noreply, socket}
   end
 
+  # The panel's close button or Escape: the selection goes, and focus with it.
   def handle_event("deselect", _params, socket),
-    do: {:noreply, socket |> assign(selected: nil, focus: nil) |> show()}
+    do: {:noreply, socket |> assign(selected: nil, focus: nil) |> refresh()}
+
+  # Another canvas of the page opened its panel: this one's closes, and its picture stays as
+  # the reader left it, focus included.
+  def handle_event("closed", _params, socket),
+    do: {:noreply, socket |> assign(selected: nil) |> light()}
 
   # The search dims what it does not find as the reader types; Enter selects the first card
   # it finds and moves the view to it.
   def handle_event("search", %{"q" => query}, socket),
-    do: {:noreply, socket |> assign(query: query) |> show()}
+    do: {:noreply, socket |> assign(query: query) |> search()}
 
   def handle_event("find", %{"q" => query}, socket) do
-    socket = socket |> assign(query: query) |> show()
+    socket = socket |> assign(query: query) |> search()
 
     case Enum.find(
            socket.assigns.shown.nodes,
            &(socket.assigns.matches && MapSet.member?(socket.assigns.matches, &1.id))
          ) do
-      nil -> {:noreply, socket}
-      node -> {:noreply, assign(socket, selected: node.id, reveal: socket.assigns.reveal + 1)}
+      nil ->
+        {:noreply, socket}
+
+      node ->
+        {:noreply,
+         socket |> assign(selected: node.id, reveal: socket.assigns.reveal + 1) |> light()}
     end
   end
 
@@ -201,7 +237,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   def handle_event("focus", _params, socket) do
     selected = socket.assigns.selected
 
-    if selected && element(socket.assigns.view, selected),
+    if selected && focusable?(socket.assigns.view, selected),
       do: {:noreply, socket |> assign(focus: selected) |> show()},
       else: {:noreply, socket}
   end
@@ -211,21 +247,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # The declaration alone, or with what the log says over it.
   def handle_event("log", _params, socket),
-    do: {:noreply, socket |> assign(log: not socket.assigns.log) |> build() |> show()}
+    do: {:noreply, socket |> assign(log: not socket.assigns.log) |> build() |> refresh()}
 
   @impl true
   def render(assigns) do
-    picked = assigns.selected && picked(assigns.view, assigns.document, assigns.selected)
-
-    assigns =
-      assign(assigns,
-        near: near(assigns.shown, assigns.selected),
-        # A node the picture does not draw is shown in the panel and fades nothing.
-        lit: assigns.selected && element(assigns.shown, assigns.selected) && assigns.selected,
-        focusable?: assigns.selected != nil and element(assigns.view, assigns.selected) != nil,
-        picked: picked
-      )
-
     ~H"""
     <div
       id={@id}

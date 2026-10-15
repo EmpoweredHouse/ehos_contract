@@ -4528,7 +4528,7 @@ var EhOsContractGraph = {
     this.closeOthers = ({ detail }) => {
       if (detail === this.el || this.el.dataset.selected === void 0) return;
       this.el.querySelector(".ehg-panel")?.setAttribute("hidden", "");
-      this.pushEventTo(this.el, "deselect", {});
+      this.pushEventTo(this.el, "closed", {});
     };
     window.addEventListener("eh_os_contract_graph:opened", this.closeOthers);
     this.escape = (event) => {

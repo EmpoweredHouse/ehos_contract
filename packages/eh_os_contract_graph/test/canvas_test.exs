@@ -455,6 +455,73 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       refute has_element?(view, "button.ehg-tool", "Show the whole picture")
     end
 
+    test "focus is offered for a card or a group, never for an arrow", %{view: view} do
+      view
+      |> with_target("#graph")
+      |> render_click("select", %{
+        "id" =>
+          "precedes:stage:rehmed.clinical_visit:departure:stage:rehmed.clinical_visit:closing"
+      })
+
+      refute has_element?(view, "button.ehg-tool", "Focus on the selection")
+    end
+
+    test "closing the panel by the selected card again leaves focus too", %{view: view} do
+      card = ~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"])
+      view |> element(card) |> render_click()
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> element(card) |> render_click()
+
+      refute has_element?(view, "button.ehg-tool", "Show the whole picture")
+    end
+
+    test "another canvas's selection closes this panel and keeps its focus", %{view: view} do
+      view
+      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> render_click()
+
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> with_target("#graph") |> render_click("closed", %{})
+
+      assert has_element?(view, "button.ehg-tool", "Show the whole picture")
+      refute has_element?(view, ".ehg-panel")
+    end
+
+    test "turning the log off forgets a selection only the log drew" do
+      document = Fixtures.document("edge_cases")
+      unit = "unit:edge_cases:1st"
+
+      overlay = %{
+        "document_digest" => document["digest"],
+        "nodes" => %{},
+        "relations" => %{},
+        "observed" => %{
+          "relations" => %{
+            "undeclared" => [
+              %{
+                "id" => "undeclared:closed:open",
+                "from" => "status:edge_cases:1st:closed",
+                "to" => "status:edge_cases:1st:open",
+                "event" => nil,
+                "count" => 1
+              }
+            ]
+          }
+        }
+      }
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "overlay" => overlay, "view" => {:lifecycle, unit}}
+        )
+
+      view |> with_target("#graph") |> render_click("select", %{"id" => "undeclared:closed:open"})
+      assert has_element?(view, ".ehg-panel")
+
+      view |> element(".ehg-switch input") |> render_click()
+      refute has_element?(view, ".ehg[data-selected]")
+    end
+
     test "the log's switch draws the declaration alone, and back" do
       document = Fixtures.document("process.rehmed.clinical_visit")
       overlay = Fixtures.overlay("process.rehmed.clinical_visit")
