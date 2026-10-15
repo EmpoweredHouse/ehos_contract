@@ -107,8 +107,11 @@ and the `ehos-dev:release` skill makes one.
   `EhOsContract.Conformance.promise_verdicts/2` judges a process's confirmed promises as the report does,
   `EhOsContract.Paths.occurrences_by_type/2` counts events of the given types in one query, and
   `EhOsContract.Paths.runs_by_process/2` counts the runs of several process modules in one query.
-- **A process module has a page, a branch of the domain's tree and a place in the glossary** (plan DD, stage
-  P2e, #220). `mix eh_os_contract.pages` writes `processes/<its id after the domain's name>.md` for each process
+- **Breaking:** **a process module has a page, a branch of the domain's tree and a place in the glossary** (plan
+  DD, stage P2e, #220). A host that holds its pages to the model with `mix eh_os_contract.pages --check` runs
+  `mix eh_os_contract.pages --output <dir>` once and commits the result: the check fails until then, since each
+  process module has a new page and document, and the domain's page and the page of each contract whose events a
+  process module includes change. `mix eh_os_contract.pages` writes `processes/<its id after the domain's name>.md` for each process
   module of the domain: what tells its runs apart, the actor accountable for it, its stages in order with each
   included event linked to its contract's page, the events that end a run, its promises and deadline (an
   unconfirmed one said to be left out of the report), the external systems its events rest on and its scenarios.
