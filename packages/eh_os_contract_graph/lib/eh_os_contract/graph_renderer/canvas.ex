@@ -178,17 +178,18 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     |> opens()
   end
 
-  # Where the selected card leads, when the host gave a place to open it in
-  # (`EhOsContract.GraphRenderer.Explorer`).
+  # Where the selected card leads, when an explorer gave the canvas a way to open it
+  # (`EhOsContract.GraphRenderer.Explorer`): `%{target: component, here: place}`, and no
+  # way back to where the reader already is.
   defp opens(%{assigns: %{opener: nil}} = socket), do: assign(socket, opens: nil)
 
   defp opens(socket) do
-    %{opener: target, document: document, picked: picked, selected: selected} = socket.assigns
+    %{opener: opener, document: document, picked: picked, selected: selected} = socket.assigns
 
     opens =
       with {type, %{kind: kind, facts: facts}} when type in [:node, :group] <- picked,
-           {_place, label} <- Places.destination(document, kind, facts),
-           do: %{id: selected, label: label, target: target},
+           {place, label} when place != opener.here <- Places.destination(document, kind, facts),
+           do: %{id: selected, label: label, target: opener.target},
            else: (_ -> nil)
 
     assign(socket, opens: opens)

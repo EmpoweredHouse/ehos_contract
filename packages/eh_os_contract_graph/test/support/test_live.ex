@@ -59,22 +59,45 @@ defmodule EhOsContract.GraphRenderer.FixtureLoader do
     {:process, "rehmed.clinical_visit"} => "process.rehmed.clinical_visit"
   }
 
+  # `opts`: `raise:` a ref whose load raises, `nil_for:` one answered `{:ok, nil}`,
+  # `fail_once:` an Agent holding refs whose first load fails, `notify:` a pid told of
+  # every load, and `bare: true` a domain with no contract, so no system to draw.
   @impl true
   def document(ref, opts) do
     if ref == opts[:raise], do: raise("the loader failed")
     if pid = opts[:notify], do: send(pid, {:loaded, ref})
 
-    case @documents[ref] do
-      nil -> {:error, :not_found}
-      name -> {:ok, Fixtures.document(name)}
+    cond do
+      ref == opts[:nil_for] ->
+        {:ok, nil}
+
+      (agent = opts[:fail_once]) &&
+          Agent.get_and_update(agent, &{ref in &1, List.delete(&1, ref)}) ->
+        {:error, :timeout}
+
+      opts[:bare] && match?({:domain, _}, ref) ->
+        {:ok, put_in(Fixtures.document("domain.rehmed"), ["nodes", "contract"], [])}
+
+      name = @documents[ref] ->
+        {:ok, Fixtures.document(name)}
+
+      true ->
+        {:error, :not_found}
     end
   end
 
   @impl true
-  def overlay({:process, "rehmed.clinical_visit"}, _opts),
-    do: {:ok, Fixtures.overlay("process.rehmed.clinical_visit")}
+  def overlay(ref, opts) do
+    if pid = opts[:notify], do: send(pid, {:overlay, ref})
 
-  def overlay(_ref, _opts), do: {:ok, nil}
+    case ref do
+      {:process, "rehmed.clinical_visit"} ->
+        {:ok, Fixtures.overlay("process.rehmed.clinical_visit")}
+
+      _other ->
+        {:ok, nil}
+    end
+  end
 end
 
 defmodule EhOsContract.GraphRenderer.ExplorerLive do

@@ -117,4 +117,92 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     open(open_missing, "contract:rehmed.scheduling")
     assert has_element?(open_missing, ".ehg-failed")
   end
+
+  test "a picture drawn without the log says nothing about the log's version" do
+    view = start()
+    view |> element(".ehg-lenses button", "Contexts and their relations") |> render_click()
+
+    refute render(view) =~ "another version"
+  end
+
+  test "a picture that failed to load is loaded again when the reader comes back" do
+    {:ok, agent} = Agent.start_link(fn -> [{:contract, "rehmed.settlement"}] end)
+    view = start(%{"opts" => [fail_once: agent]})
+
+    open(view, "contract:rehmed.settlement")
+    assert has_element?(view, ".ehg-failed")
+
+    view |> element(".ehg-path button", "rehmed") |> render_click()
+    open(view, "contract:rehmed.settlement")
+    refute has_element?(view, ".ehg-failed")
+    assert "command:rehmed.settlement:close_settlement" in cards(view)
+  end
+
+  test "a document answered as nothing is a picture that could not be loaded" do
+    view = start(%{"opts" => [nil_for: {:contract, "rehmed.settlement"}]})
+    open(view, "contract:rehmed.settlement")
+
+    assert has_element?(view, ".ehg-failed")
+  end
+
+  test "an event the page could not have sent is ignored, and the page lives on" do
+    view = start(%{"opts" => [notify: self()]})
+
+    for {event, params} <- [
+          {"lens", %{"to" => "bogus"}},
+          {"go", %{"to" => ["contract"]}},
+          {"go", %{}},
+          {"open", %{}},
+          {"nothing", %{}}
+        ],
+        do: view |> with_target("#explorer") |> render_click(event, params)
+
+    assert "contract:rehmed.settlement" in cards(view)
+  end
+
+  test "a place the domain does not hold is never loaded" do
+    view = start(%{"opts" => [notify: self()]})
+    view |> with_target("#explorer") |> render_click("go", %{"to" => "contract\u001Fnone.such"})
+
+    view
+    |> with_target("#explorer")
+    |> render_click("go", %{"to" => "unit\u001Frehmed.settlement\u001Fx"})
+
+    render_async(view)
+
+    refute_received {:loaded, {:contract, "none.such"}}
+    refute_received {:loaded, {:contract, "rehmed.settlement"}}
+    assert "contract:rehmed.settlement" in cards(view)
+  end
+
+  test "the log is read only for a picture that draws it" do
+    start(%{"opts" => [notify: self(), bare: true]})
+
+    assert_received {:loaded, {:domain, "Rehmed.Domain"}}
+    refute_received {:overlay, _}
+  end
+
+  test "the panel offers no way to where the reader already is" do
+    view = start()
+    open(view, "contract:rehmed.settlement")
+
+    view
+    |> element(
+      ~s([data-ehg-group="unit:rehmed.settlement:visit_settlement"] button.ehg-group-title)
+    )
+    |> render_click()
+
+    view |> element("button.ehg-open") |> render_click()
+    render_async(view)
+
+    view
+    |> element(~s(button[data-ehg-node="command:rehmed.settlement:close_settlement"]))
+    |> render_click()
+
+    view
+    |> element(~s(button[data-ehg-node="event:rehmed.settlement:payment_recorded"]))
+    |> render_click()
+
+    refute has_element?(view, "button.ehg-open")
+  end
 end

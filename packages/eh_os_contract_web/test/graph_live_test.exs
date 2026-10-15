@@ -65,6 +65,31 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert "process:web_test_host.case_run" in cards(view)
   end
 
+  # The EHOS Console draws the same explorer from the JSON API: the dashboard's loader
+  # answers with the documents the API serves, and overlays of the same documents.
+  test "the dashboard's loader gives the documents the API serves" do
+    served =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_read"])
+      |> Plug.Conn.put_req_header("accept", "application/json")
+
+    for {ref, path} <- [
+          {{:domain, @domain}, "/api/graph/domain/" <> @domain},
+          {{:contract, "web_test_host.case_handling"}, "/api/graph/web_test_host.case_handling"},
+          {{:process, "web_test_host.case_run"}, "/api/graph/process/web_test_host.case_run"}
+        ] do
+      {:ok, document} = EhOsContract.Web.GraphLoader.document(ref, [])
+      {:ok, overlay} = EhOsContract.Web.GraphLoader.overlay(ref, [])
+
+      assert Jason.decode!(get(served, path).resp_body) == document
+      assert overlay["document_digest"] == document["digest"]
+      assert Jason.decode!(get(served, path <> "/overlay").resp_body)["nodes"] == overlay["nodes"]
+    end
+
+    assert EhOsContract.Web.GraphLoader.document({:contract, "none.such"}, []) ==
+             {:error, :not_found}
+  end
+
   test "the static render draws no picture and reads no log until the reader is connected" do
     html =
       build_conn()

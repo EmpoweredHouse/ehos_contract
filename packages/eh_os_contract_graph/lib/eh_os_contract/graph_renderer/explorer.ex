@@ -33,9 +33,11 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   contract that declares it, across the two viewpoints.
 
   **Documents load in the background**, each the first time the reader enters a picture
-  of it, its overlay beside it: the picture is drawn declared as soon as its document
-  arrives, and the log's numbers follow. One that fails to load says so in place of the
-  picture. Each document is loaded once per explorer.
+  of it, and its overlay only where the picture draws the log's numbers: the picture is
+  drawn declared as soon as its document arrives, and the numbers follow. One that fails
+  to load says so in place of the picture, and is loaded again when the reader comes
+  back to it. A place the domain's documents do not hold is never loaded, and an event
+  the page could not have sent is ignored.
   """
 
   use Phoenix.LiveComponent
@@ -60,56 +62,81 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       |> assign(Map.take(assigns, [:id, :domain]))
       |> assign(:loader, loader(Map.fetch!(assigns, :loader)))
 
-    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> load_place()}
+    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter()}
   end
 
   defp loader({module, opts}) when is_atom(module), do: {module, opts}
   defp loader(module) when is_atom(module), do: {module, []}
 
-  # The documents the place is drawn from, each loaded once: the domain's, which names
-  # what there is, and the place's own.
-  defp load_place(socket),
-    do: load(socket, Places.ref(socket.assigns.place, socket.assigns.domain))
+  # The documents and the overlay the place is drawn from: the domain's document, which
+  # names what there is, and the place's own; its overlay only where its picture draws
+  # one. Each is loaded once, and again on coming back to it after it failed.
+  defp enter(socket), do: socket |> load(ref(socket)) |> logged()
+
+  # The place's overlay, where its picture, now known, draws one.
+  defp logged(socket) do
+    socket = derive(socket)
+
+    if socket.assigns.picture && socket.assigns.picture.overlay,
+      do: socket |> overlay(ref(socket)) |> derive(),
+      else: socket
+  end
 
   defp load(socket, ref) do
-    if Map.has_key?(socket.assigns.documents, ref) do
+    case socket.assigns.documents[ref] do
+      known when known == :loading or elem(known, 0) == :ok ->
+        socket
+
+      _missing_or_failed ->
+        {module, opts} = socket.assigns.loader
+
+        socket
+        |> assign(documents: Map.put(socket.assigns.documents, ref, :loading))
+        |> start_async({:document, ref}, fn -> module.document(ref, opts) end)
+    end
+  end
+
+  defp overlay(socket, ref) do
+    if Map.has_key?(socket.assigns.overlays, ref) and socket.assigns.overlays[ref] != :failed do
       socket
     else
       {module, opts} = socket.assigns.loader
 
       socket
-      |> assign(documents: Map.put(socket.assigns.documents, ref, :loading))
-      |> start_async({:document, ref}, fn -> module.document(ref, opts) end)
+      |> assign(overlays: Map.put(socket.assigns.overlays, ref, :loading))
       |> start_async({:overlay, ref}, fn -> module.overlay(ref, opts) end)
     end
   end
 
   @impl true
-  def handle_async({:document, ref}, result, socket),
-    do:
-      {:noreply,
-       assign(socket, documents: Map.put(socket.assigns.documents, ref, loaded(result)))}
+  def handle_async({:document, ref}, result, socket) do
+    socket = assign(socket, documents: Map.put(socket.assigns.documents, ref, document(result)))
+
+    # The place's own document arrived: what it draws decides whether its log is wanted. A
+    # failure is retried only when the reader comes back to it.
+    if ref == ref(socket), do: {:noreply, logged(socket)}, else: {:noreply, derive(socket)}
+  end
 
   def handle_async({:overlay, ref}, result, socket) do
     overlay =
-      case loaded(result) do
-        {:ok, overlay} -> overlay
-        _failed -> nil
+      case result do
+        {:ok, {:ok, overlay}} when is_map(overlay) or is_nil(overlay) -> overlay
+        _failed -> :failed
       end
 
-    {:noreply, assign(socket, overlays: Map.put(socket.assigns.overlays, ref, overlay))}
+    {:noreply,
+     socket |> assign(overlays: Map.put(socket.assigns.overlays, ref, overlay)) |> derive()}
   end
 
   # What a loader answered, or what became of a loader that raised or exited: a picture it
-  # could not load, never a crash of the host's page.
-  defp loaded({:ok, {:ok, %{} = document}}), do: {:ok, document}
-  defp loaded({:ok, {:ok, nil}}), do: {:ok, nil}
-  defp loaded({:ok, {:error, reason}}), do: {:error, reason}
-  defp loaded({:ok, other}), do: {:error, {:unexpected, other}}
-  defp loaded({:exit, reason}), do: {:error, reason}
+  # could not load, never a crash of the host's page. A document of nothing is one too.
+  defp document({:ok, {:ok, %{} = document}}), do: {:ok, document}
+  defp document({:ok, {:error, reason}}), do: {:error, reason}
+  defp document({:ok, other}), do: {:error, {:unexpected, other}}
+  defp document({:exit, reason}), do: {:error, reason}
 
   @impl true
-  def handle_event("go", %{"to" => to}, socket) do
+  def handle_event("go", %{"to" => to}, socket) when is_binary(to) do
     case place(to) do
       nil -> {:noreply, socket}
       place -> {:noreply, go(socket, place)}
@@ -117,11 +144,11 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   end
 
   def handle_event("lens", %{"to" => lens}, socket) when lens in ~w(graph lifecycle map),
-    do: {:noreply, assign(socket, lens: String.to_existing_atom(lens))}
+    do: {:noreply, socket |> assign(lens: String.to_existing_atom(lens)) |> enter()}
 
   # The panel's "Open": where the selected card of the drawn picture leads.
-  def handle_event("open", %{"id" => id}, socket) do
-    with {:ok, document} <- Map.get(socket.assigns.documents, ref(socket)),
+  def handle_event("open", %{"id" => id}, socket) when is_binary(id) do
+    with document when document != nil <- socket.assigns.document,
          {kind, node} <- node(document, id),
          {place, _words} <- Places.destination(document, kind, node) do
       {:noreply, go(socket, place)}
@@ -130,7 +157,37 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     end
   end
 
-  defp go(socket, place), do: socket |> assign(place: place, lens: :graph) |> load_place()
+  # An event the page does not send — another name, or without what it needs — is ignored
+  # rather than crashing the host's page.
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # A place the domain holds, and nothing else: a contract or a process module its document
+  # names, a unit of a contract already drawn. Anything a page could not have offered is
+  # never loaded.
+  defp go(socket, place) do
+    if holds?(socket, place),
+      do: socket |> assign(place: place, lens: :graph) |> enter(),
+      else: socket
+  end
+
+  defp holds?(_socket, place) when place in [:domain, :processes], do: true
+
+  defp holds?(socket, {:unit, contract, unit}) do
+    case socket.assigns.documents[{:contract, contract}] do
+      {:ok, document} -> Enum.any?(get_in(document, ["nodes", "unit"]) || [], &(&1["id"] == unit))
+      _other -> false
+    end
+  end
+
+  defp holds?(socket, {kind, id}) do
+    case socket.assigns.documents[Places.ref(:domain, socket.assigns.domain)] do
+      {:ok, document} ->
+        Enum.any?(get_in(document, ["nodes", to_string(kind)]) || [], &(&1["name"] == id))
+
+      _other ->
+        false
+    end
+  end
 
   # A place as the page sends it back: what `key/1` wrote.
   defp place("domain"), do: :domain
@@ -157,25 +214,36 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     end)
   end
 
-  @impl true
-  def render(assigns) do
-    %{documents: documents, overlays: overlays, place: place, domain: domain} = assigns
+  # What the page shows, worked out when the state changes rather than at every render, so
+  # that a render with the same picture sends the canvas nothing new.
+  defp derive(socket) do
+    %{documents: documents, overlays: overlays, place: place, domain: domain} = socket.assigns
     ref = Places.ref(place, domain)
     domain_document = ok(documents[Places.ref(:domain, domain)])
+    document = ok(documents[ref])
 
-    assigns =
-      assign(assigns,
+    socket =
+      assign(socket,
         tab: Places.tab(place),
         state: documents[ref],
-        document: ok(documents[ref]),
-        overlay: overlays[ref],
+        document: document,
         domain_document: domain_document,
-        trail: trail(place, domain, domain_document, ok(documents[ref])),
-        canvas: "#{assigns.id}-#{:erlang.phash2(place)}"
+        trail: trail(place, domain, domain_document, document),
+        canvas: "#{socket.assigns.id}-#{:erlang.phash2(place)}",
+        open: %{target: socket.assigns.myself, here: place}
       )
 
-    assigns = assign(assigns, picture: picture(assigns))
+    picture = picture(socket.assigns)
+    overlay = overlays[ref]
 
+    assign(socket,
+      picture: picture,
+      overlay: if(picture && picture.overlay && is_map(overlay), do: overlay)
+    )
+  end
+
+  @impl true
+  def render(assigns) do
     ~H"""
     <div id={@id} class="ehg-explorer">
       <div class="ehg-tabs" role="tablist" aria-label="Viewpoint">
@@ -240,9 +308,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         module={Canvas}
         id={@canvas}
         document={@document}
-        overlay={@picture.overlay && @overlay}
+        overlay={@overlay}
         view={@picture.view}
-        open={@myself}
+        open={@open}
       />
 
       <Actors.table :if={@place == :domain and @document} document={@document} canvas={@canvas} />
