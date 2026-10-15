@@ -1,0 +1,1 @@
+CodeRabbit on #309: whole picture zoom on a canvas without room computed a scale of zero or below (fixed, 23420bc4; a one-line guard in the hook, which has no JS test harness here). Gate EXIT=0.
