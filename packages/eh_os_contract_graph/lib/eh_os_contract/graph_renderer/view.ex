@@ -324,8 +324,8 @@ defmodule EhOsContract.GraphRenderer.View do
   defp lines("timer", node, _pinned), do: List.wrap(fires(node))
   defp lines(_kind, _node, _pinned), do: []
 
-  # Where an event of a contract's full graph is declared, when not in one of its units: the
-  # sibling contract it is consumed from, or another application it is received from.
+  # Where an event of a contract is declared, when not in one of its units: the sibling
+  # contract it is consumed from, or another application it is received from.
   defp home(%{"declared_as" => "event:" <> declared}) do
     case String.split(declared, ":") do
       [contract, _ | _] when contract != "" -> contract
@@ -574,7 +574,7 @@ defmodule EhOsContract.GraphRenderer.View do
           not MapSet.member?(owned, r["from"]),
           by_id[r["from"]] != nil,
           uniq: true,
-          do: card("event", by_id[r["from"]])
+          do: card("event", by_id[r["from"]], foot: home(by_id[r["from"]]))
 
     its_commands = MapSet.new(commands, & &1.id)
     invariants = for i <- nodes(document, "invariant"), i["of"] == id, do: card("invariant", i)

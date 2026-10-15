@@ -352,6 +352,17 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   end
 
   describe "unit/2, one unit" do
+    test "says which contract an event it consults from elsewhere is declared in" do
+      document = Fixtures.document("rehmed.external_payers")
+      view = View.unit(document, "unit:rehmed.external_payers:payer_period")
+
+      assert card(view, "event:rehmed.external_payers:visit_charged_to_payer").foot ==
+               "rehmed.settlement"
+
+      own = for %{kind: "event", facts: %{"unit" => _}} = e <- view.nodes, do: e.foot
+      assert Enum.all?(own, &is_nil/1)
+    end
+
     test "lists the state's fields on its card, and counts the scenarios on each arrow" do
       document = Fixtures.document("rehmed.settlement")
       id = "unit:rehmed.settlement:visit_settlement"
