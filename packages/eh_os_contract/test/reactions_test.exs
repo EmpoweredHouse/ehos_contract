@@ -76,6 +76,12 @@ defmodule EhOsContract.ReactionsTest do
     assert Reactions.commands_on(:policy, policy, :withdrawn) == []
   end
 
+  # What `Consumer` reads directly on every event a policy takes.
+  test "a policy's commands are its `issues:`, each once" do
+    for policy <- Model.fetch(@ledger).policies,
+        do: assert(Reactions.commands(:policy, policy) == Enum.uniq(List.wrap(policy.issues)))
+  end
+
   test "the DSL's declarations give the same list as the model" do
     declarations = Rules.declarations(@ledger.spark_dsl_config())
 
