@@ -15,7 +15,7 @@ The set had two reviews on #302's branch. Here it had two more on `origin/main..
   - The catalogue had no fallback clause, so another read would have raised an error that logs the actor.
   - The scenarios' PESEL had a valid checksum and date, so it may be a real person's.
 - **My own mistake, caught by the second round** (a6c997b7): the PESEL replacement also changed Rehmed's tests, so the tests that no export carries Rehmed's personal values looked for a number only GraphLab holds. They are back on Rehmed's.
-- **The property test of `visit_settlement` failed about one run in five** (5th commit from the end). The gate found it. Two generated payments summed past a 64-bit integer, and the decider handed that sum to the payment rules, whose declared type refused it. Such a close is now refused as payments that do not sum to the total. A deterministic walk holds it, and 15 runs in a row of the property test pass. Rehmed's decider compares the sum without the domain service and does not have this.
+- **The property test of `visit_settlement` failed about one run in five** (6dc8f32e). The gate found it. Two generated payments summed past a 64-bit integer, and the decider handed that sum to the payment rules, whose declared type refused it. Such a close is now refused as payments that do not sum to the total. A deterministic walk holds it, and 15 runs in a row of the property test pass. Rehmed's decider compares the sum without the domain service and does not have this.
 
 **Skipped**
 - **GraphLab's `check` counts are pinned together with the clients' in `e10_outputs_test.exs`.** The comment there names each of its 16 warnings and 10 notices, and splitting `check` by tree is a larger change.
