@@ -353,13 +353,15 @@ defmodule EhOsContract.Contract.Rules.Fields do
     ])
   end
 
-  # For each local event, the correlation fields of the process managers handling it.
+  # For each local event, the correlation fields of the process managers handling it,
+  # each once: a field named twice is P4's to report, and an event a manager both
+  # starts and ends on is one event (plan DD, C1, #304).
   defp correlated(d) do
     managers =
       for pm <- d.process_managers,
           event <- handled(pm),
           name <- pm.correlate,
-          into: [] do
+          uniq: true do
         {event, name, "process manager #{inspect(pm.name)}"}
       end
 

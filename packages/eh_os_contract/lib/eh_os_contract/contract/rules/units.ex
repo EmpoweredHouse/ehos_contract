@@ -334,7 +334,8 @@ defmodule EhOsContract.Contract.Rules.Units do
             else: []
 
         # Plan DD, C1 (#304): the key it reads by names each field once, as a
-        # correlation does (P4, R2).
+        # correlation does (P4, R2); the rules after this one read each field once, so a
+        # field named twice is reported here and not twice there.
         repeated =
           for field <- consults.match |> DslRules.duplicates(& &1) |> Enum.uniq() do
             {"A4: #{where} consults #{event} matching #{inspect(field)} twice; a match names " <>
@@ -342,7 +343,7 @@ defmodule EhOsContract.Contract.Rules.Units do
           end
 
         outside =
-          for field <- consults.match, field not in unit.identity do
+          for field <- Enum.uniq(consults.match), field not in unit.identity do
             {"A4: #{where} consults #{event} matching #{inspect(field)}, which is not in its " <>
                "identity #{inspect(unit.identity)}", consults}
           end
@@ -353,7 +354,9 @@ defmodule EhOsContract.Contract.Rules.Units do
               []
 
             tagged ->
-              for field <- consults.match, field in unit.identity, field not in tagged do
+              for field <- Enum.uniq(consults.match),
+                  field in unit.identity,
+                  field not in tagged do
                 {"A4: #{where} consults #{event} matching #{inspect(field)}, which the event " <>
                    "does not carry as a required, non-personal :id field, so no appended " <>
                    "#{event} is tagged with it and the boundary could never find one", consults}

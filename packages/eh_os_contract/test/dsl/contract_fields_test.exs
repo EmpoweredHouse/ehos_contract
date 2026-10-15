@@ -263,6 +263,33 @@ defmodule EhOsContract.ContractFieldsTest do
       assert message =~ "so it cannot be personal (optional_correlation.ex:11)"
     end
 
+    # Plan DD, C1 (#304): a field named twice in `correlate` is P4's to refuse, once;
+    # what F4 says of it is said once too, not once per mention.
+    test "a correlation field named twice is reported once" do
+      message =
+        refuse_contract("CorrelatedTwiceOptional", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+            event :visit_closed, "Wizyta zamknięta" do
+              field :clinic_id, :id, optional: true
+            end
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate [:clinic_id, :clinic_id]
+            starts_on :visit_closed
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~ "P4: process manager :chase correlates on :clinic_id twice"
+
+      assert length(String.split(message, "field :clinic_id tells which run")) == 2,
+             message
+    end
+
     test "control: an optional field outside the correlation compiles" do
       assert %{} =
                compile_contract("OptionalElsewhere", """

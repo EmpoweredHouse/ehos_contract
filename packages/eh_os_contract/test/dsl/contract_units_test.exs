@@ -150,6 +150,24 @@ defmodule EhOsContract.ContractUnitsTest do
                  "names each field once (consults_match_twice.ex:6)"
     end
 
+    test "a wrong field named twice in a match is reported once" do
+      message =
+        refuse_contract("ConsultsWrongTwice", """
+          dcb :payer_period, "Okres płatnika" do
+            identity :period_id
+            consults :period_closed, match: [:payer_id, :payer_id]
+            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+            event :period_closed, "Zamknięto okres"
+          end
+        """)
+
+      assert message =~ "matching :payer_id twice"
+
+      assert length(String.split(message, "matching :payer_id, which is not in its identity")) ==
+               2,
+             message
+    end
+
     test "a match on a field the local event does not carry as a required :id is refused" do
       # An appended event is tagged with its required, non-personal :id fields, and
       # a boundary finds what it consults by tags: matched on a text field, it would
