@@ -176,6 +176,21 @@ defmodule EhOsContract.ViewTest do
     assert tree =~ "stage elsewhere  ← no included event resolves to a contract of the domain"
   end
 
+  # Plan DD, P2e (#220), review: the tree said "one per a, b" where the report, the page
+  # and the dashboard say "one per a and b".
+  test "a process module's runs are told apart in the report's words" do
+    run = EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun)
+    modules = [UniversalityGate.TreatmentEpisode]
+
+    assert View.render(
+             UniversalityGate.Domain,
+             modules ++ [%{run | correlate: [:episode_id, :payer_id]}]
+           ) =~
+             "closing · one per episode_id and payer_id · 4 stages"
+
+    refute View.render(UniversalityGate.Domain, modules ++ [%{run | correlate: []}]) =~ "one per"
+  end
+
   test "control: a contract of another domain is not in the tree" do
     refute View.render(@domain, [ProcessShapes.Bare]) =~ "ProcessShapes"
   end

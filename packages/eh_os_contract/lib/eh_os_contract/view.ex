@@ -119,7 +119,14 @@ defmodule EhOsContract.View do
         {"stage #{stage.name}  ← #{included}", [], []}
       end
 
-    {"process #{p.name}  #{p.label} · one per #{list(p.correlate)} · " <>
+    # What one run is, as the report, the page and the dashboard say it.
+    runs =
+      case EhOsContract.Report.Sentence.runs_per(p.correlate) do
+        nil -> ""
+        clause -> " · #{clause}"
+      end
+
+    {"process #{p.name}  #{p.label}#{runs} · " <>
        plural(length(p.stages), "stage"), details, stages}
   end
 
