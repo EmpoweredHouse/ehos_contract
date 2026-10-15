@@ -17,7 +17,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   # steps, its wiring and its scenarios (v2 plan, E7c), and for an aggregate that
   # declares a lifecycle, the same first two questions of its transitions (plan LC4b).
   # A contract declares no process (plan DD, P2h, #221): runs and promises are a
-  # process module's, and this screen does not show them yet (P2e, #220).
+  # process module's. Each process module the registry finds has a section of its own
+  # after the contracts (plan DD, P2e, #220), as `mix eh_os_contract.report` prints its
+  # report: its deployment, its runs, its duration against a confirmed deadline, its
+  # stages out of order and its promises' verdicts.
   @moduledoc false
 
   use Phoenix.LiveView
@@ -30,7 +33,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
     reports =
       Enum.map(EhOsContract.Registry.contracts(), &Conformance.report(&1, []))
 
-    {:ok, assign(socket, :reports, reports)}
+    processes =
+      Enum.map(EhOsContract.Registry.processes(), &Conformance.report(&1, []))
+
+    {:ok, assign(socket, reports: reports, processes: processes)}
   end
 
   @impl true
@@ -142,6 +148,53 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           </ul>
         </section>
       </div>
+
+      <div :for={report <- @processes}>
+        <h2>{report.process}</h2>
+
+        <section>
+          <h3>Process module</h3>
+          <p>
+            Version {report.deployment.deployed.version}, {process_deployed_since(
+              report.deployment.deployed.since
+            )}.
+          </p>
+        </section>
+
+        <section :for={process <- report.processes}>
+          <h3>{process.label}</h3>
+          <p :if={Sentence.accountable(process.accountable)}>
+            {Sentence.accountable(process.accountable)}
+          </p>
+          <p>Runs in this period: {process.runs}{runs_per(report.module)}.</p>
+
+          <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
+          <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
+
+          <div :for={{heading, pairs} <- List.wrap(Sentence.out_of_order(process.out_of_order))}>
+            <h4>{heading}</h4>
+            <ul>
+              <li :for={pair <- pairs}>{pair}</li>
+            </ul>
+          </div>
+
+          <div :if={process.promises != []}>
+            <h4>Promises</h4>
+            <ul>
+              <li :for={assertion <- process.promises}>
+                <p>{Sentence.rule(assertion)}</p>
+                <p class={outcome_class(assertion)}>{Sentence.verdict(assertion)}</p>
+                <p
+                  :for={qualification <- Sentence.qualifications(assertion)}
+                  class="outcome-qualification"
+                >
+                  {qualification}
+                </p>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </div>
     </div>
     """
   end
@@ -166,4 +219,34 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @spec deployed_since(DateTime.t() | nil) :: String.t()
   defp deployed_since(nil), do: "nothing has happened under this version yet"
   defp deployed_since(at), do: "in force since #{DateTime.to_date(at)}"
+
+  # A process module stamps no event with its version: it is in force since the
+  # deployment that carries it was first recorded, as the text report says.
+  @spec process_deployed_since(DateTime.t() | nil) :: String.t()
+  defp process_deployed_since(nil), do: "not recorded as deployed"
+  defp process_deployed_since(at), do: "deployed since #{DateTime.to_date(at)}"
+
+  # The one line the report exists to be read from, so it is the one place colour
+  # carries the answer. **The verdict only**: one of the qualifications beside it says
+  # an outage means "this is not a breach on the client's side", and that sentence in
+  # the breach colour would say the opposite of what it means.
+  @spec outcome_class(map()) :: String.t()
+  defp outcome_class(a) do
+    cond do
+      a.instances == 0 -> ""
+      a.violated > 0 -> "outcome-breached"
+      a.pending > 0 -> "outcome-pending"
+      true -> "outcome-ok"
+    end
+  end
+
+  # What one run is, beside the count: the process module's `correlate`, read from its
+  # model, since the report carries no such field.
+  @spec runs_per(module()) :: String.t() | nil
+  defp runs_per(module) do
+    with %{correlate: fields} <- EhOsContract.Model.process(module),
+         clause when is_binary(clause) <- Sentence.runs_per(fields),
+         do: ", " <> clause,
+         else: (_ -> nil)
+  end
 end

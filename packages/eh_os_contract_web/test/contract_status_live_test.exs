@@ -3,8 +3,9 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   Two kinds of proof, deliberately not one: a real, DB-backed run through
   `mount/3` shows the wiring to `EhOsContract.Registry`/`EhOsContract.Conformance` is not
   hollow; the `render/1` cases below it show the sections a real log rarely
-  produces render correctly. A contract declares no process, so its runs and
-  promises are not on this screen (plan DD, P2h, #221). `EhOsContract.Registry.load!/0`
+  produces render correctly. A contract declares no process (plan DD, P2h, #221): its
+  runs and promises are a process module's, which has a section of its own (plan DD,
+  P2e, #220). `EhOsContract.Registry.load!/0`
   runs once at boot (test_helper.exs), the same way a real host would call it once
   at startup.
   """
@@ -14,8 +15,9 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
+  alias EhOsContract.Report.Sentence
   alias EhOsContract.Web.Live.ContractStatus
-  alias EhOsContract.Web.TestHost.Fixtures.CaseHandling
+  alias EhOsContract.Web.TestHost.Fixtures.{CaseHandling, CaseRun}
   alias EhOsContract.Web.TestHost.Access
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
@@ -48,8 +50,10 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     html = html_response(conn, 200)
 
     assert html =~ "web_test_host.case_handling"
-    # A contract declares no process (plan DD, P2h, #221): no runs, no promises.
-    refute html =~ "Runs in this period"
+    # A contract declares no process (plan DD, P2h, #221): its runs are under the
+    # process module's heading, after every contract's section.
+    [contracts, _processes] = String.split(html, "<h2>web_test_host.case_run</h2>")
+    refute contracts =~ "Runs in this period"
     # A v2 step: the rejection reaching its policy, and the policy's command.
     assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"
     # A v2 contract's scenarios, in the report's words: this one declares none.
@@ -111,6 +115,82 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     end
   end
 
+  # Plan DD, P2e (#220): a process module's report, beside the contracts.
+  test "a process module has its section: its version, runs and promises' verdicts" do
+    approve("case-a")
+
+    html =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/contract")
+      |> html_response(200)
+
+    report = EhOsContract.Conformance.report(CaseRun, [])
+    [process] = report.processes
+
+    assert html =~ "<h2>web_test_host.case_run</h2>"
+    assert html =~ "Version #{report.deployment.deployed.version}"
+    assert html =~ "<h3>A case, from opening to closing</h3>"
+    assert html =~ "Runs in this period: 1, one per case_id."
+
+    [promise] = process.promises
+    assert html =~ escape(Sentence.rule(promise))
+    assert html =~ ~s(<p class="outcome-ok">#{Sentence.verdict(promise)}</p>)
+  end
+
+  test "a process module's duration, stages out of order and a broken promise" do
+    approve("case-a")
+    report = EhOsContract.Conformance.report(CaseRun, [])
+    [process] = report.processes
+    [promise] = process.promises
+
+    process = %{
+      process
+      | accountable: "Case officer",
+        declarations: [%{key: :deadline, value: {7, :day}}],
+        duration: %{runs: 3, within: 1, exceeded: 1, overdue: 1, deadline: {7, :day}},
+        out_of_order: %{
+          runs: 2,
+          pairs: [
+            %{
+              earlier: :opening,
+              later: :closing,
+              runs: 2,
+              earlier_label: "Opening",
+              later_label: "Closing"
+            }
+          ]
+        },
+        promises: [%{promise | instances: 3, satisfied: 1, violated: 1, pending: 1, suspended: 1}]
+    }
+
+    html =
+      render_component(&ContractStatus.render/1, %{
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
+        reports: [],
+        processes: [put_in(%{report | processes: [process]}.deployment.deployed.since, nil)]
+      })
+
+    assert html =~ "not recorded as deployed"
+    assert html =~ Sentence.accountable("Case officer")
+    assert html =~ Sentence.declaration(%{key: :deadline, value: {7, :day}})
+    for line <- Sentence.duration(process.duration), do: assert(html =~ line)
+
+    {heading, [pair]} = Sentence.out_of_order(process.out_of_order)
+    assert html =~ "<h4>#{heading}</h4>"
+    assert html =~ "<li>#{pair}</li>"
+
+    [broken] = process.promises
+    assert html =~ ~s(<p class="outcome-breached">#{Sentence.verdict(broken)}</p>)
+
+    # The qualifications beside the verdict, a suspension's among them, are not
+    # coloured as a breach.
+    assert [_ | _] = qualifications = Sentence.qualifications(broken)
+    assert html =~ ~s(class="outcome-qualification")
+    for q <- qualifications, do: assert(html =~ escape(q))
+  end
+
   # HEEx escapes interpolated values, so a sentence carrying a quotation mark is not in
   # the HTML verbatim.
   defp escape(sentence),
@@ -120,6 +200,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assigns = %{
       eh_os_contract_web_access: :all,
       eh_os_contract_web_base_path: "/dashboard",
+      processes: [],
       reports: [
         report(
           activity: %{events: 0, commands: 0},
@@ -150,6 +231,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assigns = %{
       eh_os_contract_web_access: :all,
       eh_os_contract_web_base_path: "/dashboard",
+      processes: [],
       reports: [
         report(
           activity: %{events: 0, commands: 0},
@@ -176,6 +258,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       render_component(&ContractStatus.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
+        processes: [],
         reports: [
           report(drift: [@drift])
         ]
@@ -185,6 +268,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       render_component(&ContractStatus.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
+        processes: [],
         reports: [report()]
       })
 
@@ -198,6 +282,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       render_component(&ContractStatus.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
+        processes: [],
         reports: [report(deployment: deployment(since: nil))]
       })
 
