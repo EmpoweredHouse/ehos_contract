@@ -23,6 +23,14 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **An explorer of a domain** (plan DD, stage G1, #297): `EhOsContract.GraphRenderer.Explorer` is one canvas
+  with two viewpoints, the structure (the domain's system with a switch to its context map, a contract, a unit
+  with a switch to its lifecycle) and the processes, a path back up, and the panel's "Open" where a card leads —
+  across the viewpoints, from a process's event to its contract. Its documents and overlays come from a loader
+  the host implements (`EhOsContract.GraphRenderer.Loader`), called in the background when the reader enters a
+  picture, an overlay only where the picture draws it; one that fails is said in place of the picture and loaded
+  again when the reader comes back. `Canvas` takes `open`, the component the
+  panel's "Open" goes to.
 - **A bar over the canvas: search, focus, the log's switch and zoom** (plan DD, stage G1, #297). The search dims
   the cards it does not find and on Enter selects the first one and moves the view to it (`View.matches/2`);
   "Focus on the selection" draws a card or a group with what its relations reach, laid out again

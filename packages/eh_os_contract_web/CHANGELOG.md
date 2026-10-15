@@ -27,6 +27,13 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The graph screen is one explorer per domain** (plan DD, stage G1, eh-os-contract#297): the structure and the
+  processes as two tabs of one canvas with a path, instead of every domain's map and system, a selector, the
+  selected contract's pictures and each unit stacked on one page; the panel opens a contract, a unit or an
+  event's contract. Each picture's document and the log's numbers over it are built when the reader enters
+  it, in the background — the log only for a picture that draws it — so opening the screen counts the log for
+  each domain's system alone, not for a contract the reader never opens. Moves no verdict.
+
 - **The graph screen's pictures can be searched, focused and zoomed** (plan DD, stage G1, eh-os-contract#297):
   each has a bar with a search that finds a card by its words and moves to it, focus on the selection's
   neighbourhood, a switch between the declaration alone and with the log, and zoom buttons; a large picture

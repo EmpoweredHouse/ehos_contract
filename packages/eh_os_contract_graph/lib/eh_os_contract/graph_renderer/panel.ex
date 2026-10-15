@@ -43,12 +43,21 @@ defmodule EhOsContract.GraphRenderer.Panel do
   attr :overlay, :map, default: nil
   attr :target, :any, required: true, doc: "where a click on a reference goes"
 
+  attr :open, :map,
+    default: nil,
+    doc: "`%{id: id, label: words, target: target}`: a button that opens where the element leads"
+
   @doc "The panel of what is selected."
   @spec panel(map()) :: Phoenix.LiveView.Rendered.t()
   def panel(assigns) do
     # Every part takes the joins, the click's target and the overlay together.
     assigns
-    |> assign(:ctx, %{lookup: assigns.lookup, target: assigns.target, overlay: assigns.overlay})
+    |> assign(:ctx, %{
+      lookup: assigns.lookup,
+      target: assigns.target,
+      overlay: assigns.overlay,
+      open: assigns.open
+    })
     |> selected()
   end
 
@@ -125,6 +134,16 @@ defmodule EhOsContract.GraphRenderer.Panel do
           </button>
           <p :if={@name} class="ehg-panel-name">{@name}</p>
         </header>
+        <button
+          :if={@ctx.open}
+          type="button"
+          class="ehg-open"
+          phx-click="open"
+          phx-value-id={@ctx.open.id}
+          phx-target={@ctx.open.target}
+        >
+          {@ctx.open.label} →
+        </button>
         {render_slot(@inner_block)}
       </div>
     </aside>

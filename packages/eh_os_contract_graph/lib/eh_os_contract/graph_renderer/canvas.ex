@@ -84,7 +84,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Icons, Lookup, Marks, Panel, View}
+  alias EhOsContract.GraphRenderer.{Icons, Lookup, Marks, Panel, Places, View}
 
   @impl true
   def mount(socket),
@@ -96,6 +96,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   @impl true
   def update(assigns, socket) do
     socket = assign(socket, Map.take(assigns, [:id, :document]))
+    socket = assign(socket, :opener, Map.get(assigns, :open, socket.assigns[:opener]))
     document = Map.fetch!(socket.assigns, :document)
     spec = Map.get(assigns, :view, socket.assigns[:spec] || :all)
     given = Map.get(assigns, :overlay, socket.assigns[:given])
@@ -174,6 +175,24 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       focusable?: selected != nil and focusable?(view, selected),
       picked: selected && picked(view, document, selected)
     )
+    |> opens()
+  end
+
+  # Where the selected card leads, when an explorer gave the canvas a way to open it
+  # (`EhOsContract.GraphRenderer.Explorer`): `%{target: component, here: place}`, and no
+  # way back to where the reader already is.
+  defp opens(%{assigns: %{opener: nil}} = socket), do: assign(socket, opens: nil)
+
+  defp opens(socket) do
+    %{opener: opener, document: document, picked: picked, selected: selected} = socket.assigns
+
+    opens =
+      with {type, %{kind: kind, facts: facts}} when type in [:node, :group] <- picked,
+           {place, label} when place != opener.here <- Places.destination(document, kind, facts),
+           do: %{id: selected, label: label, target: opener.target},
+           else: (_ -> nil)
+
+    assign(socket, opens: opens)
   end
 
   # Focus is on a card or a group: an arrow has no neighbourhood of its own to draw.
@@ -368,7 +387,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       <p :if={@stale_overlay?} class="ehg-note">
         The numbers from the log are of another version of this document and are not shown.
       </p>
-      <Panel.panel :if={@picked} picked={@picked} lookup={@lookup} overlay={@overlay} target={@myself} />
+      <Panel.panel
+        :if={@picked}
+        picked={@picked}
+        lookup={@lookup}
+        overlay={@overlay}
+        target={@myself}
+        open={@opens}
+      />
     </div>
     """
   end

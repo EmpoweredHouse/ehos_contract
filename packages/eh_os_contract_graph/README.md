@@ -9,7 +9,7 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress.** It draws six views — a contract's full graph, a unit, an aggregate's lifecycle, a
+**Work in progress.** An explorer moves through a domain's pictures (below); a canvas draws one. It draws six views — a contract's full graph, a unit, an aggregate's lifecycle, a
 process module's stages and promises, a domain's context map and its system — and, as a test bed, every node
 and relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and where it comes from, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
@@ -29,6 +29,26 @@ A host of `eh_os_contract_web` needs none of this: the dashboard declares the de
 script and the stylesheet in its own. The two are made for each other — the script in the dashboard's bundle
 reads the markup this package renders — so update them together:
 `mix deps.update eh_os_contract_web eh_os_contract_graph`.
+
+## Exploring a domain
+
+The explorer is one canvas the reader moves through, with two viewpoints as tabs: the **structure** — the
+domain's system (its contracts in their contexts, with a switch to its context map), a contract, one of its units
+(with a switch to its lifecycle) — and the **processes**. A path goes back up, and the panel opens where a card
+leads: a contract or a process of the map, a unit of a contract, an event's unit or contract.
+
+```heex
+<.live_component
+  module={EhOsContract.GraphRenderer.Explorer}
+  id="graph"
+  domain="Rehmed.Domain"
+  loader={MyAppWeb.GraphLoader}
+/>
+```
+
+The host gives it a loader, `EhOsContract.GraphRenderer.Loader`: `document/2` and `overlay/2` of a domain, a
+contract or a process module, which the explorer calls in the background the first time the reader enters a
+picture. An application reads its engine; the EHOS Console reads each application's `GET <mount>/graph/…`.
 
 ## Drawing a document
 
