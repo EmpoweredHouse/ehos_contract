@@ -20,7 +20,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   # process module's. Each process module the registry finds has a section of its own
   # after the contracts (plan DD, P2e (#220)), as `mix eh_os_contract.report` prints its
   # report: its deployment, its runs, its duration against a confirmed deadline, its
-  # stages out of order and its promises' verdicts.
+  # stages out of order and its promises' verdicts. A process module's report reads its
+  # whole history, so it is computed once the page connects, not also for the static
+  # render before it (plan DD, P2e (#220), review); the contracts' sections stay as
+  # they were.
   @moduledoc false
 
   use Phoenix.LiveView
@@ -33,8 +36,12 @@ defmodule EhOsContract.Web.Live.ContractStatus do
     reports =
       Enum.map(EhOsContract.Registry.contracts(), &Conformance.report(&1, []))
 
+    # `nil` while a process module's report waits for the connection.
     processes =
-      Enum.map(EhOsContract.Registry.processes(), &Conformance.report(&1, []))
+      case EhOsContract.Registry.processes() do
+        [] -> []
+        registered -> if connected?(socket), do: Enum.map(registered, &Conformance.report(&1, []))
+      end
 
     {:ok, assign(socket, reports: reports, processes: processes)}
   end
@@ -149,7 +156,9 @@ defmodule EhOsContract.Web.Live.ContractStatus do
         </section>
       </div>
 
-      <div :for={report <- @processes}>
+      <p :if={@processes == nil}>The process modules' reports are read once the page connects.</p>
+
+      <div :for={report <- @processes || []}>
         <h2>{report.process}</h2>
 
         <section>

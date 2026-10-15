@@ -50,10 +50,9 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     html = html_response(conn, 200)
 
     assert html =~ "web_test_host.case_handling"
-    # A contract declares no process (plan DD, P2h, #221): its runs are under the
-    # process module's heading, after every contract's section.
-    [contracts, _processes] = String.split(html, "<h2>web_test_host.case_run</h2>")
-    refute contracts =~ "Runs in this period"
+    # A contract declares no process (plan DD, P2h, #221): runs are a process module's,
+    # whose section the static render leaves for the connection.
+    refute html =~ "Runs in this period"
     # A v2 step: the rejection reaching its policy, and the policy's command.
     assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"
     # A v2 contract's scenarios, in the report's words: this one declares none.
@@ -119,11 +118,10 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   test "a process module has its section: its version, runs and promises' verdicts" do
     approve("case-a")
 
-    html =
+    {:ok, _view, html} =
       build_conn()
       |> Access.put_actor("admin", ["eh_os_contract_admin"])
-      |> get("/dashboard/contract")
-      |> html_response(200)
+      |> live("/dashboard/contract")
 
     report = EhOsContract.Conformance.report(CaseRun, [])
     [process] = report.processes
@@ -136,6 +134,22 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     [promise] = process.promises
     assert html =~ escape(Sentence.rule(promise))
     assert html =~ ~s(<p class="outcome-ok">#{Sentence.verdict(promise)}</p>)
+  end
+
+  # Plan DD, P2e (#220), review: every process module's report read the whole history
+  # twice per visit, for the static render and again once connected.
+  test "a process module's report waits for the connection; the contracts' do not" do
+    approve("case-a")
+    conn = Access.put_actor(build_conn(), "admin", ["eh_os_contract_admin"])
+    static = conn |> get("/dashboard/contract") |> html_response(200)
+
+    assert static =~ "reports are read once the page connects."
+    refute static =~ "<h2>web_test_host.case_run</h2>"
+    assert static =~ "web_test_host.case_handling"
+
+    {:ok, _view, connected} = live(conn, "/dashboard/contract")
+    assert connected =~ "<h2>web_test_host.case_run</h2>"
+    refute connected =~ "read once the page connects"
   end
 
   test "a process module's duration, stages out of order and a broken promise" do
