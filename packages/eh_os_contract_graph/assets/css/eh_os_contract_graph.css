@@ -437,6 +437,24 @@
   color: var(--eh-os-contract-graph-hue);
 }
 
+/* A card drawn other than its kind, as a small card: an end of a run in the colour of an end, a final status
+   heavier. */
+.ehg-legend-swatch {
+  width: 14px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 3px;
+}
+
+.ehg-legend-variant[data-variant="terminal"] .ehg-legend-swatch {
+  border: 2.5px solid var(--eh-os-contract-graph-ends);
+}
+
+.ehg-legend-variant[data-variant="final"] .ehg-legend-swatch {
+  border-width: 3px;
+}
+
 /* Said to a screen reader, not shown. */
 .ehg-hidden {
   position: absolute;

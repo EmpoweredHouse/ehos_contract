@@ -151,16 +151,24 @@ defmodule EhOsContract.GraphRenderer.View do
     {"headless", "rests on, belongs to, or goes both ways"}
   ]
 
+  # What a card drawn other than its kind means.
+  @variants [{"terminal", "ends a run"}, {"final", "a final status"}]
+
   @doc """
-  What a legend of `view` lists: the kinds of the cards it draws, in a fixed order, and
-  the looks of the arrows it draws, each with what it means. Only what the view has is
+  What a legend of `view` lists: the kinds of the cards it draws, in a fixed order, the
+  cards drawn other than their kind (an event that ends a run, a final status), and the
+  looks of the arrows it draws, each with what it means. Only what the view has is
   listed, so a legend never explains what the picture does not show.
 
       View.legend(view)
       #=> %{kinds: [{"command", "command"}, {"event", "event"}],
-      #     lines: [{"solid", "leads to"}]}
+      #     variants: [], lines: [{"solid", "leads to"}]}
   """
-  @spec legend(t()) :: %{kinds: [{String.t(), String.t()}], lines: [{String.t(), String.t()}]}
+  @spec legend(t()) :: %{
+          kinds: [{String.t(), String.t()}],
+          variants: [{String.t(), String.t()}],
+          lines: [{String.t(), String.t()}]
+        }
   def legend(view) do
     drawn = MapSet.new(view.nodes, & &1.kind)
     rank = Map.new(Enum.with_index(@kinds))
@@ -179,7 +187,13 @@ defmodule EhOsContract.GraphRenderer.View do
           into: MapSet.new(),
           do: look
 
-    %{kinds: kinds, lines: for({look, _} = line <- @lines, look in looks, do: line)}
+    variants = MapSet.new(view.nodes, & &1.variant)
+
+    %{
+      kinds: kinds,
+      variants: for({variant, _} = v <- @variants, variant in variants, do: v),
+      lines: for({look, _} = line <- @lines, look in looks, do: line)
+    }
   end
 
   defp view(document, :all), do: all(document)

@@ -256,6 +256,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       <li :for={{kind, words} <- @legend.kinds} class="ehg-legend-kind" data-kind={kind}>
         <Icons.icon kind={kind} />{words}
       </li>
+      <li :for={{variant, words} <- @legend.variants} class="ehg-legend-variant" data-variant={variant}>
+        <span class="ehg-legend-swatch" aria-hidden="true"></span>{words}
+      </li>
       <li :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
         <svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
             :if={look != "headless"}

@@ -373,6 +373,19 @@
 .ehg-legend-kind .ehg-icon {
   color: var(--eh-os-contract-graph-hue);
 }
+.ehg-legend-swatch {
+  width: 14px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 3px;
+}
+.ehg-legend-variant[data-variant=terminal] .ehg-legend-swatch {
+  border: 2.5px solid var(--eh-os-contract-graph-ends);
+}
+.ehg-legend-variant[data-variant=final] .ehg-legend-swatch {
+  border-width: 3px;
+}
 .ehg-hidden {
   position: absolute;
   width: 1px;

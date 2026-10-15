@@ -134,6 +134,13 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
              |> Enum.any?(&(elem(&1, 0) == "thick"))
     end
 
+    test "lists a card drawn other than its kind, only where the view has one" do
+      process = View.legend(View.process(Fixtures.document("process.rehmed.clinical_visit")))
+      assert process.variants == [{"terminal", "ends a run"}]
+
+      assert View.legend(View.contract(Fixtures.document("rehmed.settlement"))).variants == []
+    end
+
     test "explains a dotted line with no head as both dotted and headless" do
       view = %{nodes: [], relations: [%{line: "dotted", head: false}], groups: []}
 
