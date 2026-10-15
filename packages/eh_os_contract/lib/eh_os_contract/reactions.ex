@@ -81,6 +81,18 @@ defmodule EhOsContract.Reactions do
   def issues?(:process_manager, pm, command),
     do: Enum.any?(ways(pm), fn {_trigger, _on, way} -> command in List.wrap(way.issues) end)
 
+  @doc """
+  Whether `issuance` goes out when a timer fires rather than on an event: a timer's own
+  (`:timer`), or an `on` that names one of the process manager's timers.
+  """
+  @spec timer?(issuance()) :: boolean()
+  def timer?(%{trigger: :timer}), do: true
+
+  def timer?(%{trigger: :on, on: on, reaction: pm}),
+    do: Enum.any?(pm.timers, &(&1.name == on))
+
+  def timer?(_issuance), do: false
+
   # A process manager's ways in, in declaration order: its starts, its events, its timers.
   defp ways(pm) do
     for(s <- pm.starts_on, do: {:starts_on, s.event, s}) ++

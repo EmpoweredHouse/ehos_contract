@@ -51,6 +51,19 @@ defmodule EhOsContract.ReactionsTest do
     refute Reactions.issues?(:policy, %{handles: [], issues: [:deposit]}, :deposit)
   end
 
+  test "what goes out when a timer fires: a timer's own, and an on naming one" do
+    pm = %{
+      starts_on: [%{event: :opened, issues: [:remind]}],
+      on: [%{event: :later, issues: [:remind]}, %{event: :paid, issues: [:thank]}],
+      timers: [%{name: :later, issues: [:chase]}]
+    }
+
+    assert pm
+           |> then(&Reactions.issued_by(:process_manager, &1))
+           |> Enum.map(&{&1.on, Reactions.timer?(&1)}) ==
+             [opened: false, later: true, paid: false, later: true]
+  end
+
   test "the DSL's declarations give the same list as the model" do
     declarations = Rules.declarations(@ledger.spark_dsl_config())
 

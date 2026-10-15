@@ -163,11 +163,12 @@ defmodule EhOsContract.Paths do
         }
       end
 
-    # An event a process manager takes, `starts_on` or `on`; an `on` naming a timer has
-    # no stored type, and is left out with the events of no contract here.
+    # An event a process manager takes, `starts_on` or `on`, not a timer's firing, and
+    # one with a stored type: an event of no contract here is left out.
     managers =
       for %{kind: :process_manager, trigger: trigger, on: event} = r <- issued,
           trigger in [:starts_on, :on],
+          not EhOsContract.Reactions.timer?(r),
           type = type_of(model, event),
           type != nil do
         reaction(model, :process_manager, r.reaction, event, type, r.command, label)
