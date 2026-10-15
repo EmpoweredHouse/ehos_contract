@@ -438,7 +438,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy handling no event (`handles: []`); a policy issuing a command not of this contract |
+| `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy or an effect handling no event (`handles: []`); a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []` or a field named twice in it, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |

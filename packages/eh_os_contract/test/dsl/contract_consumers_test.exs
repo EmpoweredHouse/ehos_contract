@@ -50,6 +50,18 @@ defmodule EhOsContract.ContractConsumersTest do
                  "it reacts to (policy_handles_nothing.ex:12)"
     end
 
+    test "an effect that handles no event is refused" do
+      message =
+        refuse_contract("EffectHandlesNothing", """
+        #{@unit}
+          effect :notify_nobody, "Powiadom bez powodu", handles: [], delivery: :in_transaction
+        """)
+
+      assert message =~
+               "P1: effect :notify_nobody handles no event, so it never runs; name the events " <>
+                 "it reacts to (effect_handles_nothing.ex:12)"
+    end
+
     test "control: a policy on a consumed event compiles" do
       assert %{policies: [%{handles: [:visit_booked], issues: [:remind]}]} =
                compile_contract("PolicyOnConsumed", """

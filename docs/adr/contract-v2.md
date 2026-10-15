@@ -867,7 +867,8 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > and so was a unit's identity (F1). Both are refused now, naming the field, and the rules after them read
   > each field once, so the mistake is reported once. P1 assumed `handles:` names an event because the DSL
   > requires the key; `handles: []` satisfies that, and a policy on no event compiled, never ran, and was still
-  > permitted by dispatch to issue what it names. P1 now refuses it. Which commands a reaction issues is one
+  > permitted by dispatch to issue what it names. P1 now refuses it, and an effect on no event, which never ran
+  > either. Which commands a reaction issues is one
   > answer in the engine (`EhOsContract.Reactions`) that the rules, dispatch, the scenarios, the generated
   > callbacks and the readers of the model all ask, so a policy on no event could no longer be issuing
   > something to one of them and nothing to another. That answer tells an event a process manager takes from
