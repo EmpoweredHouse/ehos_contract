@@ -94,25 +94,24 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a label names its arrow's line and head, and one with nothing to say is blank" do
-      document = Fixtures.document("rehmed.statutory_reporting")
-      html = draw(document, nil, :declared)
-      [promise] = for %{type: "promise"} = r <- View.declared(document).relations, do: r.id
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      html = draw(document, nil, :process)
+      relations = View.process(document).relations
+      [promise] = for %{type: "promise"} = r <- relations, do: r.id
+      [precedes | _] = for %{type: "precedes"} = r <- relations, do: r.id
+      [accountable] = for %{type: "accountable_for"} = r <- relations, do: r.id
 
       label = at(html, "data-ehg-relation", promise)
       assert LazyHTML.attribute(label, "data-line") == ["thick"]
       assert LazyHTML.attribute(label, "data-head") == ["arrow"]
       assert LazyHTML.text(label) =~ "within 2 days"
-
-      resting =
-        at(
-          html,
-          "data-ehg-relation",
-          "depends_on:event:rehmed.statutory_reporting:p1_report_sent:external:Rehmed.Domain:p1"
-        )
-
-      assert LazyHTML.attribute(resting, "data-head") == ["none"]
-      assert "ehg-blank" in classes(resting)
       refute "ehg-blank" in classes(label)
+
+      assert "ehg-blank" in classes(at(html, "data-ehg-relation", precedes))
+
+      assert at(html, "data-ehg-relation", accountable) |> LazyHTML.attribute("data-head") == [
+               "none"
+             ]
     end
 
     test "a state card lists its fields, an end of a lifecycle and its start have their looks" do
@@ -217,6 +216,93 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       refute "is-untraversed" in classes(at(html, "data-ehg-relation", c.step))
       assert Enum.count(LazyHTML.query(html, ".ehg-count")) == 0
       assert html |> LazyHTML.query(".ehg-note") |> LazyHTML.text() =~ "another version"
+    end
+  end
+
+  # Plan DD, P2e (#220).
+  describe "a process's overlay" do
+    setup do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+      relations = View.process(document).relations
+      [promise] = for %{type: "promise"} = r <- relations, do: r
+      [other_way] = for %{type: "or_else"} = r <- relations, do: r.id
+
+      [
+        document: document,
+        overlay: overlay,
+        arrow: promise.id,
+        other_way: other_way,
+        promise: promise.facts["id"]
+      ]
+    end
+
+    defp count(html, attribute, id),
+      do: html |> at(attribute, id) |> LazyHTML.query(".ehg-count") |> Enum.map(&LazyHTML.text/1)
+
+    test "its runs on the process, and each event's occurrences, 0 included", c do
+      overlay =
+        c.overlay
+        |> put_in(["nodes", "process:rehmed.clinical_visit", "runs"], 3)
+        |> put_in(["nodes", "event:rehmed.scheduling:visit_completed"], %{"occurrences" => 3})
+
+      html = draw(c.document, overlay, :process)
+
+      assert count(html, "data-ehg-node", "process:rehmed.clinical_visit") == ["×3"]
+      assert count(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed") == ["×3"]
+
+      assert count(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent") == [
+               "×0"
+             ]
+
+      # Nothing the log counts is not an event.
+      assert count(html, "data-ehg-node", "actor:Rehmed.Domain:manager") == []
+    end
+
+    test "a promise's verdicts on its arrow, a broken one in the error colour", c do
+      verdicts = %{
+        "instances" => 6,
+        "satisfied" => 3,
+        "satisfied_via_eventually" => 3,
+        "satisfied_via_or_else" => 0,
+        "violated" => 1,
+        "pending" => 2,
+        "suspended" => 0
+      }
+
+      html = draw(c.document, put_in(c.overlay, ["nodes", c.promise], verdicts), :process)
+      label = at(html, "data-ehg-relation", c.arrow)
+
+      assert count(html, "data-ehg-relation", c.arrow) == ["· 3 kept, 1 broken, 2 pending"]
+      assert "is-failing" in classes(label)
+
+      # The dotted arrow is the same promise's: its state, as its panel's verdicts, and the
+      # words once, on the heavy one.
+      other_way = at(html, "data-ehg-relation", c.other_way)
+      assert "is-failing" in classes(other_way)
+      assert count(html, "data-ehg-relation", c.other_way) == []
+
+      # Over an empty log: no run opened it.
+      html = draw(c.document, c.overlay, :process)
+      assert count(html, "data-ehg-relation", c.arrow) == ["· none opened"]
+      refute "is-failing" in classes(at(html, "data-ehg-relation", c.arrow))
+    end
+
+    test "a promise the owner has yet to confirm is unconfirmed, overlay or not", c do
+      unverified =
+        update_in(c.document, ["nodes", "promise"], fn [p] -> [Map.put(p, "unverified", true)] end)
+
+      overlay = update_in(c.overlay, ["nodes"], &Map.delete(&1, c.promise))
+
+      for overlay <- [overlay, nil] do
+        assert count(draw(unverified, overlay, :process), "data-ehg-relation", c.arrow) ==
+                 ["· unconfirmed"]
+      end
+
+      # One merely missing from the overlay is not claimed unconfirmed, and with no overlay
+      # a confirmed one says nothing.
+      assert count(draw(c.document, overlay, :process), "data-ehg-relation", c.arrow) == []
+      assert count(draw(c.document, nil, :process), "data-ehg-relation", c.arrow) == []
     end
   end
 

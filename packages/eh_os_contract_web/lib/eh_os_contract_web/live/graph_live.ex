@@ -1,8 +1,8 @@
 defmodule EhOsContract.Web.Live.Graph do
   # The second screen: the pictures of the contract model, live in the dashboard. See
   # PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked. From the top:
-  # each domain's context map and system, then the selected contract's pictures, then
-  # its units.
+  # each domain's context map and system, then the selected contract's pictures and its
+  # units, or the selected process module's.
   #
   # **Drawn by `eh_os_contract_graph`** (plan E13b, batch 4): each picture is a view of
   # the engine's `graph.v1` document (`EhOsContract.Graph.Document`), the one the API
@@ -14,18 +14,21 @@ defmodule EhOsContract.Web.Live.Graph do
   # the pictures declared, and the mount that follows lays the log over them. A click
   # on a card or an arrow opens the renderer's panel (`EhOsContract.GraphRenderer.Panel`).
   #
-  # The selector picks a contract, by its id (plan DD, P1b, #186; until then it picked a
-  # process, and a contract without one could not be reached). Its picture is **declared
-  # versus observed** — the contract's full graph with the log laid over it (v2 plan E7c,
-  # plan EG1): the steps, and the actors, read models, queries and external systems
-  # around them. A contract declares no process (plan DD, P2h, #221). Each domain's
-  # document and overlay hold its process modules, as the API's do (plan DD, P2e, #220);
-  # drawing them and a process's own picture comes with the renderer's part of P2e.
+  # The selector picks a contract or a process module, each by its id, in two groups
+  # (plan DD, P1b, #186, for contracts; P2e, #220, for process modules), a value naming
+  # its kind too, since a process module may share its id with a contract. A contract's
+  # picture is **declared versus observed** — its full graph with the log laid over it
+  # (v2 plan E7c, plan EG1): the steps, and the actors, read models, queries and external
+  # systems around them. A process module's is its stages, the events each includes and
+  # its promises, with its runs, each event's occurrences and each promise's verdicts
+  # over them (the renderer's `:process` view). A contract declares no process (plan DD,
+  # P2h, #221).
   #
   # **Above it, each domain** (plan EG2): its context map — subdomains, contexts,
   # externals and their relations — with its actors under it, people and systems apart,
   # a row opening the actor's panel; and, where it has a v2 contract, its system: the
-  # contracts in their contexts, what one consumes from another, and the log over it.
+  # contracts in their contexts, what one consumes from another, its process modules
+  # with the contracts each includes, and the log over it.
   # **Below it, the units** of the selected contract, each its own picture: state,
   # commands, events, invariants and the scenarios that pin each path. The map and the
   # units describe the model rather than the log; they are here since 28 September at
@@ -42,18 +45,16 @@ defmodule EhOsContract.Web.Live.Graph do
   @impl true
   def mount(_params, _session, socket) do
     registered = EhOsContract.Registry.contracts()
+    processes = EhOsContract.Registry.processes()
 
-    # Plan DD, P1b (#186): every contract, by its id.
-    contracts =
-      for(
-        contract <- registered,
-        do: %{contract: contract, id: EhOsContract.Model.fetch(contract).id}
-      )
-      |> Enum.sort_by(& &1.id)
+    # Plan DD, P1b (#186) and P2e (#220): every contract and every process module, by id.
+    pickable =
+      Enum.sort_by(for(c <- registered, do: pickable(:contract, c)), & &1.id) ++
+        Enum.sort_by(for(p <- processes, do: pickable(:process, p)), & &1.id)
 
     # The domain's document and overlay are the ones the API serves, with the process
     # modules beside the contracts (plan DD, P2e, #220), so one digest names them.
-    modules = registered ++ EhOsContract.Registry.processes()
+    modules = registered ++ processes
 
     # Every registered domain has a map; one with a v2 contract has a system too.
     domains =
@@ -71,28 +72,48 @@ defmodule EhOsContract.Web.Live.Graph do
     socket =
       socket
       |> assign(:domains, domains)
-      |> assign(:contracts, contracts)
-      |> select_contract(List.first(contracts))
+      |> assign(:pickable, pickable)
+      |> select(List.first(pickable))
 
     {:ok, socket}
   end
 
+  # What the selector lists: its kind, its id and the value its option has.
+  defp pickable(kind, module) do
+    id = EhOsContract.Model.fetch(module).id
+    %{kind: kind, module: module, id: id, value: "#{kind}:#{id}"}
+  end
+
   @impl true
-  def handle_event("select_contract", %{"contract" => id}, socket) do
-    # An id the page did not list keeps what is selected rather than blanking it.
-    case Enum.find(socket.assigns.contracts, &(&1.id == id)) do
+  def handle_event("select", %{"selected" => value}, socket) do
+    # A value the page did not list keeps what is selected rather than blanking it.
+    case Enum.find(socket.assigns.pickable, &(&1.value == value)) do
       nil -> {:noreply, socket}
-      selected -> {:noreply, select_contract(socket, selected)}
+      selected -> {:noreply, select(socket, selected)}
     end
   end
 
-  @spec select_contract(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
-  defp select_contract(socket, nil) do
-    assign(socket, selected: nil, document: nil, overlay: nil, units: [])
+  # An event the page does not send — another name, or without `selected` — is ignored
+  # rather than crashing the viewer's page.
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  @spec select(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
+  defp select(socket, nil) do
+    assign(socket, selected: nil, kind: nil, document: nil, overlay: nil, units: [])
   end
 
-  defp select_contract(socket, selected) do
-    document = Document.contract(selected.contract)
+  defp select(socket, %{kind: :process} = selected) do
+    assign(socket,
+      selected: selected.value,
+      kind: :process,
+      document: Document.process(selected.module),
+      overlay: if(connected?(socket), do: Overlay.process(selected.module)),
+      units: []
+    )
+  end
+
+  defp select(socket, selected) do
+    document = Document.contract(selected.module)
     views = View.views(document)
 
     # Each unit by its id in the document, which is also its canvas's: another contract's
@@ -102,9 +123,10 @@ defmodule EhOsContract.Web.Live.Graph do
           do: %{id: id, title: title, lifecycle?: List.keymember?(views, {:lifecycle, id}, 0)}
 
     assign(socket,
-      selected: selected.id,
+      selected: selected.value,
+      kind: :contract,
       document: document,
-      overlay: if(connected?(socket), do: Overlay.contract(selected.contract)),
+      overlay: if(connected?(socket), do: Overlay.contract(selected.module)),
       units: units
     )
   end
@@ -141,24 +163,30 @@ defmodule EhOsContract.Web.Live.Graph do
       <% end %>
 
       <section>
-        <h3>Contract</h3>
+        <h3>Contract or process</h3>
 
-        <form :if={@contracts != []} id="contract-select" phx-change="select_contract">
-          <select name="contract">
-            <option
-              :for={contract <- @contracts}
-              value={contract.id}
-              selected={contract.id == @selected}
+        <form :if={@pickable != []} id="graph-select" phx-change="select">
+          <select name="selected">
+            <optgroup
+              :for={{label, kind} <- [{"Contracts", :contract}, {"Processes", :process}]}
+              :if={Enum.any?(@pickable, &(&1.kind == kind))}
+              label={label}
             >
-              {contract.id}
-            </option>
+              <option
+                :for={item <- Enum.filter(@pickable, &(&1.kind == kind))}
+                value={item.value}
+                selected={item.value == @selected}
+              >
+                {item.id}
+              </option>
+            </optgroup>
           </select>
         </form>
 
-        <p :if={@contracts == []}>No contract is registered.</p>
+        <p :if={@pickable == []}>No contract or process module is registered.</p>
       </section>
 
-      <section :if={@document}>
+      <section :if={@kind == :contract}>
         <h3>Declared versus observed, this contract</h3>
         <.live_component
           module={Canvas}
@@ -166,6 +194,17 @@ defmodule EhOsContract.Web.Live.Graph do
           document={@document}
           overlay={@overlay}
           view={:contract}
+        />
+      </section>
+
+      <section :if={@kind == :process}>
+        <h3>Declared versus observed, this process</h3>
+        <.live_component
+          module={Canvas}
+          id="process-graph"
+          document={@document}
+          overlay={@overlay}
+          view={:process}
         />
       </section>
 

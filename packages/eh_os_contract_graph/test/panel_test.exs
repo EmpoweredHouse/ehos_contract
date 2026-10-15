@@ -19,15 +19,17 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     )
   end
 
-  # What a reader sees in the panel `id` opens in `spec`, through a canvas.
-  defp open(name_or_document, id, spec \\ :all) do
+  # What a reader sees in the panel `id` opens in `spec`, through a canvas, with `overlay`.
+  defp open(name_or_document, id, spec \\ :all, overlay \\ nil) do
     document =
       if is_map(name_or_document),
         do: name_or_document,
         else: Fixtures.document(name_or_document)
 
     {:ok, live, _html} =
-      live_isolated(build_conn(), TestLive, session: %{"document" => document, "view" => spec})
+      live_isolated(build_conn(), TestLive,
+        session: %{"document" => document, "view" => spec, "overlay" => overlay}
+      )
 
     live |> with_target("#graph") |> render_click("select", %{"id" => id})
     live |> element(".ehg-panel") |> render() |> text()
@@ -94,25 +96,28 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "May be refused on Rejestry sprawdza się tylko dla firmy z kompletem danych"
     end
 
-    test "an event: who records it, the system it rests on, whether it ends the run" do
+    test "an event: who records it, the system it rests on" do
       text = open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:p1_report_sent")
 
       assert text =~ "Recorded by Integracja z rejestrem P1 actor"
-      assert text =~ "It ends the run."
       assert text =~ "Rests on Rejestr zdarzeń medycznych P1 external"
+      refute text =~ "It ends the run."
       refute text =~ "Source:"
     end
 
     test "an event of another contract says so, and no panel judges what depends on an event" do
       text =
-        open("rehmed.statutory_reporting", "event:rehmed.statutory_reporting:visit_completed")
+        open(
+          "rehmed.statutory_reporting",
+          "event:rehmed.statutory_reporting:visit_closed_clinically"
+        )
 
       assert text =~ "Declared in another contract and consumed here."
 
       # Whether an event is used is `mix eh_os_contract.check`'s to say (event-without-consumer);
       # what follows from it is on the graph's arrows.
       for {contract, event} <- [
-            {"rehmed.statutory_reporting", "visit_completed"},
+            {"rehmed.statutory_reporting", "visit_closed_clinically"},
             {"rehmed.settlement", "settlement_corrected"},
             {"rehmed.external_payers", "visit_excluded_from_invoice"}
           ] do
@@ -461,21 +466,22 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     end
 
     test "a promise's arrow names the promise, whose own panel stays reachable by its name" do
-      document = Fixtures.document("rehmed.statutory_reporting")
-      [arrow] = for %{type: "promise"} = r <- View.declared(document).relations, do: r.id
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      [arrow] = for %{type: "promise"} = r <- View.process(document).relations, do: r.id
 
-      promise =
-        "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
+      promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
 
-      text = open("rehmed.statutory_reporting", arrow, :declared)
+      text = open(document, arrow, :process)
 
       assert text =~
                "The promise medical_event_reported_within_statutory_window promise, kept within 2 days"
 
       assert text =~ "the first event opens it, and the second keeps it."
 
-      text = open("rehmed.statutory_reporting", promise, :declared)
+      text = open(document, promise, :process)
       assert text =~ "Opened by Pacjent wyszedł z gabinetu event"
+      assert text =~ "Kept by Wysłano informację do systemu P1 event"
+      assert text =~ "Kept the other way by Usługa nie podlega zgłoszeniu do P1 event"
     end
 
     test "a transition not yet taken says an aggregate still stands where it can be taken" do
@@ -505,6 +511,134 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       assert text =~
                "From the log Made 0 times. Not yet taken: an aggregate still stands where it can be taken."
+    end
+  end
+
+  # Plan DD, P2e (#220): a process module's document, and its processes in its domain's.
+  describe "a process module" do
+    setup do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+      promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      [document: document, overlay: overlay, promise: promise]
+    end
+
+    test "the process: one run, who answers for it, the contracts, its stages and promises, its runs",
+         c do
+      overlay = put_in(c.overlay, ["nodes", "process:rehmed.clinical_visit", "runs"], 4)
+      text = open(c.document, "process:rehmed.clinical_visit", :process, overlay)
+
+      assert text =~ "One run per visit_id."
+      assert text =~ "Accountable Manager gabinetu actor"
+      assert text =~ "Includes events of rehmed.scheduling contract"
+      assert text =~ "Stages, in order departure stage closing stage reporting stage"
+      assert text =~ "Promises medical_event_reported_within_statutory_window promise"
+      assert text =~ "From the log 4 runs."
+    end
+
+    test "a stage: its place in the process and its events, in no order", c do
+      text = open(c.document, "stage:rehmed.clinical_visit:reporting", :process)
+
+      assert text =~ "Stage 3 of 3 of Wizyta"
+      assert text =~ "Zgłoszenie P1 zakolejkowane event"
+      assert text =~ "No order is claimed among them."
+    end
+
+    test "an event: its contract, its stage, whether it ends a run, and where its fields are",
+         c do
+      text =
+        open(c.document, "event:rehmed.statutory_reporting:p1_report_sent", :process, c.overlay)
+
+      assert text =~ "Declared in rehmed.statutory_reporting contract."
+      assert text =~ "In the stage reporting stage."
+
+      assert text =~
+               "Its fields, and the unit that records it, are in the contract's own document."
+
+      assert text =~ "It ends the run."
+      assert text =~ "Rests on Rejestr zdarzeń medycznych P1 external"
+      # The overlay gives 0 for an event that did not happen.
+      assert text =~ "From the log Recorded 0 times."
+    end
+
+    test "a promise: its verdicts from the log, on its card and its arrow", c do
+      verdicts = %{
+        "instances" => 7,
+        "satisfied" => 4,
+        "satisfied_via_eventually" => 3,
+        "satisfied_via_or_else" => 1,
+        "violated" => 1,
+        "pending" => 2,
+        "suspended" => 0
+      }
+
+      overlay = put_in(c.overlay, ["nodes", c.promise], verdicts)
+      text = open(c.document, c.promise, :process, overlay)
+
+      assert text =~
+               "From the log Opened in 7 runs. Kept in 4: 3 by the event that keeps it, 1 the other way. Broken in 1. Pending in 2: not kept yet."
+
+      refute text =~ "Suspended"
+      refute text =~ "Unconfirmed"
+
+      [arrow] = for %{type: "promise"} = r <- View.process(c.document).relations, do: r.id
+      assert open(c.document, arrow, :process, overlay) =~ "From the log Opened in 7 runs."
+    end
+
+    test "a promise the owner has yet to confirm says so, overlay or not", c do
+      unverified =
+        update_in(c.document, ["nodes", "promise"], fn [p] -> [Map.put(p, "unverified", true)] end)
+
+      overlay = update_in(c.overlay, ["nodes"], &Map.delete(&1, c.promise))
+
+      for overlay <- [overlay, nil] do
+        text = open(unverified, c.promise, :process, overlay)
+
+        assert text =~
+                 "Unconfirmed: no run is judged against it until the process owner confirms it."
+
+        refute text =~ "From the log"
+      end
+
+      text = open(c.document, c.promise, :process, c.overlay)
+      assert text =~ "From the log No run has opened it."
+
+      # A confirmed one missing from an overlay is not claimed unconfirmed.
+      refute open(c.document, c.promise, :process, overlay) =~ "Unconfirmed"
+    end
+
+    test "its contracts are its document's, whether or not it has stages", c do
+      text = open(c.document, "process:rehmed.clinical_visit", :process)
+
+      assert text =~
+               "Includes events of rehmed.scheduling contract rehmed.clinical_documentation contract rehmed.statutory_reporting contract"
+
+      text = open(put_in(c.document, ["nodes", "stage"], []), "process:rehmed.clinical_visit")
+      assert text =~ "Includes events of rehmed.scheduling contract"
+      refute text =~ "Stages, in order"
+
+      # In the domain's, only those it includes, of all the domain's contracts.
+      text = open("domain.rehmed", "process:rehmed.payer_settlement", :system)
+
+      assert text =~
+               "Includes events of rehmed.settlement contract rehmed.external_payers contract"
+
+      refute text =~ "rehmed.scheduling"
+    end
+
+    test "in its domain: its module, the contracts whose events it includes, who answers for it" do
+      text = open("domain.rehmed", "process:rehmed.clinical_visit", :system)
+
+      assert text =~
+               "The process module rehmed.clinical_visit, in the code Rehmed.Processes.ClinicalVisit."
+
+      assert text =~
+               "Includes events of rehmed.scheduling contract rehmed.clinical_documentation contract rehmed.statutory_reporting contract"
+
+      assert text =~ "Accountable Manager gabinetu actor"
+
+      text = open("domain.rehmed", "contract:rehmed.statutory_reporting", :system)
+      assert text =~ "Processes that include its events Wizyta"
     end
   end
 

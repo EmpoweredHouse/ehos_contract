@@ -296,7 +296,7 @@
         },
         "nodes": {
           "type": "object",
-          "description": "Numbers by the id of a node of the document: the process's runs, an event's occurrences, a promise's verdicts. An event that did not happen in the period, and a promise the owner has yet to confirm, have no entry.",
+          "description": "Numbers by the id of a node of the document: the process's runs, an event's occurrences, a promise's verdicts. Every event the process includes has an entry, 0 when it did not happen in the period; a promise the owner has yet to confirm has none.",
           "additionalProperties": {
             "oneOf": [
               {

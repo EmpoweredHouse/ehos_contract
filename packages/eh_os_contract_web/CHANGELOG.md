@@ -27,6 +27,12 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The graph screen draws process modules** (plan DD, stage P2e, eh-os-contract#220). Its selector lists them
+  beside the contracts, each kind in a group of its own and each by its id; a process module selected is drawn as
+  its stages, the events each includes and its promises, with its runs, each event's occurrences and each
+  promise's verdicts from the log. Each domain's system view draws its process modules, the contracts whose
+  events each includes, the actor accountable for each and their runs. Moves no verdict.
+
 - **A process module's graph over HTTP** (plan DD, stage P2e, eh-os-contract#220): `GET <mount>/graph/process/<id>`
   serves its `graph.v1` document, with its digest as the `ETag` and `304` for a request that holds it, and
   `GET <mount>/graph/process/<id>/overlay?since=…&until=…` what the log says over it: its runs, how often each event
@@ -36,6 +42,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **Breaking:** `<mount>/graph/<contract>` serves a contract's document without the kinds of a process — no
+  `process`, `stage` or `promise` nodes, no `accountable_for`, `opens`, `fulfils` or `or_else` relations, all empty
+  since a contract declares no process (engine, plan DD, stage P2e, eh-os-contract#220). A reader holding the
+  document to the schema shipped with the engine's 0.3.0 refuses it: take the schema with the engine. Moves no
+  verdict.
 - **Breaking:** `<mount>/graph/domain/<module>` serves the domain's document with its process modules — a
   `process` node each, an `includes` relation to each contract whose events it includes, the actor
   `accountable_for` it — and its overlay with each one's runs (engine, plan DD, stage P2e, eh-os-contract#220). A

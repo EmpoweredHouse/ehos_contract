@@ -1,28 +1,12 @@
 {
   "context": "context:Rehmed.Domain:statutory_reporting",
   "contract": "rehmed.statutory_reporting",
-  "digest": "a5dc485adc90",
+  "digest": "41489a3614fb",
   "domain": "Rehmed.Domain",
   "kind": "contract",
   "module": "Rehmed.Contracts.StatutoryReporting",
   "nodes": {
     "actor": [
-      {
-        "actor_kind": "human",
-        "id": "actor:Rehmed.Domain:manager",
-        "label": "Manager gabinetu",
-        "name": "manager",
-        "responsibilities": [
-          {
-            "label": "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
-            "name": "overdue_reports",
-            "source": "P-25"
-          }
-        ],
-        "role": "rehmed.manager",
-        "scope": [],
-        "source": null
-      },
       {
         "actor_kind": "system",
         "context": "context:Rehmed.Domain:statutory_reporting",
@@ -185,7 +169,6 @@
         "name": "p1_report_queued",
         "schema_version": 1,
         "source": "AGG-10",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
         "type": "rehmed.statutory_reporting.p1_report_queued",
         "unit": "unit:rehmed.statutory_reporting:p1_report"
       },
@@ -203,8 +186,6 @@
         "name": "p1_report_sent",
         "schema_version": 1,
         "source": "E-54",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
-        "terminal": true,
         "type": "rehmed.statutory_reporting.p1_report_sent",
         "unit": "unit:rehmed.statutory_reporting:p1_report"
       },
@@ -222,7 +203,6 @@
         "name": "p1_report_failed",
         "schema_version": 1,
         "source": "AGG-10",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
         "type": "rehmed.statutory_reporting.p1_report_failed",
         "unit": "unit:rehmed.statutory_reporting:p1_report"
       },
@@ -240,29 +220,8 @@
         "name": "p1_reporting_not_required",
         "schema_version": 1,
         "source": "H21, DEC-20",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
-        "terminal": true,
         "type": "rehmed.statutory_reporting.p1_reporting_not_required",
         "unit": "unit:rehmed.statutory_reporting:p1_report"
-      },
-      {
-        "declared_as": "event:rehmed.scheduling:visit_completed",
-        "fields": [
-          {
-            "label": null,
-            "name": "visit_id",
-            "required": true,
-            "type": "id"
-          }
-        ],
-        "id": "event:rehmed.statutory_reporting:visit_completed",
-        "included": true,
-        "label": "Pacjent wyszedł z gabinetu",
-        "name": "visit_completed",
-        "schema_version": 1,
-        "source": "E-51",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:departure",
-        "type": "rehmed.scheduling.visit_completed"
       },
       {
         "declared_as": "event:rehmed.clinical_documentation:visit_closed_clinically",
@@ -319,12 +278,10 @@
           }
         ],
         "id": "event:rehmed.statutory_reporting:visit_closed_clinically",
-        "included": true,
         "label": "Zamknięto wizytę przez specjalistę",
         "name": "visit_closed_clinically",
         "schema_version": 1,
         "source": "E-52",
-        "stage": "stage:rehmed.statutory_reporting:clinical_visit:closing",
         "type": "rehmed.clinical_documentation.visit_closed_clinically"
       }
     ],
@@ -359,57 +316,10 @@
         "source": "P-07"
       }
     ],
-    "process": [
-      {
-        "correlate": [
-          "visit_id"
-        ],
-        "id": "process:rehmed.statutory_reporting:clinical_visit",
-        "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-        "name": "clinical_visit",
-        "source": null
-      }
-    ],
     "process_manager": [],
-    "promise": [
-      {
-        "id": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
-        "label": null,
-        "name": "medical_event_reported_within_statutory_window",
-        "process": "process:rehmed.statutory_reporting:clinical_visit",
-        "source": "Dz.U. 2025 poz. 866",
-        "within": {
-          "amount": 2,
-          "unit": "day"
-        }
-      }
-    ],
     "publication": [],
     "query": [],
     "read_model": [],
-    "stage": [
-      {
-        "id": "stage:rehmed.statutory_reporting:clinical_visit:departure",
-        "label": null,
-        "name": "departure",
-        "process": "process:rehmed.statutory_reporting:clinical_visit",
-        "source": null
-      },
-      {
-        "id": "stage:rehmed.statutory_reporting:clinical_visit:closing",
-        "label": null,
-        "name": "closing",
-        "process": "process:rehmed.statutory_reporting:clinical_visit",
-        "source": null
-      },
-      {
-        "id": "stage:rehmed.statutory_reporting:clinical_visit:reporting",
-        "label": null,
-        "name": "reporting",
-        "process": "process:rehmed.statutory_reporting:clinical_visit",
-        "source": null
-      }
-    ],
     "status": [],
     "subject": [
       {
@@ -443,13 +353,6 @@
     "value": []
   },
   "relations": {
-    "accountable_for": [
-      {
-        "from": "actor:Rehmed.Domain:manager",
-        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.statutory_reporting:clinical_visit",
-        "to": "process:rehmed.statutory_reporting:clinical_visit"
-      }
-    ],
     "allowed_in": [],
     "backed_by": [
       {
@@ -517,13 +420,6 @@
     "ends": [],
     "enters": [],
     "fires": [],
-    "fulfils": [
-      {
-        "from": "event:rehmed.statutory_reporting:p1_report_sent",
-        "id": "fulfils:event:rehmed.statutory_reporting:p1_report_sent:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
-        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
-      }
-    ],
     "handled_by": [
       {
         "from": "event:rehmed.statutory_reporting:visit_closed_clinically",
@@ -560,20 +456,6 @@
         "from": "actor:Rehmed.Domain:p1_integration",
         "id": "may_record:actor:Rehmed.Domain:p1_integration:event:rehmed.statutory_reporting:p1_report_failed",
         "to": "event:rehmed.statutory_reporting:p1_report_failed"
-      }
-    ],
-    "opens": [
-      {
-        "from": "event:rehmed.statutory_reporting:visit_completed",
-        "id": "opens:event:rehmed.statutory_reporting:visit_completed:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
-        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
-      }
-    ],
-    "or_else": [
-      {
-        "from": "event:rehmed.statutory_reporting:p1_reporting_not_required",
-        "id": "or_else:event:rehmed.statutory_reporting:p1_reporting_not_required:promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window",
-        "to": "promise:rehmed.statutory_reporting:clinical_visit:medical_event_reported_within_statutory_window"
       }
     ],
     "projected_into": [],
@@ -699,5 +581,5 @@
     ]
   },
   "schema": "eh_os_contract.graph.v1",
-  "version": "143bc8aaea91"
+  "version": "6bb6e190f42d"
 }

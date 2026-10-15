@@ -1,5 +1,6 @@
 defmodule EhOsContract.GraphRenderer.View do
-  # The six pictures are plan E13b, batch 3, the user's decision of 8 October.
+  # The six pictures are plan E13b, batch 3, the user's decision of 8 October; a process
+  # module's picture replaced a contract's declared shape in plan DD, P2e (#220).
   @moduledoc """
   Which facts of a document are drawn together, and how they read: a view is the
   nodes one picture shows, the groups they sit in, the relations between them with
@@ -10,17 +11,17 @@ defmodule EhOsContract.GraphRenderer.View do
   the drawing layer takes, and keeps a relation only when both of its ends are in the
   view, so that no arrow points at nothing.
 
-  **The views are the six pictures the engine drew before this package**, each chosen
-  here from the graph of facts rather than built by the engine:
+  **The views are the pictures the engine drew before this package**, each chosen here
+  from the graph of facts rather than built by the engine:
 
-  | View (`t:spec/0`) | What it shows |
-  | --- | --- |
-  | `:contract` | a contract's full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
-  | `:declared` | a process's declared shape: its stages in order, the events in them, its promises with their windows, the systems its events rest on |
-  | `{:unit, id}` | one unit's state, commands, events and rules, and how many scenarios pin each path |
-  | `{:lifecycle, id}` | an aggregate's statuses and the events that move it between them |
-  | `:context_map` | a domain's subdomains, contexts, external systems and their relations |
-  | `:system` | a domain's contracts in their contexts, what one consumes from another, whose units' numbers one keeps, and its publications |
+  | View (`t:spec/0`) | Of | What it shows |
+  | --- | --- | --- |
+  | `:contract` | a contract | its full graph: commands and events in their units, the reactions and timers between them, read models and queries, and the actors and external systems they touch |
+  | `{:unit, id}` | a contract | one unit's state, commands, events and rules, and how many scenarios pin each path |
+  | `{:lifecycle, id}` | a contract | an aggregate's statuses and the events that move it between them |
+  | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with the contract that declares them, those that end a run, its promises with their windows, and the systems its events rest on |
+  | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
+  | `:system` | a domain | its contracts in their contexts, what one consumes from another, whose units' numbers one keeps, its publications, and its process modules with the contracts whose events each includes |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation
@@ -33,7 +34,8 @@ defmodule EhOsContract.GraphRenderer.View do
 
   `:all`, every node and every relation, stays as the drawing layer's test bed.
   `build/3` builds the view a `t:spec/0` names, with what an overlay observed that
-  the document does not declare; `views/1` lists the views a document has.
+  the document does not declare; `views/1` lists the views a document has. A view of
+  another kind of document than the one it is of is empty.
   """
 
   import EhOsContract.GraphRenderer.Words
@@ -42,9 +44,9 @@ defmodule EhOsContract.GraphRenderer.View do
   @type spec ::
           :all
           | :contract
-          | :declared
           | {:unit, String.t()}
           | {:lifecycle, String.t()}
+          | :process
           | :context_map
           | :system
 
@@ -95,9 +97,12 @@ defmodule EhOsContract.GraphRenderer.View do
 
   @doc """
   The views `document` has, each with its title, in the order the dashboard's Graph
-  screen showed the pictures: a domain's context map, then its system where it has
-  contracts; a contract's declared shape where it has a process, its full graph, then
-  each unit and, where it declares one, the unit's lifecycle.
+  screen shows the pictures: a domain's context map, then its system where it has
+  contracts; a process module's picture; a contract's full graph, then each unit and,
+  where it declares one, the unit's lifecycle.
+
+      View.views(process_document)
+      #=> [{:process, "Process — A loan, from lending to return"}]
   """
   @spec views(map()) :: [{spec(), String.t()}]
   def views(%{"kind" => "domain"} = document) do
@@ -105,11 +110,13 @@ defmodule EhOsContract.GraphRenderer.View do
       if nodes(document, "contract") == [], do: [], else: [{:system, "System"}]
   end
 
+  def views(%{"kind" => "process"} = document),
+    do: for(p <- nodes(document, "process"), do: {:process, "Process — #{title(p)}"})
+
   def views(document) do
     lifecycles = MapSet.new(nodes(document, "status"), & &1["unit"])
 
-    for(p <- nodes(document, "process"), do: {:declared, "Declared shape — #{title(p)}"}) ++
-      [{:contract, "Full graph"}] ++
+    [{:contract, "Full graph"}] ++
       Enum.flat_map(nodes(document, "unit"), fn unit ->
         [{{:unit, unit["id"]}, "#{unit["unit_kind"]} #{unit["name"]} — #{title(unit)}"}] ++
           if MapSet.member?(lifecycles, unit["id"]),
@@ -130,7 +137,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
   defp view(document, :all), do: all(document)
   defp view(document, :contract), do: contract(document)
-  defp view(document, :declared), do: declared(document)
+  defp view(document, :process), do: process(document)
   defp view(document, {:unit, id}), do: unit(document, id)
   defp view(document, {:lifecycle, id}), do: lifecycle(document, id)
   defp view(document, :context_map), do: context_map(document)
@@ -161,7 +168,7 @@ defmodule EhOsContract.GraphRenderer.View do
   @flow ~w(emits handled_by starts ends issues sets cancels fires)
 
   # The full graph of a contract's `document`, left to right: each unit's commands and
-  # events in a group of the unit's own, the events it includes, and the policies,
+  # events in a group of the unit's own, and the policies,
   # process managers, effects and timers between them; its read models with the events
   # they project and the queries over them; the actors who issue, record or ask, and the
   # external systems an effect calls, an event rests on, a system actor is backed by, or
@@ -172,7 +179,7 @@ defmodule EhOsContract.GraphRenderer.View do
   @spec contract(map()) :: t()
   def contract(document) do
     by_id = index(document)
-    own = &(&1.kind == "event" and (&1.facts["unit"] != nil or &1.facts["included"] == true))
+    own = &(&1.kind == "event" and &1.facts["unit"] != nil)
 
     # How many scenarios pin each policy, process manager and query (`lines/3`).
     pinned =
@@ -336,49 +343,39 @@ defmodule EhOsContract.GraphRenderer.View do
   defp phase("run"), do: "during the run"
   defp phase(_none), do: nil
 
-  # --- a process's declared shape ---------------------------------------------------------
+  # --- a process module ------------------------------------------------------------------
 
-  # The declared shape of the process in a contract's `document`, top to bottom: its
-  # stages as boxes in their order, an arrow from each to the next, the events in them —
-  # those that end it in a colour of their own — each promise as a heavy arrow from the
-  # event that opens it to the one that keeps it, with its window, and a dotted one to
-  # the event that keeps it the other way, and the external systems its events rest on.
-  # A stage with more than one event says on its title that it claims no order inside.
-  # Without stages every event of the process is drawn; with them, those in a stage.
-  # Empty without a process.
+  # The picture of a process module's `document`, top to bottom: the process as a card,
+  # saying what one run is and its deadline, with the actor accountable for it; its
+  # stages as boxes in their order, an arrow from each to the next; in each, the events
+  # it includes, each saying the contract that declares it, those that end a run in a
+  # colour of their own; each promise as a heavy arrow from the event that opens it to
+  # the one that keeps it, with its window, and a dotted one to the event that keeps it
+  # the other way; and the external systems its events rest on, hung off them by a dotted
+  # line, since an outage of one suspends a promise. A stage with more than one event says
+  # on its title that it claims no order inside. Empty for another kind of document.
   # Called by `build/3`; public for its tests.
   @doc false
-  @spec declared(map()) :: t()
-  def declared(document) do
-    case nodes(document, "process") do
-      [] -> finish("TB", [], [], [])
-      [process | _] -> declared(document, process)
-    end
-  end
-
-  defp declared(document, process) do
+  @spec process(map()) :: t()
+  def process(%{"kind" => "process"} = document) do
     by_id = index(document)
-    stages = for s <- nodes(document, "stage"), s["process"] == process["id"], do: s
-    staged = MapSet.new(stages, & &1["id"])
+
+    processes =
+      for p <- nodes(document, "process"),
+          do: card("process", p, lines: Enum.reject([run(p), deadline(p)], &is_nil/1))
+
+    stages = nodes(document, "stage")
 
     events =
-      for e <- nodes(document, "event"),
-          e["unit"] != nil or e["included"] == true,
-          stages == [] or MapSet.member?(staged, e["stage"]),
-          do:
-            card("event", e,
-              group: e["stage"],
-              variant: if(e["terminal"] == true, do: "terminal")
-            )
+      for e <- nodes(document, "event") do
+        card("event", e,
+          group: e["stage"],
+          lines: List.wrap(by_id[e["contract"]] && title(by_id[e["contract"]])),
+          variant: if(e["terminal"] == true, do: "terminal")
+        )
+      end
 
-    shown = MapSet.new(events, & &1.id)
-    resting = for r <- relations(document, "depends_on"), MapSet.member?(shown, r["from"]), do: r
-
-    systems =
-      resting
-      |> Enum.map(& &1["to"])
-      |> Enum.uniq()
-      |> Enum.flat_map(&List.wrap(by_id[&1] && card("external", by_id[&1])))
+    {actors, accountable} = accountable(document, by_id)
 
     groups =
       for stage <- stages do
@@ -405,15 +402,48 @@ defmodule EhOsContract.GraphRenderer.View do
         }
       end
 
-    promises =
-      for p <- nodes(document, "promise"),
-          p["process"] == process["id"],
-          arrow <- promise(document, p),
-          do: arrow
+    promises = for p <- nodes(document, "promise"), arrow <- promise(document, p), do: arrow
 
-    rests = for r <- resting, do: arrow("depends_on", r, line: "dotted", head: false)
+    systems = for x <- nodes(document, "external"), do: card("external", x)
 
-    finish("TB", events ++ systems, order ++ promises ++ rests, groups)
+    rests =
+      for r <- relations(document, "depends_on"),
+          do: arrow("depends_on", r, line: "dotted", head: false)
+
+    finish(
+      "TB",
+      processes ++ actors ++ events ++ systems,
+      accountable ++ order ++ promises ++ rests,
+      groups
+    )
+  end
+
+  def process(_document), do: finish("TB", [], [], [])
+
+  # What one run of a process is, and how long it may take.
+  defp run(%{"correlate" => [_ | _] = fields}), do: "one run per #{Enum.join(fields, ", ")}"
+  defp run(_process), do: nil
+
+  defp deadline(%{"deadline" => %{} = deadline}),
+    do:
+      "ends within #{duration(deadline)}" <>
+        if(deadline["unverified"] == true, do: " · not confirmed", else: "")
+
+  defp deadline(_process), do: nil
+
+  # The actors who answer for a process, and an arrow from each to it.
+  defp accountable(document, by_id) do
+    arrows =
+      for r <- relations(document, "accountable_for"),
+          do: arrow("accountable_for", r, words: "accountable for", head: false)
+
+    actors =
+      arrows
+      |> Enum.map(& &1.from)
+      |> Enum.uniq()
+      |> Enum.flat_map(&List.wrap(by_id[&1] && card("actor", by_id[&1])))
+
+    {actors, arrows}
   end
 
   # A promise as the picture drew it: from the event that opens it to the one that keeps
@@ -625,11 +655,12 @@ defmodule EhOsContract.GraphRenderer.View do
   end
 
   # The system of a domain's `document`, left to right: its contracts in groups of their
-  # contexts, each named by its module's last segment and its process, an arrow from a
-  # contract to one that consumes its events, carrying their names, a dotted one from a
-  # contract to one keeping the number of its unit, naming the units, and the
-  # publications on the wire, with an arrow from the contract that publishes one and to
-  # the one that subscribes.
+  # contexts, each named by its module's last segment, an arrow from a contract to one
+  # that consumes its events, carrying their names, a dotted one from a contract to one
+  # keeping the number of its unit, naming the units, and the publications on the wire,
+  # with an arrow from the contract that publishes one and to the one that subscribes;
+  # and its process modules, a dotted arrow from each to every contract whose events it
+  # includes, and the actor accountable for it.
   # Called by `build/3`; public for its tests.
   @doc false
   @spec system(map()) :: t()
@@ -639,9 +670,16 @@ defmodule EhOsContract.GraphRenderer.View do
     contracts =
       for c <- nodes(document, "contract") do
         short = c["module"] |> to_string() |> String.split(".") |> List.last()
-        label = join([short, get_in(c, ["process", "label"])])
-        %{card("contract", c, group: c["context"]) | label: label}
+        %{card("contract", c, group: c["context"]) | label: short}
       end
+
+    processes = for p <- nodes(document, "process"), do: card("process", p)
+
+    includes =
+      for r <- relations(document, "includes"),
+          do: arrow("includes", r, words: "includes", line: "dotted")
+
+    {actors, accountable} = accountable(document, by_id)
 
     publications = for p <- nodes(document, "publication"), do: card("publication", p)
     name = &((by_id[&1] || %{})["name"] || &1)
@@ -678,8 +716,8 @@ defmodule EhOsContract.GraphRenderer.View do
 
     finish(
       "LR",
-      contracts ++ publications,
-      consumed ++ referring ++ published ++ subscribed,
+      contracts ++ publications ++ processes ++ actors,
+      consumed ++ referring ++ published ++ subscribed ++ includes ++ accountable,
       groups
     )
   end

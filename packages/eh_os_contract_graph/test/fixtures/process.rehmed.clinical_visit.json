@@ -1,0 +1,240 @@
+{
+  "digest": "b60341b0e30f",
+  "domain": "Rehmed.Domain",
+  "kind": "process",
+  "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
+  "module": "Rehmed.Processes.ClinicalVisit",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Rehmed.Domain:manager",
+        "label": "Manager gabinetu",
+        "name": "manager",
+        "responsibilities": [
+          {
+            "label": "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
+            "name": "overdue_reports",
+            "source": "P-25"
+          }
+        ],
+        "role": "rehmed.manager",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Rehmed.Domain:scheduling",
+        "label": "Umawianie i zasoby",
+        "name": "scheduling",
+        "source": "CTX-01"
+      },
+      {
+        "id": "context:Rehmed.Domain:clinical_documentation",
+        "label": "Dokumentacja kliniczna",
+        "name": "clinical_documentation",
+        "source": "CTX-03"
+      },
+      {
+        "id": "context:Rehmed.Domain:statutory_reporting",
+        "label": "Zgodność i sprawozdawczość",
+        "name": "statutory_reporting",
+        "source": "CTX-04"
+      }
+    ],
+    "contract": [
+      {
+        "context": "context:Rehmed.Domain:scheduling",
+        "id": "contract:rehmed.scheduling",
+        "label": null,
+        "module": "Rehmed.Contracts.Scheduling",
+        "name": "rehmed.scheduling",
+        "source": null
+      },
+      {
+        "context": "context:Rehmed.Domain:clinical_documentation",
+        "id": "contract:rehmed.clinical_documentation",
+        "label": null,
+        "module": "Rehmed.Contracts.ClinicalDocumentation",
+        "name": "rehmed.clinical_documentation",
+        "source": null
+      },
+      {
+        "context": "context:Rehmed.Domain:statutory_reporting",
+        "id": "contract:rehmed.statutory_reporting",
+        "label": null,
+        "module": "Rehmed.Contracts.StatutoryReporting",
+        "name": "rehmed.statutory_reporting",
+        "source": null
+      }
+    ],
+    "event": [
+      {
+        "contract": "contract:rehmed.scheduling",
+        "id": "event:rehmed.scheduling:visit_completed",
+        "label": "Pacjent wyszedł z gabinetu",
+        "name": "visit_completed",
+        "source": "E-51",
+        "stage": "stage:rehmed.clinical_visit:departure",
+        "type": "rehmed.scheduling.visit_completed"
+      },
+      {
+        "contract": "contract:rehmed.clinical_documentation",
+        "id": "event:rehmed.clinical_documentation:visit_closed_clinically",
+        "label": "Zamknięto wizytę przez specjalistę",
+        "name": "visit_closed_clinically",
+        "source": "E-52",
+        "stage": "stage:rehmed.clinical_visit:closing",
+        "type": "rehmed.clinical_documentation.visit_closed_clinically"
+      },
+      {
+        "contract": "contract:rehmed.statutory_reporting",
+        "id": "event:rehmed.statutory_reporting:p1_report_queued",
+        "label": "Zgłoszenie P1 zakolejkowane",
+        "name": "p1_report_queued",
+        "source": "AGG-10",
+        "stage": "stage:rehmed.clinical_visit:reporting",
+        "type": "rehmed.statutory_reporting.p1_report_queued"
+      },
+      {
+        "contract": "contract:rehmed.statutory_reporting",
+        "id": "event:rehmed.statutory_reporting:p1_report_sent",
+        "label": "Wysłano informację do systemu P1",
+        "name": "p1_report_sent",
+        "source": "E-54",
+        "stage": "stage:rehmed.clinical_visit:reporting",
+        "terminal": true,
+        "type": "rehmed.statutory_reporting.p1_report_sent"
+      },
+      {
+        "contract": "contract:rehmed.statutory_reporting",
+        "id": "event:rehmed.statutory_reporting:p1_report_failed",
+        "label": "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
+        "name": "p1_report_failed",
+        "source": "AGG-10",
+        "stage": "stage:rehmed.clinical_visit:reporting",
+        "type": "rehmed.statutory_reporting.p1_report_failed"
+      },
+      {
+        "contract": "contract:rehmed.statutory_reporting",
+        "id": "event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "label": "Usługa nie podlega zgłoszeniu do P1",
+        "name": "p1_reporting_not_required",
+        "source": "H21, DEC-20",
+        "stage": "stage:rehmed.clinical_visit:reporting",
+        "terminal": true,
+        "type": "rehmed.statutory_reporting.p1_reporting_not_required"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Rehmed.Domain:p1",
+        "label": "Rejestr zdarzeń medycznych P1",
+        "name": "p1",
+        "operations": [
+          {
+            "label": "Przyjmij zgłoszenie zdarzenia medycznego",
+            "name": "submit_report",
+            "source": "X-01, AGG-10"
+          }
+        ],
+        "source": "X-01",
+        "unavailable_looks_like": "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany"
+      }
+    ],
+    "process": [
+      {
+        "correlate": [
+          "visit_id"
+        ],
+        "id": "process:rehmed.clinical_visit",
+        "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
+        "name": "rehmed.clinical_visit",
+        "source": null
+      }
+    ],
+    "promise": [
+      {
+        "id": "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window",
+        "label": null,
+        "name": "medical_event_reported_within_statutory_window",
+        "process": "process:rehmed.clinical_visit",
+        "source": "Dz.U. 2025 poz. 866",
+        "within": {
+          "amount": 2,
+          "unit": "day"
+        }
+      }
+    ],
+    "stage": [
+      {
+        "id": "stage:rehmed.clinical_visit:departure",
+        "label": null,
+        "name": "departure",
+        "process": "process:rehmed.clinical_visit",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.clinical_visit:closing",
+        "label": null,
+        "name": "closing",
+        "process": "process:rehmed.clinical_visit",
+        "source": null
+      },
+      {
+        "id": "stage:rehmed.clinical_visit:reporting",
+        "label": null,
+        "name": "reporting",
+        "process": "process:rehmed.clinical_visit",
+        "source": null
+      }
+    ]
+  },
+  "process": "rehmed.clinical_visit",
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Rehmed.Domain:manager",
+        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.clinical_visit",
+        "to": "process:rehmed.clinical_visit"
+      }
+    ],
+    "depends_on": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_sent:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      },
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_failed",
+        "id": "depends_on:event:rehmed.statutory_reporting:p1_report_failed:external:Rehmed.Domain:p1",
+        "to": "external:Rehmed.Domain:p1"
+      }
+    ],
+    "fulfils": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_report_sent",
+        "id": "fulfils:event:rehmed.statutory_reporting:p1_report_sent:promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ],
+    "opens": [
+      {
+        "from": "event:rehmed.scheduling:visit_completed",
+        "id": "opens:event:rehmed.scheduling:visit_completed:promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ],
+    "or_else": [
+      {
+        "from": "event:rehmed.statutory_reporting:p1_reporting_not_required",
+        "id": "or_else:event:rehmed.statutory_reporting:p1_reporting_not_required:promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window",
+        "to": "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "f5ab35d4f8d8"
+}

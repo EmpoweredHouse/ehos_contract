@@ -124,9 +124,9 @@ defmodule EhOsContract.Graph.Overlay do
   @doc """
   The overlay of the process module `process` over the period `opts` names (`:since`,
   `:until`, as in the report), against `Document.process/1` of the same: on the
-  process node its `runs`; on each event it includes that happened in the period, its
-  `occurrences`, whatever run, if any, each falls in; and on each promise its verdicts
-  over the runs it opened — `satisfied`, of them `satisfied_via_eventually` and
+  process node its `runs`; on each event it includes, its `occurrences` in the period,
+  0 for one that did not happen, whatever run, if any, each falls in; and on each
+  promise its verdicts over the runs it opened — `satisfied`, of them `satisfied_via_eventually` and
   `satisfied_via_or_else`, `violated`, `pending`, `suspended` and `instances` — as
   the report gives them, under the promise's current declaration
   (`EhOsContract.Conformance.promise_verdicts/2`, the report's own computation). A
@@ -150,10 +150,10 @@ defmodule EhOsContract.Graph.Overlay do
     [process_node] = nodes["process"]
     by_type = nodes["event"] |> Enum.map(& &1["type"]) |> Paths.occurrences_by_type(period)
 
+    # Every event it includes, one that did not happen at 0, so no reader takes a missing
+    # entry for a number.
     events =
-      for e <- nodes["event"],
-          occurrences = by_type[e["type"]],
-          do: {e["id"], %{occurrences: occurrences}}
+      for e <- nodes["event"], do: {e["id"], %{occurrences: Map.get(by_type, e["type"], 0)}}
 
     promises =
       for p <- nodes["promise"],

@@ -5,7 +5,7 @@ defmodule EhOsContract.Graph.Facts do
   # a renderer is made of this.
   #
   # **Facts, not pictures.** Nothing here chooses what is shown together: the pictures
-  # the dashboard draws — a contract's full graph, a process's declared shape, a unit, a
+  # the dashboard draws — a contract's full graph, a process module's stages, a unit, a
   # lifecycle, a domain's context map and its system — are views over these facts, and
   # views are the renderer's (`eh_os_contract_graph`). A fact is what is true of the
   # contract whatever is drawn and takes the DSL's meaning to know — that a timer of a
@@ -17,8 +17,8 @@ defmodule EhOsContract.Graph.Facts do
   # `%{id, name, label, source}` for a node, `%{id, from, to}` for a relation, and adds
   # what it alone has. **Ownership is a field naming the owner's id** (`unit`, `stage`,
   # `process`, `process_manager`, `of`, `context`, `subdomain`, `contract`): an event
-  # sits in a unit and in a stage, so it is not one tree, and every other link is a
-  # relation.
+  # sits in a unit in its contract's document and in a stage in a process module's, so
+  # it is not one tree, and every other link is a relation.
   #
   # A relation's id is its type, its two ends and what tells it apart from another of
   # that type between them (`@discriminators`), so what the log says of it later joins
@@ -42,14 +42,15 @@ defmodule EhOsContract.Graph.Facts do
   alias EhOsContract.{Lifecycle, Model}
   alias EhOsContract.Graph.Document
 
-  @contract_kinds ~w(process stage promise unit status invariant constraint command event policy
-                     process_manager timer effect read_model query domain_service publication
-                     actor external value entity subject context)a
+  # A contract declares no process (plan DD, P2h, #221): a process's stages, promises and
+  # who answers for it are a process module's document's (plan DD, P2e, #220).
+  @contract_kinds ~w(unit status invariant constraint command event policy process_manager timer
+                     effect read_model query domain_service publication actor external value
+                     entity subject context)a
 
   @contract_types ~w(emits handled_by starts ends issues sets cancels fires may_issue may_record
-                     may_ask accountable_for builds consulted_by projected_into reads refused_on
-                     enters transition allowed_in opens fulfils or_else depends_on calls
-                     backed_by published_as received_as)a
+                     may_ask builds consulted_by projected_into reads refused_on enters transition
+                     allowed_in depends_on calls backed_by published_as received_as)a
 
   @patterns ~w(partnership shared_kernel separate_ways customer_supplier conformist
                anticorruption_layer open_host_service published_language)a
@@ -61,9 +62,9 @@ defmodule EhOsContract.Graph.Facts do
                   ~w(consumed_by refers_to publishes subscribed_by backed_by accountable_for
                      includes)a
 
-  @process_kinds ~w(process stage promise event contract context actor)a
+  @process_kinds ~w(process stage promise event contract context actor external)a
 
-  @process_types ~w(accountable_for opens fulfils or_else)a
+  @process_types ~w(accountable_for opens fulfils or_else depends_on)a
 
   # What tells apart two relations of one type between the same two nodes: a
   # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
@@ -132,13 +133,7 @@ defmodule EhOsContract.Graph.Facts do
         end
     }
 
-    # A contract declares no process: the kinds stay, empty, for the readers of the
-    # document's shape.
-    nodes =
-      own
-      |> Map.merge(%{process: [], stage: [], promise: []})
-      |> Map.merge(unit_nodes)
-      |> Map.merge(reaction_nodes)
+    nodes = own |> Map.merge(unit_nodes) |> Map.merge(reaction_nodes)
 
     relations =
       [
@@ -918,8 +913,9 @@ defmodule EhOsContract.Graph.Facts do
   The facts of the process module `process`: the process, its stages, the events its
   stages include — each under the id it has in the document of the contract that
   declares it, so the two documents join — with the stage it sits in and whether it
-  ends a run, the contracts those events come from and their contexts, its promises
-  with the events that open, fulfil or settle each otherwise, and the actor
+  ends a run, the contracts those events come from and their contexts, the external
+  systems those events rest on (`depends_on`, as in the contract's document), its
+  promises with the events that open, fulfil or settle each otherwise, and the actor
   accountable for it. Every kind and type present, empty or not.
   """
   @spec process(module() | map()) :: %{nodes: map(), relations: map()}
@@ -965,6 +961,16 @@ defmodule EhOsContract.Graph.Facts do
           from = event && event_id[event],
           do: {type, relation(from, promise_id.(pr.name))}
 
+    # What an included event rests on, as its contract declares it: an outage of it is
+    # what suspends a promise.
+    resting =
+      for e <- included,
+          x = e.declaration[:depends_on],
+          x != nil,
+          do: {event_id[e.name], x}
+
+    rests = for {from, x} <- resting, do: {:depends_on, relation(from, id(:external, d, x))}
+
     actors = List.wrap(accountable(domain, p.accountable))
 
     accountable =
@@ -998,10 +1004,15 @@ defmodule EhOsContract.Graph.Facts do
       # The same node as in the domain's document.
       contract: Enum.map(contracts, &contract_node(&1, d)),
       context: Enum.map(declared(domain.contexts, contexts), &node(:context, d, &1)),
-      actor: for(a <- actors, do: actor(a, ctx))
+      actor: for(a <- actors, do: actor(a, ctx)),
+      external:
+        for(
+          x <- declared(domain.externals, Enum.map(resting, &elem(&1, 1))),
+          do: external(x, ctx)
+        )
     }
 
-    group(nodes, @process_kinds, typed(promised ++ accountable), @process_types)
+    group(nodes, @process_kinds, typed(promised ++ accountable ++ rests), @process_types)
   end
 
   # A contract as a node of a domain's or a process module's document. A contract has no

@@ -1,5 +1,6 @@
 {
-  "digest": "62d07b609c81",
+  "code_language": "en",
+  "digest": "f8ae8fafe3a6",
   "domain": "Rehmed.Domain",
   "kind": "domain",
   "language": "pl",
@@ -166,6 +167,7 @@
         "terms": [
           {
             "avoid": [],
+            "code": "Visit",
             "definition": "Zarezerwowany termin z zasobami",
             "source": "CTX-01",
             "text": "Wizyta",
@@ -196,6 +198,7 @@
         "terms": [
           {
             "avoid": [],
+            "code": "Visit",
             "definition": "Spotkanie kliniczne z notatką i kodami",
             "source": "CTX-03",
             "text": "Wizyta",
@@ -210,6 +213,7 @@
           },
           {
             "avoid": [],
+            "code": "Close",
             "definition": "Kliniczna deklaracja, która uruchamia zgłoszenie do P1",
             "source": "CTX-03",
             "text": "Zamknięcie",
@@ -241,6 +245,7 @@
         "terms": [
           {
             "avoid": [],
+            "code": "Visit",
             "definition": "Należna kwota",
             "source": "CTX-01",
             "text": "Wizyta",
@@ -255,6 +260,7 @@
           },
           {
             "avoid": [],
+            "code": "Close",
             "definition": "Zamknięcie komercyjne wizyty przez recepcję",
             "source": "CTX-03",
             "text": "Zamknięcie",
@@ -297,18 +303,10 @@
       },
       {
         "context": "context:Rehmed.Domain:external_payers",
-        "correlate": [
-          "payer_id",
-          "period_id"
-        ],
         "id": "contract:rehmed.external_payers",
         "label": null,
         "module": "Rehmed.Contracts.ExternalPayers",
         "name": "rehmed.external_payers",
-        "process": {
-          "label": "Miesięczne rozliczenie z płatnikiem zewnętrznym",
-          "name": "payer_settlement"
-        },
         "source": null
       },
       {
@@ -329,17 +327,10 @@
       },
       {
         "context": "context:Rehmed.Domain:statutory_reporting",
-        "correlate": [
-          "visit_id"
-        ],
         "id": "contract:rehmed.statutory_reporting",
         "label": null,
         "module": "Rehmed.Contracts.StatutoryReporting",
         "name": "rehmed.statutory_reporting",
-        "process": {
-          "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-          "name": "clinical_visit"
-        },
         "source": null
       }
     ],
@@ -368,6 +359,13 @@
       }
     ],
     "event": [
+      {
+        "contract": "contract:rehmed.scheduling",
+        "id": "event:rehmed.scheduling:visit_booked",
+        "label": "Pacjent umówił wizytę",
+        "name": "visit_booked",
+        "source": "E-14"
+      },
       {
         "contract": "contract:rehmed.scheduling",
         "id": "event:rehmed.scheduling:visit_completed",
@@ -416,7 +414,29 @@
         "unavailable_looks_like": "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi"
       }
     ],
-    "process": [],
+    "process": [
+      {
+        "correlate": [
+          "visit_id"
+        ],
+        "id": "process:rehmed.clinical_visit",
+        "label": "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
+        "module": "Rehmed.Processes.ClinicalVisit",
+        "name": "rehmed.clinical_visit",
+        "source": null
+      },
+      {
+        "correlate": [
+          "payer_id",
+          "period_id"
+        ],
+        "id": "process:rehmed.payer_settlement",
+        "label": "Miesięczne rozliczenie z płatnikiem zewnętrznym",
+        "module": "Rehmed.Processes.PayerSettlement",
+        "name": "rehmed.payer_settlement",
+        "source": null
+      }
+    ],
     "publication": [],
     "subdomain": [
       {
@@ -494,13 +514,13 @@
     "accountable_for": [
       {
         "from": "actor:Rehmed.Domain:manager",
-        "id": "accountable_for:actor:Rehmed.Domain:manager:contract:rehmed.external_payers",
-        "to": "contract:rehmed.external_payers"
+        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.clinical_visit",
+        "to": "process:rehmed.clinical_visit"
       },
       {
         "from": "actor:Rehmed.Domain:manager",
-        "id": "accountable_for:actor:Rehmed.Domain:manager:contract:rehmed.statutory_reporting",
-        "to": "contract:rehmed.statutory_reporting"
+        "id": "accountable_for:actor:Rehmed.Domain:manager:process:rehmed.payer_settlement",
+        "to": "process:rehmed.payer_settlement"
       }
     ],
     "anticorruption_layer": [
@@ -544,6 +564,10 @@
       {
         "events": [
           {
+            "as": "visit_booked",
+            "event": "event:rehmed.scheduling:visit_booked"
+          },
+          {
             "as": "visit_completed",
             "event": "event:rehmed.scheduling:visit_completed"
           }
@@ -551,17 +575,6 @@
         "from": "contract:rehmed.scheduling",
         "id": "consumed_by:contract:rehmed.scheduling:contract:rehmed.clinical_documentation",
         "to": "contract:rehmed.clinical_documentation"
-      },
-      {
-        "events": [
-          {
-            "as": "visit_completed",
-            "event": "event:rehmed.scheduling:visit_completed"
-          }
-        ],
-        "from": "contract:rehmed.scheduling",
-        "id": "consumed_by:contract:rehmed.scheduling:contract:rehmed.statutory_reporting",
-        "to": "contract:rehmed.statutory_reporting"
       },
       {
         "events": [
@@ -587,7 +600,33 @@
         "to": "context:Rehmed.Domain:external_payers"
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "from": "process:rehmed.clinical_visit",
+        "id": "includes:process:rehmed.clinical_visit:contract:rehmed.scheduling",
+        "to": "contract:rehmed.scheduling"
+      },
+      {
+        "from": "process:rehmed.clinical_visit",
+        "id": "includes:process:rehmed.clinical_visit:contract:rehmed.clinical_documentation",
+        "to": "contract:rehmed.clinical_documentation"
+      },
+      {
+        "from": "process:rehmed.clinical_visit",
+        "id": "includes:process:rehmed.clinical_visit:contract:rehmed.statutory_reporting",
+        "to": "contract:rehmed.statutory_reporting"
+      },
+      {
+        "from": "process:rehmed.payer_settlement",
+        "id": "includes:process:rehmed.payer_settlement:contract:rehmed.settlement",
+        "to": "contract:rehmed.settlement"
+      },
+      {
+        "from": "process:rehmed.payer_settlement",
+        "id": "includes:process:rehmed.payer_settlement:contract:rehmed.external_payers",
+        "to": "contract:rehmed.external_payers"
+      }
+    ],
     "open_host_service": [
       {
         "from": "context:Rehmed.Domain:configuration",

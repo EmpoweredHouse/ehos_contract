@@ -1,7 +1,7 @@
 {
   "context": "context:AppuniteEquipment.Domain:equipment",
   "contract": "appunite_equipment.demands",
-  "digest": "a42d6aee8e53",
+  "digest": "a8b686989628",
   "domain": "AppuniteEquipment.Domain",
   "kind": "contract",
   "module": "AppuniteEquipment.Contracts.Demands",
@@ -212,6 +212,7 @@
           {
             "label": null,
             "name": "demand_id",
+            "refers_to": "unit:appunite_equipment.demands:demand",
             "required": true,
             "type": "id"
           },
@@ -320,9 +321,7 @@
         "source": "cf.pdf: „ukradziono komputer” → zakup albo półka"
       }
     ],
-    "process": [],
     "process_manager": [],
-    "promise": [],
     "publication": [],
     "query": [
       {
@@ -342,6 +341,7 @@
           {
             "label": null,
             "name": "demand_id",
+            "refers_to": "unit:appunite_equipment.demands:demand",
             "required": true,
             "type": "id"
           },
@@ -396,7 +396,6 @@
         "source": null
       }
     ],
-    "stage": [],
     "status": [
       {
         "id": "status:appunite_equipment.demands:demand:open",
@@ -503,7 +502,6 @@
     ]
   },
   "relations": {
-    "accountable_for": [],
     "allowed_in": [
       {
         "from": "command:appunite_equipment.demands:order_computer",
@@ -569,7 +567,6 @@
       }
     ],
     "fires": [],
-    "fulfils": [],
     "handled_by": [
       {
         "from": "event:appunite_equipment.demands:issued",
@@ -614,8 +611,6 @@
       }
     ],
     "may_record": [],
-    "opens": [],
-    "or_else": [],
     "projected_into": [
       {
         "from": "event:appunite_equipment.demands:opened",
@@ -936,5 +931,5 @@
     ]
   },
   "schema": "eh_os_contract.graph.v1",
-  "version": "5283a329af7c"
+  "version": "90acf7632dbf"
 }

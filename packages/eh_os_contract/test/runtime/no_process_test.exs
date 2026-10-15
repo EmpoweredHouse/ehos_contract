@@ -60,7 +60,7 @@ defmodule EhOsContract.NoProcessTest do
     {:ok, _} = issue(OpenRoom, "r-1")
 
     document = Graph.Document.contract(Rooms)
-    assert document["nodes"]["process"] == []
+    refute Map.has_key?(document["nodes"], "process")
     assert [%{"name" => "room"}] = document["nodes"]["unit"]
 
     assert Enum.any?(

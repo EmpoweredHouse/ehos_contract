@@ -12,7 +12,8 @@ defmodule EhOsContract.GraphRenderer.Lookup do
   # group under `"type"`, since the document keys each group by it.
   @moduledoc false
 
-  defstruct nodes: %{},
+  defstruct of: nil,
+            nodes: %{},
             kinds: %{},
             by_kind: %{},
             by_type: %{},
@@ -39,6 +40,7 @@ defmodule EhOsContract.GraphRenderer.Lookup do
           do: Map.put(scenario, "type", type)
 
     %__MODULE__{
+      of: document["kind"],
       nodes: for({_kind, group} <- by_kind, node <- group, into: %{}, do: {node["id"], node}),
       kinds: for({kind, group} <- by_kind, node <- group, into: %{}, do: {node["id"], kind}),
       by_kind: by_kind,
@@ -56,6 +58,10 @@ defmodule EhOsContract.GraphRenderer.Lookup do
       about: Enum.group_by(scenarios, & &1["target"])
     }
   end
+
+  @doc "What kind of document the joins are of: `\"contract\"`, `\"process\"`, `\"domain\"`, or nil."
+  @spec of(t()) :: String.t() | nil
+  def of(%__MODULE__{of: of}), do: of
 
   @doc "The node `id` names, or nil."
   @spec node(t(), String.t() | nil) :: map() | nil

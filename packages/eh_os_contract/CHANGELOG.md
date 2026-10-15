@@ -85,13 +85,14 @@ and the `ehos-dev:release` skill makes one.
   every one of which a document carries, empty or not. Moves no verdict.
 - **A process module has a `graph.v1` document** (plan DD, stage P2e, #220): `EhOsContract.Graph.Document.process/1`
   gives one of kind `"process"` — the process with its correlation and deadline, its stages, the events they
-  include with each one's stage, contract and whether it ends a run, those contracts and their contexts, its
+  include with each one's stage, contract and whether it ends a run, those contracts and their contexts, the
+  external systems those events rest on with their `depends_on` relations, as in the contract's document, its
   promises with the events that open, fulfil or settle each otherwise (`opens`, `fulfils`, `or_else`), and the
   actor `accountable_for` it when the domain declares that actor. An event keeps the id it has in its contract's
   document, so the two join. Its shape is the new `process_document` of `priv/schema/graph.v1.json`. Moves no verdict.
 - **What the log says over a process module** (plan DD, stage P2e, #220): `EhOsContract.Graph.Overlay.process/2`
-  puts its runs on the process, how often each event it includes happened on the event, and on each promise its
-  verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
+  puts its runs on the process, how often each event it includes happened on the event (0 for one that did not),
+  and on each promise its verdicts — kept, by which route, broken, pending, suspended, and the runs judged — as
   `EhOsContract.Conformance.process/2` reports them; a promise not yet confirmed has none, as in the report. Its
   shape is the new `process_overlay` of `priv/schema/graph_overlay.v1.json`. Moves no verdict.
 - **`mix eh_os_contract.graph --process <id>`** gives a process module's document, and with `--overlay` what the
@@ -142,6 +143,14 @@ and the `ehos-dev:release` skill makes one.
 
 ### Removed
 
+- **Breaking:** a contract's `graph.v1` document no longer carries the kinds of a process (plan DD, stage P2e,
+  #220): its `process`, `stage` and `promise` nodes and its `accountable_for`, `opens`, `fulfils` and `or_else`
+  relations, empty since a contract declares no process, are gone from it and from the schema's
+  `contract_document`. The optional keys nothing has written since then go from the schema too: an event's
+  `stage`, `included` and `terminal` in a contract's document, and a contract node's `process` and `correlate`.
+  A process's stages, promises and accountable actor are in its process module's document. A reader that holds a
+  contract document to the schema of 0.3.0 refuses it for the missing kinds: take the schema with the engine.
+  Moves no verdict.
 - **Breaking:** a contract can no longer declare a process (plan DD, stage P2h, #221). The `process` block — with
   `correlate`, `accountable`, `stage`, `include`, `deadline` and `promise` —, a unit's `stage` groups and an
   event's `terminal:` no longer compile. Write the run as a process module, `use EhOsContract.Process`, with
@@ -157,8 +166,8 @@ and the `ehos-dev:release` skill makes one.
   stage P2h, #221), in `EhOsContract.Model.to_data/1` and the `/model` documents. `EhOsContract.Model.process/1`
   is `nil` and `EhOsContract.Model.process_events/1` is `[]` for a contract; for a process module they answer as
   before, and an entry of `process_events/1` no longer has `included`, which was always `true` for one. The
-  conformance report keeps its `processes` key, `[]` for a contract, and `graph.v1` keeps its process, stage and
-  promise kinds and their relations, empty in a contract's document: a reader of either needs no change.
+  conformance report keeps its `processes` key, `[]` for a contract: a reader of it needs no change. A contract's
+  `graph.v1` document lost its process kinds afterwards (#220, above).
 - **Breaking:** the storage is at version 3 (plan DD, stage P2h, #221): `eh_os_contract_events` and
   `eh_os_contract_commands` lose `process` and `instance_id`, which filed a row under the process its contract
   declared. An event's runs are the rows of `eh_os_contract_event_runs`, filed under the process modules that

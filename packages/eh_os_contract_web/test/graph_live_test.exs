@@ -46,10 +46,10 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     # The first contract by id is selected on mount; this one is chosen.
     html =
-      render_change(view, "select_contract", %{"contract" => "web_test_host.case_handling"})
+      render_change(view, "select", %{"selected" => "contract:web_test_host.case_handling"})
 
     assert html =~ "Access: all"
-    assert html =~ ~r/value="web_test_host.case_handling"[^>]*selected/
+    assert html =~ ~r/value="contract:web_test_host.case_handling"[^>]*selected/
 
     contract = EhOsContract.Registry.contract("web_test_host.case_handling")
     document = Document.contract(contract)
@@ -134,7 +134,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
       |> get("/dashboard/graph")
       |> html_response(200)
 
-    assert html =~ ~s(<option value="web_test_appeals.appeals" selected>)
+    assert html =~ ~s(<option value="contract:web_test_appeals.appeals" selected>)
     assert html =~ ~s(id="overlay-graph")
     refute html =~ "ehg-count"
   end
@@ -142,21 +142,32 @@ defmodule EhOsContract.Web.Live.GraphTest do
   test "an id the page did not list keeps the selection" do
     view = live_graph()
 
-    html = render_change(view, "select_contract", %{"contract" => "nobody.knows"})
-    assert html =~ ~r/value="web_test_appeals.appeals"[^>]*selected/
+    html = render_change(view, "select", %{"selected" => "contract:nobody.knows"})
+    assert html =~ ~r/value="contract:web_test_appeals.appeals"[^>]*selected/
     assert html =~ ~s(id="overlay-graph")
+  end
+
+  test "a malformed event is ignored, and the page lives on" do
+    view = live_graph()
+
+    for {event, params} <- [{"select", %{}}, {"select", %{"selected" => ["x"]}}, {"nope", %{}}] do
+      html = render_change(view, event, params)
+      assert html =~ ~r/value="contract:web_test_appeals.appeals"[^>]*selected/
+    end
+
+    assert Process.alive?(view.pid)
   end
 
   test "two registered contracts are each reachable, by id" do
     # The selector keys by the contract's id (plan DD, P1b, #186).
     view = live_graph()
 
-    html = render_change(view, "select_contract", %{"contract" => "web_test_appeals.appeals"})
+    html = render_change(view, "select", %{"selected" => "contract:web_test_appeals.appeals"})
     assert "event:web_test_appeals.appeals:appeal_lodged" in cards(html, "overlay-graph")
     refute "event:web_test_host.case_handling:case_opened" in cards(html, "overlay-graph")
 
     html =
-      render_change(view, "select_contract", %{"contract" => "web_test_host.case_handling"})
+      render_change(view, "select", %{"selected" => "contract:web_test_host.case_handling"})
 
     assert "event:web_test_host.case_handling:case_opened" in cards(html, "overlay-graph")
   end
@@ -188,8 +199,9 @@ defmodule EhOsContract.Web.Live.GraphTest do
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
         domains: [],
-        contracts: [],
+        pickable: [],
         selected: nil,
+        kind: nil,
         document: nil,
         overlay: nil,
         units: []
@@ -218,34 +230,84 @@ defmodule EhOsContract.Web.Live.GraphTest do
   test "no contract registered says so, and draws no picture of one" do
     html = render_component(&Graph.render/1, assigns(%{}))
 
-    assert html =~ "No contract is registered."
+    assert html =~ "No contract or process module is registered."
     refute html =~ ~s(id="declared-graph")
     refute html =~ ~s(id="overlay-graph")
   end
 
-  # Plan DD, P1b (#186): every contract is listed by its id and can be selected.
-  test "the selected contract's option is marked" do
+  # Plan DD, P1b (#186) and P2e (#220): every contract and process module is listed by its
+  # id, in a group of its kind, and can be selected.
+  test "the selected option is marked, contracts and processes apart" do
     document = Document.contract(EhOsContract.Registry.contract("web_test_appeals.appeals"))
+
+    pick = fn kind, id -> %{kind: kind, module: nil, id: id, value: "#{kind}:#{id}"} end
 
     html =
       render_component(
         &Graph.render/1,
         assigns(%{
           eh_os_contract_web_access: :read_only,
-          contracts: [
-            %{contract: nil, id: "shop.cases"},
-            %{contract: nil, id: "shop.stock"}
+          pickable: [
+            pick.(:contract, "shop.cases"),
+            pick.(:contract, "shop.stock"),
+            pick.(:process, "shop.stock")
           ],
-          selected: "shop.stock",
+          selected: "contract:shop.stock",
+          kind: :contract,
           document: document
         })
       )
 
-    assert html =~ ~s(value="shop.stock" selected>)
-    refute html =~ ~s(value="shop.cases" selected>)
-    assert html =~ ~s(value="shop.cases">)
-    refute html =~ ~s(id="declared-graph")
+    assert html =~ ~s(value="contract:shop.stock" selected>)
+    refute html =~ ~s(value="contract:shop.cases" selected>)
+    assert html =~ ~s(value="contract:shop.cases">)
+    assert html =~ ~s(value="process:shop.stock">)
+
+    groups = html |> LazyHTML.from_fragment() |> LazyHTML.query("optgroup")
+    assert LazyHTML.attribute(groups, "label") == ["Contracts", "Processes"]
+
+    refute html =~ ~s(id="process-graph")
     assert html =~ ~s(id="overlay-graph")
     assert html =~ "Access: read only"
+  end
+
+  # Plan DD, P2e (#220): a process module is reached by its id, though a contract may have
+  # it too, and its picture is drawn with the log over it.
+  test "selecting a process module draws its picture with its overlay, and no units" do
+    view = live_graph()
+
+    html = render_change(view, "select", %{"selected" => "process:web_test_host.case_run"})
+    assert html =~ ~r/value="process:web_test_host.case_run"[^>]*selected/
+    assert html =~ "Declared versus observed, this process"
+    refute html =~ ~s(id="overlay-graph")
+    refute html =~ ~s(id="unit-graph-)
+
+    process = EhOsContract.Registry.process("web_test_host.case_run")
+    document = Document.process(process)
+    overlay = Overlay.process(process)
+
+    assert cards(html, "process-graph") == drawn(document, :process, overlay)
+    assert "process:web_test_host.case_run" in cards(html, "process-graph")
+
+    # Its runs, from the log, on the process: none in a test database.
+    assert html
+           |> canvas("process-graph")
+           |> LazyHTML.query(~s([data-ehg-node="process:web_test_host.case_run"] .ehg-count))
+           |> LazyHTML.text() == "×0"
+
+    # And back to a contract.
+    html = render_change(view, "select", %{"selected" => "contract:web_test_host.case_handling"})
+    assert html =~ ~s(id="overlay-graph")
+    refute html =~ ~s(id="process-graph")
+  end
+
+  test "the system view draws each process module of the domain" do
+    html =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/graph")
+      |> html_response(200)
+
+    assert "process:web_test_host.case_run" in cards(html, "system-graph-web_test_host")
   end
 end

@@ -1,7 +1,7 @@
 {
   "context": "context:Taxvision.Domain:client_lifecycle",
   "contract": "taxvision.registry_watch",
-  "digest": "787b40b4ac2a",
+  "digest": "1e18885b10cd",
   "domain": "Taxvision.Domain",
   "kind": "contract",
   "module": "Taxvision.Contracts.RegistryWatch",
@@ -408,7 +408,6 @@
         "source": null
       }
     ],
-    "process": [],
     "process_manager": [
       {
         "correlate": [
@@ -435,11 +434,9 @@
         ]
       }
     ],
-    "promise": [],
     "publication": [],
     "query": [],
     "read_model": [],
-    "stage": [],
     "status": [],
     "subject": [],
     "timer": [
@@ -547,7 +544,6 @@
     ]
   },
   "relations": {
-    "accountable_for": [],
     "allowed_in": [],
     "backed_by": [
       {
@@ -646,7 +642,6 @@
         "to": "command:taxvision.registry_watch:check_registries"
       }
     ],
-    "fulfils": [],
     "handled_by": [
       {
         "from": "event:taxvision.registry_watch:registry_status_checked",
@@ -691,8 +686,6 @@
         "to": "event:taxvision.registry_watch:registry_status_checked"
       }
     ],
-    "opens": [],
-    "or_else": [],
     "projected_into": [],
     "published_as": [],
     "reads": [],

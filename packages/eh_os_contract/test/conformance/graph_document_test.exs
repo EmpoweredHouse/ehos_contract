@@ -823,7 +823,6 @@ defmodule EhOsContract.GraphDocumentTest do
       # A contract declares no process, so its node names none.
       refute Map.has_key?(node(d, "contract", contract), "process")
       refute Map.has_key?(node(d, "contract", contract), "correlate")
-      assert d["relations"]["accountable_for"] == []
     end
   end
 
@@ -1220,14 +1219,15 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   describe "a contract's document" do
-    test "keeps the kinds of a process, empty, since a contract declares none" do
+    # Plan DD, P2e (#220): what a process module's document holds is not a contract's.
+    test "has no kind of a process, since a contract declares none" do
       for c <- Registry.contracts() ++ [Openings, Notes] do
         d = Document.contract(c)
 
-        for kind <- ~w(process stage promise), do: assert(d["nodes"][kind] == [], kind)
+        for kind <- ~w(process stage promise), do: refute(Map.has_key?(d["nodes"], kind), kind)
 
         for type <- ~w(opens fulfils or_else accountable_for),
-            do: assert(d["relations"][type] == [], type)
+            do: refute(Map.has_key?(d["relations"], type), type)
 
         for e <- d["nodes"]["event"],
             key <- ~w(stage included terminal),
@@ -1345,6 +1345,23 @@ defmodule EhOsContract.GraphDocumentTest do
       domain = Document.domain(DispatchRig.Domain, [DispatchRig.Ledger, module])
       assert [_] = domain["nodes"]["process"]
       assert domain["relations"]["accountable_for"] == []
+      assert JSV.validate(d, @schema) |> elem(0) == :ok
+    end
+
+    # An outage of a system an event rests on suspends a promise, so the picture of the
+    # process names the system, as the contract's document does.
+    test "names the external systems its events rest on, as the contract's document does" do
+      d = Document.process(UniversalityGate.TreatmentEpisodeRun)
+      contract = Document.contract(UniversalityGate.TreatmentEpisode)
+      registry = Document.id([:external, UniversalityGate.Domain, :payer_registry])
+      checked = "event:universality_gate.treatment_episode:payer_eligibility_checked"
+
+      assert [%{"id" => ^registry, "label" => label}] = d["nodes"]["external"]
+      assert label == node(contract, "external", registry)["label"]
+      assert [%{"from" => ^checked, "to" => ^registry}] = d["relations"]["depends_on"]
+      assert d["relations"]["depends_on"] == contract["relations"]["depends_on"]
+
+      assert Document.process(DispatchRig.AccountReview)["nodes"]["external"] == []
       assert JSV.validate(d, @schema) |> elem(0) == :ok
     end
 

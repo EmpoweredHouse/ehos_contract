@@ -18,14 +18,16 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   is the root element's DOM id, so it is unique on the page.
 
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
-  `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `:declared`,
-  `{:unit, id}`, `{:lifecycle, id}`, `:context_map`, `:system`, or `:all`, every node
+  `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
+  `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, or `:all`, every node
   and relation, which it draws when `view` is left out. Each node is a card, each
   group a box with its title, and each relation a label, all rendered here in HEEx;
   the hook (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads
   them from the page, lays them out in the view's direction and draws the arrows, each
   with the line and the head its label names. The overlay's marks are a count on the
-  card or the label and a class per state, which the hook copies onto the arrow.
+  card or the label and a class per state, which the hook copies onto the arrow; on a
+  process's promise, the runs that kept it, broke it or wait, or that it is unconfirmed,
+  which no run is judged against.
 
   **A click** on a card, a group's title, a label or an arrow selects it: the card, the
   title and the label are buttons with `phx-click`, the arrow is pushed by the hook,
@@ -99,6 +101,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
        given: given,
        view: view,
        overlay: overlay,
+       # What the overlay says of each card and arrow, read once per view and overlay
+       # rather than at every render a selection makes.
+       node_marks: Map.new(view.nodes, &{&1.id, Marks.node(overlay, &1.id)}),
+       relation_marks: Map.new(view.relations, &{&1.id, marks(overlay, &1)}),
        stale_overlay?: given != nil and overlay == nil,
        selected: if(selected && picked(view, document, selected), do: selected)
      )}
@@ -169,7 +175,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
           <button
             :for={node <- @view.nodes}
             type="button"
-            class={["ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id))]}
+            class={[
+              "ehg-card" | classes(node.id, @focus, @near, @node_marks[node.id])
+            ]}
             data-ehg-node={node.id}
             data-kind={node.kind}
             data-variant={node.variant}
@@ -183,15 +191,15 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
             <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
             <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <.count marks={Marks.node(@overlay, node.id)} />
+            <.count marks={@node_marks[node.id]} />
           </button>
           <button
             :for={relation <- @view.relations}
             type="button"
             class={[
               "ehg-relation",
-              blank?(relation, Marks.relation(@overlay, relation.id)) && "ehg-blank"
-              | classes(relation.id, @focus, @near, Marks.relation(@overlay, relation.id))
+              blank?(relation, @relation_marks[relation.id]) && "ehg-blank"
+              | classes(relation.id, @focus, @near, @relation_marks[relation.id])
             ]}
             data-ehg-relation={relation.id}
             data-from={relation.from}
@@ -202,7 +210,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             phx-value-id={relation.id}
             phx-target={@myself}
           >
-            {relation.words}<.count marks={Marks.relation(@overlay, relation.id)} />
+            {relation.words}<.count marks={@relation_marks[relation.id]} />
           </button>
         </div>
       </div>
@@ -218,9 +226,23 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   defp count(assigns) do
     ~H"""
-    <span :if={@marks.count} class="ehg-count">×{@marks.count}</span>
+    <span :if={@marks.count} class="ehg-count">×{@marks.count}</span><span
+      :if={@marks[:verdict]}
+      class="ehg-count"
+    >· {@marks[:verdict]}</span>
     """
   end
+
+  # Both arrows of a promise are the promise's, which the overlay keeps the verdicts of, as
+  # their panel says: each takes its state — a broken promise in the error colour — and
+  # the heavy one alone says the verdicts in words, so they are read once. Any other
+  # relation, its own numbers.
+  defp marks(overlay, %{type: "promise"} = relation), do: Marks.promise(overlay, relation.facts)
+
+  defp marks(overlay, %{type: "or_else", facts: %{"process" => _} = promise}),
+    do: overlay |> Marks.promise(promise) |> Map.delete(:verdict)
+
+  defp marks(overlay, relation), do: Marks.relation(overlay, relation.id)
 
   # The element `id` names, a node, a group or a relation of the view; nil when it has
   # none of them.
@@ -279,5 +301,6 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # A label with nothing to say is there for the hook, which reads the relation from it,
   # and takes no room: the arrow alone is drawn, and takes the click.
-  defp blank?(relation, marks), do: relation.words in [nil, ""] and marks.count == nil
+  defp blank?(relation, marks),
+    do: relation.words in [nil, ""] and marks.count == nil and marks[:verdict] == nil
 end

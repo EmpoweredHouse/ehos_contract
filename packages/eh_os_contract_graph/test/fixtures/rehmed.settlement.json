@@ -1,7 +1,7 @@
 {
   "context": "context:Rehmed.Domain:settlement",
   "contract": "rehmed.settlement",
-  "digest": "20656a790c54",
+  "digest": "88c3d9d6d28b",
   "domain": "Rehmed.Domain",
   "kind": "contract",
   "module": "Rehmed.Contracts.Settlement",
@@ -417,12 +417,17 @@
         "name": "closed_settlement_changes_only_by_correction",
         "of": "unit:rehmed.settlement:visit_settlement",
         "source": "AGG-03 niezmiennik 4"
+      },
+      {
+        "id": "invariant:rehmed.settlement:unit:visit_settlement:only_a_settled_visit_is_corrected",
+        "label": "Korektę księguje się tylko na rozliczonej wizycie",
+        "name": "only_a_settled_visit_is_corrected",
+        "of": "unit:rehmed.settlement:visit_settlement",
+        "source": "E-84; AGG-03 niezmiennik 4"
       }
     ],
     "policy": [],
-    "process": [],
     "process_manager": [],
-    "promise": [],
     "publication": [],
     "query": [
       {
@@ -473,7 +478,6 @@
         "source": null
       }
     ],
-    "stage": [],
     "status": [],
     "subject": [],
     "timer": [],
@@ -522,6 +526,20 @@
             "name": "closed_on",
             "required": false,
             "type": "date"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": false,
+            "type": "money",
+            "value": "value:Rehmed.Domain:money"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "changed_after_close",
+            "required": true,
+            "type": "boolean"
           }
         ],
         "unit_kind": "aggregate"
@@ -569,7 +587,6 @@
     ]
   },
   "relations": {
-    "accountable_for": [],
     "allowed_in": [],
     "backed_by": [],
     "builds": [
@@ -653,7 +670,6 @@
     "ends": [],
     "enters": [],
     "fires": [],
-    "fulfils": [],
     "handled_by": [],
     "issues": [],
     "may_ask": [
@@ -691,8 +707,6 @@
       }
     ],
     "may_record": [],
-    "opens": [],
-    "or_else": [],
     "projected_into": [
       {
         "from": "event:rehmed.settlement:payment_recorded",
@@ -744,6 +758,11 @@
         "from": "command:rehmed.settlement:close_settlement",
         "id": "refused_on:command:rehmed.settlement:close_settlement:constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period",
         "to": "constraint:rehmed.settlement:command:close_settlement:payer_visit_names_its_period"
+      },
+      {
+        "from": "command:rehmed.settlement:book_correction",
+        "id": "refused_on:command:rehmed.settlement:book_correction:invariant:rehmed.settlement:unit:visit_settlement:only_a_settled_visit_is_corrected",
+        "to": "invariant:rehmed.settlement:unit:visit_settlement:only_a_settled_visit_is_corrected"
       }
     ],
     "sets": [],
@@ -805,6 +824,23 @@
       }
     ],
     "unit": [
+      {
+        "command": {
+          "command": "command:rehmed.settlement:book_correction",
+          "data": {
+            "delta": -1000
+          }
+        },
+        "covers": [
+          "refused_on:command:rehmed.settlement:book_correction:invariant:rehmed.settlement:unit:visit_settlement:only_a_settled_visit_is_corrected"
+        ],
+        "description": "korekta przed rozliczeniem wizyty — odrzucona",
+        "expect": [],
+        "given": [],
+        "id": "scenario:rehmed.settlement:korekta przed rozliczeniem wizyty — odrzucona",
+        "rejected": "invariant:rehmed.settlement:unit:visit_settlement:only_a_settled_visit_is_corrected",
+        "target": "unit:rehmed.settlement:visit_settlement"
+      },
       {
         "command": {
           "command": "command:rehmed.settlement:close_settlement",
@@ -1125,5 +1161,5 @@
     ]
   },
   "schema": "eh_os_contract.graph.v1",
-  "version": "95315777d1ef"
+  "version": "51b88d205146"
 }
