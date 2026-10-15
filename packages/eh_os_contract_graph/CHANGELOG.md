@@ -23,6 +23,9 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A unit that records only is marked** (plan DD, stage C1, #304): when the document says `records_only`, the
+  unit's card and its box say "records only" beside its kind, and its panel says "Records only: no command it
+  takes can be refused."
 - **A process module's picture** (plan DD, stage P2e, #220): the view `:process` draws a process module's
   `graph.v1` document top to bottom — the process, with what one run is and its deadline, and the actor
   accountable for it; its stages as boxes in their order, each after the one before; in each, the events it

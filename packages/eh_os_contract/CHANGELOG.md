@@ -50,6 +50,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A unit's node in a contract's `graph.v1` document says it records only** (plan DD, stage C1, #304): a unit with
+  events none of whose commands can be refused carries `"records_only": true`, the same fact its page from
+  `mix eh_os_contract.pages` states; the key is absent otherwise, and the schema in `priv/schema/graph.v1.json`
+  has it as optional. Moves no verdict.
 - **A line logged while the engine works carries that work's correlation.** While it runs a command,
   records an event, or reacts to an event, a timer or a message, the Logger's metadata holds the
   work's correlation identifier as `correlation_id`, in lower case, and what was there before is

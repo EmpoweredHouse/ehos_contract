@@ -2389,6 +2389,10 @@
         },
         "state": {
           "$ref": "#/$defs/fields"
+        },
+        "records_only": {
+          "const": true,
+          "description": "It has events and no command it takes can be refused: it decides nothing. Absent otherwise."
         }
       }
     },
