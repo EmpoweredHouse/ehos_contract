@@ -65,12 +65,14 @@ defmodule EhOsContract.View do
          Enum.map(mine, &contract(&1, unit_filter, details?))}
       end
 
-    processes = if context_filter == nil, do: processes, else: []
+    # The root line counts the whole domain, a path or not; a path keeps one context's
+    # branch, and a process crosses contexts, so none is under it.
+    shown = if context_filter == nil, do: processes, else: []
 
     root =
       {"domain #{domain.name}  #{plural(length(domain.contexts), "context")} · " <>
          plural(length(contracts), "contract") <> processes_count(processes), [],
-       contexts ++ Enum.map(processes, &process(&1, details?))}
+       contexts ++ Enum.map(shown, &process(&1, details?))}
 
     root |> lines("", "") |> Enum.join("\n")
   end

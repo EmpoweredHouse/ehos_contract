@@ -135,9 +135,13 @@ defmodule EhOsContract.ViewTest do
                 ├─ stage plan  ← UniversalityGate.TreatmentEpisode: treatment_plan_approved
              """
 
-    # One branch keeps a context, so no process.
+    # One branch keeps a context, so no process under it; the root line still counts the
+    # whole domain, as it counts its contexts and contracts (the review of P2e's third
+    # pull request: it counted the processes shown).
     [context] = UniversalityGate.Domain.__eh_os_contract_model__().contexts
-    refute View.render(UniversalityGate.Domain, modules, path: [context.name]) =~ "process"
+    branch = View.render(UniversalityGate.Domain, modules, path: [context.name])
+    assert branch =~ "domain universality_gate  1 context · 1 contract · 1 process\n"
+    refute branch =~ "─ process"
   end
 
   # The review of P2e's third pull request: a stage listed a contract twice when its
