@@ -53,8 +53,9 @@ defmodule EhOsContract.GraphRenderer.View do
   @typedoc """
   A node as the drawing layer takes it. `facts` is the document's node, whole; `group`
   the id of the group the card sits in; `tag` the small line above its label, `lines`
-  what the card lists under it, and `variant` a look of its kind: `"terminal"`,
-  `"final"`.
+  what the card lists under it, `foot` where the card's element lives when the picture
+  does not say it already (the contract that declares an event of a process, or of
+  another contract), and `variant` a look of its kind: `"terminal"`, `"final"`.
   """
   @type graph_node :: %{
           id: String.t(),
@@ -65,6 +66,7 @@ defmodule EhOsContract.GraphRenderer.View do
           group: String.t() | nil,
           tag: String.t() | nil,
           lines: [String.t()],
+          foot: String.t() | nil,
           variant: String.t() | nil
         }
 
@@ -135,6 +137,49 @@ defmodule EhOsContract.GraphRenderer.View do
   def build(document, spec, overlay \\ nil),
     do: document |> view(spec) |> observed(document, overlay)
 
+  # The order a legend lists kinds in: who acts, what is decided, what reacts, what is
+  # read, the rules, what is outside, and the domain's own kinds.
+  @kinds ~w(actor command unit event status policy process_manager timer effect read_model
+            query invariant constraint domain_service external process context contract
+            publication)
+
+  # What each look of an arrow means, in the order a legend lists them.
+  @lines [
+    {"solid", "leads to"},
+    {"dotted", "after the transaction, or a relation that causes nothing"},
+    {"thick", "a promise, with its window"},
+    {"headless", "rests on, belongs to, or goes both ways"}
+  ]
+
+  @doc """
+  What a legend of `view` lists: the kinds of the cards it draws, in a fixed order, and
+  the looks of the arrows it draws, each with what it means. Only what the view has is
+  listed, so a legend never explains what the picture does not show.
+
+      View.legend(view)
+      #=> %{kinds: [{"command", "command"}, {"event", "event"}],
+      #     lines: [{"solid", "leads to"}]}
+  """
+  @spec legend(t()) :: %{kinds: [{String.t(), String.t()}], lines: [{String.t(), String.t()}]}
+  def legend(view) do
+    drawn = MapSet.new(view.nodes, & &1.kind)
+    rank = Map.new(Enum.with_index(@kinds))
+
+    kinds =
+      drawn
+      |> Enum.reject(&(&1 == "start"))
+      |> Enum.sort_by(&{Map.get(rank, &1, length(@kinds)), &1})
+      |> Enum.map(&{&1, words(&1)})
+
+    looks =
+      MapSet.new(view.relations, fn
+        %{head: false} -> "headless"
+        relation -> relation.line
+      end)
+
+    %{kinds: kinds, lines: for({look, _} = line <- @lines, look in looks, do: line)}
+  end
+
   defp view(document, :all), do: all(document)
   defp view(document, :contract), do: contract(document)
   defp view(document, :process), do: process(document)
@@ -194,7 +239,8 @@ defmodule EhOsContract.GraphRenderer.View do
           node <- nodes(document, kind) do
         card(kind, node,
           group: if(kind in ~w(command event), do: node["unit"]),
-          lines: lines(kind, node, pinned)
+          lines: lines(kind, node, pinned),
+          foot: if(kind == "event", do: home(node))
         )
       end
 
@@ -261,6 +307,14 @@ defmodule EhOsContract.GraphRenderer.View do
 
   defp lines("timer", node, _pinned), do: List.wrap(fires(node))
   defp lines(_kind, _node, _pinned), do: []
+
+  # Where an event of a contract's full graph is declared, when not in one of its units: the
+  # sibling contract it is consumed from, or another application it is received from.
+  defp home(%{"declared_as" => "event:" <> declared}),
+    do: declared |> String.split(":") |> hd()
+
+  defp home(%{"unit" => unit}) when is_binary(unit), do: nil
+  defp home(_received), do: "another application"
 
   # `drawn`, the ids of the cards drawn so far, with those of `kind` one of `arrows` joins
   # to one of them.
@@ -370,7 +424,7 @@ defmodule EhOsContract.GraphRenderer.View do
       for e <- nodes(document, "event") do
         card("event", e,
           group: e["stage"],
-          lines: List.wrap(by_id[e["contract"]] && title(by_id[e["contract"]])),
+          foot: by_id[e["contract"]] && title(by_id[e["contract"]]),
           variant: if(e["terminal"] == true, do: "terminal")
         )
       end
@@ -772,6 +826,7 @@ defmodule EhOsContract.GraphRenderer.View do
         group: nil,
         tag: words(kind),
         lines: [],
+        foot: nil,
         variant: nil
       },
       Map.new(extra)

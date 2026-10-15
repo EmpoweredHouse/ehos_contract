@@ -175,6 +175,41 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       refute title.(document) =~ "records only"
     end
 
+    test "a card shows its kind as a badge with an icon, and where it lives in a footer" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      html = draw(document, nil, :process)
+      card = at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+
+      assert card |> LazyHTML.query(".ehg-kind") |> LazyHTML.text() == "event"
+      assert Enum.count(LazyHTML.query(card, ".ehg-kind svg.ehg-icon[aria-hidden]")) == 1
+
+      assert card |> LazyHTML.query(".ehg-foot") |> LazyHTML.text() ==
+               "rehmed.statutory_reporting"
+    end
+
+    test "a name in code may break after a dot or an underscore, and keeps its text" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      html = draw(document, nil, :process)
+      card = at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+
+      assert card |> LazyHTML.query(".ehg-name") |> LazyHTML.text() == "p1_report_sent"
+      assert Enum.count(LazyHTML.query(card, ".ehg-name wbr")) == 2
+      assert Enum.count(LazyHTML.query(card, ".ehg-foot wbr")) == 2
+    end
+
+    test "a legend under the canvas lists what the view draws" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      legend = document |> draw(nil, :process) |> LazyHTML.query("dl.ehg-legend")
+
+      assert LazyHTML.attribute(LazyHTML.query(legend, ".ehg-legend-kind"), "data-kind") ==
+               ~w(actor event external process)
+
+      assert "thick" in LazyHTML.attribute(
+               LazyHTML.query(legend, ".ehg-legend-line"),
+               "data-look"
+             )
+    end
+
     test "a client's text is text, and an id of any characters survives into the page" do
       document = Fixtures.document("edge_cases")
       html = draw(document)

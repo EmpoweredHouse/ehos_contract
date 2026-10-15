@@ -111,6 +111,38 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
   end
 
+  describe "legend/1" do
+    test "lists the kinds of the cards the view draws, in a fixed order, and only those" do
+      legend = View.legend(View.process(Fixtures.document("process.rehmed.clinical_visit")))
+
+      assert legend.kinds == [
+               {"actor", "actor"},
+               {"event", "event"},
+               {"external", "external"},
+               {"process", "process"}
+             ]
+    end
+
+    test "lists each look of an arrow the view draws, with what it means" do
+      legend = View.legend(View.process(Fixtures.document("process.rehmed.clinical_visit")))
+      looks = Enum.map(legend.lines, &elem(&1, 0))
+
+      assert "thick" in looks
+      assert "headless" in looks
+
+      refute View.legend(View.contract(Fixtures.document("rehmed.settlement"))).lines
+             |> Enum.any?(&(elem(&1, 0) == "thick"))
+    end
+
+    test "leaves out the start of a lifecycle, which says nothing" do
+      document = Fixtures.document("appunite_equipment.demands")
+      [unit | _] = for u <- document["nodes"]["unit"], do: u["id"]
+      kinds = Enum.map(View.legend(View.lifecycle(document, unit)).kinds, &elem(&1, 0))
+
+      refute "start" in kinds
+    end
+  end
+
   describe "contract/1, the full graph" do
     test "puts each unit's commands and events in its group, and draws no other kind of fact" do
       document = Fixtures.document("rehmed.settlement")
@@ -129,6 +161,19 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert Enum.sort(members) == Enum.sort(own)
 
       assert kinds(view) == ~w(actor command event query read_model)
+    end
+
+    test "says where an event is declared when no unit of the contract holds it" do
+      consumed = View.contract(Fixtures.document("appunite_equipment.demands"))
+
+      assert card(consumed, "event:appunite_equipment.demands:issued").foot ==
+               "appunite_equipment.computers"
+
+      received = View.contract(Fixtures.document("messaging"))
+      assert card(received, "event:messaging:copy_lent").foot == "another application"
+
+      own = View.contract(Fixtures.document("rehmed.settlement"))
+      assert for(%{kind: "event"} = e <- own.nodes, do: e.foot) |> Enum.uniq() == [nil]
     end
 
     test "draws an event of another contract only where a reaction takes it" do
@@ -214,12 +259,12 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       sent = card(view, "event:rehmed.statutory_reporting:p1_report_sent")
       assert sent.group == "stage:rehmed.clinical_visit:reporting"
       assert sent.variant == "terminal"
-      assert sent.lines == ["rehmed.statutory_reporting"]
+      assert sent.foot == "rehmed.statutory_reporting"
       assert card(view, "event:rehmed.statutory_reporting:p1_report_queued").variant == nil
 
       left = card(view, "event:rehmed.scheduling:visit_completed")
       assert left.group == "stage:rehmed.clinical_visit:departure"
-      assert left.lines == ["rehmed.scheduling"]
+      assert left.foot == "rehmed.scheduling"
 
       assert kinds(view) == ~w(actor event external process)
     end
