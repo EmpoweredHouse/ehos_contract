@@ -156,7 +156,8 @@ defmodule EhOsContract.Glossary do
                 context in contexts,
                 names = Enum.filter(names, &EhOsContract.CodeWords.contains?(&1.words, sequence)),
                 names != [] do
-              "- process `#{id}`: " <> Enum.map_join(names, ", ", & &1.what)
+              "- process `#{id}`: " <>
+                (names |> Enum.map(& &1.what) |> Enum.uniq() |> Enum.join(", "))
             end
 
         case named do
@@ -166,12 +167,13 @@ defmodule EhOsContract.Glossary do
     end
   end
 
-  # A process module's names: its id after the domain's name, its stages, its promises
-  # and the fields that tell its runs apart.
+  # A process module's names: each segment of its id after the domain's name, its
+  # stages, its promises and the fields that tell its runs apart. A segment is a name of
+  # its own: a term's words do not run across the dot.
   defp process_names(process) do
     [_namespace | rest] = String.split(process.id, ".")
 
-    [%{what: "its id", words: Enum.flat_map(rest, &EhOsContract.CodeWords.words/1)}] ++
+    for(segment <- rest, do: %{what: "its id", words: EhOsContract.CodeWords.words(segment)}) ++
       for(s <- process.stages, do: name("stage", s.name)) ++
       for(p <- process.promises, do: name("promise", p.name)) ++
       for(f <- process.correlate, do: name("field", f))

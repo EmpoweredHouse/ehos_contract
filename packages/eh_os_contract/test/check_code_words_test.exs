@@ -223,6 +223,48 @@ defmodule EhOsContract.CheckCodeWordsTest do
     refute Glossary.render(@domain, contracts: [@scheduling, @payers]) =~ "visit_run"
   end
 
+  # The review of P2e's third pull request: the id's segments were one list of words,
+  # so `code_words.settlement.date_run` said "settlement date" across the dot.
+  test "a process module's id is named with a term only within one segment" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCodeWordsTest.DottedRun do
+        use EhOsContract.Process, id: "code_words.settlement.date_run", domain: #{inspect(@domain)},
+          label: "Rozliczenie"
+
+        correlate :visit_id
+        stage :booking, include: [{#{inspect(@scheduling)}, :visit_booked}]
+      end
+
+      defmodule EhOsContract.CheckCodeWordsTest.WholeRun do
+        use EhOsContract.Process, id: "code_words.settlement_date_run", domain: #{inspect(@domain)},
+          label: "Rozliczenie"
+
+        correlate :visit_id
+        stage :booking, include: [{#{inspect(@scheduling)}, :visit_booked}]
+      end
+      """,
+      "dotted_run.ex"
+    )
+
+    text =
+      Glossary.render(@domain,
+        contracts: [@scheduling],
+        processes: [
+          EhOsContract.CheckCodeWordsTest.DottedRun,
+          EhOsContract.CheckCodeWordsTest.WholeRun
+        ],
+        context: :scheduling
+      )
+
+    [_before, settlement_date] = String.split(text, "_In code: `settlement_date`._")
+    [settlement_date | _rest] = String.split(settlement_date, "###")
+
+    # Control: the term within one segment is found, once per process module.
+    assert settlement_date =~ "- process `code_words.settlement_date_run`: its id\n"
+    refute settlement_date =~ "code_words.settlement.date_run"
+  end
+
   test "code_language moves no version, and is in the model only when it is not English" do
     source = fn name, option ->
       """
