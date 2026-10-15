@@ -2,7 +2,7 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   # P1–P5 of v2 §6: what reacts to events, and what is read.
   #
   # - **P1.** A policy, and an effect, handles events of this contract or events it
-  #   consumes; a policy issues commands of this contract only.
+  #   consumes, a policy at least one; a policy issues commands of this contract only.
   # - **P2.** An effect that `calls:` an external system cannot run
   #   `:in_transaction`: the call cannot be rolled back with the append.
   # - **P3.** A policy or an effect delivered `:at_least_once` names its
@@ -53,7 +53,18 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   defp policy(policy, events, commands) do
     where = "policy #{inspect(policy.name)}"
 
-    handles(where, policy, policy.handles, events) ++
+    # Plan DD, C1 (#304): `handles: []` meets `required:`, and a policy that handles
+    # nothing never runs; what it names in `issues:` would be permitted all the same.
+    nothing =
+      if List.wrap(policy.handles) == [],
+        do: [
+          {"P1: #{where} handles no event, so it never runs; name the events it reacts to",
+           policy}
+        ],
+        else: []
+
+    nothing ++
+      handles(where, policy, policy.handles, events) ++
       issues("P1", where, policy, policy.issues, commands) ++
       idempotent(where, policy) ++ not_downstream(where, policy)
   end

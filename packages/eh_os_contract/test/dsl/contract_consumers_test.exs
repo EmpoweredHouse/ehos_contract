@@ -36,6 +36,20 @@ defmodule EhOsContract.ContractConsumersTest do
                  "contract (policy_wrong.ex:12)"
     end
 
+    # Plan DD, C1 (#304): `handles: []` met `required:`, and a policy that handles
+    # nothing never runs, yet dispatch would have let it issue what it names.
+    test "a policy that handles no event is refused" do
+      message =
+        refuse_contract("PolicyHandlesNothing", """
+        #{@unit}
+          policy :remind_on_nothing, "Przypomnij bez powodu", handles: [], issues: :remind
+        """)
+
+      assert message =~
+               "P1: policy :remind_on_nothing handles no event, so it never runs; name the events " <>
+                 "it reacts to (policy_handles_nothing.ex:12)"
+    end
+
     test "control: a policy on a consumed event compiles" do
       assert %{policies: [%{handles: [:visit_booked], issues: [:remind]}]} =
                compile_contract("PolicyOnConsumed", """
