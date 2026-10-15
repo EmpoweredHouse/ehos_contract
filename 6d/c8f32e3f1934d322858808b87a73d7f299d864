@@ -1,0 +1,29 @@
+## Review
+
+The set had two reviews on #302's branch. Here it had two more on `origin/main..HEAD`, one for correctness (`code-review`, high) and one for security and performance, and then a second round on the fix-ups.
+
+**Fixed**
+- **The traffic task's guard checked only the set's own events** (210971b6). Two scenarios broke it:
+  - On a log holding another tree's runs, its half-hourly drains pushed those reactions through at the week's times.
+  - A dev server connected to the same database reacted to the task's events at today's time.
+
+  The task now refuses a log that holds anything. It also refuses while any client connection but its own (named by `application_name`) is open; autovacuum workers are not counted. Its doc says the development database is shared by every checkout.
+- **Henryk's settlement chase fired when the task ran between 20:00 and 21:00 in Warsaw** (210971b6, a6c997b7). His visit now ends at the full hour then, after the clinic's evening. His note stays after his leaving, so his stages are not out of order.
+- **Docs, the catalogue and the sample PESEL** (88bee09e):
+  - The moduledoc pointed at a plan file that is not in this tree and quoted a Polish marker in a doc.
+  - The migration said it lived on another branch.
+  - The catalogue had no fallback clause, so another read would have raised an error that logs the actor.
+  - The scenarios' PESEL had a valid checksum and date, so it may be a real person's.
+- **My own mistake, caught by the second round** (a6c997b7): the PESEL replacement also changed Rehmed's tests, so the tests that no export carries Rehmed's personal values looked for a number only GraphLab holds. They are back on Rehmed's.
+- **The property test of `visit_settlement` failed about one run in five** (5th commit from the end). The gate found it. Two generated payments summed past a 64-bit integer, and the decider handed that sum to the payment rules, whose declared type refused it. Such a close is now refused as payments that do not sum to the total. A deterministic walk holds it, and 15 runs in a row of the property test pass. Rehmed's decider compares the sum without the domain service and does not have this.
+
+**Skipped**
+- **GraphLab's `check` counts are pinned together with the clients' in `e10_outputs_test.exs`.** The comment there names each of its 16 warnings and 10 notices, and splitting `check` by tree is a larger change.
+- **Two traffic runs at the same moment do not see each other**, since both use the same connection name. Each also refuses only an empty log.
+- **A run that starts before 20:00 Warsaw and ends after it still loses Henryk's waiting chase.** The moduledoc says so.
+- **The traffic task drains about 340 times.**
+- **Rehmed's own scenarios keep the PESEL with a valid checksum.** That is Rehmed's material, outside this change.
+
+**No change needed**
+- **The printed dashboard command was claimed not to override the configured audience.** Checked: the values on the command line win.
+- **The `like` on event types is unindexed.** The guard no longer filters on type.
