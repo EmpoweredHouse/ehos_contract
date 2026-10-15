@@ -54,11 +54,42 @@ defmodule EhOsContract.GraphSchemaTest do
     assert removed(baseline, added, []) == []
   end
 
+  test "a property named like prose is a property, an alternative may grow, a type list may not" do
+    baseline = %{
+      "$defs" => %{
+        "scenario" => %{
+          "properties" => %{"description" => %{"type" => "string"}},
+          "oneOf" => [%{"properties" => %{"a" => %{"type" => ["integer"]}}}]
+        }
+      }
+    }
+
+    no_description =
+      update_in(baseline, ["$defs", "scenario", "properties"], &Map.delete(&1, "description"))
+
+    grown =
+      put_in(baseline, ["$defs", "scenario", "oneOf"], [
+        %{"properties" => %{"a" => %{"type" => ["integer"]}, "b" => %{"type" => "string"}}}
+      ])
+
+    widened =
+      put_in(baseline, ["$defs", "scenario", "oneOf"], [
+        %{"properties" => %{"a" => %{"type" => ["integer", "null"]}}}
+      ])
+
+    refute removed(baseline, no_description, []) == []
+    assert removed(baseline, grown, []) == []
+    refute removed(baseline, widened, []) == []
+  end
+
   defp read(path), do: path |> File.read!() |> JSON.decode!()
 
-  # The paths at which `old` has something `new` lacks.
+  # The paths at which `old` has something `new` lacks. Under `properties` a key is a
+  # property's name, so `description` there is a property, not prose.
   defp removed(old, new, at) when is_map(old) and is_map(new) do
-    for {key, value} <- old, key not in @prose, reduce: [] do
+    prose = if List.last(at) == "properties", do: [], else: @prose
+
+    for {key, value} <- old, key not in prose, reduce: [] do
       acc ->
         case Map.fetch(new, key) do
           {:ok, now} -> acc ++ removed(value, now, at ++ [key])
@@ -67,16 +98,23 @@ defmodule EhOsContract.GraphSchemaTest do
     end
   end
 
-  # A list of names (`required`, `enum`) keeps every name; a `oneOf` or `anyOf` keeps every
-  # alternative, by what it is less its prose.
+  # A `type` list is what a reader may meet, so it stays as it was: a widened one hands an
+  # older reader a value it never expected.
   defp removed(old, new, at) when is_list(old) and is_list(new) do
-    present = MapSet.new(new, &bare/1)
-    for item <- old, not MapSet.member?(present, bare(item)), do: at ++ [inspect(bare(item))]
+    case List.last(at) do
+      "type" -> if Enum.sort(old) == Enum.sort(new), do: [], else: [at]
+      _names_or_alternatives -> kept(old, new, at)
+    end
   end
 
   defp removed(same, same, _at), do: []
   defp removed(_old, _new, at), do: [at]
 
-  defp bare(%{} = map), do: map |> Map.drop(@prose) |> Map.new(fn {k, v} -> {k, bare(v)} end)
-  defp bare(other), do: other
+  # A list of names (`required`, `enum`) keeps every name; a list of alternatives (`oneOf`,
+  # `anyOf`) keeps every alternative, though one may grow as any schema may.
+  defp kept(old, new, at) do
+    for item <- old,
+        not Enum.any?(new, &(removed(item, &1, at) == [])),
+        do: at ++ [inspect(item)]
+  end
 end
