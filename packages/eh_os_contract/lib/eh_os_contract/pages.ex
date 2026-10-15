@@ -927,19 +927,23 @@ defmodule EhOsContract.Pages do
   defp unconfirmed(_declaration), do: ""
 
   # The stages in their order, each with its events grouped by the contract that
-  # declares them.
+  # declares them. A stage none of whose includes resolves says so.
   defp process_stages(site, p, events) do
     stages =
       for {stage, index} <- Enum.with_index(p.stages, 1) do
         groups =
-          events
-          |> Enum.filter(&(&1.stage == stage.name))
-          |> Enum.chunk_by(& &1.contract)
-          |> Enum.map(fn [first | _] = group ->
-            [contract_ref(site, first.contract), ": "] ++
-              joined(Enum.map(group, &included_event(site, &1)))
-          end)
-          |> Enum.intersperse("; ")
+          case Model.stage_includes(events, stage.name) do
+            [] ->
+              ["_no included event resolves to a contract of the domain_"]
+
+            includes ->
+              includes
+              |> Enum.map(fn {contract, group} ->
+                [contract_ref(site, contract), ": "] ++
+                  joined(Enum.map(group, &included_event(site, &1)))
+              end)
+              |> Enum.intersperse("; ")
+          end
 
         row(["#{index}. #{code(stage.name)}#{label(stage)} — " | List.flatten(groups)])
       end

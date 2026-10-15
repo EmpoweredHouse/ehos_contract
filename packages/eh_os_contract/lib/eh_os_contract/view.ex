@@ -104,12 +104,15 @@ defmodule EhOsContract.View do
     stages =
       for stage <- p.stages do
         included =
-          events
-          |> Enum.filter(&(&1.stage == stage.name))
-          |> Enum.chunk_by(& &1.contract)
-          |> Enum.map_join("; ", fn [first | _] = group ->
-            "#{inspect(first.contract)}: #{Enum.map_join(group, ", ", & &1.name)}"
-          end)
+          case EhOsContract.Model.stage_includes(events, stage.name) do
+            [] ->
+              "no included event resolves to a contract of the domain"
+
+            includes ->
+              Enum.map_join(includes, "; ", fn {contract, group} ->
+                "#{inspect(contract)}: #{Enum.map_join(group, ", ", & &1.name)}"
+              end)
+          end
 
         {"stage #{stage.name}  ← #{included}", [], []}
       end

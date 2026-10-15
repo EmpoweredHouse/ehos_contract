@@ -486,6 +486,24 @@ defmodule EhOsContract.PagesTest do
                  "[`referral_received`](events/referral_received.md), "
     end
 
+    # The review of P2e's third pull request: a stage listed a contract twice when its
+    # events were not adjacent, and a stage with nothing resolved ended in "— ".
+    test "a stage's events by contract in first-appearance order, and a stage with none" do
+      page =
+        Pages.render(DispatchRig.Domain, [DispatchRig.Ledger, DispatchRig.Transfer, mixed_run()])[
+          "processes/ledger_run.md"
+        ]
+
+      assert page =~
+               "1. `moving` — [`DispatchRig.Ledger`](../ledger/ledger/index.md): " <>
+                 "[`deposited`](../ledger/ledger/events/deposited.md), " <>
+                 "[`withdrawn`](../ledger/ledger/events/withdrawn.md); " <>
+                 "[`DispatchRig.Transfer`](../ledger/transfer/index.md): " <>
+                 "[`account_moved`](../ledger/transfer/events/account_moved.md)\n"
+
+      assert page =~ "2. `elsewhere` — _no included event resolves to a contract of the domain_\n"
+    end
+
     test "control: a contract none of whose events a process includes lists none" do
       refute pages(ValueRig.Domain)["till/till/index.md"] =~ "Processes"
     end
@@ -513,6 +531,27 @@ defmodule EhOsContract.PagesTest do
         Pages.render(UniversalityGate.Domain, [%{run | id: "../../escape"}])
       end
     end
+  end
+
+  # A run whose first stage includes two contracts' events interleaved, and whose second
+  # includes only an event of another domain, which does not resolve.
+  defp mixed_run do
+    run = EhOsContract.Model.fetch(DispatchRig.LedgerRun)
+
+    stages = [
+      %{
+        name: :moving,
+        label: nil,
+        includes: [
+          %{contract: DispatchRig.Ledger, event: :deposited},
+          %{contract: DispatchRig.Transfer, event: :account_moved},
+          %{contract: DispatchRig.Ledger, event: :withdrawn}
+        ]
+      },
+      %{name: :elsewhere, label: nil, includes: [%{contract: ValueRig.Till, event: :paid_in}]}
+    ]
+
+    %{run | stages: stages, ends_on: []}
   end
 
   # The E13a pre-PR review: a contract's graph document is named after its id:, which a

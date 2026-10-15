@@ -140,6 +140,38 @@ defmodule EhOsContract.ViewTest do
     refute View.render(UniversalityGate.Domain, modules, path: [context.name]) =~ "process"
   end
 
+  # The review of P2e's third pull request: a stage listed a contract twice when its
+  # events were not adjacent, and a stage with nothing resolved ended in "← ".
+  test "a stage's events by contract in first-appearance order, and a stage with none" do
+    run = EhOsContract.Model.fetch(DispatchRig.LedgerRun)
+
+    stages = [
+      %{
+        name: :moving,
+        label: nil,
+        includes: [
+          %{contract: DispatchRig.Ledger, event: :deposited},
+          %{contract: DispatchRig.Transfer, event: :account_moved},
+          %{contract: DispatchRig.Ledger, event: :withdrawn}
+        ]
+      },
+      %{name: :elsewhere, label: nil, includes: [%{contract: ValueRig.Till, event: :paid_in}]}
+    ]
+
+    tree =
+      View.render(DispatchRig.Domain, [
+        DispatchRig.Ledger,
+        DispatchRig.Transfer,
+        %{run | stages: stages, ends_on: []}
+      ])
+
+    assert tree =~
+             "stage moving  ← DispatchRig.Ledger: deposited, withdrawn; " <>
+               "DispatchRig.Transfer: account_moved\n"
+
+    assert tree =~ "stage elsewhere  ← no included event resolves to a contract of the domain"
+  end
+
   test "control: a contract of another domain is not in the tree" do
     refute View.render(@domain, [ProcessShapes.Bare]) =~ "ProcessShapes"
   end
