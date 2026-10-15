@@ -10,7 +10,7 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 | `packages/eh_os_contract_web/` | the mountable dashboard |
 | `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
 | `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
-| `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment |
+| `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment, and GraphLab for drawing the graph |
 | `docs/` | the design record (`docs/adr/`), distillations and workshop material |
 | `plugins/eh-os-contract/`, `.claude-plugin/` | the `eh-os-contract` Claude Code plugin and the marketplace that publishes it: the skills for writing contracts that applications use |
 
@@ -34,7 +34,9 @@ has a domain, contracts and implementations that decide and react, so that dispa
 something to check. What writing a contract teaches goes into the library's work, not into notes about a
 client, and a contract that cannot be written is a **better** result than one written beside the material. An
 invented medical domain, `UniversalityGate`, lives in `packages/eh_os_contract/test/support/` and says so in its
-first line.
+first line. GraphLab (`sandbox/lib/graph_lab/`) is no client's: a changed copy of Rehmed with the cases the
+clients' material lacks, made only to draw the graph on, so it may change for the graph's sake; `mix
+graph_lab.traffic` fills the development log with its runs.
 
 Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
 the code has the new name; the old one remains only in `docs/adr/` and in `PLAN.md`'s history, where `PNS.X`
