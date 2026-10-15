@@ -199,7 +199,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
     test "a legend under the canvas lists what the view draws" do
       document = Fixtures.document("process.rehmed.clinical_visit")
-      legend = document |> draw(nil, :process) |> LazyHTML.query("dl.ehg-legend")
+      legend = document |> draw(nil, :process) |> LazyHTML.query("ul.ehg-legend")
 
       assert LazyHTML.attribute(LazyHTML.query(legend, ".ehg-legend-kind"), "data-kind") ==
                ~w(actor event external process)
@@ -208,6 +208,17 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
                LazyHTML.query(legend, ".ehg-legend-line"),
                "data-look"
              )
+    end
+
+    test "a legend says what each swatch shows to a reader who cannot see it" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      legend = document |> draw(nil, :process) |> LazyHTML.query("ul.ehg-legend[aria-label]")
+
+      texts =
+        legend |> LazyHTML.query("li") |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      assert "event" in texts
+      assert "a heavy arrow: a promise, with its window" in texts
     end
 
     test "a client's text is text, and an id of any characters survives into the page" do

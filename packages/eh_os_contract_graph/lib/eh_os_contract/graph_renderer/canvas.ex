@@ -239,23 +239,31 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   attr :legend, :map, required: true
 
+  # What a swatch of each look shows, said for a reader who cannot see it.
+  @looks %{
+    "solid" => "a solid arrow",
+    "dotted" => "a dotted arrow",
+    "thick" => "a heavy arrow",
+    "headless" => "a line with no head"
+  }
+
   # What the cards' colours and icons and the arrows' looks mean, for what this view draws.
   defp legend(assigns) do
+    assigns = assign(assigns, :looks, @looks)
+
     ~H"""
-    <dl :if={@legend.kinds != [] or @legend.lines != []} class="ehg-legend" aria-label="Legend">
-      <div :for={{kind, words} <- @legend.kinds} class="ehg-legend-kind" data-kind={kind}>
-        <dt><Icons.icon kind={kind} /></dt>
-        <dd>{words}</dd>
-      </div>
-      <div :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
-        <dt><svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
-              :if={look != "headless"}
-              class="ehg-legend-head"
-              d="M18 1l5 3-5 3z"
-            /></svg></dt>
-        <dd>{words}</dd>
-      </div>
-    </dl>
+    <ul :if={@legend.kinds != [] or @legend.lines != []} class="ehg-legend" aria-label="Legend">
+      <li :for={{kind, words} <- @legend.kinds} class="ehg-legend-kind" data-kind={kind}>
+        <Icons.icon kind={kind} />{words}
+      </li>
+      <li :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
+        <svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
+            :if={look != "headless"}
+            class="ehg-legend-head"
+            d="M18 1l5 3-5 3z"
+          /></svg><span class="ehg-hidden">{@looks[look]}: </span>{words}
+      </li>
+    </ul>
     """
   end
 
