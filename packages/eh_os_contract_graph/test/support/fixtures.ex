@@ -10,8 +10,10 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
   # draws every document the engine gives today. Two hand-made documents beside them hold what no
   # client wrote: edge_cases.json, ids of any character, a loop and a dangling relation;
   # messaging.json, an event published to and one received from another application, the inbox,
-  # and a manager that ends and cancels. Under overlays/, the visit's overlay as the engine gives
-  # it over an empty log.
+  # and a manager that ends and cancels. For joining applications (plan DD, G1, #297), TaxVision's
+  # domain, taken on 15 October 2026, whose accounting month publishes, and domain.ledger.json,
+  # hand-made, an application that subscribes to it and to a name nobody in the set publishes.
+  # Under overlays/, the visit's overlay as the engine gives it over an empty log.
 
   @dir Path.expand("../fixtures", __DIR__)
 

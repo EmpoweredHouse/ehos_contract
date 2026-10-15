@@ -23,6 +23,13 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **Several applications joined into one landscape** (plan DD, stage G1, #297):
+  `EhOsContract.GraphRenderer.Landscape.join/1` takes `{application, domain_document}` pairs and matches what one
+  publishes to what another subscribes to by the name on the wire; `Canvas` draws the result with
+  `view={:landscape}`, a box per domain holding its contracts on the wire and saying how many others it has, and a
+  card per name between them. A name some document subscribes to and none of the set publishes is drawn as coming
+  from outside the set. Two domains of one application are joined as two applications are.
+
 - **A contract's card on the domain's map says its drift** (plan DD, stage G1, #297): "2 never taken, 1 move not
   allowed", from the domain's overlay, in the error colour; nothing where the log found none. An event a
   contract consumes takes the contract that declares it from the document's `declared_in`, and reads it out of

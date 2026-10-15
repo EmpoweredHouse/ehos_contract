@@ -22,6 +22,7 @@ defmodule EhOsContract.GraphRenderer.View do
   | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with the contract that declares them, those that end a run, its promises with their windows, and the systems its events rest on |
   | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
   | `:system` | a domain | its contracts in their contexts, what one consumes from another, whose units' numbers one keeps, its publications, and its process modules with the contracts whose events each includes |
+  | `:landscape` | a landscape | several domains, each a box of the contracts that publish or subscribe, and a card per name on the wire between them (`EhOsContract.GraphRenderer.Landscape`) |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation
@@ -51,6 +52,7 @@ defmodule EhOsContract.GraphRenderer.View do
           | :process
           | :context_map
           | :system
+          | :landscape
 
   @typedoc """
   A node as the drawing layer takes it. `facts` is the document's node, whole; `group`
@@ -113,6 +115,8 @@ defmodule EhOsContract.GraphRenderer.View do
     [{:context_map, "Context map"}] ++
       if nodes(document, "contract") == [], do: [], else: [{:system, "System"}]
   end
+
+  def views(%{"kind" => "landscape"}), do: [{:landscape, "Landscape"}]
 
   def views(%{"kind" => "process"} = document),
     do: for(p <- nodes(document, "process"), do: {:process, "Process — #{title(p)}"})
@@ -269,6 +273,7 @@ defmodule EhOsContract.GraphRenderer.View do
   defp view(document, {:lifecycle, id}), do: lifecycle(document, id)
   defp view(document, :context_map), do: context_map(document)
   defp view(document, :system), do: system(document)
+  defp view(document, :landscape), do: landscape(document)
 
   # Every node and every relation of `document`, kinds and types in name order and each
   # group in the document's order, so the same document gives the same view and the
@@ -871,6 +876,49 @@ defmodule EhOsContract.GraphRenderer.View do
       groups
     )
   end
+
+  # A landscape's `document` (`EhOsContract.GraphRenderer.Landscape`), left to right: a box
+  # per domain, titled with its application and saying how many contracts it leaves out,
+  # its contracts on the wire in it, each named by its module's last segment, and a card
+  # per name on the wire, with a dotted arrow from each contract that publishes it and to
+  # each that subscribes, as the system draws them.
+  # Called by `build/3`; public for its tests.
+  @doc false
+  @spec landscape(map()) :: t()
+  def landscape(%{"kind" => "landscape"} = document) do
+    by_id = index(document)
+    name = &((by_id[&1] || %{})["name"] || &1)
+
+    contracts =
+      for c <- nodes(document, "contract") do
+        short = c["module"] |> to_string() |> String.split(".") |> List.last()
+        %{card("contract", c, group: c["in"]) | label: short}
+      end
+
+    publications =
+      for p <- nodes(document, "publication") do
+        outside = if p["outside"], do: [tag: "publication · from outside the set"], else: []
+        card("publication", p, outside)
+      end
+
+    published =
+      for r <- relations(document, "publishes"),
+          do: arrow("publishes", r, words: "publishes #{name.(r["event"])}", line: "dotted")
+
+    subscribed =
+      for r <- relations(document, "subscribed_by"),
+          do: arrow("subscribed_by", r, words: "as #{r["as"]}", line: "dotted")
+
+    groups =
+      for d <- nodes(document, "domain") do
+        others = d["others"] || 0
+        group("domain", d, join([d["label"], others > 0 && count(others, "more contract")]))
+      end
+
+    finish("LR", contracts ++ publications, published ++ subscribed, groups)
+  end
+
+  def landscape(_document), do: finish("LR", [], [], [])
 
   # --- what the log saw -------------------------------------------------------------------
 
