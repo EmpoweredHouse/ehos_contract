@@ -32,9 +32,10 @@ defmodule GraphLab do
 
   Its contracts change at will for the graph's sake: nothing outside the set depends on
   them. A `source:` saying, in Polish, that it was added for the graph's tests marks what
-  is there for the graph alone; the other sources are labels kept as test data, with no material behind them in
-  this repository. `mix graph_lab.traffic` fills the development database with runs of
-  the set, with drift, and prints how to start the dashboard with this set alone.
+  is there for the graph alone; the other sources are labels kept as test data, with no
+  material behind them in this repository. `mix graph_lab.traffic` fills the development
+  database with runs of the set, with drift, and prints how to start the dashboard with
+  this set alone.
   """
 
   use Boundary, deps: [EhOsContract], exports: []

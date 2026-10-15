@@ -25,7 +25,8 @@ defmodule Mix.Tasks.GraphLab.Traffic do
     closed till, a second refund for one visit — whose correction stands;
   - **what waits**: the chases' timers of a visit that ended an hour ago (Henryk); run
     between 20:00 and 21:00 in Warsaw, his visit ends at the full hour instead, after the
-    clinic's evening, so the settlement chase waits for the next one.
+    clinic's evening, so the settlement chase waits for the next one. A run that starts
+    before 20:00 and finishes after it still loses that case.
 
   ## When to run it
 
@@ -286,8 +287,10 @@ defmodule Mix.Tasks.GraphLab.Traffic do
       # Henryk left an hour ago: both chases' timers wait. Krystyna's visit is tomorrow.
       {3 - later, "Henryk booked", fn -> book("henryk", @physiotherapy, 1) end},
       {2 - later, "Henryk arrived", fn -> arrived("henryk") end},
-      {1.2 - later, "Henryk's note written", fn -> note("henryk") end},
       {1 - later, "Henryk left the room", fn -> left("henryk") end},
+      # After the leaving, or at its instant when it is at the full hour: the sort keeps
+      # this order, so the closing stage never comes before the departure.
+      {max(0.8 - later, 0), "Henryk's note written", fn -> note("henryk") end},
       {2.5, "Krystyna booked for tomorrow", fn -> book("krystyna", @physiotherapy, 26.5) end},
       {0.5, "Krystyna's visit confirmed by phone", fn -> confirm("krystyna") end}
     ]
@@ -531,7 +534,8 @@ defmodule Mix.Tasks.GraphLab.Traffic do
     %{rows: [[others]]} =
       repo.query!(
         "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() " <>
-          "AND pid <> pg_backend_pid() AND coalesce(application_name, '') <> $1",
+          "AND backend_type = 'client backend' AND pid <> pg_backend_pid() " <>
+          "AND coalesce(application_name, '') <> $1",
         [@connection]
       )
 

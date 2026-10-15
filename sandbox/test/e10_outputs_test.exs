@@ -56,7 +56,7 @@ defmodule EhOsContractHost.E10OutputsTest do
     for contract <- contracts do
       encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()
 
-      for personal <- ["85010112346", "M54.5", "93.39"] do
+      for personal <- ["85010112345", "M54.5", "93.39"] do
         refute encoded =~ personal, "#{inspect(contract)} exports #{personal}"
       end
     end
@@ -71,7 +71,7 @@ defmodule EhOsContractHost.E10OutputsTest do
     for process <- processes do
       model = process |> EhOsContract.Model.fetch() |> inspect(limit: :infinity)
 
-      for personal <- ["85010112346", "M54.5", "93.39"] do
+      for personal <- ["85010112345", "M54.5", "93.39"] do
         refute model =~ personal, "#{inspect(process)} carries #{personal}"
       end
     end
