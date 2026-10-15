@@ -88,7 +88,7 @@ defmodule EhOsContract.Check.Completeness do
   defp core_commands_never_refusing(%{model: model} = c) do
     if core?(c) do
       # Every way a reaction issues, a timer's included: what one fires was decided too.
-      issued = MapSet.new(EhOsContract.Refusals.issued_by_reactions(model), & &1.command)
+      issued = MapSet.new(EhOsContract.Reactions.issued(model), & &1.command)
 
       for command <- model.commands,
           not EhOsContract.Refusals.refuses?(command),

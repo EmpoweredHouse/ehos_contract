@@ -1,0 +1,60 @@
+defmodule EhOsContract.Reactions do
+  # Which commands a contract's reactions issue (plan DD, C1, #304): the one answer to
+  # that question. The rules read it off the DSL's declarations at compile time,
+  # everything else off the model, and both carry the keys it reads. Each caller filters
+  # it where it reads it, and says why there.
+  @moduledoc false
+
+  @typedoc """
+  One command a reaction issues, and what issues it: a policy on an event it handles
+  (`:handles`), a process manager on an event that starts its run (`:starts_on`) or
+  comes during it (`:on`, whose `on` may name one of its own timers), or one of its
+  timers when it fires (`:timer`, `on` naming the timer). `reaction` is the policy or
+  the process manager.
+  """
+  @type issuance :: %{
+          command: atom(),
+          kind: :policy | :process_manager,
+          reaction: map(),
+          trigger: :handles | :starts_on | :on | :timer,
+          on: atom()
+        }
+
+  @doc """
+  Every command a reaction of `contract` issues, with what issues it, in declaration
+  order: each policy, then each process manager's starts, its events and its timers.
+  `contract` is a contract's model, or its DSL declarations, which have the same
+  `:policies` and `:process_managers`. A command issued in two ways is listed twice.
+  """
+  @spec issued(%{
+          :policies => [map()],
+          :process_managers => [map()],
+          optional(atom()) => term()
+        }) :: [issuance()]
+  def issued(contract) do
+    Enum.flat_map(contract.policies, &issued_by(:policy, &1)) ++
+      Enum.flat_map(contract.process_managers, &issued_by(:process_manager, &1))
+  end
+
+  @doc """
+  What one reaction, a policy or a process manager, issues, as `issued/1` lists it. A
+  policy issues on each event it handles.
+  """
+  @spec issued_by(:policy | :process_manager, map()) :: [issuance()]
+  def issued_by(:policy, policy) do
+    for event <- List.wrap(policy.handles), command <- List.wrap(policy.issues) do
+      %{command: command, kind: :policy, reaction: policy, trigger: :handles, on: event}
+    end
+  end
+
+  def issued_by(:process_manager, pm) do
+    ways =
+      for(s <- pm.starts_on, do: {:starts_on, s.event, s.issues}) ++
+        for(o <- pm.on, do: {:on, o.event, o.issues}) ++
+        for t <- pm.timers, do: {:timer, t.name, t.issues}
+
+    for {trigger, on, issues} <- ways, command <- List.wrap(issues) do
+      %{command: command, kind: :process_manager, reaction: pm, trigger: trigger, on: on}
+    end
+  end
+end

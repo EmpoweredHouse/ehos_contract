@@ -509,7 +509,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
 
     issues =
-      for %{on: on, command: command} <- EhOsContract.Refusals.issued_by(:process_manager, pm),
+      for %{on: on, command: command} <- EhOsContract.Reactions.issued_by(:process_manager, pm),
           on == trigger.name,
           do: command
 

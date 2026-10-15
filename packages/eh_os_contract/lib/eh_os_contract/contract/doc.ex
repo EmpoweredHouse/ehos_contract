@@ -288,7 +288,7 @@ defmodule EhOsContract.Contract.Doc do
 
   defp issued(:process_manager, pm, callback) do
     for %{on: ^callback, command: command} <-
-          EhOsContract.Refusals.issued_by(:process_manager, pm),
+          EhOsContract.Reactions.issued_by(:process_manager, pm),
         uniq: true,
         do: command
   end

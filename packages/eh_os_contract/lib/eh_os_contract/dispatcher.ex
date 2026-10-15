@@ -485,7 +485,7 @@ defmodule EhOsContract.Dispatcher do
         {:error, :not_declared}
 
       pm ->
-        issued = EhOsContract.Refusals.issued_by(:process_manager, pm)
+        issued = EhOsContract.Reactions.issued_by(:process_manager, pm)
 
         if Enum.any?(issued, &(&1.command == declaration.name)),
           do: :ok,

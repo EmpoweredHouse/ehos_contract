@@ -137,7 +137,7 @@ defmodule EhOsContract.Paths do
         }
       end
 
-    issued = EhOsContract.Refusals.issued_by_reactions(model)
+    issued = EhOsContract.Reactions.issued(model)
 
     policies =
       for %{kind: :policy, reaction: policy, on: event, command: command} <- issued,

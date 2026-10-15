@@ -65,7 +65,7 @@ defmodule EhOsContract.Check.Contracts do
   # process manager's start and its reactions to events. A timer's firing is left out:
   # it has no stage, so it cannot go back into one.
   defp reactions(model) do
-    for %{trigger: trigger} = r <- EhOsContract.Refusals.issued_by_reactions(model),
+    for %{trigger: trigger} = r <- EhOsContract.Reactions.issued(model),
         trigger != :timer,
         do: {r.kind, r.reaction.name, r.on, r.command}
   end

@@ -1321,7 +1321,7 @@ defmodule EhOsContract.Pages do
   # its ways in issue it, a timer's included.
   defp issued_by_reactions(model, c) do
     reactions =
-      for %{command: command} = r <- EhOsContract.Refusals.issued_by_reactions(model),
+      for %{command: command} = r <- EhOsContract.Reactions.issued(model),
           command == c.name,
           uniq: true,
           do: {r.kind, r.reaction}

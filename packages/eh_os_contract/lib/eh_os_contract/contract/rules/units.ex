@@ -183,7 +183,7 @@ defmodule EhOsContract.Contract.Rules.Units do
   # way in counts, a timer's included: each runs inside the transaction that reacted.
   defp issuers(d) do
     d
-    |> EhOsContract.Refusals.issued_by_reactions()
+    |> EhOsContract.Reactions.issued()
     |> Enum.group_by(& &1.command, &"#{word(&1.kind)} #{inspect(&1.reaction.name)}")
   end
 
