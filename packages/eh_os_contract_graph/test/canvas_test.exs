@@ -385,6 +385,104 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
   end
 
+  describe "the bar over the canvas" do
+    setup do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "view" => :process}
+        )
+
+      [view: view]
+    end
+
+    defp shown(view), do: view |> render() |> LazyHTML.from_fragment()
+
+    test "the search dims what it does not find, and Enter selects the first card it finds", %{
+      view: view
+    } do
+      view |> element("form.ehg-search") |> render_change(%{"q" => "wyszedł"})
+      html = shown(view)
+
+      refute "is-unmatched" in classes(
+               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+             )
+
+      assert "is-unmatched" in classes(
+               at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+             )
+
+      assert html |> LazyHTML.query(".ehg-found") |> LazyHTML.text() =~ "1 found"
+
+      view |> element("form.ehg-search") |> render_submit(%{"q" => "wyszedł"})
+      html = shown(view)
+
+      assert "is-selected" in classes(
+               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+             )
+
+      assert html |> LazyHTML.query(".ehg[data-reveal]") |> LazyHTML.attribute("data-reveal") == [
+               "1"
+             ]
+    end
+
+    test "focus draws the selection and what touches it, and the whole picture comes back", %{
+      view: view
+    } do
+      count = fn v -> v |> shown() |> LazyHTML.query("button.ehg-card") |> Enum.count() end
+      all = count.(view)
+
+      view
+      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> render_click()
+
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      assert count.(view) < all
+
+      view |> element("button.ehg-tool", "Show the whole picture") |> render_click()
+      assert count.(view) == all
+    end
+
+    test "closing the panel leaves focus too", %{view: view} do
+      view
+      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> render_click()
+
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+      view |> with_target("#graph") |> render_click("deselect", %{})
+
+      refute has_element?(view, "button.ehg-tool", "Show the whole picture")
+    end
+
+    test "the log's switch draws the declaration alone, and back" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+
+      {:ok, view, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => document, "overlay" => overlay, "view" => :process}
+        )
+
+      counts = fn -> view |> shown() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() end
+      with_log = counts.()
+      assert with_log > 0
+
+      view |> element(".ehg-switch input") |> render_click()
+      assert counts.() == 0
+
+      view |> element(".ehg-switch input") |> render_click()
+      assert counts.() == with_log
+    end
+
+    test "the zoom's buttons are the hook's, and send nothing to the server", %{view: view} do
+      zoom = view |> shown() |> LazyHTML.query("[data-ehg-zoom]")
+
+      assert LazyHTML.attribute(zoom, "data-ehg-zoom") == ~w(out in read all)
+      assert view |> shown() |> LazyHTML.query("[data-ehg-zoom][phx-click]") |> Enum.count() == 0
+    end
+  end
+
   describe "a selection" do
     setup do
       document = Fixtures.document("edge_cases")

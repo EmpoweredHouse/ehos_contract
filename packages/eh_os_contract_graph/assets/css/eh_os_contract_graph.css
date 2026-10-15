@@ -22,6 +22,81 @@
   --eh-os-contract-graph-panel-width: 420px;
 }
 
+/* The bar over the canvas: the search, the log's switch, focus, and the zoom's buttons. */
+
+.ehg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ehg-search {
+  display: flex;
+  flex: 0 1 300px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ehg-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.ehg-search input:focus-visible {
+  outline: 2px solid var(--accent-ink, var(--text-primary));
+  outline-offset: 1px;
+}
+
+.ehg-found {
+  flex: none;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ehg-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehg-tool {
+  padding: 4px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ehg-tool:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--border-soft));
+}
+
+.ehg-zoom {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* What the search does not find, faint; what it finds keeps its look. */
+.ehg .is-unmatched {
+  opacity: 0.25;
+}
+
 /* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
    width, never taller than this. */
 /* Contained: what changes inside a canvas — a zoom, a selection, a new layout — is laid out and painted inside

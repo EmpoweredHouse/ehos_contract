@@ -23,6 +23,14 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A bar over the canvas: search, focus, the log's switch and zoom** (plan DD, stage G1, #297). The search dims
+  the cards it does not find and on Enter selects the first one and moves the view to it (`View.matches/2`);
+  "Focus on the selection" draws a card or a group with what its relations reach, laid out again
+  (`View.around/2`); a switch draws the declaration alone or with what the log says; buttons zoom in and out,
+  return to the readable start, or show the whole picture.
+- **A picture starts at a readable scale** (plan DD, stage G1, #297): a picture that does not fit the canvas is no
+  longer shrunk until its cards cannot be read; it starts at its left edge (its top, drawn top to bottom), and the
+  reader pans, or asks for the whole picture.
 - **Cards of their kind, and a legend** (plan DD, stage G1, #297): every card has a badge with its kind's icon and
   name, the client's label, the name in code, which may break after a dot, an underscore or a colon, and a footer
   saying where the element lives when the picture does not: the contract that declares an event of a process, the

@@ -196,6 +196,70 @@ defmodule EhOsContract.GraphRenderer.View do
     }
   end
 
+  @doc """
+  `view` narrowed to what is around `id`: the card or the group `id` names, every card
+  one of its relations reaches, the boxes those cards sit in, and the relations between
+  what is left. A group keeps its cards. How a large picture is read one neighbourhood at
+  a time; an `id` the view does not draw leaves it as it is.
+
+      View.around(view, "command:rehmed.settlement:close_settlement")
+  """
+  @spec around(t(), String.t()) :: t()
+  def around(view, id) do
+    group? = Enum.any?(view.groups, &(&1.id == id))
+
+    if group? or Enum.any?(view.nodes, &(&1.id == id)) do
+      touching = Enum.filter(view.relations, &(&1.from == id or &1.to == id))
+      members = if group?, do: for(%{group: ^id} = n <- view.nodes, do: n.id), else: []
+      keep = MapSet.new([id | members ++ Enum.flat_map(touching, &[&1.from, &1.to])])
+
+      nodes = Enum.filter(view.nodes, &MapSet.member?(keep, &1.id))
+      boxes = MapSet.new(nodes, & &1.group)
+
+      groups =
+        Enum.filter(view.groups, &(MapSet.member?(keep, &1.id) or MapSet.member?(boxes, &1.id)))
+
+      kept = MapSet.new(nodes ++ groups, & &1.id)
+
+      %{
+        view
+        | nodes: nodes,
+          groups: groups,
+          relations:
+            Enum.filter(
+              view.relations,
+              &(MapSet.member?(kept, &1.from) and MapSet.member?(kept, &1.to))
+            )
+      }
+    else
+      view
+    end
+  end
+
+  @doc """
+  The ids of the cards of `view` that `query` finds: those whose label, name in code,
+  kind, footer or id holds it, ignoring case. `nil` for a blank query, which finds
+  nothing and dims nothing.
+
+      View.matches(view, "odwołaj")
+      #=> MapSet.new(["command:rehmed.scheduling:cancel_visit"])
+  """
+  @spec matches(t(), String.t() | nil) :: MapSet.t(String.t()) | nil
+  def matches(view, query) do
+    case String.downcase(String.trim(query || "")) do
+      "" ->
+        nil
+
+      term ->
+        for node <- view.nodes,
+            node.kind != "start",
+            [node.label, node.name, node.tag, node.foot, node.id]
+            |> Enum.any?(&(is_binary(&1) and String.contains?(String.downcase(&1), term))),
+            into: MapSet.new(),
+            do: node.id
+    end
+  end
+
   defp view(document, :all), do: all(document)
   defp view(document, :contract), do: contract(document)
   defp view(document, :process), do: process(document)
