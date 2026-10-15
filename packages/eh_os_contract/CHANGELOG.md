@@ -58,9 +58,9 @@ and the `ehos-dev:release` skill makes one.
   `graph.v1` document carries `declared_in`, the sibling contract's id, beside `declared_as`, so a reader need not
   read it out of an id.
 - **A contract's drift on the domain's overlay** (plan DD, stage G1, #297): each contract's node in a domain's
-  overlay carries `untraversed`, how many of its declared steps and lifecycle transitions were never taken, and
-  `undeclared`, how many moves its lifecycles do not allow happened, as the conformance report counts them. The
-  domain's overlay now reads every contract's steps and lifecycles, not only the consumers'.
+  overlay carries `untraversed`, its declared steps and lifecycle transitions never taken, and `undeclared`, the
+  distinct moves its lifecycles do not allow that happened, as many as the lines the conformance report lists
+  for them. The domain's overlay now reads every contract's steps and lifecycles, each once.
 - **A unit's node in a contract's `graph.v1` document says it records only** (plan DD, stage C1, #304): a unit with
   events none of whose commands can be refused carries `"records_only": true`, the same fact its page from
   `mix eh_os_contract.pages` states; the key is absent otherwise, and the schema in `priv/schema/graph.v1.json`

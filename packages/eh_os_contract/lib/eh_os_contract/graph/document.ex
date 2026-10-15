@@ -49,8 +49,9 @@ defmodule EhOsContract.Graph.Document do
   a key, a kind or a type, and nothing else. A reader on an older version — the EHOS
   Console reading applications that run several versions of the library — keeps reading
   what it knows and leaves what it does not. So a reader ignores a key it does not know
-  rather than refusing the document, though the schema, which describes the version it
-  ships with, closes each object. `test/conformance/graph_schema_test.exs` holds both
+  rather than refusing the document, and does not hold a newer document to the schema of
+  its own version: the schema describes the version it ships with, and closes each object
+  to say so. `test/conformance/graph_schema_test.exs` holds both
   schemas to the last ones a change was allowed to remove from; such a change is
   breaking, said in the changelog, and moves that baseline with it.
   """

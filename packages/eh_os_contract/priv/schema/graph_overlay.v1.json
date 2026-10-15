@@ -643,7 +643,7 @@
     },
     "contract_drift": {
       "type": "object",
-      "description": "A contract's drift on the domain's map, as the conformance report counts it: where it is worth going in.",
+      "description": "A contract's drift on the domain's map, as many as the lines the conformance report lists for it under its paths and its lifecycles: where it is worth going in.",
       "required": [
         "untraversed",
         "undeclared"
@@ -653,12 +653,12 @@
         "untraversed": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many of its declared steps and lifecycle transitions were never taken in the period."
+          "description": "Its declared steps and its lifecycles' transitions never taken in the period, each counted once."
         },
         "undeclared": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many moves its lifecycles do not allow happened in the period."
+          "description": "The distinct moves its lifecycles do not allow that happened in the period, however often each did."
         }
       }
     }

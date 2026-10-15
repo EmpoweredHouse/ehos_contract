@@ -28,8 +28,8 @@ and the `ehos-dev:release` skill makes one.
 ### Added
 
 - **The graph screen's map says where to go in** (plan DD, stage G1, eh-os-contract#297): each contract's card
-  on a domain's system says how many of its declared paths were never taken and how many moves happened that it
-  does not allow. Moves no verdict.
+  on a domain's system says how many of its declared paths were never taken and how many moves it does not allow
+  happened. Moves no verdict.
 
 - **The graph screen is one explorer per domain** (plan DD, stage G1, eh-os-contract#297): the structure and the
   processes as two tabs of one canvas with a path, instead of every domain's map and system, a selector, the

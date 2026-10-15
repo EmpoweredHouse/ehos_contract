@@ -46,19 +46,22 @@ defmodule EhOsContract.GraphRenderer.Marks do
     end
   end
 
-  # A contract's drift in words, where it says where to go in: "2 never taken, 1 not
-  # declared"; nothing where the log found none.
+  # A contract's drift in words, where it says where to go in: "2 never taken, 1 move not
+  # allowed"; nothing where the log found none. A number that is not a count says nothing.
   defp drift(untraversed, undeclared) do
+    some = &(is_integer(&1) and &1 > 0)
+    moves = if undeclared == 1, do: "move not allowed", else: "moves not allowed"
+
     said =
-      for {n, words} <- [{untraversed, "never taken"}, {undeclared, "not declared"}],
-          is_integer(n) and n > 0,
+      for {n, words} <- [{untraversed, "never taken"}, {undeclared, moves}],
+          some.(n),
           do: "#{n} #{words}"
 
     if said == [],
       do: @none,
       else: %{
         count: nil,
-        states: flags(untraversed: untraversed > 0, undeclared: undeclared > 0),
+        states: flags(untraversed: some.(untraversed), undeclared: some.(undeclared)),
         drift: Enum.join(said, ", ")
       }
   end

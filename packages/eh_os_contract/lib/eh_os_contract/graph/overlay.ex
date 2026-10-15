@@ -184,10 +184,12 @@ defmodule EhOsContract.Graph.Overlay do
   The overlay of `domain` over `modules`, its contracts and process modules (those
   naming another domain are left out), and the period `opts` names, against
   `Document.domain/2` of the same: what crosses between two contracts; on each
-  process module's node its `runs`; and on each contract's node its drift, as the
-  conformance report counts it — `untraversed`, how many of its declared steps and
-  lifecycle transitions were never taken, and `undeclared`, how many moves its
-  lifecycles do not allow happened (`EhOsContract.Conformance.steps/2`, `lifecycles/2`).
+  process module's node its `runs`; and on each contract's node its drift, as many as the
+  lines the conformance report lists for it — `untraversed`, its declared steps and its
+  lifecycles' transitions never taken, each counted once, and `undeclared`, the distinct
+  moves its lifecycles do not allow that happened, however often each did
+  (`EhOsContract.Conformance.steps/2`, `lifecycles/2`). Events written around dispatch,
+  which the report lists apart, are not counted here.
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
   def domain(domain, modules, opts \\ []) do

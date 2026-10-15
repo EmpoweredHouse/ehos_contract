@@ -46,15 +46,10 @@ defmodule EhOsContract.GraphRenderer.Places do
       when is_binary(unit),
       do: {{:unit, c, unit}, "Open its unit"}
 
-  def destination(%{"kind" => "contract"}, "event", %{"declared_in" => contract})
-      when is_binary(contract) and contract != "",
-      do: {{:contract, contract}, "Open its contract"}
-
-  # A document from before `declared_in` says the contract only in the sibling's event id.
-  def destination(%{"kind" => "contract"}, "event", %{"declared_as" => "event:" <> declared}) do
-    case String.split(declared, ":") do
-      [contract, _ | _] when contract != "" -> {{:contract, contract}, "Open its contract"}
-      _malformed -> nil
+  def destination(%{"kind" => "contract"}, "event", node) do
+    case declared_in(node) do
+      nil -> nil
+      contract -> {{:contract, contract}, "Open its contract"}
     end
   end
 
@@ -66,4 +61,22 @@ defmodule EhOsContract.GraphRenderer.Places do
   end
 
   def destination(_document, _kind, _node), do: nil
+
+  @doc """
+  The sibling contract an event of a contract's document is consumed from: its
+  `declared_in`, or, in a document from before it, the contract its `declared_as` id
+  names; nil for the contract's own event, a received one, or an id that names none.
+  """
+  @spec declared_in(map()) :: String.t() | nil
+  def declared_in(%{"declared_in" => contract}) when is_binary(contract) and contract != "",
+    do: contract
+
+  def declared_in(%{"declared_as" => "event:" <> declared}) do
+    case String.split(declared, ":") do
+      [contract, _ | _] when contract != "" -> contract
+      _malformed -> nil
+    end
+  end
+
+  def declared_in(_node), do: nil
 end
