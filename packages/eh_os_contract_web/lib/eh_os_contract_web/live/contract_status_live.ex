@@ -171,7 +171,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <p :if={Sentence.accountable(process.accountable)}>
             {Sentence.accountable(process.accountable)}
           </p>
-          <p>{Sentence.runs_in_period(process.runs, correlate(report.module))}</p>
+          <p>{Sentence.runs_in_period(process.runs, process.correlate)}</p>
 
           <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
           <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
@@ -236,16 +236,6 @@ defmodule EhOsContract.Web.Live.ContractStatus do
       a.violated > 0 -> "outcome-breached"
       a.pending > 0 -> "outcome-pending"
       true -> "outcome-ok"
-    end
-  end
-
-  # What tells a process module's runs apart, read from its model, since the report
-  # carries no such field: the text report reads it the same way.
-  @spec correlate(module()) :: [atom()]
-  defp correlate(module) do
-    case EhOsContract.Model.process(module) do
-      %{correlate: fields} -> fields
-      nil -> []
     end
   end
 end

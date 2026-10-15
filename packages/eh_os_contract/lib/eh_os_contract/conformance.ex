@@ -207,9 +207,10 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  The report of a process module's process, `model`: its runs, confirmed declarations,
-  durations and promises, judged by `EhOsContract.Trace`. Its runs are filed under its
-  `id:`. A contract has no process to report, and this raises for one.
+  The report of a process module's process, `model`: its runs, what tells them apart
+  (`correlate`, the fields in order), confirmed declarations, durations and promises,
+  judged by `EhOsContract.Trace`. Its runs are filed under its `id:`. A contract has no
+  process to report, and this raises for one.
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do
@@ -221,6 +222,9 @@ defmodule EhOsContract.Conformance do
       process: process.name,
       label: process.label,
       accountable: actor_label(model, process.accountable),
+      # What one run is, so a reader says it without loading the module (plan DD, P2e
+      # (#220), review).
+      correlate: process.correlate,
       runs: runs,
       declarations:
         for %{unverified: false} = value <- [process.deadline] do

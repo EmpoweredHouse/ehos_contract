@@ -116,6 +116,19 @@ defmodule EhOsContract.ProcessModuleReportTest do
       refute text =~ "STEPS"
     end
 
+    # Plan DD, P2e (#220), review: the runs line read `correlate` from the module, and
+    # raised for a report whose module this node has not loaded.
+    test "says what one run is from the report, whatever modules this node has" do
+      report = Conformance.report(AccountReview, now: later())
+      assert [%{correlate: [:account_id]}] = report.processes
+
+      elsewhere = %{report | module: EhOsContract.ProcessModuleReportTest.NotLoaded}
+      assert Report.render(elsewhere) =~ ~r"Runs in this period: [0-9]+, one per account_id\."
+
+      wire = Conformance.as_data(AccountReview, now: later())
+      assert [%{"correlate" => ["account_id"]}] = wire["report"]["processes"]
+    end
+
     test "leaves a contract's report as it was" do
       report = Conformance.report(Ledger, now: later())
 

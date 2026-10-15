@@ -35,7 +35,7 @@ defmodule EhOsContract.Report do
     [
       header(report),
       process_deployment(report.deployment),
-      Enum.map(report.processes, &process(&1, report.module))
+      Enum.map(report.processes, &process/1)
     ]
     |> List.flatten()
     |> Enum.join("\n")
@@ -46,7 +46,7 @@ defmodule EhOsContract.Report do
       header(report),
       deployment(report.deployment, report.wiring),
       steps(report.activity, report.paths),
-      Enum.map(report.processes, &process(&1, report.module)),
+      Enum.map(report.processes, &process/1),
       Enum.map(Map.get(report, :lifecycles, []), &lifecycle/1),
       scenarios(report.scenarios),
       drift(report.drift)
@@ -151,26 +151,16 @@ defmodule EhOsContract.Report do
     end
   end
 
-  @spec process(map(), module()) :: [String.t()]
-  defp process(p, module) do
+  @spec process(map()) :: [String.t()]
+  defp process(p) do
     ["PROCESS: #{p.label}"] ++
       accountable(p.accountable) ++
-      ["  " <> Sentence.runs_in_period(p.runs, correlate(module))] ++
+      ["  " <> Sentence.runs_in_period(p.runs, Map.get(p, :correlate, []))] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
       out_of_order(p) ++
       assertions(p.promises) ++
       [""]
-  end
-
-  # What tells a process module's runs apart, read from its model: the report carries no
-  # such field, and is what EHOS reads on the wire.
-  @spec correlate(module()) :: [atom()]
-  defp correlate(module) do
-    case EhOsContract.Model.process(module) do
-      %{correlate: fields} -> fields
-      nil -> []
-    end
   end
 
   # Plan DD, O1 (#260).
