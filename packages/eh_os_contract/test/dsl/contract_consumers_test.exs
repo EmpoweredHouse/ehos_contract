@@ -109,6 +109,23 @@ defmodule EhOsContract.ContractConsumersTest do
                "P4: process manager :chase correlates on no field, so every run would share one record"
     end
 
+    # Plan DD, C1 (#304): a run's key names each field once, as a process module's
+    # does (R2); the doubled field once compiled.
+    test "one that correlates on a field twice is refused, naming the field" do
+      message =
+        refuse_contract("ManagerCorrelatedTwice", """
+        #{@unit}
+          process_manager :chase, "Pogoń", correlate: [:visit_id, :visit_id] do
+            starts_on :visit_closed
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "P4: process manager :chase correlates on :visit_id twice; a run's key names each " <>
+                 "field once (manager_correlated_twice.ex:12)"
+    end
+
     # Plan N3: a timer says what it is for in the client's words, or does not compile.
     test "a timer without a label is refused" do
       message =

@@ -125,6 +125,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **Breaking:** **A key names each field once** (plan DD, stage C1, #304). A process manager whose `correlate`
+  names a field twice, `correlate: [:visit_id, :visit_id]`, no longer compiles (P4), nor a dynamic consistency
+  boundary's `consults` whose `match:` does (A4); each message names the field, as a process module's (R2)
+  already did. Name the field once. Moves no verdict.
 - **The report says what one run of a process module is** (plan DD, stage P2e, #220): "Runs in this period: 2, one
   per account_id." The sentences of a process module's runs and deployment are in `EhOsContract.Report.Sentence`,
   which the dashboard prints too. A process module's report carries what tells its runs apart, `correlate`, and

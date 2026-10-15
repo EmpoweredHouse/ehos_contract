@@ -132,6 +132,24 @@ defmodule EhOsContract.ContractUnitsTest do
       refute message =~ "consults :period_closed"
     end
 
+    # Plan DD, C1 (#304): a match is the key the boundary reads by, and names each field
+    # once, as a process manager's and a process module's correlate do.
+    test "a match naming a field twice is refused, naming the field" do
+      message =
+        refuse_contract("ConsultsMatchTwice", """
+          dcb :payer_period, "Okres płatnika" do
+            identity :period_id
+            consults :period_closed, match: [:period_id, :period_id]
+            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+            event :period_closed, "Zamknięto okres"
+          end
+        """)
+
+      assert message =~
+               "A4: dcb :payer_period consults :period_closed matching :period_id twice; a match " <>
+                 "names each field once (consults_match_twice.ex:6)"
+    end
+
     test "a match on a field the local event does not carry as a required :id is refused" do
       # An appended event is tagged with its required, non-personal :id fields, and
       # a boundary finds what it consults by tags: matched on a text field, it would

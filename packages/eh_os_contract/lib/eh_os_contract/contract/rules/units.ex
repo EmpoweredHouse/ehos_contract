@@ -10,7 +10,7 @@ defmodule EhOsContract.Contract.Rules.Units do
   # - **A4.** A dynamic consistency boundary consults at least one event; each one
   #   is an event of this log — its own or a sibling contract's, not one received from
   #   another application (D12) — and says which by `match:`
-  #   or `where:`; `match:` names fields of the boundary's identity, which a local
+  #   or `where:`; `match:` names fields of the boundary's identity, each once, which a local
   #   consulted event carries as required, non-personal `:id` fields — its unit's
   #   identity, or fields of its own. Only such fields are tags of an appended event,
   #   and a boundary finds what it consults by its tags. For an event consumed from a
@@ -333,6 +333,14 @@ defmodule EhOsContract.Contract.Rules.Units do
             do: [{"A4: #{where} consults #{event} with neither match: nor where:", consults}],
             else: []
 
+        # Plan DD, C1 (#304): the key it reads by names each field once, as a
+        # correlation does (P4, R2).
+        repeated =
+          for field <- consults.match |> DslRules.duplicates(& &1) |> Enum.uniq() do
+            {"A4: #{where} consults #{event} matching #{inspect(field)} twice; a match names " <>
+               "each field once", consults}
+          end
+
         outside =
           for field <- consults.match, field not in unit.identity do
             {"A4: #{where} consults #{event} matching #{inspect(field)}, which is not in its " <>
@@ -352,7 +360,7 @@ defmodule EhOsContract.Contract.Rules.Units do
               end
           end
 
-        unknown ++ criterion ++ outside ++ untagged
+        unknown ++ criterion ++ repeated ++ outside ++ untagged
       end)
 
     none ++ each

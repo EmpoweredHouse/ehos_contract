@@ -16,8 +16,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   #   the engine keys the commands a reaction issues, by the event's id, and an
   #   effect's call is not one — so `:infrastructure` also keys on `:event_id`.
   # - **P4.** A process manager starts on at least one event and correlates on at
-  #   least one field: with none, every run would share one record, one state and
-  #   one set of timers, and the first ending would end it for all. Its triggers are
+  #   least one field, each named once: with none, every run would share one record,
+  #   one state and one set of timers, and the first ending would end it for all. Its triggers are
   #   events or its own timers; its `sets:` and `cancels:` name its own timers; a
   #   timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
   #   one of them; what it issues is a command of this contract; it is delivered
@@ -88,6 +88,13 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         do: [{"P4: #{where} correlates on no field, so every run would share one record", pm}],
         else: []
 
+    # Plan DD, C1 (#304): as a process module's (R2), a run's key names each field once.
+    repeated =
+      for field <- pm.correlate |> DslRules.duplicates(& &1) |> Enum.uniq() do
+        {"P4: #{where} correlates on #{inspect(field)} twice; a run's key names each field once",
+         pm}
+      end
+
     triggers =
       for(s <- pm.starts_on, not MapSet.member?(events, s.event), do: {s, s.event, "starts on"}) ++
         for(e <- pm.ends_on, not MapSet.member?(events, e.event), do: {e, e.event, "ends on"}) ++
@@ -129,6 +136,7 @@ defmodule EhOsContract.Contract.Rules.Consumers do
 
     starts ++
       uncorrelated ++
+      repeated ++
       triggers ++ references ++ timer_shape ++ issued ++ delivery ++ not_downstream(where, pm)
   end
 
