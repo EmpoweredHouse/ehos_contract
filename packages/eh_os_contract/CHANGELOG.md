@@ -125,6 +125,9 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **The report says what one run of a process module is** (plan DD, stage P2e, #220): "Runs in this period: 2, one
+  per account_id." The sentences of a process module's runs and deployment are in `EhOsContract.Report.Sentence`,
+  which the dashboard prints too. Moves no verdict.
 - **Breaking:** a domain's `graph.v1` document carries a new node kind, `process`, and a new relation type,
   `includes` (plan DD, stage P2e, #220), which `priv/schema/graph.v1.json` lists among those every domain document
   carries, empty or not; its `oneOf` has a third document, a process module's, and the overlay schema a third

@@ -44,7 +44,8 @@ and the `ehos-dev:release` skill makes one.
   contracts, in the sentences of `mix eh_os_contract.report`: its version and since when it is deployed, the actor
   accountable for it, its runs in the period and what one run is ("one per visit_id"), its confirmed deadline and
   the runs measured against it, the runs that entered a stage out of order, and each confirmed promise with its
-  verdict, coloured as a contract's promise was. Moves no verdict.
+  verdict, coloured as a contract's promise was, and what changed since the previous version. The process modules'
+  reports are computed once the page connects; the static render says they will be. Moves no verdict.
 
 ### Changed
 
