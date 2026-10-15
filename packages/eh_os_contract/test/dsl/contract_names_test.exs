@@ -168,6 +168,33 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "(shared_namespace.ex:4)"
     end
 
+    # Plan DD, C1 (#304): a process manager tells an event it takes from its own timer
+    # by name alone — the callback, what it may issue, whether a firing — so the two
+    # never share one. Above, a local event it starts on; here, a consumed one it takes
+    # during the run.
+    test "a manager's timer named like a consumed event it takes is refused" do
+      message =
+        refuse_contract("TimerLikeConsumed", """
+          consumes Clinic.Contracts.Booking, :visit_booked
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta"
+          end
+
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed
+            on :visit_booked, issues: :close_visit
+            timer :visit_booked, "Visit booked", wait: {1, :day}
+          end
+        """)
+
+      assert message =~
+               "N1: consumed event :visit_booked has the name of a timer; commands, events, " <>
+                 "timers and consumed events share one namespace (timer_like_consumed.ex:4)"
+    end
+
     test "invariants within a unit" do
       message =
         refuse_contract("Nested", """

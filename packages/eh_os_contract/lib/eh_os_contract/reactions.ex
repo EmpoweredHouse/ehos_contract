@@ -3,6 +3,10 @@ defmodule EhOsContract.Reactions do
   # that question. The rules read it off the DSL's declarations at compile time,
   # everything else off the model, and both carry the keys it reads. Each caller filters
   # it where it reads it, and says why there.
+  #
+  # An event a process manager takes and one of its timers are told apart by name
+  # (`timer?/1`, `commands_on/3`): N1 puts commands, events, timers and consumed events
+  # in one namespace, so a timer never shares a name with an event the contract has.
   @moduledoc false
 
   @typedoc """

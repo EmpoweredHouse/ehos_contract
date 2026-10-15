@@ -870,7 +870,9 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > permitted by dispatch to issue what it names. P1 now refuses it. Which commands a reaction issues is one
   > answer in the engine (`EhOsContract.Reactions`) that the rules, dispatch, the scenarios, the generated
   > callbacks and the readers of the model all ask, so a policy on no event could no longer be issuing
-  > something to one of them and nothing to another.
+  > something to one of them and nothing to another. That answer tells an event a process manager takes from
+  > its own timer by name, which holds because N1 already puts commands, events, timers and consumed events in
+  > one namespace: a timer named like an event of the contract, or like one it consumes, does not compile.
   > [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304)
 
 - *Process.* R1: exactly one `process`. R2: its `correlate` fields are present in every local event. R3: if
