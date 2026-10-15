@@ -286,9 +286,11 @@
   overflow: hidden;
 }
 
-/* The palette: one hue per kind, in Event Storming's families (a command blue, an event orange, a policy lilac, an
-   actor yellow, a read model green, a rule red), lighter on the dark surfaces the design system starts from and
-   deeper on its light ones. A kind not in the table takes the host's tertiary ink. */
+/* The palette: a hue per kind, in Event Storming's families (a command blue, an event orange, a policy lilac and a
+   process manager magenta, an actor yellow, a read model green, a rule red), lighter on the dark surfaces the design
+   system starts from and deeper on its light ones. Kinds of one family share a hue only where no view draws them
+   together: a unit and an actor, a context and a command, a contract and a read model. A kind not in the table takes
+   the host's tertiary ink. */
 
 .ehg-card,
 .ehg-legend-kind {
@@ -299,7 +301,7 @@
   --eh-os-contract-graph-command: #6aa6e8;
   --eh-os-contract-graph-event: #f0954a;
   --eh-os-contract-graph-policy: #c39af0;
-  --eh-os-contract-graph-process-manager: #b49cf5;
+  --eh-os-contract-graph-process-manager: #e39ce8;
   --eh-os-contract-graph-effect: #f28cb8;
   --eh-os-contract-graph-timer: #a6a39a;
   --eh-os-contract-graph-actor: #d9b443;
@@ -321,7 +323,7 @@
     --eh-os-contract-graph-command: #2f6db5;
     --eh-os-contract-graph-event: #b85c0c;
     --eh-os-contract-graph-policy: #7b4fa8;
-    --eh-os-contract-graph-process-manager: #5e35b1;
+    --eh-os-contract-graph-process-manager: #9c27b0;
     --eh-os-contract-graph-effect: #ad1457;
     --eh-os-contract-graph-timer: #6b6559;
     --eh-os-contract-graph-actor: #8a6d12;
@@ -343,7 +345,7 @@
   --eh-os-contract-graph-command: #2f6db5;
   --eh-os-contract-graph-event: #b85c0c;
   --eh-os-contract-graph-policy: #7b4fa8;
-  --eh-os-contract-graph-process-manager: #5e35b1;
+  --eh-os-contract-graph-process-manager: #9c27b0;
   --eh-os-contract-graph-effect: #ad1457;
   --eh-os-contract-graph-timer: #6b6559;
   --eh-os-contract-graph-actor: #8a6d12;

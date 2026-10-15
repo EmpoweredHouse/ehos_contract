@@ -272,8 +272,8 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   attr :text, :string, required: true
 
-  # A name in code that may break after a dot or an underscore, and nowhere inside a word
-  # unless one word alone is wider than the card.
+  # A name in code that may break after a dot, an underscore or a colon, and inside a word
+  # only where one word alone is wider than the card.
   defp breakable(assigns) do
     assigns = assign(assigns, :parts, Regex.split(~r/(?<=[._:])/u, assigns.text))
 
