@@ -1,0 +1,1 @@
+Documentation only (PLAN.md status rows and handoff), checked against gh: #217 and #219 merged 9 October, #307-#311 merged 15 October. Earlier commits: see the note on 07fb73b0. Gate EXIT=0 on 07fb73b0; PLAN.md is read by no part of mix check.
