@@ -10,14 +10,16 @@ defmodule EhOsContract.Reactions do
   (`:handles`), a process manager on an event that starts its run (`:starts_on`) or
   comes during it (`:on`, whose `on` may name one of its own timers), or one of its
   timers when it fires (`:timer`, `on` naming the timer). `reaction` is the policy or
-  the process manager.
+  the process manager, and `way` the `starts_on`, `on` or `timer` declaration it issues
+  through, `nil` for a policy.
   """
   @type issuance :: %{
           command: atom(),
           kind: :policy | :process_manager,
           reaction: map(),
           trigger: :handles | :starts_on | :on | :timer,
-          on: atom()
+          on: atom(),
+          way: map() | nil
         }
 
   @doc """
@@ -43,18 +45,32 @@ defmodule EhOsContract.Reactions do
   @spec issued_by(:policy | :process_manager, map()) :: [issuance()]
   def issued_by(:policy, policy) do
     for event <- List.wrap(policy.handles), command <- List.wrap(policy.issues) do
-      %{command: command, kind: :policy, reaction: policy, trigger: :handles, on: event}
+      %{
+        command: command,
+        kind: :policy,
+        reaction: policy,
+        trigger: :handles,
+        on: event,
+        way: nil
+      }
     end
   end
 
   def issued_by(:process_manager, pm) do
     ways =
-      for(s <- pm.starts_on, do: {:starts_on, s.event, s.issues}) ++
-        for(o <- pm.on, do: {:on, o.event, o.issues}) ++
-        for t <- pm.timers, do: {:timer, t.name, t.issues}
+      for(s <- pm.starts_on, do: {:starts_on, s.event, s}) ++
+        for(o <- pm.on, do: {:on, o.event, o}) ++
+        for t <- pm.timers, do: {:timer, t.name, t}
 
-    for {trigger, on, issues} <- ways, command <- List.wrap(issues) do
-      %{command: command, kind: :process_manager, reaction: pm, trigger: trigger, on: on}
+    for {trigger, on, way} <- ways, command <- List.wrap(way.issues) do
+      %{
+        command: command,
+        kind: :process_manager,
+        reaction: pm,
+        trigger: trigger,
+        on: on,
+        way: way
+      }
     end
   end
 end

@@ -174,9 +174,7 @@ defmodule EhOsContract.Paths do
       end
 
     timers =
-      for %{trigger: :timer, reaction: pm, on: name, command: command} <- issued do
-        timer = Enum.find(pm.timers, &(&1.name == name))
-
+      for %{trigger: :timer, reaction: pm, way: timer, command: command} <- issued do
         %{
           from: ref(:timer, timer.name, timer.label),
           via: ref(:process_manager, pm.name, pm.label),

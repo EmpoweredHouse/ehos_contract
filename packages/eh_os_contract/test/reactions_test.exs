@@ -26,6 +26,15 @@ defmodule EhOsContract.ReactionsTest do
            ]
   end
 
+  test "an issuance carries the declaration it issues through: a timer's, for a timer" do
+    issued = @ledger |> Model.fetch() |> Reactions.issued()
+
+    assert [%{label: "First deposit due"}, %{label: "Review"}] =
+             for(%{trigger: :timer, way: way} <- issued, do: way)
+
+    assert Enum.all?(issued, &(&1.trigger != :handles or &1.way == nil))
+  end
+
   test "the DSL's declarations give the same list as the model" do
     declarations = Rules.declarations(@ledger.spark_dsl_config())
 
