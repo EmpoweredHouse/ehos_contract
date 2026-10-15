@@ -107,6 +107,18 @@ and the `ehos-dev:release` skill makes one.
   `EhOsContract.Conformance.promise_verdicts/2` judges a process's confirmed promises as the report does,
   `EhOsContract.Paths.occurrences_by_type/2` counts events of the given types in one query, and
   `EhOsContract.Paths.runs_by_process/2` counts the runs of several process modules in one query.
+- **A process module has a page, a branch of the domain's tree and a place in the glossary** (plan DD, stage
+  P2e, #220). `mix eh_os_contract.pages` writes `processes/<its id after the domain's name>.md` for each process
+  module of the domain: what tells its runs apart, the actor accountable for it, its stages in order with each
+  included event linked to its contract's page, the events that end a run, its promises and deadline (an
+  unconfirmed one said to be left out of the report), the external systems its events rest on and its scenarios.
+  The domain's page lists the process modules, and a contract's page those that include its events. Beside the
+  pages, `graph/process/<id>.json` holds its `graph.v1` document; the task replaces and deletes one there as it
+  does a contract's. `mix eh_os_contract.view` prints the process modules under the domain, each with its stages
+  and the events each includes, and with `--details` what ends a run, its deadline and its promises; a path to one
+  context leaves them out. `mix eh_os_contract.glossary` lists, under a term, a process module that includes the
+  context's events and whose id, a stage, a promise or a `correlate` field is named with it. No existing page or
+  path moves. Moves no verdict.
 
 ### Changed
 

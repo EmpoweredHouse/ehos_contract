@@ -79,7 +79,8 @@ matched as those words in a row: "Due date" is in `:due_date_set`, not in `:date
 matched.
 
 `mix eh_os_contract.glossary` lists, under each term, its word in code and the declarations of the context's
-contracts named with it. `mix eh_os_contract.check` reads the names of things — units, read models and
+contracts named with it, then each process module that includes the context's events and whose id, stages,
+promises or `correlate` fields are named with it. `mix eh_os_contract.check` reads the names of things — units, read models and
 fields — both ways:
 
 - **`word-without-term`** (notice): one per context, the words of its names no term covers, the word used by

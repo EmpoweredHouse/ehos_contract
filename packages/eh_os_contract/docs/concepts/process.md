@@ -246,17 +246,30 @@ the log's, not the clock's: a process includes only contracts of its own applica
 are in one log. Only stages a run reached are compared, so a skipped stage, or one whose reaction still
 waits in a queue, is no finding. A run belongs to the period by its first event, as its duration is measured, and is
 judged on all of its events; the count of runs in the period takes every run with an event in it. The order
-is judged by the stages declared today. The dashboard does not show it yet. The report says how many runs, never which: finding them is the application's job
-(`EhOsContract.StageOrder`).
+is judged by the stages declared today. The report says how many runs, never which: finding them is the
+application's job (`EhOsContract.StageOrder`).
 
 A process module gets a section of its own after the contracts': its deployment, runs, deadline,
 promises and stage order, and no steps, lifecycles or scenarios, which are its contracts'. The JSON
-document (`EhOsContract.Conformance.as_data/2`) carries it, keyed `process`; the dashboard does not list it
-yet.
+document (`EhOsContract.Conformance.as_data/2`) carries it, keyed `process`, and the dashboard's status
+screen shows it after the contracts, in the report's sentences.
 
 When a deploy changes a promise, the runs whose `from` came before the change were held to a promise that
 is no longer the one declared: the report counts them apart, not among the verdicts, and prints the date of
 the change.
+
+## Reading a process
+
+`mix eh_os_contract.pages` writes a page for each process module, named after its `id:` without the domain's
+name (`rehmed.clinical_visit` is `processes/clinical_visit.md`): what tells its runs apart, the actor
+accountable for it, its stages in order with each included event linked to its page in its contract, the
+events that end a run, its promises and deadline, with an unconfirmed one said to be left out of the report,
+the external systems its events rest on, and its scenarios. The domain's page and the page of each contract
+whose events it includes link to it. Beside it, `graph/process/<id>.json` is its `graph.v1` document, the one
+`mix eh_os_contract.graph --process <id>` prints. `mix eh_os_contract.view` lists the process modules under
+the domain, each with its stages and the events each includes, and `mix eh_os_contract.glossary` lists one
+under a term of a context whose events it includes when its id, a stage, a promise or a field of its
+`correlate` is named with the term.
 
 ## What the compiler refuses
 
