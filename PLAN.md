@@ -23,7 +23,7 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
 removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
-merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297) is in progress; then the context map
+merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged; then the context map
 (M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
 rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
 
@@ -1890,7 +1890,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☑ #296 | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☑ #295 | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
-| M1 | 3 | mapa kontekstów L3, wartości jako referencje | L3; its paragraph rewritten first | ⏸ to be rewritten after L3 (13 October) | — |
+| M1 | 3 | the context map holds the code to it, values as references | L3 | ☐ rewritten 16 October | — |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
@@ -1902,18 +1902,18 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
-| O2 | 3 | ekran: kolejność etapów | O1, P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
+| O2 | 3 | a process's stage order on its picture | O1, G1 | ☐ rewritten 16 October | — |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ⏸ required before an application keeps data it may not lose (13 October) | — |
 | V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
-| V5 | 4 | wersja umowy i wersja tekstu | P2h; its paragraph rewritten first | ⏸ to be rewritten after P2h | — |
+| V5 | 4 | the agreement's version and the words' digest | P2h | ☐ rewritten 16 October | — |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
-| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
+| L4 | 5 | the owner's view, without the engineering | G1 | ☐ rewritten 16 October | — |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ◐ `dd/297-graph-like-a-catalog` | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
@@ -2138,17 +2138,38 @@ design record's history.
 
 #### Fala 3 — granice i decyzje
 
-**M1 — mapa kontekstów jako L3** (+ punkt 6: wartość z `context:` w innym kontekście = referencja)
-| Relacja | Co wolno odbiorcy (`consumes`) |
-|---|---|
-| `conformist`, `shared_kernel`, `partnership`, `customer_supplier` | wszystko jak dziś |
-| `anticorruption_layer` | zdarzenie dostawcy bierze tylko polityka (tłumacz) |
-| `open_host_service`, `published_language` | tylko zdarzenia, które dostawca `publish`uje, w kształcie publikacji |
-| `separate_ways` | nic |
+**M1 — the context map holds the code to it** (rewritten 16 October 2026, the user's decisions of that day). *The
+DDD rule:* a relation between two contexts says which one depends on the other and on what terms, so no contract
+may cross it the other way or take more than its pattern allows. Today `check` only warns: a reference against a
+directed relation or across `separate_ways` (`relation-against-references`), a reference with no relation
+(`cross-bounded-context-reference-without-mapping`). M1 makes the map a rule of the compiler between modules (L3,
+`compile.eh_os_contract`), for any domain:
 
-Kierunek i `separate_ways` awansują z L5 na L3; „brak relacji” zostaje ostrzeżeniem L5. Włączenie zdarzenia do
-modułu procesu nie jest referencją. Kod: nowa grupa L3 obok `crossings/2` (`completeness.ex` 722-745 rozwiązuje
-kontekst siostry). Sandbox: poprawić relacje albo kontrakty i powiedzieć to w PR.
+| Relation | What the downstream contract may `consume` from the upstream's |
+|---|---|
+| `conformist`, `shared_kernel`, `partnership`, `customer_supplier` | any event, as today |
+| `anticorruption_layer` | an event taken only by a policy, which translates it into its own command |
+| `open_host_service`, `published_language` | only events the upstream contract `publish`es; taken from the log as today |
+| `separate_ways` | nothing |
+
+- A reference against a directed relation's direction, or across `separate_ways`, is refused at L3 (new codes); a
+  reference with no relation stays a warning of `check`, since a domain may be mapped in stages.
+  `relation-against-references` leaves `check` for the compiler.
+- A value of the domain declared with `context:` and used by a contract of another context is a reference
+  (`crossings/2` in `check/completeness.ex` counts consumed contracts and unit and entity references, not values),
+  so the map sees it.
+- Including an event in a process module is not a reference: a process belongs to no context.
+- *Example:* Rehmed's settlement takes the visit's events from scheduling under `customer_supplier`, which allows
+  it; under `open_host_service` it could take only what scheduling publishes, and scheduling publishes nothing.
+  TaxVision's accounting month is the material's one publisher. The material is changed in the same pull request
+  where a refusal falls on it, and the pull request says where.
+- *Out:* the publication's shape (`fields:`) enforced on a consumer in the same application; between applications
+  `subscribe` already takes it.
+
+*Rejected:* `consumes` naming a publication of the same application, the engine handing the consumer only the
+publication's fields without a broker (the proposal in the table of open questions): a second way of delivering
+an event for one pattern, a stage larger than the rule it checks. Keeping the patterns as warnings of `check`:
+`--warnings-as-errors` would be the only gate, and the map would stay documentation.
 
 **T2a — a command reads an entity before it is decided**: a command option
 `reads: [service: :service_id]` names a field of the command typed `{:id, entity}` (a new compile refusal, A8), and
@@ -2206,7 +2227,21 @@ keys ignored, a key an older reader must not ignore comes with a new version); `
 **O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
 etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;
 zapytanie po `_event_runs` ⋈ `_events` (min pozycja na przebieg i typ); klucz `out_of_order` w raporcie procesu,
-`Sentence.out_of_order/1`, wire addytywnie. **O2**: ekran statusu.
+`Sentence.out_of_order/1`, wire addytywnie.
+
+**O2 — a process's stage order on its picture** (rewritten 16 October 2026, the user's decision of that day). *The
+rule:* a process goes through its stages in the order it declares, in any domain. O1 counts the runs that did not
+(`out_of_order` in the report), and the status page says it in text; the process module's overlay in `graph.v1`
+does not carry it, so G1's process canvas, whose stages are lanes, cannot draw it, nor can the EHOS Console.
+- The process overlay gains, by addition, under `observed`, each pair of stages a run entered the wrong way round
+  with how many runs did (`EhOsContract.StageOrder`, the report's own computation); the schema test holds it to
+  addition.
+- The canvas draws a dashed arrow in the error colour from the later stage's lane back to the earlier one,
+  "3 runs entered here first", and its panel names the two stages and the period. A skipped stage is not a
+  finding, as in O1.
+- *Example:* a clinical visit whose P1 report was sent before its clinical close.
+
+*Rejected:* a count on the later lane alone, which does not say which stage was skipped over.
 
 #### Fala 4 — ewolucja modelu i testy właściwości
 
@@ -2223,9 +2258,19 @@ rigi biblioteki bez zamka (logika testowana na mapach w pamięci).
 **V4 — zamek wobec upcastów**: zmiany zgodne (pole opcjonalne dodane, usunięte, wymagane → opcjonalne, nowy członek
 enuma, `:integer` → `:decimal`) bez nowej wersji; reszta wymaga `rename:`/`default:`/`with:`; zmiany osobowości
 i tożsamości nieobsługiwane. Przykład z materiału: `amount_minor` → `amount` z wartością z `unit:` (TaxVision).
-**V5 — wersja umowy i wersja tekstu**: `version` (pola, komendy, `emits`/`rejects`/`by`, nazwy reguł, cykl życia,
-obietnice) i `text_digest` (etykiety, `source:`, scenariusze) w `Build.version/3`/`digests/3`; `Deployment` zapisuje
-obie; raport rozróżnia „zmieniła się umowa” od „zmieniły się słowa”.
+**V5 — the agreement's version and the words' digest** (rewritten 16 October 2026). *The rule:* a contract's
+version changes when what it allows changes, not when its words do. Today `version` (`Contract.Build`, stamped on
+every event, recorded by `EhOsContract.Deployment`) hashes labels, `source:` and scenarios with everything else, so
+correcting a typo in one of Rehmed's labels deploys a "new version" (the report's fourth question) and stamps every
+later event differently.
+- `version` hashes only the agreement: fields, commands, `emits`/`rejects`/`by`, rules' names, lifecycles, reactions
+  and their delivery, and in a process module its stages, promises and deadline. `text_digest` hashes the words:
+  labels, `source:`, terms, scenario descriptions. The per-declaration `digests` split the same way.
+- `Deployment` records both; the report and the dashboard say "the agreement changed" apart from "only the words
+  changed", and the latter is no new version in the log.
+- Every contract's version moves once, with the new hash: a **Breaking** line, since nothing is in production.
+- *Example:* relabelling Rehmed's `visit_completed` moves the text digest only; adding a field to it moves the
+  version.
 
 **PC1 — a contract produces valid examples of its data** (#264; tightened 8 October 2026). `EhOsContract.Generators`,
 compiled only with StreamData (`optional: true`, as `EhOsContract.Plug` with Plug): `command/3`, `event/3`,
@@ -2257,7 +2302,18 @@ resolves against the domain's entities and the units of its contracts, a name th
 refused (X3), and so is a `reads:` through such a field (A8). The model keeps
 `type: :id, refers_to:`; `crossings/2` counts a reference to another context's unit, so the context-map rules see it;
 pages, view and the graph show it. The test material moves to typed references in the same pull request.
-**L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
+**L4 — the owner's view** (rewritten 16 October 2026, the user's decision of that day). *The DDD rule:* the
+ubiquitous language: the business owner reads the model in their own words, without the engineering around it.
+Today `pages` and the graph's panel print `delivery`, `idempotency` and the `correlate` keys (the shapes F8 and F9
+refuse) beside the client's labels.
+- A switch "for the owner" on G1's explorer hides delivery, idempotency, correlation keys and names in code, and
+  keeps labels, stages, promises and the log's numbers; `mix eh_os_contract.pages --audience owner` writes the pages
+  the same way. Both read only the documents, so the Console has the switch too.
+- A notice of `check`: a declaration the owner's view shows with no label, since it would show a name in code.
+- *Example:* Rehmed's visit read by the clinic's manager: "Pacjent wyszedł z gabinetu" for `visit_completed`, the stage, the promise and its
+  verdicts, and no `:at_least_once`.
+
+*Rejected:* the owner's pages alone, leaving the dashboard and the Console with everything.
 **G1 — the graph drawn like a catalog** (#297; tightened 15 October 2026). The renderer (`eh_os_contract_graph`)
 draws cards of their kind on `ehos_design`'s tokens, with the log's numbers on them, a promise as a labelled
 arrow with its verdicts, a legend, search and focus. One canvas with a path and two viewpoints, structure (context
@@ -2321,7 +2377,7 @@ plan) are a later stage.
 | T2a | `reads:` po polu stanu, nie tylko komendy | później |
 | S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone — **decided 8 October: allowed in every scenario** (#251) |
 | A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem — **decided 7 October: no exception** |
-| M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
+| M1 | kształt konsumpcji `publish` w jednej aplikacji | ~~`consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera~~ — **decided 16 October: only the events the upstream contract publishes, taken from the log as today; the shape is not enforced in one application** |
 | V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
 | L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie — **decided 12 October: `{:id, :visit}`**, unambiguous among the domain's entities and units (#286) |
 
