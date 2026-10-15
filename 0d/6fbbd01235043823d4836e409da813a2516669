@@ -1,0 +1,23 @@
+## Review
+
+Two reviews ran in parallel on the explorer's commits (`23420bc4..HEAD`): correctness (`code-review`, high) and security and performance. Every fix below is in the last commit, each with a test that failed on the code before it.
+
+**Fixed**
+- **Unbounded state.** A crafted "go" naming any contract, process or unit was loaded and kept for the LiveView's life. The security review estimated about 1 GB from 1,000 frames carrying 1 MB ids. A place the domain's documents do not hold is now never loaded.
+- **A malformed event crashed the host's page.** It is now ignored.
+- **A failed load was cached for good.** It is loaded again when the reader comes back, and a document answered as `{:ok, nil}` counts as a failure.
+- **A false "another version of the log" note.** A picture drawn without the log passed `false` as its overlay, so the note appeared on the context map and on units.
+- **The domain's overlay was read where nothing draws it.** An overlay is now requested only for a picture that draws one.
+- **"Open" back to the current place.** It also reset a unit's lifecycle lens.
+- **Work in `render/1`.** The picture, path and overlay were worked out there, so every async result rebuilt the canvas's view. They are now worked out when the state changes.
+- **The dashboard's loader drifting from the API.** It is held to the API's documents and overlays by a test again, so the dashboard and the Console cannot drift apart unnoticed.
+
+**Skipped**
+- **"Open its contract" reads a consumed event's contract out of its `declared_as` id.** A contract id with a colon would mislead it. The engine is to write the declaring contract on the node, in a pull request of its own.
+- **Unreachable contracts.** A contract or process module whose domain is not registered (another application, or one `exclude:` drops) is no longer reachable on the Graph screen, though `GET <mount>/graph/<id>` still serves it. It has no place in a domain's structure.
+
+**No change needed**
+- **What the loader exposes.** It resolves through the same `Registry` and the same access as the API, so a viewer gets nothing the API would refuse.
+- **The cost of the log.** Mounting the screen now reads the log for each domain's system and nothing else, about 94 queries on the sandbox, as before, but concurrently. The old screen also read the first contract's.
+- **Memory.** About 1.2 MB of documents for an explorer that visits everything.
+- **The Content-Security-Policy and escaping.**
