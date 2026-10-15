@@ -1045,9 +1045,7 @@
 
 /* The panel's way to where the selected card leads. */
 .ehg-panel .ehg-open {
-  grid-column: 1 / -1;
-  justify-self: start;
-  margin-top: 4px;
+  margin: 0 0 10px;
   padding: 3px 9px;
   border: 1px solid var(--border-strong, var(--border-soft));
   border-radius: var(--radius-sm, 6px);

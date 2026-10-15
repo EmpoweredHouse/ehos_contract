@@ -133,17 +133,17 @@ defmodule EhOsContract.GraphRenderer.Panel do
             ×
           </button>
           <p :if={@name} class="ehg-panel-name">{@name}</p>
-          <button
-            :if={@ctx.open}
-            type="button"
-            class="ehg-open"
-            phx-click="open"
-            phx-value-id={@ctx.open.id}
-            phx-target={@ctx.open.target}
-          >
-            {@ctx.open.label} →
-          </button>
         </header>
+        <button
+          :if={@ctx.open}
+          type="button"
+          class="ehg-open"
+          phx-click="open"
+          phx-value-id={@ctx.open.id}
+          phx-target={@ctx.open.target}
+        >
+          {@ctx.open.label} →
+        </button>
         {render_slot(@inner_block)}
       </div>
     </aside>
