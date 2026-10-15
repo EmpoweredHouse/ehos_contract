@@ -1,22 +1,27 @@
 defmodule Mix.Tasks.EhOsContract.Pages do
-  @shortdoc "Writes the domain and its contracts as Markdown pages, one per element"
+  @shortdoc "Writes the domain, its contracts and processes as Markdown pages, one per element"
 
   @moduledoc """
-  The application's domain and its contracts as linked Markdown pages, one per
-  element.
+  The application's domain, its contracts and its process modules as linked Markdown
+  pages, one per element.
 
       mix eh_os_contract.pages --output docs/model                  # write the pages
       mix eh_os_contract.pages --output docs/model --check          # are they current?
       mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
 
-  The domain and its contracts are found among the modules of
+  The domain, its contracts and its process modules are found among the modules of
   `config :eh_os_contract, applications:`. The pages go where `--output` says: the
   host decides whether to commit them, add them to ExDoc's `extras`, or only read
-  them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
-  document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
+  them. A process module's page is `processes/<its id after the domain's name>.md`,
+  linked from the domain's page and from the page of each contract whose events it
+  includes: its stages in order with their events, what ends a run, its promises, its
+  deadline and the external systems its events rest on. Beside the pages,
+  `graph/<contract id>.json` holds each contract's `graph.v1` document and
+  `graph/process/<process id>.json` each process module's
+  (`EhOsContract.Graph.Document`), linked from its page. A page the model no
   longer has is deleted — only a file that starts with the marker line of the domain's
-  pages, or a `graph.v1` document of one of the domain's contracts at the path the
-  task gives that contract, so another domain's pages in the same directory stay — and
+  pages, or a `graph.v1` document of one of the domain's contracts or process modules
+  at the path the task gives it, so another domain's pages in the same directory stay — and
   a page is never written over a file without it, nor through a symbolic link: then
   nothing is written, and the task names what is in the way. Nothing outside
   `--output` is read or touched.
@@ -51,7 +56,10 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
     pages =
       try do
-        Pages.render(domain, EhOsContract.Registry.contracts())
+        Pages.render(
+          domain,
+          EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
+        )
       rescue
         error in ArgumentError -> Mix.raise(Exception.message(error))
       end
@@ -151,7 +159,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   end
 
   # Only the marker's bytes are read: `--output` may be a large tree of documents. A
-  # contract's graph document has no room for a marker, so it is read whole, and only
+  # graph document has no room for a marker, so it is read whole, and only
   # where the pages put one (`EhOsContract.Pages.graph?/3`). One the task cannot read
   # is not taken for its own, as a page whose marker it cannot read is not.
   defp page?(path, file, {marker, domain}) do
