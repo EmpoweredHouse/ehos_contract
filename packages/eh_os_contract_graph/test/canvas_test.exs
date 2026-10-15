@@ -432,12 +432,24 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     } do
       count = fn v -> v |> shown() |> LazyHTML.query("button.ehg-card") |> Enum.count() end
       all = count.(view)
+      id = "event:rehmed.scheduling:visit_completed"
 
-      view
-      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
-      |> render_click()
-
+      view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
       view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+
+      around =
+        "process.rehmed.clinical_visit"
+        |> Fixtures.document()
+        |> View.process()
+        |> View.around(id)
+
+      drawn =
+        view
+        |> shown()
+        |> LazyHTML.query("button.ehg-card")
+        |> LazyHTML.attribute("data-ehg-node")
+
+      assert drawn == Enum.map(around.nodes, & &1.id)
       assert count.(view) < all
 
       view |> element("button.ehg-tool", "Show the whole picture") |> render_click()

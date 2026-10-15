@@ -22,8 +22,8 @@ import { select, zoom, zoomIdentity } from "../vendor/d3-zoom.esm.js"
 
 const SVG = "http://www.w3.org/2000/svg"
 
-// The smallest scale a picture starts at: below it a card's words cannot be read. A larger picture starts where
-// reading starts, its left edge (or its top, drawn top to bottom), and the reader pans to the rest; "Whole
+// The smallest scale a picture starts at: below it a card's words cannot be read. A picture larger than the canvas
+// at that scale starts at the edge it overflows from, its left or its top, and the reader pans to the rest; "Whole
 // picture" fits it all, smaller.
 const READABLE = 0.75
 
@@ -528,6 +528,8 @@ export const EhOsContractGraph = {
       const box = this.canvas.getBoundingClientRect()
       const { width, height } = this.size
       const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
+      // However small the whole picture is, the zoom goes on from there rather than jumping to its least scale.
+      this.zoom.scaleExtent([Math.min(0.1, k), 2])
       canvas.call(
         this.zoom.transform,
         zoomIdentity.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k),

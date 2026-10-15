@@ -4808,6 +4808,7 @@ var EhOsContractGraph = {
       const box = this.canvas.getBoundingClientRect();
       const { width, height } = this.size;
       const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
+      this.zoom.scaleExtent([Math.min(0.1, k), 2]);
       canvas.call(
         this.zoom.transform,
         identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k)

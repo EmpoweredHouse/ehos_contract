@@ -43,9 +43,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     "Whole picture".
 
   **A picture starts readable.** It is never drawn larger than its own size, nor smaller
-  than a scale its words can be read at: one that does not fit starts where reading
-  starts, at its left edge (its top, drawn top to bottom), and the reader pans to the
-  rest or asks for the whole picture, however small. A wheel with Ctrl or ⌘, or a pinch,
+  than a scale its words can be read at: one that does not fit at that scale starts at the
+  edge it overflows from, its left or its top, and the reader pans to the rest or asks
+  for the whole picture, however small. A wheel with Ctrl or ⌘, or a pinch,
   zooms; a drag pans.
 
   **A click** on a card, a group's title, a label or an arrow selects it: the card, the

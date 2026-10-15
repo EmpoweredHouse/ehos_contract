@@ -97,8 +97,8 @@
   opacity: 0.25;
 }
 
-/* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
-   width, never taller than this. */
+/* As tall as this until the hook has laid the graph out; then as tall as the graph at the scale it starts at,
+   never taller than this. */
 /* Contained: what changes inside a canvas — a zoom, a selection, a new layout — is laid out and painted inside
    it, never the page around it. Its height is always set, so size containment costs nothing. */
 .ehg-canvas {
