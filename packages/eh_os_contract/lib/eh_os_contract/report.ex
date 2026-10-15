@@ -96,7 +96,7 @@ defmodule EhOsContract.Report do
             "  Since the previous version: " <>
               "events added #{length(c.events_added)}, removed #{length(c.events_removed)}, " <>
               "paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}."
-          ] ++ declarations_changed(c.declarations)
+          ] ++ Enum.map(Sentence.declarations_changed(c.declarations), &("  " <> &1))
       end
 
     earlier =
@@ -124,55 +124,12 @@ defmodule EhOsContract.Report do
       wired ++ change ++ earlier ++ [""]
   end
 
-  # A process module's version, in force since the deployment that carries it was first
-  # recorded: no event is stamped with it.
+  # A process module's version and what changed since the previous one, in the sentences
+  # the dashboard prints too.
   @spec process_deployment(map()) :: [String.t()]
   defp process_deployment(deployment) do
-    since =
-      case deployment.deployed.since do
-        nil -> "not recorded as deployed"
-        at -> "deployed since #{day(at)}"
-      end
-
-    change =
-      case deployment.changed do
-        nil ->
-          []
-
-        c ->
-          [
-            "  Since the previous version: " <>
-              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}."
-          ] ++ declarations_changed(c.declarations)
-      end
-
-    [
-      "PROCESS MODULE: #{deployment.process}",
-      "  Version #{deployment.deployed.version}, #{since}."
-    ] ++
-      change ++ [""]
-  end
-
-  # The line events and paths could never carry: a promise whose window moved, or an
-  # event whose field became `personal:`, adds and removes nothing. Named rather than counted,
-  # because "2 declarations changed" sends the reader looking and the names end the
-  # search.
-  @spec declarations_changed(map() | :not_recorded) :: [String.t()]
-  defp declarations_changed(:not_recorded) do
-    [
-      "  What the declarations said under the previous version was not recorded, " <>
-        "so it cannot be compared."
-    ]
-  end
-
-  defp declarations_changed(%{added: [], removed: [], changed: []}), do: []
-
-  defp declarations_changed(d) do
-    moved = d.changed ++ d.added ++ d.removed
-
-    [
-      "  Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."
-    ]
+    ["PROCESS MODULE: #{deployment.process}"] ++
+      Enum.map(Sentence.process_deployment(deployment), &("  " <> &1)) ++ [""]
   end
 
   @spec accountable(String.t() | nil) :: [String.t()]
@@ -198,7 +155,7 @@ defmodule EhOsContract.Report do
   defp process(p) do
     ["PROCESS: #{p.label}"] ++
       accountable(p.accountable) ++
-      ["  Runs in this period: #{p.runs}."] ++
+      ["  " <> Sentence.runs_in_period(p.runs, Map.get(p, :correlate, []))] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
       out_of_order(p) ++

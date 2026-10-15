@@ -88,7 +88,9 @@ Prints a domain's ubiquitous language as Markdown
 Prints the glossary of the application's domain as Markdown: each context's terms,
 their definitions, the words to avoid and their translations, and each term's word in
 code — its translation into the domain's `code_language:` — with the declarations of
-the context's contracts named with it.
+the context's contracts named with it, and the process modules that include the
+context's events and are named with it: their id, a stage, a promise or a field that
+tells their runs apart.
 
     mix eh_os_contract.glossary                        # every term, in its context's language
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
@@ -131,23 +133,28 @@ before the task runs.
 
 ## mix eh_os_contract.pages
 
-Writes the domain and its contracts as Markdown pages, one per element
+Writes the domain, its contracts and processes as Markdown pages, one per element
 
-The application's domain and its contracts as linked Markdown pages, one per
-element.
+The application's domain, its contracts and its process modules as linked Markdown
+pages, one per element.
 
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?
     mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
 
-The domain and its contracts are found among the modules of
+The domain, its contracts and its process modules are found among the modules of
 `config :eh_os_contract, applications:`. The pages go where `--output` says: the
 host decides whether to commit them, add them to ExDoc's `extras`, or only read
-them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
-document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
+them. A process module's page is `processes/<its id after the domain's name>.md`,
+linked from the domain's page and from the page of each contract whose events it
+includes: its stages in order with their events, what ends a run, its promises, its
+deadline and the external systems its events rest on. Beside the pages,
+`graph/<contract id>.json` holds each contract's `graph.v1` document and
+`graph/process/<process id>.json` each process module's
+(`EhOsContract.Graph.Document`), linked from its page. A page the model no
 longer has is deleted — only a file that starts with the marker line of the domain's
-pages, or a `graph.v1` document of one of the domain's contracts at the path the
-task gives that contract, so another domain's pages in the same directory stay — and
+pages, or a `graph.v1` document of one of the domain's contracts or process modules
+at the path the task gives it, so another domain's pages in the same directory stay — and
 a page is never written over a file without it, nor through a symbolic link: then
 nothing is written, and the task names what is in the way. Nothing outside
 `--output` is read or touched.
@@ -227,16 +234,17 @@ of two ways:
 
 ## mix eh_os_contract.view
 
-Prints the domain as a tree: contexts, contracts, units and consumers
+Prints the domain as a tree: contexts, contracts, units, consumers and processes
 
 Prints the application's domain as a tree for a terminal: its contexts, and in
-each its contracts, their units, consumers and queries.
+each its contracts, their units, consumers and queries; then its process modules,
+each with its stages in order and the events each includes, by contract.
 
     mix eh_os_contract.view                                   # the whole domain
-    mix eh_os_contract.view settlement                        # one context
+    mix eh_os_contract.view settlement                        # one context, without the processes
     mix eh_os_contract.view settlement/visit_settlement       # one unit, consumer or query
     mix eh_os_contract.view --details                         # with what each row declares
     mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
 
-The domain and its contracts are found among the modules of
+The domain, its contracts and process modules are found among the modules of
 `config :eh_os_contract, applications:`. `--output` writes the tree to a file.

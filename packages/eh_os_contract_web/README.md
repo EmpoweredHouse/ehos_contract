@@ -3,9 +3,10 @@
 A conformance dashboard for [EhOsContract](https://hex.pm/packages/eh_os_contract), mounted in your
 own router.
 
-Two screens and nothing else: the contract's conformance status, and the graphs —
-each domain's context map and system, and per contract its full graph with the log laid
-over it, and its units and their lifecycles.
+Two screens and nothing else: the conformance status of each contract and each process module,
+and the graphs — each domain's context map and system, per contract its full graph with the log
+laid over it, and its units and their lifecycles, and per process module its stages, events and
+promises with the log over them.
 
 The graphs are drawn by
 [`eh_os_contract_graph`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_graph),

@@ -70,6 +70,28 @@ defmodule EhOsContract.Duration do
   def humanize({1, unit}), do: "#{unit}"
   def humanize({n, unit}), do: "#{n} #{unit}s"
 
+  @doc """
+  A declared duration as the model's readers print it, numeral always: `%{amount: 1,
+  unit: :day}` is "1 day", `{2, :day}` "2 days", and one the process owner has not
+  confirmed (`unverified: true`) "2 days (unverified)". Unlike `humanize/1`, it stands
+  on its own rather than after a word: the pages and the domain's tree.
+  """
+  @spec declared(
+          %{
+            required(:amount) => non_neg_integer(),
+            required(:unit) => atom(),
+            optional(:unverified) => boolean(),
+            optional(atom()) => term()
+          }
+          | {non_neg_integer(), atom()}
+        ) :: String.t()
+  def declared({amount, unit}), do: declared(%{amount: amount, unit: unit})
+
+  def declared(%{amount: amount, unit: unit} = d) do
+    word = if amount == 1, do: "#{unit}", else: "#{unit}s"
+    "#{amount} #{word}" <> if(Map.get(d, :unverified), do: " (unverified)", else: "")
+  end
+
   @doc "Shifts a moment by a duration. The log is in UTC, so a day is 86 400 seconds."
   @spec shift(DateTime.t(), t()) :: DateTime.t()
   def shift(%DateTime{} = at, {n, unit}) do

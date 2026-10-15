@@ -121,6 +121,68 @@ defmodule EhOsContract.Report.Sentence do
     end
   end
 
+  @doc """
+  The count of a process's runs in the period, with what one run is when its
+  `correlate` is given: `Runs in this period: 3, one per visit_id.`
+  """
+  @spec runs_in_period(non_neg_integer(), [atom() | String.t()]) :: String.t()
+  def runs_in_period(runs, correlate) do
+    case runs_per(correlate) do
+      nil -> "Runs in this period: #{runs}."
+      clause -> "Runs in this period: #{runs}, #{clause}."
+    end
+  end
+
+  @doc """
+  A process module's deployment (`EhOsContract.Deployment`'s, as a process module's
+  report carries it): its version and since when it is deployed, then what changed
+  since the previous version. A process module stamps no event with its version, so
+  it is in force since the deployment that carries it was first recorded.
+  """
+  @spec process_deployment(map()) :: [String.t()]
+  def process_deployment(deployment) do
+    since =
+      case deployment.deployed.since do
+        nil -> "not recorded as deployed"
+        at -> "deployed since #{at |> DateTime.to_date() |> Date.to_string()}"
+      end
+
+    change =
+      case deployment.changed do
+        nil ->
+          []
+
+        c ->
+          [
+            "Since the previous version: " <>
+              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}."
+          ] ++ declarations_changed(c.declarations)
+      end
+
+    ["Version #{deployment.deployed.version}, #{since}." | change]
+  end
+
+  @doc """
+  What declarations changed since the previous version, which events and paths could
+  never carry: a promise whose window moved, or an event whose field became
+  `personal:`, adds and removes nothing. Named rather than counted, because "2
+  declarations changed" sends the reader looking and the names end the search.
+  """
+  @spec declarations_changed(map() | :not_recorded) :: [String.t()]
+  def declarations_changed(:not_recorded) do
+    [
+      "What the declarations said under the previous version was not recorded, " <>
+        "so it cannot be compared."
+    ]
+  end
+
+  def declarations_changed(%{added: [], removed: [], changed: []}), do: []
+
+  def declarations_changed(d) do
+    moved = d.changed ++ d.added ++ d.removed
+    ["Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."]
+  end
+
   @doc "A confirmed process declaration, as a sentence."
   @spec declaration(map()) :: String.t()
   def declaration(%{key: :deadline, value: value}),

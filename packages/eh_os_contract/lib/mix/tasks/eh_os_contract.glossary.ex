@@ -5,7 +5,9 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
   Prints the glossary of the application's domain as Markdown: each context's terms,
   their definitions, the words to avoid and their translations, and each term's word in
   code — its translation into the domain's `code_language:` — with the declarations of
-  the context's contracts named with it.
+  the context's contracts named with it, and the process modules that include the
+  context's events and are named with it: their id, a stage, a promise or a field that
+  tells their runs apart.
 
       mix eh_os_contract.glossary                        # every term, in its context's language
       mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
@@ -40,7 +42,8 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
         # then that there is no translation, so this is the one name made an atom here.
         language: opts[:language] && String.to_atom(opts[:language]),
         context: EhOsContract.Tools.context!(domain, opts[:context]),
-        contracts: EhOsContract.Registry.contracts()
+        contracts: EhOsContract.Registry.contracts(),
+        processes: EhOsContract.Registry.processes()
       )
 
     case opts[:output] do

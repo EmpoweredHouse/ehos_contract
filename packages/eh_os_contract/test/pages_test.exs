@@ -10,7 +10,7 @@ defmodule EhOsContract.PagesTest do
 
   alias EhOsContract.{Pages, Registry}
 
-  defp pages(domain), do: Pages.render(domain, Registry.contracts())
+  defp pages(domain), do: Pages.render(domain, Registry.contracts() ++ Registry.processes())
 
   # Every relative Markdown link on a page, resolved against the page's directory.
   defp links(path, text) do
@@ -35,7 +35,8 @@ defmodule EhOsContract.PagesTest do
           String.ends_with?(path, ".md"),
           do: assert(String.starts_with?(text, Pages.marker(name)), path)
 
-      # Beside them, each contract's graph document, which nothing else writes.
+      # Beside them, each contract's and process module's graph document, which nothing
+      # else writes.
       for {path, text} <- pages, String.ends_with?(path, ".json") do
         assert Pages.graph?(path, text, domain), path
         refute Pages.graph?(path, text, Enum)
@@ -404,6 +405,166 @@ defmodule EhOsContract.PagesTest do
     end
   end
 
+  # Plan DD, P2e (#220): a process module's page and its document.
+  describe "the pages of a process module" do
+    setup do
+      %{pages: pages(UniversalityGate.Domain)}
+    end
+
+    test "its page and its graph document, by its id", %{pages: pages} do
+      assert Map.has_key?(pages, "processes/treatment_episode_run.md")
+
+      document =
+        Jason.decode!(pages["graph/process/universality_gate.treatment_episode_run.json"])
+
+      assert document["kind"] == "process"
+      assert document["process"] == "universality_gate.treatment_episode_run"
+    end
+
+    test "says what tells a run, who answers for it, its stages, ends, promises and deadline",
+         %{pages: pages} do
+      page = pages["processes/treatment_episode_run.md"]
+      event = &"[`#{&1}`](../treatment/treatment_episode/events/#{&1}.md)"
+
+      assert page =~
+               "# Process `universality_gate.treatment_episode_run` — Treatment episode: from referral to closing"
+
+      assert page =~
+               "[graph](../graph/process/universality_gate.treatment_episode_run.json)"
+
+      assert page =~ "Runs: one per `episode_id`."
+      assert page =~ "Accountable: `attending_physician` — Attending physician."
+
+      # Said plainly where it is declared: the report leaves an unconfirmed one out.
+      assert page =~
+               "Deadline: 30 days from the start of a run. Not confirmed by the process owner " <>
+                 "(`unverified`), so the conformance report leaves it out."
+
+      assert page =~
+               "2. `plan` — [`UniversalityGate.TreatmentEpisode`](../treatment/treatment_episode/index.md): " <>
+                 event.("treatment_plan_approved")
+
+      assert page =~ "#{event.("payer_eligibility_denied")} (ends a run)"
+      assert page =~ "## Ends a run\n\n- #{event.("payer_eligibility_denied")}\n"
+
+      assert page =~
+               "- `referral_reaches_a_decision`: after #{event.("referral_received")}, eventually " <>
+                 "#{event.("payer_eligibility_confirmed")} within 3 days, or else " <>
+                 event.("payer_eligibility_denied") <> "\n"
+
+      assert page =~
+               "- `payer_registry` — Payer registry: confirmation of eligibility for treatment · " <>
+                 "what rests on it: #{event.("payer_eligibility_checked")}"
+    end
+
+    test "an unconfirmed promise says the report leaves it out" do
+      run = EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun)
+      [first | rest] = run.promises
+      run = %{run | promises: [%{first | unverified: true} | rest]}
+
+      page =
+        Pages.render(UniversalityGate.Domain, [UniversalityGate.TreatmentEpisode, run])[
+          "processes/treatment_episode_run.md"
+        ]
+
+      assert page =~
+               "or else [`payer_eligibility_denied`](../treatment/treatment_episode/events/payer_eligibility_denied.md). " <>
+                 "Not confirmed by the process owner (`unverified`), so the conformance report leaves it out.\n"
+    end
+
+    test "the domain's page and each including contract's page link it", %{pages: pages} do
+      assert pages["index.md"] =~
+               "## Processes\n\n- [`universality_gate.treatment_episode_run`](processes/treatment_episode_run.md) " <>
+                 "— Treatment episode: from referral to closing"
+
+      assert pages["index.md"] =~ "└─ process universality_gate.treatment_episode_run"
+
+      assert pages["treatment/treatment_episode/index.md"] =~
+               "## Processes that include its events\n\n" <>
+                 "- [`universality_gate.treatment_episode_run`](../../processes/treatment_episode_run.md) " <>
+                 "— Treatment episode: from referral to closing · includes " <>
+                 "[`referral_received`](events/referral_received.md), "
+    end
+
+    # Plan DD, P2e (#220), review: a stage listed a contract twice when its
+    # events were not adjacent, and a stage with nothing resolved ended in "— ".
+    test "a stage's events by contract in first-appearance order, and a stage with none" do
+      page =
+        Pages.render(DispatchRig.Domain, [DispatchRig.Ledger, DispatchRig.Transfer, mixed_run()])[
+          "processes/ledger_run.md"
+        ]
+
+      assert page =~
+               "1. `moving` — [`DispatchRig.Ledger`](../ledger/ledger/index.md): " <>
+                 "[`deposited`](../ledger/ledger/events/deposited.md), " <>
+                 "[`withdrawn`](../ledger/ledger/events/withdrawn.md); " <>
+                 "[`DispatchRig.Transfer`](../ledger/transfer/index.md): " <>
+                 "[`account_moved`](../ledger/transfer/events/account_moved.md)\n"
+
+      assert page =~ "2. `elsewhere` — _no included event resolves to a contract of the domain_\n"
+    end
+
+    # Plan DD, P2e (#220), review: a model built without `correlate` raised.
+    test "a process module without correlate says nothing of what tells its runs apart" do
+      page =
+        Pages.render(UniversalityGate.Domain, [
+          UniversalityGate.TreatmentEpisode,
+          %{EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun) | correlate: []}
+        ])["processes/treatment_episode_run.md"]
+
+      refute page =~ "Runs:"
+    end
+
+    test "control: a contract none of whose events a process includes lists none" do
+      refute pages(ValueRig.Domain)["till/till/index.md"] =~ "Processes"
+    end
+
+    test "a process document is the pages' only at its own path, apart from a contract's",
+         %{pages: pages} do
+      path = "graph/process/universality_gate.treatment_episode_run.json"
+      text = pages[path]
+
+      assert Pages.graph?(path, text, UniversalityGate.Domain)
+      # A process module may share its id with a contract: the contract's path is not its.
+      refute Pages.graph?(
+               "graph/universality_gate.treatment_episode_run.json",
+               text,
+               UniversalityGate.Domain
+             )
+
+      refute Pages.graph?(path, text, ValueRig.Domain)
+    end
+
+    test "a process module whose id: is no dotted name gets no page outside the directory" do
+      run = EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun)
+
+      assert_raise ArgumentError, ~r|a process module's document is named after its id:|, fn ->
+        Pages.render(UniversalityGate.Domain, [%{run | id: "../../escape"}])
+      end
+    end
+  end
+
+  # A run whose first stage includes two contracts' events interleaved, and whose second
+  # includes only an event of another domain, which does not resolve.
+  defp mixed_run do
+    run = EhOsContract.Model.fetch(DispatchRig.LedgerRun)
+
+    stages = [
+      %{
+        name: :moving,
+        label: nil,
+        includes: [
+          %{contract: DispatchRig.Ledger, event: :deposited},
+          %{contract: DispatchRig.Transfer, event: :account_moved},
+          %{contract: DispatchRig.Ledger, event: :withdrawn}
+        ]
+      },
+      %{name: :elsewhere, label: nil, includes: [%{contract: ValueRig.Till, event: :paid_in}]}
+    ]
+
+    %{run | stages: stages, ends_on: []}
+  end
+
   # The E13a pre-PR review: a contract's graph document is named after its id:, which a
   # model built by hand is not held to.
   test "a contract whose id: is no dotted name gets no graph document outside the pages" do
@@ -531,6 +692,43 @@ defmodule EhOsContract.PagesTest do
       File.write!(Path.join(dir, "graph/value_rig.till.json"), ~s({"mine": true}))
       error = assert_raise Mix.Error, fn -> run(["--output", dir]) end
       assert error.message =~ "graph/value_rig.till.json"
+    end
+
+    # Plan DD, P2e (#220): a process module's document is the task's to replace and to
+    # delete, at its own path.
+    @tag :tmp_dir
+    test "writes a process module's page and document, and deletes one it no longer has",
+         %{tmp_dir: dir} do
+      run = fn args ->
+        Mix.Tasks.EhOsContract.Pages.run(args ++ ["--domain", "universality_gate"])
+      end
+
+      run.(["--output", dir])
+      assert_received {:mix_shell, :info, [_written]}
+      path = Path.join(dir, "graph/process/universality_gate.treatment_episode_run.json")
+      ours = File.read!(path)
+      assert File.exists?(Path.join(dir, "processes/treatment_episode_run.md"))
+
+      gone =
+        String.replace(
+          ours,
+          ~s("process": "universality_gate.treatment_episode_run"),
+          ~s("process": "universality_gate.gone")
+        )
+
+      File.write!(Path.join(dir, "graph/process/universality_gate.gone.json"), gone)
+      # A process document at a contract's path is a person's.
+      File.write!(Path.join(dir, "graph/universality_gate.gone.json"), gone)
+
+      run.(["--output", dir])
+      assert_received {:mix_shell, :info, [written]}
+      assert written =~ ", 1 left over deleted"
+      refute File.exists?(Path.join(dir, "graph/process/universality_gate.gone.json"))
+      assert File.exists?(Path.join(dir, "graph/universality_gate.gone.json"))
+
+      run.(["--output", dir, "--check"])
+      assert_received {:mix_shell, :info, [current]}
+      assert current == "#{dir}: current"
     end
 
     test "asks where the pages go" do

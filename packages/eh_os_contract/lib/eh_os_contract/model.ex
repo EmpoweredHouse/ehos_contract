@@ -509,6 +509,21 @@ defmodule EhOsContract.Model do
     end
   end
 
+  @doc """
+  The events a process module's stage `stage` includes, of `events` as
+  `process_events/1` gives them, grouped by the contract that declares them: one
+  `{contract, events}` per contract, in the order each contract first appears, the
+  events in theirs. A stage that includes `{A, :a}, {B, :b}, {A, :c}` is
+  `[{A, [a, c]}, {B, [b]}]`. `[]` when none of the stage's includes resolves.
+  """
+  @spec stage_includes([process_event()], atom()) :: [{module(), [process_event()]}]
+  def stage_includes(events, stage) do
+    in_stage = Enum.filter(events, &(&1.stage == stage))
+
+    for contract <- in_stage |> Enum.map(& &1.contract) |> Enum.uniq(),
+        do: {contract, Enum.filter(in_stage, &(&1.contract == contract))}
+  end
+
   # A contract's model, or `nil` for a module that is not one compiled here.
   defp compiled(module) do
     with true <-
