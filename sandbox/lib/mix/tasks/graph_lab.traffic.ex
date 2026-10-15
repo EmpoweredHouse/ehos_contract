@@ -23,7 +23,9 @@ defmodule Mix.Tasks.GraphLab.Traffic do
     (Grażyna);
   - **refusals**: an invoice with a visit neither marked nor excluded, a count of a
     closed till, a second refund for one visit — whose correction stands;
-  - **what waits**: the chases' timers of a visit that ended an hour ago (Henryk).
+  - **what waits**: the chases' timers of a visit that ended an hour ago (Henryk); run
+    between 20:00 and 21:00 in Warsaw, his visit ends at the full hour instead, after the
+    clinic's evening, so the settlement chase waits for the next one.
 
   ## When to run it
 
@@ -36,9 +38,12 @@ defmodule Mix.Tasks.GraphLab.Traffic do
 
       $ cd sandbox && mix ecto.reset && mix graph_lab.traffic
 
-  `mix ecto.reset` empties the whole development database; a second run on a database
-  that holds the set's runs is refused. **Stop a dev server first**: its subscriptions and
-  Oban would react to the task's events as they arrive, stamped with today's time.
+  **The development database is shared by every checkout of this repository on the
+  machine**, so `mix ecto.reset` empties it for all of them. The task refuses a log that
+  holds anything at all, since its half-hourly drains would push every other tree's
+  reactions through at the week's times; and it refuses while anything else is connected
+  to the database, a dev server above all, since that server's subscriptions and Oban
+  would react to the task's events as they arrive, stamped with today's time.
 
   It prints the command that starts the dashboard with the test set alone: the other
   client trees left out (`config :eh_os_contract, exclude:`), and the credential
@@ -56,8 +61,6 @@ defmodule Mix.Tasks.GraphLab.Traffic do
 
   use Mix.Task
   use Boundary, classify_to: GraphLab
-
-  import Ecto.Query
 
   alias EhOsContract.{Actor, Clock, Rejection, Testing}
   alias GraphLab.Contracts.{ClinicalDocumentation, ExternalPayers, Scheduling, Settlement, Till}
@@ -125,6 +128,10 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   @others ["Taxvision.", "Rehmed.", "AppuniteEquipment."]
   @audience "graph-lab/dev"
 
+  # The name this task's own connections give the database, so that it can tell them from
+  # anyone else's.
+  @connection "graph_lab.traffic"
+
   @impl Mix.Task
   def run(_args) do
     unless Mix.env() == :dev do
@@ -134,13 +141,22 @@ defmodule Mix.Tasks.GraphLab.Traffic do
     end
 
     Mix.Task.run("app.config")
+    repo = Application.fetch_env!(:eh_os_contract_host, Taxvision.Repo)
+    parameters = Keyword.put(repo[:parameters] || [], :application_name, @connection)
+
+    Application.put_env(
+      :eh_os_contract_host,
+      Taxvision.Repo,
+      Keyword.put(repo, :parameters, parameters)
+    )
+
     Application.put_env(:eh_os_contract, :subscriptions, :manual)
     Application.put_env(:eh_os_contract, :entities, GraphLab.Entities)
     oban = Application.fetch_env!(:eh_os_contract_host, Oban)
     Application.put_env(:eh_os_contract_host, Oban, Keyword.put(oban, :testing, :manual))
     Mix.Task.run("app.start")
 
-    refuse_a_second_run!()
+    refuse_a_shared_database!()
 
     # The last full hour, so the half-hourly drains fall on the clock's half hours, where
     # the settlement chase's evening is.
@@ -183,10 +199,18 @@ defmodule Mix.Tasks.GraphLab.Traffic do
       |> DateTime.to_date()
     end
 
-    visits(period) ++ payers(period) ++ till(day)
+    visits(period, henryk(now)) ++ payers(period) ++ till(day)
   end
 
-  defp visits(period) do
+  # How much later Henryk's visit ends than an hour ago. The settlement chase is due at
+  # the clinic's evening, 20:00 in Warsaw, or the next one for a visit ending after it; a
+  # visit ending in the hour before it, with the task run after it, would leave nothing
+  # waiting. So, run then, his visit ends at the full hour, after the evening.
+  defp henryk(now) do
+    if DateTime.shift_zone!(now, "Europe/Warsaw").hour == 20, do: 1, else: 0
+  end
+
+  defp visits(period, later) do
     [
       # Anna: the whole way, kept — confirmed, noted, reported to P1, paid, then corrected
       # twice: the first correction is refunded, the second's refund is refused.
@@ -260,10 +284,10 @@ defmodule Mix.Tasks.GraphLab.Traffic do
        fn -> gateway_down(fn -> book("grazyna", @fitness, 44) end) end},
 
       # Henryk left an hour ago: both chases' timers wait. Krystyna's visit is tomorrow.
-      {3, "Henryk booked", fn -> book("henryk", @physiotherapy, 1) end},
-      {2, "Henryk arrived", fn -> arrived("henryk") end},
-      {1, "Henryk left the room", fn -> left("henryk") end},
-      {0.8, "Henryk's note written", fn -> note("henryk") end},
+      {3 - later, "Henryk booked", fn -> book("henryk", @physiotherapy, 1) end},
+      {2 - later, "Henryk arrived", fn -> arrived("henryk") end},
+      {1.2 - later, "Henryk's note written", fn -> note("henryk") end},
+      {1 - later, "Henryk left the room", fn -> left("henryk") end},
       {2.5, "Krystyna booked for tomorrow", fn -> book("krystyna", @physiotherapy, 26.5) end},
       {0.5, "Krystyna's visit confirmed by phone", fn -> confirm("krystyna") end}
     ]
@@ -490,13 +514,31 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   defp pesel(name),
     do: "8" <> String.pad_leading("#{:erlang.phash2(name, 1_000_000_000)}", 10, "0")
 
-  defp refuse_a_second_run! do
+  # The task fills an empty log, alone. A log holding anything — the set's runs from
+  # before, or another tree's — would have its reactions pushed through at the week's
+  # times; anyone else connected, a dev server above all, would react to the task's events
+  # at today's.
+  defp refuse_a_shared_database! do
     repo = EhOsContract.Config.fetch!(:repo)
 
-    if repo.exists?(from(e in EhOsContract.Event, where: like(e.type, "graph-lab.%"))) do
+    if repo.exists?(EhOsContract.Event) do
       Mix.raise(
-        "The development database already holds the test set's runs. To fill it again, empty " <>
-          "it first with mix ecto.reset, which empties all of it"
+        "The development database's log is not empty. Empty it first with mix ecto.reset, " <>
+          "which empties it for every checkout on this machine"
+      )
+    end
+
+    %{rows: [[others]]} =
+      repo.query!(
+        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() " <>
+          "AND pid <> pg_backend_pid() AND coalesce(application_name, '') <> $1",
+        [@connection]
+      )
+
+    if others > 0 do
+      Mix.raise(
+        "#{others} other connection(s) to the development database: stop the dev server " <>
+          "(and anything else using it) first, since it would react to the task's events"
       )
     end
   end
