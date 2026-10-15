@@ -191,6 +191,41 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     for q <- qualifications, do: assert(html =~ escape(q))
   end
 
+  # The review of P2e's third pull request: the screen left out what changed since the
+  # previous version, which the text report prints.
+  test "a process module's deployment says what changed since the previous version" do
+    report = EhOsContract.Conformance.report(CaseRun, [])
+
+    changed = %{
+      events_added: ["case_closed"],
+      events_removed: [],
+      declarations: %{added: [], removed: [], changed: ["promise:closed_within_a_week"]}
+    }
+
+    render = fn changed ->
+      render_component(&ContractStatus.render/1, %{
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
+        reports: [],
+        processes: [put_in(report.deployment.changed, changed)]
+      })
+    end
+
+    html = render.(changed)
+    assert html =~ "Since the previous version: events added 1, removed 0."
+    assert html =~ "Declarations changed: 1 (promise:closed_within_a_week)."
+
+    # The text report says the same.
+    text = EhOsContract.Report.render(put_in(report.deployment.changed, changed))
+
+    for line <-
+          Sentence.process_deployment(put_in(report.deployment.changed, changed).deployment),
+        do: assert(text =~ line and html =~ line)
+
+    assert render.(%{changed | declarations: :not_recorded}) =~
+             "was not recorded, so it cannot be compared."
+  end
+
   # HEEx escapes interpolated values, so a sentence carrying a quotation mark is not in
   # the HTML verbatim.
   defp escape(sentence),

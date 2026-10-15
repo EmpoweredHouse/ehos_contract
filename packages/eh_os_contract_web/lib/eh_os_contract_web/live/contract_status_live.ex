@@ -154,11 +154,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
 
         <section>
           <h3>Process module</h3>
-          <p>
-            Version {report.deployment.deployed.version}, {process_deployed_since(
-              report.deployment.deployed.since
-            )}.
-          </p>
+          <p :for={line <- Sentence.process_deployment(report.deployment)}>{line}</p>
         </section>
 
         <section :for={process <- report.processes}>
@@ -166,7 +162,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <p :if={Sentence.accountable(process.accountable)}>
             {Sentence.accountable(process.accountable)}
           </p>
-          <p>Runs in this period: {process.runs}{runs_per(report.module)}.</p>
+          <p>{Sentence.runs_in_period(process.runs, correlate(report.module))}</p>
 
           <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
           <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
@@ -220,12 +216,6 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   defp deployed_since(nil), do: "nothing has happened under this version yet"
   defp deployed_since(at), do: "in force since #{DateTime.to_date(at)}"
 
-  # A process module stamps no event with its version: it is in force since the
-  # deployment that carries it was first recorded, as the text report says.
-  @spec process_deployed_since(DateTime.t() | nil) :: String.t()
-  defp process_deployed_since(nil), do: "not recorded as deployed"
-  defp process_deployed_since(at), do: "deployed since #{DateTime.to_date(at)}"
-
   # The one line the report exists to be read from, so it is the one place colour
   # carries the answer. **The verdict only**: one of the qualifications beside it says
   # an outage means "this is not a breach on the client's side", and that sentence in
@@ -240,13 +230,13 @@ defmodule EhOsContract.Web.Live.ContractStatus do
     end
   end
 
-  # What one run is, beside the count: the process module's `correlate`, read from its
-  # model, since the report carries no such field.
-  @spec runs_per(module()) :: String.t() | nil
-  defp runs_per(module) do
-    with %{correlate: fields} <- EhOsContract.Model.process(module),
-         clause when is_binary(clause) <- Sentence.runs_per(fields),
-         do: ", " <> clause,
-         else: (_ -> nil)
+  # What tells a process module's runs apart, read from its model, since the report
+  # carries no such field: the text report reads it the same way.
+  @spec correlate(module()) :: [atom()]
+  defp correlate(module) do
+    case EhOsContract.Model.process(module) do
+      %{correlate: fields} -> fields
+      nil -> []
+    end
   end
 end

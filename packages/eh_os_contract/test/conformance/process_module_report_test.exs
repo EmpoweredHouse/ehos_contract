@@ -108,7 +108,8 @@ defmodule EhOsContract.ProcessModuleReportTest do
       assert text =~ "PROCESS MODULE: dispatch_rig.account_review"
       assert text =~ "deployed since 2026-10-01"
       assert text =~ "PROCESS: Account review"
-      assert text =~ "Runs in this period: 2."
+      # What one run is, as the dashboard says it too.
+      assert text =~ "Runs in this period: 2, one per account_id."
       assert text =~ "Deadline: 2 days from the start."
       assert text =~ "1 run still open and already past it."
       assert text =~ "BREACHED in 1 of 2 runs."
