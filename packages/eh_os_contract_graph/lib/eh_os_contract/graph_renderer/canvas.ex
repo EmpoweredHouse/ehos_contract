@@ -248,7 +248,11 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         <dd>{words}</dd>
       </div>
       <div :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
-        <dt><svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h22" /></svg></dt>
+        <dt><svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
+              :if={look != "headless"}
+              class="ehg-legend-head"
+              d="M18 1l5 3-5 3z"
+            /></svg></dt>
         <dd>{words}</dd>
       </div>
     </dl>

@@ -444,20 +444,26 @@
   color: var(--eh-os-contract-graph-hue);
 }
 
+/* Each swatch drawn as the arrows are: the same ink and widths, a head where the arrows have one. */
 .ehg-legend-line svg {
   width: 24px;
   height: 8px;
   fill: none;
   stroke: var(--text-tertiary);
-  stroke-width: 1.5px;
+  stroke-width: 1.25px;
 }
 
-.ehg-legend-line[data-look="dotted"] svg {
+.ehg-legend-line .ehg-legend-head {
+  fill: var(--text-tertiary);
+  stroke: none;
+}
+
+.ehg-legend-line[data-look="dotted"] path:first-child {
   stroke-dasharray: 4 3;
 }
 
-.ehg-legend-line[data-look="thick"] svg {
-  stroke-width: 3px;
+.ehg-legend-line[data-look="thick"] path:first-child {
+  stroke-width: 2.5px;
 }
 
 /* What is selected, what touches it, and the rest, faint. None of these changes a size, so a selection

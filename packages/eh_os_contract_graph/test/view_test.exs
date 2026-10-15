@@ -134,6 +134,12 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
              |> Enum.any?(&(elem(&1, 0) == "thick"))
     end
 
+    test "explains a dotted line with no head as both dotted and headless" do
+      view = %{nodes: [], relations: [%{line: "dotted", head: false}], groups: []}
+
+      assert Enum.map(View.legend(view).lines, &elem(&1, 0)) == ["dotted", "headless"]
+    end
+
     test "leaves out the start of a lifecycle, which says nothing" do
       document = Fixtures.document("appunite_equipment.demands")
       [unit | _] = for u <- document["nodes"]["unit"], do: u["id"]

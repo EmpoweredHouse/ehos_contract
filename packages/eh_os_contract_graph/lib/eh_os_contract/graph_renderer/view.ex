@@ -171,11 +171,13 @@ defmodule EhOsContract.GraphRenderer.View do
       |> Enum.sort_by(&{Map.get(rank, &1, length(@kinds)), &1})
       |> Enum.map(&{&1, words(&1)})
 
+    # A line's look and whether it has a head are two things to explain: a dotted line with
+    # no head is both dotted and headless.
     looks =
-      MapSet.new(view.relations, fn
-        %{head: false} -> "headless"
-        relation -> relation.line
-      end)
+      for relation <- view.relations,
+          look <- [relation.line | if(relation.head, do: [], else: ["headless"])],
+          into: MapSet.new(),
+          do: look
 
     %{kinds: kinds, lines: for({look, _} = line <- @lines, look in looks, do: line)}
   end
