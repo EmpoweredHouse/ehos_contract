@@ -1,0 +1,491 @@
+{
+  "code_language": "en",
+  "digest": "4ffe021cfafc",
+  "domain": "Taxvision.Domain",
+  "kind": "domain",
+  "language": "pl",
+  "name": "taxvision",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "capabilities": [
+          {
+            "capability": "taxvision.ingest_bank_statement",
+            "contract": "contract:taxvision.accounting_month",
+            "declaration": "command:taxvision.accounting_month:ingest_bank_statement",
+            "kind": "command"
+          },
+          {
+            "capability": "taxvision.open_month",
+            "contract": "contract:taxvision.accounting_month",
+            "declaration": "command:taxvision.accounting_month:open_month",
+            "kind": "command"
+          },
+          {
+            "capability": "taxvision.complete_company_profile",
+            "contract": "contract:taxvision.registry_watch",
+            "declaration": "command:taxvision.registry_watch:complete_company_profile",
+            "kind": "command"
+          },
+          {
+            "capability": "taxvision.retrigger_verification",
+            "contract": "contract:taxvision.registry_watch",
+            "declaration": "command:taxvision.registry_watch:retrigger_verification",
+            "kind": "command"
+          }
+        ],
+        "id": "actor:Taxvision.Domain:accountant",
+        "label": "Księgowa",
+        "name": "accountant",
+        "responsibilities": [
+          {
+            "label": "Otwiera i prowadzi miesiąc księgowy firm, którymi się opiekuje",
+            "name": "company_month",
+            "source": "03 §4.10, HS28"
+          },
+          {
+            "label": "Dostaje rozjazd danych firmy z rejestrami i ponawia weryfikację",
+            "name": "registry_discrepancy",
+            "source": "03 §4.2"
+          }
+        ],
+        "role": "taxvision.accountant",
+        "scope": [
+          "company_id"
+        ],
+        "source": "03 §4.10"
+      },
+      {
+        "actor_kind": "system",
+        "capabilities": [],
+        "context": "context:Taxvision.Domain:client_lifecycle",
+        "id": "actor:Taxvision.Domain:registry_integration",
+        "label": "Integracja z rejestrami publicznymi",
+        "name": "registry_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "system",
+        "capabilities": [],
+        "context": "context:Taxvision.Domain:document_intake",
+        "id": "actor:Taxvision.Domain:ksef_integration",
+        "label": "Integracja z KSeF",
+        "name": "ksef_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Taxvision.Domain:client_lifecycle",
+        "label": "Cykl życia klienta i obserwacja rejestrów",
+        "name": "client_lifecycle",
+        "source": "03 §4.2 Client Lifecycle + Registry Watch",
+        "subdomain": "subdomain:Taxvision.Domain:supporting",
+        "terms": []
+      },
+      {
+        "id": "context:Taxvision.Domain:accounting_month",
+        "label": "Cykl miesięczny księgowy",
+        "name": "accounting_month",
+        "source": "03 §4.4 Accounting Month",
+        "subdomain": "subdomain:Taxvision.Domain:core",
+        "terms": [
+          {
+            "avoid": [],
+            "code": "Accounting month",
+            "definition": "Miesiąc jednej firmy, rozliczany miesiąc w tył",
+            "source": "02 §3.1; WF 00:34:40",
+            "text": "Miesiąc księgowy",
+            "translations": [
+              {
+                "avoid": [],
+                "definition": "One company's month, settled a month behind",
+                "language": "en",
+                "text": "Accounting month"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "context:Taxvision.Domain:document_intake",
+        "label": "Przyjmowanie dokumentów",
+        "name": "document_intake",
+        "source": "03 §4.3 Document Intake",
+        "subdomain": "subdomain:Taxvision.Domain:supporting",
+        "terms": []
+      }
+    ],
+    "contract": [
+      {
+        "context": "context:Taxvision.Domain:accounting_month",
+        "id": "contract:taxvision.accounting_month",
+        "label": null,
+        "module": "Taxvision.Contracts.AccountingMonth",
+        "name": "taxvision.accounting_month",
+        "source": null
+      },
+      {
+        "context": "context:Taxvision.Domain:document_intake",
+        "id": "contract:taxvision.document_intake",
+        "label": null,
+        "module": "Taxvision.Contracts.DocumentIntake",
+        "name": "taxvision.document_intake",
+        "source": null
+      },
+      {
+        "context": "context:Taxvision.Domain:client_lifecycle",
+        "id": "contract:taxvision.registry_watch",
+        "label": null,
+        "module": "Taxvision.Contracts.RegistryWatch",
+        "name": "taxvision.registry_watch",
+        "source": null
+      }
+    ],
+    "entity": [],
+    "event": [
+      {
+        "contract": "contract:taxvision.registry_watch",
+        "id": "event:taxvision.registry_watch:registry_data_consistent",
+        "label": "Dane firmy zgadzają się z rejestrami",
+        "name": "registry_data_consistent",
+        "source": "02 §3.1 RegistryDataConsistent"
+      },
+      {
+        "contract": "contract:taxvision.registry_watch",
+        "id": "event:taxvision.registry_watch:registry_discrepancy_detected",
+        "label": "Dane firmy nie zgadzają się z rejestrami",
+        "name": "registry_discrepancy_detected",
+        "source": "02 §3.1 RegistryDiscrepancyDetected; WF 00:32:27"
+      },
+      {
+        "contract": "contract:taxvision.document_intake",
+        "id": "event:taxvision.document_intake:invoice_pulled_from_ksef",
+        "label": "Pobrano fakturę z KSeF",
+        "name": "invoice_pulled_from_ksef",
+        "source": "02 §3.2 InvoicePulledFromKSeF; WF 01:17:14"
+      },
+      {
+        "contract": "contract:taxvision.accounting_month",
+        "id": "event:taxvision.accounting_month:accounting_month_opened",
+        "label": "Otwarto miesiąc księgowy",
+        "name": "accounting_month_opened",
+        "source": "02 §3.1 AccountingMonthOpened"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "expected_latency": {
+          "amount": 10,
+          "unit": "second"
+        },
+        "id": "external:Taxvision.Domain:registries",
+        "label": "Rejestry publiczne: CEIDG/KRS, biały rejestr VAT, VIES",
+        "name": "registries",
+        "operations": [
+          {
+            "label": "Podaj formę prawną, status VAT i status VIES firmy",
+            "name": "look_up_company",
+            "source": "03 §4.2"
+          }
+        ],
+        "source": null,
+        "unavailable_looks_like": "timeout albo pusta odpowiedź — weryfikacja zawieszona, nie negatywna"
+      },
+      {
+        "direction": "inbound",
+        "id": "external:Taxvision.Domain:ksef",
+        "label": "Krajowy System e-Faktur (KSeF)",
+        "name": "ksef",
+        "operations": [],
+        "source": null
+      }
+    ],
+    "process": [
+      {
+        "correlate": [
+          "company_id",
+          "period_id"
+        ],
+        "id": "process:taxvision.accounting_month",
+        "label": "Cykl miesięczny księgowy",
+        "module": "Taxvision.Processes.AccountingMonth",
+        "name": "taxvision.accounting_month",
+        "source": null
+      }
+    ],
+    "publication": [
+      {
+        "id": "publication:Taxvision.Domain:taxvision.accounting_month.opened.v1",
+        "label": null,
+        "name": "taxvision.accounting_month.opened.v1",
+        "source": null
+      }
+    ],
+    "subdomain": [
+      {
+        "id": "subdomain:Taxvision.Domain:core",
+        "label": "Rdzeń",
+        "name": "core",
+        "source": "03-ddd-architecture.md §2",
+        "type": "core"
+      },
+      {
+        "id": "subdomain:Taxvision.Domain:supporting",
+        "label": "Wsparcie",
+        "name": "supporting",
+        "source": "03-ddd-architecture.md §2",
+        "type": "supporting"
+      }
+    ],
+    "subject": [],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Taxvision.Domain:period",
+        "invariants": [
+          {
+            "label": "Okres to miesiąc zapisany jako RRRR-MM",
+            "name": "named_by_month",
+            "satisfied_by": [
+              "2026-07",
+              "2026-12"
+            ],
+            "source": null,
+            "violated_by": [
+              "2026-7",
+              "2026-13",
+              "lipiec 2026",
+              "2026-07-01"
+            ]
+          }
+        ],
+        "label": "Okres rozliczeniowy",
+        "name": "period",
+        "source": null,
+        "type": "id"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "field",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "ours",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "theirs",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "value:Taxvision.Domain:registry_difference",
+        "invariants": [],
+        "label": "Różnica między Abilią a rejestrami",
+        "name": "registry_difference",
+        "source": null
+      },
+      {
+        "fields": [],
+        "id": "value:Taxvision.Domain:ksef_number",
+        "invariants": [
+          {
+            "label": "Numer KSeF to NIP, data RRRRMMDD, identyfikator i suma kontrolna",
+            "name": "ksef_format",
+            "satisfied_by": [
+              "5265877635-20260714-0A1B2C3D4E5F-9A"
+            ],
+            "source": null,
+            "violated_by": [
+              "5265877635-20260714-0A1B2C3D4E5F",
+              "526587763-20260714-0A1B2C3D4E5F-9A",
+              "5265877635-20261340-0A1B2C3D4E5F-9A",
+              "٥٢٦٥٨٧٧٦٣٥-20260714-0A1B2C3D4E5F-9A",
+              "5265877635-٢٠٢٦٠٧١٤-0A1B2C3D4E5F-9A",
+              "FV/7/2026"
+            ]
+          }
+        ],
+        "label": "Numer KSeF",
+        "name": "ksef_number",
+        "source": null,
+        "type": "id"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "turnover_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount_minor",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "label": null,
+            "name": "booked_on",
+            "required": true,
+            "type": "date"
+          }
+        ],
+        "id": "value:Taxvision.Domain:turnover",
+        "invariants": [],
+        "label": "Obrót z wyciągu",
+        "name": "turnover",
+        "source": null
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "ksef_number",
+            "required": true,
+            "type": "ksef_number",
+            "value": "value:Taxvision.Domain:ksef_number"
+          },
+          {
+            "label": null,
+            "name": "amount_minor",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "value:Taxvision.Domain:invoice",
+        "invariants": [],
+        "label": "Faktura do parowania",
+        "name": "invoice",
+        "source": null
+      }
+    ]
+  },
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Taxvision.Domain:accountant",
+        "id": "accountable_for:actor:Taxvision.Domain:accountant:process:taxvision.accounting_month",
+        "to": "process:taxvision.accounting_month"
+      }
+    ],
+    "anticorruption_layer": [],
+    "backed_by": [
+      {
+        "from": "actor:Taxvision.Domain:registry_integration",
+        "id": "backed_by:actor:Taxvision.Domain:registry_integration:external:Taxvision.Domain:registries",
+        "to": "external:Taxvision.Domain:registries"
+      },
+      {
+        "from": "actor:Taxvision.Domain:ksef_integration",
+        "id": "backed_by:actor:Taxvision.Domain:ksef_integration:external:Taxvision.Domain:ksef",
+        "to": "external:Taxvision.Domain:ksef"
+      }
+    ],
+    "conformist": [],
+    "consumed_by": [
+      {
+        "events": [
+          {
+            "as": "invoice_pulled_from_ksef",
+            "event": "event:taxvision.document_intake:invoice_pulled_from_ksef"
+          }
+        ],
+        "from": "contract:taxvision.document_intake",
+        "id": "consumed_by:contract:taxvision.document_intake:contract:taxvision.accounting_month",
+        "to": "contract:taxvision.accounting_month"
+      },
+      {
+        "events": [
+          {
+            "as": "registry_data_consistent",
+            "event": "event:taxvision.registry_watch:registry_data_consistent"
+          },
+          {
+            "as": "registry_discrepancy_detected",
+            "event": "event:taxvision.registry_watch:registry_discrepancy_detected"
+          }
+        ],
+        "from": "contract:taxvision.registry_watch",
+        "id": "consumed_by:contract:taxvision.registry_watch:contract:taxvision.accounting_month",
+        "to": "contract:taxvision.accounting_month"
+      }
+    ],
+    "customer_supplier": [
+      {
+        "from": "context:Taxvision.Domain:client_lifecycle",
+        "id": "customer_supplier:context:Taxvision.Domain:client_lifecycle:context:Taxvision.Domain:accounting_month",
+        "source": "03 §3",
+        "to": "context:Taxvision.Domain:accounting_month"
+      },
+      {
+        "from": "context:Taxvision.Domain:document_intake",
+        "id": "customer_supplier:context:Taxvision.Domain:document_intake:context:Taxvision.Domain:accounting_month",
+        "source": "03 §3",
+        "to": "context:Taxvision.Domain:accounting_month"
+      }
+    ],
+    "includes": [
+      {
+        "from": "process:taxvision.accounting_month",
+        "id": "includes:process:taxvision.accounting_month:contract:taxvision.registry_watch",
+        "to": "contract:taxvision.registry_watch"
+      },
+      {
+        "from": "process:taxvision.accounting_month",
+        "id": "includes:process:taxvision.accounting_month:contract:taxvision.accounting_month",
+        "to": "contract:taxvision.accounting_month"
+      }
+    ],
+    "open_host_service": [],
+    "partnership": [],
+    "published_language": [],
+    "publishes": [
+      {
+        "event": "event:taxvision.accounting_month:accounting_month_opened",
+        "from": "contract:taxvision.accounting_month",
+        "id": "publishes:contract:taxvision.accounting_month:publication:Taxvision.Domain:taxvision.accounting_month.opened.v1:event:taxvision.accounting_month:accounting_month_opened",
+        "to": "publication:Taxvision.Domain:taxvision.accounting_month.opened.v1"
+      }
+    ],
+    "refers_to": [
+      {
+        "from": "contract:taxvision.accounting_month",
+        "id": "refers_to:contract:taxvision.accounting_month:contract:taxvision.registry_watch",
+        "to": "contract:taxvision.registry_watch",
+        "units": [
+          "client"
+        ]
+      },
+      {
+        "from": "contract:taxvision.document_intake",
+        "id": "refers_to:contract:taxvision.document_intake:contract:taxvision.registry_watch",
+        "to": "contract:taxvision.registry_watch",
+        "units": [
+          "client"
+        ]
+      }
+    ],
+    "separate_ways": [],
+    "shared_kernel": [],
+    "subscribed_by": []
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "time_zone": "Europe/Warsaw",
+  "version": "f0be3e8849b8"
+}
+

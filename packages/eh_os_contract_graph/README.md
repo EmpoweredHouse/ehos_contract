@@ -9,8 +9,9 @@ tools of its own build; it does not depend on the engine: a document is plain da
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress.** An explorer moves through a domain's pictures (below); a canvas draws one. It draws six views — a contract's full graph, a unit, an aggregate's lifecycle, a
-process module's stages and promises, a domain's context map and its system — and, as a test bed, every node
+**Work in progress.** An explorer moves through a domain's pictures (below); a canvas draws one. It draws seven views — a contract's full graph, a unit, an aggregate's lifecycle, a
+process module's stages and promises, a domain's context map and its system, several domains joined into a
+landscape — and, as a test bed, every node
 and relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and where it comes from, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
 what it may do, the scenarios behind an arrow.
@@ -75,6 +76,7 @@ picture. An application reads its engine; the EHOS Console reads each applicatio
 | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with their contracts, those that end a run, its promises with their windows; with its overlay, its runs, how often each event happened and each promise's verdicts |
 | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
 | `:system` | a domain | its contracts in their contexts and what flows between them, and its process modules with the contracts whose events each includes and their runs |
+| `:landscape` | a landscape (below) | several domains, each a box of its contracts that publish or subscribe, and a card per name on the wire between them |
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
@@ -112,6 +114,22 @@ whole page again whenever a stylesheet changes, and Safari stuttered while a sty
 frame. The one
 style anything sets is d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which the
 policy allows.
+
+## Joining applications
+
+An application's domain document says which of its contracts publish an event to other applications, under
+which name on the wire, and which subscribe to one by its name; each knows only its own side.
+`EhOsContract.GraphRenderer.Landscape.join/1` takes several, each with its application's name, and matches the
+two sides by that name into one landscape, which the canvas draws with `view={:landscape}`:
+
+```elixir
+landscape = EhOsContract.GraphRenderer.Landscape.join([{"taxvision", taxvision}, {"ledger", ledger}])
+```
+
+A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
+boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
+subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
+the applications it sees together, from each one's `GET <mount>/graph/domain/<name>`.
 
 ## Using it
 

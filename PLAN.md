@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 15 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module and C1 in `main`; G1 in progress)
+## Handoff — state on 15 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1 and G1 in `main`)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -23,13 +23,13 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
 removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
-merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297) is in progress; then the context map
+merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged; then the context map
 (M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
 rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
-#193 (an upper bound for durations); the three relations the Rehmed and TaxVision context maps lack, which L3's
+#193 (an upper bound for durations); whether the domain's overlay, which reads every lifecycle's whole history on each Graph screen mount and API request, gets a default window or a cache keyed by the log's last position (#297, the review of #311); the three relations the Rehmed and TaxVision context maps lack, which L3's
 references show (`check` warnings; the source material is not in this repository); a version tag and the pins in
 AppUnite's application and `ehos-ledger` (the migration notes after each wave and the closing comments of #269,
 #272, #286).
@@ -254,8 +254,8 @@ przebudowuje dokument batcha 2), E13b +1–2 dni (widoki).
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ zbudowany — 6 z 6 batchy, poprawki z przeglądu końcowego i poprawki z 7 października na gałęzi; 7 października rebase na `main` i `id` z `id:` („E13a — rebased onto `main`, ids from the contract's `id:` (7 October)”); `pre-pr-review` zrobiony, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217) („E13a — pre-PR review and the pull request (7 October)”); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
-| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ◐ started 7 October — draft PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219) on top of #217; step 1 done: three renderers prototyped, C accepted in [`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md); five batches, batch 1 (the package and its drawing layer) built ("E13b, batch 1 — what came out (7 October)"); views and panels not approved yet ("E13b — C accepted, and the batches (7 October)"); 8 October, batches 2 and 3: the views are the six Mermaid pictures (the user's decision), built in the package and on the preview beside their Mermaid diagrams, accepted by the user ("E13b, batches 2 and 3 — the views are the Mermaid pictures (8 October)"); 8 October, batch 4 started: the Graph screen draws with the renderer ("E13b, batch 4 — the Graph screen on the renderer (8 October)"), then the panels, all at once at the user's word, and a wider screen ("E13b, batch 4 — the panels (8 October)"), points 4 and 5 built, 3 and 7 dropped, the table of events moved to the end; domains left on one screen (the user's decision); 8 October, batch 5: Mermaid cut, the pages as decided (b), checked in a browser ("E13b, batch 5 — Mermaid cut (8 October)"); open: the table of events and the promises in sentences, the documentation's two Mermaid blocks, step 7 outside the repository; 9 October: the architecture reviewed, five points open ("E13b — the architecture review (9 October)"); 9 October: `main` merged into E13a and E13b together, with what it asked of the graph, on a local branch, not pushed yet ("E13 — `main` merged, and what it asked of the graph (9 October)") |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ☑ in `main` since 9 October, PR [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217); its history is in `git log -p PLAN.md` |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☑ in `main` since 9 October: PR [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219), merged into E13a's branch, reached `main` with #217; its history is in `git log -p PLAN.md` |
 
 **E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
 (1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
@@ -1915,7 +1915,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
 | L4 | 5 | widok właściciela bez adnotacji technicznych | P2e; its paragraph rewritten first | ⏸ to be rewritten after P2e | — |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
-| G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ◐ `dd/297-graph-like-a-catalog` | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
+| G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☑ #307, #308, #309, #310, #311, #312 | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision
 

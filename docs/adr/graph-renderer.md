@@ -355,6 +355,19 @@ the library, `graph.v1` changes only by addition.
 
 Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297).
 
+## Amendment, 15 October 2026 (evening): the landscape joins domains, not applications
+
+The amendment above said one application is one domain. It is not: the sandbox is one application to EHOS with
+four domains, and nothing in the engine stops an application from having several. A publication's name on the
+wire is the same fact whether the two domains that share it are in one application or two, so the joining
+function (`EhOsContract.GraphRenderer.Landscape.join/1`) takes each application's name with one of its domain
+documents, a box per domain document, and joins every pair by the name on the wire. A box holds only the contracts
+that publish or subscribe, and says how many others its domain has. *Rejected:* joining only documents of
+different applications, which would hide a publication between two domains of one; every contract of every
+domain in its box, hundreds of cards with no arrow once the Console sees a dozen applications.
+
+Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297#issuecomment-6202758132).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with

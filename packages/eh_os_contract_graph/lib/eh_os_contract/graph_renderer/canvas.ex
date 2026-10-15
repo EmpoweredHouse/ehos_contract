@@ -19,7 +19,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
-  `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, or `:all`, every node
+  `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, `:landscape`, or `:all`, every node
   and relation, which it draws when `view` is left out. Each node is a card, each
   group a box with its title, and each relation a label, all rendered here in HEEx;
   the hook (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads
