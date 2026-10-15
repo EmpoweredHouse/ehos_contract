@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 13 October 2026 (waves 1–4, E13 and wave 5's L1–L3 in `main`; the remaining plan revised)
+## Handoff — state on 15 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module and C1 in `main`; G1 in progress)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
