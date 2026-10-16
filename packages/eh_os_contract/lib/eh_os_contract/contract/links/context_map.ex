@@ -10,8 +10,8 @@ defmodule EhOsContract.Contract.Links.ContextMap do
   #   system runs says nothing about who depends on whom.
   # - **X12.** Behind an `anticorruption_layer`, the downstream context translates what
   #   the upstream one says before using it: a policy takes the upstream contract's
-  #   event and issues its own command. A read model, an effect or a process manager
-  #   taking it reads the other context's model untranslated.
+  #   event and issues its own command. A read model, an effect, a process manager or a
+  #   boundary consulting it reads the other context's model untranslated.
   # - **X13.** Behind an `open_host_service` or a `published_language`, the upstream
   #   context offers a protocol, not its model: the downstream contract consumes only
   #   the events the upstream contract `publish`es, taken from the log as any sibling's
@@ -52,34 +52,35 @@ defmodule EhOsContract.Contract.Links.ContextMap do
     |> Enum.sort_by(&inspect(elem(&1, 0)))
     |> Enum.flat_map(fn {_module, [first | _] = contracts} ->
       domain = first.domain
-      against(domain, contracts) ++ patterns(domain, contracts, system)
+      against(domain, contracts, system) ++ patterns(domain, contracts, system)
     end)
   end
 
   @doc """
   Every reference from one of `contracts`, the contracts of the domain model `domain`,
-  into another context of it.
+  into another context of it. `lookup` finds a consumed contract outside `contracts`,
+  as the rules read it; a contract of another domain is no reference here (X5 refuses
+  consuming it).
   """
-  @spec crossings(map(), [Links.contract()]) :: [crossing()]
-  def crossings(domain, contracts) do
+  @spec crossings(map(), [Links.contract()], (module() -> Links.contract() | nil)) ::
+          [crossing()]
+  def crossings(domain, contracts, lookup \\ &Links.contract/1) do
     context_of = Map.new(contracts, &{&1.module, &1.model.context})
     referents = References.index(domain, Enum.map(contracts, & &1.model))
-
-    valued =
-      for v <- domain.values, Map.get(v, :context) != nil, into: %{}, do: {v.name, v.context}
+    valued = valued_contexts(domain)
 
     for contract <- contracts,
         {other, what, at} <-
-          consumed(contract, context_of) ++
+          consumed(contract, context_of, lookup, domain) ++
             named(contract, referents, domain) ++ valued(contract, valued),
         other != nil and other != contract.model.context do
       %{pair: MapSet.new([other, contract.model.context]), contract: contract, what: what, at: at}
     end
   end
 
-  defp consumed(contract, context_of) do
+  defp consumed(contract, context_of, lookup, domain) do
     for %{from: from} = consumes <- contract.declarations.consumes, is_atom(from) do
-      other = Map.get(context_of, from) || context_of(from)
+      other = Map.get(context_of, from) || context_of(lookup.(from), domain)
       {other, "consumes #{inspect(from)}", Links.at(consumes)}
     end
   end
@@ -94,9 +95,43 @@ defmodule EhOsContract.Contract.Links.ContextMap do
 
   defp valued(contract, valued) do
     for name <- References.values_in_model(contract.model),
-        context = Map.get(valued, name),
-        context != nil do
-      {context, "uses value #{inspect(name)} of context #{inspect(context)}", contract.at}
+        {value, context} <- Map.get(valued, name, []) do
+      through = if value == name, do: "", else: " through value #{inspect(name)}"
+
+      {context, "uses value #{inspect(value)} of context #{inspect(context)}#{through}",
+       contract.at}
+    end
+  end
+
+  # For each value of the domain, the values with a context it rests on: itself when it
+  # has one, and those its fields are typed with, however deep.
+  defp valued_contexts(domain) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    Map.new(domain.values, fn v ->
+      {v.name,
+       for(
+         name <- reached(v.name, values, MapSet.new()),
+         context = Map.get(values[name], :context),
+         context != nil,
+         do: {name, context}
+       )}
+    end)
+  end
+
+  defp reached(name, values, seen) do
+    if MapSet.member?(seen, name) or not Map.has_key?(values, name) do
+      []
+    else
+      seen = MapSet.put(seen, name)
+
+      inner =
+        values[name]
+        |> Map.get(:fields)
+        |> List.wrap()
+        |> Enum.flat_map(&References.type_names(Map.get(&1, :type)))
+
+      [name | Enum.flat_map(inner, &reached(&1, values, seen))] |> Enum.uniq()
     end
   end
 
@@ -106,20 +141,17 @@ defmodule EhOsContract.Contract.Links.ContextMap do
 
   defp owner({:unit, contract, _name}, _domain), do: contract.context
 
-  # A consumed contract outside the modules checked is looked up by name.
-  defp context_of(module) do
-    case Links.contract(module) do
-      %{model: %{context: context}} -> context
-      nil -> nil
-    end
-  end
+  # A consumed contract outside the group, found by `lookup`: its context when it is of
+  # this domain.
+  defp context_of(%{model: %{context: context, domain: of}}, %{module: of}), do: context
+  defp context_of(_other, _domain), do: nil
 
   # --- X11 --------------------------------------------------------------------------
 
   # At the reference, which is what to check: the relation may be right and the
   # `consumes` wrong, and three such references are three places.
-  defp against(domain, contracts) do
-    references = crossings(domain, contracts)
+  defp against(domain, contracts, system) do
+    references = crossings(domain, contracts, &Links.contract(system, &1))
     directed = EhOsContract.Domain.Dsl.directed_relations()
 
     for relation <- domain.relations,
@@ -168,7 +200,8 @@ defmodule EhOsContract.Contract.Links.ContextMap do
         relation <- domain.relations,
         Map.get(relation, :upstream) == sibling.model.context,
         Map.get(relation, :downstream) == c.model.context,
-        violation <- pattern(relation, c, consumes, sibling, domain) do
+        violation <- pattern(relation, c, consumes, sibling, domain),
+        uniq: true do
       violation
     end
   end
@@ -177,15 +210,21 @@ defmodule EhOsContract.Contract.Links.ContextMap do
     takers =
       for(r <- c.declarations.read_models, e <- r.projects, do: {"read model", r, e, r}) ++
         for(e <- c.declarations.effects, h <- e.handles, do: {"effect", e, h, e}) ++
-        for pm <- c.declarations.process_managers,
-            d <- pm.starts_on ++ pm.on ++ pm.ends_on,
-            do: {"process manager", pm, d.event, d}
+        for(
+          pm <- c.declarations.process_managers,
+          d <- pm.starts_on ++ pm.on ++ pm.ends_on,
+          do: {"process manager", pm, d.event, d}
+        ) ++
+        for unit <- c.declarations.units,
+            unit.kind == :dcb,
+            consults <- unit.consults,
+            do: {"boundary", unit, consults.event, consults}
 
     for {kind, taker, event, at} <- takers,
         {:contract, from, _original} <- [Model.consumed(c.model, event)],
         from == sibling.module,
         uniq: true do
-      {"X12: #{kind} #{inspect(taker.name)} takes #{inspect(event)} of " <>
+      {"X12: #{kind} #{inspect(taker.name)} #{if kind == "boundary", do: "consults", else: "takes"} #{inspect(event)} of " <>
          "#{inspect(sibling.module)}, and #{describe(relation)} in #{inspect(domain.module)} " <>
          "says #{inspect(c.model.context)} translates what #{inspect(sibling.model.context)} " <>
          "says before using it: only a policy takes the event, and issues a command of this " <>

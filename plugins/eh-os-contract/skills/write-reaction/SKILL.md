@@ -85,8 +85,8 @@ that calls out, fans out, or may be slow. The compiler and `check` push the same
   no effect calls (`operation-never-called`).
 - `P2` refuses an effect that `calls:` an external delivered `:in_transaction`: a call cannot be
   rolled back with the append.
-- `X12` refuses a read model, an effect or a process manager taking a sibling's event across an
-  `anticorruption_layer`: the downstream context translates first, so a policy takes the event and
+- `X12` refuses a read model, an effect or a process manager taking a sibling's event, or a boundary
+  consulting one, across an `anticorruption_layer`: the downstream context translates first, so a policy takes the event and
   issues a command of its own context, and the others react to what that command records. `X13`
   refuses consuming an event the sibling does not `publish` across an `open_host_service` or a
   `published_language`.

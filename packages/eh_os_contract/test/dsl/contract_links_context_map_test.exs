@@ -25,14 +25,20 @@ defmodule EhOsContract.ContractLinksContextMapTest do
         context :archive, "Archiwum", subdomain: :core
         context :payers, "Płatnicy", subdomain: :core
         context :catalogue, "Katalog", subdomain: :core
+        context :pricing, "Cennik", subdomain: :core
         actor :reception, :human, "Recepcja"
 
         value :tariff, :integer, label: "Taryfa", context: :settlement
+
+        value :invoice_line do
+          field :price, :tariff
+        end
 
         relation :customer_supplier, upstream: :scheduling, downstream: :settlement
         relation :separate_ways, between: [:settlement, :archive]
         relation :anticorruption_layer, upstream: :settlement, downstream: :payers
         relation :open_host_service, upstream: :catalogue, downstream: :scheduling
+        relation :published_language, upstream: :pricing, downstream: :scheduling
       end
       """,
       "context_map_clinic.ex"
@@ -131,6 +137,50 @@ defmodule EhOsContract.ContractLinksContextMapTest do
                "uses value :tariff of context :settlement"
     end
 
+    test "a field typed with a value whose field is another context's value" do
+      violations =
+        links([
+          {"x11_through.ex",
+           mapped("X11Through", :scheduling)
+           |> String.replace(
+             ~s(event :acted_x11_through, "Zadziałano"),
+             ~s(event :acted_x11_through, "Zadziałano" do\n      field :line, :invoice_line\n    end)
+           )}
+        ])
+
+      assert assert_linked(violations, "X11: #{@ns}.X11Through", "x11_through.ex", 2) =~
+               "uses value :tariff of context :settlement through value :invoice_line"
+    end
+
+    test "a contract of another domain is X5's, with no X11 beside it" do
+      compile(
+        """
+        defmodule #{@ns}.Elsewhere do
+          use EhOsContract.Domain, name: :elsewhere, language: :pl
+
+          subdomain :core, "Rdzeń", type: :core
+          context :settlement, "Rozliczenia", subdomain: :core
+          actor :reception, :human, "Recepcja"
+        end
+        """,
+        "x11_elsewhere_domain.ex"
+      )
+
+      foreign =
+        mapped("X11Foreign", :settlement)
+        |> String.replace("domain: #{inspect(@domain)}", "domain: #{@ns}.Elsewhere")
+
+      violations =
+        links([
+          {"x11_foreign.ex", foreign},
+          {"x11_reaching.ex",
+           mapped("X11Reaching", :scheduling, "consumes #{@ns}.X11Foreign, :acted_x11_foreign")}
+        ])
+
+      assert codes(violations, "X5") != []
+      assert codes(violations, "X11") == []
+    end
+
     test "control: a value used downstream of its context compiles" do
       violations =
         links([
@@ -171,6 +221,59 @@ defmodule EhOsContract.ContractLinksContextMapTest do
                ":payers translates what :settlement says before using it: only a policy takes the event"
     end
 
+    test "a boundary consulting the upstream contract's event" do
+      violations =
+        links([
+          {"x12_dcb_ledger.ex", mapped("X12DcbLedger", :settlement)},
+          {"x12_slot.ex",
+           """
+           defmodule #{@ns}.X12Slot do
+             use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :payers, id: "context_map.x12_slot"
+
+             consumes #{@ns}.X12DcbLedger, :acted_x12_dcb_ledger
+
+             dcb :slot, "Termin" do
+               identity :visit_id
+               command :hold_slot, "Wstrzymaj", by: :reception, emits: :slot_held
+               event :slot_held, "Wstrzymano"
+               consults :acted_x12_dcb_ledger, match: :visit_id
+             end
+           end
+           """}
+        ])
+
+      assert assert_linked(violations, "X12: boundary :slot consults", "x12_slot.ex", 10)
+    end
+
+    test "one error a taker, however many times its contract consumes the sibling" do
+      read_model =
+        ~s(read_model :twice, "Dwa razy", projects: :ledger_acted, delivery: :at_least_once do\n) <>
+          "    field :visit_id, :id\n  end"
+
+      violations =
+        links([
+          {"x12_twice_ledger.ex",
+           mapped("X12TwiceLedger", :settlement)
+           |> String.replace(
+             ~s(event :acted_x12_twice_ledger, "Zadziałano"),
+             ~s(event :acted_x12_twice_ledger, "Zadziałano"\n    event :closed_x12, "Zamknięto")
+           )
+           |> String.replace(
+             "emits: :acted_x12_twice_ledger",
+             "emits: [:acted_x12_twice_ledger, :closed_x12]"
+           )},
+          {"x12_twice.ex",
+           mapped("X12Twice", :payers, """
+           consumes #{@ns}.X12TwiceLedger, :acted_x12_twice_ledger, as: [acted_x12_twice_ledger: :ledger_acted]
+             consumes #{@ns}.X12TwiceLedger, :closed_x12
+
+             #{read_model}
+           """)}
+        ])
+
+      assert [_one] = codes(violations, "X12")
+    end
+
     test "control: a policy taking it, and issuing a command of its own context" do
       policy =
         ~s(policy :translate, "Przetłumacz", handles: :acted_x12_ledger_ok, ) <>
@@ -205,6 +308,18 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
       assert assert_linked(violations, "X13: consumes :acted_x13_list", "x13_reader.ex", 4) =~
                ":catalogue offers only what it publishes; it publishes none"
+    end
+
+    test "a published language lets through only what is published too" do
+      violations =
+        links([
+          {"x13_prices.ex", mapped("X13Prices", :pricing)},
+          {"x13_quoting.ex",
+           mapped("X13Quoting", :scheduling, "consumes #{@ns}.X13Prices, :acted_x13_prices")}
+        ])
+
+      assert assert_linked(violations, "X13: consumes :acted_x13_prices", "x13_quoting.ex", 4) =~
+               "relation :published_language from upstream :pricing"
     end
 
     test "control: consuming the event it publishes" do

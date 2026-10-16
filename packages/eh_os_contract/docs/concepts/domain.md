@@ -144,7 +144,7 @@ declares (`value …, context:`). Such a reference has to follow the relation be
 
 A reference from the upstream context into the downstream one, or any reference across `:separate_ways`,
 does not compile ([`X11`](../contract.md#refusals-x)); nor does a read model, an effect or a process manager
-taking an event across an `:anticorruption_layer` ([`X12`](../contract.md#refusals-x)), nor a contract consuming
+taking an event, or a boundary consulting one, across an `:anticorruption_layer` ([`X12`](../contract.md#refusals-x)), nor a contract consuming
 an event its upstream sibling does not publish across an `:open_host_service` or a `:published_language`
 ([`X13`](../contract.md#refusals-x)). In one application the published event is still taken from the log, whole;
 another application takes it by its name on the wire, with only the fields it declares. Including an event in a
