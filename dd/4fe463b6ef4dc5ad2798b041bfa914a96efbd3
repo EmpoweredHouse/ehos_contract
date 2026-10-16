@@ -1,0 +1,6 @@
+pre-pr-review of origin/main..dd4fe463 (V5, #322). Correctness (code-review high) and security/performance passes, in parallel.
+Fixed, each with a test that fails on the old code: invariant examples read as words (f4401724); a code-only deploy read as a version change (1d837537); scenario:* digest saw scenario order (a32a96df); V04 down kept the last row and deleted after dropping the index (02ab6dcf); stale record! comment, #NNN in V04, ADR spacing (c424ed78); duplicate diff and groups (dd4fe463).
+No change needed: a process module's since moves with a words-only row, as it does with a new wiring (ProcessModuleReportTest pins that); one row more per words-only release, bounded by releases.
+Skipped: words A,B,A leaves the A->B change reported (the accepted limit for versions A,B,A); words moved between nameless holders (lifecycle transitions) are unseen.
+Security: nothing found (no runtime data in the digests, static SQL, boot-only writes).
+Gate on dd4fe463: EXIT=0; sandbox 315+34, check 0/47/32; engine 1755+10, check 0/77/51; web 79; auth 329+1+1; graph 172.
