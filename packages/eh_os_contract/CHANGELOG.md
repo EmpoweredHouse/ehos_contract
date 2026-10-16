@@ -50,6 +50,13 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The model's pages for the business owner** (plan DD, stage L4, #326): `mix eh_os_contract.pages --output
+  docs/owner --audience owner` writes the same tree of pages with each declaration by its label, and without
+  module names, versions, stored types, delivery, idempotency, correlation keys, field names and types and the
+  graph documents. A field without a label is left out, and a promise is read by its rule. The pages have a
+  marker of their own (`EhOsContract.Pages.marker/2`), so they go to a directory of their own. `Pages.render/3`
+  takes `audience: :owner`.
+
 - **`check` notes a stage or a value the owner would read by its name in the code** (plan DD, stage L4, #326):
   `owner-view-without-label`, a notice for each stage of a process module, each value of the domain and each
   member of a value's enum written as a bare atom with no label: what a business owner reads that may be

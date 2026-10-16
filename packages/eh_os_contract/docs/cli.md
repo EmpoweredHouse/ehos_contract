@@ -142,6 +142,7 @@ pages, one per element.
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?
     mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
+    mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
 The domain, its contracts and its process modules are found among the modules of
 `config :eh_os_contract, applications:`. The pages go where `--output` says: the
@@ -162,6 +163,14 @@ nothing is written, and the task names what is in the way. Nothing outside
 
 `--check` writes nothing, and fails naming every page that is missing, differs or
 is left over.
+
+`--audience owner` writes the pages a business owner reads: the same tree, each
+declaration by its label, without module names, versions, stored types, delivery,
+idempotency, correlation keys, field names and types, and without the graph
+documents. They have a marker of their own, so they go to a directory of their own:
+in the engineer's directory each would be a file in the way. A stage or a value the
+owner would read by its name in the code is `mix eh_os_contract.check`'s
+`owner-view-without-label`. `--audience engineering` is the default.
 
 ## mix eh_os_contract.report
 

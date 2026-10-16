@@ -587,6 +587,108 @@ defmodule EhOsContract.PagesTest do
     refute Pages.graph?("graph/sub/escape.json", claimed, ValueRig.Domain)
   end
 
+  # Plan DD, L4 (#326): the owner reads the model in the business's words, without the
+  # engineering around it.
+  describe "the owner's pages" do
+    defp owner(domain),
+      do: Pages.render(domain, Registry.contracts() ++ Registry.processes(), audience: :owner)
+
+    test "are the engineer's tree without the graph documents, every link leading to a page" do
+      for domain <- Registry.domains() do
+        engineer = pages(domain)
+        pages = owner(domain)
+
+        assert Enum.sort(Map.keys(pages)) ==
+                 engineer
+                 |> Map.keys()
+                 |> Enum.reject(&String.ends_with?(&1, ".json"))
+                 |> Enum.sort()
+
+        name = domain.__eh_os_contract_model__().name
+
+        for {path, text} <- pages do
+          assert String.starts_with?(text, Pages.marker(name, :owner)), path
+          refute String.starts_with?(text, Pages.marker(name)), path
+
+          for target <- links(path, text),
+              do: assert(Map.has_key?(pages, target), "#{path} links to #{target}")
+        end
+      end
+    end
+
+    test "say nothing of the engineering: modules, versions, types, delivery, correlation" do
+      for domain <- Registry.domains(), {path, text} <- owner(domain) do
+        for word <- [
+              "Delivered ",
+              "second delivery",
+              "Stored as ",
+              "Runs: ",
+              "Runs are told by",
+              "Identity: ",
+              " · version ",
+              "](../../graph/",
+              "| Type |"
+            ] do
+          refute text =~ word, "#{inspect(domain)} #{path} says #{inspect(word)}"
+        end
+
+        for contract <- Registry.contracts() do
+          refute text =~ inspect(contract), "#{path} names #{inspect(contract)}"
+        end
+      end
+    end
+
+    test "show the code only where the model has no word: a stage, a value or a member" do
+      for domain <- Registry.domains() do
+        model = domain.__eh_os_contract_model__()
+
+        unlabelled =
+          for(%{label: nil, name: name} <- model.values, do: "`#{name}`") ++
+            for(
+              %{type: {:enum, members}} <- model.values,
+              member <- members,
+              is_atom(member),
+              do: "`#{member}`"
+            ) ++
+            for process <- Registry.processes(),
+                EhOsContract.Model.fetch(process).domain == domain,
+                %{label: nil, name: name} <- EhOsContract.Model.process(process).stages,
+                do: "`#{name}`"
+
+        for {path, text} <- owner(domain), [span] <- Regex.scan(~r/`[^`]+`/, text) do
+          assert span in unlabelled, "#{inspect(domain)} #{path} shows #{span}"
+        end
+      end
+    end
+
+    test "name each declaration by its label, a field by its label alone" do
+      pages = owner(ValueRig.Domain)
+      event = pages["till/till/events/paid_in.md"]
+
+      assert event =~ "# Event — Paid in\n"
+      assert event =~ "In [Till](../index.md)"
+      refute event =~ "`paid_in`"
+      # Fields without a label are the code's, so there is no section of them.
+      refute event =~ "## Fields"
+    end
+
+    test "a policy by what it handles and issues, and a process without its keys" do
+      pages = owner(ProcessShapes.Domain)
+      policy = pages["handling/promised/policies/log_arrival.md"]
+
+      assert policy =~ "# Policy — Log a request on its arrival\n"
+      assert policy =~ "Handles: ["
+      refute policy =~ "at_least_once"
+
+      process = pages["processes/handling.md"]
+      # A stage with no label is named as the code names it (`owner-view-without-label`).
+      assert process =~ "1. `intake` — "
+      # A promise has no label, so it is read by its rule.
+      assert process =~ "## Promises\n\n- After ["
+      refute process =~ "completed_or_refusal_notified"
+    end
+  end
+
   describe "mix eh_os_contract.pages" do
     setup do
       Mix.shell(Mix.Shell.Process)
@@ -594,6 +696,30 @@ defmodule EhOsContract.PagesTest do
     end
 
     defp run(args), do: Mix.Tasks.EhOsContract.Pages.run(args ++ ["--domain", "value_rig"])
+
+    @tag :tmp_dir
+    test "--audience owner writes the owner's pages, and checks them", %{tmp_dir: dir} do
+      run(["--output", dir, "--audience", "owner"])
+      assert_received {:mix_shell, :info, [written]}
+      assert written == "#{dir}: 15 pages written"
+
+      assert File.read!(Path.join(dir, "values/amount.md")) ==
+               Pages.render(ValueRig.Domain, Registry.contracts(), audience: :owner)[
+                 "values/amount.md"
+               ]
+
+      run(["--output", dir, "--audience", "owner", "--check"])
+      assert_received {:mix_shell, :info, [current]}
+      assert current == "#{dir}: current"
+
+      # The engineer's pages do not go over the owner's: each would be in the way.
+      error = assert_raise Mix.Error, fn -> run(["--output", dir]) end
+      assert error.message =~ "nothing written, since these are not pages this task wrote"
+
+      assert_raise Mix.Error, ~r/--audience is engineering or owner, not "boss"/, fn ->
+        run(["--output", dir, "--audience", "boss"])
+      end
+    end
 
     @tag :tmp_dir
     test "writes the pages, and --check says the directory is current", %{tmp_dir: dir} do
