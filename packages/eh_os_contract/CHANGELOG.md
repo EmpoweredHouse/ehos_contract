@@ -54,10 +54,9 @@ and the `ehos-dev:release` skill makes one.
   #338): `upcast from: 1, function: :amount_from_minor` names a function of the unit's implementation, which takes a
   row's payload at that version as the log stores it and gives the next version's. The implementation does not
   compile without it (`I2`). Reading refuses the row, naming the step and never a value, when the function moved
-  or made a sealed personal value, changed a field the log tags rows with, raised, or gave no map. A step by a
-  function takes neither `rename:` nor `default:` (`U2`).
-
-### Added
+  or made a sealed personal value, changed a field the log tags rows with, raised, threw, exited, or gave no map. What
+  it gives is read as the log stores a value, so a decimal, a date or an atom key reads as an old row's own. A step by
+  a function takes neither `rename:` nor `default:`, and is not named like a command of the unit (`U2`).
 
 - **An event's old rows are read in its current shape** (plan DD, stage V1, #333): an `upcast` per version below
   `schema_version`, `upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]`. A row is read
