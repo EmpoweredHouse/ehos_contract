@@ -1,0 +1,1 @@
+CodeRabbit follow-up on #320: observed shape and runs guards (tests reverse-checked), bounds for bowed arrows (checked in the browser on GraphLab), doc example. Renderer tests 172, 0 failures. Earlier commits: the notes of 0a9c8a11 and a35def6b.
