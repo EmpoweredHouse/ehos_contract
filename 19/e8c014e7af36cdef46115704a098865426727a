@@ -1,0 +1,1 @@
+Docs-only commit on top of the reviewed 63fa?: a dated amendment in docs/adr/contract-v2.md, prose only; contract_examples_test and docs_test pass (38 tests). The code reviews and the gate are in the note of the previous commit.
