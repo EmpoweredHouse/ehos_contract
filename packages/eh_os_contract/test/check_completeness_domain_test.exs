@@ -49,6 +49,9 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         subdomain :supporting, "Supporting", type: :supporting
         subdomain :generic, "Generic", type: :generic
         subdomain :legacy, "Dawne", type: :generic
+
+        value :money, :integer, unit: :grosze, label: "Kwota"
+        value :room_code, :string
       end
       """,
       "clinic.ex"
@@ -104,6 +107,12 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     for %Finding{rule: ^rule} = f <-
           Completeness.findings([@settlement, @scheduling, @reporting]),
         do: {f.message, Finding.place(f)}
+  end
+
+  # Plan DD, L4 (#326).
+  test "a value without a label, at its declaration; control: one with a label" do
+    assert [{message, {"clinic.ex", 29}}] = findings("owner-view-without-label")
+    assert message =~ "value :room_code of #{inspect(@domain)} has no label"
   end
 
   test "an actor no contract names, at its declaration; control: one only a system stands for" do

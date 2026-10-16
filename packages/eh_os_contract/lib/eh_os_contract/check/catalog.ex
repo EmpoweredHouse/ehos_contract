@@ -77,6 +77,20 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "owner-view-without-label",
+      level: :info,
+      esdm: nil,
+      summary: "A stage or a value the owner's view shows has no label.",
+      text: """
+      The owner's view — `mix eh_os_contract.pages --audience owner` and the graph's switch
+      "Owner" — names every declaration by its label, in the business's words, and a stage of a
+      process module or a value of the domain may be written without one. Then the owner reads
+      its name in the code, `departure`, where the business says "Pacjent wychodzi z gabinetu".
+      Every other declaration the owner's view shows must have a label to compile; a field
+      without one is left out of it.
+      """
+    },
+    %{
       id: "contract-without-implementation",
       level: :info,
       esdm: nil,

@@ -53,6 +53,19 @@ Any `eventually` after its `from` keeps it, and a run with none stays pending fo
 promise has no failing case. That is an honest thing to say when nobody agreed a number; the
 notice makes sure it is not read as a promise being kept.
 
+## `owner-view-without-label`
+
+**notice**
+
+A stage or a value the owner's view shows has no label.
+
+The owner's view — `mix eh_os_contract.pages --audience owner` and the graph's switch
+"Owner" — names every declaration by its label, in the business's words, and a stage of a
+process module or a value of the domain may be written without one. Then the owner reads
+its name in the code, `departure`, where the business says "Pacjent wychodzi z gabinetu".
+Every other declaration the owner's view shows must have a label to compile; a field
+without one is left out of it.
+
 ## `contract-without-implementation`
 
 **notice**

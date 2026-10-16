@@ -39,7 +39,7 @@ defmodule EhOsContract.Check do
   What `mix eh_os_contract.check` says about process modules, `use EhOsContract.Process`
   (plan DD, P2d, #213), at the module's `use` and its promises: a process with no
   `accountable`, a `deadline` or a promise the process owner has not confirmed, a
-  promise with no `within`, which has no failing case.
+  promise with no `within`, which has no failing case, a stage with no label.
   """
   @spec process_module_findings([module()] | nil) :: [Finding.t()]
   def process_module_findings(processes \\ nil) do
@@ -51,8 +51,20 @@ defmodule EhOsContract.Check do
             inspect(module),
             at,
             fn promise -> located(declarations.promises, promise.name) || at end
-          ) do
+          ) ++ unlabelled_stages(Model.process(model), inspect(module), declarations, at) do
       finding
+    end
+  end
+
+  # Plan DD, L4 (#326): the owner's view names a stage by its label.
+  defp unlabelled_stages(process, name, declarations, at) do
+    for %{label: nil} = stage <- process.stages do
+      Finding.new(
+        "owner-view-without-label",
+        "stage #{inspect(stage.name)} of process #{inspect(process.name)} has no label, so the " <>
+          "owner's view names it as the code does (#{name})",
+        located(declarations.stages, stage.name) || at
+      )
     end
   end
 

@@ -443,8 +443,21 @@ defmodule EhOsContract.Check.Completeness do
       terms_of_other_contexts(model, contracts),
       directions(model, declared, contracts),
       scoped_actors_with_unscoped_commands(model, contracts),
-      unchecked_values(model, declared, contracts)
+      unchecked_values(model, declared, contracts),
+      unlabelled_values(model, declared)
     ])
+  end
+
+  # Plan DD, L4 (#326): the owner's view names a value by its label.
+  defp unlabelled_values(model, declared) do
+    for %{label: nil} = value <- model.values do
+      Finding.new(
+        "owner-view-without-label",
+        "value #{inspect(value.name)} of #{inspect(model.module)} has no label, so the owner's " <>
+          "view names it as the code does",
+        at(declared.values, value.name)
+      )
+    end
   end
 
   # A scoped actor has a grant narrowed to rows or units identified by those

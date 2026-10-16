@@ -21,8 +21,8 @@ defmodule DispatchRig.AccountReview do
 
   correlate :account_id
 
-  stage :withdrawal, include: [{DispatchRig.Ledger, :withdrawn}]
-  stage :confirmation, include: [{DispatchRig.Ledger, :balance_confirmed}]
+  stage :withdrawal, "Withdrawal", include: [{DispatchRig.Ledger, :withdrawn}]
+  stage :confirmation, "Confirmation", include: [{DispatchRig.Ledger, :balance_confirmed}]
 
   ends_on :balance_confirmed
 
