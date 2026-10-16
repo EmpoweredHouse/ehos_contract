@@ -111,16 +111,16 @@ defmodule EhOsContract.Deployment do
       for(contract <- EhOsContract.Registry.contracts(), do: row(contract, now)) ++
         for process <- EhOsContract.Registry.processes(), do: process_row(process, now)
 
-    # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
-    # once: the first boot after the column exists meets a row recorded before it,
-    # and `:nothing` would leave that row's digests null forever — blind for the
-    # version that is actually deployed, which is the one anybody asks about.
+    # `{:replace, ...}` rather than `:nothing`: it backfilled the digests of a row
+    # recorded before their column existed. Since storage version 4 a row recorded
+    # before it has a `NULL` `text_digest`, which never conflicts, so the first boot
+    # after it writes a row of its own; every version moved with it anyway.
     #
     # Replacing is sound because the value is a function of the conflict target.
-    # `contract_version` is a hash of the same declarations, so a row carrying
-    # today's version *has* today's declarations. `first_seen_at` is untouched, so
-    # no history is rewritten. Were that functional dependency ever to stop
-    # holding, this would become falsification of history rather than a backfill.
+    # `contract_version` is a hash of the same declarations, and `text_digest` of the
+    # same words, so a row carrying today's pair *has* today's digests. `first_seen_at`
+    # is untouched, so no history is rewritten. Were that functional dependency ever to
+    # stop holding, this would become falsification of history rather than a backfill.
     repo().insert_all(__MODULE__, rows,
       on_conflict: {:replace, [:declaration_digests, :text_digests]},
       conflict_target: [:contract, :contract_version, :wiring_version, :text_digest]

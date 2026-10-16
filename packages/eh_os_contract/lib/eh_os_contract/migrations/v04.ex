@@ -2,7 +2,7 @@ defmodule EhOsContract.Migrations.V04 do
   @moduledoc false
 
   # A contract's version hashes what it allows, and its words have a digest of their own
-  # (plan DD, V5, #NNN). A deployment records both, and a change of the words alone is a
+  # (plan DD, V5, #322). A deployment records both, and a change of the words alone is a
   # row of its own, so the report can say when only the words changed: the unique index
   # takes `text_digest` as a fourth column. `NULL` in every row written before this
   # version, which `EhOsContract.Deployment` reads as "not recorded".

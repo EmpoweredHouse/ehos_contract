@@ -215,6 +215,7 @@ scenario's description and a domain's glossary are the agreement's words, and co
 stamped every later event differently and marked every read model stale, with nothing agreed changed. The words
 now have a digest of their own, `text_digest`, recorded beside the version on each deployment, so the report
 can say that only the words changed. [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322)
+
 **The serialisation has to be canonical across runtime versions.** This value separates legitimate history
 from drift (§9), so a hash derived from `:erlang.term_to_binary` can shift on an OTP upgrade and reclassify
 every past event as historical — with no contract change at all.
