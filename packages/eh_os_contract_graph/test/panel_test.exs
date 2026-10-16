@@ -241,7 +241,8 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
             ^add_line ->
               Map.put(command, "reads", [
-                %{"name" => "service", "field" => "service_id", "entity" => service}
+                %{"name" => "service", "field" => "service_id", "entity" => service},
+                %{"name" => "rate_card", "field" => "payer_id"}
               ])
 
             _ ->
@@ -303,6 +304,24 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ ", at 2026-10-05T09:00:00+02:00"
       assert text =~ "The application keeps Usługa entity service_id service-ultrasound"
       assert text =~ "specialist-ewa issues"
+    end
+
+    # Plan DD, L4 (#326): the person a scenario issues as, and a read of no entity, are names
+    # the owner does not read.
+    test "for the owner, a scenario names its actor alone, and a read its entity alone" do
+      document = with_main_keys()
+      unit = {:unit, "unit:rehmed.settlement:visit_settlement"}
+
+      id =
+        "emits:command:rehmed.settlement:hand_over_visit:event:rehmed.settlement:visit_handed_over"
+
+      text = open(document, id, unit, nil, :owner)
+      assert text =~ "Specjalista actor issues"
+      refute text =~ "specialist-ewa"
+
+      text = open(document, "command:rehmed.settlement:add_service_line", :all, nil, :owner)
+      assert text =~ "Reads before deciding Usługa entity"
+      refute text =~ "rate_card"
     end
   end
 

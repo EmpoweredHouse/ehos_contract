@@ -174,7 +174,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
         reactions: Lookup.into(l, id, "issues"),
         timers: Lookup.into(l, id, "fires"),
         allowed: Lookup.out(l, id, "allowed_in"),
-        refused: Lookup.out(l, id, "refused_on")
+        refused: Lookup.out(l, id, "refused_on"),
+        # A read of no entity is named by its binding in code, which the owner does not read.
+        reads: for(r <- assigns.node["reads"] || [], assigns.ctx.code? or r["entity"], do: r)
       )
 
     ~H"""
@@ -194,8 +196,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
         Nothing in the contract issues it.
       </p>
     </.part>
-    <.part :if={@node["reads"]} title="Reads before deciding">
-      <p :for={r <- @node["reads"]}>
+    <.part :if={@reads != []} title="Reads before deciding">
+      <p :for={r <- @reads}>
         <.ref :if={r["entity"]} id={r["entity"]} ctx={@ctx} />
         <span :if={!r["entity"]}>{r["name"]}</span><span :if={@ctx.code?}>, the row its <code>{r["field"]}</code> names</span>
       </p>
@@ -1410,7 +1412,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
       </div>
       <p class="ehg-step">When</p>
       <p :if={@scenario["actor"]}>
-        <.ref id={@scenario["actor"]} ctx={@ctx} />{if @scenario["as"], do: " #{@scenario["as"]}"} issues
+        <.ref id={@scenario["actor"]} ctx={@ctx} />{if @ctx.code? && @scenario["as"],
+          do: " #{@scenario["as"]}"} issues
       </p>
       <.with_data id={@scenario["command"]["command"]} data={@scenario["command"]["data"]} ctx={@ctx} />
       <p class="ehg-step">Then</p>
