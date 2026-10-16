@@ -1,0 +1,1 @@
+Release 0.5.0: three @version lines and three changelog headings, nothing else (git diff --stat origin/main..HEAD). Gate EXIT=0 on 8afe5c5d: sandbox 315+34, check 0/47/47; engine 1763+10, check 0/77/75; web 79; auth 329+1+1; graph 186.
