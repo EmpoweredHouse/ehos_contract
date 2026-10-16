@@ -1913,7 +1913,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
-| L4 | 5 | the owner's view, without the engineering | G1 | ☐ rewritten 16 October | — |
+| L4 | 5 | the owner's view, without the engineering | G1 | ◐ `dd/326-owner-*` | [#326](https://github.com/EmpoweredHouse/eh-os-contract/issues/326) |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☑ #307, #308, #309, #310, #311, #312 | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
