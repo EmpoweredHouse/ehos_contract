@@ -77,6 +77,29 @@ defmodule EhOsContract.DomainInvariantsTest do
                Digest.hash(Map.drop(money, [:invariants, :label, :source]))
     end
 
+    # Plan DD, V5 (#322): an example is data, so a field of it called `description` is not
+    # a word, and editing it is a change of the agreement.
+    test "an invariant's examples are data, whatever their fields are called" do
+      example = fn name, description ->
+        compile_domain(name, """
+          value :note do
+            field :description, :string
+
+            invariant :not_blank, "Opis nie jest pusty",
+              violated_by: [%{description: ""}],
+              satisfied_by: [%{description: "#{description}"}]
+          end
+        """)
+        |> Model.fetch()
+      end
+
+      a = example.("ExampleA", "Ból głowy")
+      b = example.("ExampleB", "Gorączka")
+
+      refute a.version == b.version
+      assert a.text_digest == b.text_digest
+    end
+
     test "an invariant moves its value's digest, and the order of invariants does not" do
       two = fn name, first, second ->
         compile_domain(name, """

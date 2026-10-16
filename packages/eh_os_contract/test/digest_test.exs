@@ -115,6 +115,13 @@ defmodule EhOsContract.DigestTest do
       assert EhOsContract.Digest.words(%{name: :x, type: :string, label: nil}) == nil
     end
 
+    test "a struct is a value, not a declaration to walk" do
+      assert EhOsContract.Digest.agreement(%{satisfied_by: [~D[2026-01-01]], on: ~D[2026-01-02]}) ==
+               %{satisfied_by: [~D[2026-01-01]], on: ~D[2026-01-02]}
+
+      assert EhOsContract.Digest.words(%{name: :x, on: ~D[2026-01-02]}) == nil
+    end
+
     test "a scenario's words are its description, and its data is the agreement's" do
       scenario = %{description: "recepcja kończy wizytę", given: [%{data: %{label: "a"}}]}
 

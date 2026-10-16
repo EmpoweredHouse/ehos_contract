@@ -163,8 +163,9 @@ defmodule EhOsContract.Digest do
            [:terms]
 
   # Keys that hold data, a value as the client gave it: their keys are a field's
-  # names, not a declaration's, so a field called `label` is not a word.
-  @data [:data, :default, :match]
+  # names, not a declaration's, so a field called `label` is not a word. A value's
+  # invariant's examples are data too.
+  @data [:data, :default, :match, :violated_by, :satisfied_by]
 
   @doc """
   A declaration without its words: what it allows, which `version` hashes.
@@ -173,6 +174,8 @@ defmodule EhOsContract.Digest do
   definition) is left out at any depth, so correcting a label moves nothing.
   """
   @spec agreement(term()) :: term()
+  def agreement(%{__struct__: _} = value), do: value
+
   def agreement(%{} = declaration) do
     for {key, value} <- declaration, key not in @words, into: %{} do
       if key in @data, do: {key, value}, else: {key, agreement(value)}
@@ -191,6 +194,8 @@ defmodule EhOsContract.Digest do
   agreement that reorders declarations moves no words.
   """
   @spec words(term()) :: term()
+  def words(%{__struct__: _}), do: nil
+
   def words(%{} = declaration) do
     found =
       for {key, value} <- declaration,
