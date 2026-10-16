@@ -64,15 +64,14 @@ defmodule EhOsContract.DigestTest do
   end
 
   describe "grouped declarations" do
-    test "adding an empty group moves the hash" do
-      # Unpinned until now, and it is the whole argument for landing a seventh
-      # declaration in one commit: a contract that declares no commands still gets a
-      # new `version/0` the day the `command` group exists, so history reclassifies
-      # once — deliberately — rather than twice.
+    test "an empty group is no group" do
+      # It used to move the hash, so a kind the library added moved every contract's
+      # version on the day it existed, and each kind needed a list of exceptions. Since
+      # plan DD, V5 (#322) moved every version once, an empty group hashes as none.
       a = EhOsContract.Digest.hash_groups(events: [%{name: :x}])
       b = EhOsContract.Digest.hash_groups(events: [%{name: :x}], commands: [])
 
-      refute a == b
+      assert a == b
     end
 
     test "an empty group is not the same as a group with something in it" do
@@ -87,6 +86,43 @@ defmodule EhOsContract.DigestTest do
       b = EhOsContract.Digest.hash_groups(events: [%{name: :y}, %{name: :x}])
 
       assert a == b
+    end
+  end
+
+  describe "the agreement and its words" do
+    @event %{
+      name: :visit_completed,
+      label: "Wizyta zakończona",
+      source: "W1 00:12:40",
+      fields: [%{name: :room, type: :string, label: "Gabinet", default: %{label: "2"}}]
+    }
+
+    test "the agreement leaves every word out, at any depth, and keeps data whole" do
+      assert EhOsContract.Digest.agreement(@event) == %{
+               name: :visit_completed,
+               fields: [%{name: :room, type: :string, default: %{label: "2"}}]
+             }
+    end
+
+    test "the words keep what the agreement leaves out, and whose it is" do
+      assert EhOsContract.Digest.words(@event) == %{
+               name: :visit_completed,
+               label: "Wizyta zakończona",
+               source: "W1 00:12:40",
+               fields: [%{name: :room, label: "Gabinet"}]
+             }
+
+      assert EhOsContract.Digest.words(%{name: :x, type: :string, label: nil}) == nil
+    end
+
+    test "a scenario's words are its description, and its data is the agreement's" do
+      scenario = %{description: "recepcja kończy wizytę", given: [%{data: %{label: "a"}}]}
+
+      assert EhOsContract.Digest.words(:scenarios, scenario) ==
+               %{description: "recepcja kończy wizytę"}
+
+      assert EhOsContract.Digest.agreement(:scenarios, scenario) ==
+               %{given: [%{data: %{label: "a"}}]}
     end
   end
 end

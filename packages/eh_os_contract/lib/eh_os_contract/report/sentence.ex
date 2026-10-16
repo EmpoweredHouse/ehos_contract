@@ -149,18 +149,53 @@ defmodule EhOsContract.Report.Sentence do
 
     change =
       case deployment.changed do
-        nil ->
-          []
-
-        c ->
-          [
-            "Since the previous version: " <>
-              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}."
-          ] ++ declarations_changed(c.declarations)
+        nil -> []
+        c -> change(c, paths: false)
       end
 
     ["Version #{deployment.deployed.version}, #{since}." | change]
   end
+
+  @doc """
+  What changed since the previous deployment (`EhOsContract.Deployment`'s), as
+  sentences: when the version moved, the events and, with `paths: true`, the paths
+  added and removed, then the declarations and the words that changed; when only the
+  words did, that the agreement did not, and whose words.
+
+      iex> EhOsContract.Report.Sentence.change(
+      ...>   %{agreement_changed: false, words: ["event:visit_completed"],
+      ...>     events_added: [], events_removed: [], declarations: %{added: [], removed: [], changed: []}},
+      ...>   paths: false
+      ...> )
+      ["Only the words changed since the previous deployment, not the agreement: 1 (event:visit_completed)."]
+  """
+  @spec change(map(), keyword()) :: [String.t()]
+  def change(%{agreement_changed: false, words: [_ | _] = words}, _opts) do
+    [
+      "Only the words changed since the previous deployment, not the agreement: " <>
+        "#{length(words)} (#{Enum.join(words, ", ")})."
+    ]
+  end
+
+  def change(c, opts) do
+    paths =
+      if Keyword.fetch!(opts, :paths),
+        do: ", paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}",
+        else: ""
+
+    [
+      "Since the previous version: " <>
+        "events added #{length(c.events_added)}, removed #{length(c.events_removed)}" <>
+        paths <> "."
+    ] ++ declarations_changed(c.declarations) ++ words_changed(c.words)
+  end
+
+  # Words that changed with the agreement, named as the declarations are. Not recorded
+  # on either side says nothing: the agreement's change is what the reader looks for.
+  defp words_changed([_ | _] = words),
+    do: ["Words changed: #{length(words)} (#{Enum.join(words, ", ")})."]
+
+  defp words_changed(_none_or_not_recorded), do: []
 
   @doc """
   What declarations changed since the previous version, which events and paths could

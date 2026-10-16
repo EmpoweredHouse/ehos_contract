@@ -301,4 +301,66 @@ defmodule EhOsContract.DeploymentHistoryTest do
       assert Deployment.declaration_boundaries(Promised) == %{}
     end
   end
+
+  # Plan DD, V5 (#322): the version is the agreement, and the words have their own digest.
+  describe "the words" do
+    test "a deployment records its words beside its version" do
+      Deployment.record!()
+
+      assert [%{text_digest: text, text_digests: texts}] = Deployment.all(Promised)
+      assert text == Model.fetch(Promised).text_digest
+      assert texts == Model.fetch(Promised).text_digests
+    end
+
+    test "a deploy that changed only the words is a row of its own, and no new version" do
+      Deployment.record!()
+      [first] = Deployment.all(Promised)
+
+      deployment(%{
+        wiring_version: first.wiring_version,
+        declaration_digests: first.declaration_digests,
+        text_digest: "relabelled00",
+        text_digests: Map.put(first.text_digests, "event:request_received", "relabelled00"),
+        first_seen_at: DateTime.add(first.first_seen_at, 60)
+      })
+
+      # The same code booting again adds nothing to either row.
+      Deployment.record!()
+      assert length(Deployment.all(Promised)) == 2
+
+      report = Deployment.report(Promised)
+      assert report.deployed.contract_version == version()
+      assert %{agreement_changed: false, words: ["event:request_received"]} = report.changed
+
+      assert Report.Sentence.change(report.changed, paths: true) == [
+               "Only the words changed since the previous deployment, not the agreement: " <>
+                 "1 (event:request_received)."
+             ]
+    end
+
+    test "a process module's change of words alone is reported, and its wiring's is not" do
+      Deployment.record!()
+      [first] = Deployment.all(Handling)
+
+      Repo.insert!(%{
+        first
+        | id: Ecto.UUID.generate(),
+          wiring_version: "rewired",
+          first_seen_at: DateTime.add(first.first_seen_at, 60)
+      })
+
+      assert Deployment.report(Handling).changed == nil
+
+      Repo.insert!(%{
+        first
+        | id: Ecto.UUID.generate(),
+          wiring_version: "rewired",
+          text_digest: "relabelled00",
+          text_digests: Map.put(first.text_digests, "process", "relabelled00"),
+          first_seen_at: DateTime.add(first.first_seen_at, 120)
+      })
+
+      assert %{agreement_changed: false, words: ["process"]} = Deployment.report(Handling).changed
+    end
+  end
 end

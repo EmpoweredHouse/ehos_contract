@@ -33,11 +33,6 @@ defmodule EhOsContract.Domain.Build do
     entities: :entity
   ]
 
-  # Kinds that came after the first domains were digested: a domain that declares
-  # none of one hashes as it did before the kind existed, so adding a kind to the
-  # library moves no domain's version.
-  @later [:entities]
-
   @impl true
   def transform(dsl) do
     model = model(dsl)
@@ -189,16 +184,12 @@ defmodule EhOsContract.Domain.Build do
       name: name,
       language: language,
       time_zone: time_zone,
-      version:
-        Digest.hash_groups(
-          [domain: [own]] ++
-            for(
-              {key, entity} <- @kinds,
-              key not in @later or collections[key] != [],
-              do: {key, Enum.map(collections[key], &digest_form(sourced(&1, entity)))}
-            )
-        ),
-      digests: Map.put(digests(collections), "domain:#{name}", Digest.hash(own))
+      # Plan DD, V5 (#322): `version` and `digests` hash what the domain allows,
+      # `text_digest` and `text_digests` its words: labels, `source:`, the glossary.
+      version: Digest.version(groups(own, collections)),
+      text_digest: Digest.text_digest(groups(own, collections)),
+      digests: digests(own, collections, &Digest.agreement/2),
+      text_digests: digests(own, collections, &Digest.words/2)
     })
   end
 
@@ -232,22 +223,18 @@ defmodule EhOsContract.Domain.Build do
     entity |> Map.delete(:issued_by) |> Map.update!(:fields, &[field | &1])
   end
 
-  # Kinds that took `source:` after their first domains were digested (plan EP1): a
-  # `nil` one is left out of the digest, so no declaration written without it moves.
-  # The model keeps the key, `nil` or not, as it does for every other kind.
-  @sourced_later [:actor, :subject, :value, :external, :relation]
+  defp groups(own, collections) do
+    [domain: [own]] ++
+      for {key, _entity} <- @kinds, do: {key, Enum.map(collections[key], &digest_form/1)}
+  end
 
-  defp sourced(%{source: nil} = declaration, entity) when entity in @sourced_later,
-    do: Map.delete(declaration, :source)
-
-  defp sourced(declaration, _entity), do: declaration
-
-  @spec digests(map()) :: %{String.t() => String.t()}
-  defp digests(collections) do
+  @spec digests(map(), map(), (atom(), map() -> term())) :: %{String.t() => String.t()}
+  defp digests(own, collections, of) do
     for {key, entity} <- @kinds, declaration <- collections[key], into: %{} do
       {"#{entity}:#{key_of(entity, declaration)}",
-       Digest.hash(digest_form(sourced(declaration, entity)))}
+       Digest.hash(of.(key, digest_form(declaration)))}
     end
+    |> Map.put("domain:#{own.name}", Digest.hash(of.(:domain, own)))
   end
 
   defp key_of(:relation, %{type: type} = relation),

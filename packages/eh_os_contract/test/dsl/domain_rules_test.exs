@@ -1011,9 +1011,8 @@ defmodule EhOsContract.DomainRulesTest do
       model = Module.concat(__MODULE__, NoEntities).__eh_os_contract_model__()
 
       # The groups a domain was hashed over before the kind was added, and
-      # `subdomains`, which every domain has since plan EL2 (D7). A `nil` source of the
-      # kinds that took the key in plan EP1 stays out of the digest, as it did before.
-      sourced_later = [:actors, :subjects, :values, :externals, :relations]
+      # `subdomains`, which every domain has since plan EL2 (D7), each without its words
+      # (plan DD, V5, #322).
 
       before =
         EhOsContract.Digest.hash_groups(
@@ -1030,8 +1029,8 @@ defmodule EhOsContract.DomainRulesTest do
               {key,
                model
                |> Map.fetch!(key)
-               |> Enum.map(&if(key in sourced_later, do: without_nil_source(&1), else: &1))
-               |> Enum.map(&digest_form/1)}
+               |> Enum.map(&digest_form/1)
+               |> Enum.map(&EhOsContract.Digest.agreement/1)}
             end
         )
 
@@ -1041,9 +1040,6 @@ defmodule EhOsContract.DomainRulesTest do
 
   # The digest's form of a declaration, as `EhOsContract.Domain.Build` sorts it. A value
   # without invariants is hashed without the key (plan EL2b).
-  defp without_nil_source(%{source: nil} = declaration), do: Map.delete(declaration, :source)
-  defp without_nil_source(declaration), do: declaration
-
   defp digest_form(%{invariants: []} = value),
     do: value |> Map.delete(:invariants) |> digest_form()
 

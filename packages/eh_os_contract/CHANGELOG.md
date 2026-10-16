@@ -55,8 +55,28 @@ and the `ehos-dev:release` skill makes one.
   how many runs, as the conformance report counts them (`EhOsContract.StageOrder`). `graph_overlay.v1` grows by
   an optional key; a reader that does not know it ignores it.
 
+- **The report says when a deploy changed only the words** (plan DD, stage V5, #322): `Deployment.diff/2`
+  carries `agreement_changed` and `words`, the declarations whose words moved, and the fourth question reads
+  "Only the words changed since the previous deployment, not the agreement: 1 (event:visit_completed)." where the
+  version stayed. `EhOsContract.Report.Sentence.change/2` writes it, for the text report and the dashboard.
+
 ### Changed
 
+- **Breaking:** **Moves a verdict:** **a contract's version is what it allows, not its words** (plan DD, stage V5,
+  #322). `version` and `digests` hash fields, commands, who may issue them, what they emit and refuse, rules,
+  lifecycles, reactions and their delivery, and in a process module its stages, promises and deadline; labels,
+  `source:`, scenarios' descriptions, `where:` prose and a domain's glossary are left out. They have a digest of
+  their own, `text_digest` and `text_digests` in the model, under the same keys. The same holds for a domain and a
+  process module. Relabelling an event is no new version any more: no event is stamped differently, no read model
+  goes stale, and the deployment diff no longer names the declaration as changed. What a host meets once, at the
+  first boot of this release:
+  - every contract's, domain's and process module's version moves, with every declaration's digest, so the
+    events already in the log count as "from earlier contract versions" and the diff names every declaration;
+  - every read model and process manager is marked stale: a process manager is rebuilt at boot, a read model
+    through its `reset/0`, and one without it stays stale;
+  - the storage goes to version 4, which records the words' digest beside each deployment, so a change of the
+    words alone is a deployment of its own. Add a migration calling `EhOsContract.Migrations.up(version: 4)`;
+    the engine refuses to start on version 3.
 - **Breaking:** **the context map holds the contracts to it** (plan DD, stage M1, #316). A reference from one
   context into another that runs against the relation between them does not compile any more:
   - from the upstream context of a directed relation into its downstream one, or across `separate_ways` (`X11`);

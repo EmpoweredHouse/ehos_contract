@@ -316,7 +316,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # business day the domain declares; and from b50c8a8121d7 with plan DD, ID3 (#173): its
     # events are typed by its id, `dispatch_rig.ledger`, not its process; and from
     # 256523735770 with plan DD, P2g (#228): its process moved to a module,
-    # `DispatchRig.LedgerRun`, and the contract's version no longer hashes it.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "3e660c247065"
+    # `DispatchRig.LedgerRun`, and the contract's version no longer hashes it; and from
+    # 3e660c247065 with plan DD, V5 (#322): the version no longer hashes its words.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "daa50bc830e2"
   end
 end

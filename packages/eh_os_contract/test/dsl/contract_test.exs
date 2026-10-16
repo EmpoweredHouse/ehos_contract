@@ -139,9 +139,11 @@ defmodule EhOsContract.ContractTest do
 
   defp no_default(map), do: Map.put(map, :default, nil)
 
+  @digests [:version, :digests, :text_digest, :text_digests]
+
   describe "the model" do
     test "is the golden one" do
-      assert Map.drop(Model.fetch(Golden), [:version, :digests]) == %{
+      assert Map.drop(Model.fetch(Golden), @digests) == %{
                format: 1,
                kind: :contract,
                module: Golden,
@@ -253,6 +255,9 @@ defmodule EhOsContract.ContractTest do
                "scenario:*",
                "unit:visit"
              ]
+
+      assert Model.fetch(Golden).text_digests |> Map.keys() |> Enum.sort() ==
+               Model.fetch(Golden).digests |> Map.keys() |> Enum.sort()
     end
 
     test "each digest is twelve hex characters, so it can be read out of a report" do
@@ -370,6 +375,8 @@ defmodule EhOsContract.ContractTest do
     test "does not move when declarations are written in another order, nested ones included" do
       assert Model.fetch(Golden).version == Model.fetch(Reordered).version
       assert Model.fetch(Golden).digests == Model.fetch(Reordered).digests
+      assert Model.fetch(Golden).text_digest == Model.fetch(Reordered).text_digest
+      assert Model.fetch(Golden).text_digests == Model.fetch(Reordered).text_digests
     end
 
     test "moves when one declaration changes, and only that declaration's digest moves" do
@@ -404,57 +411,81 @@ defmodule EhOsContract.ContractTest do
       assert version.([:payer_id, :period_id]) != version.([:period_id, :payer_id])
     end
 
-    test "moves when a command's source changes, which the model carries" do
-      # `source:` is where the owner can check a declaration against the material it
-      # came from. Pointing a command at another place in the material is a change to
-      # the agreement, and a digest blind to it would let the deployment table say
-      # nothing had changed.
-      model = fn source ->
-        name = "Source#{System.unique_integer([:positive])}"
+    # Plan DD, V5 (#322): the version is what the contract allows, and its words have a
+    # digest of their own. A clinic's visit, relabelled for the manager who reads it.
+    defp visit(name, words, field \\ "") do
+      compile("""
+      defmodule EhOsContract.ContractTest.#{name} do
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
 
-        compile("""
-        defmodule EhOsContract.ContractTest.#{name} do
-          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
-
-          aggregate :visit, "Wizyta" do
-            identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed#{source}
-            event :visit_closed, "Wizyta zamknięta"
+        aggregate :visit, "#{words.unit}" do
+          identity :visit_id
+          command :complete_visit, "#{words.command}", by: :reception, emits: :visit_completed
+          event :visit_completed, "#{words.event}", source: "#{words.source}" do
+            field :room, :string
+            #{field}
           end
         end
-        """)
 
-        Model.fetch(Module.concat(__MODULE__, name))
+        scenario "#{words.scenario}" do
+          command :complete_visit, %{visit_id: "v-1"}
+          expect :visit_completed, %{visit_id: "v-1", room: "#{words.room}"}
+        end
       end
+      """)
 
-      without = model.("")
-      sourced = model.(~s(, source: "CMD-07"))
-
-      assert [%{source: nil}] = without.commands
-      assert [%{source: "CMD-07"}] = sourced.commands
-
-      moved = for {key, digest} <- without.digests, sourced.digests[key] != digest, do: key
-      assert moved == ["command:close_visit"]
-      assert without.version != sourced.version
+      Model.fetch(Module.concat(__MODULE__, name))
     end
 
-    test "did not move when a contract stopped declaring a process, its stages and its ends" do
-      # Plan DD, P2h (#221): the version and the digests of `ProcessShapes.Bare` as the
-      # engine computed them while a contract could still declare a process, and every
-      # one without hashed an empty process group and events with no stage and no end.
-      # Removing the form is not a new deployment of every contract.
-      model = Model.fetch(ProcessShapes.Bare)
+    @words %{
+      unit: "Wizyta",
+      command: "Zakończ wizytę",
+      event: "Wizyta zakończona",
+      source: "W1 00:12:40",
+      scenario: "recepcja kończy wizytę",
+      room: "gabinet 2"
+    }
 
-      assert model.version == "ecbde0977484"
+    test "does not move when only the words change, and the words' digest does" do
+      before = visit("WordsBefore", @words)
 
-      assert model.digests == %{
-               "command:close_batch" => "ae6cf175a710",
-               "command:open_batch" => "32f552c441ae",
-               "contract" => "40d32268317c",
-               "event:batch_closed" => "dd3dbedab085",
-               "event:batch_opened" => "dfcd26cfc8ef",
-               "unit:batch" => "bc749bcff4cd"
-             }
+      after_ =
+        visit("WordsAfter", %{
+          @words
+          | unit: "Wizyta pacjenta",
+            command: "Pacjent wychodzi",
+            event: "Pacjent wyszedł z gabinetu",
+            source: "W1 00:13:05",
+            scenario: "pacjent wychodzi z gabinetu"
+        })
+
+      assert before.version == after_.version
+      assert before.digests == after_.digests
+      refute before.text_digest == after_.text_digest
+
+      moved =
+        for {key, digest} <- before.text_digests, after_.text_digests[key] != digest, do: key
+
+      assert Enum.sort(moved) ==
+               ["command:complete_visit", "event:visit_completed", "scenario:*", "unit:visit"]
+    end
+
+    test "moves when a field is added, and the words' digest does not" do
+      before = visit("FieldBefore", @words)
+      after_ = visit("FieldAfter", @words, "field :doctor, :string, optional: true")
+
+      refute before.version == after_.version
+      moved = for {key, digest} <- before.digests, after_.digests[key] != digest, do: key
+      assert moved == ["event:visit_completed"]
+      assert before.text_digest == after_.text_digest
+    end
+
+    test "moves when a scenario's data changes, a field's value not being a word" do
+      before = visit("DataBefore", @words)
+      after_ = visit("DataAfter", %{@words | room: "gabinet 3"})
+
+      refute before.version == after_.version
+      assert before.text_digest == after_.text_digest
     end
   end
 
