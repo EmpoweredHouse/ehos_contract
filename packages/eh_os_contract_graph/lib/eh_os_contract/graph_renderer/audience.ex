@@ -136,12 +136,15 @@ defmodule EhOsContract.GraphRenderer.Audience do
       |> Enum.map_join(" or ", &title(by_id[&1] || %{"name" => &1}))
     end
 
+    within =
+      promise["within"] &&
+        " within #{EhOsContract.GraphRenderer.Words.duration(promise["within"])}"
+
+    or_else = events.("or_else")
+
     label =
-      "After #{events.("opens")}, eventually #{events.("fulfils")}" <>
-        if(promise["within"],
-          do: " within #{EhOsContract.GraphRenderer.Words.duration(promise["within"])}",
-          else: ""
-        )
+      "After #{events.("opens")}, eventually #{events.("fulfils")}#{within}" <>
+        if(or_else == "", do: "", else: ", or else #{or_else}")
 
     %{promise | "label" => label}
   end

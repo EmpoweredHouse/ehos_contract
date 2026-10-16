@@ -874,7 +874,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       # A contract by its context's label, a promise by its rule.
       assert text =~ "Includes events of Umawianie i zasoby contract"
       assert text =~ "Promises After Pacjent wyszedł z gabinetu, eventually"
-      assert text =~ "within 2 days promise"
+      assert text =~ "within 2 days, or else Usługa nie podlega zgłoszeniu do P1 promise"
       assert text =~ "From the log 4 runs."
     end
 
@@ -884,7 +884,12 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       text = owner("process.rehmed.clinical_visit", promise, :process, overlay)
 
       refute text =~ "medical_event_reported_within_statutory_window"
-      assert text =~ "After Pacjent wyszedł z gabinetu, eventually"
+
+      # The other way it may be kept is part of the rule, as the owner's pages write it.
+      assert text =~
+               "After Pacjent wyszedł z gabinetu, eventually Wysłano informację do systemu P1 " <>
+                 "within 2 days, or else Usługa nie podlega zgłoszeniu do P1"
+
       assert text =~ "From the log"
     end
 
