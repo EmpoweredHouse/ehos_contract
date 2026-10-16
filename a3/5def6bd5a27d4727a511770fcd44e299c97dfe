@@ -1,0 +1,1 @@
+Drawing-layer fix seen in the browser: label position of a bowed observed arrow (JS and the two rebuilt bundles). Checked on the sandbox dashboard after mix ecto.reset and mix graph_lab.traffic (the user asked): both arrows red, labels off the cards, stages in the declared order, the panel names both stages; assets_test passes. Earlier commits: the note of 0a9c8a11.
