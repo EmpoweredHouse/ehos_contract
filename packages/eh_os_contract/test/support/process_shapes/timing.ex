@@ -16,8 +16,8 @@ defmodule ProcessShapes.Timing do
 
   correlate :run_id
 
-  stage :opening, include: [{ProcessShapes.Timed, [:run_started, :run_acknowledged]}]
-  stage :closing, include: [{ProcessShapes.Timed, :run_finished}]
+  stage :opening, "Opening", include: [{ProcessShapes.Timed, [:run_started, :run_acknowledged]}]
+  stage :closing, "Closing", include: [{ProcessShapes.Timed, :run_finished}]
 
   ends_on :run_finished
 

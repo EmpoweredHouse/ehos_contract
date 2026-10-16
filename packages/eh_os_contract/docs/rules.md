@@ -53,6 +53,19 @@ Any `eventually` after its `from` keeps it, and a run with none stays pending fo
 promise has no failing case. That is an honest thing to say when nobody agreed a number; the
 notice makes sure it is not read as a promise being kept.
 
+## `owner-view-without-label`
+
+**notice**
+
+A stage, a value or a member of a value's enum has no label.
+
+A business owner reads the model in the business's words: each declaration by its label.
+Most declarations need one to compile, and a field without one is not for the owner. A
+stage of a process module, a value of the domain and a member of its enum written as a
+bare atom may go without, and then the owner would read the name in the code,
+`departure`, where the business says "Departure of the patient". A promise has no label
+at all: it is read by its rule, the events it waits for, in their labels.
+
 ## `contract-without-implementation`
 
 **notice**

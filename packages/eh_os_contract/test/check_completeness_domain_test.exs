@@ -49,6 +49,10 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         subdomain :supporting, "Supporting", type: :supporting
         subdomain :generic, "Generic", type: :generic
         subdomain :legacy, "Dawne", type: :generic
+
+        value :money, :integer, unit: :grosze, label: "Kwota"
+        value :room_code, :string
+        value :room_kind, {:enum, [:surgery, treatment: "Gabinet zabiegowy"]}, label: "Rodzaj gabinetu"
       end
       """,
       "clinic.ex"
@@ -104,6 +108,15 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     for %Finding{rule: ^rule} = f <-
           Completeness.findings([@settlement, @scheduling, @reporting]),
         do: {f.message, Finding.place(f)}
+  end
+
+  # Plan DD, L4 (#326).
+  test "a value or an enum member without a label, at the value; control: labelled ones" do
+    assert [{code, {"clinic.ex", 29}}, {kind, {"clinic.ex", 30}}] =
+             Enum.sort_by(findings("owner-view-without-label"), &elem(&1, 1))
+
+    assert code =~ "value :room_code of #{inspect(@domain)}: the value has no label"
+    assert kind =~ "value :room_kind of #{inspect(@domain)}: member :surgery has no label"
   end
 
   test "an actor no contract names, at its declaration; control: one only a system stands for" do

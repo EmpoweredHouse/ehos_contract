@@ -50,6 +50,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **`check` notes a stage or a value the owner would read by its name in the code** (plan DD, stage L4, #326):
+  `owner-view-without-label`, a notice for each stage of a process module, each value of the domain and each
+  member of a value's enum written as a bare atom with no label: what a business owner reads that may be
+  written without one.
+
 - **A process's overlay says which stages runs entered out of order** (plan DD, stage O2, #319): under
   `observed.relations`, `out_of_order` lists each pair, from the later stage's node to the earlier one's, with
   how many runs, as the conformance report counts them (`EhOsContract.StageOrder`). `graph_overlay.v1` grows by

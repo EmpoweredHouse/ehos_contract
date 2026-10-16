@@ -326,6 +326,9 @@ From [the rules](../rules.md):
 - **`value-without-implementation`** (warning): a value declares invariants and no module checks them, so
   dispatch raises on every value of it. Add a module with `use <Domain>, value: <name>`. Said only once some
   contract of the domain is implemented.
+- **`owner-view-without-label`** (notice): a value, or a member of its enum written as a bare atom, has no
+  label, so a business owner reading the model would see its name in the code. Write the member as
+  `card: "Card"`, and give the value `label:`.
 - **`orphan-external-system`** (warning): no actor is backed by the external, no relation ends at it, no
   field or entity is issued by it, no effect calls it and no event depends on it.
 - **`operation-never-called`** (warning): an operation of an external is named in no effect's `calls:`.

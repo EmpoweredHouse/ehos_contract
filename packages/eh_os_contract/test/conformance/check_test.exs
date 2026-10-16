@@ -34,6 +34,34 @@ defmodule EhOsContract.CheckTest do
   defp process_findings(module),
     do: for(f <- Check.process_module_findings([module]), do: {f.level, f.rule, f.message})
 
+  # Plan DD, L4 (#326): the owner's view names a stage by its label. Control:
+  # `ProcessShapes.Timing`, whose stages have labels, below.
+  test "a stage without a label is noted, one finding a stage" do
+    assert [
+             "stage :intake of process \"process_shapes.handling\" has no label" <> _,
+             "stage :decision" <> _,
+             "stage :closing" <> _
+           ] =
+             for(
+               {:info, "owner-view-without-label", message} <-
+                 process_findings(ProcessShapes.Handling),
+               do: message
+             )
+
+    # At the stage, not at the module's `use`.
+    assert [{"handling.ex", 20} | _] =
+             for(
+               %{rule: "owner-view-without-label"} = finding <-
+                 Check.process_module_findings([ProcessShapes.Handling]),
+               do: place(finding)
+             )
+  end
+
+  defp place(finding) do
+    {file, line} = EhOsContract.Check.Finding.place(finding)
+    {Path.basename(file), line}
+  end
+
   test "a process with no addressee, and a deadline its owner has not confirmed" do
     assert {:warn, "process-without-accountable",
             ~s(process "process_shapes.handling" names no `accountable` role) <> _} =
@@ -84,7 +112,7 @@ defmodule EhOsContract.CheckTest do
         accountable: :batch_operator
 
       correlate :pile_id
-      stage :piling, include: [{EhOsContract.CheckTest.Unimplemented, [:stacked]}]
+      stage :piling, "Piling", include: [{EhOsContract.CheckTest.Unimplemented, [:stacked]}]
 
       promise :stays_stacked do
         from :stacked
