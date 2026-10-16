@@ -85,7 +85,11 @@ defmodule EhOsContract.UpcastTest do
   describe "reading an older row" do
     test "a row of version 1 goes through both steps: renamed twice, the priority given, the note opened" do
       row =
-        written!(1, version_1(), %{requester_id: "r-anna", remark: "pilne", reason: "nowy laptop"})
+        written!(1, version_1(), %{
+          requester_id: "r-anna",
+          remark: "urgent",
+          reason: "a new laptop"
+        })
 
       # The log keeps the row as it was written.
       stored = Repo.get!(Event, row.id)
@@ -95,8 +99,8 @@ defmodule EhOsContract.UpcastTest do
 
       assert %DemandOpened{
                requester_id: "r-anna",
-               note: "pilne",
-               demand_reason: "nowy laptop",
+               note: "urgent",
+               demand_reason: "a new laptop",
                priority: "normal"
              } = Consumer.decode!(stored)
     end
@@ -111,25 +115,32 @@ defmodule EhOsContract.UpcastTest do
       ]
 
       row =
-        written!(2, fields, %{requester_id: "r-anna", note: "n", why: "monitor", priority: "high"})
+        written!(2, fields, %{
+          requester_id: "r-anna",
+          note: "n",
+          why: "a monitor",
+          priority: "high"
+        })
 
-      assert %DemandOpened{note: "n", demand_reason: "monitor", priority: "high"} =
+      assert %DemandOpened{note: "n", demand_reason: "a monitor", priority: "high"} =
                Consumer.decode!(row)
     end
 
     test "a renamed personal field of an erased requester reads as erased" do
-      row = written!(1, version_1(), %{requester_id: "r-bartek", remark: "tajne", reason: "mysz"})
+      row =
+        written!(1, version_1(), %{requester_id: "r-bartek", remark: "private", reason: "a mouse"})
+
       assert {:ok, :erased} = EhOsContract.erase(:requester, "r-bartek", actor: @officer)
 
       assert %DemandOpened{
                note: %Erased{subject: :requester, id: "r-bartek"},
-               demand_reason: "mysz"
+               demand_reason: "a mouse"
              } =
                Consumer.decode!(Repo.get!(Event, row.id))
     end
 
     test "control: without the step's paths, the renamed seal does not open" do
-      row = written!(1, version_1(), %{requester_id: "r-anna", remark: "pilne", reason: "x"})
+      row = written!(1, version_1(), %{requester_id: "r-anna", remark: "urgent", reason: "x"})
       declaration = Enum.find(Model.fetch(Demands).events, &(&1.name == :demand_opened))
       {payload, paths} = Upcast.read(declaration, row)
 
@@ -146,7 +157,7 @@ defmodule EhOsContract.UpcastTest do
       assert {:error, [note: :type]} =
                Codec.decode(fields, payload, %{}, open: Personal.opener(keys, row.type))
 
-      assert {:ok, %{note: "pilne"}} =
+      assert {:ok, %{note: "urgent"}} =
                Codec.decode(fields, payload, %{},
                  open: Upcast.opener(Personal.opener(keys, row.type), paths)
                )
@@ -216,17 +227,52 @@ defmodule EhOsContract.UpcastTest do
       end)
     end
 
+    test "refuses to publish a seal that a step moved into a published field" do
+      relay = "upcast_rig.demands:relay:demand_opened"
+      Subscription.register!(Repo, [Implementations.consumer(relay)])
+
+      # Version 1 as if its reason had been personal: the step moves the seal to the
+      # published `demand_reason`.
+      fields =
+        Enum.map(version_1(), fn
+          %{name: :reason} = f -> %{f | personal: :requester_id}
+          f -> f
+        end)
+
+      row = written!(1, fields, %{requester_id: "r-anna", remark: "urgent", reason: "a laptop"})
+
+      result = Subscription.step(Repo, Implementations.consumer(relay))
+      refute match?({:applied, _}, result)
+      refute_received {:published, _}
+
+      # The record names the exception and never its message.
+      assert %{failure: "ArgumentError"} = Repo.get!(EhOsContract.SubscriptionRecord, relay)
+
+      error =
+        assert_raise ArgumentError, fn ->
+          EhOsContract.Relay.message(
+            Implementations.consumer(relay),
+            Consumer.upcast(Model.fetch(Demands), row)
+          )
+        end
+
+      assert Exception.message(error) =~ "would carry demand_reason of the event at position"
+      refute Exception.message(error) =~ "laptop"
+    end
+
     test "publishes an older row with the current fields" do
       relay = "upcast_rig.demands:relay:demand_opened"
       Subscription.register!(Repo, [Implementations.consumer(relay)])
-      row = written!(1, version_1(), %{requester_id: "r-anna", remark: "pilne", reason: "laptop"})
+
+      row =
+        written!(1, version_1(), %{requester_id: "r-anna", remark: "urgent", reason: "a laptop"})
 
       assert {:applied, 1} = Subscription.step(Repo, Implementations.consumer(relay))
       assert_received {:published, [%Bus.Message{payload: payload}]}
 
       assert payload == %{
                "demand_id" => row.payload["demand_id"],
-               "demand_reason" => "laptop",
+               "demand_reason" => "a laptop",
                "priority" => "normal"
              }
     end

@@ -80,7 +80,12 @@ defmodule EhOsContract.Relay do
   # the first. Without such fields, or with one of them `nil`, the key is the id.
   #
   # It takes the payload as stored, so the relay holds each event to the version its
-  # fields were written with before it builds the message (plan W1).
+  # fields were written with before it builds the message (plan W1), and reads an older
+  # one in the current shape first (plan DD, V1, #333). A published field is never
+  # personal (D11), so a seal in one is a field that was personal when its row was
+  # written — `personal:` dropped since, or an `upcast` renaming a personal field onto
+  # it: the message is refused, naming the field and never its value, rather than a
+  # seal leaving for another application.
   # Called by subscription.ex.
   @doc false
   @spec message(map(), Event.t()) :: Bus.Message.t()
@@ -89,6 +94,13 @@ defmodule EhOsContract.Relay do
 
     payload =
       Map.new(publication.fields, &{Atom.to_string(&1), Map.get(stored, Atom.to_string(&1))})
+
+    for {field, %{"$eh" => _}} <- payload do
+      raise ArgumentError,
+            "publication #{inspect(publication.as)} would carry #{field} of the event at " <>
+              "position #{event.position} sealed, as personal data: the field was personal " <>
+              "when the row was written, and a published field is not"
+    end
 
     id = "#{event.id}/#{publication.as}"
 
