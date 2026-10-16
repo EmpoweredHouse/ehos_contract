@@ -25,7 +25,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   scopes, identities, fields with no label, a scenario's data, and the wire between
   applications. A contract is read by its context's label and a promise by its rule. The
   numbers from the log stay. A declaration with no label is still shown by its name, and
-  `mix eh_os_contract.check` notes each (`owner-view-without-label`).
+  `mix eh_os_contract.check` notes each (`owner-view-without-label`). It is a way of
+  reading, not a permission: the page still holds the ids, which name the code, and the
+  document whole. Who may see what is the host's to decide. A landscape read by the owner
+  has no wire between its domains to draw.
 
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,

@@ -32,7 +32,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       />
 
   The reader's switch holds until the page is left: a host rendering the explorer again
-  does not set it back. Anything but `:engineering` or `:owner` raises an `ArgumentError`.
+  does not set it back, so `audience` is read when the explorer starts, and anything but
+  `:engineering` or `:owner` there raises an `ArgumentError`.
 
   **Two viewpoints**, as tabs over the canvas, share a path ("Rehmed.Domain ›
   rehmed.scheduling › visit") that goes back up:
