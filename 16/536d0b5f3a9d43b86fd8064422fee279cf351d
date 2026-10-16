@@ -1,0 +1,5 @@
+pre-pr-review of origin/main..16536d0b (L4 part 1, #326): correctness (code-review high) and security/performance in one subagent.
+Fixed: rule text claimed every other shown declaration needs a label (a promise has none) and named the pages/switch to come (16536d0b); bare-atom enum members not noted (bd24f869); stage-name fallback lost its only test, and the stage finding's place untested (c3b4329b); Polish prose in English docs, value case missing on the domain-data page (16536d0b, bd24f869).
+Scope beside the issue (only stages and values can lack a label): recorded on #326.
+Security/performance: nothing (compile-time reading, linear).
+Gate on 16536d0b: EXIT=0; sandbox 315+34, check 0/47/47 (+15 notices, listed in the PR); engine 1757+10, check 0/77/75; web 79; auth 329+1+1; graph 172.
