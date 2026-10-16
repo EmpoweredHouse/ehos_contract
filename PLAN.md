@@ -26,8 +26,9 @@ removing a contract's own process (P2h, #296) and a process module's picture and
 merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged, and so is the context map
 (M1, #316, in #317) and the stage order on a process's picture (O2, #319, in #320), and the agreement's version apart from its
 words' (V5, #322, in #324: storage version 4, every version moved once), and the owner's view (L4, #326, in #327–#329:
-the notice, `pages --audience owner` and the graph's switch "Owner"). Of the revision only V1–V4 remain, on hold:
-they are required before the first application keeps data it may not lose.
+the notice, `pages --audience owner` and the graph's switch "Owner"). Of the revision only V1–V4 remained, required
+before the first application keeps data it may not lose; the user started them on 16 October: V1 (upcasts
+declared, #333, in #337) is merged, V2 (an upcast by a function, #338) is next.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
@@ -1905,8 +1906,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
 | O2 | 3 | a process's stage order on its picture | O1, G1 | ☑ #320 | [#319](https://github.com/EmpoweredHouse/eh-os-contract/issues/319) |
-| V1 | 4 | upcasty deklaratywne | W1, P2h | ◐ `dd/333-upcasts` | [#333](https://github.com/EmpoweredHouse/eh-os-contract/issues/333) |
-| V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
+| V1 | 4 | upcasty deklaratywne | W1, P2h | ☑ #337 | [#333](https://github.com/EmpoweredHouse/eh-os-contract/issues/333) |
+| V2 | 4 | upcast przez callback | V1 | ◐ `dd/338-upcast-function` | [#338](https://github.com/EmpoweredHouse/eh-os-contract/issues/338) |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
 | V5 | 4 | the agreement's version and the words' digest | P2h | ☑ #324 | [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322) |
