@@ -21,6 +21,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
 ### Added
 
 - **The explorer reads the model for the business owner** (plan DD, stage L4, #326): a switch "Engineering /

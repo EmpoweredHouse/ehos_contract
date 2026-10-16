@@ -25,6 +25,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-16
+
 ### Added
 
 - **The Graph screen has a switch "Engineering / Owner"** (plan DD, stage L4, eh-os-contract#326): read as the

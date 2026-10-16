@@ -48,6 +48,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-16
+
 ### Added
 
 - **The model's pages for the business owner** (plan DD, stage L4, #326): `mix eh_os_contract.pages --output
