@@ -962,23 +962,33 @@ defmodule EhOsContract.GraphRenderer.View do
     %{view | relations: view.relations ++ within(view, added)}
   end
 
-  defp seen(overlay, type) do
-    case get_in(overlay, ["observed", "relations", type]) do
-      list when is_list(list) ->
-        for r <- list,
-            is_map(r),
-            Enum.all?(~w(id from to), &is_binary(r[&1])),
-            do: r
-
-      _ ->
-        []
+  defp seen(%{"observed" => %{"relations" => %{} = relations}}, type) do
+    case relations[type] do
+      list when is_list(list) -> Enum.filter(list, &relation?(&1, type))
+      _ -> []
     end
   end
+
+  defp seen(_overlay, _type), do: []
+
+  # An entry of the shape its type has: string ends and id, and for stages out of order,
+  # a count of runs, so a broken entry never takes the place of a good one of its id.
+  defp relation?(%{} = r, type) do
+    Enum.all?(~w(id from to), &is_binary(r[&1])) and
+      (type != "out_of_order" or (is_integer(r["runs"]) and r["runs"] > 0))
+  end
+
+  defp relation?(_entry, _type), do: false
 
   @doc """
   Whether `relation` is one the log shows and the document does not declare — a move a
   lifecycle does not allow, stages entered the wrong way round — rather than one the
   document draws. Such an arrow is drawn where its ends are, and lays nothing out.
+
+      View.observed?(%{type: "out_of_order"})
+      #=> true
+      View.observed?(%{type: "precedes"})
+      #=> false
   """
   @spec observed?(relation()) :: boolean()
   def observed?(%{type: type}), do: type in @observed

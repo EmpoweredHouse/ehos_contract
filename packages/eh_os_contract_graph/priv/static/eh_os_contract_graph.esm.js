@@ -4503,7 +4503,8 @@ var bow = (id2, start2, end) => {
   const t = 0.15;
   const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b;
   const at2 = { x: along(start2.x, control.x, end.x), y: along(start2.y, control.y, end.y) };
-  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at2.x, y: at2.y };
+  const apex = { x: (start2.x + end.x) / 4 + control.x / 2, y: (start2.y + end.y) / 4 + control.y / 2 };
+  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at2.x, y: at2.y, apex };
 };
 var border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y];
@@ -4719,7 +4720,14 @@ var EhOsContractGraph = {
       const d = from === to ? loop(graph.node(from), { x: at2.x, y: at2.y, width: width2, height: height2 }) : curve(edge.points);
       return { id: id2, d, x: at2.x, y: at2.y, width: width2, height: height2 };
     });
-    const { width, height } = graph.graph();
+    const bounds = graph.graph();
+    let [width, height] = [bounds.width, bounds.height];
+    labels.forEach(({ width: w, height: h }, i) => {
+      const { apex, x, y } = geometry[i];
+      if (!apex) return;
+      width = Math.max(width, apex.x + 8, x + w / 2 + 8);
+      height = Math.max(height, apex.y + 8, y + h / 2 + 8);
+    });
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
     groups.forEach(({ id: id2 }) => {
       const { x, y, width: width2, height: height2 } = graph.node(id2);

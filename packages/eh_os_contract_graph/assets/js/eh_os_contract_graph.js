@@ -155,7 +155,9 @@ const bow = (id, start, end) => {
   const t = 0.15
   const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b
   const at = { x: along(start.x, control.x, end.x), y: along(start.y, control.y, end.y) }
-  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at.x, y: at.y }
+  // The bow's furthest point, half way to its control point: what it adds to the picture's size.
+  const apex = { x: (start.x + end.x) / 4 + control.x / 2, y: (start.y + end.y) / 4 + control.y / 2 }
+  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at.x, y: at.y, apex }
 }
 
 // Where the line from a box's centre towards a point leaves the box.
@@ -437,7 +439,16 @@ export const EhOsContractGraph = {
       return { id, d, x: at.x, y: at.y, width, height }
     })
 
-    const { width, height } = graph.graph()
+    // dagre sized the picture without the bowed arrows, which lay nothing out: a bow, or its label, reaching
+    // past an edge widens the picture to hold it.
+    const bounds = graph.graph()
+    let [width, height] = [bounds.width, bounds.height]
+    labels.forEach(({ width: w, height: h }, i) => {
+      const { apex, x, y } = geometry[i]
+      if (!apex) return
+      width = Math.max(width, apex.x + 8, x + w / 2 + 8)
+      height = Math.max(height, apex.y + 8, y + h / 2 + 8)
+    })
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)

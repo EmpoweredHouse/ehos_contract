@@ -134,9 +134,17 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
       render_component(Canvas, id: "graph", document: document(), overlay: o, view: :process)
       |> LazyHTML.from_fragment()
 
-    # The first entry of the id wins, and its runs, not a count, give none.
+    # An entry whose runs are not a count is left out, so the good one of its id is drawn.
     label = LazyHTML.query(html, ~s(button.ehg-relation[data-ehg-relation="#{@id}"]))
-    assert label |> LazyHTML.query(".ehg-count") |> Enum.count() == 0
+    assert label |> LazyHTML.query(".ehg-count") |> LazyHTML.text() == "×2"
+  end
+
+  test "an overlay whose observed part is not an object draws the picture without it" do
+    for observed <- ["invalid", %{"relations" => "x"}, nil] do
+      o = Map.put(Fixtures.overlay("process.rehmed.clinical_visit"), "observed", observed)
+      view = View.build(document(), :process, o)
+      refute Enum.any?(view.relations, &View.observed?/1)
+    end
   end
 
   test "its panel names the two stages and how many runs" do
