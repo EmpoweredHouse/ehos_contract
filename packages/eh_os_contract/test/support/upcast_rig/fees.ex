@@ -1,0 +1,29 @@
+defmodule UpcastRig.Fees do
+  @moduledoc """
+  # THIS IMPLEMENTATION IS INVENTED. IT IS NOT CLIENT MATERIAL.
+
+  The fee unit of `UpcastRig.Demands`: version 1 of `:fee_charged` held its amount in
+  grosze, `amount_minor`. A row's `"do"` says which of the things a function may not do
+  this one does instead, so that a test can watch the read refuse it.
+  """
+
+  use UpcastRig.Demands, aggregate: :fee
+
+  @impl true
+  def amount_from_minor(%{"do" => "move_seal"} = data),
+    do: data |> Map.delete("note") |> Map.put("remark", data["note"]) |> amount()
+
+  def amount_from_minor(%{"do" => "change_tag"} = data),
+    do: data |> Map.put("requester_id", "someone-else") |> amount()
+
+  def amount_from_minor(%{"do" => "raise"} = data), do: Map.fetch!(data, "no such field")
+  def amount_from_minor(%{"do" => "no_map"}), do: :not_a_map
+  def amount_from_minor(data), do: amount(data)
+
+  defp amount(%{"amount_minor" => minor} = data) do
+    data
+    |> Map.delete("amount_minor")
+    |> Map.delete("do")
+    |> Map.put("amount", minor |> Decimal.new() |> Decimal.div(100) |> Decimal.to_string())
+  end
+end

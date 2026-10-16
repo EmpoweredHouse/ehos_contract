@@ -237,27 +237,22 @@ defmodule EhOsContract.Contract.Build do
     # its ISO 8601 text), so it reads as an old row's own value would.
     |> then(fn built ->
       case Enum.sort_by(event.upcasts, & &1.from) do
-        [] ->
-          Map.delete(built, :upcasts)
-
-        steps ->
-          %{
-            built
-            | upcasts:
-                for(
-                  u <- steps,
-                  do: %{
-                    from: u.from,
-                    rename: Map.new(u.rename),
-                    default:
-                      Map.new(u.default, fn {f, v} ->
-                        {f, v |> Jason.encode!() |> Jason.decode!()}
-                      end)
-                  }
-                )
-          }
+        [] -> Map.delete(built, :upcasts)
+        steps -> %{built | upcasts: Enum.map(steps, &step/1)}
       end
     end)
+  end
+
+  # A step by a function names it alone (plan DD, V2, #338); a declared one its renames and
+  # defaults.
+  defp step(%{function: fun} = u) when fun != nil, do: %{from: u.from, function: fun}
+
+  defp step(u) do
+    %{
+      from: u.from,
+      rename: Map.new(u.rename),
+      default: Map.new(u.default, fn {f, v} -> {f, v |> Jason.encode!() |> Jason.decode!()} end)
+    }
   end
 
   # An identity field typed as another unit's or an entity's number refers to it, as a

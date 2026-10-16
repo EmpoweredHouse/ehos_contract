@@ -52,7 +52,7 @@ defmodule EhOsContract.ContractVocabularyTest do
       [kind, :command, :actor_is] => [:field, :or_rejects],
       [kind, :event] => @event,
       [kind, :event, :field] => @field,
-      [kind, :event, :upcast] => [:from, :rename, :default]
+      [kind, :event, :upcast] => [:from, :rename, :default, :function]
     }
   end
 

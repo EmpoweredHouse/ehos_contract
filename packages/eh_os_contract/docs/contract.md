@@ -431,7 +431,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | Code | Layer | What is refused |
 | --- | --- | --- |
 | `U1` | L2 | an event at `schema_version` n without exactly one `upcast from:` for each version below n, or with an `upcast` from n or later |
-| `U2` | L2 | an `upcast` renaming a field to the name of no field the event will have, to what is not a name, to itself, one field twice, or two fields to one; a `default:` for a field the event will not have |
+| `U2` | L2 | an `upcast` renaming a field to the name of no field the event will have, to what is not a name, to itself, one field twice, or two fields to one; a `default:` for a field the event will not have, or one field given two; a step naming a `function:` and renaming or giving defaults too |
 | `U3` | L2, L3 | an `upcast` renaming the unit's identity, or renaming onto or giving a default to a field the log tags rows with (a required, non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one); a default for a personal field, or for a domain value holding personal data |
 | `U4` | L2, L3 | an `upcast` default that is not a value of its field's type, or is nil |
 

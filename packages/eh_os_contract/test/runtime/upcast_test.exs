@@ -29,12 +29,13 @@ defmodule EhOsContract.UpcastTest do
 
   @officer Actor.credential("u-officer", [])
 
-  defp type, do: Enum.find(Model.fetch(Demands).events, &(&1.name == :demand_opened)).type
+  defp type(event \\ :demand_opened),
+    do: Enum.find(Model.fetch(Demands).events, &(&1.name == event)).type
 
-  # A row of `:demand_opened` as the code of `version` appended it: `fields` its fields
-  # then, `data` its values, a personal field sealed under the name it had.
-  defp written!(version, fields, data) do
-    demand = "d-#{System.unique_integer([:positive])}"
+  # A row of `event`, of the unit `unit`, as the code of `version` appended it: `fields`
+  # its fields then, `data` its values, a personal field sealed under the name it had.
+  defp written!(version, fields, data, {event, unit} \\ {:demand_opened, :demand}) do
+    demand = "#{unit}-#{System.unique_integer([:positive])}"
 
     Repo.transaction(fn ->
       prepared = Personal.prepare(Repo, [{:requester, data.requester_id}])
@@ -43,13 +44,13 @@ defmodule EhOsContract.UpcastTest do
       payload =
         Codec.encode(
           fields,
-          Map.put(data, :demand_id, demand),
+          Map.put(data, :"#{unit}_id", demand),
           %{},
-          Personal.sealer(keys, type())
+          Personal.sealer(keys, type(event))
         )
 
       entry = %{
-        type: type(),
+        type: type(event),
         schema_version: version,
         contract: Model.fetch(Demands).id,
         contract_version: Model.fetch(Demands).version,
@@ -59,7 +60,7 @@ defmodule EhOsContract.UpcastTest do
         payload: payload
       }
 
-      {:ok, [row]} = Store.append(Repo, [entry], {:stream, "demand:#{demand}", 0})
+      {:ok, [row]} = Store.append(Repo, [entry], {:stream, "#{unit}:#{demand}", 0})
       row
     end)
     |> elem(1)
@@ -161,6 +162,58 @@ defmodule EhOsContract.UpcastTest do
                Codec.decode(fields, payload, %{},
                  open: Upcast.opener(Personal.opener(keys, row.type), paths)
                )
+    end
+  end
+
+  # Plan DD, V2 (#338): a step by a function of the unit's code.
+  describe "a step by a function" do
+    defp fee!(data) do
+      fields = [
+        field(:fee_id, type: :id),
+        field(:requester_id, type: :id, subject: :requester),
+        field(:note, personal: :requester_id, optional: true),
+        field(:amount_minor, type: :integer),
+        field(:do, optional: true)
+      ]
+
+      written!(1, fields, Map.put(data, :requester_id, "r-anna"), {:fee_charged, :fee})
+    end
+
+    test "a row of version 1 reads through the implementation's function, its seal kept" do
+      row = fee!(%{amount_minor: 12_050, note: "by card"})
+
+      assert %UpcastRig.Demands.Events.FeeCharged{amount: amount, note: "by card"} =
+               Consumer.decode!(row)
+
+      assert Decimal.equal?(amount, Decimal.new("120.50"))
+      assert Repo.get!(Event, row.id).payload["amount_minor"] == 12_050
+    end
+
+    test "a function moving a seal to another field is refused, naming no value" do
+      row = fee!(%{amount_minor: 100, note: "secret", do: "move_seal"})
+      error = assert_raise ArgumentError, fn -> Consumer.decode!(row) end
+
+      assert Exception.message(error) =~ "the function puts a sealed value at remark"
+      refute Exception.message(error) =~ "secret"
+    end
+
+    test "a function changing a field the log tags rows with is refused" do
+      row = fee!(%{amount_minor: 100, do: "change_tag"})
+      error = assert_raise ArgumentError, fn -> Consumer.decode!(row) end
+
+      assert Exception.message(error) =~ "the function changes requester_id, which the log tags"
+    end
+
+    test "a function that raises, or gives no map, is refused, naming the step and no value" do
+      raised = fee!(%{amount_minor: 100, do: "raise"})
+      error = assert_raise ArgumentError, fn -> Consumer.decode!(raised) end
+
+      assert Exception.message(error) =~
+               "(upcast_rig.demands.fee_charged), `upcast from: 1`: UpcastRig.Fees.amount_from_minor/1 raised KeyError"
+
+      no_map = fee!(%{amount_minor: 100, do: "no_map"})
+      error = assert_raise ArgumentError, fn -> Consumer.decode!(no_map) end
+      assert Exception.message(error) =~ "amount_from_minor/1 gave no map"
     end
   end
 

@@ -183,7 +183,10 @@ defmodule EhOsContract.Consumer do
       Enum.map(rows, fn row ->
         declaration = declaration!(model, row)
         current!(declaration, row)
-        {payload, paths} = Upcast.read(declaration, row)
+
+        {payload, paths} =
+          Upcast.read(declaration, row, implementation(model, declaration), values)
+
         {declaration, %{row | payload: payload}, paths}
       end)
 
@@ -242,7 +245,15 @@ defmodule EhOsContract.Consumer do
   @spec upcast(map(), Event.t()) :: Event.t()
   def upcast(%{kind: :contract} = model, row) do
     declaration = declaration!(model, row)
-    {payload, _paths} = Upcast.read(declaration, row)
+
+    {payload, _paths} =
+      Upcast.read(
+        declaration,
+        row,
+        implementation(model, declaration),
+        Codec.values(model.domain)
+      )
+
     %{row | payload: payload, schema_version: declaration.schema_version}
   end
 
@@ -264,6 +275,15 @@ defmodule EhOsContract.Consumer do
   end
 
   def newer?(_row), do: false
+
+  # The implementation of the unit that declares `declaration`, found only when a step by a
+  # function asks for it (plan DD, V2, #338).
+  defp implementation(model, declaration) do
+    fn ->
+      unit = Enum.find(model.units, &(&1.name == declaration.unit))
+      Implementations.fetch!(model, unit.kind, unit.name)
+    end
+  end
 
   defp declaration!(model, row) do
     Enum.find(model.events, &(&1.type == row.type)) ||

@@ -34,7 +34,7 @@ defmodule EhOsContract.Implementation do
 
   | Kind | Callbacks |
   | --- | --- |
-  | aggregate, dcb | one per command, `(command, state) :: decision`, or `(command, state, reads) :: decision` for a command that `reads:` entities; `evolve/2` when the unit declares a state |
+  | aggregate, dcb | one per command, `(command, state) :: decision`, or `(command, state, reads) :: decision` for a command that `reads:` entities; `evolve/2` when the unit declares a state; one per function an event's `upcast … function:` names, `(map) :: map`, a row's payload at one version, as the log stores it, to the next |
   | policy | one per handled event, `(event) :: issued` |
   | effect | one per handled event, `(event) :: :ok \\| {:error, term}` |
   | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
