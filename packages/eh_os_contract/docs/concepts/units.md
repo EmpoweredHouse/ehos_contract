@@ -291,7 +291,7 @@ changes only with a new version of its fields, `schema_version`, and a step, `up
 a row of the version before reads in the new one. The rows themselves never change.
 
 ```elixir
-event :demand_opened, "Zapotrzebowanie otwarte", schema_version: 2 do
+event :demand_opened, "Demand opened", schema_version: 2 do
   field :demand_reason, :demand_reason
   field :priority, :string
 
@@ -307,11 +307,16 @@ row of version 1 goes through both steps in turn.
   renamed: the engine opens its sealed value under the name it was sealed with.
 - **`default:`** gives a value to a field the older version did not have, written as the log stores
   one (an enum's member as its name, a date as text). A row that holds the field keeps its own.
+  A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
 - **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
 
-A step covers what it can say in words. The compiler refuses a version without its step, a step to a
-field the event will not have, and a step that renames or defaults the unit's identity or gives a
-personal field a default ([`V1`](../contract.md#refusals-v)–[`V3`](../contract.md#refusals-v)).
+A step covers what it can say in words. What the log keeps beside a row's payload by a field's name
+cannot be carried across: the unit's identity, and every field the log tags each row with — a
+required, non-personal `:id`, date or timestamp, by which a boundary, a process and the report find
+rows. A change to one of those is a new event. The compiler refuses a version without its step, a step
+to a field the event will not have, a step that renames onto or defaults a field the log keeps, a
+default for personal data, and a default that is not a value of its field
+([`U1`](../contract.md#refusals-u)–[`U4`](../contract.md#refusals-u)).
 
 ## What the compiler refuses
 
@@ -325,7 +330,7 @@ The full table is in [the guide](../contract.md). The refusals a unit meets most
 - an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
   ask the process owner for;
 - a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t)–[`T4`](../contract.md#refusals-t));
-- an event above version 1 without a step from each version below it ([`V1`](../contract.md#refusals-v));
+- an event above version 1 without a step from each version below it ([`U1`](../contract.md#refusals-u));
 - in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
   kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
   of a rule it does not reject on ([`I5`](../contract.md#refusals-i)).

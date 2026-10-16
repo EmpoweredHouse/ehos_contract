@@ -1396,7 +1396,10 @@ rows of that type and no upcaster covers the old version.
 `schema_version` n carries a step per older version, `upcast from: k, rename: [old: :new], default:
 [field: value]`, and a row is read through the steps from its own version up; the log is never
 rewritten. The compiler refuses a version without its step, a step to a field the event will not
-have, and a step that renames or defaults the identity or gives a personal field a default (`V1`–`V3`).
+have, a step that renames onto or defaults what the log keeps by a field's name (the identity, and
+every field it tags rows with, which old rows keep under their old names), a default for personal
+data, and a default that is not a value of its field (`U1`–`U4`). A field the log tags changes only
+as a new event.
 The declaration is the rule rather than the callback because the engine has to understand two
 things a function would hide: the path a renamed personal field was sealed under (the AEAD's
 associated data holds it, §14), and, for the schema lock that replaces the digest check above (V3,

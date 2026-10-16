@@ -54,13 +54,16 @@ and the `ehos-dev:release` skill makes one.
   `schema_version`, `upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]`. A row is read
   through the steps from its own version up, by every consumer and by a relay before it publishes. The log is never
   rewritten, and a renamed personal field opens under the name it was sealed with. A `default:` is written as the
-  log stores a value. The compiler refuses a version without its step (`V1`), a step to a field the event will not
-  have (`V2`), and a step that renames or defaults the unit's identity or gives a personal field a default (`V3`).
+  log stores a value. The compiler refuses a version without its step (`U1`), a step to a field the event will not
+  have (`U2`), a step that renames onto or defaults what the log keeps by a field's name — the unit's identity, and
+  every required, non-personal `:id`, date or timestamp it tags rows with — or gives personal data a default (`U3`),
+  and a default that is not a value of its field (`U4`). A relay refuses to publish a sealed value, which a field
+  that was personal when its row was written would carry.
 
 ### Changed
 
 - **Breaking:** an event above `schema_version: 1` needs an `upcast from:` each version below it, or the contract
-  no longer compiles (`V1`). One whose fields kept their shape takes an empty step: `upcast from: 1`.
+  no longer compiles (`U1`). One whose fields kept their shape takes an empty step: `upcast from: 1`.
 
 ## [0.5.0] - 2026-10-16
 

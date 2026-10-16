@@ -424,15 +424,16 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `T3` | L2 | a status no `initial` reaches; a `final:` status a transition leaves; a status that is not final with no transition out |
 | `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or final status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
 
-<a id="refusals-v"></a>
+<a id="refusals-u"></a>
 
-### `V`: versions of an event's fields
+### `U`: upcasts, an event's older versions
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `V1` | L2 | an event at `schema_version` n without exactly one `upcast from:` for each version below n, or with an `upcast` from n or later |
-| `V2` | L2 | an `upcast` renaming a field to the name of no field the event will have, to what is not a name, to itself, or two fields to one; a `default:` for a field the event will not have |
-| `V3` | L2 | an `upcast` renaming the unit's identity or giving it a default, or giving a personal field a default |
+| `U1` | L2 | an event at `schema_version` n without exactly one `upcast from:` for each version below n, or with an `upcast` from n or later |
+| `U2` | L2 | an `upcast` renaming a field to the name of no field the event will have, to what is not a name, to itself, one field twice, or two fields to one; a `default:` for a field the event will not have |
+| `U3` | L2, L3 | an `upcast` renaming the unit's identity, or renaming onto or giving a default to a field the log tags rows with (a required, non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one); a default for a personal field, or for a domain value holding personal data |
+| `U4` | L2, L3 | an `upcast` default that is not a value of its field's type, or is nil |
 
 <a id="refusals-c"></a>
 
