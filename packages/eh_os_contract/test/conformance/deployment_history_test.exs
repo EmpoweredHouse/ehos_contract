@@ -338,6 +338,24 @@ defmodule EhOsContract.DeploymentHistoryTest do
              ]
     end
 
+    test "a deploy that changed only the code says so, not that the version moved" do
+      Deployment.record!()
+      [first] = Deployment.all(Promised)
+
+      deployment(%{
+        wiring_version: "rewired",
+        edges: first.edges,
+        declaration_digests: first.declaration_digests,
+        text_digest: first.text_digest,
+        text_digests: first.text_digests,
+        first_seen_at: DateTime.add(first.first_seen_at, 60)
+      })
+
+      assert Report.Sentence.change(Deployment.report(Promised).changed, paths: true) == [
+               "Only the code changed since the previous deployment, not the agreement or its words."
+             ]
+    end
+
     test "a process module's change of words alone is reported, and its wiring's is not" do
       Deployment.record!()
       [first] = Deployment.all(Handling)

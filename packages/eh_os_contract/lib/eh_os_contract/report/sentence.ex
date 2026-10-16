@@ -160,7 +160,7 @@ defmodule EhOsContract.Report.Sentence do
   What changed since the previous deployment (`EhOsContract.Deployment`'s), as
   sentences: when the version moved, the events and, with `paths: true`, the paths
   added and removed, then the declarations and the words that changed; when only the
-  words did, that the agreement did not, and whose words.
+  words did, that the agreement did not, and whose words; when only the code did, that.
 
       iex> EhOsContract.Report.Sentence.change(
       ...>   %{agreement_changed: false, words: ["event:visit_completed"],
@@ -176,6 +176,11 @@ defmodule EhOsContract.Report.Sentence do
         "#{length(words)} (#{Enum.join(words, ", ")})."
     ]
   end
+
+  # A new wiring under the same version and words: the code moved, and nothing the
+  # contract says did.
+  def change(%{agreement_changed: false, words: []}, _opts),
+    do: ["Only the code changed since the previous deployment, not the agreement or its words."]
 
   def change(c, opts) do
     paths =
