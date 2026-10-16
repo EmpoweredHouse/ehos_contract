@@ -638,6 +638,29 @@ defmodule EhOsContract.PagesTest do
       end
     end
 
+    test "show the code only where the model has no word: a stage, a value or a member" do
+      for domain <- Registry.domains() do
+        model = domain.__eh_os_contract_model__()
+
+        unlabelled =
+          for(%{label: nil, name: name} <- model.values, do: "`#{name}`") ++
+            for(
+              %{type: {:enum, members}} <- model.values,
+              member <- members,
+              is_atom(member),
+              do: "`#{member}`"
+            ) ++
+            for process <- Registry.processes(),
+                EhOsContract.Model.fetch(process).domain == domain,
+                %{label: nil, name: name} <- EhOsContract.Model.process(process).stages,
+                do: "`#{name}`"
+
+        for {path, text} <- owner(domain), [span] <- Regex.scan(~r/`[^`]+`/, text) do
+          assert span in unlabelled, "#{inspect(domain)} #{path} shows #{span}"
+        end
+      end
+    end
+
     test "name each declaration by its label, a field by its label alone" do
       pages = owner(ValueRig.Domain)
       event = pages["till/till/events/paid_in.md"]

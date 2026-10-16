@@ -329,9 +329,11 @@ defmodule EhOsContract.Pages do
   defp contract_name(%{audience: :owner} = site, model) do
     context = context_name(site, model.context)
 
-    if Enum.count(site.contracts, &(&1.context == model.context)) > 1,
-      do: "#{context}: #{Enum.map_join(model.units, ", ", &named(site, &1))}",
-      else: context
+    cond do
+      Enum.count(site.contracts, &(&1.context == model.context)) == 1 -> context
+      model.units == [] -> "#{context}: #{slug(model) |> String.replace("_", " ")}"
+      true -> "#{context}: #{Enum.map_join(model.units, ", ", &named(site, &1))}"
+    end
   end
 
   defp contract_name(_site, model), do: code(inspect(model.module))
@@ -351,10 +353,14 @@ defmodule EhOsContract.Pages do
             declaration_path(sibling, :events, original)
           )
         else
-          _ -> "#{code(name)} (received)"
+          _ -> received(site, name)
         end
     end
   end
+
+  # An event another application published, which has no label here.
+  defp received(%{audience: :owner}, _name), do: "an event from another application"
+  defp received(_site, name), do: "#{code(name)} (received)"
 
   defp sibling_event(%{audience: :owner} = site, sibling, name, original) do
     case Enum.find(sibling.events, &(&1.name == original)) do
@@ -565,8 +571,9 @@ defmodule EhOsContract.Pages do
   # When a timer fires, from its declaration (plan N3): its label names what it is for,
   # so the time is the declaration's words, never the label's. P4 holds a timer to
   # exactly one of `wait:` and `at:`.
-  defp when_fires(%{wait: wait}) when wait != nil, do: "#{duration(wait)} after it is set"
-  defp when_fires(%{at: at}), do: "at #{code(at)}"
+  defp when_fires(_site, %{wait: wait}) when wait != nil, do: "#{duration(wait)} after it is set"
+  defp when_fires(%{audience: :owner}, %{at: _at}), do: "at a moment the run holds"
+  defp when_fires(_site, %{at: at}), do: "at #{code(at)}"
 
   # Where a declaration listed on another's page comes from, after its other facts (plan
   # EP1). A declaration with a page of its own says it under its title instead.
@@ -792,10 +799,7 @@ defmodule EhOsContract.Pages do
         code_fact(site, "Identified by #{code(e.identity)}."),
         if(e.source, do: "_Source: #{e.source}_")
       ]),
-      "",
-      "## Fields",
-      "",
-      fields_table(site, e.fields),
+      fields_section(site, "Fields", e.fields),
       section("Referred to by", holders(site, &refers_to?(site, &1, {:entity, e.name})), & &1)
     ]
     |> Enum.reject(&is_nil/1)
@@ -829,7 +833,7 @@ defmodule EhOsContract.Pages do
               do: bullet([link(contract_name(site, m), contract_path(m))])
       end,
       section("Relations", relations, & &1),
-      glossary(c, d)
+      glossary(site, c)
     ]
   end
 
@@ -851,9 +855,33 @@ defmodule EhOsContract.Pages do
     ])
   end
 
-  defp glossary(%{terms: []}, _domain), do: ["", "## Glossary", "", "_No terms._"]
+  # The term's word in another context, by that context's name or, for the owner, its
+  # label.
+  defp across(%{audience: :owner} = site, name, text) do
+    for relation <- site.domain.relations,
+        [first_end, second_end] = EhOsContract.Domain.Build.sides(relation),
+        [first, second] <- Map.get(relation, :terms, []),
+        {own, word, other, other_word} <- [
+          {first_end, first, second_end, second},
+          {second_end, second, first_end, first}
+        ],
+        own == name and word == text do
+      where = context_or_external_name(site, other)
+      ~s|_In #{where} (#{relation_type(site, relation)}): "#{other_word}"._|
+    end
+  end
 
-  defp glossary(c, domain) do
+  defp across(site, name, text), do: EhOsContract.Glossary.across(site.domain, name, text)
+
+  defp context_or_external_name(site, name) do
+    if Enum.any?(site.domain.contexts, &(&1.name == name)),
+      do: context_name(site, name),
+      else: external_name(site, name)
+  end
+
+  defp glossary(_site, %{terms: []}), do: ["", "## Glossary", "", "_No terms._"]
+
+  defp glossary(site, c) do
     [
       "",
       "## Glossary",
@@ -864,7 +892,7 @@ defmodule EhOsContract.Pages do
           "",
           t.definition,
           avoid(t.avoid),
-          for(line <- EhOsContract.Glossary.across(domain, c.name, t.text), do: ["", line]),
+          for(line <- across(site, c.name, t.text), do: ["", line]),
           if(t.source, do: ["", "_Source: #{t.source}_"], else: []),
           for tr <- t.translations do
             ["", "_#{tr.language}_: **#{tr.text}** — #{tr.definition}", avoid(tr.avoid)]
@@ -987,7 +1015,7 @@ defmodule EhOsContract.Pages do
         bullet([target, ": " | joined(consumed)])
 
       %{kind: :published} = c ->
-        "- #{code(c.from)}, received as #{code(c.as)}"
+        code_fact(site, "- #{code(c.from)}, received as #{code(c.as)}")
     end)
   end
 
@@ -1007,32 +1035,54 @@ defmodule EhOsContract.Pages do
   # A name a scenario uses, as the page names it: the code's, or for the owner the label
   # of the declaration of the contract it names.
   defp said(%{audience: :owner} = site, model, key, name) do
-    declarations =
+    found =
       case key do
         :events ->
-          model.events ++ Enum.flat_map(site.contracts, & &1.events)
+          owner_event(site, model, name)
 
         :commands ->
-          model.commands
+          Enum.find(model.commands, &(&1.name == name))
 
         :rules ->
-          Enum.flat_map(model.units, & &1.invariants) ++ all_constraints(model)
+          Enum.find(
+            Enum.flat_map(model.units, & &1.invariants) ++ all_constraints(model),
+            &(&1.name == name)
+          )
 
         :timers ->
-          Enum.flat_map(model.process_managers, & &1.timers)
+          Enum.find(timers(model), &(&1.name == name))
 
         :triggers ->
-          model.commands ++
-            model.queries ++ model.events ++ Enum.flat_map(site.contracts, & &1.events)
+          Enum.find(model.commands ++ model.queries ++ timers(model), &(&1.name == name)) ||
+            owner_event(site, model, name)
       end
 
-    case Enum.find(declarations, &(&1.name == name)) do
-      nil -> code(name)
-      d -> named(site, d)
+    cond do
+      found -> named(site, found)
+      key in [:events, :triggers] and published?(model, name) -> received(site, name)
+      true -> code(name)
     end
   end
 
   defp said(_site, _model, _key, name), do: code(name)
+
+  defp published?(model, name),
+    do: Enum.any?(model.consumes, &(&1.kind == :published and &1.as == name))
+
+  defp timers(model), do: Enum.flat_map(model.process_managers, & &1.timers)
+
+  # An event as the contract names it: its own, or a sibling's it consumes, under the
+  # name it has there.
+  defp owner_event(site, model, name) do
+    with nil <- Enum.find(model.events, &(&1.name == name)),
+         {:contract, from, original} <- Model.consumed(model, name),
+         %{} = sibling <- Enum.find(site.contracts, &(&1.module == from)) do
+      Enum.find(sibling.events, &(&1.name == original))
+    else
+      %{} = event -> event
+      _ -> nil
+    end
+  end
 
   defp all_constraints(model) do
     for(c <- model.commands ++ model.queries, x <- Map.get(c, :constraints, []), do: x) ++
@@ -1124,7 +1174,7 @@ defmodule EhOsContract.Pages do
           )
         ),
         if(p.accountable, do: accountable(site, p.accountable)),
-        if(p.deadline, do: deadline(p.deadline))
+        if(p.deadline, do: deadline(site, p.deadline))
       ]),
       process_stages(site, p, events),
       section(
@@ -1145,17 +1195,18 @@ defmodule EhOsContract.Pages do
     end
   end
 
-  defp deadline(d) do
+  defp deadline(site, d) do
     "Deadline: #{duration(Map.delete(d, :unverified))} from the start of a run." <>
-      unconfirmed(d)
+      unconfirmed(site, d)
   end
 
   # What the conformance report leaves out, said where it is declared.
-  defp unconfirmed(%{unverified: true}),
-    do:
-      " Not confirmed by the process owner (`unverified`), so the conformance report leaves it out."
+  defp unconfirmed(site, %{unverified: true}) do
+    marked = if site.audience == :owner, do: "", else: " (`unverified`)"
+    " Not confirmed by the process owner#{marked}, so the conformance report leaves it out."
+  end
 
-  defp unconfirmed(_declaration), do: ""
+  defp unconfirmed(_site, _declaration), do: ""
 
   # The stages in their order, each with its events grouped by the contract that
   # declares them. A stage none of whose includes resolves says so.
@@ -1218,7 +1269,7 @@ defmodule EhOsContract.Pages do
       event.(pr.eventually),
       if(pr.within, do: " within #{duration(pr.within)}"),
       if(pr.or_else, do: [", or else ", event.(pr.or_else)]),
-      if(pr.unverified, do: [".", unconfirmed(pr)]),
+      if(pr.unverified, do: [".", unconfirmed(site, pr)]),
       source_note(pr)
     ])
   end
@@ -1486,7 +1537,7 @@ defmodule EhOsContract.Pages do
         issues = Enum.map(t.issues, &command_link(site, model, &1))
         arrow = if issues == [], do: [], else: [" → " | joined(issues)]
 
-        bullet(["#{labelled(site, t)} (#{when_fires(t)})" | arrow ++ [source_note(t)]])
+        bullet(["#{labelled(site, t)} (#{when_fires(site, t)})" | arrow ++ [source_note(t)]])
       end),
       section("Ends on", pm.ends_on, &bullet([event_link(site, model, &1)])),
       rules(site, pm),
@@ -1575,11 +1626,16 @@ defmodule EhOsContract.Pages do
 
         named =
           for x <- systems do
+            external = Enum.find(site.domain.externals, &(&1.name == x))
+            declared = if external, do: Map.get(external, :operations, []), else: []
+
             ops =
-              for %{external: ^x, name: op} <- operations,
-                  external = Enum.find(site.domain.externals, &(&1.name == x)),
-                  operation = external && Enum.find(external.operations, &(&1.name == op)),
-                  do: if(operation, do: named(site, operation), else: code(op))
+              for %{external: ^x, name: op} <- operations do
+                case Enum.find(declared, &(&1.name == op)) do
+                  nil -> code(op)
+                  operation -> named(site, operation)
+                end
+              end
 
             external_name(site, x) <> if(ops == [], do: "", else: " (#{Enum.join(ops, ", ")})")
           end
