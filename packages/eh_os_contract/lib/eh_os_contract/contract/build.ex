@@ -23,7 +23,7 @@ defmodule EhOsContract.Contract.Build do
   # (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
   # and `correlate`, and a scenario's givens and expectations.
   # Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
-  # one, `"scenario:*"`, since nothing names them.
+  # one, `"scenario:*"`, since nothing names them, over the scenarios as a set.
   #
   # **The digest does not see the words.** `version` and `digests` hash what the
   # contract allows; its labels, `source:` and scenarios' descriptions have their own,
@@ -443,7 +443,10 @@ defmodule EhOsContract.Contract.Build do
       if collections.scenarios != [],
         do: [
           {"scenario:*",
-           Digest.hash(Enum.map(collections.scenarios, &of.(:scenarios, digest_form(&1))))}
+           collections.scenarios
+           |> Enum.map(&of.(:scenarios, digest_form(&1)))
+           |> Enum.sort_by(&Digest.canonical/1)
+           |> Digest.hash()}
         ]
 
     Map.new(

@@ -168,7 +168,13 @@ defmodule EhOsContract.Process.Build do
         for(p <- promises, do: {"promise:#{p.name}", Digest.hash(of.(:promises, digest_form(p)))}) ++
         if(scenarios == [],
           do: [],
-          else: [{"scenario:*", Digest.hash(Enum.map(scenarios, &of.(:scenarios, &1)))}]
+          else: [
+            {"scenario:*",
+             scenarios
+             |> Enum.map(&of.(:scenarios, &1))
+             |> Enum.sort_by(&Digest.canonical/1)
+             |> Digest.hash()}
+          ]
         )
     )
   end

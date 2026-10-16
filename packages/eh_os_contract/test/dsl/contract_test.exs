@@ -470,6 +470,44 @@ defmodule EhOsContract.ContractTest do
                ["command:complete_visit", "event:visit_completed", "scenario:*", "unit:visit"]
     end
 
+    test "does not see the order of scenarios, in the version or the words" do
+      scenarios = fn name, order ->
+        [one, two] =
+          Enum.map(["gabinet 1", "gabinet 2"], fn room ->
+            """
+              scenario "wizyta w: #{room}" do
+                command :complete_visit, %{visit_id: "v-1"}
+                expect :visit_completed, %{visit_id: "v-1", room: "#{room}"}
+              end
+            """
+          end)
+
+        compile("""
+        defmodule EhOsContract.ContractTest.#{name} do
+          use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :complete_visit, "Zakończ wizytę", by: :reception, emits: :visit_completed
+            event :visit_completed, "Wizyta zakończona" do
+              field :room, :string
+            end
+          end
+
+        #{if order == :forward, do: one <> two, else: two <> one}
+        end
+        """)
+
+        Model.fetch(Module.concat(__MODULE__, name))
+      end
+
+      forward = scenarios.("ScenariosForward", :forward)
+      backward = scenarios.("ScenariosBackward", :backward)
+
+      assert forward.digests == backward.digests
+      assert forward.text_digests == backward.text_digests
+    end
+
     test "moves when a field is added, and the words' digest does not" do
       before = visit("FieldBefore", @words)
       after_ = visit("FieldAfter", @words, "field :doctor, :string, optional: true")
