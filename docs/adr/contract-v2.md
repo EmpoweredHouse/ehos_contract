@@ -995,6 +995,23 @@ between DSL modules record no compile dependency, §8):
   > `__eh_os_implementation__/0`. L5 does not repeat L3 yet: both projects in this repository register the
   > compiler, and that repetition comes with the rest of L5 (E10).
 
+  > *Changed 16 October 2026, plan DD, M1 ([#316](https://github.com/EmpoweredHouse/eh-os-contract/issues/316)).*
+  > **The context map holds the contracts to it.** Until now a relation between two contexts was checked only by
+  > `check`, which warned of a reference against it (`relation-against-references`, plan EL2). Three L3 rules
+  > replace that warning:
+  > - **X11** refuses a reference against a directed relation, from its upstream context into its downstream
+  >   one, or any reference across `separate_ways`.
+  > - **X12** refuses a read model, an effect or a process manager taking a sibling's event, or a boundary
+  >   consulting one, across an `anticorruption_layer`: the downstream context translates through a policy first.
+  > - **X13** refuses consuming an event the sibling does not `publish` across an `open_host_service` or a
+  >   `published_language`.
+  >
+  > A reference is consuming a sibling, a field naming an entity or a unit another context owns, or a field typed
+  > with a value another context declares, directly or through another value's fields. A reference with no
+  > relation stays a warning of `check`, since a domain may be mapped a piece at a time. Inside one application
+  > the published event is taken from the log whole; enforcing the publication's `fields:` there was rejected (the
+  > user's decision of 16 October, recorded on the issue).
+
 **L4 — implementation macros** (`CompileError` at the call site). I1: the unit exists. I2: every callback is
 defined. I3: `evolve` is covered. I4: `emit` gets literals allowed there. I5: `reject` names an invariant in
 the command's `rejects:`. I6: `issue` names commands in `issues:`. I7: each macro only where its kind allows
