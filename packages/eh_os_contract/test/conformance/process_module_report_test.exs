@@ -189,7 +189,10 @@ defmodule EhOsContract.ProcessModuleReportTest do
     end
 
     test "applies the process rules to a process module" do
-      assert EhOsContract.Check.process_module_findings([AccountReview]) == []
+      # Its stages have no label on purpose: `StageOrderTest` reads their names as what a
+      # stage without one is called. That notice is `CheckTest`'s.
+      assert EhOsContract.Check.process_module_findings([AccountReview])
+             |> Enum.reject(&(&1.rule == "owner-view-without-label")) == []
 
       %{module: unowned} =
         EhOsContract.DslCase.compile_process(

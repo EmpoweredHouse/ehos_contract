@@ -47,6 +47,19 @@ defmodule EhOsContract.CheckTest do
                  process_findings(ProcessShapes.Handling),
                do: message
              )
+
+    # At the stage, not at the module's `use`.
+    assert [{"handling.ex", 20} | _] =
+             for(
+               %{rule: "owner-view-without-label"} = finding <-
+                 Check.process_module_findings([ProcessShapes.Handling]),
+               do: place(finding)
+             )
+  end
+
+  defp place(finding) do
+    {file, line} = EhOsContract.Check.Finding.place(finding)
+    {Path.basename(file), line}
   end
 
   test "a process with no addressee, and a deadline its owner has not confirmed" do
