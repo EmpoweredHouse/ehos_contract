@@ -64,7 +64,9 @@ Most declarations need one to compile, and a field without one is not for the ow
 stage of a process module, a value of the domain and a member of its enum written as a
 bare atom may go without, and then the owner would read the name in the code,
 `departure`, where the business says "Departure of the patient". A promise has no label
-at all: it is read by its rule, the events it waits for, in their labels.
+at all: it is read by its rule, the events it waits for, in their labels. The owner's
+pages (`mix eh_os_contract.pages --audience owner`) and the owner's view of the graph
+(its switch "Owner") both read the model this way.
 
 ## `contract-without-implementation`
 

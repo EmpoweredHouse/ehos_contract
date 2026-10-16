@@ -17,6 +17,19 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   document's `digest` is of another version and is not drawn, as its schema says. `id`
   is the root element's DOM id, so it is unique on the page.
 
+  **`audience`** is who reads the picture: `:engineering`, the default, or `:owner`, the
+  business owner, who reads the model in the client's words. For the owner, the cards
+  and the panel say each declaration by its label, a field by its label alone, and
+  leave out what only the code reads: names and modules in code, the stored type,
+  delivery, idempotency and the keys runs are told by, the grants EHOS gives, roles and
+  scopes, identities, fields with no label, a scenario's data, and the wire between
+  applications. A contract is read by its context's label and a promise by its rule. The
+  numbers from the log stay. A declaration with no label is still shown by its name, and
+  `mix eh_os_contract.check` notes each (`owner-view-without-label`). It is a way of
+  reading, not a permission: the page still holds the ids, which name the code, and the
+  document whole. Who may see what is the host's to decide. A landscape read by the owner
+  has no wire between its domains to draw.
+
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
   `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, `:landscape`, or `:all`, every node
@@ -84,7 +97,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Icons, Lookup, Marks, Panel, Places, View}
+  alias EhOsContract.GraphRenderer.{Audience, Icons, Lookup, Marks, Panel, Places, View}
 
   @impl true
   def mount(socket),
@@ -92,28 +105,36 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # What an update leaves out stays as it was: a `send_update/2` with only an overlay keeps
   # the document and the view, and one without an overlay keeps the overlay. `:given` is
-  # the overlay as the host passed it, `:overlay` the one drawn.
+  # the overlay as the host passed it, `:overlay` the one drawn; `:source` the document as
+  # the host passed it, `:document` the one its audience reads.
   @impl true
   def update(assigns, socket) do
-    socket = assign(socket, Map.take(assigns, [:id, :document]))
+    socket = assign(socket, Map.take(assigns, [:id]))
     socket = assign(socket, :opener, Map.get(assigns, :open, socket.assigns[:opener]))
-    document = Map.fetch!(socket.assigns, :document)
+    source = Map.get_lazy(assigns, :document, fn -> Map.fetch!(socket.assigns, :source) end)
+
+    audience =
+      assigns |> Map.get(:audience, socket.assigns[:audience] || :engineering) |> Audience.cast()
+
     spec = Map.get(assigns, :view, socket.assigns[:spec] || :all)
     given = Map.get(assigns, :overlay, socket.assigns[:given])
 
-    # The panel's joins, made once a document: reused only for the same digest, so a
-    # document without one — a host may build one by hand — gets its own each time.
-    digest = document["digest"]
+    # The panel's joins, made once a document and audience: reused only for the same
+    # digest, so a document without one — a host may build one by hand — gets its own each
+    # time.
+    of = {source["digest"], audience}
+
+    document = Audience.read(source, audience)
 
     lookup =
-      if digest != nil and socket.assigns[:lookup] != nil and
-           socket.assigns[:lookup_of] == digest,
-         do: socket.assigns.lookup,
-         else: Lookup.new(document)
+      if source["digest"] != nil and socket.assigns[:lookup_of] == of,
+        do: socket.assigns.lookup,
+        else: Lookup.new(document)
 
     {:ok,
      socket
-     |> assign(lookup: lookup, lookup_of: digest, spec: spec, given: given)
+     |> assign(source: source, document: document, audience: audience)
+     |> assign(lookup: lookup, lookup_of: of, spec: spec, given: given)
      |> build()
      |> refresh()}
   end
@@ -121,10 +142,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   # The view and what the log says over it: the overlay the host gave, when it is of this
   # version of the document and the reader has the log on.
   defp build(socket) do
-    %{document: document, spec: spec, given: given, log: log} = socket.assigns
+    %{document: document, spec: spec, given: given, log: log, audience: audience} = socket.assigns
     current = given && given["document_digest"] == document["digest"]
     overlay = if current && log, do: given
-    view = View.build(document, spec, overlay)
+    view = View.build(document, spec, overlay, audience)
 
     assign(socket,
       view: view,
@@ -398,6 +419,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         overlay={@overlay}
         target={@myself}
         open={@opens}
+        audience={@audience}
       />
     </div>
     """

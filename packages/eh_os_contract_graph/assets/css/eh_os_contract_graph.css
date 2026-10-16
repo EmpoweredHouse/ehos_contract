@@ -961,10 +961,25 @@
   gap: 10px;
 }
 
+/* The viewpoints' tabs, and at the other end of their line the switch of who reads. */
+.ehg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
 .ehg-tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--border-soft);
+}
+
+.ehg-audience {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  padding-bottom: 4px;
 }
 
 .ehg-tab {

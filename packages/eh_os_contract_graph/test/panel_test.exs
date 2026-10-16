@@ -19,8 +19,9 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     )
   end
 
-  # What a reader sees in the panel `id` opens in `spec`, through a canvas, with `overlay`.
-  defp open(name_or_document, id, spec \\ :all, overlay \\ nil) do
+  # What a reader sees in the panel `id` opens in `spec`, through a canvas, with `overlay`,
+  # as `audience` reads it.
+  defp open(name_or_document, id, spec \\ :all, overlay \\ nil, audience \\ :engineering) do
     document =
       if is_map(name_or_document),
         do: name_or_document,
@@ -28,7 +29,12 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
     {:ok, live, _html} =
       live_isolated(build_conn(), TestLive,
-        session: %{"document" => document, "view" => spec, "overlay" => overlay}
+        session: %{
+          "document" => document,
+          "view" => spec,
+          "overlay" => overlay,
+          "audience" => audience
+        }
       )
 
     live |> with_target("#graph") |> render_click("select", %{"id" => id})
@@ -235,7 +241,8 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
             ^add_line ->
               Map.put(command, "reads", [
-                %{"name" => "service", "field" => "service_id", "entity" => service}
+                %{"name" => "service", "field" => "service_id", "entity" => service},
+                %{"name" => "rate_card", "field" => "payer_id"}
               ])
 
             _ ->
@@ -297,6 +304,24 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ ", at 2026-10-05T09:00:00+02:00"
       assert text =~ "The application keeps Usługa entity service_id service-ultrasound"
       assert text =~ "specialist-ewa issues"
+    end
+
+    # Plan DD, L4 (#326): the person a scenario issues as, and a read of no entity, are names
+    # the owner does not read.
+    test "for the owner, a scenario names its actor alone, and a read its entity alone" do
+      document = with_main_keys()
+      unit = {:unit, "unit:rehmed.settlement:visit_settlement"}
+
+      id =
+        "emits:command:rehmed.settlement:hand_over_visit:event:rehmed.settlement:visit_handed_over"
+
+      text = open(document, id, unit, nil, :owner)
+      assert text =~ "Specjalista actor issues"
+      refute text =~ "specialist-ewa"
+
+      text = open(document, "command:rehmed.settlement:add_service_line", :all, nil, :owner)
+      assert text =~ "Reads before deciding Usługa entity"
+      refute text =~ "rate_card"
     end
   end
 
@@ -777,5 +802,156 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     assert Enum.find(messaging.nodes, &(&1.id == "timer:messaging:loan:due")).lines == [
              "after 14 days"
            ]
+  end
+
+  # Plan DD, L4 (#326): the panel as the business owner reads it.
+  describe "the owner's view" do
+    alias EhOsContract.GraphRenderer.Audience
+
+    # Every source a document cites, wherever it sits.
+    defp sources(%{} = map),
+      do:
+        Enum.flat_map(map, fn
+          {"source", s} when is_binary(s) -> [s]
+          {_k, v} -> sources(v)
+        end)
+
+    defp sources(list) when is_list(list), do: Enum.flat_map(list, &sources/1)
+    defp sources(_other), do: []
+
+    defp owner(name, id, spec \\ :all, overlay \\ nil), do: open(name, id, spec, overlay, :owner)
+
+    test "every panel of every fixture, read by the owner, shows no code, no field's name and no scenario's data" do
+      for name <- Fixtures.names(),
+          document = Fixtures.document(name),
+          read = Audience.read(document, :owner),
+          lookup = Lookup.new(read),
+          {spec, _title} <- [{:all, nil} | View.views(document)],
+          view = View.build(document, spec, nil, :owner),
+          picked <-
+            Enum.map(view.nodes, &{:node, &1}) ++
+              Enum.map(view.groups, &{:group, &1}) ++ Enum.map(view.relations, &{:relation, &1}) do
+        html =
+          render_component(&Panel.panel/1,
+            picked: picked,
+            lookup: lookup,
+            target: "#graph",
+            audience: :owner
+          )
+          |> LazyHTML.from_fragment()
+
+        where = "#{name} #{inspect(spec)} #{elem(picked, 1).id}"
+
+        for selector <- ["code", ".ehg-field-name", ".ehg-data", ".ehg-panel-name"],
+            do: assert(Enum.count(LazyHTML.query(html, selector)) == 0, "#{where}: #{selector}")
+
+        # A name in code is left only where its declaration has no label, which `check`
+        # notes.
+        unlabelled =
+          for {_kind, group} <- read["nodes"],
+              n <- group,
+              n["label"] == nil,
+              into: MapSet.new(),
+              do: n["name"]
+
+        # A source is the client's reference, which may read like code ("cf.pdf").
+        text =
+          Enum.reduce(
+            sources(read) |> Enum.uniq() |> Enum.sort_by(&(-String.length(&1))),
+            LazyHTML.text(html),
+            &String.replace(&2, &1, "")
+          )
+
+        leaked =
+          Regex.scan(~r/\b[a-z][a-z0-9]*(?:[_.][a-z][a-z0-9]*)+\b/u, text)
+          |> List.flatten()
+          |> Enum.reject(&MapSet.member?(unlabelled, &1))
+
+        assert leaked == [], "#{where}: #{inspect(leaked)}"
+
+        refute LazyHTML.text(html) =~
+                 ~r/delivered|idempoten|One run per|transaction|In the log as/i,
+               where
+      end
+    end
+
+    test "a process: its deadline, who answers for it and its runs, without the key its runs are told by" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+
+      overlay =
+        put_in(
+          Fixtures.overlay("process.rehmed.clinical_visit"),
+          ["nodes", "process:rehmed.clinical_visit", "runs"],
+          4
+        )
+
+      text = owner(document, "process:rehmed.clinical_visit", :process, overlay)
+
+      refute text =~ "One run per"
+      refute text =~ "rehmed.clinical_visit"
+      assert text =~ "Accountable Manager gabinetu actor"
+      # A contract by its context's label, a promise by its rule.
+      assert text =~ "Includes events of Umawianie i zasoby contract"
+      assert text =~ "Promises After Pacjent wyszedł z gabinetu, eventually"
+      assert text =~ "within 2 days, or else Usługa nie podlega zgłoszeniu do P1 promise"
+      assert text =~ "From the log 4 runs."
+    end
+
+    test "a promise is titled by its rule, and keeps its verdicts" do
+      promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+      text = owner("process.rehmed.clinical_visit", promise, :process, overlay)
+
+      refute text =~ "medical_event_reported_within_statutory_window"
+
+      # The other way it may be kept is part of the rule, as the owner's pages write it.
+      assert text =~
+               "After Pacjent wyszedł z gabinetu, eventually Wysłano informację do systemu P1 " <>
+                 "within 2 days, or else Usługa nie podlega zgłoszeniu do P1"
+
+      assert text =~ "From the log"
+    end
+
+    test "a reaction: what it takes and issues and its scenarios, without delivery or data" do
+      text =
+        owner(
+          "taxvision.registry_watch",
+          "policy:taxvision.registry_watch:compare_with_registries"
+        )
+
+      assert text =~ "Takes"
+      assert text =~ "Scenarios · 1 odpowiedź rejestrów idzie do porównania"
+      refute text =~ "Delivery"
+      refute text =~ "vat_status"
+
+      text =
+        owner(
+          "taxvision.registry_watch",
+          "process_manager:taxvision.registry_watch:monthly_registry_check"
+        )
+
+      refute text =~ "One run per"
+      refute text =~ "check_at"
+      assert text =~ "fires at a moment the run holds"
+      refute text =~ "delivered at least once"
+    end
+
+    test "an effect says what it calls, and nothing of its delivery" do
+      text =
+        owner("rehmed.statutory_reporting", "effect:rehmed.statutory_reporting:send_p1_report")
+
+      assert text =~
+               "Calls Rejestr zdarzeń medycznych P1 external: Przyjmij zgłoszenie zdarzenia medycznego"
+
+      refute text =~ "at least once"
+      refute text =~ "harmless"
+    end
+
+    test "an engineer's panel is as it was" do
+      text =
+        open("rehmed.statutory_reporting", "effect:rehmed.statutory_reporting:send_p1_report")
+
+      assert text =~ "After the transaction, delivered at least once"
+    end
   end
 end

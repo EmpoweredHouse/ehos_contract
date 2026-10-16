@@ -223,4 +223,71 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
 
     assert text(page(view), ".ehg-path [aria-current]") =~ "rehmed.settlement"
   end
+
+  # Plan DD, L4 (#326): the switch of who reads, over the canvas.
+  describe "the owner's view" do
+    defp read_as(view, words) do
+      view |> element(".ehg-audience button", words) |> render_click()
+      render_async(view)
+    end
+
+    defp panel_of(view, id) do
+      view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
+      text(page(view), ".ehg-panel")
+    end
+
+    test "starts as the engineer reads it, and the switch reads the process for the owner and back" do
+      view = start()
+      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
+
+      go(view, "Processes")
+      view |> element(".ehg-places button", "Wizyta") |> render_click()
+      render_async(view)
+
+      process = "process:rehmed.clinical_visit"
+      assert panel_of(view, process) =~ "One run per"
+
+      read_as(view, "Owner")
+      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Owner"
+      owner = text(page(view), ".ehg-panel")
+
+      refute owner =~ "One run per"
+      refute owner =~ "visit_id"
+      # The log's numbers stay.
+      assert owner =~ "From the log"
+      assert view |> page() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() > 0
+      # The path names the process by its label.
+      assert text(page(view), ".ehg-path [aria-current]") =~ "Wizyta"
+
+      read_as(view, "Engineering")
+      assert text(page(view), ".ehg-panel") =~ "One run per"
+    end
+
+    test "a host starts it for the owner, and its next render keeps the reader's switch" do
+      view = start(%{"audience" => :owner})
+      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Owner"
+
+      # A contract is read by its context's label, and has no name in code under it.
+      settlement =
+        view |> page() |> LazyHTML.query(~s([data-ehg-node="contract:rehmed.settlement"]))
+
+      assert LazyHTML.text(settlement) =~ "Rozliczenia"
+      assert settlement |> LazyHTML.query(".ehg-name") |> Enum.count() == 0
+      refute text(page(view), ".ehg-actors") =~ "Role in EHOS"
+
+      read_as(view, "Engineering")
+      send(view.pid, :render)
+      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
+    end
+
+    test "an audience the explorer does not know is refused by name" do
+      assert_raise ArgumentError, ~r/:engineering or :owner, got: :manager/, fn ->
+        EhOsContract.GraphRenderer.Audience.cast(:manager)
+      end
+
+      view = start()
+      view |> with_target("#explorer") |> render_click("audience", %{"to" => "manager"})
+      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
+    end
+  end
 end

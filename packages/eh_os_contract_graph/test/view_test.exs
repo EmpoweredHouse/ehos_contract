@@ -658,4 +658,58 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert for(%{kind: "actor"} = a <- view.nodes, do: a.id) == ["actor:Rehmed.Domain:manager"]
     end
   end
+
+  # Plan DD, L4 (#326): what a view draws for the business owner.
+  describe "build/4 for the owner" do
+    test "a card says its label alone, and nothing only the code reads is drawn" do
+      for name <- Fixtures.names(),
+          document = Fixtures.document(name),
+          {spec, _title} <- View.views(document),
+          view = View.build(document, spec, nil, :owner) do
+        where = "#{name} #{inspect(spec)}"
+
+        assert Enum.all?(view.nodes, &(&1.label == nil or &1.name == nil)), where
+        refute Enum.any?(view.nodes, &(&1.kind == "publication")), where
+        refute Enum.any?(view.nodes, &(&1.foot && &1.foot =~ ~r/^[a-z_]+\.[a-z_.]+$/)), where
+        refute Enum.any?(view.relations, &(&1.words && &1.words =~ ~r/async|one run per/)), where
+
+        refute Enum.any?(view.nodes, fn n -> Enum.any?(n.lines, &(&1 =~ "one run per")) end),
+               where
+      end
+    end
+
+    test "a process's event says the context of its contract, and its card no key of a run" do
+      document = Fixtures.document("process.rehmed.clinical_visit")
+      view = View.build(document, :process, nil, :owner)
+
+      event = Enum.find(view.nodes, &(&1.id == "event:rehmed.scheduling:visit_completed"))
+      assert event.label == "Pacjent wyszedł z gabinetu"
+      assert event.name == nil
+      assert event.foot == "Umawianie i zasoby"
+
+      process = Enum.find(view.nodes, &(&1.kind == "process"))
+      # The engineer reads "one run per visit_id" there; the fixture declares no deadline.
+      assert process.lines == []
+    end
+
+    test "an event received from another application, with no label, says where it comes from" do
+      document =
+        update_in(Fixtures.document("messaging"), ["nodes", "event"], fn events ->
+          for e <- events,
+              do: if(e["id"] == "event:messaging:copy_lent", do: %{e | "label" => nil}, else: e)
+        end)
+
+      card = card(View.build(document, :contract, nil, :owner), "event:messaging:copy_lent")
+
+      assert card.label == "An event from another application"
+      assert card.name == nil
+    end
+
+    test "the engineer's view is the one before the switch" do
+      for name <- Fixtures.names(),
+          document = Fixtures.document(name),
+          {spec, _title} <- View.views(document),
+          do: assert(View.build(document, spec, nil, :engineering) == View.build(document, spec))
+    end
+  end
 end
