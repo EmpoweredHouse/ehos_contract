@@ -480,6 +480,12 @@
 .ehg-legend-line[data-look=thick] path:first-child {
   stroke-width: 2.5px;
 }
+.ehg-legend-line[data-look=observed] svg {
+  stroke: var(--error-ink);
+}
+.ehg-legend-line[data-look=observed] .ehg-legend-head {
+  fill: var(--error-ink);
+}
 .ehg-card:focus-visible,
 .ehg-relation:focus-visible,
 .ehg-card.is-selected,

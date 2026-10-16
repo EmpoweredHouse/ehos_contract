@@ -143,6 +143,23 @@ const loop = (card, label) => {
   )
 }
 
+// An arrow from start to end bowed to one side, so it does not lie on a straight one between the same two boxes,
+// the longer the further. Its label sits near where it starts, just out of the box it leaves: one that spans
+// several boxes crosses those between, and a label in its middle would lie on their cards.
+const bow = (id, start, end) => {
+  const [dx, dy] = [end.x - start.x, end.y - start.y]
+  const length = Math.hypot(dx, dy) || 1
+  const reach = Math.max(48, length * 0.2)
+  const [nx, ny] = [-dy / length, dx / length]
+  const control = { x: (start.x + end.x) / 2 + nx * 2 * reach, y: (start.y + end.y) / 2 + ny * 2 * reach }
+  const t = 0.15
+  const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b
+  const at = { x: along(start.x, control.x, end.x), y: along(start.y, control.y, end.y) }
+  // The bow's furthest point, half way to its control point: what it adds to the picture's size.
+  const apex = { x: (start.x + end.x) / 4 + control.x / 2, y: (start.y + end.y) / 4 + control.y / 2 }
+  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at.x, y: at.y, apex }
+}
+
 // Where the line from a box's centre towards a point leaves the box.
 const border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y]
@@ -341,6 +358,7 @@ export const EhOsContractGraph = {
       id: el.dataset.ehgRelation,
       from: el.dataset.from,
       to: el.dataset.to,
+      observed: el.dataset.observed === "true",
       width: el.offsetWidth,
       height: el.offsetHeight,
     }))
@@ -395,10 +413,12 @@ export const EhOsContractGraph = {
     cards.forEach(({ id, group }) => members.get(group)?.push(id))
     const boxed = ({ from, to }) => members.has(from) || members.has(to)
     let held = 0
+    // What the log shows between two boxes — stages entered the wrong way round — holds nothing: the picture is
+    // the declaration's, and an arrow against it would turn the boxes around.
     labels.forEach((label) => {
       const { id, from, to, width, height } = label
       if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id }, { width, height, labelpos: "c" })
-      if (from === to) return
+      if (from === to || label.observed) return
       for (const v of members.get(from) ?? [from])
         for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {})
     })
@@ -409,6 +429,7 @@ export const EhOsContractGraph = {
       if (boxed(label)) {
         const [a, b] = [graph.node(from), graph.node(to)]
         const [start, end] = [border(a, b), border(b, a)]
+        if (label.observed) return bow(id, start, end)
         return { id, d: `M${start.x},${start.y}L${end.x},${end.y}`, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
       }
       const edge = graph.edge({ v: from, w: to, name: id })
@@ -418,7 +439,16 @@ export const EhOsContractGraph = {
       return { id, d, x: at.x, y: at.y, width, height }
     })
 
-    const { width, height } = graph.graph()
+    // dagre sized the picture without the bowed arrows, which lay nothing out: a bow, or its label, reaching
+    // past an edge widens the picture to hold it.
+    const bounds = graph.graph()
+    let [width, height] = [bounds.width, bounds.height]
+    labels.forEach(({ width: w, height: h }, i) => {
+      const { apex, x, y } = geometry[i]
+      if (!apex) return
+      width = Math.max(width, apex.x + 8, x + w / 2 + 8)
+      height = Math.max(height, apex.y + 8, y + h / 2 + 8)
+    })
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)

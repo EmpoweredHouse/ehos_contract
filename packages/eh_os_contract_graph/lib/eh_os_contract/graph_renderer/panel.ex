@@ -951,6 +951,16 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
+  defp relation_body(%{type: "out_of_order"} = assigns) do
+    ~H"""
+    <p>
+      {if is_integer(@facts["runs"]), do: count(@facts["runs"], "run"), else: "Runs"} entered <.ref id={@facts["from"]} ctx={@ctx} /> before
+      <.ref id={@facts["to"]} ctx={@ctx} />, which the process puts first, in the period the
+      log was read for. Which runs is the application's to find.
+    </p>
+    """
+  end
+
   defp relation_body(%{type: "precedes"} = assigns) do
     ~H"""
     <p>The first stage comes before the second.</p>

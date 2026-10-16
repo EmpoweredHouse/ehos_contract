@@ -25,6 +25,12 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The Graph screen's process picture shows the stages runs entered out of order** (plan DD, stage O2,
+  eh-os-contract#319): an arrow from the later stage back to the earlier one, with how many runs, beside the
+  sentence the status page already gave.
+
 ## [0.3.0] - 2026-10-16
 
 ### Added

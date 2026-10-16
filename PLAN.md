@@ -1902,7 +1902,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | S2 | 3 | scenariusze obietnic | W3, P2b | ☑ #254 | [#251](https://github.com/EmpoweredHouse/eh-os-contract/issues/251) |
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
-| O2 | 3 | a process's stage order on its picture | O1, G1 | ☐ rewritten 16 October | — |
+| O2 | 3 | a process's stage order on its picture | O1, G1 | ◐ `dd/319-stage-order-picture` | [#319](https://github.com/EmpoweredHouse/eh-os-contract/issues/319) |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ⏸ required before an application keeps data it may not lose (13 October) | — |
 | V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |

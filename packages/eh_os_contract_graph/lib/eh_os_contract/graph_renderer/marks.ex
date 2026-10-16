@@ -14,6 +14,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
   # | a lifecycle's transition | `count` | `:untraversed`, `:pending` |
   # | a move the lifecycle does not allow | `count` | `:undeclared` |
+  # | stages runs entered the wrong way round (`observed.relations.out_of_order`) | `runs` | `:undeclared` |
   # | traffic between two contracts | `events` | `:waiting`, `:failing` |
   # | a relation several steps end at (`by_trigger`) | none | none |
   #
@@ -135,6 +136,17 @@ defmodule EhOsContract.GraphRenderer.Marks do
         @none
     end
   end
+
+  @doc """
+  The marks of stages runs entered the wrong way round, from the overlay's entry itself
+  (`observed.relations.out_of_order`), which carries its runs: a process's `relations`
+  hold none. A count that is not a positive integer is none.
+  """
+  @spec out_of_order(map()) :: t()
+  def out_of_order(%{"runs" => runs}) when is_integer(runs) and runs > 0,
+    do: %{count: runs, states: [:undeclared]}
+
+  def out_of_order(_entry), do: %{count: nil, states: [:undeclared]}
 
   defp flags(flags), do: for({state, true} <- flags, do: state)
 end

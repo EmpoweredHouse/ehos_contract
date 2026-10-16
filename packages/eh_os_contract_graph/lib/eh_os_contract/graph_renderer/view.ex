@@ -136,7 +136,8 @@ defmodule EhOsContract.GraphRenderer.View do
   @doc """
   The view `spec` names of `document`, with the moves `overlay` observed and the
   document does not declare — a move a lifecycle does not allow, which happened
-  anyway — where both their ends are in it. A unit or a lifecycle the document does
+  anyway, and a process's stage a run entered before an earlier one, an arrow from the
+  later stage back — where both their ends are in it. A unit or a lifecycle the document does
   not have is an empty view.
   """
   @spec build(map(), spec(), map() | nil) :: t()
@@ -154,8 +155,12 @@ defmodule EhOsContract.GraphRenderer.View do
     {"solid", "leads to"},
     {"dotted", "after the transaction, or a relation that causes nothing"},
     {"thick", "a promise, with its window"},
-    {"headless", "rests on, belongs to, or goes both ways"}
+    {"headless", "rests on, belongs to, or goes both ways"},
+    {"observed", "seen in the log, and not declared"}
   ]
+
+  # The relations an overlay adds to a view, which the log shows and no declaration says.
+  @observed ~w(undeclared out_of_order)
 
   # What a card drawn other than its kind means.
   @variants [{"terminal", "ends a run"}, {"final", "a final status"}]
@@ -189,7 +194,10 @@ defmodule EhOsContract.GraphRenderer.View do
     # no head is both dotted and headless.
     looks =
       for relation <- view.relations,
-          look <- [relation.line | if(relation.head, do: [], else: ["headless"])],
+          look <-
+            [relation.line] ++
+              if(relation.head, do: [], else: ["headless"]) ++
+              if(observed?(relation), do: ["observed"], else: []),
           into: MapSet.new(),
           do: look
 
@@ -922,14 +930,16 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- what the log saw -------------------------------------------------------------------
 
-  # Without an overlay, the view as it is.
+  # Without an overlay, the view as it is. With one, a move a lifecycle does not allow,
+  # and a process's stages runs entered the wrong way round (plan DD, O2, #319): an arrow
+  # from the later stage back to the earlier one.
   defp observed(view, _document, nil), do: view
 
   defp observed(view, document, overlay) do
     by_id = index(document)
 
     arrows =
-      for r <- get_in(overlay, ["observed", "relations", "undeclared"]) || [] do
+      for r <- seen(overlay, "undeclared") do
         event = by_id[r["event"]] || (r["event"] && %{"name" => r["event"]})
 
         arrow("undeclared", r,
@@ -938,8 +948,51 @@ defmodule EhOsContract.GraphRenderer.View do
         )
       end
 
-    %{view | relations: view.relations ++ within(view, arrows)}
+    order =
+      for r <- seen(overlay, "out_of_order"),
+          do: arrow("out_of_order", r, words: "entered first", line: "dotted")
+
+    # An overlay may come from another application, so an entry that is not a relation, or
+    # that names one the view already draws, or another entry's, is left out.
+    taken = MapSet.new(view.relations, & &1.id)
+
+    added =
+      (arrows ++ order) |> Enum.reject(&MapSet.member?(taken, &1.id)) |> Enum.uniq_by(& &1.id)
+
+    %{view | relations: view.relations ++ within(view, added)}
   end
+
+  defp seen(%{"observed" => %{"relations" => %{} = relations}}, type) do
+    case relations[type] do
+      list when is_list(list) -> Enum.filter(list, &relation?(&1, type))
+      _ -> []
+    end
+  end
+
+  defp seen(_overlay, _type), do: []
+
+  # An entry of the shape its type has: string ends and id, and for stages out of order,
+  # a count of runs, so a broken entry never takes the place of a good one of its id.
+  defp relation?(%{} = r, type) do
+    Enum.all?(~w(id from to), &is_binary(r[&1])) and
+      (type != "out_of_order" or (is_integer(r["runs"]) and r["runs"] > 0))
+  end
+
+  defp relation?(_entry, _type), do: false
+
+  @doc """
+  Whether `relation` is one the log shows and the document does not declare — a move a
+  lifecycle does not allow, stages entered the wrong way round — rather than one the
+  document draws. Such an arrow is drawn where its ends are, and lays nothing out.
+
+      View.observed?(%{type: "out_of_order"})
+      #=> true
+      View.observed?(%{type: "precedes"})
+      #=> false
+  """
+  @spec observed?(relation()) :: boolean()
+  def observed?(%{type: type}), do: type in @observed
+  def observed?(_relation), do: false
 
   # --- building blocks --------------------------------------------------------------------
 

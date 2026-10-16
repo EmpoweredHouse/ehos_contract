@@ -75,7 +75,7 @@ defmodule EhOsContract.Graph.Overlay do
 
   require Logger
 
-  alias EhOsContract.{Conformance, Model, Paths}
+  alias EhOsContract.{Conformance, Model, Paths, StageOrder}
   alias EhOsContract.Graph.Document
 
   @schema "eh_os_contract.graph_overlay.v1"
@@ -134,7 +134,10 @@ defmodule EhOsContract.Graph.Overlay do
   the report gives them, under the promise's current declaration
   (`EhOsContract.Conformance.promise_verdicts/2`, the report's own computation). A
   promise the owner has yet to confirm (`unverified`) has none, as the report judges
-  none. Its `relations` are empty.
+  none. Its `relations` are empty. Under `observed`, `out_of_order` lists each pair of
+  stages runs entered the wrong way round — from the later stage's node to the
+  earlier one's, with how many runs — as the report counts them
+  (`EhOsContract.StageOrder`).
 
       EhOsContract.Graph.Overlay.process(Rehmed.Processes.ClinicalVisit,
         since: ~U[2026-07-01 00:00:00Z]
@@ -165,6 +168,19 @@ defmodule EhOsContract.Graph.Overlay do
 
     runs = {process_node["id"], %{runs: Paths.runs_of(model, model.id, period)}}
 
+    # Plan DD, O2 (#319): the stages a run entered the wrong way round, keyed by the
+    # stage nodes' ids, read from the document as everything else here is.
+    stage_id = Map.new(nodes["stage"] || [], &{&1["name"], &1["id"]})
+
+    # Both come from the model's stages, so a pair always has its two nodes.
+    out_of_order =
+      for %{earlier: earlier, later: later, runs: n} <- StageOrder.evaluate(model, period).pairs do
+        {from, to} =
+          {Map.fetch!(stage_id, to_string(later)), Map.fetch!(stage_id, to_string(earlier))}
+
+        %{"id" => "out_of_order:#{from}:#{to}", "from" => from, "to" => to, "runs" => n}
+      end
+
     seal(
       %{
         "kind" => "process",
@@ -174,7 +190,7 @@ defmodule EhOsContract.Graph.Overlay do
         "document_digest" => document["digest"],
         "nodes" => Map.new([runs | events ++ promises]),
         "relations" => %{},
-        "observed" => %{"relations" => %{"undeclared" => []}}
+        "observed" => %{"relations" => %{"undeclared" => [], "out_of_order" => out_of_order}}
       },
       period
     )
