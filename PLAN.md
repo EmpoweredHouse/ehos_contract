@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 15 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1 and G1 in `main`)
+## Handoff — state on 16 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1 and M1 in `main`; v0.4.0 released)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -23,9 +23,9 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
 removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
-merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged; then the context map
-(M1), the stage-order screen (O2), the agreement's and the text's versions (V5) and the owner's view (L4), each
-rewritten before it starts. V1–V4 are required before the first application keeps data it may not lose.
+merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged, and so is the context map
+(M1, #316, in #317); next are the stage order on a process's picture (O2), the agreement's version apart
+from its words' (V5) and the owner's view (L4), their paragraphs rewritten on 16 October. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
@@ -1890,7 +1890,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☑ #296 | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☑ #295 | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
-| M1 | 3 | the context map holds the code to it, values as references | L3 | ◐ `dd/316-context-map` | [#316](https://github.com/EmpoweredHouse/eh-os-contract/issues/316) |
+| M1 | 3 | the context map holds the code to it, values as references | L3 | ☑ #317 | [#316](https://github.com/EmpoweredHouse/eh-os-contract/issues/316) |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |
