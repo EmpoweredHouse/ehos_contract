@@ -219,7 +219,7 @@ defmodule EhOsContract.MigrationsTest do
 
   test "a host's upgrades roll back one at a time, and run again" do
     # Two deployments that differ only in their words: the index of three columns that
-    # V04 gives back holds one, the later.
+    # V04 gives back holds one, the first, which says since when the version ran.
     deployment!("t1", ~U[2026-10-01 00:00:00.000000Z])
     deployment!("t2", ~U[2026-10-02 00:00:00.000000Z])
 
@@ -236,7 +236,7 @@ defmodule EhOsContract.MigrationsTest do
     assert one("""
            SELECT min(first_seen_at)::text FROM eh_os_contract_deployments
            WHERE contract = 'MigrationsTest'
-           """) =~ "2026-10-02"
+           """) =~ "2026-10-01"
 
     assert one(
              "SELECT count(*) FROM eh_os_contract_deployments WHERE contract = 'MigrationsTest'"

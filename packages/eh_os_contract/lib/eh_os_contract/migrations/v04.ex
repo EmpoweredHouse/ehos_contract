@@ -29,20 +29,22 @@ defmodule EhOsContract.Migrations.V04 do
   end
 
   # Rows that differ only in their words would break the index of three columns, so all
-  # but the last of each are dropped first; what they recorded is not restored.
+  # but the first of each are dropped first, while the index of four still serves the
+  # join: the first says since when that version and wiring ran. What the later rows
+  # recorded is not restored.
   @doc false
   @spec down() :: :ok
   def down do
-    drop index(:eh_os_contract_deployments, [], name: :eh_os_contract_deployments_versions_index)
-
     execute("""
     DELETE FROM eh_os_contract_deployments d
-    USING eh_os_contract_deployments later
-    WHERE d.contract = later.contract
-      AND d.contract_version = later.contract_version
-      AND d.wiring_version = later.wiring_version
-      AND (d.first_seen_at, d.id) < (later.first_seen_at, later.id)
+    USING eh_os_contract_deployments earlier
+    WHERE d.contract = earlier.contract
+      AND d.contract_version = earlier.contract_version
+      AND d.wiring_version = earlier.wiring_version
+      AND (earlier.first_seen_at, earlier.id) < (d.first_seen_at, d.id)
     """)
+
+    drop index(:eh_os_contract_deployments, [], name: :eh_os_contract_deployments_versions_index)
 
     create unique_index(
              :eh_os_contract_deployments,
