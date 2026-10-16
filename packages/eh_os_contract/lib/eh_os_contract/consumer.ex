@@ -28,7 +28,8 @@ defmodule EhOsContract.Consumer do
     Model,
     NewerSchemaError,
     Personal,
-    Rejection
+    Rejection,
+    Upcast
   }
 
   @longest_chain 32
@@ -176,16 +177,18 @@ defmodule EhOsContract.Consumer do
   @spec decode_all!(map(), map(), [Event.t()]) :: [struct()]
   def decode_all!(model, values, rows) do
     # The version first, before a newer payload is read for its subjects with fields it
-    # may no longer have.
+    # may no longer have; then an older one in the declared shape (plan DD, V1, #333),
+    # with the path each renamed field was sealed under.
     declared =
       Enum.map(rows, fn row ->
         declaration = declaration!(model, row)
         current!(declaration, row)
-        {declaration, row}
+        {payload, paths} = Upcast.read(declaration, row)
+        {declaration, %{row | payload: payload}, paths}
       end)
 
     subjects =
-      for {declaration, row} <- declared,
+      for {declaration, row, _paths} <- declared,
           subject <- Codec.subjects(declaration.fields, row.payload, values, :stored),
           uniq: true,
           do: subject
@@ -202,8 +205,9 @@ defmodule EhOsContract.Consumer do
         Enum.reject(subjects, fn {t, id} -> MapSet.member?(keyed, {Atom.to_string(t), id}) end)
       )
 
-    for {declaration, row} <- declared do
-      decode!(model, values, declaration, row, Personal.opener(keys, row.type, erased))
+    for {declaration, row, paths} <- declared do
+      open = Upcast.opener(Personal.opener(keys, row.type, erased), paths)
+      decode!(model, values, declaration, row, open)
     end
   end
 
@@ -211,7 +215,7 @@ defmodule EhOsContract.Consumer do
   Raises `EhOsContract.NewerSchemaError` when `row` was written with a newer version
   of its event's fields than `model` declares (plan W1), for a reader that takes a
   row's payload as stored rather than through `decode!/1`, as a relay does. An older
-  version passes, as it decodes, until upcasters exist (V1).
+  version passes: its event's steps (`upcast`) read it in the current shape.
   """
   @spec current!(map(), Event.t()) :: :ok
   def current!(%{kind: :contract} = model, row), do: current!(declaration!(model, row), row)
@@ -230,6 +234,17 @@ defmodule EhOsContract.Consumer do
   end
 
   def current!(_declaration, _row), do: :ok
+
+  @doc false
+  # Plan DD, V1 (#333): `row` with its payload in the shape `model` declares its event in,
+  # for a reader that takes the payload as stored, as a relay does. A sealed value stays
+  # sealed, and goes out sealed, as `EhOsContract.Relay` says of a field that was personal.
+  @spec upcast(map(), Event.t()) :: Event.t()
+  def upcast(%{kind: :contract} = model, row) do
+    declaration = declaration!(model, row)
+    {payload, _paths} = Upcast.read(declaration, row)
+    %{row | payload: payload, schema_version: declaration.schema_version}
+  end
 
   @doc false
   # Plan W1: whether `row` was written with a newer version of its event's fields than

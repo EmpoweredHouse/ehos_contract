@@ -3,7 +3,7 @@
 This page covers the declarations that decide (an aggregate over one stream, a dynamic consistency
 boundary over a query of the log, the domain services both may call) and the module each one needs.
 
-<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
+<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service, contract.aggregate.event.upcast; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
 
 A **unit** is what a command is sent to. It holds the rules that must stay true, reads what it has
 decided before, and answers each command with events or a refusal. The engine knows two kinds:
@@ -283,6 +283,41 @@ The engine finds implementations in the running binary of the applications it is
 and each declaration takes at most one ([`X8`](../contract.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
 state is only its identity needs no module.
 
+## An event that already has rows
+
+The log keeps every event as it was written, and the engine reads each one again with today's
+declaration: to fold a unit's state, to feed a reaction, to publish it. So an event that has rows
+changes only with a new version of its fields, `schema_version`, and a step, `upcast`, that says how
+a row of the version before reads in the new one. The rows themselves never change.
+
+```elixir
+event :demand_opened, "Demand opened", schema_version: 2 do
+  field :demand_reason, :demand_reason
+  field :priority, :string
+
+  upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]
+end
+```
+
+A row written at version 1 is read with `reason` under its new name, `demand_reason`, and with
+`priority` as `"normal"`; a row of version 2 is read as it is. Version 3 adds `upcast from: 2`, and a
+row of version 1 goes through both steps in turn.
+
+- **`rename:`** moves a field of the older version to its name in the next. A personal field may be
+  renamed: the engine opens its sealed value under the name it was sealed with.
+- **`default:`** gives a value to a field the older version did not have, written as the log stores
+  one (an enum's member as its name, a date as text). A row that holds the field keeps its own.
+  A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
+- **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
+
+A step covers what it can say in words. What the log keeps beside a row's payload by a field's name
+cannot be carried across: the unit's identity, and every field the log tags each row with — a
+required, non-personal `:id`, date or timestamp, by which a boundary, a process and the report find
+rows. A change to one of those is a new event. The compiler refuses a version without its step, a step
+to a field the event will not have, a step that renames onto or defaults a field the log keeps, a
+default for personal data, and a default that is not a value of its field
+([`U1`](../contract.md#refusals-u)–[`U4`](../contract.md#refusals-u)).
+
 ## What the compiler refuses
 
 The full table is in [the guide](../contract.md). The refusals a unit meets most:
@@ -295,6 +330,7 @@ The full table is in [the guide](../contract.md). The refusals a unit meets most
 - an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
   ask the process owner for;
 - a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t)–[`T4`](../contract.md#refusals-t));
+- an event above version 1 without a step from each version below it ([`U1`](../contract.md#refusals-u));
 - in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
   kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
   of a rule it does not reject on ([`I5`](../contract.md#refusals-i)).

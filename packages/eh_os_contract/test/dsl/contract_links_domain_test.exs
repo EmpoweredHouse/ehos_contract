@@ -622,6 +622,84 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # Plan DD, V1 (#333): what a step does to a field of a domain value.
+  describe "U3 and U4: an event's steps against the domain's values" do
+    defp stepped(steps) do
+      String.replace(
+        @body,
+        "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry do",
+        "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry, schema_version: 2 do\n" <>
+          "      field :carer, :contact, optional: true\n" <>
+          "      field :period, :period_id\n" <>
+          "      upcast from: 1, #{steps}"
+      )
+    end
+
+    test "a value resting on an :id renamed onto, a value holding personal data or a misfit defaulted" do
+      violations =
+        links(
+          "LinksUpcastValues",
+          stepped(~s(rename: [term: :period], default: [carer: %{phone: "000"}, amount: "a lot"]))
+        )
+
+      assert assert_linked(
+               violations,
+               "U3: a step renames a field to :period",
+               "links_upcast_values.ex"
+             ) =~
+               "which rests on an :id or a day, so the log tags each row with it"
+
+      assert assert_linked(
+               violations,
+               "U3: a step gives a default to :carer",
+               "links_upcast_values.ex"
+             ) =~
+               "which holds personal data"
+
+      assert assert_linked(
+               violations,
+               "U4: a step gives :amount the default",
+               "links_upcast_values.ex"
+             ) =~
+               "which is not a value of :money"
+
+      assert length(violations) == 3
+    end
+
+    test "a list of values holding personal data, or of a misfit, defaulted" do
+      body =
+        @body
+        |> String.replace(
+          "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry do",
+          "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry, schema_version: 2 do\n" <>
+            "      field :contacts, {:list, :contact}, optional: true\n" <>
+            "      upcast from: 1, default: [contacts: [%{phone: \"000\"}], amounts: [\"a lot\"]]"
+        )
+
+      violations = links("LinksUpcastLists", body)
+
+      assert assert_linked(
+               violations,
+               "U3: a step gives a default to :contacts",
+               "links_upcast_lists.ex"
+             ) =~
+               "which holds personal data"
+
+      assert assert_linked(
+               violations,
+               "U4: a step gives :amounts the default",
+               "links_upcast_lists.ex"
+             ) =~
+               "which is not a value of {:list, :money}"
+
+      assert length(violations) == 2
+    end
+
+    test "control: a default of a value that fits it" do
+      assert links("LinksUpcastValuesRight", stepped("default: [amount: 100]")) == []
+    end
+  end
+
   describe "X4: externals are the domain's" do
     test "since plan EL2, a field's issued_by naming no external; control: one naming one" do
       right =

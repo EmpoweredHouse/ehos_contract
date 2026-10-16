@@ -75,6 +75,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       reads(c, models),
       subjects(c),
       personal_values(c),
+      upcast_values(c),
       correlation_values(c),
       externals(c),
       scopes(c),
@@ -325,6 +326,57 @@ defmodule EhOsContract.Contract.Links.Domain do
       end
 
     outside ++ nested ++ published(d, values)
+  end
+
+  # --- U3 and U4: an event's steps against the domain's values ----------------------
+
+  # Plan DD, V1 (#333): what L2 holds a step to for a built-in type
+  # (`EhOsContract.Contract.Rules.Versions`), for a field of a domain value: one resting
+  # on an `:id` or a day is tagged and keeps its old name in old rows, one holding
+  # personal data takes no default, and a default fits its value.
+  defp upcast_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for unit <- d.units,
+        event <- unit.events,
+        u <- event.upcasts,
+        {kind, target, value} <-
+          Enum.map(u.rename, fn {_old, new} -> {:rename, new, nil} end) ++
+            Enum.map(u.default, fn {field, value} -> {:default, field, value} end),
+        is_atom(target),
+        final = Rules.Versions.ends_as(event, u.from, target),
+        field = final && Enum.find(event.fields, &(&1.name == final)),
+        field != nil and of_values?(field.type),
+        why = upcast_refused(kind, Rules.Versions.named(target, final), field, value, values),
+        why != nil do
+      {"#{why} (event #{inspect(event.name)}, `upcast from: #{u.from}`)", Links.at(u)}
+    end
+  end
+
+  # A type of the domain's values, or a list of them: what L2 could not judge.
+  defp of_values?({:list, inner}), do: of_values?(inner)
+  defp of_values?(type), do: is_atom(type) and type not in @built_in
+
+  defp upcast_refused(kind, named, field, value, values) do
+    gives = if kind == :rename, do: "renames a field to", else: "gives a default to"
+
+    cond do
+      Key.tag_field?(field, values) or Key.bucket_field?(field, values) ->
+        "U3: a step #{gives} #{named}, of #{inspect(field.type)}, which rests on an :id or a " <>
+          "day, so the log tags each row with it: #{Rules.Versions.untagged(kind)}. Declare a " <>
+          "new event instead"
+
+      kind == :default and Codec.personal_type?(field.type, values) ->
+        "U3: a step gives a default to #{named}, of #{inspect(field.type)}, which holds " <>
+          "personal data; the log holds a seal there, and a default would be clear text"
+
+      kind == :default and not Rules.Versions.fits?(field, value, values) ->
+        "U4: a step gives #{named} the default #{inspect(value)}, which is not a value of " <>
+          "#{inspect(field.type)}: every old row would fail to read"
+
+      true ->
+        nil
+    end
   end
 
   defp published(d, values) do

@@ -1905,7 +1905,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☑ #257 | [#256](https://github.com/EmpoweredHouse/eh-os-contract/issues/256) |
 | O1 | 3 | kolejność etapów w przebiegu | P2d, P2w | ☑ #262 | [#260](https://github.com/EmpoweredHouse/eh-os-contract/issues/260) |
 | O2 | 3 | a process's stage order on its picture | O1, G1 | ☑ #320 | [#319](https://github.com/EmpoweredHouse/eh-os-contract/issues/319) |
-| V1 | 4 | upcasty deklaratywne | W1, P2h | ⏸ required before an application keeps data it may not lose (13 October) | — |
+| V1 | 4 | upcasty deklaratywne | W1, P2h | ◐ `dd/333-upcasts` | [#333](https://github.com/EmpoweredHouse/eh-os-contract/issues/333) |
 | V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
@@ -2247,19 +2247,23 @@ does not carry it, so G1's process canvas, whose stages are lanes, cannot draw i
 
 #### Fala 4 — ewolucja modelu i testy właściwości
 
-**V1 — upcasty deklaratywne**: encja `upcast from, rename: [stare: :nowe], default: [pole: wartość]` w `event`;
-**V1** (L2, `rules/versions.ex`): `from` pokrywa `1..schema_version-1`, bez tożsamości, bez domyślnej wartości dla
-pola osobowego. `lib/eh_os_contract/upcast.ex` w `Consumer.decode_all!/3` (154-178) przed `Codec.subjects`
-(159); aliasy ścieżek dla `Personal.opener/3` (AAD = typ|ścieżka|…, personal.ex:594); obejścia: `Relay.message/2`
-(75-90), `Trace.item_occurrences/4` (tylko tożsamość, chroniona przez V1).
-**V2 — upcast przez callback** `with: :funkcja` w implementacji jednostki (I2), strażnik: zaplombowane wartości
-wychodzą nietknięte.
-**V3 — zamek schematów** `eh_os_contract.lock` w katalogu projektu hosta (obok `mix.lock`), JSON kluczowany typem
-zdarzenia; `mix eh_os_contract.schema [--check | --forget TYP]`; w bramie sandboxa po `eh_os_contract.check`;
-rigi biblioteki bez zamka (logika testowana na mapach w pamięci).
-**V4 — zamek wobec upcastów**: zmiany zgodne (pole opcjonalne dodane, usunięte, wymagane → opcjonalne, nowy członek
-enuma, `:integer` → `:decimal`) bez nowej wersji; reszta wymaga `rename:`/`default:`/`with:`; zmiany osobowości
-i tożsamości nieobsługiwane. Przykład z materiału: `amount_minor` → `amount` z wartością z `unit:` (TaxVision).
+**V1 — upcasts declared** (rewritten 17 October 2026; the user's decisions of 16–17 October, #333). *The rule:* a
+contract may change an event that has rows, and every row is read in the event's current shape; the log is never
+rewritten. An `upcast from: n, rename: [old: :new], default: [field: value]` per version below `schema_version`,
+in the event. `EhOsContract.Upcast` reads a row through the steps from its version up, in the consumer and the
+relay, and a renamed personal field opens under the path it was sealed with. Refused at compile: a version
+without a step, a target the chain does not lead to, the identity renamed or defaulted, a personal field
+defaulted. *Rejected:* a function alone (V2 is the escape, not the rule), rewriting the rows by migration.
+**V2 — upcast by a function**: `upcast from: n, with: :fun` names a function of the unit's implementation, which
+takes the stored map and gives the next version's; a sealed value goes through it untouched, and a seal it
+changed fails the read.
+**V3 — the schema lock**: `eh_os_contract.lock` in the host's project, beside `mix.lock`, one entry per event type
+and version with its fields; `mix eh_os_contract.schema [--check | --forget TYPE]` writes and checks it, `--check`
+in the gate after `eh_os_contract.check`.
+**V4 — the lock against upcasts**: a compatible change (an optional field added, a field removed, required to
+optional, an enum member added, `:integer` to `:decimal`) needs no new version; any other needs one whose step
+covers each changed field; whether a field is personal, and the unit's identity, stay unchangeable. *Example:*
+TaxVision's `amount_minor` to `amount`, a V2 function.
 **V5 — the agreement's version and the words' digest** (rewritten 16 October 2026). *The rule:* a contract's
 version changes when what it allows changes, not when its words do. Today `version` (`Contract.Build`, stamped on
 every event, recorded by `EhOsContract.Deployment`) hashes labels, `source:` and scenarios with everything else, so

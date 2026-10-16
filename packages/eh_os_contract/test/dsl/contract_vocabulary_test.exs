@@ -51,7 +51,8 @@ defmodule EhOsContract.ContractVocabularyTest do
       # Plan DD, A1 (#247): the person who must issue it.
       [kind, :command, :actor_is] => [:field, :or_rejects],
       [kind, :event] => @event,
-      [kind, :event, :field] => @field
+      [kind, :event, :field] => @field,
+      [kind, :event, :upcast] => [:from, :rename, :default]
     }
   end
 

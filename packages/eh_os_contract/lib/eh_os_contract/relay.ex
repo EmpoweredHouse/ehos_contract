@@ -51,7 +51,8 @@ defmodule EhOsContract.Relay do
   - **It publishes the fields as stored.** Rule D11 refuses a `personal:` field in a
     `publish`, and that holds for today's declaration: a field that was `personal:` in
     an earlier version of the contract is still sealed in the events written then, and
-    goes out sealed. The key never leaves, so it is not readable, but it is not the
+    goes out sealed. So does a field an `upcast` renamed a personal field onto: an older
+    row is published in the event's current shape, its seals as they are. The key never leaves, so it is not readable, but it is not the
     value either.
   - **Identities go out in the clear**, as they are stored: a unit's identity or an
     `{:id, subject}` field in `fields` names its subject, also after the subject is

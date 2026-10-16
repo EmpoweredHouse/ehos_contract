@@ -26,6 +26,7 @@ defmodule EhOsContract.Contract.Rules do
     Rules.Fields,
     Rules.Units,
     Rules.Lifecycles,
+    Rules.Versions,
     Rules.Durations,
     Rules.Consumes,
     Rules.Consumers,
