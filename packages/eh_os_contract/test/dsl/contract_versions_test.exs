@@ -1,6 +1,6 @@
 defmodule EhOsContract.ContractVersionsTest do
   @moduledoc """
-  Plan DD, V1 (#333): **V1–V3** — the steps (`upcast`) that read a row written with an
+  Plan DD, V1 (#333): **U1–U4** — the steps (`upcast`) that read a row written with an
   older version of an event's fields in the current one. Each refusal names the
   declaration's file and line, and has a control beside it that compiles.
   """
@@ -31,7 +31,7 @@ defmodule EhOsContract.ContractVersionsTest do
                 field :note, :string, personal: :patient_id, optional: true
                 field :demand_reason, :string
                 field :priority, :string
-                field :opened_on, :date
+                field :opened_on, :date, optional: true
 
                 upcast from: 2, rename: [why: :demand_reason], default: [opened_on: ~D[2026-01-01]]
                 upcast from: 1, rename: [reason: :why, remark: :note], default: [priority: :normal]
@@ -69,7 +69,7 @@ defmodule EhOsContract.ContractVersionsTest do
     end
   end
 
-  describe "V1: a step per version below the current one" do
+  describe "U1: a step per version below the current one" do
     test "a version without its step is refused" do
       message =
         refuse_contract(
@@ -82,7 +82,7 @@ defmodule EhOsContract.ContractVersionsTest do
         )
 
       assert message =~
-               "V1: event :demand_opened is at schema_version 3 and has no `upcast from: 1`"
+               "U1: event :demand_opened is at schema_version 3 and has no `upcast from: 1`"
 
       assert message =~ "(versions_missing.ex:"
     end
@@ -95,7 +95,7 @@ defmodule EhOsContract.ContractVersionsTest do
         )
 
       assert message =~
-               "V1: event :demand_opened is at schema_version 2 and has no `upcast from: 1`"
+               "U1: event :demand_opened is at schema_version 2 and has no `upcast from: 1`"
     end
 
     test "two steps from one version, and a step from the current one, are refused" do
@@ -111,12 +111,12 @@ defmodule EhOsContract.ContractVersionsTest do
           """)
         )
 
-      assert message =~ "V1: event :demand_opened has 2 steps `upcast from: 1`"
-      assert message =~ "V1: event :demand_opened has `upcast from: 2`, and its fields are at"
+      assert message =~ "U1: event :demand_opened has 2 steps `upcast from: 1`"
+      assert message =~ "U1: event :demand_opened has `upcast from: 2`, and its fields are at"
     end
   end
 
-  describe "V2: a step leads to the fields the event has" do
+  describe "U2: a step leads to the fields the event has" do
     test "a rename or a default to a field the event will not have is refused" do
       message =
         refuse_contract(
@@ -131,7 +131,7 @@ defmodule EhOsContract.ContractVersionsTest do
         )
 
       assert message =~
-               "V2: event :demand_opened, `upcast from: 1` renames a field to :demand_reasn, " <>
+               "U2: event :demand_opened, `upcast from: 1` renames a field to :demand_reasn, " <>
                  "which is neither a field of the event nor a name a later step renames"
 
       assert message =~ "`upcast from: 1` gives a default to :priority"
@@ -171,7 +171,7 @@ defmodule EhOsContract.ContractVersionsTest do
     end
   end
 
-  describe "V3: the identity and personal data" do
+  describe "U3: the identity and personal data" do
     test "renaming the identity, or giving it or a personal field a default, is refused" do
       message =
         refuse_contract(
@@ -187,11 +187,11 @@ defmodule EhOsContract.ContractVersionsTest do
         )
 
       assert message =~
-               "V3: event :demand_opened, `upcast from: 1` renames :id to :demand_id, and the " <>
-                 "unit's identity is never renamed"
+               "U3: event :demand_opened, `upcast from: 1` renames :id to the unit's identity, " <>
+                 ":demand_id; every row of a stream holds it"
 
-      assert message =~ "gives the identity field :demand_id a default"
-      assert message =~ "gives the personal field :note a default"
+      assert message =~ "`upcast from: 1` gives a default to the unit's identity, :demand_id"
+      assert message =~ "gives a default to the personal field :note"
     end
 
     test "renaming a personal field compiles: its seal opens under its old name" do
@@ -203,6 +203,111 @@ defmodule EhOsContract.ContractVersionsTest do
               field :note, :string, personal: :patient_id
 
               upcast from: 1, rename: [remark: :note]
+            end
+        """)
+      )
+    end
+  end
+
+  describe "U2, U3 and U4: what the review of V1 found" do
+    test "an old name renamed twice in one step is refused" do
+      message =
+        refuse_contract(
+          "VersionsTwiceOld",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :demand_reason, :string
+                field :why, :string
+
+                upcast from: 1, rename: [reason: :why, reason: :demand_reason]
+              end
+          """)
+        )
+
+      assert message =~ "U2: event :demand_opened, `upcast from: 1` renames :reason 2 times"
+    end
+
+    test "a field the log tags rows with is not renamed onto or defaulted; control: an optional one" do
+      message =
+        refuse_contract(
+          "VersionsTagged",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :company_id, :id
+                field :opened_on, :date
+
+                upcast from: 1, rename: [company_ref: :company_id], default: [opened_on: ~D[2026-01-01]]
+              end
+          """)
+        )
+
+      assert message =~
+               "U3: event :demand_opened, `upcast from: 1` renames :company_ref to :company_id, " <>
+                 "which the log tags each row with"
+
+      assert message =~ "gives a default to :opened_on, which the log tags each row with"
+
+      compile_contract(
+        "VersionsUntagged",
+        demand("""
+            event :demand_opened, "Otwarte", schema_version: 2 do
+              field :company_id, :id, optional: true
+
+              upcast from: 1, rename: [company_ref: :company_id]
+            end
+        """)
+      )
+    end
+
+    test "a default reaching a personal field through a later rename is refused" do
+      message =
+        refuse_contract(
+          "VersionsLaterPersonal",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 3 do
+                field :patient_id, :id, subject: :patient
+                field :note, :string, personal: :patient_id, optional: true
+
+                upcast from: 1, default: [remark: "none"]
+                upcast from: 2, rename: [remark: :note]
+              end
+          """)
+        )
+
+      assert message =~
+               "U3: event :demand_opened, `upcast from: 1` gives a default to the personal field :note"
+    end
+
+    test "a default that is not a value of its field is refused; control: one that is" do
+      message =
+        refuse_contract(
+          "VersionsBadDefault",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :priority, :string
+                field :count, :integer
+                field :plan, {:enum, [:basic, :full]}
+
+                upcast from: 1, default: [priority: 1, count: nil, plan: :gold]
+              end
+          """)
+        )
+
+      assert message =~
+               "U4: event :demand_opened, `upcast from: 1` gives :priority the default 1, which is not a value of :string"
+
+      assert message =~ "gives :count the default nil"
+      assert message =~ "gives :plan the default :gold"
+
+      compile_contract(
+        "VersionsGoodDefault",
+        demand("""
+            event :demand_opened, "Otwarte", schema_version: 2 do
+              field :priority, :string
+              field :count, :integer
+              field :plan, {:enum, [:basic, :full]}
+
+              upcast from: 1, default: [priority: "normal", count: 0, plan: :basic]
             end
         """)
       )

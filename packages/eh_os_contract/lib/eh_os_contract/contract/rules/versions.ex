@@ -1,29 +1,63 @@
 defmodule EhOsContract.Contract.Rules.Versions do
-  # V1–V3 of the contract's rules, plan DD, V1 (#333): how a row written with an older
+  # U1–U4 of the contract's rules, plan DD, V1 (#333): how a row written with an older
   # version of an event's fields reads in the current one, a step (`upcast`) per version.
+  # What needs the domain's values — a value resting on an `:id` or a day, one holding
+  # personal data, a default of a value's type — is held to the same between modules
+  # (`EhOsContract.Contract.Links.Domain`).
   #
-  # - **V1.** An event at `schema_version` n has exactly one step from each version
+  # - **U1.** An event at `schema_version` n has exactly one step from each version
   #   1..n-1, and none from n or later: a row of a version without a step could not be
   #   read, and a step from the current version reads nothing.
-  # - **V2.** A step's targets — the new names of `rename:` and the fields of
+  # - **U2.** A step's targets — the new names of `rename:` and the fields of
   #   `default:` — are fields the chain leads to: fields of the current declaration, or
   #   old names a later step renames. A rename's two names differ, its new names are
-  #   atoms, and no two old names of one step take the same new one.
-  # - **V3.** The unit's identity is never renamed or given a default: every row of a
-  #   stream holds it, and the stream is found by it. A personal field gets no default,
-  #   since the log holds a seal where it holds a personal value, and a default would be
-  #   clear text there.
+  #   atoms, an old name is renamed once, and no two old names of one step take the same
+  #   new one.
+  # - **U3.** What the log keeps outside a row's payload is never renamed or given a
+  #   default, since old rows keep it under their old names: the unit's identity, by which
+  #   its stream is found, and every field the log tags — a required, non-personal `:id`,
+  #   `:date` or `:timestamp` — by which a boundary, a process and a report find rows. A
+  #   personal field gets no default, since the log holds a seal there and a default would
+  #   be clear text. A name is judged as it ends, through the later steps' renames.
+  # - **U4.** A default fits its field: a value of its type, as the log stores one, and
+  #   never nil, which no row of a required field holds. A field of a domain value is held
+  #   to it between modules.
   @moduledoc false
 
+  alias EhOsContract.Codec
   alias EhOsContract.DslRules
+  alias EhOsContract.Key
+
+  require EhOsContract.Domain.Rules
+
+  @built_in EhOsContract.Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
     for unit <- declarations.units,
         event <- unit.events,
-        violation <- coverage(event) ++ targets(unit, event) ++ identity(unit, event),
+        violation <-
+          coverage(event) ++ targets(unit, event) ++ kept(unit, event) ++ defaults(event),
         do: violation
+  end
+
+  @doc false
+  # The current field of `event` that `name`, a target of step `from`, ends as through
+  # the later steps' renames; nil when it ends as none. Read between modules too.
+  @spec ends_as(map(), pos_integer(), atom()) :: atom() | nil
+  def ends_as(event, from, name) do
+    later = event.upcasts |> Enum.filter(&(&1.from > from)) |> Enum.sort_by(& &1.from)
+
+    final =
+      Enum.reduce(later, name, fn step, name ->
+        case List.keyfind(step.rename, name, 0) do
+          {^name, new} -> new
+          nil -> name
+        end
+      end)
+
+    if Enum.any?(event.fields, &(&1.name == final)), do: final
   end
 
   defp coverage(event) do
@@ -34,7 +68,7 @@ defmodule EhOsContract.Contract.Rules.Versions do
 
     missing =
       for v <- wanted, v not in froms do
-        {"V1: event #{inspect(event.name)} is at schema_version #{event.schema_version} and " <>
+        {"U1: event #{inspect(event.name)} is at schema_version #{event.schema_version} and " <>
            "has no `upcast from: #{v}`: a row written at version #{v} could not be read. Each " <>
            "version below the current one has a step, empty when the fields did not change",
          event}
@@ -42,13 +76,13 @@ defmodule EhOsContract.Contract.Rules.Versions do
 
     twice =
       for {from, n} <- Enum.frequencies(froms), n > 1 do
-        {"V1: event #{inspect(event.name)} has #{n} steps `upcast from: #{from}`; a version " <>
+        {"U1: event #{inspect(event.name)} has #{n} steps `upcast from: #{from}`; a version " <>
            "has one", event}
       end
 
     beyond =
       for u <- event.upcasts, u.from >= event.schema_version do
-        {"V1: event #{inspect(event.name)} has `upcast from: #{u.from}`, and its fields are at " <>
+        {"U1: event #{inspect(event.name)} has `upcast from: #{u.from}`, and its fields are at " <>
            "schema_version #{event.schema_version}: a step reads a version below the current " <>
            "one", u}
       end
@@ -76,11 +110,11 @@ defmodule EhOsContract.Contract.Rules.Versions do
 
   defp step_targets(event, u, reachable) do
     news = for {_old, new} <- u.rename, do: new
+    at = "event #{inspect(event.name)}, `upcast from: #{u.from}`"
 
     not_atoms =
       for {old, new} <- u.rename, not is_atom(new) do
-        {"V2: event #{inspect(event.name)}, `upcast from: #{u.from}` renames #{inspect(old)} " <>
-           "to #{inspect(new)}, which is not a field's name", u}
+        {"U2: #{at} renames #{inspect(old)} to #{inspect(new)}, which is not a field's name", u}
       end
 
     unknown =
@@ -90,60 +124,111 @@ defmodule EhOsContract.Contract.Rules.Versions do
           not MapSet.member?(reachable, name) do
         what = if kind == :rename, do: "renames a field to", else: "gives a default to"
 
-        {"V2: event #{inspect(event.name)}, `upcast from: #{u.from}` #{what} #{inspect(name)}, " <>
-           "which is neither a field of the event nor a name a later step renames", u}
+        {"U2: #{at} #{what} #{inspect(name)}, which is neither a field of the event nor a " <>
+           "name a later step renames", u}
       end
 
     same =
       for {old, new} <- u.rename, old == new do
-        {"V2: event #{inspect(event.name)}, `upcast from: #{u.from}` renames #{inspect(old)} " <>
-           "to itself", u}
+        {"U2: #{at} renames #{inspect(old)} to itself", u}
+      end
+
+    renamed_twice =
+      for {old, n} <- Enum.frequencies(Enum.map(u.rename, &elem(&1, 0))), n > 1 do
+        {"U2: #{at} renames #{inspect(old)} #{n} times; a field has one new name", u}
       end
 
     shared =
       for {new, n} <- Enum.frequencies(news), n > 1 do
-        {"V2: event #{inspect(event.name)}, `upcast from: #{u.from}` renames #{n} fields to " <>
-           "#{inspect(new)}; a field has one old name", u}
+        {"U2: #{at} renames #{n} fields to #{inspect(new)}; a field has one old name", u}
       end
 
-    not_atoms ++ unknown ++ same ++ shared
+    not_atoms ++ unknown ++ same ++ renamed_twice ++ shared
   end
 
-  defp identity(unit, event) do
+  # U3: what the log keeps by a field's name, judged as each target ends.
+  defp kept(unit, event) do
     identity = MapSet.new(List.wrap(unit.identity))
-    personal = MapSet.new(for f <- event.fields, f.personal != nil, do: f.name)
+    fields = Map.new(event.fields, &{&1.name, &1})
 
-    Enum.flat_map(event.upcasts, fn u ->
-      renamed(event, u, identity) ++ defaulted(event, u, identity, personal)
-    end)
-  end
-
-  defp renamed(event, u, identity) do
-    for {old, new} <- u.rename,
-        MapSet.member?(identity, old) or MapSet.member?(identity, new) do
-      {"V3: event #{inspect(event.name)}, `upcast from: #{u.from}` renames #{inspect(old)} " <>
-         "to #{inspect(new)}, and the unit's identity is never renamed: every row of a " <>
-         "stream holds it, and the stream is found by it", u}
+    for u <- event.upcasts,
+        {kind, old, target} <-
+          Enum.map(u.rename, fn {old, new} -> {:rename, old, new} end) ++
+            Enum.map(u.default, fn {field, _value} -> {:default, field, field} end),
+        is_atom(target),
+        why = kept_why(kind, old, ends_as(event, u.from, target) || target, identity, fields),
+        why != nil do
+      {"U3: event #{inspect(event.name)}, `upcast from: #{u.from}` #{why}", u}
     end
   end
 
-  defp defaulted(event, u, identity, personal) do
-    for {field, _value} <- u.default, why = default_refused(field, identity, personal) do
-      {"V3: event #{inspect(event.name)}, `upcast from: #{u.from}` gives #{why}", u}
-    end
-  end
+  defp kept_why(kind, old, final, identity, fields) do
+    field = Map.get(fields, final)
+    gives = if kind == :rename, do: "renames #{inspect(old)} to", else: "gives a default to"
 
-  defp default_refused(field, identity, personal) do
     cond do
-      MapSet.member?(identity, field) ->
-        "the identity field #{inspect(field)} a default; every row of a stream holds its identity"
+      MapSet.member?(identity, final) or (kind == :rename and MapSet.member?(identity, old)) ->
+        "#{gives} the unit's identity, #{inspect(if MapSet.member?(identity, final), do: final, else: old)}; " <>
+          "every row of a stream holds it, and the stream is found by it"
 
-      MapSet.member?(personal, field) ->
-        "the personal field #{inspect(field)} a default; the log holds a seal there, and a " <>
-          "default would be clear text"
+      field != nil and (Key.tag_field?(field) or Key.bucket_field?(field)) ->
+        "#{gives} #{inspect(final)}, which the log tags each row with: rows written before " <>
+          "keep their tags under their old names, and a boundary, a process or a report " <>
+          "finding rows by it would miss them. Declare a new event instead"
+
+      kind == :default and field != nil and field.personal != nil ->
+        "gives a default to the personal field #{inspect(final)}; the log holds a seal there, " <>
+          "and a default would be clear text"
 
       true ->
         nil
     end
   end
+
+  # U4, for a field of a built-in type: the default decodes as an old row's value would.
+  defp defaults(event) do
+    for u <- event.upcasts,
+        {name, value} <- u.default,
+        is_atom(name),
+        final = ends_as(event, u.from, name),
+        final != nil,
+        field = Enum.find(event.fields, &(&1.name == final)),
+        built_in?(field.type),
+        not fits?(field, value) do
+      {"U4: event #{inspect(event.name)}, `upcast from: #{u.from}` gives #{inspect(name)} the " <>
+         "default #{inspect(value)}, which is not a value of #{inspect(field.type)}: every old " <>
+         "row would fail to read", u}
+    end
+  end
+
+  defp built_in?({:list, inner}), do: built_in?(inner)
+  defp built_in?({:enum, _members}), do: true
+  defp built_in?({:id, _referent}), do: true
+  defp built_in?(type), do: type in @built_in
+
+  @doc false
+  # Whether `value`, a default of `field`, reads back as a value of the field's type, with
+  # the domain's `values`: as the log stores it, through JSON. Read between modules.
+  @spec fits?(map(), term(), map()) :: boolean()
+  def fits?(field, value, values \\ %{}) do
+    stored = value |> Jason.encode!() |> Jason.decode!()
+
+    plain = %{
+      name: field.name,
+      type: decodable(field.type),
+      optional: false,
+      personal: nil,
+      subject: nil
+    }
+
+    value != nil and
+      match?({:ok, _}, Codec.decode([plain], %{Atom.to_string(field.name) => stored}, values))
+  rescue
+    _cannot_encode -> false
+  end
+
+  # A reference to an entity's or a unit's number reads as the `:id` it is.
+  defp decodable({:id, _referent}), do: :id
+  defp decodable({:list, inner}), do: {:list, decodable(inner)}
+  defp decodable(type), do: type
 end
