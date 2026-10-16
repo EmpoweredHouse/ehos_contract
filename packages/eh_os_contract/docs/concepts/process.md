@@ -4,7 +4,7 @@ What a process adds to the units that decide: runs that group their events, the 
 how a run ends, what the process owner promised about it, and how the conformance report holds the log to
 those promises.
 
-<!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline; rules process-without-accountable, promise-without-within, unverified-declaration -->
+<!-- covers: entities process.correlate, process.stage, process.ends_on, process.promise, process.deadline; rules process-without-accountable, promise-without-within, unverified-declaration, owner-view-without-label -->
 
 A unit decides over its own stream: one loan, one fine. A business is usually accountable for something
 longer (a loan from the day the copy goes out to the day it comes back, or is paid for) and that is a
@@ -298,3 +298,6 @@ The [rules](../rules.md) about a process:
   report leaves it out. Remove the mark once the process owner confirms the number.
 - **`promise-without-within`** (notice): the promise has no failing case. Add `within` when the owner
   agrees a window; leave it out while nobody has.
+- **`owner-view-without-label`** (notice): a stage has no label, so a business owner reading the model
+  would see its name in the code. Give it the words the business uses for that part of the run:
+  `stage :departure, "Departure of the patient", include: …`.

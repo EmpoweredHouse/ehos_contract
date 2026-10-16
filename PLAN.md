@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 16 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1 and O2 in `main`; v0.4.0 released)
+## Handoff — state on 16 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2 and V5 in `main`; v0.4.0 released)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -24,8 +24,9 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 **Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
 removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
 merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged, and so is the context map
-(M1, #316, in #317) and the stage order on a process's picture (O2, #319, in #320); next are the agreement's
-version apart from its words' (V5) and the owner's view (L4), their paragraphs rewritten on 16 October. V1–V4 are required before the first application keeps data it may not lose.
+(M1, #316, in #317) and the stage order on a process's picture (O2, #319, in #320), and the agreement's version apart from its
+words' (V5, #322, in #324: storage version 4, every version moved once); next is the owner's view (L4), its
+paragraph rewritten on 16 October. V1–V4 are required before the first application keeps data it may not lose.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
@@ -1907,13 +1908,13 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
-| V5 | 4 | the agreement's version and the words' digest | P2h | ◐ `dd/322-agreement-version` | [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322) |
+| V5 | 4 | the agreement's version and the words' digest | P2h | ☑ #324 | [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322) |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
 | L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☑ #273 | [#272](https://github.com/EmpoweredHouse/eh-os-contract/issues/272) |
 | L3 | 5 | typowane referencje do agregatów | ID3 | ☑ #289, #292 | [#286](https://github.com/EmpoweredHouse/eh-os-contract/issues/286) |
-| L4 | 5 | the owner's view, without the engineering | G1 | ☐ rewritten 16 October | — |
+| L4 | 5 | the owner's view, without the engineering | G1 | ◐ `dd/326-owner-*` | [#326](https://github.com/EmpoweredHouse/eh-os-contract/issues/326) |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☑ #307, #308, #309, #310, #311, #312 | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 
