@@ -80,14 +80,14 @@ defmodule EhOsContract.Check.Catalog do
       id: "owner-view-without-label",
       level: :info,
       esdm: nil,
-      summary: "A stage or a value the owner's view shows has no label.",
+      summary: "A stage, a value or a member of a value's enum has no label.",
       text: """
-      The owner's view — `mix eh_os_contract.pages --audience owner` and the graph's switch
-      "Owner" — names every declaration by its label, in the business's words, and a stage of a
-      process module or a value of the domain may be written without one. Then the owner reads
-      its name in the code, `departure`, where the business says "Pacjent wychodzi z gabinetu".
-      Every other declaration the owner's view shows must have a label to compile; a field
-      without one is left out of it.
+      A business owner reads the model in the business's words: each declaration by its label.
+      Most declarations need one to compile, and a field without one is not for the owner. A
+      stage of a process module, a value of the domain and a member of its enum written as a
+      bare atom may go without, and then the owner would read the name in the code,
+      `departure`, where the business says "Departure of the patient". A promise has no label
+      at all: it is read by its rule, the events it waits for, in their labels.
       """
     },
     %{

@@ -298,6 +298,6 @@ The [rules](../rules.md) about a process:
   report leaves it out. Remove the mark once the process owner confirms the number.
 - **`promise-without-within`** (notice): the promise has no failing case. Add `within` when the owner
   agrees a window; leave it out while nobody has.
-- **`owner-view-without-label`** (notice): a stage has no label, so the owner's view shows its name in the
-  code. Give it the words the business uses for that part of the run: `stage :departure, "Pacjent wychodzi
-  z gabinetu", include: …`. A value of the domain without a label is noted the same way.
+- **`owner-view-without-label`** (notice): a stage has no label, so a business owner reading the model
+  would see its name in the code. Give it the words the business uses for that part of the run:
+  `stage :departure, "Departure of the patient", include: …`.
