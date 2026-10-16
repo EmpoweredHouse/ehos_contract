@@ -50,6 +50,13 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The model's pages for the business owner** (plan DD, stage L4, #326): `mix eh_os_contract.pages --output
+  docs/owner --audience owner` writes the same tree of pages with each declaration by its label, and without
+  module names, versions, stored types, delivery, idempotency, correlation keys, field names and types and the
+  graph documents. A field without a label is left out, and a promise is read by its rule. The pages have a
+  marker of their own (`EhOsContract.Pages.marker/2`), so they go to a directory of their own. `Pages.render/3`
+  takes `audience: :owner`.
+
 - **A process's overlay says which stages runs entered out of order** (plan DD, stage O2, #319): under
   `observed.relations`, `out_of_order` lists each pair, from the later stage's node to the earlier one's, with
   how many runs, as the conformance report counts them (`EhOsContract.StageOrder`). `graph_overlay.v1` grows by

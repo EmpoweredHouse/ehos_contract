@@ -8,6 +8,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
       mix eh_os_contract.pages --output docs/model                  # write the pages
       mix eh_os_contract.pages --output docs/model --check          # are they current?
       mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
+      mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
   The domain, its contracts and its process modules are found among the modules of
   `config :eh_os_contract, applications:`. The pages go where `--output` says: the
@@ -28,6 +29,14 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
   `--check` writes nothing, and fails naming every page that is missing, differs or
   is left over.
+
+  `--audience owner` writes the pages a business owner reads: the same tree, each
+  declaration by its label, without module names, versions, stored types, delivery,
+  idempotency, correlation keys, field names and types, and without the graph
+  documents. They have a marker of their own, so they go to a directory of their own:
+  in the engineer's directory each would be a file in the way. A stage or a value the
+  owner would read by its name in the code is `mix eh_os_contract.check`'s
+  `owner-view-without-label`. `--audience engineering` is the default.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -38,7 +47,17 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   @impl Mix.Task
   def run(args) do
     {opts, rest} =
-      OptionParser.parse!(args, strict: [output: :string, domain: :string, check: :boolean])
+      OptionParser.parse!(args,
+        strict: [output: :string, domain: :string, check: :boolean, audience: :string]
+      )
+
+    audience =
+      case opts[:audience] do
+        nil -> :engineering
+        "engineering" -> :engineering
+        "owner" -> :owner
+        other -> Mix.raise("--audience is engineering or owner, not #{inspect(other)}")
+      end
 
     output =
       case opts[:output] do
@@ -58,18 +77,20 @@ defmodule Mix.Tasks.EhOsContract.Pages do
       try do
         Pages.render(
           domain,
-          EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
+          EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes(),
+          audience: audience
         )
       rescue
         error in ArgumentError -> Mix.raise(Exception.message(error))
       end
 
-    found = found(output, {Pages.marker(domain.__eh_os_contract_model__().name), domain})
+    marker = Pages.marker(domain.__eh_os_contract_model__().name, audience)
+    found = found(output, {marker, domain, audience})
     stale = for {path, :page} <- found, not Map.has_key?(pages, path), do: path
     blocked = blocked(pages, found)
 
     if opts[:check],
-      do: check!(output, pages, stale, blocked),
+      do: check!(output, pages, stale, blocked, audience),
       else: write!(output, pages, stale, blocked)
   end
 
@@ -98,7 +119,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
     )
   end
 
-  defp check!(output, pages, stale, blocked) do
+  defp check!(output, pages, stale, blocked, audience) do
     wrong =
       for {path, text} <- Enum.sort(pages),
           path not in blocked,
@@ -116,7 +137,9 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
       problems ->
         Mix.raise(
-          "#{output} is not current; run `mix eh_os_contract.pages --output #{output}`:\n  " <>
+          "#{output} is not current; run `mix eh_os_contract.pages --output #{output}" <>
+            if(audience == :owner, do: " --audience owner", else: "") <>
+            "`:\n  " <>
             Enum.join(problems, "\n  ")
         )
     end
@@ -162,8 +185,10 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   # graph document has no room for a marker, so it is read whole, and only
   # where the pages put one (`EhOsContract.Pages.graph?/3`). One the task cannot read
   # is not taken for its own, as a page whose marker it cannot read is not.
-  defp page?(path, file, {marker, domain}) do
-    if String.starts_with?(path, "graph/") and String.ends_with?(path, ".json") do
+  # The owner's pages have no graph documents, so none is theirs.
+  defp page?(path, file, {marker, domain, audience}) do
+    if audience == :engineering and String.starts_with?(path, "graph/") and
+         String.ends_with?(path, ".json") do
       case File.read(file) do
         {:ok, text} -> Pages.graph?(path, text, domain)
         {:error, _reason} -> false
