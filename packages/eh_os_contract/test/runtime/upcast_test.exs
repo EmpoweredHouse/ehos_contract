@@ -212,6 +212,19 @@ defmodule EhOsContract.UpcastTest do
       assert Decimal.equal?(amount, Decimal.new("9.90"))
     end
 
+    test "a field given under an atom and under its name, a clear personal value, a bare struct" do
+      for {mode, refusal} <- [
+            {"collide", "gave a field under an atom and under its name"},
+            {"clear", "the function writes note, a personal field, in the clear"},
+            {"struct", "amount_from_minor/1 gave no map"}
+          ] do
+        row = fee!(%{amount_minor: 100, do: mode})
+        error = assert_raise ArgumentError, fn -> Consumer.decode!(row) end
+        assert Exception.message(error) =~ refusal
+        refute Exception.message(error) =~ "written in the clear"
+      end
+    end
+
     test "a function that throws or exits is refused, naming the step and no value" do
       for mode <- ["throw", "exit"] do
         row = fee!(%{amount_minor: 100, note: "secret", do: mode})

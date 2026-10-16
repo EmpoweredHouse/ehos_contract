@@ -158,11 +158,12 @@ every event it `consults`, folded in the log's order. Two things differ:
    it, then the emit. Branch to different `emit/1` literals rather than computing the list of events
    (`I4`).
 4. Write `evolve/2` for every event that changes the state, and a named catch-all for the rest.
-   Write each function an event's `upcast … function:` names (plan DD, V2): it takes an old row's
+   Write each function an event's `upcast … function:` names — a unit that only records needs a
+   module for it too, with nothing else in it: it takes an old row's
    payload as the log stores it, a map with string keys, and gives the next version's. Keep it pure,
    and leave every sealed value (`%{"$eh" => …}`) where it is, every field the log tags rows with as
-   it is, and every list holding personal data in its order: a row that breaks one is refused when it
-   is read, and with it every decision folding that stream.
+   it is, every list holding personal data in its order, and no personal field in the clear: a row
+   that breaks one is refused when it is read, and with it every decision folding that stream.
 5. Put `use EhOsContract.ScenarioCase, contract: <Contract>` in a test module, if the contract has
    none, and run it. Every scenario of the unit is a test of this module.
 6. Give the module its place in `boundary`: under the context module that owns it, as its siblings

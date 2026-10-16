@@ -378,6 +378,20 @@ defmodule EhOsContract.ContractVersionsTest do
                  "the name of a command of the unit"
     end
 
+    test "a function named like what the implementation imports is refused" do
+      message =
+        refuse_contract(
+          "VersionsFunctionEmit",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                upcast from: 1, function: :emit
+              end
+          """)
+        )
+
+      assert message =~ "names the function :emit, which the implementation imports"
+    end
+
     test "a step before a function is judged by its own names: onto a tagged field, refused" do
       message =
         refuse_contract(

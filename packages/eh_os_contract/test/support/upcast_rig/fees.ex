@@ -18,6 +18,14 @@ defmodule UpcastRig.Fees do
 
   def amount_from_minor(%{"do" => "raise"} = data), do: Map.fetch!(data, "no such field")
   def amount_from_minor(%{"do" => "no_map"}), do: :not_a_map
+
+  def amount_from_minor(%{"do" => "collide"} = data),
+    do: data |> amount() |> Map.put(:amount, "1.00")
+
+  def amount_from_minor(%{"do" => "clear"} = data),
+    do: data |> amount() |> Map.put("note", "written in the clear")
+
+  def amount_from_minor(%{"do" => "struct"}), do: Decimal.new(1)
   def amount_from_minor(%{"do" => "throw"} = data), do: throw(data)
   def amount_from_minor(%{"do" => "exit"} = data), do: exit({:gone, data})
 

@@ -180,11 +180,20 @@ defmodule EhOsContract.Contract.Rules.Versions do
   defp functions(unit, event) do
     commands = MapSet.new(unit.commands, & &1.name)
 
-    for u <- event.upcasts, u.function != nil, MapSet.member?(commands, u.function) do
+    for u <- event.upcasts, u.function != nil, why = clash(u.function, commands), why != nil do
       {"U2: event #{inspect(event.name)}, `upcast from: #{u.from}` names the function " <>
-         "#{inspect(u.function)}, the name of a command of the unit; the implementation holds " <>
-         "both, so name the function after what it reads", u}
+         "#{inspect(u.function)}, #{why}; name it after what it reads", u}
     end
+  end
+
+  # An implementation imports `emit/1`, `reject/1` and `issue/1`, so a function of one
+  # argument by those names cannot be defined beside them.
+  defp clash(fun, _commands) when fun in [:emit, :reject, :issue],
+    do: "which the implementation imports"
+
+  defp clash(fun, commands) do
+    if MapSet.member?(commands, fun),
+      do: "the name of a command of the unit, which the implementation holds too"
   end
 
   # U3: what the log keeps by a field's name, judged as each target ends.

@@ -293,12 +293,15 @@ defmodule EhOsContract.Consumer do
   # stream folded from many older rows asks the index once, and one with none not at all.
   # A lookup that fails is refused when a step asks, where the step can be named.
   defp implementations(model, rows) do
-    found =
+    needing =
       for row <- rows,
           declaration = Enum.find(model.events, &(&1.type == row.type)),
           declaration != nil and Upcast.function_step?(declaration, row),
           uniq: true,
-          into: %{} do
+          do: declaration
+
+    found =
+      for declaration <- Enum.uniq_by(needing, & &1.unit), into: %{} do
         lookup =
           try do
             {:ok, implementation(model, declaration).()}

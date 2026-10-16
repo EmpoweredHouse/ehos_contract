@@ -177,7 +177,8 @@ defmodule EhOsContract.Check do
           Finding.new(
             "declaration-without-implementation",
             "#{inspect(model.module)} implements some declarations and not " <>
-              "#{Enum.join(missing, ", ")}, which dispatch will refuse to run",
+              "#{Enum.join(missing, ", ")}, which dispatch will refuse to run, or whose " <>
+              "older rows, read through a function of the unit's code, will not be read",
             at
           )
         ]

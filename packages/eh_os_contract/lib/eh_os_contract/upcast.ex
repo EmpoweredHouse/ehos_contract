@@ -84,6 +84,7 @@ defmodule EhOsContract.Upcast do
 
     result = stored!(context, module, fun, given)
     sealed!(context, data, result)
+    clear!(context, result)
     tagged!(context, result, if(is_function(values, 0), do: values.(), else: values))
     result
   end
@@ -106,8 +107,19 @@ defmodule EhOsContract.Upcast do
   defp caught(_error), do: "failed"
 
   # What the function gave, as the log stores a value: through JSON, so that a decimal, a
-  # date or an atom key reads as an old row's own would. Anything else is refused.
-  defp stored!(context, module, fun, given) when is_map(given) do
+  # date or an atom key reads as an old row's own would. Anything else is refused, and so
+  # is a field given twice, under an atom and under its name, which JSON would settle
+  # by the order of keys.
+  defp stored!(context, module, fun, given) when is_map(given) and not is_struct(given) do
+    keys = Enum.map(Map.keys(given), &to_string/1)
+
+    if length(Enum.uniq(keys)) != length(keys) do
+      refuse!(
+        context,
+        "#{inspect(module)}.#{fun}/1 gave a field under an atom and under its name"
+      )
+    end
+
     given |> Jason.encode!() |> Jason.decode!()
   rescue
     _cannot_encode in [Protocol.UndefinedError, Jason.EncodeError] ->
@@ -128,6 +140,20 @@ defmodule EhOsContract.Upcast do
           "opens only under the field it was sealed in, so a personal field is renamed with " <>
           "`rename:`, and a list holding personal data keeps its order"
       )
+    end
+
+    :ok
+  end
+
+  # A personal field holds a seal or nothing: the function sees no clear value of one, and
+  # one it wrote would be clear text where the log keeps a seal.
+  defp clear!(%{declaration: declaration} = context, result) do
+    for field <- declaration.fields,
+        Map.get(field, :personal) != nil,
+        name = Atom.to_string(field.name),
+        value = Map.get(result, name),
+        value != nil and not match?(%{"$eh" => _}, value) do
+      refuse!(context, "the function writes #{name}, a personal field, in the clear")
     end
 
     :ok
