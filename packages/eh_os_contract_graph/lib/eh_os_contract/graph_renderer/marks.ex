@@ -14,6 +14,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   # | a step (`taken`, `waits`, `fails`, `untraversed`, `pending`) | `taken`, none for an effect | `:untraversed`, `:pending`, `:waiting`, `:failing`, each as the overlay reads the step |
   # | a lifecycle's transition | `count` | `:untraversed`, `:pending` |
   # | a move the lifecycle does not allow | `count` | `:undeclared` |
+  # | stages runs entered the wrong way round (`observed.relations.out_of_order`) | `runs` | `:undeclared` |
   # | traffic between two contracts | `events` | `:waiting`, `:failing` |
   # | a relation several steps end at (`by_trigger`) | none | none |
   #
@@ -109,7 +110,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   def relation(nil, _id), do: @none
 
   def relation(overlay, id) do
-    case get_in(overlay, ["relations", id]) do
+    case get_in(overlay, ["relations", id]) || out_of_order(overlay, id) do
       %{"taken" => taken} = step ->
         %{
           count: taken,
@@ -128,11 +129,23 @@ defmodule EhOsContract.GraphRenderer.Marks do
       %{"count" => count} ->
         %{count: count, states: [:undeclared]}
 
+      %{"runs" => runs, "from" => _, "to" => _} ->
+        %{count: runs, states: [:undeclared]}
+
       %{"events" => events, "waiting" => waiting, "failing" => failing} ->
         %{count: events, states: flags(waiting: waiting > 0, failing: failing)}
 
       _ ->
         @none
+    end
+  end
+
+  # A pair of stages out of order carries its runs on itself, under `observed`: a process's
+  # `relations` hold nothing.
+  defp out_of_order(overlay, id) do
+    case get_in(overlay, ["observed", "relations", "out_of_order"]) do
+      pairs when is_list(pairs) -> Enum.find(pairs, &(is_map(&1) and &1["id"] == id))
+      _ -> nil
     end
   end
 

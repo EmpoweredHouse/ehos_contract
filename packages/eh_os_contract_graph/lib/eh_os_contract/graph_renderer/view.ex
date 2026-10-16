@@ -136,7 +136,8 @@ defmodule EhOsContract.GraphRenderer.View do
   @doc """
   The view `spec` names of `document`, with the moves `overlay` observed and the
   document does not declare — a move a lifecycle does not allow, which happened
-  anyway — where both their ends are in it. A unit or a lifecycle the document does
+  anyway, and a process's stage a run entered before an earlier one, an arrow from the
+  later stage back — where both their ends are in it. A unit or a lifecycle the document does
   not have is an empty view.
   """
   @spec build(map(), spec(), map() | nil) :: t()
@@ -922,7 +923,9 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # --- what the log saw -------------------------------------------------------------------
 
-  # Without an overlay, the view as it is.
+  # Without an overlay, the view as it is. With one, a move a lifecycle does not allow,
+  # and a process's stages runs entered the wrong way round (plan DD, O2, #319): an arrow
+  # from the later stage back to the earlier one.
   defp observed(view, _document, nil), do: view
 
   defp observed(view, document, overlay) do
@@ -938,7 +941,11 @@ defmodule EhOsContract.GraphRenderer.View do
         )
       end
 
-    %{view | relations: view.relations ++ within(view, arrows)}
+    order =
+      for r <- get_in(overlay, ["observed", "relations", "out_of_order"]) || [],
+          do: arrow("out_of_order", r, words: "entered first", line: "dotted")
+
+    %{view | relations: view.relations ++ within(view, arrows ++ order)}
   end
 
   # --- building blocks --------------------------------------------------------------------

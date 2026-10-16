@@ -36,6 +36,7 @@
   },
   "observed": {
     "relations": {
+      "out_of_order": [],
       "undeclared": []
     }
   },

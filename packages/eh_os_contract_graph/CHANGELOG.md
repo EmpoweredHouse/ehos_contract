@@ -21,6 +21,12 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **A process's picture shows the stages runs entered out of order** (plan DD, stage O2, #319): a dotted arrow
+  in the error look from the later stage's lane back to the earlier one, "entered first", with how many runs,
+  from the overlay's `observed.relations.out_of_order`; its panel names the two stages.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added

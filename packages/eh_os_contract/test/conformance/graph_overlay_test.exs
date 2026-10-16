@@ -323,6 +323,39 @@ defmodule EhOsContract.GraphOverlayTest do
       assert later["nodes"][event.(:withdrawn)] == %{"occurrences" => 0}
     end
 
+    # Plan DD, O2 (#319): the stages a run entered the wrong way round, as the report
+    # counts them, keyed by the document's stage nodes.
+    test "says which stages runs entered out of order, and in how many runs" do
+      review("in-order", true)
+
+      auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+      {:ok, _} =
+        EhOsContract.record(DispatchRig.Ledger, %BalanceConfirmed{account_id: "early"},
+          actor: auditor
+        )
+
+      review("early", false)
+
+      d = Document.process(AccountReview)
+      o = AccountReview |> Overlay.process() |> valid!() |> joins!(d)
+      stage = &Document.id([:stage, "dispatch_rig.account_review", &1])
+
+      assert o["observed"]["relations"]["out_of_order"] == [
+               %{
+                 "id" => "out_of_order:#{stage.(:confirmation)}:#{stage.(:withdrawal)}",
+                 "from" => stage.(:confirmation),
+                 "to" => stage.(:withdrawal),
+                 "runs" => 1
+               }
+             ]
+
+      assert %{runs: 1} = Conformance.process(Model.fetch(AccountReview)).out_of_order
+
+      later = Overlay.process(AccountReview, since: DateTime.add(DateTime.utc_now(), 3600))
+      assert later["observed"]["relations"]["out_of_order"] == []
+    end
+
     # The ids are the facts' to make: the overlay reads them from its document, so it
     # follows them wherever they change.
     test "keys its numbers by the ids its document gives, and by nothing else" do
