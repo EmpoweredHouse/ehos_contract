@@ -24,6 +24,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Removed
 
 - **Breaking:** `mix eh_os_contract.manifest` no longer writes `process` on a capability of `offers.capabilities`,

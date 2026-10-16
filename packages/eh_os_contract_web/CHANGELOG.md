@@ -25,6 +25,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
 ### Added
 
 - **The graph screen's map says where to go in** (plan DD, stage G1, eh-os-contract#297): each contract's card
