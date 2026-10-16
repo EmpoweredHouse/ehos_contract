@@ -147,6 +147,27 @@ defmodule EhOsContract.ProcessModuleTest do
       refute a.version == c.version
     end
 
+    # Plan DD, V5 (#322).
+    test "its version does not see its words, and its words' digest does" do
+      a = compile_process("WordsA", @body)
+
+      b =
+        compile_process(
+          "WordsB",
+          @body
+          |> replace(~s(source "Dz.U. 2025 poz. 866"), ~s(source "Dz.U. 2026 poz. 1"))
+          |> replace(~s("Zamknięcie"), ~s("Zamknięcie wizyty")),
+          id: "clinic.words_a"
+        )
+
+      assert a.version == b.version
+      assert a.digests == b.digests
+      refute a.text_digest == b.text_digest
+
+      moved = for {key, digest} <- a.text_digests, b.text_digests[key] != digest, do: key
+      assert Enum.sort(moved) == ["promise:reported_within_two_days", "stage:closing"]
+    end
+
     test "its vocabulary is the process DSL's" do
       assert EhOsContract.Process.vocabulary() == %{
                [:correlate] => [:fields],

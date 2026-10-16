@@ -140,7 +140,8 @@ history by itself (`EhOsContract.Subscription`, "Where a new consumer starts"):
   steers none; a timer of theirs already due is dropped;
 - an ordered read model starts at position 0; an inline one at the head, and one added to a log
   that already has its events is rebuilt by hand;
-- a read model whose declaration or events change is `stale` until rebuilt, and rebuilding needs its
+- a read model whose declaration or events change is `stale` until rebuilt (a label or a `source:`
+  alone changes neither), and rebuilding needs its
   optional `reset/0`; without it, it stays stale. A process manager that changes is `stale` too, and
   is rebuilt at boot, since the library owns its table. One projecting personal fields needs `forget/2` or
   the engine will not boot

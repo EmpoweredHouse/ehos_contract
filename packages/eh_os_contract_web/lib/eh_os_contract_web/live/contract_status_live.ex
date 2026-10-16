@@ -64,6 +64,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
             )}.
           </p>
           <p :if={report.wiring.version}>Wiring {report.wiring.version}.</p>
+          <p :for={line <- changed(report.deployment.changed)}>{line}</p>
         </section>
 
         <section>
@@ -224,6 +225,11 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @spec deployed_since(DateTime.t() | nil) :: String.t()
   defp deployed_since(nil), do: "nothing has happened under this version yet"
   defp deployed_since(at), do: "in force since #{DateTime.to_date(at)}"
+
+  # What changed since the previous deployment, as the text report says it; a deploy
+  # that changed only the words says so (plan DD, V5, #322).
+  defp changed(nil), do: []
+  defp changed(change), do: Sentence.change(change, paths: true)
 
   # The one line the report exists to be read from, so it is the one place colour
   # carries the answer. **The verdict only**: one of the qualifications beside it says

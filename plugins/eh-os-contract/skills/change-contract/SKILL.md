@@ -51,12 +51,14 @@ Everything in the table below compiles.
 
 "Seen" says whether the next deploy's `EhOsContract.Deployment.diff/2` names it. Every declaration
 has its own digest there (`declarations: added / removed / changed`, keyed `"<kind>:<name>"`), and
-any edit — a label and a `source:` included — moves the contract's version. The diff is only as good
-as its rows: before `declaration_digests` were recorded it answers `:not_recorded`.
+any edit to what the contract allows moves the contract's version. Its words do not: a label, a
+`source:`, a scenario's description and the domain's glossary have their own digest, and an edit to
+them alone is named under `words`, with `agreement_changed: false`. The diff is only as good as its
+rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 
 | Change | Seen | What it does to history |
 | --- | --- | --- |
-| A label, `source:`, a scenario's description | `changed` | Nothing functional. A version moved by wording alone is not a red flag. |
+| A label, `source:`, a scenario's description, a term of the glossary | `words` | Nothing functional, and no new version: no event is stamped differently and no read model rebuilds. |
 | A new unit, command, event, reaction, read model | `added` | Additive. A new policy starts at the head and does not react to history; a new ordered read model projects it from position 0 (`write-reaction`). |
 | A new **optional** field on an event | `changed` | Compatible: old rows read back with `nil`. |
 | A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: make it optional, or a new event. |

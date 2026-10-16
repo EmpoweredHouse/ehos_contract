@@ -14,12 +14,21 @@ defmodule EhOsContract.Model do
         domain: MyApp.Domain, context: :settlement,
         events: [...], commands: [...], units: [...], policies: [...],
         scenarios: [...], ...,
-        version: "3f9c…", digests: %{"event:month_opened" => "…"}}
+        version: "3f9c…", digests: %{"event:month_opened" => "…"},
+        text_digest: "8a01…", text_digests: %{"event:month_opened" => "…"}}
 
   **Collections are lists in declaration order**, not maps keyed by name. Readers
   print in declaration order — the graph lists its nodes that way, the report its
   processes — so a map would change their output. Order does not reach the version:
   it is hashed over a canonical form in which declaration order is insignificant.
+
+  **The version is the agreement, not its words.** `version` and `digests` hash what
+  the contract allows: fields, commands, who may issue them, what they emit and
+  refuse, rules, lifecycles, reactions. Its labels, `source:` and scenarios'
+  descriptions have a digest of their own, `text_digest`, and one per declaration,
+  `text_digests`, so relabelling an event moves `text_digest` and leaves the version,
+  and every event stamped with it, where it was. A domain and a process module have
+  the same four keys.
 
   A domain's model is plain data with its own keys (`contexts`, `actors`, `values`,
   …), read directly until a reader needs more. So is a process module's
@@ -38,6 +47,8 @@ defmodule EhOsContract.Model do
           required(:module) => module(),
           required(:version) => String.t(),
           required(:digests) => %{String.t() => String.t()},
+          required(:text_digest) => String.t(),
+          required(:text_digests) => %{String.t() => String.t()},
           optional(atom()) => term()
         }
 
@@ -546,7 +557,10 @@ defmodule EhOsContract.Model do
     end
   end
 
-  @doc "The contract version: a hash of every declaration, stamped on every event."
+  @doc """
+  The contract version: a hash of what every declaration allows, stamped on every
+  event. Its words, labels and `source:`, are not in it (`text_digest` in the model).
+  """
   @spec version(contract()) :: String.t()
   def version(contract), do: contract!(contract).version
 

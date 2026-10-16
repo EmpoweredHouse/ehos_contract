@@ -92,11 +92,7 @@ defmodule EhOsContract.Report do
           []
 
         c ->
-          [
-            "  Since the previous version: " <>
-              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}, " <>
-              "paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}."
-          ] ++ Enum.map(Sentence.declarations_changed(c.declarations), &("  " <> &1))
+          Enum.map(Sentence.change(c, paths: true), &("  " <> &1))
       end
 
     earlier =

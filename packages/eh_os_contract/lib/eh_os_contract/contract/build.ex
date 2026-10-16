@@ -23,7 +23,11 @@ defmodule EhOsContract.Contract.Build do
   # (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
   # and `correlate`, and a scenario's givens and expectations.
   # Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
-  # one, `"scenario:*"`, since nothing names them.
+  # one, `"scenario:*"`, since nothing names them, over the scenarios as a set.
+  #
+  # **The digest does not see the words.** `version` and `digests` hash what the
+  # contract allows; its labels, `source:` and scenarios' descriptions have their own,
+  # `text_digest` and `text_digests`, under the same keys.
   @moduledoc false
 
   use Spark.Dsl.Transformer
@@ -82,6 +86,7 @@ defmodule EhOsContract.Contract.Build do
     }
 
     own = %{domain: domain, context: context}
+    grouped = groups(own, collections)
 
     collections
     |> Map.merge(%{
@@ -91,8 +96,10 @@ defmodule EhOsContract.Contract.Build do
       domain: domain,
       context: context,
       grants: grants(collections),
-      version: version(own, collections),
-      digests: digests(own, collections)
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
+      digests: digests(own, collections, &Digest.agreement/2),
+      text_digests: digests(own, collections, &Digest.words/2)
     })
     |> with_id(Map.get(persisted, :id))
   end
@@ -409,68 +416,42 @@ defmodule EhOsContract.Contract.Build do
     domain_services: :domain_service
   ]
 
-  # Kinds that came after the first contracts were digested: a contract that declares
-  # none of one hashes as it did before the kind existed, so adding a kind to the
-  # library moves no contract's version.
-  @later [:domain_services]
-
-  # Kinds that took `source:` after the first contracts were digested (plan EP1), a
-  # process manager's timers among them: a `nil` one is left out of the
-  # digest, so no declaration written without it moves. The model keeps the key, `nil`
-  # or not, as it does for every other kind, so a reader needs no second shape.
-  @sourced_later [:policies, :effects, :process_managers, :read_models, :queries]
-
-  # Plan DD, P2h (#221): a contract no longer declares a process, its stages or the
-  # events that end its runs. Every event digests as one of a contract without a
-  # process did, outside a stage group and not ending a run, and the version hashes
-  # that contract's empty process group, so removing the form moved no contract's
-  # version. The model has none of these keys, so a reader never sees them.
-  @no_run %{stage: nil, terminal: false}
-
-  defp digested(key, declaration) when key in @sourced_later, do: unsourced(declaration)
-  defp digested(:events, event), do: Map.merge(event, @no_run)
-  defp digested(_key, declaration), do: declaration
-
-  defp unsourced(%{timers: timers} = manager),
-    do: %{without_nil_source(manager) | timers: Enum.map(timers, &without_nil_source/1)}
-
-  defp unsourced(declaration), do: without_nil_source(declaration)
-
-  defp without_nil_source(%{source: nil} = declaration), do: Map.delete(declaration, :source)
-  defp without_nil_source(declaration), do: declaration
-
-  defp version(own, collections) do
-    Digest.hash_groups(
-      [contract: [own], process: []] ++
-        for(
-          {key, _} <- @collections,
-          key not in @later or collections[key] != [],
-          do: {key, Enum.map(collections[key], &digest_form(digested(key, &1)))}
-        ) ++
-        [
-          consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
-          scenarios: Enum.map(collections.scenarios, &digest_form/1)
-        ]
-    )
+  # Plan DD, V5 (#322): `version` hashes what the contract allows, `text_digest` its
+  # words, each over the same groups (`EhOsContract.Digest.agreement/2`, `words/2`).
+  defp groups(own, collections) do
+    [contract: [own]] ++
+      for({key, _} <- @collections, do: {key, Enum.map(collections[key], &digest_form/1)}) ++
+      [
+        consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
+        scenarios: Enum.map(collections.scenarios, &digest_form/1)
+      ]
   end
 
-  defp digests(own, collections) do
+  # One digest of each kind per declaration, keyed `"<kind>:<name>"`: `digests` of
+  # what it allows, `text_digests` of its words.
+  defp digests(own, collections, of) do
     declarations =
       for {key, kind} <- @collections, declaration <- collections[key] do
-        {"#{kind}:#{declaration.name}", Digest.hash(digest_form(digested(key, declaration)))}
+        {"#{kind}:#{declaration.name}", Digest.hash(of.(key, digest_form(declaration)))}
       end
 
     consumed =
       for declaration <- consumed(collections.consumes) do
-        {"consumes:#{declaration.as}", Digest.hash(digest_form(declaration))}
+        {"consumes:#{declaration.as}", Digest.hash(of.(:consumes, digest_form(declaration)))}
       end
 
     scenarios =
       if collections.scenarios != [],
-        do: [{"scenario:*", Digest.hash(Enum.map(collections.scenarios, &digest_form/1))}]
+        do: [
+          {"scenario:*",
+           collections.scenarios
+           |> Enum.map(&of.(:scenarios, digest_form(&1)))
+           |> Enum.sort_by(&Digest.canonical/1)
+           |> Digest.hash()}
+        ]
 
     Map.new(
-      [{"contract", Digest.hash(own)}] ++
+      [{"contract", Digest.hash(of.(:contract, own))}] ++
         declarations ++ consumed ++ List.wrap(scenarios)
     )
   end

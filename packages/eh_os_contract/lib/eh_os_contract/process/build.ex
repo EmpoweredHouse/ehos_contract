@@ -11,7 +11,8 @@ defmodule EhOsContract.Process.Build do
   #       stages: [%{name: :departure, label: nil,
   #                  includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
   #       ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
-  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"}}
+  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"},
+  #       text_digest: "…", text_digests: %{"process" => "…", "stage:departure" => "…"}}
   #
   # Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
   # `unverified`. A module with scenarios (plan DD, S2, #251) also has
@@ -82,6 +83,7 @@ defmodule EhOsContract.Process.Build do
 
     promises = Enum.map(d.promises, &promise/1)
     scenarios = Enum.map(d.scenarios, &scenario/1)
+    grouped = groups(own, stages, promises, scenarios)
 
     own
     |> Map.merge(if(scenarios == [], do: %{}, else: %{scenarios: scenarios}))
@@ -91,8 +93,10 @@ defmodule EhOsContract.Process.Build do
       module: d.module,
       stages: stages,
       promises: promises,
-      version: version(own, stages, promises, scenarios),
-      digests: digests(own, stages, promises, scenarios)
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
+      digests: digests(own, stages, promises, scenarios, &Digest.agreement/2),
+      text_digests: digests(own, stages, promises, scenarios, &Digest.words/2)
     })
   end
 
@@ -146,22 +150,33 @@ defmodule EhOsContract.Process.Build do
   # stages are a set.
   # Scenarios share one digest, `"scenario:*"`, as a contract's do, since nothing names
   # them.
-  defp version(own, stages, promises, scenarios) do
-    Digest.hash_groups(
-      [
-        process: [digest_form(own, stages)],
-        stages: Enum.map(stages, &digest_form/1),
-        promises: Enum.map(promises, &digest_form/1)
-      ] ++ if(scenarios == [], do: [], else: [scenarios: scenarios])
-    )
+  #
+  # Plan DD, V5 (#322): `version` and `digests` hash what the process holds its runs to,
+  # `text_digest` and `text_digests` its words, under the same keys
+  # (`EhOsContract.Digest.agreement/2`, `words/2`).
+  defp groups(own, stages, promises, scenarios) do
+    [
+      process: [digest_form(own, stages)],
+      stages: Enum.map(stages, &digest_form/1),
+      promises: Enum.map(promises, &digest_form/1)
+    ] ++ if(scenarios == [], do: [], else: [scenarios: scenarios])
   end
 
-  defp digests(own, stages, promises, scenarios) do
+  defp digests(own, stages, promises, scenarios, of) do
     Map.new(
-      [{"process", Digest.hash(digest_form(own, stages))}] ++
-        for(s <- stages, do: {"stage:#{s.name}", Digest.hash(digest_form(s))}) ++
-        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(digest_form(p))}) ++
-        if(scenarios == [], do: [], else: [{"scenario:*", Digest.hash(scenarios)}])
+      [{"process", Digest.hash(of.(:process, digest_form(own, stages)))}] ++
+        for(s <- stages, do: {"stage:#{s.name}", Digest.hash(of.(:stages, digest_form(s)))}) ++
+        for(p <- promises, do: {"promise:#{p.name}", Digest.hash(of.(:promises, digest_form(p)))}) ++
+        if(scenarios == [],
+          do: [],
+          else: [
+            {"scenario:*",
+             scenarios
+             |> Enum.map(&of.(:scenarios, &1))
+             |> Enum.sort_by(&Digest.canonical/1)
+             |> Digest.hash()}
+          ]
+        )
     )
   end
 

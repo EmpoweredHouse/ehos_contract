@@ -2,26 +2,13 @@ defmodule EhOsContract.SourcesTest do
   @moduledoc """
   Plan EP1: **`source:` on every declaration** — where it comes from in the workshop
   material, the first rung of the ladder from prose to a test. Every kind keeps the key
-  in the model, `nil` or not; for the kinds that took it in EP1 a `nil` one is left out
-  of the digest, so no contract or domain written without it moves its version.
+  in the model, `nil` or not. Since plan DD, V5 (#322) a source is one of the words: it
+  moves the text digests and not the version.
   """
 
   use EhOsContract.DslCase, async: false
 
   alias EhOsContract.{Model, Pages}
-
-  # The versions of `@unsourced` and `@domain_unsourced` computed by the library before
-  # EP1 (origin/main at 0b7bc84), which a contract or domain without `source:` keeps.
-  # The contract's moved once since, from 304120633fb2, with plan EP4: its effect's
-  # `idempotency` names a key and an owner, as every contract's with one does; and
-  # from 0233079a0430 with plan N3: its timer has a label; and from fbeab3316603 with
-  # plan DD, ID3 (#173): its events are typed by its id, `clinic.visits`, not its process;
-  # and from d6a1c3e1d546 with plan DD, P2h (#221): a contract no longer declares a
-  # process, and the fixture's is gone. What it has now is what it would have hashed to
-  # without one before: that removing the form moved no such contract's version is
-  # `ContractTest`'s.
-  @unsourced_version "0a533b0dc4d3"
-  @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
     aggregate :visit, "Wizyta" do
@@ -150,7 +137,7 @@ defmodule EhOsContract.SourcesTest do
       assert {read_model.source, query.source} == {"R-01", "R-02"}
     end
 
-    test "without one, keeps the key as nil and the version it had before EP1", %{
+    test "without one, keeps the key as nil", %{
       unsourced: model
     } do
       [pm] = model.process_managers
@@ -162,16 +149,20 @@ defmodule EhOsContract.SourcesTest do
               pm.timers ++ model.read_models ++ model.queries do
         assert Map.fetch!(declaration, :source) == nil, inspect(declaration)
       end
-
-      assert model.version == @unsourced_version
     end
 
-    test "a source moves the declaration's digest and nothing else's", %{
+    test "a source moves the declaration's words and not the version", %{
       sourced: sourced,
       unsourced: unsourced
     } do
+      assert sourced.version == unsourced.version
+      assert sourced.digests == unsourced.digests
+      refute sourced.text_digest == unsourced.text_digest
+
       moved =
-        for {key, digest} <- sourced.digests, unsourced.digests[key] != digest, do: key
+        for {key, digest} <- sourced.text_digests,
+            unsourced.text_digests[key] != digest,
+            do: key
 
       assert Enum.sort(moved) ==
                Enum.sort([
@@ -195,15 +186,13 @@ defmodule EhOsContract.SourcesTest do
       assert [%{source: "W2"}, %{source: "W3"}] = model.relations
     end
 
-    test "without one, keeps the key as nil and the version it had before EP1" do
+    test "without one, keeps the key as nil" do
       model = domain("Unsourced", @domain_unsourced)
 
       for declaration <-
             model.actors ++ model.subjects ++ model.values ++ model.externals ++ model.relations do
         assert Map.fetch!(declaration, :source) == nil, inspect(declaration)
       end
-
-      assert model.version == @domain_unsourced_version
     end
   end
 

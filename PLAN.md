@@ -1907,7 +1907,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | V2 | 4 | upcast przez callback | V1 | ⏸ with V1 | — |
 | V3 | 4 | zamek schematów | V1 | ⏸ with V1 | — |
 | V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
-| V5 | 4 | the agreement's version and the words' digest | P2h | ☐ rewritten 16 October | — |
+| V5 | 4 | the agreement's version and the words' digest | P2h | ◐ `dd/322-agreement-version` | [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322) |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
 | L1 | 5 | słownik połączony z kodem | N1 | ☑ #270 | [#269](https://github.com/EmpoweredHouse/eh-os-contract/issues/269) |
@@ -2271,6 +2271,8 @@ later event differently.
 - Every contract's version moves once, with the new hash: a **Breaking** line, since nothing is in production.
 - *Example:* relabelling Rehmed's `visit_completed` moves the text digest only; adding a field to it moves the
   version.
+- The deployment table gets storage version 4 (`text_digest` in its unique index), and the domain's glossary counts
+  as words. Scope, decisions and review: #322.
 
 **PC1 — a contract produces valid examples of its data** (#264; tightened 8 October 2026). `EhOsContract.Generators`,
 compiled only with StreamData (`optional: true`, as `EhOsContract.Plug` with Plug): `command/3`, `event/3`,

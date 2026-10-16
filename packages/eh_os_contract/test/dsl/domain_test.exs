@@ -217,6 +217,42 @@ defmodule EhOsContract.DomainTest do
       assert moved == ["domain:clinic"]
     end
 
+    # Plan DD, V5 (#322): a label is a word, and so is the glossary.
+    test "does not move when a label or a term changes, and the words' digest does" do
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.Worded do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        context :scheduling, "Umawianie", subdomain: :core do
+          term "wizyta", definition: "Spotkanie pacjenta z lekarzem."
+        end
+
+        subdomain :core, "Core", type: :core
+      end
+      """)
+
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.Reworded do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        context :scheduling, "Grafik wizyt", subdomain: :core do
+          term "wizyta", definition: "Spotkanie pacjenta z lekarzem w gabinecie."
+        end
+
+        subdomain :core, "Core", type: :core
+      end
+      """)
+
+      worded = Model.fetch(EhOsContract.DomainTest.Worded)
+      reworded = Model.fetch(EhOsContract.DomainTest.Reworded)
+
+      assert worded.version == reworded.version
+      assert worded.digests == reworded.digests
+
+      moved =
+        for {key, digest} <- worded.text_digests, reworded.text_digests[key] != digest, do: key
+
+      assert moved == ["context:scheduling"]
+    end
+
     test "has one digest per declaration, keyed by kind and name" do
       assert Map.keys(Model.fetch(Ordered).digests) |> Enum.sort() == [
                "actor:payer_gateway",

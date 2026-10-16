@@ -24,6 +24,11 @@ defmodule EhOsContract.Digest do
   # are equal — but it is observable through the encoding, which is what made the old
   # hash depend on something the agreement has no opinion about.
   #
+  # **The words.** A label, a `source:`, a scenario's description say what the
+  # agreement is called, not what it allows: `agreement/1` leaves them out of the
+  # version, and `words/1` gives them a digest of their own, so a corrected typo is
+  # told apart from a new agreement (plan DD, V5 (#322)).
+  #
   # ## What is deliberately significant
   #
   # **The order of a list value stays.** `correlate [:company_id, :period]` and
@@ -151,6 +156,101 @@ defmodule EhOsContract.Digest do
   defp framed_many(values, tag), do: framed(tag, Enum.join(values))
   defp framed(tag, value), do: tag <> Integer.to_string(byte_size(value)) <> ":" <> value
 
+  # The keys that hold words: what a declaration is called and where it comes from,
+  # in the client's language. A domain's `terms`, a context's glossary or a relation's
+  # pairs of words, are words whole.
+  @words [:label, :source, :description, :where, :definition, :reason, :unavailable_looks_like] ++
+           [:terms]
+
+  # Keys that hold data, a value as the client gave it: their keys are a field's
+  # names, not a declaration's, so a field called `label` is not a word. A value's
+  # invariant's examples are data too.
+  @data [:data, :default, :match, :violated_by, :satisfied_by]
+
+  @doc """
+  A declaration without its words: what it allows, which `version` hashes.
+
+  Every key that holds words (`label`, `source`, a scenario's `description`, a term's
+  definition) is left out at any depth, so correcting a label moves nothing.
+  """
+  @spec agreement(term()) :: term()
+  def agreement(%{__struct__: _} = value), do: value
+
+  def agreement(%{} = declaration) do
+    for {key, value} <- declaration, key not in @words, into: %{} do
+      if key in @data, do: {key, value}, else: {key, agreement(value)}
+    end
+  end
+
+  def agreement(list) when is_list(list), do: Enum.map(list, &agreement/1)
+  def agreement(other), do: other
+
+  @doc """
+  A declaration's words alone, which `text_digest` hashes: every key `agreement/1`
+  leaves out, with the `name` of the declaration that holds it, so a label moved to
+  another declaration is a change. `nil` when it holds none.
+
+  A list of words is a set, whatever the order of what holds them: a change to the
+  agreement that reorders declarations moves no words.
+  """
+  @spec words(term()) :: term()
+  def words(%{__struct__: _}), do: nil
+
+  def words(%{} = declaration) do
+    found =
+      for {key, value} <- declaration,
+          key not in @data,
+          held <- [if(key in @words, do: value, else: words(value))],
+          held not in [nil, []],
+          into: %{},
+          do: {key, held}
+
+    cond do
+      found == %{} -> nil
+      Map.has_key?(declaration, :name) -> Map.put(found, :name, declaration.name)
+      true -> found
+    end
+  end
+
+  def words(list) when is_list(list),
+    do: list |> Enum.map(&words/1) |> Enum.reject(&is_nil/1) |> Enum.sort_by(&canonical/1)
+
+  def words(_other), do: nil
+
+  @doc """
+  The version of named groups of declarations, as `hash_groups/1` takes them: a hash of
+  what they allow, each declaration's `agreement/2`.
+  """
+  @spec version(keyword([map()])) :: String.t()
+  def version(groups),
+    do: hash_groups(for {key, forms} <- groups, do: {key, Enum.map(forms, &agreement(key, &1))})
+
+  @doc """
+  The digest of the words of named groups of declarations, each declaration's
+  `words/2`; one that holds none is left out.
+  """
+  @spec text_digest(keyword([map()])) :: String.t()
+  def text_digest(groups) do
+    hash_groups(
+      for {key, forms} <- groups,
+          do: {key, forms |> Enum.map(&words(key, &1)) |> Enum.reject(&is_nil/1)}
+    )
+  end
+
+  @doc """
+  `agreement/1` of a declaration of a group. A scenario is split by hand: its givens
+  and expectations are data, whose keys are a field's names, and only its description
+  is words.
+  """
+  @spec agreement(atom(), map()) :: map()
+  def agreement(:scenarios, scenario), do: Map.delete(scenario, :description)
+  def agreement(_group, declaration), do: agreement(declaration)
+
+  @doc "`words/1` of a declaration of a group; a scenario's are its description."
+  @spec words(atom(), map()) :: map() | nil
+  def words(:scenarios, scenario), do: Map.take(scenario, [:description])
+  def words(_group, declaration), do: words(declaration)
+
   @doc """
   A hash of named groups of declarations, with each group's members sorted.
 
@@ -158,10 +258,13 @@ defmodule EhOsContract.Digest do
   name key, so this needs no knowledge of which key names a declaration — and there
   is no group whose shape it has to be taught. Each group is labelled by its kind,
   so an `event` moving to an empty `external` list cannot produce the same string.
+  An empty group is no group: a kind the library adds moves no version of a contract
+  that declares none of it.
   """
   @spec hash_groups(keyword([map()])) :: String.t()
   def hash_groups(groups) do
     groups
+    |> Enum.reject(fn {_kind, declarations} -> declarations == [] end)
     |> Enum.map_join("\n", fn {kind, declarations} ->
       members = declarations |> Enum.map(&canonical/1) |> Enum.sort() |> Enum.join("\n")
       "#{kind}\n#{members}"
