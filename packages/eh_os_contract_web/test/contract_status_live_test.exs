@@ -213,7 +213,9 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     changed = %{
       events_added: ["case_closed"],
       events_removed: [],
-      declarations: %{added: [], removed: [], changed: ["promise:closed_within_a_week"]}
+      agreement_changed: true,
+      declarations: %{added: [], removed: [], changed: ["promise:closed_within_a_week"]},
+      words: []
     }
 
     render = fn changed ->
@@ -238,6 +240,11 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     assert render.(%{changed | declarations: :not_recorded}) =~
              "was not recorded, so it cannot be compared."
+
+    # Plan DD, V5 (#322): a deploy that changed only the words is no new agreement.
+    assert render.(%{changed | agreement_changed: false, words: ["stage:closing"]}) =~
+             "Only the words changed since the previous deployment, not the agreement: " <>
+               "1 (stage:closing)."
   end
 
   # HEEx escapes interpolated values, so a sentence carrying a quotation mark is not in

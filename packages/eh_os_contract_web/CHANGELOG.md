@@ -27,6 +27,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A contract's status page says what changed since the previous deployment** (plan DD, stage V5,
+  eh-os-contract#322), as the text report does, and a deploy that changed only the words says so: "Only the words
+  changed since the previous deployment, not the agreement". A process module's says it too.
+
 - **The Graph screen's process picture shows the stages runs entered out of order** (plan DD, stage O2,
   eh-os-contract#319): an arrow from the later stage back to the earlier one, with how many runs, beside the
   sentence the status page already gave.
