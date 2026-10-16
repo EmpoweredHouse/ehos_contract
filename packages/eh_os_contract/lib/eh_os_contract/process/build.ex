@@ -83,6 +83,7 @@ defmodule EhOsContract.Process.Build do
 
     promises = Enum.map(d.promises, &promise/1)
     scenarios = Enum.map(d.scenarios, &scenario/1)
+    grouped = groups(own, stages, promises, scenarios)
 
     own
     |> Map.merge(if(scenarios == [], do: %{}, else: %{scenarios: scenarios}))
@@ -92,8 +93,8 @@ defmodule EhOsContract.Process.Build do
       module: d.module,
       stages: stages,
       promises: promises,
-      version: Digest.version(groups(own, stages, promises, scenarios)),
-      text_digest: Digest.text_digest(groups(own, stages, promises, scenarios)),
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
       digests: digests(own, stages, promises, scenarios, &Digest.agreement/2),
       text_digests: digests(own, stages, promises, scenarios, &Digest.words/2)
     })

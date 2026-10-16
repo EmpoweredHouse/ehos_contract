@@ -177,6 +177,8 @@ defmodule EhOsContract.Domain.Build do
         do: collections,
         else: Map.put(collections, :code_language, code_language)
 
+    grouped = groups(own, collections)
+
     Map.merge(collections, %{
       format: 1,
       kind: :domain,
@@ -186,8 +188,8 @@ defmodule EhOsContract.Domain.Build do
       time_zone: time_zone,
       # Plan DD, V5 (#322): `version` and `digests` hash what the domain allows,
       # `text_digest` and `text_digests` its words: labels, `source:`, the glossary.
-      version: Digest.version(groups(own, collections)),
-      text_digest: Digest.text_digest(groups(own, collections)),
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
       digests: digests(own, collections, &Digest.agreement/2),
       text_digests: digests(own, collections, &Digest.words/2)
     })

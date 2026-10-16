@@ -275,12 +275,7 @@ defmodule EhOsContract.Deployment do
   defp words_diff(nil, _new), do: :not_recorded
   defp words_diff(_old, nil), do: :not_recorded
 
-  defp words_diff(old, new) do
-    new
-    |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
-    |> Enum.map(&elem(&1, 0))
-    |> Enum.sort()
-  end
+  defp words_diff(old, new), do: changed(old, new)
 
   @spec declaration_diff(map() | nil, map() | nil) :: declaration_change() | :not_recorded
   defp declaration_diff(nil, _new), do: :not_recorded
@@ -290,12 +285,16 @@ defmodule EhOsContract.Deployment do
     %{
       added: new |> Map.keys() |> Kernel.--(Map.keys(old)) |> Enum.sort(),
       removed: old |> Map.keys() |> Kernel.--(Map.keys(new)) |> Enum.sort(),
-      changed:
-        new
-        |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
-        |> Enum.map(&elem(&1, 0))
-        |> Enum.sort()
+      changed: changed(old, new)
     }
+  end
+
+  # The keys both sides hold under different digests.
+  defp changed(old, new) do
+    new
+    |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.sort()
   end
 
   # When each declaration last changed, for one contract or process module.

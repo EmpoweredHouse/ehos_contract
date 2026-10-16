@@ -86,6 +86,7 @@ defmodule EhOsContract.Contract.Build do
     }
 
     own = %{domain: domain, context: context}
+    grouped = groups(own, collections)
 
     collections
     |> Map.merge(%{
@@ -95,8 +96,8 @@ defmodule EhOsContract.Contract.Build do
       domain: domain,
       context: context,
       grants: grants(collections),
-      version: Digest.version(groups(own, collections)),
-      text_digest: Digest.text_digest(groups(own, collections)),
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
       digests: digests(own, collections, &Digest.agreement/2),
       text_digests: digests(own, collections, &Digest.words/2)
     })
