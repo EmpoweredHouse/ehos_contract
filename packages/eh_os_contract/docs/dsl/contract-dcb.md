@@ -249,10 +249,10 @@ A fact the unit records.
 |------|------|----------|---------|------|
 | `depends_on` | `atom` |  |  | The external system the fact depends on. |
 | `recorded_by` | `atom \| list(atom)` |  | `[]` | The actors who record it as an observation, when no command decides it. |
-| `schema_version` | `pos_integer` |  | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
+| `schema_version` | `pos_integer` |  | `1` | The version of its fields, raised with an `upcast` from each version below it when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | `source` | `String.t` |  |  | Where the event comes from in the material. |
 
-Inside it: [`field`](#contract-dcb-event-field).
+Inside it: [`field`](#contract-dcb-event-field), [`upcast`](#contract-dcb-event-upcast).
 
 <a id="contract-dcb-event-field"></a>
 
@@ -282,4 +282,25 @@ One field of a state, a command, an event or a read model's row.
 | `default` | `any` |  |  | The initial value; only in a state. |
 | `issued_by` | `atom` |  |  | The domain external that gives this value, e.g. a number another system assigns. |
 | `supplied_by` | `:host` |  |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
+
+
+<a id="contract-dcb-event-upcast"></a>
+
+## dcb.event.upcast
+
+```elixir
+upcast
+```
+
+How a row written with an older version of the event's fields reads in the next
+version: fields renamed, and fields that version did not have given a value. One per
+version below `schema_version`; a row is read through each from its own version up.
+
+**Options**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `from` | `pos_integer` | yes |  | The version this step reads. |
+| `rename` | `keyword` |  | `[]` | Each field of that version under its name in the next, as `old: :new`. |
+| `default` | `keyword` |  | `[]` | A value for each field the next version has and that one did not; a row that holds the field keeps its own. |
 

@@ -87,7 +87,12 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Event do
     @moduledoc false
     defstruct [:name, :label, :depends_on, :source, recorded_by: []] ++
-                [schema_version: 1, fields: [], __spark_metadata__: nil]
+                [schema_version: 1, fields: [], upcasts: [], __spark_metadata__: nil]
+  end
+
+  defmodule Upcast do
+    @moduledoc false
+    defstruct [:from, rename: [], default: [], __spark_metadata__: nil]
   end
 
   defmodule Consults do
@@ -476,12 +481,42 @@ defmodule EhOsContract.Contract.Dsl do
           ]
   }
 
+  # Plan DD, V1 (#333): how a row written with an older version of the event's fields
+  # reads in the current one, a step per version, so that the log is never rewritten.
+  @upcast %Spark.Dsl.Entity{
+    name: :upcast,
+    describe: """
+    How a row written with an older version of the event's fields reads in the next
+    version: fields renamed, and fields that version did not have given a value. One per
+    version below `schema_version`; a row is read through each from its own version up.
+    """,
+    examples: [
+      "upcast from: 1, rename: [reason: :demand_reason], default: [priority: \"normal\"]"
+    ],
+    target: Upcast,
+    schema: [
+      from: [type: :pos_integer, required: true, doc: "The version this step reads."],
+      rename: [
+        type: :keyword_list,
+        default: [],
+        doc: "Each field of that version under its name in the next, as `old: :new`."
+      ],
+      default: [
+        type: :keyword_list,
+        default: [],
+        doc:
+          "A value for each field the next version has and that one did not; a row that " <>
+            "holds the field keeps its own."
+      ]
+    ]
+  }
+
   @event %Spark.Dsl.Entity{
     name: :event,
     describe: "A fact the unit records.",
     target: Event,
     args: [:name, :label],
-    entities: [fields: [@field]],
+    entities: [fields: [@field], upcasts: [@upcast]],
     schema: [
       name: [type: :atom, required: true, doc: "The event's name."],
       label: [type: :string, required: true, doc: "The fact, as the business states it."],
@@ -495,8 +530,9 @@ defmodule EhOsContract.Contract.Dsl do
         type: :pos_integer,
         default: 1,
         doc:
-          "The version of its fields, raised with an upcaster when history exists; written " <>
-            "into each row, and a row of a newer version than the code declares is not read."
+          "The version of its fields, raised with an `upcast` from each version below it " <>
+            "when history exists; written into each row, and a row of a newer version than " <>
+            "the code declares is not read."
       ],
       source: [type: :string, doc: "Where the event comes from in the material."]
     ]

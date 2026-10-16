@@ -1,6 +1,6 @@
 ---
 name: change-contract
-description: Before editing a contract whose units, events or reactions may already have rows in the log — renaming, adding or removing a field, changing a type or an enum, `personal:`, a unit's identity, a process module's `correlate` or `id:`, a promise, a deadline, a command's name or `by:`, a reaction's declaration — classify what the change risks before touching code. The compiler catches one class for free; the rest compiles and still breaks history, because every stored event is decoded again by today's declaration whenever its stream is folded, and upcasters are not built. Produces a written impact analysis and the smallest edit that satisfies it. Use when modifying a contract that has declarations; not for its first version (see `contract-distillation` and `add-event`) and not for deciding whether something belongs in a contract at all (see `module-boundary-check`).
+description: Before editing a contract whose units, events or reactions may already have rows in the log — renaming, adding or removing a field, changing a type or an enum, `personal:`, a unit's identity, a process module's `correlate` or `id:`, a promise, a deadline, a command's name or `by:`, a reaction's declaration — classify what the change risks before touching code. The compiler catches one class for free; the rest compiles and still breaks history, because every stored event is decoded again by today's declaration whenever its stream is folded, and only an event's `upcast` steps carry its old rows across a change. Produces a written impact analysis and the smallest edit that satisfies it. Use when modifying a contract that has declarations; not for its first version (see `contract-distillation` and `add-event`) and not for deciding whether something belongs in a contract at all (see `module-boundary-check`).
 ---
 
 # Changing a contract that already exists
@@ -8,7 +8,9 @@ description: Before editing a contract whose units, events or reactions may alre
 Checked on 30 September 2026 (plan E11e) against the engine's source —
 `EhOsContract.Codec.decode/4`, `EhOsContract.Consumer.decode!/1`, `EhOsContract.Deployment`,
 `EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
-§13. Not yet run on a real change: read what it says against those before trusting it.
+§13. Not yet run on a real change: read what it says against those before trusting it. The upcasts
+were added on 17 October 2026 (plan DD, V1, #333), checked against `EhOsContract.Upcast` and
+`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows".
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
@@ -28,10 +30,13 @@ decision of a boundary that consults the type, whatever stream the row is in; an
 subscription stops at that position, `failing`; an effect job is retried three times and
 discarded. A unit with no `evolve/2` never reads its history back, and one whose only catch-all is
 `def evolve(state, _), do: state` reads back only the events it has a clause for: an old row of a
-type it passes over is not decoded, so it breaks nothing. `schema_version` exists on
-every event, but **no upcaster is built** (§10.6 describes one; nothing calls it), so there is no
-way yet to carry old rows across a breaking change. By the time the compiler runs, the file already
-says whatever it says — which is why the analysis comes first.
+type it passes over is not decoded, so it breaks nothing. **An event's `upcast` steps are the one
+way to carry old rows across a breaking change**: raise its `schema_version`, and say how a row of
+the version before reads in the new one, a field renamed (`rename:`) or given a value it did not
+have (`default:`). The rows are never rewritten; each is read through the steps from its own
+version up. A change a step cannot say — a type, `personal:`, the identity — has no way across yet.
+By the time the compiler runs, the file already says whatever it says — which is why the analysis
+comes first.
 
 ## What the compiler already catches
 
@@ -61,7 +66,9 @@ rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 | A label, `source:`, a scenario's description, a term of the glossary | `words` | Nothing functional, and no new version: no event is stamped differently and no read model rebuilds. |
 | A new unit, command, event, reaction, read model | `added` | Additive. A new policy starts at the head and does not react to history; a new ordered read model projects it from position 0 (`write-reaction`). |
 | A new **optional** field on an event | `changed` | Compatible: old rows read back with `nil`. |
-| A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: make it optional, or a new event. |
+| A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: raise `schema_version` with `upcast from: n, default: [field: value]`, make it optional, or a new event. A personal field takes no default (`V3`). |
+| A field of an event renamed | `changed` | Old rows hold the old name, so the new one reads as missing: a required one fails to decode. With history: raise `schema_version` with `upcast from: n, rename: [old: :new]`. A personal field may be renamed: its sealed value opens under the old name. The unit's identity may not (`V3`). |
+| `schema_version` raised | `changed` | Every version below it needs its step (`V1`), empty when the fields kept their shape. A row is read through the steps from its own version; a row of a newer version than the code declares is not read at all, and its readers wait. |
 | A field removed from an event | `changed` | Old rows still decode — an undeclared key is ignored on read. Personal values stay sealed in the log until their subject is erased. |
 | A field's type changed; an enum member removed | `changed` | Old rows fail to decode (`:type`; a member the contract no longer declares does not fit) — unless every stored value also fits the new type: `:integer` to `:decimal`, `:id` to `:string`, a value of the same base type. Adding an enum member is compatible. |
 | `personal:` added to, or removed from, a field | `changed` | Old rows fail to decode: clear text where a sealed value is expected, or the reverse. |
@@ -133,5 +140,6 @@ meets old rows, and write the decision and the data work into the pull request i
 ## Not this skill
 
 Whether the changed model is the right one — that belongs to whoever confirmed the process.
-Building upcasters, or a versioned history of deadlines — plan items, if they are ever needed; this
-skill records that they do not exist.
+An upcast by a function, for a change a rename and a default cannot say, and the schema lock that
+notices a change of fields made without a new version — plan items (V2–V4); until they exist, this
+skill's table is what notices it. A versioned history of deadlines is not planned.

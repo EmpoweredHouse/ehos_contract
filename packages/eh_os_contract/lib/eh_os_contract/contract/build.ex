@@ -231,6 +231,33 @@ defmodule EhOsContract.Contract.Build do
       type: "#{prefix}.#{event.name}",
       fields: identity_fields(unit) ++ plain(event.fields)
     })
+    # Plan DD, V1 (#333): kept only where the event has steps, so a contract without them
+    # keeps its version; each step's renames and defaults as maps, in the order of `from`,
+    # a default as the log stores a value (through JSON: an atom as its name, a date as
+    # its ISO 8601 text), so it reads as an old row's own value would.
+    |> then(fn built ->
+      case Enum.sort_by(event.upcasts, & &1.from) do
+        [] ->
+          Map.delete(built, :upcasts)
+
+        steps ->
+          %{
+            built
+            | upcasts:
+                for(
+                  u <- steps,
+                  do: %{
+                    from: u.from,
+                    rename: Map.new(u.rename),
+                    default:
+                      Map.new(u.default, fn {f, v} ->
+                        {f, v |> Jason.encode!() |> Jason.decode!()}
+                      end)
+                  }
+                )
+          }
+      end
+    end)
   end
 
   # An identity field typed as another unit's or an entity's number refers to it, as a

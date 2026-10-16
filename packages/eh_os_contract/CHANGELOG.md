@@ -48,6 +48,20 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **An event's old rows are read in its current shape** (plan DD, stage V1, #333): an `upcast` per version below
+  `schema_version`, `upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]`. A row is read
+  through the steps from its own version up, by every consumer and by a relay before it publishes. The log is never
+  rewritten, and a renamed personal field opens under the name it was sealed with. A `default:` is written as the
+  log stores a value. The compiler refuses a version without its step (`V1`), a step to a field the event will not
+  have (`V2`), and a step that renames or defaults the unit's identity or gives a personal field a default (`V3`).
+
+### Changed
+
+- **Breaking:** an event above `schema_version: 1` needs an `upcast from:` each version below it, or the contract
+  no longer compiles (`V1`). One whose fields kept their shape takes an empty step: `upcast from: 1`.
+
 ## [0.5.0] - 2026-10-16
 
 ### Added

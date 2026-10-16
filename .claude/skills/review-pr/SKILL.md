@@ -133,6 +133,7 @@ the question lives here and only here:
 `packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
 `run.ex`, `stage_order.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`,
 `dependency.ex`, `digest.ex`, `contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
+`upcast.ex` (how an older row reads, and so what every reader of it counts),
 `report.ex`, `report/`, `graph.ex`, `graph/` — and, where the change touches runs, keys or failure
 labels, `store/postgres.ex`, `key.ex` and `dispatcher.ex`.
 

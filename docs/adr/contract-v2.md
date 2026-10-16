@@ -1392,6 +1392,19 @@ row of design-rationale rejected event sourcing for. v2 answers it with a `schem
 an upcaster callback per type; `check` fails when an event's data digest moves while the log already holds
 rows of that type and no upcaster covers the old version.
 
+*17 October 2026, plan DD, V1: upcasts are declared first, and a function is the escape.* An event at
+`schema_version` n carries a step per older version, `upcast from: k, rename: [old: :new], default:
+[field: value]`, and a row is read through the steps from its own version up; the log is never
+rewritten. The compiler refuses a version without its step, a step to a field the event will not
+have, and a step that renames or defaults the identity or gives a personal field a default (`V1`–`V3`).
+The declaration is the rule rather than the callback because the engine has to understand two
+things a function would hide: the path a renamed personal field was sealed under (the AEAD's
+associated data holds it, §14), and, for the schema lock that replaces the digest check above (V3,
+V4), which fields a step covers. The callback (`upcast from: k, with: :fun`, V2) covers what a rename
+and a default cannot say. Rewriting the rows by migration was rejected: an erased subject's seal
+cannot be re-sealed, other applications already took what was published, and the report reads what
+happened. [#333](https://github.com/EmpoweredHouse/eh-os-contract/issues/333)
+
 ## 11. Dispatch
 
 ```elixir
