@@ -48,6 +48,22 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** **the context map holds the contracts to it** (plan DD, stage M1, #316). A reference from one
+  context into another that runs against the relation between them does not compile any more:
+  - from the upstream context of a directed relation into its downstream one, or across `separate_ways` (`X11`);
+  - a read model, an effect or a process manager taking a sibling's event across an `anticorruption_layer`,
+    where only a policy takes it (`X12`);
+  - consuming an event a sibling does not `publish` across an `open_host_service` or a `published_language`
+    (`X13`).
+
+  The first was the `check` warning `relation-against-references`, which is gone. A host whose `check` warned
+  of it changes the relation or the reference before upgrading.
+- **A field typed with a domain value another context declares (`value …, context:`) is a reference between
+  the two contexts**, so `cross-bounded-context-reference-without-mapping`, `orphan-context-mapping` and `X11`
+  see it.
+
 ## [0.4.0] - 2026-10-16
 
 ### Added

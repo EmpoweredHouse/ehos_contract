@@ -16,6 +16,8 @@ defmodule EhOsContract.Contract.Links do
   # - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
   # - `Links.Processes` — X1, X2, X5, X6 and D11 for a process module (plan DD, P2c,
   #   #210): its domain, its accountable actor, and the contracts' events it includes.
+  # - `Links.ContextMap` — X11–X13, the context map holding the contracts to it (plan DD,
+  #   M1, #316).
   #
   # A violation points at the declaration at fault. L3 reads the declarations Spark
   # kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
@@ -56,7 +58,14 @@ defmodule EhOsContract.Contract.Links do
           domain: map() | nil
         }
 
-  @groups [Links.Domain, Links.Siblings, Links.System, Links.Scenarios, Links.Processes]
+  @groups [
+    Links.Domain,
+    Links.Siblings,
+    Links.System,
+    Links.Scenarios,
+    Links.Processes,
+    Links.ContextMap
+  ]
 
   @doc """
   Every violation of an L3 rule among `modules`, the modules of one application.

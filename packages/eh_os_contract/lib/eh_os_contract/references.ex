@@ -77,6 +77,24 @@ defmodule EhOsContract.References do
     |> Enum.uniq()
   end
 
+  @doc """
+  Every type name a field of `model`, a contract's model, is given, each once, in the
+  order its declarations come, a list's element type included: the domain values it
+  uses among the built-in types, which a reader tells apart by the domain's values
+  (plan DD, M1 (#316)).
+  """
+  @spec values_in_model(map()) :: [atom()]
+  def values_in_model(model) do
+    model
+    |> declared_fields()
+    |> Enum.flat_map(&type_names(Map.get(&1, :type)))
+    |> Enum.uniq()
+  end
+
+  defp type_names({:list, inner}), do: type_names(inner)
+  defp type_names(name) when is_atom(name) and name != nil, do: [name]
+  defp type_names(_other), do: []
+
   defp declared_fields(model) do
     within = fn key, fields -> Enum.flat_map(Map.get(model, key, []), fields) end
 
