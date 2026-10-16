@@ -4494,14 +4494,16 @@ var loop = (card, label) => {
   const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
   return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
 };
-var BOW = 48;
 var bow = (id2, start2, end) => {
   const [dx, dy] = [end.x - start2.x, end.y - start2.y];
   const length = Math.hypot(dx, dy) || 1;
+  const reach = Math.max(48, length * 0.2);
   const [nx, ny] = [-dy / length, dx / length];
-  const mid = { x: (start2.x + end.x) / 2 + nx * BOW, y: (start2.y + end.y) / 2 + ny * BOW };
-  const control = { x: 2 * mid.x - (start2.x + end.x) / 2, y: 2 * mid.y - (start2.y + end.y) / 2 };
-  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: mid.x, y: mid.y };
+  const control = { x: (start2.x + end.x) / 2 + nx * 2 * reach, y: (start2.y + end.y) / 2 + ny * 2 * reach };
+  const t = 0.15;
+  const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b;
+  const at2 = { x: along(start2.x, control.x, end.x), y: along(start2.y, control.y, end.y) };
+  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at2.x, y: at2.y };
 };
 var border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y];

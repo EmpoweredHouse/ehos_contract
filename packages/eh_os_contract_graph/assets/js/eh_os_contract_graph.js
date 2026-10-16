@@ -143,16 +143,19 @@ const loop = (card, label) => {
   )
 }
 
-// An arrow from start to end bowed to one side, so it does not lie on a straight one between the same two boxes:
-// its label sits on the bow.
-const BOW = 48
+// An arrow from start to end bowed to one side, so it does not lie on a straight one between the same two boxes,
+// the longer the further. Its label sits near where it starts, just out of the box it leaves: one that spans
+// several boxes crosses those between, and a label in its middle would lie on their cards.
 const bow = (id, start, end) => {
   const [dx, dy] = [end.x - start.x, end.y - start.y]
   const length = Math.hypot(dx, dy) || 1
+  const reach = Math.max(48, length * 0.2)
   const [nx, ny] = [-dy / length, dx / length]
-  const mid = { x: (start.x + end.x) / 2 + nx * BOW, y: (start.y + end.y) / 2 + ny * BOW }
-  const control = { x: 2 * mid.x - (start.x + end.x) / 2, y: 2 * mid.y - (start.y + end.y) / 2 }
-  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: mid.x, y: mid.y }
+  const control = { x: (start.x + end.x) / 2 + nx * 2 * reach, y: (start.y + end.y) / 2 + ny * 2 * reach }
+  const t = 0.15
+  const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b
+  const at = { x: along(start.x, control.x, end.x), y: along(start.y, control.y, end.y) }
+  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at.x, y: at.y }
 }
 
 // Where the line from a box's centre towards a point leaves the box.
