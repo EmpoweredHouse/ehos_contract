@@ -954,7 +954,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp relation_body(%{type: "out_of_order"} = assigns) do
     ~H"""
     <p>
-      {runs(@facts["runs"])} entered <.ref id={@facts["from"]} ctx={@ctx} /> before
+      {if is_integer(@facts["runs"]), do: count(@facts["runs"], "run"), else: "Runs"} entered <.ref id={@facts["from"]} ctx={@ctx} /> before
       <.ref id={@facts["to"]} ctx={@ctx} />, which the process puts first, in the period the
       log was read for. Which runs is the application's to find.
     </p>
@@ -1758,8 +1758,4 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp shown(nil), do: "—"
   defp shown(value) when is_number(value) or is_boolean(value), do: to_string(value)
   defp shown(value), do: JSON.encode!(value)
-
-  defp runs(1), do: "1 run"
-  defp runs(n) when is_integer(n), do: "#{n} runs"
-  defp runs(_unknown), do: "Runs"
 end

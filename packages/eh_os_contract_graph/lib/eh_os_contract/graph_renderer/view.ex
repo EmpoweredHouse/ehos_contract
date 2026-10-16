@@ -155,8 +155,12 @@ defmodule EhOsContract.GraphRenderer.View do
     {"solid", "leads to"},
     {"dotted", "after the transaction, or a relation that causes nothing"},
     {"thick", "a promise, with its window"},
-    {"headless", "rests on, belongs to, or goes both ways"}
+    {"headless", "rests on, belongs to, or goes both ways"},
+    {"observed", "seen in the log, and not declared"}
   ]
+
+  # The relations an overlay adds to a view, which the log shows and no declaration says.
+  @observed ~w(undeclared out_of_order)
 
   # What a card drawn other than its kind means.
   @variants [{"terminal", "ends a run"}, {"final", "a final status"}]
@@ -190,7 +194,10 @@ defmodule EhOsContract.GraphRenderer.View do
     # no head is both dotted and headless.
     looks =
       for relation <- view.relations,
-          look <- [relation.line | if(relation.head, do: [], else: ["headless"])],
+          look <-
+            [relation.line] ++
+              if(relation.head, do: [], else: ["headless"]) ++
+              if(observed?(relation), do: ["observed"], else: []),
           into: MapSet.new(),
           do: look
 
@@ -932,7 +939,7 @@ defmodule EhOsContract.GraphRenderer.View do
     by_id = index(document)
 
     arrows =
-      for r <- get_in(overlay, ["observed", "relations", "undeclared"]) || [] do
+      for r <- seen(overlay, "undeclared") do
         event = by_id[r["event"]] || (r["event"] && %{"name" => r["event"]})
 
         arrow("undeclared", r,
@@ -942,11 +949,40 @@ defmodule EhOsContract.GraphRenderer.View do
       end
 
     order =
-      for r <- get_in(overlay, ["observed", "relations", "out_of_order"]) || [],
+      for r <- seen(overlay, "out_of_order"),
           do: arrow("out_of_order", r, words: "entered first", line: "dotted")
 
-    %{view | relations: view.relations ++ within(view, arrows ++ order)}
+    # An overlay may come from another application, so an entry that is not a relation, or
+    # that names one the view already draws, or another entry's, is left out.
+    taken = MapSet.new(view.relations, & &1.id)
+
+    added =
+      (arrows ++ order) |> Enum.reject(&MapSet.member?(taken, &1.id)) |> Enum.uniq_by(& &1.id)
+
+    %{view | relations: view.relations ++ within(view, added)}
   end
+
+  defp seen(overlay, type) do
+    case get_in(overlay, ["observed", "relations", type]) do
+      list when is_list(list) ->
+        for r <- list,
+            is_map(r),
+            Enum.all?(~w(id from to), &is_binary(r[&1])),
+            do: r
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Whether `relation` is one the log shows and the document does not declare — a move a
+  lifecycle does not allow, stages entered the wrong way round — rather than one the
+  document draws. Such an arrow is drawn where its ends are, and lays nothing out.
+  """
+  @spec observed?(relation()) :: boolean()
+  def observed?(%{type: type}), do: type in @observed
+  def observed?(_relation), do: false
 
   # --- building blocks --------------------------------------------------------------------
 

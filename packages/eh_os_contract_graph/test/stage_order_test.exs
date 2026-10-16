@@ -56,6 +56,89 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
                                |> Enum.flat_map(&String.split/1))
   end
 
+  test "the legend explains it as seen in the log, and the hook lays nothing out by it" do
+    view = View.build(document(), :process, overlay())
+
+    assert {"observed", "seen in the log, and not declared"} in View.legend(view).lines
+
+    html =
+      render_component(Canvas,
+        id: "graph",
+        document: document(),
+        overlay: overlay(),
+        view: :process
+      )
+      |> LazyHTML.from_fragment()
+
+    label = LazyHTML.query(html, ~s(button.ehg-relation[data-ehg-relation="#{@id}"]))
+    assert LazyHTML.attribute(label, "data-observed") == ["true"]
+
+    precedes =
+      LazyHTML.query(
+        html,
+        ~s(button.ehg-relation[data-ehg-relation="precedes:#{@closing}:#{@reporting}"])
+      )
+
+    assert LazyHTML.attribute(precedes, "data-observed") == []
+  end
+
+  # An overlay may come from another application, in any shape.
+  test "leaves out an entry that is not a relation, names a drawn one, or repeats another" do
+    entries = [
+      "not a map",
+      7,
+      %{"id" => %{}, "from" => @reporting, "to" => @closing, "runs" => 1},
+      %{
+        "id" => "precedes:#{@closing}:#{@reporting}",
+        "from" => @reporting,
+        "to" => @closing,
+        "runs" => 1
+      },
+      %{"id" => @id, "from" => @reporting, "to" => @closing, "runs" => %{"x" => 1}},
+      %{"id" => @id, "from" => @reporting, "to" => @closing, "runs" => 2}
+    ]
+
+    for hostile <- [entries, %{"a" => 1}, "x"] do
+      o =
+        put_in(
+          Fixtures.overlay("process.rehmed.clinical_visit"),
+          ["observed", "relations", "out_of_order"],
+          hostile
+        )
+
+      view = View.build(document(), :process, o)
+      ids = Enum.map(view.relations, & &1.id)
+      assert ids == Enum.uniq(ids)
+
+      html =
+        render_component(Canvas, id: "graph", document: document(), overlay: o, view: :process)
+        |> LazyHTML.from_fragment()
+
+      assert Enum.count(LazyHTML.query(html, "[style]")) == 0
+    end
+
+    o =
+      put_in(
+        Fixtures.overlay("process.rehmed.clinical_visit"),
+        ["observed", "relations", "out_of_order"],
+        entries
+      )
+
+    assert [%{id: @id}] =
+             Enum.filter(
+               View.build(document(), :process, o).relations,
+               &(&1.type == "out_of_order")
+             )
+
+    html =
+      render_component(Canvas, id: "graph", document: document(), overlay: o, view: :process)
+      |> LazyHTML.from_fragment()
+
+    # The first entry of the id wins, and its runs, not a count, give none.
+    label = LazyHTML.query(html, ~s(button.ehg-relation[data-ehg-relation="#{@id}"]))
+    assert label |> LazyHTML.query(".ehg-count") |> Enum.count() == 0
+  end
+
   test "its panel names the two stages and how many runs" do
     view = View.build(document(), :process, overlay())
     relation = Enum.find(view.relations, &(&1.id == @id))

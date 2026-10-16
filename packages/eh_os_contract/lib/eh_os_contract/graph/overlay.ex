@@ -172,11 +172,12 @@ defmodule EhOsContract.Graph.Overlay do
     # stage nodes' ids, read from the document as everything else here is.
     stage_id = Map.new(nodes["stage"] || [], &{&1["name"], &1["id"]})
 
+    # Both come from the model's stages, so a pair always has its two nodes.
     out_of_order =
-      for %{earlier: earlier, later: later, runs: n} <- StageOrder.evaluate(model, period).pairs,
-          from = stage_id[to_string(later)],
-          to = stage_id[to_string(earlier)],
-          from != nil and to != nil do
+      for %{earlier: earlier, later: later, runs: n} <- StageOrder.evaluate(model, period).pairs do
+        {from, to} =
+          {Map.fetch!(stage_id, to_string(later)), Map.fetch!(stage_id, to_string(earlier))}
+
         %{"id" => "out_of_order:#{from}:#{to}", "from" => from, "to" => to, "runs" => n}
       end
 

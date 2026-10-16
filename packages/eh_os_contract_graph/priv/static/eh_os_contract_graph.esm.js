@@ -4494,6 +4494,15 @@ var loop = (card, label) => {
   const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
   return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
 };
+var BOW = 48;
+var bow = (id2, start2, end) => {
+  const [dx, dy] = [end.x - start2.x, end.y - start2.y];
+  const length = Math.hypot(dx, dy) || 1;
+  const [nx, ny] = [-dy / length, dx / length];
+  const mid = { x: (start2.x + end.x) / 2 + nx * BOW, y: (start2.y + end.y) / 2 + ny * BOW };
+  const control = { x: 2 * mid.x - (start2.x + end.x) / 2, y: 2 * mid.y - (start2.y + end.y) / 2 };
+  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: mid.x, y: mid.y };
+};
 var border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y];
   const s = Math.min(dx ? box.width / 2 / Math.abs(dx) : Infinity, dy ? box.height / 2 / Math.abs(dy) : Infinity);
@@ -4643,6 +4652,7 @@ var EhOsContractGraph = {
       id: el.dataset.ehgRelation,
       from: el.dataset.from,
       to: el.dataset.to,
+      observed: el.dataset.observed === "true",
       width: el.offsetWidth,
       height: el.offsetHeight
     }));
@@ -4689,7 +4699,7 @@ var EhOsContractGraph = {
     labels.forEach((label) => {
       const { id: id2, from, to, width: width2, height: height2 } = label;
       if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id2 }, { width: width2, height: height2, labelpos: "c" });
-      if (from === to) return;
+      if (from === to || label.observed) return;
       for (const v of members.get(from) ?? [from])
         for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {});
     });
@@ -4699,6 +4709,7 @@ var EhOsContractGraph = {
       if (boxed(label)) {
         const [a, b] = [graph.node(from), graph.node(to)];
         const [start2, end] = [border(a, b), border(b, a)];
+        if (label.observed) return bow(id2, start2, end);
         return { id: id2, d: `M${start2.x},${start2.y}L${end.x},${end.y}`, x: (start2.x + end.x) / 2, y: (start2.y + end.y) / 2 };
       }
       const edge = graph.edge({ v: from, w: to, name: id2 });

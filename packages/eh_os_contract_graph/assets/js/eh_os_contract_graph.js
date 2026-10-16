@@ -143,6 +143,18 @@ const loop = (card, label) => {
   )
 }
 
+// An arrow from start to end bowed to one side, so it does not lie on a straight one between the same two boxes:
+// its label sits on the bow.
+const BOW = 48
+const bow = (id, start, end) => {
+  const [dx, dy] = [end.x - start.x, end.y - start.y]
+  const length = Math.hypot(dx, dy) || 1
+  const [nx, ny] = [-dy / length, dx / length]
+  const mid = { x: (start.x + end.x) / 2 + nx * BOW, y: (start.y + end.y) / 2 + ny * BOW }
+  const control = { x: 2 * mid.x - (start.x + end.x) / 2, y: 2 * mid.y - (start.y + end.y) / 2 }
+  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: mid.x, y: mid.y }
+}
+
 // Where the line from a box's centre towards a point leaves the box.
 const border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y]
@@ -341,6 +353,7 @@ export const EhOsContractGraph = {
       id: el.dataset.ehgRelation,
       from: el.dataset.from,
       to: el.dataset.to,
+      observed: el.dataset.observed === "true",
       width: el.offsetWidth,
       height: el.offsetHeight,
     }))
@@ -395,10 +408,12 @@ export const EhOsContractGraph = {
     cards.forEach(({ id, group }) => members.get(group)?.push(id))
     const boxed = ({ from, to }) => members.has(from) || members.has(to)
     let held = 0
+    // What the log shows between two boxes — stages entered the wrong way round — holds nothing: the picture is
+    // the declaration's, and an arrow against it would turn the boxes around.
     labels.forEach((label) => {
       const { id, from, to, width, height } = label
       if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id }, { width, height, labelpos: "c" })
-      if (from === to) return
+      if (from === to || label.observed) return
       for (const v of members.get(from) ?? [from])
         for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {})
     })
@@ -409,6 +424,7 @@ export const EhOsContractGraph = {
       if (boxed(label)) {
         const [a, b] = [graph.node(from), graph.node(to)]
         const [start, end] = [border(a, b), border(b, a)]
+        if (label.observed) return bow(id, start, end)
         return { id, d: `M${start.x},${start.y}L${end.x},${end.y}`, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
       }
       const edge = graph.edge({ v: from, w: to, name: id })

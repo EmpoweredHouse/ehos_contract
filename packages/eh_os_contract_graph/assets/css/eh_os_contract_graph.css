@@ -573,6 +573,14 @@
   stroke-width: 2.5px;
 }
 
+.ehg-legend-line[data-look="observed"] svg {
+  stroke: var(--error-ink);
+}
+
+.ehg-legend-line[data-look="observed"] .ehg-legend-head {
+  fill: var(--error-ink);
+}
+
 /* What is selected, what touches it, and the rest, faint. None of these changes a size, so a selection
    never lays the graph out again. */
 

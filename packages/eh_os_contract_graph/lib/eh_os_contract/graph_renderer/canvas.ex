@@ -378,6 +378,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             data-to={relation.to}
             data-line={relation.line}
             data-head={if relation.head, do: "arrow", else: "none"}
+            data-observed={View.observed?(relation) && "true"}
             phx-click="select"
             phx-value-id={relation.id}
             phx-target={@myself}
@@ -428,7 +429,8 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     "solid" => "a solid arrow",
     "dotted" => "a dotted arrow",
     "thick" => "a heavy arrow",
-    "headless" => "a line with no head"
+    "headless" => "a line with no head",
+    "observed" => "an arrow in the error colour"
   }
 
   # What the cards' colours and icons and the arrows' looks mean, for what this view draws.
@@ -474,6 +476,8 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   defp marks(overlay, %{type: "or_else", facts: %{"process" => _} = promise}),
     do: overlay |> Marks.promise(promise) |> Map.delete(:verdict)
+
+  defp marks(_overlay, %{type: "out_of_order", facts: entry}), do: Marks.out_of_order(entry)
 
   defp marks(overlay, relation), do: Marks.relation(overlay, relation.id)
 

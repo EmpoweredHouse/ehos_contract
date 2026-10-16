@@ -110,7 +110,7 @@ defmodule EhOsContract.GraphRenderer.Marks do
   def relation(nil, _id), do: @none
 
   def relation(overlay, id) do
-    case get_in(overlay, ["relations", id]) || out_of_order(overlay, id) do
+    case get_in(overlay, ["relations", id]) do
       %{"taken" => taken} = step ->
         %{
           count: taken,
@@ -129,9 +129,6 @@ defmodule EhOsContract.GraphRenderer.Marks do
       %{"count" => count} ->
         %{count: count, states: [:undeclared]}
 
-      %{"runs" => runs, "from" => _, "to" => _} ->
-        %{count: runs, states: [:undeclared]}
-
       %{"events" => events, "waiting" => waiting, "failing" => failing} ->
         %{count: events, states: flags(waiting: waiting > 0, failing: failing)}
 
@@ -140,14 +137,16 @@ defmodule EhOsContract.GraphRenderer.Marks do
     end
   end
 
-  # A pair of stages out of order carries its runs on itself, under `observed`: a process's
-  # `relations` hold nothing.
-  defp out_of_order(overlay, id) do
-    case get_in(overlay, ["observed", "relations", "out_of_order"]) do
-      pairs when is_list(pairs) -> Enum.find(pairs, &(is_map(&1) and &1["id"] == id))
-      _ -> nil
-    end
-  end
+  @doc """
+  The marks of stages runs entered the wrong way round, from the overlay's entry itself
+  (`observed.relations.out_of_order`), which carries its runs: a process's `relations`
+  hold none. A count that is not a positive integer is none.
+  """
+  @spec out_of_order(map()) :: t()
+  def out_of_order(%{"runs" => runs}) when is_integer(runs) and runs > 0,
+    do: %{count: runs, states: [:undeclared]}
+
+  def out_of_order(_entry), do: %{count: nil, states: [:undeclared]}
 
   defp flags(flags), do: for({state, true} <- flags, do: state)
 end
