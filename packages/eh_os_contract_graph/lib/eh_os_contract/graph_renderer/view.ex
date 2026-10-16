@@ -41,7 +41,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
   import EhOsContract.GraphRenderer.Words
 
-  alias EhOsContract.GraphRenderer.Places
+  alias EhOsContract.GraphRenderer.{Audience, Places}
 
   @typedoc "A view by name: a unit's and a lifecycle's take the unit's id."
   @type spec ::
@@ -91,6 +91,9 @@ defmodule EhOsContract.GraphRenderer.View do
           head: boolean()
         }
 
+  @typedoc "Who reads a view: the engineer, everything; the business owner, the client's words."
+  @type audience :: :engineering | :owner
+
   @typedoc "A box around cards, titled; `facts` is the document's node it is."
   @type group :: %{id: String.t(), kind: String.t(), title: String.t(), facts: map()}
 
@@ -139,10 +142,23 @@ defmodule EhOsContract.GraphRenderer.View do
   anyway, and a process's stage a run entered before an earlier one, an arrow from the
   later stage back — where both their ends are in it. A unit or a lifecycle the document does
   not have is an empty view.
+
+  `audience` is who reads it: `:engineering`, the default, or `:owner`, for whom a card
+  says its label and not its name in code, a field is its label, and what only the code
+  reads — delivery, correlation, the wire between applications — is not drawn.
   """
-  @spec build(map(), spec(), map() | nil) :: t()
-  def build(document, spec, overlay \\ nil),
-    do: document |> view(spec) |> observed(document, overlay)
+  @spec build(map(), spec(), map() | nil, audience()) :: t()
+  def build(document, spec, overlay \\ nil, audience \\ :engineering) do
+    document = Audience.read(document, audience)
+    document |> view(spec, audience) |> observed(document, overlay) |> read_by(audience)
+  end
+
+  # A card with a label says it alone to the owner; one without says its name, which
+  # `mix eh_os_contract.check` notes (`owner-view-without-label`).
+  defp read_by(view, :owner),
+    do: %{view | nodes: for(n <- view.nodes, do: if(n.label, do: %{n | name: nil}, else: n))}
+
+  defp read_by(view, _engineering), do: view
 
   # The order a legend lists kinds in: who acts, what is decided, what reacts, what is
   # read, the rules, what is outside, and the domain's own kinds.
@@ -274,14 +290,14 @@ defmodule EhOsContract.GraphRenderer.View do
     end
   end
 
-  defp view(document, :all), do: all(document)
-  defp view(document, :contract), do: contract(document)
-  defp view(document, :process), do: process(document)
-  defp view(document, {:unit, id}), do: unit(document, id)
-  defp view(document, {:lifecycle, id}), do: lifecycle(document, id)
-  defp view(document, :context_map), do: context_map(document)
-  defp view(document, :system), do: system(document)
-  defp view(document, :landscape), do: landscape(document)
+  defp view(document, :all, _audience), do: all(document)
+  defp view(document, :contract, audience), do: contract(document, audience)
+  defp view(document, :process, _audience), do: process(document)
+  defp view(document, {:unit, id}, audience), do: unit(document, id, audience)
+  defp view(document, {:lifecycle, id}, _audience), do: lifecycle(document, id)
+  defp view(document, :context_map, _audience), do: context_map(document)
+  defp view(document, :system, audience), do: system(document, audience)
+  defp view(document, :landscape, _audience), do: landscape(document)
 
   # Every node and every relation of `document`, kinds and types in name order and each
   # group in the document's order, so the same document gives the same view and the
@@ -316,8 +332,8 @@ defmodule EhOsContract.GraphRenderer.View do
   # scenarios pin them, "0 scenarios" included, and a timer when it fires.
   # Called by `build/3`; public for its tests.
   @doc false
-  @spec contract(map()) :: t()
-  def contract(document) do
+  @spec contract(map(), audience()) :: t()
+  def contract(document, audience \\ :engineering) do
     by_id = index(document)
     own = &(&1.kind == "event" and &1.facts["unit"] != nil)
 
@@ -334,13 +350,17 @@ defmodule EhOsContract.GraphRenderer.View do
           node <- nodes(document, kind) do
         card(kind, node,
           group: if(kind in ~w(command event), do: node["unit"]),
-          lines: lines(kind, node, pinned),
-          foot: if(kind == "event", do: home(node))
+          lines: lines(kind, node, pinned, audience),
+          foot: if(kind == "event", do: home(node, audience))
         )
       end
 
     managers = MapSet.new(nodes(document, "process_manager"), & &1["id"])
-    flow = for type <- @flow, r <- relations(document, type), do: flow(type, r, by_id, managers)
+
+    flow =
+      for type <- @flow,
+          r <- relations(document, type),
+          do: flow(type, r, by_id, managers, audience)
 
     projected =
       for r <- relations(document, "projected_into") do
@@ -371,7 +391,7 @@ defmodule EhOsContract.GraphRenderer.View do
       for r <- relations(document, "backed_by"),
           do: arrow("backed_by", r, words: "backed by", line: "dotted", head: false)
 
-    outside = calls ++ rests ++ backed ++ gives(cards)
+    outside = calls ++ rests ++ backed ++ gives(cards, audience)
 
     # Who is drawn: what always is, then the events a reaction or a read model takes,
     # then the actors acting on those, then the systems any of them touch.
@@ -396,21 +416,28 @@ defmodule EhOsContract.GraphRenderer.View do
   end
 
   # What a card of the full graph lists under its name: how many scenarios pin a policy, a
-  # process manager or a query, "0 scenarios" included, and when a timer fires.
-  defp lines(kind, node, pinned) when kind in ~w(policy process_manager query),
+  # process manager or a query, "0 scenarios" included, and when a timer fires — for the
+  # owner, one set for a moment its run holds without the field that holds it.
+  defp lines(kind, node, pinned, _audience) when kind in ~w(policy process_manager query),
     do: [scenarios(pinned[node["id"]] || 0)]
 
-  defp lines("timer", node, _pinned), do: List.wrap(fires(node))
-  defp lines(_kind, _node, _pinned), do: []
+  defp lines("timer", %{"at" => at}, _pinned, :owner) when is_binary(at),
+    do: ["at a moment the run holds"]
+
+  defp lines("timer", node, _pinned, _audience), do: List.wrap(fires(node))
+  defp lines(_kind, _node, _pinned, _audience), do: []
 
   # Where an event of a contract is declared, when not in one of its units: the sibling
   # contract it is consumed from (`Places.declared_in/1`), or another application it is
-  # received from.
-  defp home(%{"unit" => unit}) when is_binary(unit), do: nil
+  # received from. The document holds no label of the sibling for the owner to read it by.
+  defp home(%{"unit" => unit}, _audience) when is_binary(unit), do: nil
 
-  defp home(%{"declared_as" => _} = consumed), do: Places.declared_in(consumed)
-  defp home(%{"declared_in" => _} = consumed), do: Places.declared_in(consumed)
-  defp home(_received), do: "another application"
+  defp home(consumed, audience)
+       when is_map_key(consumed, "declared_as") or is_map_key(consumed, "declared_in"),
+       do:
+         if(Audience.code?(audience), do: Places.declared_in(consumed), else: "another contract")
+
+  defp home(_received, _audience), do: "another application"
 
   # `drawn`, the ids of the cards drawn so far, with those of `kind` one of `arrows` joins
   # to one of them.
@@ -424,10 +451,10 @@ defmodule EhOsContract.GraphRenderer.View do
         do: end_id
   end
 
-  defp flow("emits", r, _by_id, _managers), do: arrow("emits", r)
+  defp flow("emits", r, _by_id, _managers, _audience), do: arrow("emits", r)
 
   # A process manager takes an event as its run starts, during it, or as it ends.
-  defp flow(type, r, by_id, managers) when type in ~w(handled_by starts ends) do
+  defp flow(type, r, by_id, managers, _audience) when type in ~w(handled_by starts ends) do
     words =
       case type do
         "starts" -> "starts"
@@ -438,13 +465,15 @@ defmodule EhOsContract.GraphRenderer.View do
     delivered(arrow(type, r, words: words), async?(r, by_id[r["to"]]))
   end
 
-  defp flow("issues", r, by_id, _managers),
+  defp flow("issues", r, by_id, _managers, _audience),
     do: delivered(arrow("issues", r), async?(r, by_id[r["from"]]))
 
-  defp flow(type, r, _by_id, _managers) when type in ~w(sets cancels),
+  defp flow(type, r, _by_id, _managers, _audience) when type in ~w(sets cancels),
     do: arrow(type, r, words: type, line: "dotted", head: false)
 
-  defp flow("fires", r, _by_id, _managers), do: arrow("fires", r, words: "async", line: "dotted")
+  # A timer fires after the transaction that set it, which the owner does not read.
+  defp flow("fires", r, _by_id, _managers, audience),
+    do: arrow("fires", r, words: if(Audience.code?(audience), do: "async"), line: "dotted")
 
   # A reaction runs after the transaction when it is delivered at least once, and a
   # received event always does, through the inbox.
@@ -457,8 +486,9 @@ defmodule EhOsContract.GraphRenderer.View do
   defp delivered(arrow, false), do: arrow
   defp delivered(arrow, true), do: %{arrow | line: "dotted", words: join([arrow.words, "async"])}
 
-  # An external gives a field of a command or an event its value: a field's `issued_by`.
-  defp gives(cards) do
+  # An external gives a field of a command or an event its value: a field's `issued_by`,
+  # named by its label for the owner.
+  defp gives(cards, audience) do
     for %{kind: kind} = card <- cards,
         kind in ~w(command event),
         field <- card.facts["fields"] || [],
@@ -470,7 +500,7 @@ defmodule EhOsContract.GraphRenderer.View do
         from: external,
         to: card.id,
         facts: field,
-        words: "gives #{field["name"]}",
+        words: "gives #{if Audience.code?(audience), do: field["name"], else: field["label"]}",
         line: "dotted",
         head: true
       }
@@ -631,15 +661,15 @@ defmodule EhOsContract.GraphRenderer.View do
   # build its state; a boundary's consulted events say by which fields.
   # Called by `build/3`; public for its tests.
   @doc false
-  @spec unit(map(), String.t()) :: t()
-  def unit(document, id) do
+  @spec unit(map(), String.t(), audience()) :: t()
+  def unit(document, id, audience \\ :engineering) do
     case Enum.find(nodes(document, "unit"), &(&1["id"] == id)) do
       nil -> finish("LR", [], [], [])
-      unit -> unit(document, unit, index(document))
+      unit -> unit(document, unit, index(document), audience)
     end
   end
 
-  defp unit(document, unit, by_id) do
+  defp unit(document, unit, by_id, audience) do
     id = unit["id"]
     commands = for c <- nodes(document, "command"), c["unit"] == id, do: card("command", c)
     own = for e <- nodes(document, "event"), e["unit"] == id, do: card("event", e)
@@ -651,7 +681,10 @@ defmodule EhOsContract.GraphRenderer.View do
           not MapSet.member?(owned, r["from"]),
           by_id[r["from"]] != nil,
           uniq: true,
-          do: card("event", by_id[r["from"]], foot: consulted_home(by_id[r["from"]], by_id))
+          do:
+            card("event", by_id[r["from"]],
+              foot: consulted_home(by_id[r["from"]], by_id, audience)
+            )
 
     its_commands = MapSet.new(commands, & &1.id)
     invariants = for i <- nodes(document, "invariant"), i["of"] == id, do: card("invariant", i)
@@ -696,7 +729,7 @@ defmodule EhOsContract.GraphRenderer.View do
     state =
       card("unit", unit,
         tag: unit_kind(unit),
-        lines: Enum.map(unit["state"] || [], &field(&1, unit["identity"] || []))
+        lines: Enum.map(unit["state"] || [], &field(&1, unit["identity"] || [], audience))
       )
 
     finish(
@@ -709,10 +742,10 @@ defmodule EhOsContract.GraphRenderer.View do
 
   # Where an event a unit consults lives: another unit of its contract, named by its title,
   # or, for one of another contract, what `home/1` says.
-  defp consulted_home(%{"unit" => unit}, by_id) when is_binary(unit),
+  defp consulted_home(%{"unit" => unit}, by_id, _audience) when is_binary(unit),
     do: by_id[unit] && title(by_id[unit])
 
-  defp consulted_home(event, _by_id), do: home(event)
+  defp consulted_home(event, _by_id, audience), do: home(event, audience)
 
   # A unit's kind, and that it records only when the document says so: none of its
   # commands can be refused, so it decides nothing (plan DD, C1, #304).
@@ -723,11 +756,18 @@ defmodule EhOsContract.GraphRenderer.View do
   defp scenarios(n), do: count(n, "scenario")
 
   defp consulted(%{"match" => [_ | _] = match}), do: "consulted by #{Enum.join(match, ", ")}"
-  defp consulted(_where_in_prose), do: "consulted, where stated in prose"
+
+  defp consulted(%{"where" => where}) when is_binary(where),
+    do: "consulted, where stated in prose"
+
+  defp consulted(_relation), do: "consulted"
 
   # A field of the state as the card lists it: its name, its type, and whether it is the
-  # unit's identity or may be absent.
-  defp field(field, identity) do
+  # unit's identity or may be absent; for the owner, its label and whether it may be absent.
+  defp field(field, _identity, :owner),
+    do: field["label"] <> if(field["required"] == false, do: " · optional", else: "")
+
+  defp field(field, identity, _engineering) do
     notes =
       Enum.filter(
         [field["name"] in identity && "identity", field["required"] == false && "optional"],
@@ -826,8 +866,8 @@ defmodule EhOsContract.GraphRenderer.View do
   # includes, and the actor accountable for it.
   # Called by `build/3`; public for its tests.
   @doc false
-  @spec system(map()) :: t()
-  def system(document) do
+  @spec system(map(), audience()) :: t()
+  def system(document, audience \\ :engineering) do
     by_id = index(document)
 
     contracts = for c <- nodes(document, "contract"), do: contract_card(c, c["context"])
@@ -841,7 +881,12 @@ defmodule EhOsContract.GraphRenderer.View do
     {actors, accountable} = accountable(document, by_id)
 
     publications = for p <- nodes(document, "publication"), do: card("publication", p)
-    name = &((by_id[&1] || %{})["name"] || &1)
+
+    # An event a contract consumes, by its name, or its label for the owner.
+    name =
+      if Audience.code?(audience),
+        do: &((by_id[&1] || %{})["name"] || &1),
+        else: &title(by_id[&1] || %{"name" => &1})
 
     consumed =
       for r <- relations(document, "consumed_by") do
@@ -859,7 +904,12 @@ defmodule EhOsContract.GraphRenderer.View do
             arrow("refers_to", r,
               from: r["to"],
               to: r["from"],
-              words: "number of #{Enum.join(r["units"] || [], ", ")}",
+              # The owner's document leaves the units' names in code out.
+              words:
+                if(r["units"] in [nil, []],
+                  do: "number",
+                  else: "number of #{Enum.join(r["units"], ", ")}"
+                ),
               line: "dotted"
             )
 
@@ -901,7 +951,8 @@ defmodule EhOsContract.GraphRenderer.View do
 
   def landscape(_document), do: finish("LR", [], [], [])
 
-  # A contract's card on a map of contracts, named by its module's last segment, in `group`.
+  # A contract's card on a map of contracts, in `group`: named by its module's last segment,
+  # or by the label the owner's document gives it.
   defp contract_card(contract, group) do
     short =
       case contract["module"] do
@@ -912,7 +963,7 @@ defmodule EhOsContract.GraphRenderer.View do
           contract["name"]
       end
 
-    %{card("contract", contract, group: group) | label: short}
+    %{card("contract", contract, group: group) | label: contract["label"] || short}
   end
 
   # The publications' arrows: a dotted one from a contract to what it publishes, naming the

@@ -779,10 +779,22 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
+.ehg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
 .ehg-tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--border-soft);
+}
+.ehg-audience {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  padding-bottom: 4px;
 }
 .ehg-tab {
   margin-bottom: -1px;

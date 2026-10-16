@@ -23,6 +23,15 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The explorer reads the model for the business owner** (plan DD, stage L4, #326): a switch "Engineering /
+  Owner" over the canvas, and `audience={:owner}` on `EhOsContract.GraphRenderer.Explorer` to start there
+  (`:engineering` by default, as before). `EhOsContract.GraphRenderer.Canvas` takes the same `audience`, and
+  `EhOsContract.GraphRenderer.View.build/4` too. For the owner the cards and the panel say each declaration by
+  its label, a field by its label alone, a contract by its context's label and a promise by its rule, and leave
+  out names and modules in code, the stored type, delivery, idempotency, the keys runs are told by, grants,
+  roles, scopes, identities, fields with no label, scenarios' data and the wire between applications. The
+  numbers from the log stay.
+
 - **A process's picture shows the stages runs entered out of order** (plan DD, stage O2, #319): a dotted arrow
   in the error look from the later stage's lane back to the earlier one, "entered first", with how many runs,
   from the overlay's `observed.relations.out_of_order`; its panel names the two stages.

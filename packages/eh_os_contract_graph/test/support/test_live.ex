@@ -8,8 +8,9 @@ end
 
 defmodule EhOsContract.GraphRenderer.TestLive do
   @moduledoc false
-  # A LiveView that renders the component over the document, the overlay and the view its
-  # session names, as a host would; `{:overlay, _}` and `{:document, _}` change them, as a host's render would.
+  # A LiveView that renders the component over the document, the overlay, the view and the
+  # audience its session names, as a host would; `{:overlay, _}`, `{:document, _}` and
+  # `{:audience, _}` change them, as a host's render would.
   use Phoenix.LiveView
 
   @impl true
@@ -19,7 +20,8 @@ defmodule EhOsContract.GraphRenderer.TestLive do
        assign(socket,
          document: document,
          overlay: session["overlay"],
-         view: session["view"] || :all
+         view: session["view"] || :all,
+         audience: session["audience"] || :engineering
        )}
 
   @impl true
@@ -27,6 +29,9 @@ defmodule EhOsContract.GraphRenderer.TestLive do
 
   def handle_info({:document, document}, socket),
     do: {:noreply, assign(socket, document: document)}
+
+  def handle_info({:audience, audience}, socket),
+    do: {:noreply, assign(socket, audience: audience)}
 
   @impl true
   def render(assigns) do
@@ -37,6 +42,7 @@ defmodule EhOsContract.GraphRenderer.TestLive do
       document={@document}
       overlay={@overlay}
       view={@view}
+      audience={@audience}
     />
     """
   end
@@ -102,14 +108,23 @@ end
 
 defmodule EhOsContract.GraphRenderer.ExplorerLive do
   @moduledoc false
-  # A LiveView that renders the explorer over the fixture loader, as a host would.
+  # A LiveView that renders the explorer over the fixture loader, as a host would, starting
+  # where its session's `audience` says; `:render` renders it again, as a host's would.
   use Phoenix.LiveView
 
   @impl true
   def mount(_params, session, socket),
     do:
       {:ok,
-       assign(socket, opts: session["opts"] || [], domain: session["domain"] || "Rehmed.Domain")}
+       assign(socket,
+         opts: session["opts"] || [],
+         domain: session["domain"] || "Rehmed.Domain",
+         audience: session["audience"] || :engineering,
+         renders: 0
+       )}
+
+  @impl true
+  def handle_info(:render, socket), do: {:noreply, update(socket, :renders, &(&1 + 1))}
 
   @impl true
   def render(assigns) do
@@ -119,6 +134,8 @@ defmodule EhOsContract.GraphRenderer.ExplorerLive do
       id="explorer"
       domain={@domain}
       loader={{EhOsContract.GraphRenderer.FixtureLoader, @opts}}
+      audience={@audience}
+      renders={@renders}
     />
     """
   end

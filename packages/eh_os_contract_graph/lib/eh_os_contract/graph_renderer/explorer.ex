@@ -17,6 +17,23 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   `domain` names the domain as its documents do, by its module; `loader` is a module, or
   `{module, opts}` to hand the loader `opts`.
 
+  **Who reads it** is a switch over the canvas, "Engineering" or "Owner": the engineer
+  reads everything the documents hold, the business owner the model in the client's
+  words — each declaration by its label, with the numbers from the log, and nothing of
+  the engineering (`EhOsContract.GraphRenderer.Canvas`, its `audience`). `audience` is
+  where the explorer starts, `:engineering` when it is left out:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Explorer}
+        id="graph"
+        domain="Rehmed.Domain"
+        loader={MyAppWeb.GraphLoader}
+        audience={:owner}
+      />
+
+  The reader's switch holds until the page is left: a host rendering the explorer again
+  does not set it back. Anything but `:engineering` or `:owner` raises an `ArgumentError`.
+
   **Two viewpoints**, as tabs over the canvas, share a path ("Rehmed.Domain ›
   rehmed.scheduling › visit") that goes back up:
 
@@ -42,7 +59,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Actors, Canvas, Places, View}
+  alias EhOsContract.GraphRenderer.{Actors, Audience, Canvas, Places, View}
 
   @impl true
   def mount(socket) do
@@ -55,12 +72,14 @@ defmodule EhOsContract.GraphRenderer.Explorer do
      )}
   end
 
+  # `audience` is where the reader starts: once they switch, a host's render keeps their choice.
   @impl true
   def update(assigns, socket) do
     socket =
       socket
       |> assign(Map.take(assigns, [:id, :domain]))
       |> assign(:loader, loader(Map.fetch!(assigns, :loader)))
+      |> assign_new(:audience, fn -> Audience.cast(Map.get(assigns, :audience, :engineering)) end)
 
     {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter()}
   end
@@ -146,6 +165,10 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def handle_event("lens", %{"to" => lens}, socket) when lens in ~w(graph lifecycle map),
     do: {:noreply, socket |> assign(lens: String.to_existing_atom(lens)) |> enter()}
 
+  def handle_event("audience", %{"to" => audience}, socket)
+      when audience in ~w(engineering owner),
+      do: {:noreply, socket |> assign(audience: Audience.cast(audience)) |> derive()}
+
   # The panel's "Open": where the selected card of the drawn picture leads.
   def handle_event("open", %{"id" => id}, socket) when is_binary(id) do
     with document when document != nil <- socket.assigns.document,
@@ -222,13 +245,18 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     domain_document = ok(documents[Places.ref(:domain, domain)])
     document = ok(documents[ref])
 
+    # What the explorer writes itself — the path, the list of processes, the actors — is
+    # read as the reader reads the canvas.
+    read = &Audience.read(&1, socket.assigns.audience)
+
     socket =
       assign(socket,
         tab: Places.tab(place),
         state: documents[ref],
         document: document,
         domain_document: domain_document,
-        trail: trail(place, domain, domain_document, document),
+        read: read.(document),
+        trail: trail(place, domain, read.(domain_document), document, socket.assigns.audience),
         canvas: "#{socket.assigns.id}-#{:erlang.phash2(place)}",
         open: %{target: socket.assigns.myself, here: place}
       )
@@ -246,19 +274,34 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def render(assigns) do
     ~H"""
     <div id={@id} class="ehg-explorer">
-      <div class="ehg-tabs" role="tablist" aria-label="Viewpoint">
-        <button
-          :for={{tab, words, to} <- [{:structure, "Structure", "domain"}, {:processes, "Processes", "processes"}]}
-          type="button"
-          role="tab"
-          aria-selected={to_string(@tab == tab)}
-          class={["ehg-tab", @tab == tab && "is-current"]}
-          phx-click="go"
-          phx-value-to={to}
-          phx-target={@myself}
-        >
-          {words}
-        </button>
+      <div class="ehg-head">
+        <div class="ehg-tabs" role="tablist" aria-label="Viewpoint">
+          <button
+            :for={{tab, words, to} <- [{:structure, "Structure", "domain"}, {:processes, "Processes", "processes"}]}
+            type="button"
+            role="tab"
+            aria-selected={to_string(@tab == tab)}
+            class={["ehg-tab", @tab == tab && "is-current"]}
+            phx-click="go"
+            phx-value-to={to}
+            phx-target={@myself}
+          >
+            {words}
+          </button>
+        </div>
+        <div class="ehg-audience" role="group" aria-label="Read as">
+          <button
+            :for={{audience, words} <- [engineering: "Engineering", owner: "Owner"]}
+            type="button"
+            class={["ehg-tool", @audience == audience && "is-current"]}
+            aria-pressed={to_string(@audience == audience)}
+            phx-click="audience"
+            phx-value-to={audience}
+            phx-target={@myself}
+          >
+            {words}
+          </button>
+        </div>
       </div>
 
       <nav class="ehg-path" aria-label="Where you are">
@@ -295,7 +338,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         <li :for={process <- processes(@domain_document)}>
           <button type="button" phx-click="go" phx-value-to={process.to} phx-target={@myself}>
             <span class="ehg-label">{process.title}</span>
-            <span class="ehg-name">{process.id}</span>
+            <span :if={Audience.code?(@audience) or process.title == process.id} class="ehg-name">
+              {process.id}
+            </span>
           </button>
         </li>
         <li :if={processes(@domain_document) == []} class="ehg-note">
@@ -311,9 +356,15 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         overlay={@overlay}
         view={@picture.view}
         open={@open}
+        audience={@audience}
       />
 
-      <Actors.table :if={@place == :domain and @document} document={@document} canvas={@canvas} />
+      <Actors.table
+        :if={@place == :domain and @read}
+        document={@read}
+        canvas={@canvas}
+        audience={@audience}
+      />
     </div>
     """
   end
@@ -358,38 +409,51 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
   defp picture(%{place: {:process, _id}}), do: %{view: :process, overlay: true, lenses: []}
 
-  # The path from the domain to the place, each step a button back to it but the last.
-  defp trail(place, domain, domain_document, document) do
+  # The path from the domain to the place, each step a button back to it but the last: by
+  # its name in code, or for the owner by its label (`step/3`).
+  defp trail(place, domain, domain_document, document, audience) do
     root = (domain_document && domain_document["name"]) || domain
+    named = &step(audience, find(&1, &2, &3), &3)
 
-    steps =
-      case place do
-        :domain ->
-          [{root, nil}]
+    case place do
+      :domain ->
+        [{root, nil}]
 
-        :processes ->
-          [{root, "domain"}, {"Processes", nil}]
+      :processes ->
+        [{root, "domain"}, {"Processes", nil}]
 
-        {:contract, id} ->
-          [{root, "domain"}, {id, nil}]
+      {:contract, id} ->
+        [{root, "domain"}, {named.(domain_document, "contract", id), nil}]
 
-        {:unit, c, u} ->
-          [{root, "domain"}, {c, key({:contract, c})}, {unit_name(document, u), nil}]
+      {:unit, c, u} ->
+        [
+          {root, "domain"},
+          {named.(domain_document, "contract", c), key({:contract, c})},
+          {unit_name(document, u, audience), nil}
+        ]
 
-        {:process, id} ->
-          [{root, "domain"}, {"Processes", "processes"}, {id, nil}]
-      end
-
-    steps
+      {:process, id} ->
+        [
+          {root, "domain"},
+          {"Processes", "processes"},
+          {named.(domain_document, "process", id), nil}
+        ]
+    end
   end
 
-  defp unit_name(nil, unit), do: unit
-
-  defp unit_name(document, unit) do
-    case Enum.find(get_in(document, ["nodes", "unit"]) || [], &(&1["id"] == unit)) do
-      %{"name" => name} -> name
+  defp unit_name(document, unit, audience) do
+    case Enum.find(get_in(document || %{}, ["nodes", "unit"]) || [], &(&1["id"] == unit)) do
+      %{"name" => name} = node -> step(audience, node, name)
       nil -> unit
     end
+  end
+
+  # The node of `kind` a domain's document names `name`.
+  defp find(document, kind, name),
+    do: Enum.find(get_in(document || %{}, ["nodes", kind]) || [], &(&1["name"] == name))
+
+  defp step(audience, node, name) do
+    if Audience.code?(audience) or node == nil, do: name, else: node["label"] || name
   end
 
   defp processes(document) do

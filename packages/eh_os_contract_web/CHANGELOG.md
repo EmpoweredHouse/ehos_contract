@@ -27,6 +27,11 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **The Graph screen has a switch "Engineering / Owner"** (plan DD, stage L4, eh-os-contract#326): read as the
+  owner, the pictures and the panel show the client's labels and the numbers from the log, and nothing of the
+  engineering — no delivery, idempotency, correlation keys or names in code. The screen starts as the engineer
+  reads it, as before.
+
 - **A contract's status page says what changed since the previous deployment** (plan DD, stage V5,
   eh-os-contract#322), as the text report does, and a deploy that changed only the words says so: "Only the words
   changed since the previous deployment, not the agreement". A process module's says it too.
