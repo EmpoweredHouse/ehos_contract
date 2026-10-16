@@ -58,8 +58,8 @@ defmodule EhOsContract.StageOrderTest do
              pairs: [
                Map.merge(@pair, %{
                  runs: 1,
-                 earlier_label: "Withdrawal",
-                 later_label: "Confirmation"
+                 earlier_label: "withdrawal",
+                 later_label: "confirmation"
                })
              ]
            }
@@ -108,8 +108,8 @@ defmodule EhOsContract.StageOrderTest do
              pairs: [
                Map.merge(@pair, %{
                  runs: 1,
-                 earlier_label: "Withdrawal",
-                 later_label: "Confirmation"
+                 earlier_label: "withdrawal",
+                 later_label: "confirmation"
                })
              ]
            }
@@ -123,8 +123,8 @@ defmodule EhOsContract.StageOrderTest do
                  "earlier" => "withdrawal",
                  "later" => "confirmation",
                  "runs" => 1,
-                 "earlier_label" => "Withdrawal",
-                 "later_label" => "Confirmation"
+                 "earlier_label" => "withdrawal",
+                 "later_label" => "confirmation"
                }
              ]
            }
@@ -132,7 +132,7 @@ defmodule EhOsContract.StageOrderTest do
     refute Jason.encode!(wire) =~ "a-1"
 
     text = Report.render(Conformance.report(AccountReview))
-    assert text =~ "  Stages out of order in 1 run:\n    · Confirmation before Withdrawal: 1 run"
+    assert text =~ "  Stages out of order in 1 run:\n    · confirmation before withdrawal: 1 run"
   end
 
   test "a report with every run in order says nothing about the order" do

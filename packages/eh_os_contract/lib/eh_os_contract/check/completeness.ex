@@ -448,16 +448,35 @@ defmodule EhOsContract.Check.Completeness do
     ])
   end
 
-  # Plan DD, L4 (#326): the owner's view names a value by its label.
+  # Plan DD, L4 (#326): the owner's view names a value, and each member of its enum, by
+  # its label; a member written as a bare atom has none.
   defp unlabelled_values(model, declared) do
-    for %{label: nil} = value <- model.values do
+    for value <- model.values,
+        unlabelled = unlabelled(value),
+        unlabelled != [] do
       Finding.new(
         "owner-view-without-label",
-        "value #{inspect(value.name)} of #{inspect(model.module)} has no label, so the owner's " <>
-          "view names it as the code does",
+        "value #{inspect(value.name)} of #{inspect(model.module)}: #{Enum.join(unlabelled, ", ")} " <>
+          "#{if length(unlabelled) == 1, do: "has", else: "have"} no label, so the owner's view " <>
+          "names it as the code does",
         at(declared.values, value.name)
       )
     end
+  end
+
+  defp unlabelled(value) do
+    own = if value.label == nil, do: ["the value"], else: []
+
+    members =
+      case value.type do
+        {:enum, members} ->
+          for member <- members, is_atom(member), do: "member #{inspect(member)}"
+
+        _other ->
+          []
+      end
+
+    own ++ members
   end
 
   # A scoped actor has a grant narrowed to rows or units identified by those

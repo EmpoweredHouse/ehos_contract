@@ -52,6 +52,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
         value :money, :integer, unit: :grosze, label: "Kwota"
         value :room_code, :string
+        value :room_kind, {:enum, [:surgery, treatment: "Gabinet zabiegowy"]}, label: "Rodzaj gabinetu"
       end
       """,
       "clinic.ex"
@@ -110,9 +111,12 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
   end
 
   # Plan DD, L4 (#326).
-  test "a value without a label, at its declaration; control: one with a label" do
-    assert [{message, {"clinic.ex", 29}}] = findings("owner-view-without-label")
-    assert message =~ "value :room_code of #{inspect(@domain)} has no label"
+  test "a value or an enum member without a label, at the value; control: labelled ones" do
+    assert [{code, {"clinic.ex", 29}}, {kind, {"clinic.ex", 30}}] =
+             Enum.sort_by(findings("owner-view-without-label"), &elem(&1, 1))
+
+    assert code =~ "value :room_code of #{inspect(@domain)}: the value has no label"
+    assert kind =~ "value :room_kind of #{inspect(@domain)}: member :surgery has no label"
   end
 
   test "an actor no contract names, at its declaration; control: one only a system stands for" do
