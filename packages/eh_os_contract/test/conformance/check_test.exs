@@ -92,6 +92,32 @@ defmodule EhOsContract.CheckTest do
     assert message =~ "query notes_of"
   end
 
+  # Plan DD, V2 (#338): reading an older row of a unit that records only can still call its
+  # code, so such a unit is one dispatch looks an implementation up for.
+  test "a unit that records only, with a step by a function, is looked up; control: implemented" do
+    Code.compile_string("""
+    defmodule EhOsContract.CheckTest.Upcasting do
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.upcasting"
+
+      aggregate :tally, "Tally" do
+        identity :tally_id
+
+        event :counted, "Counted", recorded_by: :batch_operator, schema_version: 2 do
+          upcast from: 1, function: :from_one
+        end
+      end
+    end
+    """)
+
+    assert [{:info, "contract-without-implementation", _}] =
+             findings(EhOsContract.CheckTest.Upcasting)
+             |> Enum.filter(&(elem(&1, 1) =~ "implementation"))
+
+    # `UpcastRig.Fees` implements the fee, whose event has a step by a function.
+    assert [] =
+             findings(UpcastRig.Demands) |> Enum.filter(&(elem(&1, 1) =~ "implementation"))
+  end
+
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
     defmodule EhOsContract.CheckTest.Unimplemented do

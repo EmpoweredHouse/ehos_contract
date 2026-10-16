@@ -179,13 +179,16 @@ defmodule EhOsContract.Consumer do
     # The version first, before a newer payload is read for its subjects with fields it
     # may no longer have; then an older one in the declared shape (plan DD, V1, #333),
     # with the path each renamed field was sealed under.
+    # A unit's implementation is looked up once for all the rows (plan DD, V2, #338).
+    implementations = implementations(model, rows)
+
     declared =
       Enum.map(rows, fn row ->
         declaration = declaration!(model, row)
         current!(declaration, row)
 
         {payload, paths} =
-          Upcast.read(declaration, row, implementation(model, declaration), values)
+          Upcast.read(declaration, row, implementations.(declaration), values)
 
         {declaration, %{row | payload: payload}, paths}
       end)
@@ -251,7 +254,7 @@ defmodule EhOsContract.Consumer do
         declaration,
         row,
         implementation(model, declaration),
-        Codec.values(model.domain)
+        fn -> Codec.values(model.domain) end
       )
 
     %{row | payload: payload, schema_version: declaration.schema_version}
@@ -282,6 +285,38 @@ defmodule EhOsContract.Consumer do
     fn ->
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       Implementations.fetch!(model, unit.kind, unit.name)
+    end
+  end
+
+  # For each declaration, a function giving its unit's implementation, looked up once for
+  # all of `rows` and only for a unit a row of which goes through a step by a function: a
+  # stream folded from many older rows asks the index once, and one with none not at all.
+  # A lookup that fails is refused when a step asks, where the step can be named.
+  defp implementations(model, rows) do
+    found =
+      for row <- rows,
+          declaration = Enum.find(model.events, &(&1.type == row.type)),
+          declaration != nil and Upcast.function_step?(declaration, row),
+          uniq: true,
+          into: %{} do
+        lookup =
+          try do
+            {:ok, implementation(model, declaration).()}
+          rescue
+            exception in ArgumentError -> {:error, Exception.message(exception)}
+          end
+
+        {declaration.unit, lookup}
+      end
+
+    fn declaration ->
+      fn ->
+        case Map.fetch(found, declaration.unit) do
+          {:ok, {:ok, module}} -> module
+          {:ok, {:error, message}} -> raise ArgumentError, message
+          :error -> implementation(model, declaration).()
+        end
+      end
     end
   end
 

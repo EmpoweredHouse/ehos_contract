@@ -12,11 +12,12 @@ defmodule EhOsContract.Upcast do
   # field's name.
   #
   # A step by a function (`function:`, plan DD, V2, #338) calls the unit's implementation with
-  # the payload and takes the map it gives. The engine cannot see what it did, so it holds
-  # the result to what it can see: a sealed value stays where it was or goes, and is never
-  # moved or made, since a seal opens only under the path it was sealed with; a field the
-  # log tags rows with keeps its value, since old rows keep their tags. What breaks either,
-  # or raises, or gives no map, refuses the row, naming the step and never a value.
+  # the payload and takes the map it gives, as the log stores one (through JSON). The engine
+  # cannot see what it did, so it holds the result to what it can see: a sealed value stays
+  # where it was or goes, and is never moved or made, since a seal opens only under the path
+  # it was sealed with; a field the log tags rows with holds what the row was written with,
+  # since its tags were made from that. What breaks either, or raises, throws or exits, or
+  # gives no map, refuses the row, naming the step and never a value.
   @moduledoc false
 
   alias EhOsContract.Key
@@ -28,101 +29,147 @@ defmodule EhOsContract.Upcast do
   # The row's payload in the declaration's version, and the path each renamed field was
   # written under. A row at the declared version, or with no payload, is as it is; a row
   # newer than the declaration is the caller's to refuse first (`Consumer.current!/2`).
-  # `implementation` gives the unit's implementation, asked only for a step by a function;
-  # `values` are the domain's, which say which fields of a value the log tags.
-  @spec read(map(), EhOsContract.Event.t(), (-> module()) | nil, map()) :: {map(), paths()}
+  # `implementation` gives the unit's implementation and `values` the domain's values,
+  # which say which fields of a value the log tags; each is a function, asked only for a
+  # step by a function.
+  @spec read(map(), EhOsContract.Event.t(), (-> module()) | nil, (-> map()) | map()) ::
+          {map(), paths()}
   def read(
         declaration,
         %{schema_version: written, payload: payload} = row,
         implementation \\ nil,
         values \\ %{}
       ) do
+    stored = payload || %{}
+
     steps =
       for step <- Map.get(declaration, :upcasts, []),
           is_integer(written) and step.from >= written and step.from < declaration.schema_version,
           do: step
 
-    Enum.reduce(steps, {payload || %{}, %{}}, fn
+    Enum.reduce(steps, {stored, %{}}, fn
       %{function: fun} = step, {data, paths} ->
-        {called(declaration, row, step, fun, implementation, values, data), paths}
+        context = %{declaration: declaration, row: row, step: step, stored: stored}
+        {called(context, fun, implementation, values, data), paths}
 
       step, acc ->
         step(step, acc)
     end)
   end
 
-  defp called(declaration, row, step, fun, implementation, values, data) do
-    module =
-      implementation ||
-        raise ArgumentError, "#{where(row, step)} names #{fun}/1, and no implementation was given"
+  @doc false
+  # Whether `row` goes through a step by a function of `declaration` when it is read.
+  @spec function_step?(map(), EhOsContract.Event.t()) :: boolean()
+  def function_step?(declaration, %{schema_version: written}) do
+    is_integer(written) and
+      Enum.any?(
+        Map.get(declaration, :upcasts, []),
+        &(Map.has_key?(&1, :function) and &1.from >= written and
+            &1.from < declaration.schema_version)
+      )
+  end
 
-    module = module.()
+  defp called(context, fun, implementation, values, data) do
+    module = implementation!(context, fun, implementation)
 
-    result =
+    given =
       try do
         apply(module, fun, [data])
       rescue
         exception ->
-          raise ArgumentError,
-                "#{where(row, step)}: #{inspect(module)}.#{fun}/1 raised " <>
-                  "#{inspect(exception.__struct__)}"
+          refuse!(context, "#{inspect(module)}.#{fun}/1 raised #{inspect(exception.__struct__)}")
+      catch
+        kind, _reason -> refuse!(context, "#{inspect(module)}.#{fun}/1 #{caught(kind)}")
       end
 
-    unless is_map(result) do
-      raise ArgumentError, "#{where(row, step)}: #{inspect(module)}.#{fun}/1 gave no map"
-    end
-
-    sealed!(row, step, data, result)
-    tagged!(declaration, row, step, data, result, values)
+    result = stored!(context, module, fun, given)
+    sealed!(context, data, result)
+    tagged!(context, result, if(is_function(values, 0), do: values.(), else: values))
     result
   end
 
+  defp implementation!(context, fun, nil),
+    do: refuse!(context, "names #{fun}/1, and no implementation was given")
+
+  defp implementation!(context, fun, implementation) do
+    implementation.()
+  rescue
+    exception in ArgumentError ->
+      refuse!(
+        context,
+        "names #{fun}/1 of the unit's implementation: #{Exception.message(exception)}"
+      )
+  end
+
+  defp caught(:throw), do: "threw"
+  defp caught(:exit), do: "exited"
+  defp caught(_error), do: "failed"
+
+  # What the function gave, as the log stores a value: through JSON, so that a decimal, a
+  # date or an atom key reads as an old row's own would. Anything else is refused.
+  defp stored!(context, module, fun, given) when is_map(given) do
+    given |> Jason.encode!() |> Jason.decode!()
+  rescue
+    _cannot_encode in [Protocol.UndefinedError, Jason.EncodeError] ->
+      refuse!(context, "#{inspect(module)}.#{fun}/1 gave a map the log cannot store")
+  end
+
+  defp stored!(context, module, fun, _given),
+    do: refuse!(context, "#{inspect(module)}.#{fun}/1 gave no map")
+
   # A seal of the result is one of the input's, at the same field.
-  defp sealed!(row, step, data, result) do
+  defp sealed!(context, data, result) do
     before = seals(data)
 
     for {path, seal} <- seals(result), Map.get(before, path) != seal do
-      raise ArgumentError,
-            "#{where(row, step)}: the function puts a sealed value at #{path} that the row " <>
-              "did not hold there; a seal opens only under the field it was sealed in, so a " <>
-              "personal field is renamed with `rename:`"
+      refuse!(
+        context,
+        "the function puts a sealed value at #{path} that the row did not hold there; a seal " <>
+          "opens only under the field it was sealed in, so a personal field is renamed with " <>
+          "`rename:`, and a list holding personal data keeps its order"
+      )
     end
 
     :ok
   end
 
-  defp tagged!(declaration, row, step, data, result, values) do
+  # A field the log tags rows with holds what the row was written with: its tags were
+  # made from that, whatever steps came before the function.
+  defp tagged!(%{declaration: declaration, stored: stored} = context, result, values) do
     for field <- declaration.fields,
         Key.tag_field?(field, values) or Key.bucket_field?(field, values),
         name = Atom.to_string(field.name),
-        Map.get(data, name) != Map.get(result, name) do
-      raise ArgumentError,
-            "#{where(row, step)}: the function changes #{name}, which the log tags each row " <>
-              "with; rows written before keep their tags"
+        Map.get(stored, name) != Map.get(result, name) do
+      refuse!(
+        context,
+        "the function leaves #{name} other than the row was written with, and the log tags " <>
+          "each row with it; rows written before keep their tags"
+      )
     end
 
     :ok
   end
 
+  defp refuse!(%{row: row, step: step}, why),
+    do: raise(ArgumentError, "#{where(row, step)}: #{why}")
+
   # Every sealed value of `data`, by its path, inside values and lists too.
-  defp seals(data, path \\ []) do
-    Enum.reduce(data, %{}, fn {key, value}, acc ->
-      Map.merge(acc, seals_in(value, path ++ [to_string(key)]))
-    end)
-  end
+  defp seals(data), do: seals(data, [], %{})
 
-  defp seals_in(%{"$eh" => _} = seal, path), do: %{Enum.join(path, ".") => seal}
-  defp seals_in(%{} = map, path), do: seals(map, path)
+  defp seals(%{"$eh" => _} = seal, path, acc),
+    do: Map.put(acc, path |> Enum.reverse() |> Enum.join("."), seal)
 
-  defp seals_in(list, path) when is_list(list) do
+  defp seals(%{} = map, path, acc),
+    do:
+      Enum.reduce(map, acc, fn {key, value}, acc -> seals(value, [to_string(key) | path], acc) end)
+
+  defp seals(list, path, acc) when is_list(list) do
     list
     |> Enum.with_index()
-    |> Enum.reduce(%{}, fn {value, i}, acc ->
-      Map.merge(acc, seals_in(value, path ++ [to_string(i)]))
-    end)
+    |> Enum.reduce(acc, fn {value, i}, acc -> seals(value, [Integer.to_string(i) | path], acc) end)
   end
 
-  defp seals_in(_value, _path), do: %{}
+  defp seals(_value, _path, acc), do: acc
 
   defp where(row, step),
     do:

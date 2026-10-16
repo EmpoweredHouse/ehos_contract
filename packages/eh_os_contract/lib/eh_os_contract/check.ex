@@ -123,12 +123,27 @@ defmodule EhOsContract.Check do
     end
   end
 
+  defp decides?(model, unit), do: Enum.any?(model.commands, &(&1.unit == unit.name))
+
+  # Plan DD, V2 (#338): reading an older row of such a unit calls a function of its code.
+  defp upcasts_by_function?(model, unit) do
+    Enum.any?(
+      model.events,
+      &(&1.unit == unit.name and
+          Enum.any?(Map.get(&1, :upcasts, []), fn s -> Map.has_key?(s, :function) end))
+    )
+  end
+
   # What dispatch looks an implementation up for: every unit, every consumer, and
   # every query, which `EhOsContract.Dispatcher.query/3` answers through its module;
   # and every domain service, which a decision calls through the contract.
   defp implemented_findings(%{model: model, at: at}) do
     wanted =
-      for(u <- model.units, Enum.any?(model.commands, &(&1.unit == u.name)), do: {u.kind, u.name}) ++
+      for(
+        u <- model.units,
+        decides?(model, u) or upcasts_by_function?(model, u),
+        do: {u.kind, u.name}
+      ) ++
         for(p <- model.policies, do: {:policy, p.name}) ++
         for(e <- model.effects, do: {:effect, e.name}) ++
         for(pm <- model.process_managers, do: {:process_manager, pm.name}) ++

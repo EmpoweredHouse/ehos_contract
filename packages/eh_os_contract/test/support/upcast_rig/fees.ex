@@ -18,6 +18,17 @@ defmodule UpcastRig.Fees do
 
   def amount_from_minor(%{"do" => "raise"} = data), do: Map.fetch!(data, "no such field")
   def amount_from_minor(%{"do" => "no_map"}), do: :not_a_map
+  def amount_from_minor(%{"do" => "throw"} = data), do: throw(data)
+  def amount_from_minor(%{"do" => "exit"} = data), do: exit({:gone, data})
+
+  # A decimal, as the docs' example gives it, and atom keys: read as the log stores them.
+  def amount_from_minor(%{"do" => "stored_form", "amount_minor" => minor} = data) do
+    data
+    |> Map.drop(["amount_minor", "do"])
+    |> Map.new(fn {key, value} -> {String.to_existing_atom(key), value} end)
+    |> Map.put(:amount, Decimal.div(minor, 100))
+  end
+
   def amount_from_minor(data), do: amount(data)
 
   defp amount(%{"amount_minor" => minor} = data) do

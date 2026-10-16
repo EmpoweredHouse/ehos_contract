@@ -40,7 +40,8 @@ defmodule EhOsContract.Contract.Rules.Versions do
     for unit <- declarations.units,
         event <- unit.events,
         violation <-
-          coverage(event) ++ targets(unit, event) ++ kept(unit, event) ++ defaults(event),
+          coverage(event) ++
+            targets(unit, event) ++ kept(unit, event) ++ defaults(event) ++ functions(unit, event),
         do: violation
   end
 
@@ -174,6 +175,18 @@ defmodule EhOsContract.Contract.Rules.Versions do
     not_atoms ++ unknown ++ same ++ renamed_twice ++ defaulted_twice ++ shared ++ both
   end
 
+  # U2, plan DD, V2 (#338): a step's function is a callback of the unit's implementation
+  # beside its commands', so it is not named like one.
+  defp functions(unit, event) do
+    commands = MapSet.new(unit.commands, & &1.name)
+
+    for u <- event.upcasts, u.function != nil, MapSet.member?(commands, u.function) do
+      {"U2: event #{inspect(event.name)}, `upcast from: #{u.from}` names the function " <>
+         "#{inspect(u.function)}, the name of a command of the unit; the implementation holds " <>
+         "both, so name the function after what it reads", u}
+    end
+  end
+
   # U3: what the log keeps by a field's name, judged as each target ends.
   defp kept(unit, event) do
     identity = MapSet.new(List.wrap(unit.identity))
@@ -184,11 +197,10 @@ defmodule EhOsContract.Contract.Rules.Versions do
           Enum.map(u.rename, fn {old, new} -> {:rename, old, new} end) ++
             Enum.map(u.default, fn {field, _value} -> {:default, field, field} end),
         is_atom(target),
-        # Before a step by a function, only the identity is known to be kept: what a
-        # target ends as is the function's.
-        known = if(opaque?(event, u.from), do: %{}, else: fields),
+        # Before a step by a function, what a target ends as is the function's: it is
+        # judged by its own name, which the function is given.
         why =
-          kept_why(kind, old, target, ends_as(event, u.from, target) || target, identity, known),
+          kept_why(kind, old, target, ends_as(event, u.from, target) || target, identity, fields),
         why != nil do
       {"U3: event #{inspect(event.name)}, `upcast from: #{u.from}` #{why}", u}
     end

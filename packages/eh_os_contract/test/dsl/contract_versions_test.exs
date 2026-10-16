@@ -362,6 +362,40 @@ defmodule EhOsContract.ContractVersionsTest do
                  "renames or gives defaults too"
     end
 
+    test "a function named like a command of the unit is refused" do
+      message =
+        refuse_contract(
+          "VersionsFunctionCommand",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                upcast from: 1, function: :open_demand
+              end
+          """)
+        )
+
+      assert message =~
+               "U2: event :demand_opened, `upcast from: 1` names the function :open_demand, " <>
+                 "the name of a command of the unit"
+    end
+
+    test "a step before a function is judged by its own names: onto a tagged field, refused" do
+      message =
+        refuse_contract(
+          "VersionsBeforeFunctionTagged",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 3 do
+                field :company_id, :id
+
+                upcast from: 1, rename: [company_ref: :company_id]
+                upcast from: 2, function: :from_two
+              end
+          """)
+        )
+
+      assert message =~
+               "U3: event :demand_opened, `upcast from: 1` renames :company_ref to :company_id"
+    end
+
     test "a step before a function is not held to the names it leads to" do
       compile_contract(
         "VersionsBeforeFunction",

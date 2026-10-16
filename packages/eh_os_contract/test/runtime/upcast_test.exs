@@ -201,7 +201,27 @@ defmodule EhOsContract.UpcastTest do
       row = fee!(%{amount_minor: 100, do: "change_tag"})
       error = assert_raise ArgumentError, fn -> Consumer.decode!(row) end
 
-      assert Exception.message(error) =~ "the function changes requester_id, which the log tags"
+      assert Exception.message(error) =~
+               "the function leaves requester_id other than the row was written with"
+    end
+
+    test "what the function gives is read as the log stores it: a decimal, a date, an atom key" do
+      row = fee!(%{amount_minor: 990, do: "stored_form"})
+
+      assert %UpcastRig.Demands.Events.FeeCharged{amount: amount} = Consumer.decode!(row)
+      assert Decimal.equal?(amount, Decimal.new("9.90"))
+    end
+
+    test "a function that throws or exits is refused, naming the step and no value" do
+      for mode <- ["throw", "exit"] do
+        row = fee!(%{amount_minor: 100, note: "secret", do: mode})
+        error = assert_raise ArgumentError, fn -> Consumer.decode!(row) end
+
+        assert Exception.message(error) =~
+                 "amount_from_minor/1 #{if mode == "throw", do: "threw", else: "exited"}"
+
+        refute Exception.message(error) =~ "secret"
+      end
     end
 
     test "a function that raises, or gives no map, is refused, naming the step and no value" do
