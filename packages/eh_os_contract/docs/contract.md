@@ -520,6 +520,9 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values; a `given_entity` row with a field its entity lacks, missing its identity or a required field, or with an ill-typed value; a process module's `given` with data the event its contract declares does not fit, in the same ways, or leaving out its unit's identity |
 | `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
+| `X11` | L3 | a reference from one context into another against the relation between them: from the upstream context of a directed relation into its downstream one, or across `separate_ways`; a reference is consuming a contract, naming an entity or a unit (`{:id, name}`), or using a value declared with `context:` |
+| `X12` | L3 | a read model, an effect or a process manager taking an event of a sibling contract, or a boundary consulting one, across an `anticorruption_layer`, where only a policy takes it |
+| `X13` | L3 | consuming an event a sibling contract does not `publish` across an `open_host_service` or a `published_language` |
 
 <a id="refusals-i"></a>
 

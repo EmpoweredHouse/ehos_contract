@@ -345,24 +345,10 @@ should name it with `subdomain:`, or it is left over.
 
 A relation between two contexts is crossed by no reference.
 
-No contract of one context consumes a contract of the other, and none names an entity the other
-owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
+No contract of one context consumes a contract of the other, names an entity or a unit the
+other owns (`{:id, name}`) or uses a value it declares (`context:`), in either direction; for a relation to an external system, no contract
 of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
 a dependency the contracts do not have.
-
-## `relation-against-references`
-
-**warning**
-
-A reference between two contexts runs against the relation declared between them.
-
-A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
-`open_host_service`, `published_language` — says the downstream context depends on the upstream
-one, and a contract of the upstream context consumes a contract of the downstream one or names
-an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
-other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
-contexts only: which way a call to an external system runs says nothing about who depends on
-whom.
 
 ## `label-with-avoided-term`
 
@@ -422,9 +408,11 @@ and to fetch alike.
 
 A contract reaches into another context that no relation connects to its own.
 
-It consumes a contract of another context, or names an entity another context owns, and the
-domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
-who conforms, who translates — is then written nowhere. One finding per reference.
+It consumes a contract of another context, names an entity or a unit another context owns, or
+uses a value another context declares, and the domain declares no `relation` between the two.
+Which way the dependency runs — who is upstream, who conforms, who translates — is then written
+nowhere. One finding per reference. A reference against a relation that is declared does not
+compile (X11–X13).
 
 ## `backward-edge`
 

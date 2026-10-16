@@ -76,6 +76,12 @@ Pick by what the business says, not by what the code will look like:
   events of one contract or of several (`stage …, include: [{Contract, [:event]}]`) and says what
   tells one run from another (`correlate`). A register whose units only decide and record has no
   process, and needs none.
+- A sibling of **another context** is reached only the way the domain's `relation` between the two
+  contexts allows. Upstream into downstream, or across `separate_ways`, does not compile (`X11`), and
+  that holds for a field naming its unit or using a value it declares too. Across an
+  `anticorruption_layer` only a policy takes the event (`X12`). Across an `open_host_service` or a
+  `published_language`, only what the upstream contract `publish`es (`X13`). When the code needs
+  more, the relation is the first thing to question, and changing it is a decision about the business.
 - A new context, actor, value or external goes into the **domain** first (`use EhOsContract.Domain`);
   the contract names them (`X1`–`X4`). An actor with nothing to do is `orphan-actor`; a context no
   contract uses is `bounded-context-without-content`.

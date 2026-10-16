@@ -16,8 +16,8 @@ defmodule EhOsContract.Check.Completeness do
   alias EhOsContract.Domain
   alias EhOsContract.Lifecycle
   alias EhOsContract.Model
-  alias EhOsContract.References
   alias EhOsContract.Contract.{Links, Rules}
+  alias EhOsContract.Contract.Links.ContextMap
 
   @doc """
   Every finding of a completeness rule about `contracts`, v2 contract modules,
@@ -438,7 +438,6 @@ defmodule EhOsContract.Check.Completeness do
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts),
-      relations_against_references(model, contracts),
       avoided_terms(model, contracts),
       words_without_terms(model, declared, contracts),
       terms_of_other_contexts(model, contracts),
@@ -665,7 +664,7 @@ defmodule EhOsContract.Check.Completeness do
             do: MapSet.new([external, context])
 
     crossing =
-      MapSet.new(Enum.map(crossings(model, contracts), &elem(&1, 0)) ++ external_uses)
+      MapSet.new(Enum.map(ContextMap.crossings(model, contracts), & &1.pair) ++ external_uses)
 
     for {relation, index} <- Enum.with_index(model.relations),
         pair = relation |> Domain.Build.endpoints() |> MapSet.new(),
@@ -689,7 +688,8 @@ defmodule EhOsContract.Check.Completeness do
   defp unmapped_references(model, contracts) do
     mapped = MapSet.new(model.relations, &MapSet.new(Domain.Build.endpoints(&1)))
 
-    for {pair, contract, what, at} <- crossings(model, contracts),
+    for %{pair: pair, contract: contract, what: what, at: at} <-
+          ContextMap.crossings(model, contracts),
         not MapSet.member?(mapped, pair),
         uniq: true do
       other = pair |> MapSet.delete(contract.model.context) |> Enum.at(0)
@@ -703,51 +703,6 @@ defmodule EhOsContract.Check.Completeness do
       )
     end
   end
-
-  # The library's own (plan EL2, rule 1 of the prose review): a relation that says which way the
-  # dependency runs, and a reference that runs the other way. `separate_ways` says
-  # there is none, so any reference contradicts it; a directed relation says the
-  # downstream context depends on the upstream one, so a reference from the upstream
-  # context into the downstream one contradicts it. Between contexts only: which way
-  # a call to an external system runs says nothing about who depends on whom.
-  defp relations_against_references(model, contracts) do
-    references = crossings(model, contracts)
-    directed = EhOsContract.Domain.Dsl.directed_relations()
-
-    # At the reference, which is what the finding asks to check: the relation may be
-    # right and the `consumes` wrong, and three such references are three places.
-    for relation <- model.relations,
-        relation_pair = MapSet.new(Domain.Build.endpoints(relation)),
-        {pair, contract, what, at} <- references,
-        pair == relation_pair,
-        against?(relation, contract.model.context, directed),
-        uniq: true do
-      Finding.new(
-        "relation-against-references",
-        "#{inspect(contract.module)} in context #{inspect(contract.model.context)} #{what}, " <>
-          "and #{describe_relation(relation)} in #{inspect(model.module)} says #{says(relation)}",
-        at
-      )
-    end
-  end
-
-  defp against?(%{type: :separate_ways}, _from, _directed), do: true
-
-  defp against?(%{type: type, upstream: upstream}, from, directed),
-    do: type in directed and from == upstream
-
-  defp says(%{type: :separate_ways}), do: "the two contexts do not depend on each other"
-
-  defp says(relation),
-    do: "#{inspect(relation.upstream)} does not depend on #{inspect(relation.downstream)}"
-
-  defp describe_relation(%{type: :separate_ways, between: [a, b]}),
-    do: "relation :separate_ways between #{inspect(a)} and #{inspect(b)}"
-
-  defp describe_relation(relation),
-    do:
-      "relation #{inspect(relation.type)} from upstream #{inspect(relation.upstream)} to " <>
-        "downstream #{inspect(relation.downstream)}"
 
   # The library's own (plan EL2, rule 2 of the prose review): a label of a contract that uses a
   # word its context's glossary says to avoid. Whole words, any case; the words a
@@ -983,38 +938,6 @@ defmodule EhOsContract.Check.Completeness do
     issued ++ backed
   end
 
-  # Every reference from a contract into another context: `{contexts, contract, what,
-  # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
-  # an entity or a unit named in a field (plan DD, L3 (#286)), the contract's `use`.
-  defp crossings(model, contracts) do
-    context_of = Map.new(contracts, &{&1.module, &1.model.context})
-    referents = References.index(model, Enum.map(contracts, & &1.model))
-
-    for contract <- contracts,
-        {other, what, at} <-
-          for(
-            %{from: from} = consumes <- contract.declarations.consumes,
-            is_atom(from),
-            other = Map.get(context_of, from) || context_of(from),
-            do: {other, "consumes #{inspect(from)}", Links.at(consumes)}
-          ) ++
-            for(
-              name <- References.in_model(contract.model),
-              referent = Map.get(referents, name),
-              referent != nil,
-              do: {owner(referent, model), "names #{References.describe(referent)}", contract.at}
-            ),
-        other != nil and other != contract.model.context do
-      {MapSet.new([other, contract.model.context]), contract, what, at}
-    end
-  end
-
-  # The context that owns what a field refers to: an entity's, or its unit's contract's.
-  defp owner({:entity, name}, model),
-    do: Enum.find_value(model.entities, &(&1.name == name && &1.context))
-
-  defp owner({:unit, contract, _name}, _model), do: contract.context
-
   # The externals a contract reaches: what its effects call, what its events depend on,
   # what issues its fields' values, and what stands behind the actors it names — in a
   # command's or a query's `by:`, an event's `recorded_by:`. A process module's
@@ -1056,13 +979,5 @@ defmodule EhOsContract.Check.Completeness do
         field <- Map.get(owner, :fields, []),
         external = Map.get(field, :issued_by),
         do: {Map.get(owner, :context), external}
-  end
-
-  # A consumed contract outside the modules checked is looked up by name, as L3 does.
-  defp context_of(module) do
-    case Links.contract(module) do
-      %{model: %{context: context}} -> context
-      nil -> nil
-    end
   end
 end

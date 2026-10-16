@@ -1890,7 +1890,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | P2h | 2 | stare słowa i kolumny znikają (migracja V03) | P2i | ☑ #296 | [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221) |
 | P2i | 2 | docs and the plugin's skills teach the process module | P2g | ☑ #295 | [#294](https://github.com/EmpoweredHouse/eh-os-contract/issues/294) |
 | P2w | 3 | a process module's report on the wire | P2d, eh-os#297 | ☑ #261 | [#259](https://github.com/EmpoweredHouse/eh-os-contract/issues/259) |
-| M1 | 3 | the context map holds the code to it, values as references | L3 | ☐ rewritten 16 October | — |
+| M1 | 3 | the context map holds the code to it, values as references | L3 | ◐ `dd/316-context-map` | [#316](https://github.com/EmpoweredHouse/eh-os-contract/issues/316) |
 | T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☑ #242 | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2b | 3 | `given_entity` | T2a | ☑ #242, folded into T2a | [#240](https://github.com/EmpoweredHouse/eh-os-contract/issues/240) |
 | T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☑ #246 | [#245](https://github.com/EmpoweredHouse/eh-os-contract/issues/245) |

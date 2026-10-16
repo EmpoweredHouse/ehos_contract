@@ -276,8 +276,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     for f <- Completeness.findings([scheduling, billing]),
         f.rule in [
           "cross-bounded-context-reference-without-mapping",
-          "orphan-context-mapping",
-          "relation-against-references"
+          "orphan-context-mapping"
         ],
         do: {f.rule, f.message}
   end
@@ -291,14 +290,9 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
                "#{inspect(__MODULE__)}.UnitUnmappedScheduling of context :scheduling"
   end
 
-  test "a field identifying a unit against the relation's direction" do
+  test "a field identifying a unit against the relation's direction is the compiler's (X11), and crosses it" do
     relation = "relation :customer_supplier, upstream: :billing, downstream: :scheduling"
-
-    assert [{"relation-against-references", message}] =
-             unit_reference("UnitAgainst", relation)
-
-    assert message =~ "names unit :appointment"
-    assert message =~ ":billing does not depend on :scheduling"
+    assert unit_reference("UnitAgainst", relation) == []
   end
 
   test "control: a relation the unit reference follows, crossed and not orphaned" do

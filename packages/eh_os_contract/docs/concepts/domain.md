@@ -3,7 +3,7 @@
 How a domain module splits a business into subdomains and bounded contexts, gives each context its glossary,
 says how the contexts depend on each other, and why every contract belongs to exactly one of them.
 
-<!-- covers: entities domain.subdomain, domain.context, domain.context.term, domain.relation; rules subdomain-without-bounded-context, bounded-context-without-content, orphan-context-mapping, relation-against-references, label-with-avoided-term, word-without-term, term-of-another-context, cross-bounded-context-reference-without-mapping -->
+<!-- covers: entities domain.subdomain, domain.context, domain.context.term, domain.relation; rules subdomain-without-bounded-context, bounded-context-without-content, orphan-context-mapping, label-with-avoided-term, word-without-term, term-of-another-context, cross-bounded-context-reference-without-mapping -->
 
 ## A domain module
 
@@ -129,6 +129,27 @@ between contexts only. A relation whose roles do not fit its type, an end the do
 context related to itself, or a word of `terms:` its context's glossary does not define does not compile
 ([`D5`](../contract.md#refusals-d)); a relation declared twice does not either ([`D1`](../contract.md#refusals-d)).
 
+### What a relation lets through
+
+A relation is a rule the contracts are held to, not a drawing. A contract of one context depends on another
+when it consumes a contract of it, names an entity or a unit it owns (`{:id, name}`), or uses a value it
+declares (`value …, context:`). Such a reference has to follow the relation between the two:
+
+| Relation | What a contract of the downstream context may consume from one of the upstream |
+| --- | --- |
+| `:customer_supplier`, `:conformist`, `:partnership`, `:shared_kernel` | any event |
+| `:anticorruption_layer` | an event only a policy takes, translating it into a command of its own context |
+| `:open_host_service`, `:published_language` | only the events the upstream contract `publish`es |
+| `:separate_ways` | nothing, and nothing else crosses either |
+
+A reference from the upstream context into the downstream one, or any reference across `:separate_ways`,
+does not compile ([`X11`](../contract.md#refusals-x)); nor does a read model, an effect or a process manager
+taking an event, or a boundary consulting one, across an `:anticorruption_layer` ([`X12`](../contract.md#refusals-x)), nor a contract consuming
+an event its upstream sibling does not publish across an `:open_host_service` or a `:published_language`
+([`X13`](../contract.md#refusals-x)). In one application the published event is still taken from the log, whole;
+another application takes it by its name on the wire, with only the fields it declares. Including an event in a
+process module is no reference: a process belongs to no context.
+
 ## A contract belongs to one context
 
 Every contract names its context,
@@ -228,6 +249,8 @@ table of [Writing a domain and a contract](../contract.md). The ones this page i
 - **[`X2`](../contract.md#refusals-x)**: a contract's `by:`, `recorded_by:` or scenario actor naming an actor of another context.
 - **[`X10`](../contract.md#refusals-x)**: a policy or a read model taking an event of a sibling contract of another context without
   declaring `delivery`.
+- **[`X11`](../contract.md#refusals-x)**, **[`X12`](../contract.md#refusals-x)**, **[`X13`](../contract.md#refusals-x)**: a
+  reference against the relation between two contexts, or more than its pattern lets through (above).
 
 ## What `mix eh_os_contract.check` reports
 
@@ -241,17 +264,15 @@ A domain that compiles may still describe a business its contracts do not have. 
   example, the catalogue is reported until a contract belongs to it; that is right while its contract is not
   written yet.
 - **`orphan-context-mapping`** (warning): a relation that no reference crosses: no contract of one context
-  consumes a contract of the other or names an entity it owns, in either direction. For a relation to an
+  consumes a contract of the other, names an entity or a unit it owns or uses a value it declares, in either
+  direction. For a relation to an
   external system, no contract of the context calls it, depends on it, has a field it issues or acts through
   an actor it backs. The relation describes a dependency the contracts do not have.
 - **`cross-bounded-context-reference-without-mapping`** (warning): the other way round: a contract consumes
-  a contract of another context, or names an entity another context owns, and no relation connects the two
-  contexts. Declare the relation, which says who depends on whom. One finding per reference.
-- **`relation-against-references`** (warning): a reference runs against the relation: a contract of the
-  upstream context of a directed relation consumes a contract of the downstream one or names an entity it
-  owns, or any reference crosses a `:separate_ways` relation. Either the relation or the reference is wrong.
-  It is asked between contexts only: which way a call to an external system runs says nothing about who
-  depends on whom.
+  a contract of another context, names an entity or a unit another context owns, or uses a value it declares,
+  and no relation connects the two contexts. Declare the relation, which says who depends on whom. One finding
+  per reference. A domain may be mapped a piece at a time, so this one warns; a reference against a relation
+  that is declared does not compile (above).
 - **`label-with-avoided-term`** (warning): a label of a contract uses a word its context's glossary says to
   avoid. In the example, an event of the loans contract labelled "Borrowing recorded" is reported. Every
   declaration's label and every enum member's label is read; a word matches whole, in any letter case, and
