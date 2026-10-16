@@ -238,7 +238,7 @@ defmodule EhOsContract.Consumer do
   @doc false
   # Plan DD, V1 (#333): `row` with its payload in the shape `model` declares its event in,
   # for a reader that takes the payload as stored, as a relay does. A sealed value stays
-  # sealed, and the relay refuses to publish one (`EhOsContract.Relay`).
+  # sealed, and goes out sealed, as `EhOsContract.Relay` says of a field that was personal.
   @spec upcast(map(), Event.t()) :: Event.t()
   def upcast(%{kind: :contract} = model, row) do
     declaration = declaration!(model, row)

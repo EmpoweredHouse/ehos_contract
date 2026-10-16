@@ -227,39 +227,6 @@ defmodule EhOsContract.UpcastTest do
       end)
     end
 
-    test "refuses to publish a seal that a step moved into a published field" do
-      relay = "upcast_rig.demands:relay:demand_opened"
-      Subscription.register!(Repo, [Implementations.consumer(relay)])
-
-      # Version 1 as if its reason had been personal: the step moves the seal to the
-      # published `demand_reason`.
-      fields =
-        Enum.map(version_1(), fn
-          %{name: :reason} = f -> %{f | personal: :requester_id}
-          f -> f
-        end)
-
-      row = written!(1, fields, %{requester_id: "r-anna", remark: "urgent", reason: "a laptop"})
-
-      result = Subscription.step(Repo, Implementations.consumer(relay))
-      refute match?({:applied, _}, result)
-      refute_received {:published, _}
-
-      # The record names the exception and never its message.
-      assert %{failure: "ArgumentError"} = Repo.get!(EhOsContract.SubscriptionRecord, relay)
-
-      error =
-        assert_raise ArgumentError, fn ->
-          EhOsContract.Relay.message(
-            Implementations.consumer(relay),
-            Consumer.upcast(Model.fetch(Demands), row)
-          )
-        end
-
-      assert Exception.message(error) =~ "would carry demand_reason of the event at position"
-      refute Exception.message(error) =~ "laptop"
-    end
-
     test "publishes an older row with the current fields" do
       relay = "upcast_rig.demands:relay:demand_opened"
       Subscription.register!(Repo, [Implementations.consumer(relay)])

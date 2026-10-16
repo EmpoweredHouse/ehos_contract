@@ -57,8 +57,7 @@ and the `ehos-dev:release` skill makes one.
   log stores a value. The compiler refuses a version without its step (`U1`), a step to a field the event will not
   have (`U2`), a step that renames onto or defaults what the log keeps by a field's name — the unit's identity, and
   every required, non-personal `:id`, date or timestamp it tags rows with — or gives personal data a default (`U3`),
-  and a default that is not a value of its field (`U4`). A relay refuses to publish a sealed value, which a field
-  that was personal when its row was written would carry.
+  and a default that is not a value of its field (`U4`).
 
 ### Changed
 
