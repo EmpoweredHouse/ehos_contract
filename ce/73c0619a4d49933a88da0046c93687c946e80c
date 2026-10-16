@@ -1,0 +1,5 @@
+pre-pr-review of origin/main..ce73c061 (L4 part 2, #326): correctness (code-review high) and security/performance in one subagent.
+Fixed in ce73c061: entity fields unfiltered; timer triggers and at: fields by name; published consumes and received events by name; glossary's other context by name; unverified on owner pages; consumed-under-another-name events resolved through Model.consumed; a unitless contract's name; an undeclared operation dropped. A test holds all fixture owner pages to code spans only for unlabelled stages, values and members (reverse-checked).
+No change: docs cite owner-view-without-label from #327, which merges first; said/4's repeated lists are small.
+Engineer pages: byte-identical to main for Rehmed (diff -r).
+Gate on ce73c061: EXIT=0; sandbox 315+34, check 0/47/32; engine 1761+10, check 0/77/51; web 79; auth 329+1+1; graph 172.
