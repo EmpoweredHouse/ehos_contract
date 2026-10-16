@@ -138,12 +138,17 @@ defmodule EhOsContract.Contract.Rules.Versions do
         {"U2: #{at} renames #{inspect(old)} #{n} times; a field has one new name", u}
       end
 
+    defaulted_twice =
+      for {field, n} <- Enum.frequencies(Enum.map(u.default, &elem(&1, 0))), n > 1 do
+        {"U2: #{at} gives #{inspect(field)} #{n} defaults; a field has one", u}
+      end
+
     shared =
       for {new, n} <- Enum.frequencies(news), n > 1 do
         {"U2: #{at} renames #{n} fields to #{inspect(new)}; a field has one old name", u}
       end
 
-    not_atoms ++ unknown ++ same ++ renamed_twice ++ shared
+    not_atoms ++ unknown ++ same ++ renamed_twice ++ defaulted_twice ++ shared
   end
 
   # U3: what the log keeps by a field's name, judged as each target ends.
@@ -156,15 +161,17 @@ defmodule EhOsContract.Contract.Rules.Versions do
           Enum.map(u.rename, fn {old, new} -> {:rename, old, new} end) ++
             Enum.map(u.default, fn {field, _value} -> {:default, field, field} end),
         is_atom(target),
-        why = kept_why(kind, old, ends_as(event, u.from, target) || target, identity, fields),
+        why =
+          kept_why(kind, old, target, ends_as(event, u.from, target) || target, identity, fields),
         why != nil do
       {"U3: event #{inspect(event.name)}, `upcast from: #{u.from}` #{why}", u}
     end
   end
 
-  defp kept_why(kind, old, final, identity, fields) do
+  defp kept_why(kind, old, target, final, identity, fields) do
     field = Map.get(fields, final)
     gives = if kind == :rename, do: "renames #{inspect(old)} to", else: "gives a default to"
+    named = named(target, final)
 
     cond do
       MapSet.member?(identity, final) or (kind == :rename and MapSet.member?(identity, old)) ->
@@ -172,18 +179,32 @@ defmodule EhOsContract.Contract.Rules.Versions do
           "every row of a stream holds it, and the stream is found by it"
 
       field != nil and (Key.tag_field?(field) or Key.bucket_field?(field)) ->
-        "#{gives} #{inspect(final)}, which the log tags each row with: rows written before " <>
-          "keep their tags under their old names, and a boundary, a process or a report " <>
-          "finding rows by it would miss them. Declare a new event instead"
+        "#{gives} #{named}, which the log tags each row with: #{untagged(kind)}, and a " <>
+          "boundary, a process or a report finding rows by it would miss them. Declare a new " <>
+          "event instead"
 
       kind == :default and field != nil and field.personal != nil ->
-        "gives a default to the personal field #{inspect(final)}; the log holds a seal there, " <>
-          "and a default would be clear text"
+        "gives a default to the personal field #{named}; the log holds a seal there, and a " <>
+          "default would be clear text"
 
       true ->
         nil
     end
   end
+
+  @doc false
+  # A step's target as a refusal names it: as the step writes it, and the field it ends as
+  # where a later step renames it. Read between modules too.
+  @spec named(atom(), atom()) :: String.t()
+  def named(target, target), do: inspect(target)
+  def named(target, final), do: "#{inspect(target)} (#{inspect(final)} now)"
+
+  @doc false
+  # Why rows written before a step are not found by a tagged field it leads to. Read
+  # between modules too.
+  @spec untagged(:rename | :default) :: String.t()
+  def untagged(:rename), do: "rows written before keep their tags under their old names"
+  def untagged(:default), do: "rows written before were never tagged with it"
 
   # U4, for a field of a built-in type: the default decodes as an old row's value would.
   defp defaults(event) do
@@ -195,9 +216,9 @@ defmodule EhOsContract.Contract.Rules.Versions do
         field = Enum.find(event.fields, &(&1.name == final)),
         built_in?(field.type),
         not fits?(field, value) do
-      {"U4: event #{inspect(event.name)}, `upcast from: #{u.from}` gives #{inspect(name)} the " <>
-         "default #{inspect(value)}, which is not a value of #{inspect(field.type)}: every old " <>
-         "row would fail to read", u}
+      {"U4: event #{inspect(event.name)}, `upcast from: #{u.from}` gives #{named(name, final)} " <>
+         "the default #{inspect(value)}, which is not a value of #{inspect(field.type)}: every " <>
+         "old row would fail to read", u}
     end
   end
 
@@ -208,9 +229,13 @@ defmodule EhOsContract.Contract.Rules.Versions do
 
   @doc false
   # Whether `value`, a default of `field`, reads back as a value of the field's type, with
-  # the domain's `values`: as the log stores it, through JSON. Read between modules.
+  # the domain's `values`: as the log stores it, through JSON. Nil fits an optional field,
+  # and a step giving it changes nothing. Read between modules.
   @spec fits?(map(), term(), map()) :: boolean()
-  def fits?(field, value, values \\ %{}) do
+  def fits?(field, value, values \\ %{})
+  def fits?(%{optional: true}, nil, _values), do: true
+
+  def fits?(field, value, values) do
     stored = value |> Jason.encode!() |> Jason.decode!()
 
     plain = %{
@@ -224,7 +249,8 @@ defmodule EhOsContract.Contract.Rules.Versions do
     value != nil and
       match?({:ok, _}, Codec.decode([plain], %{Atom.to_string(field.name) => stored}, values))
   rescue
-    _cannot_encode -> false
+    # A value JSON cannot write, as a tuple.
+    _cannot_encode in [Protocol.UndefinedError, Jason.EncodeError] -> false
   end
 
   # A reference to an entity's or a unit's number reads as the `:id` it is.

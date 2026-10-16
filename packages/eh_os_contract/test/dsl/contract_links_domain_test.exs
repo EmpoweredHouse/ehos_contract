@@ -666,6 +666,35 @@ defmodule EhOsContract.ContractLinksDomainTest do
       assert length(violations) == 3
     end
 
+    test "a list of values holding personal data, or of a misfit, defaulted" do
+      body =
+        @body
+        |> String.replace(
+          "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry do",
+          "event :payment_recorded, \"Zapłacono\", depends_on: :payer_registry, schema_version: 2 do\n" <>
+            "      field :contacts, {:list, :contact}, optional: true\n" <>
+            "      upcast from: 1, default: [contacts: [%{phone: \"000\"}], amounts: [\"a lot\"]]"
+        )
+
+      violations = links("LinksUpcastLists", body)
+
+      assert assert_linked(
+               violations,
+               "U3: a step gives a default to :contacts",
+               "links_upcast_lists.ex"
+             ) =~
+               "which holds personal data"
+
+      assert assert_linked(
+               violations,
+               "U4: a step gives :amounts the default",
+               "links_upcast_lists.ex"
+             ) =~
+               "which is not a value of {:list, :money}"
+
+      assert length(violations) == 2
+    end
+
     test "control: a default of a value that fits it" do
       assert links("LinksUpcastValuesRight", stepped("default: [amount: 100]")) == []
     end

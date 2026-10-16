@@ -275,7 +275,35 @@ defmodule EhOsContract.ContractVersionsTest do
         )
 
       assert message =~
-               "U3: event :demand_opened, `upcast from: 1` gives a default to the personal field :note"
+               "U3: event :demand_opened, `upcast from: 1` gives a default to the personal field " <>
+                 ":remark (:note now)"
+    end
+
+    test "one field given two defaults in a step is refused; control: nil for an optional one" do
+      message =
+        refuse_contract(
+          "VersionsDefaultTwice",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :priority, :string
+
+                upcast from: 1, default: [priority: "normal", priority: "high"]
+              end
+          """)
+        )
+
+      assert message =~ "U2: event :demand_opened, `upcast from: 1` gives :priority 2 defaults"
+
+      compile_contract(
+        "VersionsNilOptional",
+        demand("""
+            event :demand_opened, "Otwarte", schema_version: 2 do
+              field :note, :string, optional: true
+
+              upcast from: 1, default: [note: nil]
+            end
+        """)
+      )
     end
 
     test "a default that is not a value of its field is refused; control: one that is" do

@@ -346,29 +346,33 @@ defmodule EhOsContract.Contract.Links.Domain do
         is_atom(target),
         final = Rules.Versions.ends_as(event, u.from, target),
         field = final && Enum.find(event.fields, &(&1.name == final)),
-        field != nil and is_atom(field.type) and field.type not in @built_in,
-        why = upcast_refused(kind, field, value, values),
+        field != nil and of_values?(field.type),
+        why = upcast_refused(kind, Rules.Versions.named(target, final), field, value, values),
         why != nil do
       {"#{why} (event #{inspect(event.name)}, `upcast from: #{u.from}`)", Links.at(u)}
     end
   end
 
-  defp upcast_refused(kind, field, value, values) do
+  # A type of the domain's values, or a list of them: what L2 could not judge.
+  defp of_values?({:list, inner}), do: of_values?(inner)
+  defp of_values?(type), do: is_atom(type) and type not in @built_in
+
+  defp upcast_refused(kind, named, field, value, values) do
     gives = if kind == :rename, do: "renames a field to", else: "gives a default to"
 
     cond do
       Key.tag_field?(field, values) or Key.bucket_field?(field, values) ->
-        "U3: a step #{gives} #{inspect(field.name)}, of #{inspect(field.type)}, which rests on " <>
-          "an :id or a day, so the log tags each row with it: rows written before keep their " <>
-          "tags under their old names. Declare a new event instead"
+        "U3: a step #{gives} #{named}, of #{inspect(field.type)}, which rests on an :id or a " <>
+          "day, so the log tags each row with it: #{Rules.Versions.untagged(kind)}. Declare a " <>
+          "new event instead"
 
       kind == :default and Codec.personal_type?(field.type, values) ->
-        "U3: a step gives a default to #{inspect(field.name)}, of #{inspect(field.type)}, which " <>
-          "holds personal data; the log holds a seal there, and a default would be clear text"
+        "U3: a step gives a default to #{named}, of #{inspect(field.type)}, which holds " <>
+          "personal data; the log holds a seal there, and a default would be clear text"
 
       kind == :default and not Rules.Versions.fits?(field, value, values) ->
-        "U4: a step gives #{inspect(field.name)} the default #{inspect(value)}, which is not a " <>
-          "value of #{inspect(field.type)}: every old row would fail to read"
+        "U4: a step gives #{named} the default #{inspect(value)}, which is not a value of " <>
+          "#{inspect(field.type)}: every old row would fail to read"
 
       true ->
         nil
