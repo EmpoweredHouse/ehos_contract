@@ -178,7 +178,7 @@ defmodule EhOsContract.SchemaLockTest do
             {field(:note, :integer, optional: true, personal: :customer_id),
              "no step converts a sealed value"},
             {field(:note, :string, optional: true), "whether a field is personal"},
-            {field(:note, :string, personal: :customer_id), "a step `upcast from: 1`"}
+            {field(:note, :string, personal: :customer_id), "no step fills it"}
           ] do
         assert {:error, [problem]} = SchemaLock.merge(marked, lock(again.(note)))
         assert problem =~ said
@@ -193,9 +193,8 @@ defmodule EhOsContract.SchemaLockTest do
          "channel was [type: {:enum, [:shop, :web]}] and is [type: {:enum, [:web]}]"},
         {replace(fields(), :channel, field(:channel, :string)), "channel was"},
         {replace(fields(), :total, field(:total, :money, optional: true))
-         |> replace(:note, field(:note, :string, personal: :customer_id)),
-         "note was [type: :string, optional: true, personal: :customer_id] and is " <>
-           "[type: :string, personal: :customer_id], which a rename and a default"}
+         |> replace(:channel, field(:channel, :integer)),
+         "channel was [type: {:enum, [:shop, :web]}] and is [type: :integer], which a rename"}
       ]
 
       for {changed, said} <- changes do
@@ -210,6 +209,14 @@ defmodule EhOsContract.SchemaLockTest do
       narrower = update_in(values.money.fields, &(&1 ++ [field(:rate, :decimal)]))
       assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(fields(), 1, narrower))
       assert problem =~ "total was [type: {:fields"
+      assert problem =~ "a step `upcast from: 1` that covers the change"
+
+      ref = fields() ++ [field(:ref, :string, optional: true)]
+
+      assert {:error, [problem]} =
+               SchemaLock.merge(lock(ref), lock(fields() ++ [field(:ref, :string)]))
+
+      assert problem =~ "ref was [type: :string, optional: true] and is [type: :string]"
       assert problem =~ "a step `upcast from: 1` that covers the change"
 
       optional = replace(fields(), :customer_id, field(:customer_id, :id, optional: true))
@@ -290,6 +297,55 @@ defmodule EhOsContract.SchemaLockTest do
       end
 
       assert {:ok, _merged} = raised(tagged, tagged, %{rename: %{}, default: []})
+    end
+
+    test "refuses a personal field made required, since no step fills one an old row lacks" do
+      required = replace(fields(), :note, field(:note, :string, personal: :customer_id))
+
+      for lock <- [
+            lock(fields()),
+            SchemaLock.merge(lock(fields()), lock(Enum.reject(fields(), &(&1.name == :note))))
+            |> elem(1)
+          ] do
+        assert {:error, [problem]} = SchemaLock.merge(lock, lock(required))
+        assert problem =~ "it is personal and old rows may lack it, and no step fills it"
+
+        two = %{@type_name => %{2 => lock(required)[@type_name][1]}}
+
+        assert {:error, [problem]} =
+                 SchemaLock.merge(lock, two, %{@type_name => %{1 => :function}})
+
+        assert problem =~ "no step fills it"
+      end
+    end
+
+    test "judges a change inside a value holding personal data field by field" do
+      values =
+        Map.put(values(), :contact, %{
+          name: :contact,
+          type: nil,
+          fields: [
+            field(:kind, {:enum, [:a, :b]}),
+            field(:owner, :id, subject: :customer),
+            field(:phone, :string, personal: :owner)
+          ]
+        })
+
+      changed =
+        update_in(values.contact.fields, &replace(&1, :kind, field(:kind, {:enum, [:a, :c]})))
+
+      with_contact = fields() ++ [field(:contact, :contact)]
+      lock = %{@type_name => %{1 => SchemaLock.fields(with_contact, values)}}
+      declared = %{@type_name => %{2 => SchemaLock.fields(with_contact, changed)}}
+
+      assert {:ok, _merged} = SchemaLock.merge(lock, declared, %{@type_name => %{1 => :function}})
+
+      assert {:error, [problem]} =
+               SchemaLock.merge(lock, declared, %{
+                 @type_name => %{1 => %{rename: %{}, default: []}}
+               })
+
+      assert problem =~ "write the step as a function"
     end
 
     test "lets an identifier gain or lose a subject while nothing is sealed with it" do

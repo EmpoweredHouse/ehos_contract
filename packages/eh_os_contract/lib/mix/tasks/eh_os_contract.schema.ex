@@ -64,16 +64,18 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       as: a field added as required, a type changed otherwise. The message names each
       such field. Raise the event's `schema_version` and add its `upcast` step: the new
       version is recorded beside the old one.
-    * the steps from a recorded version to the declared one do not cover what changed: a field renamed without `rename:`, a required field added without
-      `default:`, a type changed otherwise than above with no step a function. A function
-      covers every change a step could carry, since the engine cannot see what it does.
-    * a field becomes personal or stops being, or another identifier seals it, or a
-      field holding personal data changes its type or shape, or an identifier that
-      seals a field changes its `subject:`, or a field the log tags rows
-      with (a required, non-personal `:id`, `:date` or `:timestamp`) was not tagged so
-      under that name in the version before; inside a domain value too. No step carries
-      those: rows already sealed or tagged keep what they were written with. Declare a
-      new event.
+    * the steps from a recorded version to the declared one do not cover what changed: a
+      field renamed without `rename:`, a required field added without `default:`, an
+      optional field made required (old rows hold an explicit `nil`), a type changed
+      otherwise than above, with no step a function. A function covers every change a
+      step could carry, since the engine cannot see what it does.
+    * a field becomes personal or stops being, or another identifier seals it; a personal
+      field changes its type, or a value holding personal data its shape; a personal field
+      is made required where old rows may lack it; an identifier that seals a field
+      changes its `subject:`; or a field the log tags rows with (a required,
+      non-personal `:id`, `:date` or `:timestamp`) was not tagged so under that name in
+      the version before. Inside a domain value too. No step carries those: rows already
+      sealed or tagged keep what they were written with. Declare a new event.
     * the file holds a version newer than the one declared, whose rows would not read.
     * the file holds an event no contract declares any more, renamed or removed, whose
       rows would not read either.

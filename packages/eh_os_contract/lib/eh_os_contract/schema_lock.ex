@@ -19,13 +19,16 @@ defmodule EhOsContract.SchemaLock do
   # inside a list or a domain value. A field removed stays, marked `removed: true`, since
   # old rows still hold it and rows written since do not. Any other change raises the
   # version, and the steps from each recorded version to the declared one cover each
-  # change, read as `EhOsContract.Upcast` reads an old row: a rename carries a field to its new name, a
-  # default gives a new required field its value, and a function covers everything a step
-  # could carry, since the engine cannot see what it does. No step carries a field that
-  # turns personal or stops being, or is sealed by another identifier, or holds personal
-  # data and changes its type or shape, or an identifier that seals a field given another
-  # subject, since a seal opens only under what sealed it and no step converts one; nor a field the log tags rows with that the version before did not tag under that
-  # name, since rows written before carry no such tag. Those are new events.
+  # change, read as `EhOsContract.Upcast` reads an old row: a rename carries a field to
+  # its new name, a default gives a new required field its value where a row lacks it,
+  # and a function covers everything a step could carry, since the engine cannot see what
+  # it does. No step carries a field that turns personal or stops being, or is sealed by
+  # another identifier; a personal field whose type changes, or a value holding personal
+  # data whose shape does; a personal field made required where old rows may lack it; or
+  # an identifier that seals a field given another subject: a seal opens only under what
+  # sealed it, and no step converts, moves or makes one. Nor a field the log tags rows
+  # with that the version before did not tag under that name, since rows written before
+  # carry no such tag. Those are new events.
   #
   # A version newer than the declaration is refused too, and so is an event no contract
   # declares any more, since their rows would not read either. Forgetting is the person's
@@ -45,6 +48,8 @@ defmodule EhOsContract.SchemaLock do
   @type t :: %{String.t() => %{pos_integer() => [{atom(), field()}]}}
 
   @carry "which a rename and a default cannot carry: write the step as a function"
+  @sealed "it holds personal data, sealed where it was written, and no step converts a " <>
+            "sealed value or moves its seal"
   @refill "rows written since it was removed lack it: give it a `default:`, or make it optional"
 
   # The order `field/2` writes a field's keys in.
@@ -376,10 +381,16 @@ defmodule EhOsContract.SchemaLock do
           match?({:never, _why}, read) ->
             read
 
-          read == :step and (Keyword.get(was, :personal) != nil or personal_inside?(was)) ->
+          read == :step and Keyword.get(was, :personal) != nil ->
+            {:never, @sealed}
+
+          # No step fills a personal field an old row lacks: a default would be clear text
+          # (U3), and a function makes no seal.
+          required and Keyword.get(was, :personal) != nil and
+              (Keyword.get(was, :optional, false) or Keyword.get(was, :removed, false)) ->
             {:never,
-             "it holds personal data, sealed where it was written, and no step converts a " <>
-               "sealed value or moves its seal"}
+             "it is personal and old rows may lack it, and no step fills it: a default " <>
+               "would be clear text where a seal belongs, and a function makes no seal"}
 
           # An optional field's old rows hold an explicit nil, which a default does not fill.
           required and Keyword.get(was, :optional, false) ->
@@ -395,6 +406,10 @@ defmodule EhOsContract.SchemaLock do
   end
 
   defp personal_inside?(field), do: personal_type?(Keyword.fetch!(field, :type))
+
+  # A value holding personal data that takes another shape moves its seals, which open
+  # only under the path they were sealed at; a change inside it is judged field by field.
+  defp reshaped(was), do: if(personal_type?(was), do: {:never, @sealed}, else: :step)
 
   defp personal_type?({:list, inner}), do: personal_type?(inner)
 
@@ -429,7 +444,7 @@ defmodule EhOsContract.SchemaLock do
     end
   end
 
-  defp readable(_was, _is), do: :step
+  defp readable(was, _is), do: reshaped(was)
 
   # A field the log tags each row with: a required, non-personal identifier or day
   # (`EhOsContract.Key`), its domain value resolved to what it rests on.
