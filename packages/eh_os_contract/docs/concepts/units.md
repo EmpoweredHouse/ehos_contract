@@ -351,24 +351,36 @@ default for personal data, and a default that is not a value of its field
 A compile sees only today's declaration, so it cannot tell a field added to version 1 from version 1
 as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
 `mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
-them. `--check` fails when the declaration of a recorded version has other fields, when the file
-records a version newer than the declared one or an event no contract declares any more, or when a
-version is missing from the file:
+them. A change old rows still read is recorded in place: a field added as optional, a field removed, a
+required field made optional, an enum given members, an `:integer` made a `:decimal`, and the same
+inside a list or a domain value. `--check` fails when a recorded version changed otherwise, when a
+step does not cover what changed from its version to the next, when the file records a version newer
+than the declared one or an event no contract declares any more, or when the file is behind the
+contracts:
 
 ```
 ** (Mix) eh_os_contract.lock and the contracts disagree:
 
-  * shop.orders.order_placed at schema_version 1: courier was added, [type: :string]. A row written
-    at version 1 holds the fields the lock records, and is read with the declaration's: raise its
-    schema_version with a step `upcast from: 1` that says how an old row reads, or, if no log holds
-    rows of it, run `mix eh_os_contract.schema --forget shop.orders.order_placed`
+  * shop.orders.order_placed at schema_version 1: courier was added, [type: :string], and is
+    required: give it a `default:`, or make it optional. A row written at version 1 holds the fields
+    the lock records, and would not read: raise its schema_version with a step `upcast from: 1` that
+    covers the change, or, if no log holds rows of it, run
+    `mix eh_os_contract.schema --forget shop.orders.order_placed`
 ```
 
 Run it beside `mix eh_os_contract.check`, and commit the file: a new version shows in a pull request
 as the fields it records. A field's type there is what the log stores, so a domain value given another
 field changes every event that holds it, while renaming the value, relabelling a field or reordering
-the fields changes nothing. Any change to a recorded version is refused, an optional field added
-included. `--forget TYPE` drops the event's versions from the declared one up, or every version of an
+the fields changes nothing.
+
+A raised version's step is held to what changed from the version before, both recorded: `rename:`
+carries a field to its new name, `default:` gives a new required field its value, and a step by a
+function covers every change. A field renamed without `rename:`, a required field added without a
+default, or a type changed otherwise than above by a step that is not a function, is refused, naming
+the field. Two changes are refused even with a step, since rows already written keep what they were
+written with: a field that becomes personal, stops being, or is sealed by another identifier; and a
+field the log tags rows with that the version before did not tag under that name. Each is a new event.
+`--forget TYPE` drops the event's versions from the declared one up, or every version of an
 event no contract declares, and records what is declared: it is for versions no log holds rows of, as
 one added on a branch never deployed.
 

@@ -11,7 +11,8 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 §13. Not yet run on a real change: read what it says against those before trusting it. The upcasts
 were added on 17 October 2026 (plan DD, V1, #333), checked against `EhOsContract.Upcast` and
 `packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows"; the schema lock
-on 17 October 2026 (plan DD, V3, #340), against `mix eh_os_contract.schema`'s documentation.
+on 17 October 2026 (plan DD, V3, #340, and V4, #346), against `mix eh_os_contract.schema`'s
+documentation.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
@@ -45,10 +46,14 @@ comes first.
 **The schema lock notices a change made without a new version, after the fact.**
 `eh_os_contract.lock`, beside the project's `mix.lock`, records the fields of every event by its type
 and version, and `mix eh_os_contract.schema --check` fails when a recorded version's fields differ
-from the declaration, naming the field (`courier was added, [type: :string]`), and when it records an
-event no contract declares any more, renamed or removed. It refuses every
-such change, an optional field added included, and it cannot say whether old rows exist. So its
-refusal starts this skill's analysis rather than settling it: raise the version with its step, or,
+so that an old row would not read, naming the field (`courier was added, [type: :string], and is
+required`), and when it records an event no contract declares any more, renamed or removed. A change
+old rows still read — an optional field added, a field removed, required made optional, an enum
+member added, `:integer` to `:decimal` — it records in place. A raised version's step must cover each
+other change: `rename:` a renamed field, `default:` a new required one, `function:` anything else; a
+field turned personal or not, sealed by another identifier, or newly tagged by the log, it refuses
+even with a step. It cannot say whether old rows exist, so its refusal starts this skill's analysis
+rather than settling it: raise the version with its step, or,
 when the count below is zero in every environment, `mix eh_os_contract.schema --forget TYPE` records
 the new fields in place of the old. It drops the versions from the declared one up and keeps those
 below, whose rows a log may hold; of an event no longer declared it drops every version.
@@ -158,6 +163,4 @@ meets old rows, and write the decision and the data work into the pull request i
 ## Not this skill
 
 Whether the changed model is the right one — that belongs to whoever confirmed the process.
-Which changes to a recorded version need no new version (an optional field added, an enum member
-added) — plan item V4; until it lands the lock refuses them all, and this table says which were safe.
 A versioned history of deadlines is not planned.

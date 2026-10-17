@@ -1,9 +1,10 @@
 defmodule Mix.Tasks.EhOsContract.Schema do
-  @shortdoc "Records the fields of every event, and checks that none changed"
+  @shortdoc "Records the fields of every event, and refuses a change old rows would not read"
 
   @moduledoc """
   Keeps `eh_os_contract.lock`, the record of every event's fields by its
-  `schema_version`, and refuses a change to the fields of a version it holds.
+  `schema_version`, and refuses a change to a recorded version that old rows would not
+  read, or a new version whose step does not cover what changed.
 
   The log keeps every event it ever recorded and reads each one again whenever it
   rebuilds a unit or a list, with today's declaration. A row that lacks a field the
@@ -51,18 +52,27 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
   ## What it refuses
 
-  Recording the current version of every event adds what the file lacks, and refuses,
-  writing nothing, when:
+  Recording the current version of every event adds what the file lacks, and records in
+  place a change old rows still read: a field added as optional, a field removed, a
+  required field made optional, an enum given members, an `:integer` made a `:decimal`,
+  and the same inside a list or a domain value. It refuses, writing nothing, when:
 
-    * the file holds the event's current version with other fields. The message names
-      each field that changed. Raise the event's `schema_version` and add its `upcast`
-      step: the new version is recorded beside the old one.
+    * the file holds the event's current version with fields an old row would not read
+      as: a field added as required, a type changed otherwise. The message names each
+      such field. Raise the event's `schema_version` and add its `upcast` step: the new
+      version is recorded beside the old one.
+    * a step does not cover what changed from its version to the next, both recorded:
+      a field renamed without `rename:`, a required field added without `default:`, a
+      type changed otherwise than above by a step that is not a function. A function
+      covers every change, since the engine cannot see what it does.
+    * a field becomes personal or stops being, or another identifier seals it, or a
+      field the log tags rows with (a required, non-personal `:id`, `:date` or
+      `:timestamp`) was not tagged so under that name in the version before. No step
+      carries those: rows already sealed or tagged keep what they were written with.
+      Declare a new event.
     * the file holds a version newer than the one declared, whose rows would not read.
     * the file holds an event no contract declares any more, renamed or removed, whose
       rows would not read either.
-
-  Any change to a recorded version is refused, an optional field added included: raise
-  the version, with an empty `upcast` step where old rows read as they are.
 
   `--forget TYPE` drops the event's versions from the one its contract declares up, or
   every version of an event no contract declares, and records what is declared: it says

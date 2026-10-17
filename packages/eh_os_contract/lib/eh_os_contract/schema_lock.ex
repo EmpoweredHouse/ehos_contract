@@ -47,8 +47,8 @@ defmodule EhOsContract.SchemaLock do
   @header """
   # The fields of every event, by its type in the log and its schema_version, as the log
   # stores them. Written by `mix eh_os_contract.schema` and checked by its `--check`: a
-  # version's fields do not change once recorded, since rows written with them are read
-  # with today's declaration. Commit this file.
+  # version's fields change in place only where rows written with them still read with
+  # today's declaration. Commit this file.
   """
 
   @doc false
