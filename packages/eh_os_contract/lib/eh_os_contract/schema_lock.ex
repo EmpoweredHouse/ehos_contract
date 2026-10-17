@@ -185,12 +185,34 @@ defmodule EhOsContract.SchemaLock do
   @spec decode(String.t()) :: {:ok, t()} | {:error, String.t()}
   def decode(text) do
     with {:ok, quoted} <- quoted(text),
-         true <- Macro.quoted_literal?(quoted) || {:error, "it is not an Elixir literal"},
-         {lock, _binding} = Code.eval_quoted(quoted),
+         {:ok, lock} <- literal(quoted),
          true <- lock?(lock) || {:error, "it is not a map of event types to versions"} do
       {:ok, lock}
     end
   end
+
+  # The value `quoted` writes, built here from maps, lists, tuples, atoms, numbers and
+  # strings alone. `Code.eval_quoted/1` is not asked even for a literal: a struct is one,
+  # and evaluating it calls its module.
+  defp literal(quoted) do
+    {:ok, value(quoted)}
+  catch
+    :not_literal -> {:error, "it is not an Elixir literal"}
+  end
+
+  defp value(term) when is_atom(term) or is_number(term) or is_binary(term), do: term
+  defp value(list) when is_list(list), do: Enum.map(list, &value/1)
+  defp value({:%{}, _meta, pairs}) when is_list(pairs), do: Map.new(pairs, &pair_value/1)
+
+  defp value({:{}, _meta, elements}) when is_list(elements),
+    do: elements |> value() |> List.to_tuple()
+
+  defp value({:__block__, _meta, [one]}), do: value(one)
+  defp value({left, right}), do: {value(left), value(right)}
+  defp value(_code), do: throw(:not_literal)
+
+  defp pair_value({key, value}), do: {value(key), value(value)}
+  defp pair_value(_code), do: throw(:not_literal)
 
   defp quoted(text) do
     case Code.string_to_quoted(text) do
@@ -206,10 +228,11 @@ defmodule EhOsContract.SchemaLock do
   defp format_error({prefix, suffix}), do: "#{prefix}#{suffix}"
   defp format_error(message), do: message
 
+  # A map written with a `__struct__` key is a struct to `Enum`, and a lock is none.
   defp lock?(lock) do
-    is_map(lock) and
+    is_map(lock) and not is_struct(lock) and
       Enum.all?(lock, fn {type, versions} ->
-        is_binary(type) and is_map(versions) and
+        is_binary(type) and is_map(versions) and not is_struct(versions) and
           Enum.all?(versions, fn {version, fields} ->
             is_integer(version) and version > 0 and fields?(fields)
           end)

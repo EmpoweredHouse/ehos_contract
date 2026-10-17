@@ -162,6 +162,19 @@ defmodule EhOsContract.SchemaLockTest do
 
       assert {:error, "it is not an Elixir literal"} = SchemaLock.decode(code)
       refute_received :ran
+
+      # A struct is a literal to `Macro.quoted_literal?/1`, and evaluating one calls its
+      # module, one that does not exist included.
+      for struct <- ["%URI{}", "%NoSuchModule{}", ~s|%{"a" => %{1 => [x: [type: %URI{}]]}}|] do
+        assert {:error, "it is not an Elixir literal"} = SchemaLock.decode(struct)
+      end
+
+      assert {:error, "it is not a map of event types to versions"} =
+               SchemaLock.decode(~s|%{__struct__: :"Elixir.URI"}|)
+
+      assert {:error, "it is not a map of event types to versions"} =
+               SchemaLock.decode(~s|%{"a" => %{__struct__: :"Elixir.URI"}}|)
+
       assert {:error, "line 1: " <> _} = SchemaLock.decode("%{")
       assert {:error, "it is not a map of event types to versions"} = SchemaLock.decode("[1]")
 
