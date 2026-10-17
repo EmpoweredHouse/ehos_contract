@@ -20,8 +20,8 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
 
   EHOS keeps every manifest it is given, for good, and every key of `ehos.yaml` is in
   it as written: `ehos.yaml` must hold no secret, such as a password in a `migrate`
-  argument. Nothing here can tell one. What the workload needs at run time comes
-  from its environment.
+  or `seed` argument. Nothing here can tell one. What the workload needs at run time
+  comes from its environment, a secret's value from one `needs.secrets` names.
   """
 
   use Boundary, classify_to: EhOsContract.Auth

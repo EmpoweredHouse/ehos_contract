@@ -81,7 +81,8 @@ EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's read
 refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
 is written. The
 rules EHOS checks beside its schema — names and ports unique in `serves`, the health port not among
-them — are not repeated: EHOS refuses those when the manifest is deployed. The two of `sign_in` are
+them, each name once in `needs.secrets` — are not repeated: EHOS refuses those when the manifest is
+deployed. The two of `sign_in` are
 checked here, since adding `sign_in` alone breaks them (below), once the schema has passed.
 
 ```yaml
@@ -138,8 +139,32 @@ other applications, each once, never this one: neither the `application` the fil
 domain's name the task finds.
 
 **`ehos.yaml` must hold no secret.** EHOS keeps every manifest it is given, for good, with every key
-of `ehos.yaml` as written, a `migrate` argument too; what the workload needs at run time comes from
-its environment, below.
+of `ehos.yaml` as written, a `migrate` or `seed` argument too; what the workload needs at run time
+comes from its environment, below.
+
+**Secrets and a seed, from `ehos.yaml/v4`** (eh-os D-98, D-99), which makes an `ehos.manifest/v4`:
+
+```yaml
+schema: ehos.yaml/v4
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+    # Run after the migration in an ephemeral environment only, never in production; idempotent.
+    seed: ["/app/bin/seed"]
+  secrets:
+    - name: smtp_password
+    - name: gus_api_key
+      version: 2
+```
+
+`needs.secrets` names secrets and holds no value: people set each value in EHOS, per environment or
+as a template's default for its ephemeral environments, and EHOS refuses a deployment while one it
+names has none there. The workload is given each as an environment variable named after it in
+upper case (`smtp_password` becomes `SMTP_PASSWORD`), which `config/runtime.exs` reads like any
+other. Without `version`, the newest value, and setting a new one rolls the workload; with it, that
+version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
+`database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
 with any edit, so a new label would ask for `ehos.application.register` at every deploy. yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
