@@ -200,15 +200,16 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
   defp text?(value), do: is_binary(value) and value != ""
 
-  # The credential is checked here as every request will check it, so one that can never pass
-  # (another audience, keys not yet held) refuses this sign-in instead of sending the browser
-  # round and round EHOS; and it must be the person the ID token names.
+  # As the session reads it (`Sessions`): no older than the limit, the limit itself included.
   defp within_limit(auth_time, limit) do
-    if DateTime.diff(EhOsContract.Clock.now(), auth_time) < limit,
+    if DateTime.diff(EhOsContract.Clock.now(), auth_time) <= limit,
       do: :ok,
       else: {:error, :past_absolute_limit}
   end
 
+  # The credential is checked here as every request will check it, so one that can never pass
+  # (another audience, keys not yet held) refuses this sign-in instead of sending the browser
+  # round and round EHOS; and it must be the person the ID token names.
   defp verified(signed_in, verify_opts) do
     case EhOsContract.Auth.verify(signed_in.credential.token, verify_opts) do
       {:ok, %{subject: subject}} when subject == signed_in.subject -> :ok

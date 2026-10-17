@@ -192,6 +192,15 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert DateTime.diff(expires_at, DateTime.utc_now()) in 90..101
     end
 
+    # eh-os D-113: just inside the limit EHOS was asked as max_age, the sign-in stands.
+    test "a sign-in just inside the absolute limit is kept", context do
+      browser =
+        sign_in(context, "/", grant: %{"auth_time" => System.os_time(:second) - 43_200 + 120})
+
+      assert browser.status == 302
+      assert rows() == 1
+    end
+
     test "a token response missing what a session needs refuses the sign-in", context do
       for grant <- [
             %{"sid" => ""},
