@@ -10,7 +10,8 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 `EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
 §13. Not yet run on a real change: read what it says against those before trusting it. The upcasts
 were added on 17 October 2026 (plan DD, V1, #333), checked against `EhOsContract.Upcast` and
-`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows".
+`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows"; the schema lock
+on 17 October 2026 (plan DD, V3, #340), against `mix eh_os_contract.schema`'s documentation.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
@@ -40,6 +41,17 @@ stored map of version n into version n + 1's. Whether a field is personal, the u
 a field the log tags rows with have no way across: those changes are a new event.
 By the time the compiler runs, the file already says whatever it says — which is why the analysis
 comes first.
+
+**The schema lock notices a change made without a new version, after the fact.**
+`eh_os_contract.lock`, beside the project's `mix.lock`, records the fields of every event by its type
+and version, and `mix eh_os_contract.schema --check` fails when a recorded version's fields differ
+from the declaration, naming the field (`courier was added, [type: :string]`), and when it records an
+event no contract declares any more, renamed or removed. It refuses every
+such change, an optional field added included, and it cannot say whether old rows exist. So its
+refusal starts this skill's analysis rather than settling it: raise the version with its step, or,
+when the count below is zero in every environment, `mix eh_os_contract.schema --forget TYPE` records
+the new fields in place of the old. It drops the versions from the declared one up and keeps those
+below, whose rows a log may hold; of an event no longer declared it drops every version.
 
 ## What the compiler already catches
 
@@ -106,7 +118,8 @@ read (`CLAUDE.md`: never `MIX_ENV=test mix run`):
 docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "select type, count(*) from eh_os_contract_events group by type order by type;"
 ```
 
-Zero rows of the type means the change is still additive in fact. Anything else is a decision for the
+Zero rows of the type means the change is still additive in fact, and `--forget TYPE` is what
+records it in the lock. Anything else is a decision for the
 user, with the count: a new event instead of a changed one, an optional field instead of a required
 one, or data work written down in `PLAN.md` before the change.
 
@@ -137,11 +150,14 @@ meets old rows, and write the decision and the data work into the pull request i
 5. Write the consequence into the commit message — what changed, what it costs, which deploy draws
    the boundary — so whoever reads a report across it knows.
 6. Make the smallest edit, in the existing file.
-7. Run the scenarios of the contract and the gate from `sandbox/`. Both pass silently on everything
-   in the table, by construction: they are confirmation, not the analysis.
+7. Run `mix eh_os_contract.schema`, which records a raised version, and commit the lock with the
+   change; then the scenarios of the contract and the gate from `sandbox/`, whose
+   `eh_os_contract.schema --check` fails on a recorded version changed in place. The scenarios pass
+   silently on everything in the table, by construction: they are confirmation, not the analysis.
 
 ## Not this skill
 
 Whether the changed model is the right one — that belongs to whoever confirmed the process.
-The schema lock that notices a change of fields made without a new version — plan items (V3, V4);
-until it exists, this skill's table is what notices it. A versioned history of deadlines is not planned.
+Which changes to a recorded version need no new version (an optional field added, an enum member
+added) — plan item V4; until it lands the lock refuses them all, and this table says which were safe.
+A versioned history of deadlines is not planned.

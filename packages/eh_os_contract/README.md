@@ -260,13 +260,16 @@ mix eh_os_contract.graph          a contract, a process or a domain as a graph.v
 mix eh_os_contract.view           the domain as a tree: contexts, contracts, units, consumers and processes
 mix eh_os_contract.glossary       the domain's ubiquitous language
 mix eh_os_contract.pages          the domain, its contracts and processes as Markdown pages, one per element
+mix eh_os_contract.schema         every event's fields by version, recorded; a changed version refused
 mix eh_os_contract.subscriptions  where each subscription stands, and a way past a poison event
 mix eh_os_contract.rewrap         the subjects' data keys, rewrapped with the current master key
 ```
 
 `mix eh_os_contract.check` is the one to put in CI. Its findings are warnings and notices, each under a
 stable name [listed with its reason](docs/rules.md); `--warnings-as-errors` fails the build on a warning.
-What is unambiguously wrong never gets that far: it does not compile.
+What is unambiguously wrong never gets that far: it does not compile. Beside it in CI goes
+`mix eh_os_contract.schema --check`, which fails when an event's fields changed, or the event went, without
+a new version.
 
 ## What it deliberately does not do
 
