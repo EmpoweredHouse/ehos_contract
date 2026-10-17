@@ -24,7 +24,8 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 **Done since the revision of 13 October:** P2i, P2h, P2e, C1, G1, M1, O2, V5 and L4, then V1–V4: upcasts declared
 (V1, #333) and by a function (V2, #338), the schema lock (V3, #340) and the lock against upcasts (V4, #346). v0.6.0
 released them on 17 October (#348; the engine 0.6.0, `eh_os_contract_auth` 0.3.0, the plugin
-`eh-os-contract-plugin-v0.8.0`); `main` is at 0.6.1-dev and 0.3.1-dev (#349).
+`eh-os-contract-plugin-v0.8.0`). v0.6.1 released `eh_os_contract_auth` 0.4.0 the same day (#356): `sign_in:
+absolute_limit` and `max_age` for eh-os D-113 (#343). `main` is at 0.6.2-dev and 0.4.1-dev.
 
 **Next: wave 6** ("After v0.6.0", below the "Postęp" table, the user's decisions of 17 October). The order:
 - DU1 (a ceiling for durations, #193);
