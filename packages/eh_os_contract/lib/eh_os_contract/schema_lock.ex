@@ -16,15 +16,15 @@ defmodule EhOsContract.SchemaLock do
   # A recorded version's fields change in place only as old rows still read (plan DD, V4,
   # #346): a field added as optional, a field removed, required made optional, an enum
   # given members, an integer made a decimal, an identifier made a string, and the same
-  # inside a list or a domain value. A field removed stays, optional and marked
-  # `removed: true`, since old rows still hold it. Any other change raises the version,
-  # and the steps between two recorded versions cover each change, read as
-  # `EhOsContract.Upcast` reads an old row: a rename carries a field to its new name, a
+  # inside a list or a domain value. A field removed stays, marked `removed: true`, since
+  # old rows still hold it and rows written since do not. Any other change raises the
+  # version, and the steps from each recorded version to the declared one cover each
+  # change, read as `EhOsContract.Upcast` reads an old row: a rename carries a field to its new name, a
   # default gives a new required field its value, and a function covers everything a step
   # could carry, since the engine cannot see what it does. No step carries a field that
-  # turns personal or stops being, or is sealed by another identifier, or an identifier
-  # that seals a field given another subject, since a seal opens only under what sealed
-  # it; nor a field the log tags rows with that the version before did not tag under that
+  # turns personal or stops being, or is sealed by another identifier, or holds personal
+  # data and changes its type or shape, or an identifier that seals a field given another
+  # subject, since a seal opens only under what sealed it and no step converts one; nor a field the log tags rows with that the version before did not tag under that
   # name, since rows written before carry no such tag. Those are new events.
   #
   # A version newer than the declaration is refused too, and so is an event no contract
@@ -45,6 +45,7 @@ defmodule EhOsContract.SchemaLock do
   @type t :: %{String.t() => %{pos_integer() => [{atom(), field()}]}}
 
   @carry "which a rename and a default cannot carry: write the step as a function"
+  @refill "rows written since it was removed lack it: give it a `default:`, or make it optional"
 
   # The order `field/2` writes a field's keys in.
   @keys %{type: 0, optional: 1, personal: 2, subject: 3, removed: 4}
@@ -161,15 +162,16 @@ defmodule EhOsContract.SchemaLock do
   end
 
   # A recorded version's fields with a change old rows still read: the declaration's, and a
-  # field it no longer has kept, optional and marked `removed: true`, since old rows still
-  # hold it. A field later declared under that name again is held to what they hold.
+  # field it no longer has kept, marked `removed: true`, since old rows still hold it, and
+  # rows written since do not. A field later declared under that name again is held to
+  # what both hold.
   defp combine(recorded, fields) do
     names = (Keyword.keys(recorded) ++ Keyword.keys(fields)) |> Enum.uniq() |> Enum.sort()
 
     for name <- names do
       case {Keyword.get(recorded, name), Keyword.get(fields, name)} do
         {was, nil} ->
-          {name, was |> Keyword.merge(optional: true, removed: true) |> normal_field()}
+          {name, was |> Keyword.put(:removed, true) |> normal_field()}
 
         {nil, is} ->
           {name, is}
@@ -184,26 +186,24 @@ defmodule EhOsContract.SchemaLock do
   defp combine_type({:list, was}, {:list, is}), do: {:list, combine_type(was, is)}
   defp combine_type(_was, is), do: is
 
-  # Every pair of versions the lock records up to the declared one, the later read from
-  # the earlier through the steps between them: a change no step covers, once, at the
-  # closest earlier version that shows it. A function covers every change a step could
-  # carry, and leaves only what none could; a chain missing a step, which the compiler
-  # refuses (U1), is not judged.
-  defp across(type, versions, version, steps) do
-    recorded = versions |> Map.keys() |> Enum.filter(&(&1 <= version)) |> Enum.sort()
-
+  # Each earlier version the lock records, read as the declared one through the steps
+  # between them, as the engine reads an old row: a change no step covers, once a field,
+  # where no step could carry it first, then at the closest version that shows it. A
+  # function covers every change a step could carry, and leaves only what none could; a
+  # chain missing a step, which the compiler refuses (U1), is not judged.
+  defp across(type, versions, to, steps) do
     found =
-      for to <- recorded,
-          from <- Enum.reverse(recorded),
+      for from <- versions |> Map.keys() |> Enum.sort(:desc),
           from < to,
           chain = chain(steps, from, to),
           chain != nil,
           {kind, name, why} <- uncovered(versions[from], versions[to], chain, true),
-          do: {{to, name}, {from, kind, why}}
+          do: {name, from, kind, why}
 
     found
+    |> Enum.sort_by(fn {name, from, kind, _why} -> {name, kind != :never, -from} end)
     |> Enum.uniq_by(&elem(&1, 0))
-    |> Enum.map(fn {{to, _name}, {from, kind, why}} ->
+    |> Enum.map(fn {_name, from, kind, why} ->
       case kind do
         :never ->
           "#{type} at schema_version #{to}: #{why}. No step carries that across: declare a " <>
@@ -285,6 +285,8 @@ defmodule EhOsContract.SchemaLock do
     sealers =
       was |> Enum.map(fn {_name, field} -> Keyword.get(field, :personal) end) |> MapSet.new()
 
+    # A field the version no longer declares, kept for what old rows hold, is not read.
+    is = Enum.reject(is, fn {_name, field} -> Keyword.get(field, :removed, false) end)
     names = (Map.keys(carried) ++ Keyword.keys(is)) |> Enum.uniq() |> Enum.sort()
 
     for name <- names,
@@ -343,6 +345,7 @@ defmodule EhOsContract.SchemaLock do
   defp uncovered_field(name, was, is, how) do
     case reading(was, is, how) do
       :ok -> nil
+      :default -> {:step, name, "#{name} was #{inspect(was)} and is #{inspect(is)}: " <> @refill}
       {:never, why} -> {:never, name, "#{name} was #{inspect(was)} and is #{inspect(is)}: #{why}"}
       :step -> {:step, name, "#{name} was #{inspect(was)} and is #{inspect(is)}, " <> @carry}
     end
@@ -365,13 +368,43 @@ defmodule EhOsContract.SchemaLock do
       how.tagged and tags?(is) and not how.tagged_before ->
         {:never, untagged_why()}
 
-      Keyword.get(was, :optional, false) and not Keyword.get(is, :optional, false) ->
-        :step
-
       true ->
-        readable(Keyword.fetch!(was, :type), Keyword.fetch!(is, :type))
+        read = readable(Keyword.fetch!(was, :type), Keyword.fetch!(is, :type))
+        required = not Keyword.get(is, :optional, false)
+
+        cond do
+          match?({:never, _why}, read) ->
+            read
+
+          read == :step and (Keyword.get(was, :personal) != nil or personal_inside?(was)) ->
+            {:never,
+             "it holds personal data, sealed where it was written, and no step converts a " <>
+               "sealed value or moves its seal"}
+
+          # An optional field's old rows hold an explicit nil, which a default does not fill.
+          required and Keyword.get(was, :optional, false) ->
+            :step
+
+          required and Keyword.get(was, :removed, false) and not how.defaulted ->
+            if read == :ok, do: :default, else: read
+
+          true ->
+            read
+        end
     end
   end
+
+  defp personal_inside?(field), do: personal_type?(Keyword.fetch!(field, :type))
+
+  defp personal_type?({:list, inner}), do: personal_type?(inner)
+
+  defp personal_type?({:fields, fields}),
+    do:
+      Enum.any?(fields, fn {_name, f} ->
+        Keyword.get(f, :personal) != nil or personal_inside?(f)
+      end)
+
+  defp personal_type?(_type), do: false
 
   defp untagged(name, is), do: "#{name} was added, #{inspect(is)}: " <> untagged_why()
 
@@ -405,7 +438,8 @@ defmodule EhOsContract.SchemaLock do
   defp tags?(field),
     do:
       Keyword.get(field, :type) in [:id, :date, :timestamp] and
-        not Keyword.get(field, :optional, false) and Keyword.get(field, :personal) == nil
+        not Keyword.get(field, :optional, false) and Keyword.get(field, :personal) == nil and
+        not Keyword.get(field, :removed, false)
 
   @doc false
   # `lock` without the versions of `type` from `from` up, and without `type` once none is

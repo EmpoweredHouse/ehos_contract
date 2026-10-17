@@ -176,7 +176,7 @@ defmodule EhOsContract.SchemaLockTest do
 
       for {note, said} <- [
             {field(:note, :integer, optional: true, personal: :customer_id),
-             "a step `upcast from: 1`"},
+             "no step converts a sealed value"},
             {field(:note, :string, optional: true), "whether a field is personal"},
             {field(:note, :string, personal: :customer_id), "a step `upcast from: 1`"}
           ] do
@@ -390,6 +390,95 @@ defmodule EhOsContract.SchemaLockTest do
       assert never =~ "note was" and never =~ "declare a new event instead"
       refute never =~ "courier"
       assert step =~ "courier was added" and step =~ "a step `upcast from: 1`"
+    end
+
+    test "holds a nested change no step carries, whatever else changes around it" do
+      values =
+        Map.put(values(), :contact, %{
+          name: :contact,
+          type: nil,
+          fields: [
+            field(:owner, :id, subject: :customer),
+            field(:phone, :string, personal: :owner)
+          ]
+        })
+
+      plain =
+        put_in(values.contact.fields, [
+          field(:owner, :id, subject: :customer),
+          field(:phone, :string)
+        ])
+
+      at = fn fields, values -> SchemaLock.fields(fields, values) end
+      optional = fields() ++ [field(:contact, :contact, optional: true)]
+      required = fields() ++ [field(:contact, :contact)]
+      listed = fields() ++ [field(:contact, {:list, :contact}, optional: true)]
+
+      for {is, is_values} <- [{required, plain}, {listed, values}] do
+        lock = %{@type_name => %{1 => at.(optional, values)}}
+        declared = %{@type_name => %{2 => at.(is, is_values)}}
+
+        assert {:error, [problem]} =
+                 SchemaLock.merge(lock, declared, %{@type_name => %{1 => :function}})
+
+        assert problem =~ "declare a new event instead"
+      end
+    end
+
+    test "reads a removed field as possibly absent, and one the declaration dropped as unread" do
+      with_b = fields() ++ [field(:b, :string)]
+      empty = %{rename: %{}, default: []}
+
+      assert {:ok, %{@type_name => %{1 => marked}}} =
+               SchemaLock.merge(lock(with_b), lock(fields()))
+
+      assert marked[:b] == [type: :string, removed: true]
+      lock = %{@type_name => %{1 => marked}}
+
+      assert {:ok, _merged} =
+               SchemaLock.merge(lock, lock(with_b, 2), %{
+                 @type_name => %{1 => %{rename: %{}, default: [:b]}}
+               })
+
+      assert {:error, [problem]} =
+               SchemaLock.merge(lock, lock(with_b, 2), %{@type_name => %{1 => empty}})
+
+      assert problem =~ "rows written since it was removed lack it: give it a `default:`"
+
+      dropped = %{
+        1 => lock(fields() ++ [field(:a, :string)])[@type_name][1],
+        2 => lock(fields() ++ [field(:a, :integer, optional: true)])[@type_name][1]
+      }
+
+      assert {:ok, %{@type_name => %{2 => two}}} =
+               SchemaLock.merge(%{@type_name => dropped}, lock(fields(), 2), %{
+                 @type_name => %{1 => empty}
+               })
+
+      assert two[:a] == [type: :integer, optional: true, removed: true]
+    end
+
+    test "reads every earlier version as the declared one, not as the versions between" do
+      empty = %{rename: %{}, default: []}
+
+      versions = %{
+        1 => lock(fields() ++ [field(:b, :string, optional: true)])[@type_name][1],
+        2 => lock(fields())[@type_name][1],
+        3 => lock(fields() ++ [field(:b, :string)])[@type_name][1]
+      }
+
+      declared = lock(fields() ++ [field(:b, :string, optional: true)], 4)
+      steps = %{1 => empty, 2 => %{rename: %{}, default: [:b]}, 3 => empty}
+
+      assert {:ok, _merged} =
+               SchemaLock.merge(%{@type_name => versions}, declared, %{@type_name => steps})
+
+      wrong = lock(fields() ++ [field(:b, :integer, optional: true)], 4)
+
+      assert {:error, [problem]} =
+               SchemaLock.merge(%{@type_name => versions}, wrong, %{@type_name => steps})
+
+      assert problem =~ "from schema_version 3 to 4"
     end
 
     test "leaves a step it cannot judge: one between versions the lock never recorded" do

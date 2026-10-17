@@ -56,20 +56,20 @@ defmodule Mix.Tasks.EhOsContract.Schema do
   place a change old rows still read: a field added as optional, a field removed, a
   required field made optional, an enum given members, an `:integer` made a `:decimal`,
   an `:id` made a `:string`, and the same inside a list or a domain value. A field removed
-  stays in the file, optional and marked `removed: true`, since old rows still hold it: a
-  field declared again under its name is held to what they hold. It refuses, writing
-  nothing, when:
+  stays in the file, marked `removed: true`, since old rows still hold it and rows written
+  since do not: a field declared again under its name is held to what both hold. It
+  refuses, writing nothing, when:
 
     * the file holds the event's current version with fields an old row would not read
       as: a field added as required, a type changed otherwise. The message names each
       such field. Raise the event's `schema_version` and add its `upcast` step: the new
       version is recorded beside the old one.
-    * the steps between two recorded versions do not cover what changed from the one to
-      the other: a field renamed without `rename:`, a required field added without
+    * the steps from a recorded version to the declared one do not cover what changed: a field renamed without `rename:`, a required field added without
       `default:`, a type changed otherwise than above with no step a function. A function
       covers every change a step could carry, since the engine cannot see what it does.
-    * a field becomes personal or stops being, or another identifier seals it, or an
-      identifier that seals a field changes its `subject:`, or a field the log tags rows
+    * a field becomes personal or stops being, or another identifier seals it, or a
+      field holding personal data changes its type or shape, or an identifier that
+      seals a field changes its `subject:`, or a field the log tags rows
       with (a required, non-personal `:id`, `:date` or `:timestamp`) was not tagged so
       under that name in the version before; inside a domain value too. No step carries
       those: rows already sealed or tagged keep what they were written with. Declare a
