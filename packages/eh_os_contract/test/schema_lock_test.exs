@@ -44,6 +44,10 @@ defmodule EhOsContract.SchemaLockTest do
   defp replace(fields, name, by),
     do: Enum.map(fields, &if(&1.name == name, do: by, else: &1))
 
+  # A lock at version 1 of `was`, and the contract at version 2 of `is`, its step `step`.
+  defp raised(was, is, step),
+    do: SchemaLock.merge(lock(was), lock(is, 2), %{@type_name => %{1 => step}})
+
   describe "a field as a row holds it" do
     test "sorted by name, with only what is set beside its type" do
       assert SchemaLock.fields(fields(), values()) == [
@@ -107,41 +111,157 @@ defmodule EhOsContract.SchemaLockTest do
       assert SchemaLock.merge(lock(fields()), lock(fields())) == {:ok, lock(fields())}
     end
 
-    test "refuses each change to a recorded version, naming the field" do
+    test "records in place a change old rows still read" do
+      counted = fields() ++ [field(:quantity, :integer), field(:lines, {:list, :money})]
+      values = values()
+      wider = update_in(values.money.fields, &(&1 ++ [field(:rate, :decimal, optional: true)]))
+
       changes = [
-        {fields() ++ [field(:courier, :string)], "courier was added, [type: :string]"},
-        {replace(fields(), :order_id, nil) |> Enum.reject(&is_nil/1), "order_id was removed"},
-        {replace(fields(), :channel, field(:channel, {:enum, [:web]})),
-         "channel was [type: {:enum, [:shop, :web]}] and is [type: {:enum, [:web]}]"},
-        {replace(fields(), :note, field(:note, :string, optional: true)),
-         "note was [type: :string, optional: true, personal: :customer_id] and is"},
-        {replace(fields(), :order_id, field(:order_id, :id, optional: true)), "order_id was"},
-        {replace(fields(), :customer_id, field(:customer_id, :id, subject: :patient)),
-         "customer_id was [type: :id, subject: :customer] and is [type: :id, subject: :patient]"}
+        {fields() ++ [field(:courier, :string, optional: true)], values()},
+        {fields() ++ [field(:hint, :string, optional: true, personal: :customer_id)], values()},
+        {Enum.reject(fields(), &(&1.name == :note)), values()},
+        {replace(fields(), :channel, field(:channel, {:enum, [:web, :shop, :phone]})), values()},
+        {fields(), wider}
       ]
 
-      for {fields, said} <- changes do
-        assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(fields))
-        assert problem =~ "#{@type_name} at schema_version 1: #{said}"
-        assert problem =~ "upcast from: 1"
+      for {changed, values} <- changes do
+        assert {:ok, merged} = SchemaLock.merge(lock(fields()), lock(changed, 1, values))
+        assert merged == lock(changed, 1, values)
+      end
+
+      for changed <- [
+            replace(counted, :quantity, field(:quantity, :decimal)),
+            replace(counted, :quantity, field(:quantity, :integer, optional: true)),
+            replace(counted, :lines, field(:lines, {:list, :money}, optional: true))
+          ] do
+        assert {:ok, _merged} = SchemaLock.merge(lock(counted), lock(changed))
+      end
+
+      assert {:ok, _merged} = SchemaLock.merge(lock(counted), lock(counted, 1, wider))
+    end
+
+    test "refuses in place a change old rows would not read, naming the field" do
+      changes = [
+        {fields() ++ [field(:courier, :string)],
+         "courier was added, [type: :string], and is required"},
+        {replace(fields(), :channel, field(:channel, {:enum, [:web]})),
+         "channel was [type: {:enum, [:shop, :web]}] and is [type: {:enum, [:web]}]"},
+        {replace(fields(), :channel, field(:channel, :string)), "channel was"},
+        {replace(fields(), :total, field(:total, :money, optional: true))
+         |> replace(:note, field(:note, :string, personal: :customer_id)),
+         "note was [type: :string, optional: true, personal: :customer_id] and is " <>
+           "[type: :string, personal: :customer_id], which a rename and a default"}
+      ]
+
+      for {changed, said} <- changes do
+        assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(changed))
+        assert problem =~ "#{@type_name} at schema_version 1: "
+        assert problem =~ said
+        assert problem =~ "a step `upcast from: 1` that covers the change"
         assert problem =~ "--forget #{@type_name}"
+      end
+
+      values = values()
+      narrower = update_in(values.money.fields, &(&1 ++ [field(:rate, :decimal)]))
+      assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(fields(), 1, narrower))
+      assert problem =~ "total was [type: {:fields"
+      assert problem =~ "a step `upcast from: 1` that covers the change"
+
+      optional = replace(fields(), :customer_id, field(:customer_id, :id, optional: true))
+      assert {:error, [_problem]} = SchemaLock.merge(lock(optional), lock(fields()))
+    end
+
+    test "refuses a field turned personal, or sealed by another identifier, at any version" do
+      for changed <- [
+            replace(fields(), :note, field(:note, :string, optional: true)),
+            replace(fields(), :note, field(:note, :string, optional: true, personal: :order_id)),
+            replace(fields(), :customer_id, field(:customer_id, :id, subject: :patient))
+          ] do
+        assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(changed))
+        assert problem =~ "whether a field is personal, and the identifier that seals it"
+        assert problem =~ "declare a new event instead"
+
+        assert {:error, [problem]} = raised(fields(), changed, :function)
+        assert problem =~ "#{@type_name} at schema_version 2: "
+        assert problem =~ "declare a new event instead"
       end
     end
 
-    test "refuses a domain value given another field, in every event that holds it" do
-      values = values()
-      values = update_in(values.money.fields, &(&1 ++ [field(:rate, :decimal, optional: true)]))
+    test "records a raised version beside the old one when its step covers each change" do
+      cents = fields() ++ [field(:amount_minor, :integer)]
+      decimal = fields() ++ [field(:amount, :decimal)]
 
-      assert {:error, [problem]} = SchemaLock.merge(lock(fields()), lock(fields(), 1, values))
-      assert problem =~ "total was [type: {:fields"
+      covered = [
+        {fields(), fields() ++ [field(:courier, :string)], %{rename: %{}, default: [:courier]}},
+        {fields() ++ [field(:reason, :string)], fields() ++ [field(:why, :string)],
+         %{rename: %{reason: :why}, default: []}},
+        {cents, decimal, :function},
+        {fields(), replace(fields(), :channel, field(:channel, :string)), :function},
+        {fields(), fields(), %{rename: %{}, default: []}}
+      ]
+
+      for {was, is, step} <- covered do
+        assert {:ok, %{@type_name => versions}} = raised(was, is, step)
+        assert versions == %{1 => lock(was)[@type_name][1], 2 => lock(is)[@type_name][1]}
+      end
     end
 
-    test "records a changed version beside the old one once it is raised" do
-      raised = lock(fields() ++ [field(:courier, :string)], 2)
+    test "refuses a raised version whose step leaves a change uncovered" do
+      cents = fields() ++ [field(:amount_minor, :integer)]
+      decimal = fields() ++ [field(:amount, :decimal)]
 
-      assert {:ok, %{@type_name => versions}} = SchemaLock.merge(lock(fields()), raised)
-      assert Map.keys(versions) == [1, 2]
-      assert versions[1] == lock(fields())[@type_name][1]
+      uncovered = [
+        {fields(), fields() ++ [field(:courier, :string)], %{rename: %{}, default: []},
+         "courier was added, [type: :string], and is required: give it a `default:`"},
+        {cents, decimal, %{rename: %{}, default: []}, "amount was added"},
+        {fields() ++ [field(:reason, :string)], fields() ++ [field(:why, :integer)],
+         %{rename: %{reason: :why}, default: []},
+         "why was [type: :string] and is [type: :integer], which a rename and a default " <>
+           "cannot carry: write the step as a function"},
+        {fields(), replace(fields(), :channel, field(:channel, {:enum, [:web]})),
+         %{rename: %{}, default: []}, "channel was"}
+      ]
+
+      for {was, is, step, said} <- uncovered do
+        assert {:error, [problem]} = raised(was, is, step)
+        assert problem =~ "#{@type_name}, `upcast from: 1`: #{said}"
+      end
+    end
+
+    test "refuses a field the log tags rows with that the version before did not tag" do
+      tagged = fields() ++ [field(:shop_id, :id)]
+
+      for {was, step} <- [
+            {fields() ++ [field(:shop_id, :id, optional: true)], :function},
+            {fields() ++ [field(:shop_id, :string)], :function},
+            {fields(), %{rename: %{}, default: [:shop_id]}},
+            {fields() ++ [field(:store_id, :id)], %{rename: %{store_id: :shop_id}, default: []}}
+          ] do
+        assert {:error, [problem]} = raised(was, tagged, step)
+        assert problem =~ "shop_id, [type: :id], is a field the log tags rows with"
+      end
+
+      assert {:ok, _merged} = raised(tagged, tagged, %{rename: %{}, default: []})
+    end
+
+    test "leaves a step it cannot judge: one between versions the lock never recorded" do
+      lock = %{@type_name => %{1 => SchemaLock.fields(fields(), values())}}
+      declared = lock(fields() ++ [field(:courier, :string)], 3)
+      steps = %{@type_name => %{1 => %{rename: %{}, default: []}, 2 => :function}}
+
+      assert {:ok, %{@type_name => versions}} = SchemaLock.merge(lock, declared, steps)
+      assert Map.keys(versions) == [1, 3]
+    end
+
+    test "the steps of a real contract, by event type and the version each reads" do
+      steps = SchemaLock.steps([UpcastRig.Demands])
+
+      assert steps["upcast_rig.demands.demand_opened"] == %{
+               1 => %{rename: %{reason: :why, remark: :note}, default: [:priority]},
+               2 => %{rename: %{why: :demand_reason}, default: []}
+             }
+
+      assert steps["upcast_rig.demands.fee_charged"] == %{1 => :function}
     end
 
     test "refuses a version newer than the declaration" do
@@ -252,7 +372,7 @@ defmodule EhOsContract.SchemaLockTest do
 
       raised = lock(fields() ++ [field(:courier, :string)], 2)
 
-      assert_raise Mix.Error, ~r/lacks #{@type_name} at 2/, fn ->
+      assert_raise Mix.Error, ~r/does not record #{@type_name} at 2/, fn ->
         Schema.lock(path, raised, check: true)
       end
     end

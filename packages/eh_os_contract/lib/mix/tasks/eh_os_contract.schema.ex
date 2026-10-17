@@ -99,8 +99,12 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       )
     end
 
-    declared = SchemaLock.declared(EhOsContract.Registry.contracts())
-    Mix.shell().info(lock(path(), declared, opts))
+    contracts = EhOsContract.Registry.contracts()
+    declared = SchemaLock.declared(contracts)
+
+    Mix.shell().info(
+      lock(path(), declared, Keyword.put(opts, :steps, SchemaLock.steps(contracts)))
+    )
   end
 
   # Beside `mix.lock`, wherever the project keeps it.
@@ -109,8 +113,9 @@ defmodule Mix.Tasks.EhOsContract.Schema do
     Path.join(Path.dirname(Path.expand(lockfile)), @file_name)
   end
 
-  # What the task does with the file at `path` and the entries `declared`: the line it
-  # prints, or `Mix.raise/1` with why. Called by this task and its tests.
+  # What the task does with the file at `path` and the entries `declared`, with each
+  # event's `:steps` in `opts`: the line it prints, or `Mix.raise/1` with why. Called by
+  # this task and its tests.
   @doc false
   @spec lock(Path.t(), SchemaLock.t(), keyword()) :: String.t()
   def lock(path, declared, opts) do
@@ -128,7 +133,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       end
 
     merged =
-      case SchemaLock.merge(forgotten, declared) do
+      case SchemaLock.merge(forgotten, declared, Keyword.get(opts, :steps, %{})) do
         {:ok, merged} -> merged
         {:error, problems} -> Mix.raise(refusal(name, problems))
       end
@@ -142,7 +147,8 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
       opts[:check] ->
         Mix.raise(
-          "#{name} lacks #{recorded(kept, merged)}: run `mix eh_os_contract.schema` and commit it"
+          "#{name} does not record #{recorded(kept, merged)} as the contracts declare it: run " <>
+            "`mix eh_os_contract.schema` and commit it"
         )
 
       true ->
