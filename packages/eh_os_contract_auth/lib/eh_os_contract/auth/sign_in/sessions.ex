@@ -28,8 +28,6 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
     id_token: "a string"
   ]
   @credential_fields [resource: "a string", token: "a string", expires_at: "a DateTime"]
-  # D-66: a sign-in lives at most twelve hours from `auth_time`, renewed or not.
-  @absolute_limit_seconds 12 * 60 * 60
 
   @derive {Inspect, only: [:id, :subject, :sid, :auth_time]}
   defstruct [
@@ -81,10 +79,10 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @spec create(atom(), signed_in()) :: {:ok, String.t()}
   def create(name, signed_in) do
     %{credential: credential} = signed_in = checked!(signed_in)
-    key = SignIn.config(name).cipher_key
+    %{cipher_key: key, absolute_limit: absolute_limit} = SignIn.config(name)
     token = :crypto.strong_rand_bytes(@token_bytes)
     hash = :crypto.hash(:sha256, token)
-    limit = limit()
+    limit = limit(absolute_limit)
     repo = repo()
 
     session = %{
@@ -120,14 +118,15 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   @doc false
   # The session the browser's token names, decrypted. `{:error, :signed_out}` when there is none,
-  # when the token is not one this package made, when it is past the absolute limit (D-66), the
+  # when the token is not one this package made, when it is past the absolute limit (D-66, D-113), the
   # next sign-in deleting its row, or when a value does not decrypt under the child's key, a
   # rotated `SECRET_KEY_BASE` for one, or for the row's plain columns; that row is deleted.
   @spec fetch(atom(), term()) :: {:ok, t()} | {:error, :signed_out}
   def fetch(name, token) do
     with {:ok, hash} <- hash(token),
-         [row] <- repo().all(session_query(hash, limit())) do
-      decrypt(row, credentials(row.id), SignIn.config(name).cipher_key, hash)
+         %{cipher_key: key, absolute_limit: absolute_limit} = SignIn.config(name),
+         [row] <- repo().all(session_query(hash, limit(absolute_limit))) do
+      decrypt(row, credentials(row.id), key, hash)
     else
       _none -> {:error, :signed_out}
     end
@@ -423,7 +422,9 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
     "id_token " <> Jason.encode!([subject, sid, seconds])
   end
 
-  defp limit, do: DateTime.add(EhOsContract.Clock.now(), -@absolute_limit_seconds)
+  # D-66, D-113: a sign-in lives at most the child's absolute limit from `auth_time`, renewed or
+  # not, twelve hours unless the installation sets another.
+  defp limit(absolute_limit), do: DateTime.add(EhOsContract.Clock.now(), -absolute_limit)
 
   # A credential is bound to the application it is for, so one moved to another application's
   # row does not decrypt either.

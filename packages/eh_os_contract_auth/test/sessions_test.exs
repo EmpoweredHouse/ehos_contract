@@ -206,7 +206,7 @@ defmodule EhOsContract.Auth.SessionsTest do
     end
   end
 
-  describe "the absolute limit, twelve hours from auth_time (D-66)" do
+  describe "the absolute limit from auth_time, twelve hours unless configured (D-66, D-113)" do
     # Every step under `EhOsContract.Clock`, at a time the real clock has not reached, so the test
     # also shows which clock is read.
     @now ~U[2030-01-01 12:00:00.000000Z]
@@ -244,6 +244,53 @@ defmodule EhOsContract.Auth.SessionsTest do
       end)
 
       assert column("subject") == ["u-bartek", "u-celina"]
+    end
+
+    # eh-os D-113: the installation's limit, given as EHOS_SIGN_IN_ABSOLUTE, replaces twelve hours.
+    test "is the configured absolute_limit when the installation sets one", %{name: name} do
+      stop_supervised!(name)
+      put_sign_in(absolute_limit: 30 * 86_400)
+      name = start!(FakeEhos.start())
+
+      {day_old, month_old} =
+        at(-3600, fn ->
+          {:ok, day_old} = Sessions.create(name, signed_in(auth_time: at_offset(-13 * 3600)))
+
+          {:ok, month_old} =
+            Sessions.create(name, signed_in(auth_time: at_offset(-30 * 86_400 - 1)))
+
+          {day_old, month_old}
+        end)
+
+      at(0, fn ->
+        assert {:ok, _session} = Sessions.fetch(name, day_old)
+        assert Sessions.fetch(name, month_old) == {:error, :signed_out}
+      end)
+
+      # The next sign-in deletes by the configured limit too: the row a day old stays.
+      at(0, fn ->
+        {:ok, _new} = Sessions.create(name, signed_in(subject: "u-celina", auth_time: @now))
+      end)
+
+      assert count("eh_os_contract_auth_sessions") == 2
+    end
+
+    test "is a shorter configured absolute_limit as well", %{name: name} do
+      stop_supervised!(name)
+      put_sign_in(absolute_limit: 3600)
+      name = start!(FakeEhos.start())
+
+      {fresh, stale} =
+        at(-60, fn ->
+          {:ok, fresh} = Sessions.create(name, signed_in(auth_time: at_offset(-30 * 60)))
+          {:ok, stale} = Sessions.create(name, signed_in(auth_time: at_offset(-2 * 3600)))
+          {fresh, stale}
+        end)
+
+      at(0, fn ->
+        assert {:ok, _session} = Sessions.fetch(name, fresh)
+        assert Sessions.fetch(name, stale) == {:error, :signed_out}
+      end)
     end
   end
 

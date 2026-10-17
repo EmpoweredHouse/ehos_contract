@@ -35,6 +35,18 @@ and the `ehos-dev:release` skill makes one.
   still makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release
   produces, now ends with `ehos.manifest/v4`, which only an EHOS that accepts it (0.9 and later) deploys.
 
+- **`sign_in: absolute_limit`** (eh-os D-113): how long a session lasts from the person's sign-in at EHOS, in
+  seconds, from a minute to 366 days; twelve hours when not given, as before (eh-os D-66). A host maps it from
+  `EHOS_SIGN_IN_ABSOLUTE`, which EHOS gives every workload with its installation's limit, so the session ends
+  when EHOS's does; nil is not given, and a value out of range stops the host at boot.
+
+### Fixed
+
+- **Signing in asks EHOS for `max_age` of the session's absolute limit** (eh-os D-113), and refuses a sign-in older
+  than it. With an installation's limit longer than the application's, EHOS gave a code for a sign-in the new
+  session refused at once, and the browser went between the page and EHOS without end. An application must run
+  this version before its installation raises its limits.
+
 ## [0.2.0] - 2026-10-16
 
 ### Removed

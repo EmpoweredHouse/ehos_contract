@@ -78,6 +78,8 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert query["code_challenge_method"] == "S256"
       assert byte_size(query["code_challenge"]) == 43
       assert is_binary(query["nonce"]) and is_binary(query["state"])
+      # eh-os D-113: never older than this application's absolute limit, twelve hours here.
+      assert query["max_age"] == "43200"
     end
 
     test "a callback whose iss is not EHOS's is refused, and nobody is signed in", context do
@@ -190,11 +192,23 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert DateTime.diff(expires_at, DateTime.utc_now()) in 90..101
     end
 
+    # eh-os D-113: just inside the limit EHOS was asked as max_age, the sign-in stands.
+    test "a sign-in just inside the absolute limit is kept", context do
+      browser =
+        sign_in(context, "/", grant: %{"auth_time" => System.os_time(:second) - 43_200 + 120})
+
+      assert browser.status == 302
+      assert rows() == 1
+    end
+
     test "a token response missing what a session needs refuses the sign-in", context do
       for grant <- [
             %{"sid" => ""},
             %{"sub" => ""},
             %{"auth_time" => 999_999_999_999_999},
+            # Past the absolute limit, which EHOS was asked as max_age (eh-os D-113): read, it
+            # would send the browser round and round EHOS.
+            %{"auth_time" => System.os_time(:second) - 43_200 - 60},
             # Within the renewal margin: every request would renew it.
             %{"credential_lifetime" => 20}
           ] do

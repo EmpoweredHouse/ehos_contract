@@ -190,8 +190,9 @@ auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
 children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 ```
 
-`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` are for
-signing people in to the application in a browser, through EHOS: "Signing people in" below.
+`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, `EHOS_SIGN_IN_APPLICATIONS` and
+`EHOS_SIGN_IN_ABSOLUTE` are for signing people in to the application in a browser, through EHOS:
+"Signing people in" below.
 
 ## Signing people in
 
@@ -206,7 +207,9 @@ config :eh_os_contract_auth,
     client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
     address: "https://" <> System.fetch_env!("PHX_HOST"),
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
+    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
+    # How long a session lasts from the sign-in at EHOS, the installation's (eh-os D-113).
+    absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
   ]
 
 # the supervision tree, after EhOsContract.Auth; cacertfile: as for it
@@ -221,7 +224,22 @@ The child checks this at boot and refuses to start otherwise:
   trailing slash;
 - no address in `applications` is `address`: they are the other applications;
 - the issuer is `https://<host>[:port]` alone, as every parser reads it;
-- `secret_key_base` has at least 64 bytes.
+- `secret_key_base` has at least 64 bytes;
+- `absolute_limit`, when given, is whole seconds from a minute to 366 days.
+
+`absolute_limit` is how long a session lasts from the person's sign-in at EHOS, renewed or not:
+twelve hours when not given or nil (eh-os D-66). EHOS gives the workload its installation's as
+`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints. Sign-in asks EHOS
+for no older sign-in than `absolute_limit` (`max_age`), so an application that keeps a shorter
+limit than its installation asks for the password sooner, never round and round EHOS. Its idle
+limit, `EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and
+the session ends at the next renewal.
+
+The browser keeps the session's token in the host's `Plug.Session` cookie. Without `max_age`
+there, the cookie ends when the browser closes, and the person signs in again then, however long
+`absolute_limit` is: a host that wants the session to outlast the browser gives the cookie a
+`max_age` at least as long, such as EHOS's ceiling of 366 days, since the session's row, not the
+cookie, decides when it ends.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
