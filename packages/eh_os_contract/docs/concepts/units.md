@@ -353,9 +353,9 @@ as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract
 `mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
 them. A change old rows still read is recorded in place: a field added as optional, a field removed, a
 required field made optional, an enum given members, an `:integer` made a `:decimal`, an `:id` made a
-`:string`, and the same inside a list or a domain value. A field removed stays in the file, optional and
-marked `removed: true`, since old rows still hold it, and a field declared again under its name is held
-to what they hold. `--check` fails when a recorded version changed otherwise, when the steps between
+`:string`, and the same inside a list or a domain value. A field removed stays in the file, marked
+`removed: true`, since old rows still hold it and rows written since do not: a field declared again
+under its name is held to what both hold, so a required one needs a `default:`. `--check` fails when a recorded version changed otherwise, when the steps between
 two recorded versions do not cover what changed, when the file records a version newer
 than the declared one or an event no contract declares any more, or when the file is behind the
 contracts:
@@ -375,15 +375,16 @@ as the fields it records. A field's type there is what the log stores, so a doma
 field changes every event that holds it, while renaming the value, relabelling a field or reordering
 the fields changes nothing.
 
-A raised version's steps are held to what changed from every earlier version the file records, read
-through them as the engine reads an old row: `rename:` carries a field to its new name, `default:`
+A raised version's steps are held to what changed from every earlier version the file records, each
+read as the declared one through the steps between them, as the engine reads an old row: `rename:` carries a field to its new name, `default:`
 gives a new required field its value, and a step by a function covers every change a step could carry.
 A field renamed without `rename:`, a required field added without a default, or a type changed
 otherwise than above with no step a function, is refused, naming the field and the steps. Some changes
 are refused even with a step, since rows already written keep what they were written with: a field
-that becomes personal, stops being, or is sealed by another identifier; an identifier that seals a
-field given another `subject:`; and a field the log tags rows with that the version before did not tag
-under that name. Each is a new event.
+that becomes personal, stops being, or is sealed by another identifier; a field holding personal data
+whose type or shape changes, since its sealed value cannot be converted or its seal moved; an
+identifier that seals a field given another `subject:`; and a field the log tags rows with that the
+version before did not tag under that name. Each is a new event.
 `--forget TYPE` drops the event's versions from the declared one up, or every version of an
 event no contract declares, and records what is declared: it is for versions no log holds rows of, as
 one added on a branch never deployed.
