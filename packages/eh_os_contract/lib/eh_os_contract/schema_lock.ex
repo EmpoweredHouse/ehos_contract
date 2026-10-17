@@ -15,14 +15,17 @@ defmodule EhOsContract.SchemaLock do
   #
   # A recorded version's fields change in place only as old rows still read (plan DD, V4,
   # #346): a field added as optional, a field removed, required made optional, an enum
-  # given members, an integer made a decimal, and the same inside a list or a domain
-  # value. Any other change raises the version, and the step from the version before,
-  # `upcast from: n`, covers each change: a rename carries a field to its new name, a
-  # default gives a new required field its value, and a function covers everything, since
-  # the engine cannot see what it does. No step carries a field that turns personal or
-  # stops being, or is sealed by another identifier, since a seal opens only under what
-  # sealed it; nor a field the log tags rows with that the version before did not tag
-  # under that name, since rows written before carry no such tag. Those are new events.
+  # given members, an integer made a decimal, an identifier made a string, and the same
+  # inside a list or a domain value. A field removed stays, optional and marked
+  # `removed: true`, since old rows still hold it. Any other change raises the version,
+  # and the steps between two recorded versions cover each change, read as
+  # `EhOsContract.Upcast` reads an old row: a rename carries a field to its new name, a
+  # default gives a new required field its value, and a function covers everything a step
+  # could carry, since the engine cannot see what it does. No step carries a field that
+  # turns personal or stops being, or is sealed by another identifier, or an identifier
+  # that seals a field given another subject, since a seal opens only under what sealed
+  # it; nor a field the log tags rows with that the version before did not tag under that
+  # name, since rows written before carry no such tag. Those are new events.
   #
   # A version newer than the declaration is refused too, and so is an event no contract
   # declares any more, since their rows would not read either. Forgetting is the person's
@@ -41,8 +44,10 @@ defmodule EhOsContract.SchemaLock do
   @typedoc "The lock: each event type's fields, by `schema_version`, sorted by name."
   @type t :: %{String.t() => %{pos_integer() => [{atom(), field()}]}}
 
+  @carry "which a rename and a default cannot carry: write the step as a function"
+
   # The order `field/2` writes a field's keys in.
-  @keys %{type: 0, optional: 1, personal: 2, subject: 3}
+  @keys %{type: 0, optional: 1, personal: 2, subject: 3, removed: 4}
 
   @header """
   # The fields of every event, by its type in the log and its schema_version, as the log
@@ -118,8 +123,8 @@ defmodule EhOsContract.SchemaLock do
   @doc false
   # `lock` with each version `declared` that it lacks, and each it holds with fields old
   # rows still read; refused, with a sentence a problem, when a version it holds differs
-  # otherwise, is newer than the declaration, or is an event nothing declares, or when a
-  # step of `steps` does not cover what changed from its version to the next.
+  # otherwise, is newer than the declaration, or is an event nothing declares, or when the
+  # steps of `steps` do not cover what changed between two versions it records.
   @spec merge(t(), t(), %{String.t() => %{pos_integer() => step()}}) ::
           {:ok, t()} | {:error, [String.t()]}
   def merge(lock, declared, steps \\ %{}) do
@@ -138,16 +143,15 @@ defmodule EhOsContract.SchemaLock do
           "of it, run `mix eh_os_contract.schema --forget #{type}`"
       end
 
-    merged = Map.merge(lock, declared, fn _type, kept, current -> Map.merge(kept, current) end)
+    merged =
+      Map.merge(lock, declared, fn _type, kept, current ->
+        Map.merge(kept, current, fn _version, recorded, fields -> combine(recorded, fields) end)
+      end)
 
     uncovered =
       for {type, current} <- Enum.sort(declared),
           [version] = Map.keys(current),
-          versions = Map.fetch!(merged, type),
-          from <- versions |> Map.keys() |> Enum.sort(),
-          from < version and Map.has_key?(versions, from + 1),
-          problem <-
-            across(type, from, versions[from], versions[from + 1], steps[type][from]),
+          problem <- across(type, Map.fetch!(merged, type), version, Map.get(steps, type, %{})),
           do: problem
 
     case problems ++ undeclared ++ uncovered do
@@ -156,21 +160,72 @@ defmodule EhOsContract.SchemaLock do
     end
   end
 
-  # What a step from `from` leaves uncovered of the change to the next version's fields.
-  # A step the declaration lacks, which the compiler refuses (U1), is not judged here.
-  defp across(_type, _from, _was, _is, nil), do: []
+  # A recorded version's fields with a change old rows still read: the declaration's, and a
+  # field it no longer has kept, optional and marked `removed: true`, since old rows still
+  # hold it. A field later declared under that name again is held to what they hold.
+  defp combine(recorded, fields) do
+    names = (Keyword.keys(recorded) ++ Keyword.keys(fields)) |> Enum.uniq() |> Enum.sort()
 
-  defp across(type, from, was, is, step) do
-    for {kind, _name, why} <- uncovered(was, is, step, true) do
-      case kind do
-        :never ->
-          "#{type} at schema_version #{from + 1}: #{why}. No step carries that across: " <>
-            "declare a new event instead"
+    for name <- names do
+      case {Keyword.get(recorded, name), Keyword.get(fields, name)} do
+        {was, nil} ->
+          {name, was |> Keyword.merge(optional: true, removed: true) |> normal_field()}
 
-        :step ->
-          "#{type}, `upcast from: #{from}`: #{why}"
+        {nil, is} ->
+          {name, is}
+
+        {was, is} ->
+          {name, Keyword.put(is, :type, combine_type(was[:type], is[:type]))}
       end
     end
+  end
+
+  defp combine_type({:fields, was}, {:fields, is}), do: {:fields, combine(was, is)}
+  defp combine_type({:list, was}, {:list, is}), do: {:list, combine_type(was, is)}
+  defp combine_type(_was, is), do: is
+
+  # Every pair of versions the lock records up to the declared one, the later read from
+  # the earlier through the steps between them: a change no step covers, once, at the
+  # closest earlier version that shows it. A function covers every change a step could
+  # carry, and leaves only what none could; a chain missing a step, which the compiler
+  # refuses (U1), is not judged.
+  defp across(type, versions, version, steps) do
+    recorded = versions |> Map.keys() |> Enum.filter(&(&1 <= version)) |> Enum.sort()
+
+    found =
+      for to <- recorded,
+          from <- Enum.reverse(recorded),
+          from < to,
+          chain = chain(steps, from, to),
+          chain != nil,
+          {kind, name, why} <- uncovered(versions[from], versions[to], chain, true),
+          do: {{to, name}, {from, kind, why}}
+
+    found
+    |> Enum.uniq_by(&elem(&1, 0))
+    |> Enum.map(fn {{to, _name}, {from, kind, why}} ->
+      case kind do
+        :never ->
+          "#{type} at schema_version #{to}: #{why}. No step carries that across: declare a " <>
+            "new event instead"
+
+        :step ->
+          "#{type}, from schema_version #{from} to #{to} (#{named_steps(from, to)}): #{why}"
+      end
+    end)
+  end
+
+  defp named_steps(from, to),
+    do: Enum.map_join(from..(to - 1)//1, ", ", &"`upcast from: #{&1}`")
+
+  # The steps from `from` to `to`, in order; nil when one is missing.
+  defp chain(steps, from, to) do
+    Enum.reduce_while(from..(to - 1)//1, [], fn version, chain ->
+      case Map.get(steps, version) do
+        nil -> {:halt, nil}
+        step -> {:cont, chain ++ [{version, step}]}
+      end
+    end)
   end
 
   defp problems(type, version, fields, kept) do
@@ -199,88 +254,149 @@ defmodule EhOsContract.SchemaLock do
 
   # A recorded version's fields changed in place: refused where an old row would not read.
   defp in_place(type, version, recorded, fields) do
-    case uncovered(recorded, fields, %{rename: %{}, default: []}, true) do
-      [] ->
-        []
+    {never, step} =
+      recorded |> uncovered(fields, [], true) |> Enum.split_with(&(elem(&1, 0) == :never))
 
-      problems ->
-        whys = Enum.map_join(problems, "; ", &elem(&1, 2))
+    forget = "or, if no log holds rows of it, run `mix eh_os_contract.schema --forget #{type}`"
 
-        if Enum.any?(problems, &(elem(&1, 0) == :never)) do
-          [
-            "#{type} at schema_version #{version}: #{whys}. No step carries that across: " <>
-              "declare a new event instead, or, if no log holds rows of it, run " <>
-              "`mix eh_os_contract.schema --forget #{type}`"
-          ]
-        else
-          [
-            "#{type} at schema_version #{version}: #{whys}. A row written at version " <>
-              "#{version} holds the fields the lock records, and would not read: raise its " <>
-              "schema_version with a step `upcast from: #{version}` that covers the change, " <>
-              "or, if no log holds rows of it, run " <>
-              "`mix eh_os_contract.schema --forget #{type}`"
-          ]
-        end
+    for {problems, advice} <- [
+          {never, "No step carries that across: declare a new event instead, " <> forget},
+          {step,
+           "A row written at version #{version} holds the fields the lock records, and would " <>
+             "not read: raise its schema_version with a step `upcast from: #{version}` that " <>
+             "covers the change, " <> forget}
+        ],
+        problems != [] do
+      "#{type} at schema_version #{version}: " <>
+        Enum.map_join(problems, "; ", &elem(&1, 2)) <> ". " <> advice
     end
   end
 
-  # Each change from `was` to `is`, the fields of two versions, that `step` does not cover,
-  # as `{:never | :step, name, why}`: `:never` where no step could. `tagged` says whether
-  # these are an event's own fields, which the log tags rows by, or a domain value's.
-  defp uncovered(was, is, step, tagged) do
-    function = step == :function
-    rename = if function, do: %{}, else: step.rename
-    defaults = if function, do: [], else: step.default
-    carried = Map.new(was, fn {name, field} -> {Map.get(rename, name, name), field} end)
+  # Each change from `was` to `is`, the fields of two versions, that `chain`, the steps
+  # between them, does not cover, as `{:never | :step, name, why}`: `:never` where no step
+  # could. `tagged` says whether these are an event's own fields, which the log tags rows
+  # by, or a domain value's.
+  defp uncovered(was, is, chain, tagged) do
+    function = Enum.any?(chain, &(elem(&1, 1) == :function))
+    declared = for {from, %{} = step} <- chain, do: {from, step}
+    carried = Enum.reduce(declared, Map.new(was), fn {_from, step}, acc -> carry(acc, step) end)
+    defaults = defaulted(declared)
+
+    sealers =
+      was |> Enum.map(fn {_name, field} -> Keyword.get(field, :personal) end) |> MapSet.new()
 
     names = (Map.keys(carried) ++ Keyword.keys(is)) |> Enum.uniq() |> Enum.sort()
 
     for name <- names,
         problem =
-          uncovered_field(
-            name,
-            Map.get(carried, name),
-            Keyword.get(is, name),
-            tagged and tags?(Keyword.get(was, name)),
-            {function, name in defaults, tagged}
-          ),
+          uncovered_field(name, Map.get(carried, name), Keyword.get(is, name), %{
+            defaulted: MapSet.member?(defaults, name),
+            sealer: MapSet.member?(sealers, name),
+            tagged: tagged,
+            tagged_before: tagged and tags?(Keyword.get(was, name))
+          }),
         problem != nil,
+        # A function covers what a step could carry; its renames are its own, so a field
+        # is judged by its name.
+        not function or elem(problem, 0) == :never,
         do: problem
   end
 
-  defp uncovered_field(_name, _was, nil, _tagged_before, _how), do: nil
+  # A step's renames, as `EhOsContract.Upcast` applies them: the old names leave, and each
+  # takes its new name, over a field the version already held there.
+  defp carry(fields, %{rename: rename}) do
+    moves = for {old, new} <- rename, Map.has_key?(fields, old), do: {old, new}
 
-  defp uncovered_field(name, was, is, tagged_before, {function, defaulted, tagged}) do
+    Enum.reduce(moves, Map.drop(fields, Enum.map(moves, &elem(&1, 0))), fn {old, new}, acc ->
+      Map.put(acc, new, Map.fetch!(fields, old))
+    end)
+  end
+
+  # The names a default of the chain fills, as the last version names them: each carried
+  # through the renames of the steps after it. A name a later step gives the field, which a
+  # step may write its default under (U2), is carried as itself.
+  defp defaulted(chain) do
+    for {{_from, step}, i} <- Enum.with_index(chain),
+        name <- step.default,
+        later = Enum.drop(chain, i + 1),
+        into: MapSet.new(),
+        do: Enum.reduce(later, name, fn {_from, s}, n -> Map.get(s.rename, n, n) end)
+  end
+
+  defp uncovered_field(_name, _was, nil, _how), do: nil
+
+  defp uncovered_field(name, nil, is, how) do
     cond do
-      was != nil and sealing(was) != sealing(is) ->
-        {:never, name,
-         "#{name} was #{inspect(was)} and is #{inspect(is)}, and whether a field is " <>
-           "personal, and the identifier that seals it, do not change"}
+      how.tagged and tags?(is) ->
+        {:never, name, untagged(name, is)}
 
-      tagged and tags?(is) and not tagged_before ->
-        {:never, name,
-         "#{name}, #{inspect(is)}, is a field the log tags rows with, and the version " <>
-           "before did not tag rows with it, so rows written before carry no such tag"}
-
-      was == nil and (Keyword.get(is, :optional, false) or function or defaulted) ->
-        nil
-
-      was == nil ->
-        {:step, name,
-         "#{name} was added, #{inspect(is)}, and is required: give it a `default:`, or make " <>
-           "it optional"}
-
-      function or compatible?(was, is) ->
+      Keyword.get(is, :optional, false) or how.defaulted ->
         nil
 
       true ->
         {:step, name,
-         "#{name} was #{inspect(was)} and is #{inspect(is)}, which a rename and a default " <>
-           "cannot carry: write the step as a function"}
+         "#{name} was added, #{inspect(is)}, and is required: give it a `default:`, or make " <>
+           "it optional"}
     end
   end
 
-  defp sealing(field), do: {Keyword.get(field, :personal), Keyword.get(field, :subject)}
+  defp uncovered_field(name, was, is, how) do
+    case reading(was, is, how) do
+      :ok -> nil
+      {:never, why} -> {:never, name, "#{name} was #{inspect(was)} and is #{inspect(is)}: #{why}"}
+      :step -> {:step, name, "#{name} was #{inspect(was)} and is #{inspect(is)}, " <> @carry}
+    end
+  end
+
+  # Whether a row holding `was` reads as `is`: `:ok`, `:step` where only a step by a
+  # function carries it, or `{:never, why}` where none does.
+  defp reading(was, is, how) do
+    cond do
+      Keyword.get(was, :personal) != Keyword.get(is, :personal) ->
+        {:never,
+         "whether a field is personal, and the identifier that seals it, do not change, " <>
+           "since a seal opens only under what sealed it"}
+
+      how.sealer and Keyword.get(was, :subject) != Keyword.get(is, :subject) ->
+        {:never,
+         "the subject of an identifier that seals another field does not change, since its " <>
+           "seals open only under the subject they were sealed for"}
+
+      how.tagged and tags?(is) and not how.tagged_before ->
+        {:never, untagged_why()}
+
+      Keyword.get(was, :optional, false) and not Keyword.get(is, :optional, false) ->
+        :step
+
+      true ->
+        readable(Keyword.fetch!(was, :type), Keyword.fetch!(is, :type))
+    end
+  end
+
+  defp untagged(name, is), do: "#{name} was added, #{inspect(is)}: " <> untagged_why()
+
+  defp untagged_why,
+    do:
+      "the log tags rows with it, and the version before did not tag rows with it under " <>
+        "that name, so rows written before carry no such tag"
+
+  # Whether a value stored as `was` reads as `is`: what `EhOsContract.Codec` decodes.
+  defp readable(same, same), do: :ok
+  defp readable(:integer, :decimal), do: :ok
+  defp readable(:id, :string), do: :ok
+  defp readable({:enum, was}, {:enum, is}), do: if(was -- is == [], do: :ok, else: :step)
+  defp readable({:list, was}, {:list, is}), do: readable(was, is)
+
+  defp readable({:fields, was}, {:fields, is}) do
+    problems = uncovered(was, is, [], false)
+
+    case Enum.find(problems, &(elem(&1, 0) == :never)) do
+      {:never, _name, why} -> {:never, "within it, " <> why}
+      nil -> if problems == [], do: :ok, else: :step
+    end
+  end
+
+  defp readable(_was, _is), do: :step
 
   # A field the log tags each row with: a required, non-personal identifier or day
   # (`EhOsContract.Key`), its domain value resolved to what it rests on.
@@ -290,23 +406,6 @@ defmodule EhOsContract.SchemaLock do
     do:
       Keyword.get(field, :type) in [:id, :date, :timestamp] and
         not Keyword.get(field, :optional, false) and Keyword.get(field, :personal) == nil
-
-  # Whether a row written with `was` reads with `is`: what `EhOsContract.Codec` decodes.
-  defp compatible?(was, is) do
-    sealing(was) == sealing(is) and
-      not (Keyword.get(was, :optional, false) and not Keyword.get(is, :optional, false)) and
-      readable?(Keyword.fetch!(was, :type), Keyword.fetch!(is, :type))
-  end
-
-  defp readable?(same, same), do: true
-  defp readable?(:integer, :decimal), do: true
-  defp readable?({:enum, was}, {:enum, is}), do: was -- is == []
-  defp readable?({:list, was}, {:list, is}), do: readable?(was, is)
-
-  defp readable?({:fields, was}, {:fields, is}),
-    do: uncovered(was, is, %{rename: %{}, default: []}, false) == []
-
-  defp readable?(_was, _is), do: false
 
   @doc false
   # `lock` without the versions of `type` from `from` up, and without `type` once none is
@@ -416,12 +515,26 @@ defmodule EhOsContract.SchemaLock do
       end)
   end
 
+  # Fields as `encode/1` writes them, at every depth: what reading the lock relies on.
   defp fields?(fields),
     do:
       Keyword.keyword?(fields) and fields == Enum.uniq_by(fields, &elem(&1, 0)) and
-        Enum.all?(fields, fn {_name, field} ->
-          Keyword.keyword?(field) and Keyword.has_key?(field, :type)
+        Enum.all?(fields, fn {_name, field} -> field?(field) end)
+
+  defp field?(field),
+    do:
+      Keyword.keyword?(field) and type?(Keyword.get(field, :type)) and
+        Enum.all?(field, fn
+          {:type, _type} -> true
+          {key, value} when key in [:optional, :removed] -> is_boolean(value)
+          {key, value} when key in [:personal, :subject] -> is_atom(value) and value != nil
+          _unknown -> false
         end)
+
+  defp type?({:list, inner}), do: type?(inner)
+  defp type?({:enum, members}), do: is_list(members) and Enum.all?(members, &is_atom/1)
+  defp type?({:fields, fields}), do: fields?(fields)
+  defp type?(type), do: is_atom(type) and type != nil
 
   # A version as `encode/1` writes it, whatever order a hand resolving a merge left its
   # fields and their keys in, so that only a change of what they say is one.
@@ -445,8 +558,7 @@ defmodule EhOsContract.SchemaLock do
   defp normal_type({:list, inner}), do: {:list, normal_type(inner)}
   defp normal_type({:enum, members}) when is_list(members), do: {:enum, Enum.sort(members)}
 
-  defp normal_type({:fields, fields} = type),
-    do: if(fields?(fields), do: {:fields, normal_fields(fields)}, else: type)
+  defp normal_type({:fields, fields}), do: {:fields, normal_fields(fields)}
 
   defp normal_type(type), do: type
 end
