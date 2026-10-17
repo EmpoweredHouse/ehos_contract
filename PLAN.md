@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4 and V1–V4 in `main`; v0.5.0 released)
+## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4 and V1–V4 in `main`; v0.6.0 released; wave 6 next)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -21,23 +21,25 @@ table** in "Dopisek 5 października — DD"; each stage's scope, decisions and r
 marked in the table). E13 (the `graph.v1` documents, the renderer and the Graph screen; #217, #219) is in `main`
 since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) are merged.
 
-**Next** (the revision of 13 October, below the "Postęp" table): teaching a process as a module (P2i, #295) and
-removing a contract's own process (P2h, #296) and a process module's picture and page (P2e, #299, #301, #303) are
-merged; the debt the closing comments left (C1, #304, in #305) is merged; the graph drawn like a catalog (G1, #297, in #307–#312) is merged, and so is the context map
-(M1, #316, in #317) and the stage order on a process's picture (O2, #319, in #320), and the agreement's version apart from its
-words' (V5, #322, in #324: storage version 4, every version moved once), and the owner's view (L4, #326, in #327–#329:
-the notice, `pages --audience owner` and the graph's switch "Owner"). Of the revision only V1–V4 remained, required
-before the first application keeps data it may not lose; the user started them on 16 October: V1 (upcasts
-declared, #333, in #337) and V2 (an upcast by a function, #338, in #339) are merged, and v0.5.0 is released; V3
-(the schema lock, #340, in #342) and V4 (the lock against upcasts, #346, in #347) are merged: wave 4 is closed,
-and v0.6.0 releases V1–V4.
+**Done since the revision of 13 October:** P2i, P2h, P2e, C1, G1, M1, O2, V5 and L4, then V1–V4: upcasts declared
+(V1, #333) and by a function (V2, #338), the schema lock (V3, #340) and the lock against upcasts (V4, #346). v0.6.0
+released them on 17 October (#348; the engine 0.6.0, `eh_os_contract_auth` 0.3.0, the plugin
+`eh-os-contract-plugin-v0.8.0`); `main` is at 0.6.1-dev and 0.3.1-dev (#349).
 
-**Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
-#256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
-#193 (an upper bound for durations); whether the domain's and the process's overlays, which read the whole history on each Graph screen mount and API request (the process's also counts its stage order since #320), get a default window or a cache keyed by the log's last position (#297, the review of #311); the three relations the Rehmed and TaxVision context maps lack, which L3's
-references show (`check` warnings; the source material is not in this repository); a version tag and the pins in
-AppUnite's application and `ehos-ledger` (the migration notes after each wave and the closing comments of #269,
-#272, #286).
+**Next: wave 6** ("After v0.6.0", below the "Postęp" table, the user's decisions of 17 October). The order:
+- DU1 (a ceiling for durations, #193);
+- OW1 (`waits_on` on a promise, from #256);
+- RL1 and XA1 (docs: the relay and a seal; a domain compiled in one project, #287);
+- RE1 (release v0.7.0);
+- PN1–PN3 (the pins in ehos-tools, AppUnite's equipment application and `ehos-ledger`, each in its own
+  repository).
+
+**Open, the user's:**
+- #249: a clinic specialist's stand-in, which waits for the clinic;
+- whether the domain's and the process's overlays, which read the whole history on each Graph screen mount and API
+  request, get a default window or a cache keyed by the log's last position (#297, the review of #311);
+- the three relations the Rehmed and TaxVision context maps lack, which L3's references show (`check` warnings;
+  the source material is not in this repository).
 
 **Read first:** `CLAUDE.md`; `CONTRIBUTING.md`; `.claude/review.md` (this repository's part of
 `ehos-dev:pre-pr-review`); the `stage-issue` skill; the issue of the stage you work on; the "Postęp" table and the
@@ -66,10 +68,14 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 - The review note (`git notes --ref=review add …`) goes in a shell call of its own, before the one that opens the
   pull request: the hook reads it before the whole command runs.
 
-**Consent.** Commits on a stage's branch at a green gate, issues and comments, push and a pull request (each asked
-for separately) were confirmed by the user for the session of 13 October. Merge, tags, deleting branches or
-worktrees and resetting the shared databases only on an explicit word. A new session asks again. Nothing is written
-to `~/Projects/ai/empowered-house-context` or `~/Projects/ai/eh-os`.
+**Consent.** On 17 October the user confirmed the following for the next session's wave 6:
+- work on all of wave 6;
+- commits on a stage's branch at a green gate, issues and comments, push and pull requests, Auto-fix;
+- the plugin's tag after a merge that raises its version.
+
+Merges are the user's. A release tag, deleting branches or worktrees, and resetting the shared databases happen only
+on an explicit word. Work in another repository (PN1–PN3) runs in a session of its own there, which asks again.
+Nothing is written to `~/Projects/ai/empowered-house-context` or `~/Projects/ai/eh-os`.
 
 **Language.** We talk in Polish; everything left in the repository and on GitHub is English, except the strings a
 client reads (`CLAUDE.md`). `PLAN.md` before 6 October stays Polish.
@@ -1921,6 +1927,14 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | L4 | 5 | the owner's view, without the engineering | G1 | ☑ #327, #328, #329 | [#326](https://github.com/EmpoweredHouse/eh-os-contract/issues/326) |
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☑ #307, #308, #309, #310, #311, #312 | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
+| DU1 | 6 | a ceiling for durations: 100 years | — | ☐ | [#193](https://github.com/EmpoweredHouse/eh-os-contract/issues/193) |
+| OW1 | 6 | a promise says what it waits on: `waits_on` | — | ☐ | issue to open (from #256) |
+| RL1 | 6 | docs: the relay and a seal, settled by the lock | — | ☐ | issue to open (from #333, #338) |
+| XA1 | 6 | docs: a domain's contracts compile in one project | — | ☐ | [#287](https://github.com/EmpoweredHouse/eh-os-contract/issues/287) |
+| RE1 | 6 | release v0.7.0 and its migration note | DU1, OW1, RL1, XA1 | ☐ | — (`No issue: release`) |
+| PN1 | 6 | ehos-tools: `ehos_app`'s template and `ehosctl`'s pin, the lock in `mix precommit` | RE1 | ☐ | issue in ehos-tools |
+| PN2 | 6 | AppUnite's equipment application on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
+| PN3 | 6 | `ehos-ledger` on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision
 
@@ -1974,6 +1988,101 @@ Open questions of the library, each found in the material but general:
 Not the library's: whether the clinic's visit run also spans settlement (#195, #222), and the three relations
 the Rehmed and TaxVision context maps lack (#286). The check found them, which is what it is for; the material is
 changed only if a test of the library needs it.
+
+### After v0.6.0 — the user's decisions (17 October 2026), wave 6
+
+On 17 October, after v0.6.0 released V1–V4, the assistant laid out what was left open, each with a recommendation,
+and the user took every recommendation: "wszystko mi pasuje, implementujemy wszystko". Wave 6 is that list. The
+library's stages go first and are released together as v0.7.0, so the applications move their pins once.
+
+**Order.** DU1, OW1, then RL1 and XA1 (docs, one pull request may carry both), then RE1, then PN1–PN3, which can run
+in parallel sessions, each in its own repository. *Rejected:* the pins first, at v0.6.0, which would move every
+application twice in a week; DU1 is Breaking, so applications would meet it on the second move anyway.
+
+**DU1 — a ceiling for durations** (#193). *The rule:* no duration a contract or a process module declares is longer
+than 100 years. Today `wait: {10_000_000, :year}` compiles and its timer fails on every retry when it is set.
+- The durations rule (R6, `EhOsContract.Contract.Rules.Durations` and `EhOsContract.Process.Rules`) refuses a duration
+  above the ceiling: a timer's `wait`, a promise's `within`, a process's `deadline`. The ceiling is in seconds, from
+  `EhOsContract.Duration`'s seconds per unit, a calendar unit taken at its longest.
+- The refusal names the limit; a row in `docs/contract.md`'s table; a test with its control.
+- **Breaking** in the changelog: a contract with such a duration stops compiling. None is expected to have one.
+- *Rejected:* a ceiling per unit, kept inside what Postgres and `DateTime` hold. That is more exact, and a reader
+  of the refusal cannot predict it.
+
+**OW1 — a promise says what it waits on** (from #256). *The rule:* a promise names the external systems it waits
+on, through any step, and an outage of one of them in its window excuses it, as an outage of what its `eventually`
+or `or_else` event `depends_on` already does.
+- Example: TaxVision's month opens, or is blocked, only after the registry check, and the check depends on the
+  public registries. Registries down for two days make the month neither open nor blocked, and the report calls
+  the promise broken.
+
+  ```elixir
+  promise :month_opens_or_is_blocked do
+    from :data_completeness_confirmed
+    eventually :accounting_month_opened
+    within {2, :day}
+    or_else :registry_discrepancy_detected
+    waits_on [:registries]
+  end
+  ```
+
+- `waits_on` is an option of the process module's `promise`. It names externals of the domain (the rule X4 holds it
+  as it holds `depends_on`), and `EhOsContract.Trace` excuses the promise by an outage of any of them, beside its
+  events' own `depends_on`. A scenario with `outage :registries` then compiles for that promise.
+- TaxVision's month declares it and gets its "excused" scenario, which S3 (#257) could not write.
+- The docs, the DSL reference (generated), the process page and the plugin's skills where they teach promises; a
+  changelog line (Added). Whether the graph's process overlay shows it is the assistant's to decide and record.
+- *Rejected:*
+  - The library follows the chain of causes back from the awaited event. The static graph allows it, since
+    `emit` and `issue` take literals, but the chain breaks at every command a person issues, as TaxVision's
+    accountant does.
+  - `depends_on: :registries` on `accounting_month_opened`, which says that opening the month calls the registries.
+    It does not, and the event's page would say so.
+
+**RL1 — the relay and a seal, settled by the lock** (from #333 and #338). The question was whether the relay
+refuses to publish a sealed value. That happens when a field was personal when its row was written and is published
+now, by a rename or by `personal:` dropped. Since V4, the schema lock refuses both even with a step, so an
+application that runs `mix eh_os_contract.schema --check` cannot reach that state.
+- The relay keeps publishing as it does. Its docs (`EhOsContract.Relay` and the units page) say the lock is what
+  prevents it, and that an application without the lock, or one that forgot a version that had rows, can still
+  publish a seal.
+- *Rejected:*
+  - A refusal in the relay, which stops a host's relay at the first such row, a Breaking change for a case the
+    lock already prevents.
+  - A warning in the relay's log, which nobody reads at the moment it matters.
+
+**XA1 — a domain's contracts compile in one project** (#287). The compiler resolves a reference to a unit
+(`{:id, :visit}`) against the contracts it compiles. A unit in a dependency's contract is not seen, and a correct
+reference is refused.
+- The docs state the rule: a domain's contracts compile in one project. `docs/contract.md`'s X3 row and the page
+  on references say so. #287 stays open for when a domain first spans OTP applications.
+- *Rejected:* the compiler reading the configured applications' contracts now. Nothing in the material or in an
+  application needs it yet, and "What we do not build" keeps out what no second user needs.
+
+**RE1 — release v0.7.0.** As v0.6.0 (#348), with the `ehos-dev:release` skill:
+- the engine moves to 0.7.0 (DU1 is Breaking); every other package with lines moves too;
+- the migration note goes in the release's pull request;
+- the user tags, or says to;
+- then the next `-dev`.
+
+**PN1–PN3 — the applications move their pins**, each in its own repository and session, with the user's consent
+there:
+- the engine `~> 0.7.0`, `eh_os_contract_auth` where used, and the plugin's `ref` on its newest tag;
+- the steps `U1` asks for: an empty `upcast from: n` where the fields kept their shape;
+- `mix eh_os_contract.schema` run once and `eh_os_contract.lock` committed **before any event changes**, since the
+  first record is what later changes are held to;
+- `mix eh_os_contract.schema --check` beside `mix eh_os_contract.check` in `mix precommit` and CI.
+
+Each repository:
+- **PN1, ehos-tools.** `ehos_app`'s template carries the check in its `mix precommit`. A project it generates
+  records its lock at its first `mix precommit`, or the generator writes it: that repository's decision, and so is
+  its own release process (CI on macOS asks the user first). `ehosctl`'s pin moves with a release of `ehosctl`.
+- **PN2, AppUnite's equipment application** (`~/Projects/ai/appunite_equipment`).
+- **PN3, `ehos-ledger`** (`~/Projects/ai/ehos-ledger`).
+
+**Left as it is:** #249's open question, whether the clinic's specialist has a stand-in, waits for the clinic. Today
+a stand-in needs a new booking, and the library has nothing to change. The overlays' cost (#297) and the three
+relations the Rehmed and TaxVision context maps lack stay open, outside wave 6.
 
 ### Program — szczegóły etapów
 
