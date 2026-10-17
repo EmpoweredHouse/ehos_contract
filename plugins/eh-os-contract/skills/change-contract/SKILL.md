@@ -49,7 +49,8 @@ and version, and `mix eh_os_contract.schema --check` fails when a recorded versi
 so that an old row would not read, naming the field (`courier was added, [type: :string], and is
 required`), and when it records an event no contract declares any more, renamed or removed. A change
 old rows still read — an optional field added, a field removed, required made optional, an enum
-member added, `:integer` to `:decimal` — it records in place. A raised version's step must cover each
+member added, `:integer` to `:decimal`, `:id` to `:string` — it records in place, keeping a removed
+field marked so that a field declared again under its name is held to what old rows hold. A raised version's step must cover each
 other change: `rename:` a renamed field, `default:` a new required one, `function:` anything else; a
 field turned personal or not, sealed by another identifier, or newly tagged by the log, it refuses
 even with a step. It cannot say whether old rows exist, so its refusal starts this skill's analysis
@@ -157,7 +158,8 @@ meets old rows, and write the decision and the data work into the pull request i
 6. Make the smallest edit, in the existing file.
 7. Run `mix eh_os_contract.schema`, which records a raised version, and commit the lock with the
    change; then the scenarios of the contract and the gate from `sandbox/`, whose
-   `eh_os_contract.schema --check` fails on a recorded version changed in place. The scenarios pass
+   `eh_os_contract.schema --check` fails on a recorded version changed so that old rows would not
+   read, or a raised one whose steps do not cover the change. The scenarios pass
    silently on everything in the table, by construction: they are confirmation, not the analysis.
 
 ## Not this skill

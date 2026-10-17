@@ -57,11 +57,12 @@ and the `ehos-dev:release` skill makes one.
   missing file or entry, on a recorded version whose fields changed so that an old row would not read, naming each
   field, on a recorded version newer than the declaration, and on an event no contract declares any more, renamed or
   removed. A change old rows still read is recorded in place (plan DD, stage V4, #346): a field added as optional, a
-  field removed, required made optional, an enum given members, `:integer` made `:decimal`, inside lists and domain
-  values too. A raised version's step must cover what changed from the version before: `rename:` a renamed field,
-  `default:` a new required one, a function anything else. A field that becomes personal or stops being, or is sealed
-  by another identifier, and a field the log tags rows with that the version before did not tag, are refused even
-  with a step. `--forget TYPE` drops an event's versions from the declared one up, or all of an event no longer
+  field removed (kept, marked `removed: true`, so a field declared again under its name is held to what old rows
+  hold), required made optional, an enum given members, `:integer` made `:decimal`, `:id` made `:string`, inside
+  lists and domain values too. A raised version's steps must cover what changed from every earlier recorded version:
+  `rename:` a renamed field, `default:` a new required one, a function anything else. A field that becomes personal or
+  stops being, or is sealed by another identifier, an identifier that seals a field given another `subject:`, and a
+  field the log tags rows with that the version before did not tag, are refused even with a step. `--forget TYPE` drops an event's versions from the declared one up, or all of an event no longer
   declared, and records what is declared, for versions no log holds rows of. To use it, run
   `mix eh_os_contract.schema` once, commit the file and run `--check` beside `mix eh_os_contract.check`.
 
