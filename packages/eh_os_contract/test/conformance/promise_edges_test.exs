@@ -135,7 +135,7 @@ defmodule EhOsContract.PromiseEdgesTest do
       from :opened
       eventually :closed
       within {1, :day}
-      waits_on([:inspector])
+      waits_on [:inspector]
     end
 
     # The dependency is on the **fallback** only. The wanted route depends on nothing.

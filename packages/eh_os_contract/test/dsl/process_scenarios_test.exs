@@ -26,6 +26,7 @@ defmodule EhOsContract.ProcessScenariosTest do
         actor :register_link, :system, "Integracja z rejestrem", backed_by: :register, context: :reporting
         external :register, "Rejestr zdarzeń medycznych", direction: :bidirectional
         external :mail, "Poczta", direction: :outbound
+        external :archive, "Archiwum", direction: :outbound
 
         subdomain :core, "Core", type: :core
       end
@@ -36,7 +37,8 @@ defmodule EhOsContract.ProcessScenariosTest do
     :ok
   end
 
-  # `:report_sent` depends on the register; nothing depends on the mail.
+  # `:report_sent` depends on the register; nothing depends on the mail, which an effect
+  # calls; nothing uses the archive.
   defp reporting(name) do
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
@@ -55,6 +57,11 @@ defmodule EhOsContract.ProcessScenariosTest do
         event :report_sent, "Zgłoszenie wysłane", recorded_by: :register_link, depends_on: :register
         event :reporting_not_required, "Zgłoszenie niewymagane"
       end
+
+      effect :mail_report, "Wysłanie zgłoszenia pocztą",
+        handles: :report_sent,
+        calls: :mail,
+        idempotency: [key: :event_id, owner: :self]
     end
     """
   end
@@ -476,6 +483,21 @@ defmodule EhOsContract.ProcessScenariosTest do
                "X4: promise :reported_within_two_days: waits_on :register is what its " <>
                  "eventually or or_else already depends_on, which excuses it without saying so; " <>
                  "leave it out of waits_on"
+    end
+
+    test "waits_on names a system a contract the process includes uses, or no outage reaches it" do
+      unused =
+        checked(
+          "ProcScenarioWaitsArchive",
+          ~s|%{visit_id: "visit-anna", room: "12"}|,
+          ":register",
+          "; waits_on [:archive]"
+        )
+
+      assert assert_linked(unused, "X4: promise", "proc_scenario_waits_archive_visit.ex", 9) =~
+               "X4: promise :reported_within_two_days: waits_on :archive is used by no " <>
+                 "contract the process includes: no event of one depends_on it and no effect " <>
+                 "calls it"
     end
   end
 end

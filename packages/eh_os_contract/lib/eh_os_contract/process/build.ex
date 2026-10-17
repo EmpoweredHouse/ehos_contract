@@ -119,7 +119,8 @@ defmodule EhOsContract.Process.Build do
   end
 
   # `waits_on` (plan DD, OW1 (#355)) is kept, with its part of the digest, only where a
-  # promise declares it, so that adding the word moved no version.
+  # promise declares it, so that adding the word moved no version; sorted, since it is
+  # a set, so that the deploy's promise digest does not see its order either.
   defp promise(promise) do
     promise
     |> Map.from_struct()
@@ -127,7 +128,7 @@ defmodule EhOsContract.Process.Build do
     |> Map.update!(:within, &duration/1)
     |> then(fn
       %{waits_on: []} = p -> Map.delete(p, :waits_on)
-      p -> Map.update!(p, :waits_on, &Enum.uniq/1)
+      p -> Map.update!(p, :waits_on, &(&1 |> Enum.uniq() |> Enum.sort()))
     end)
   end
 

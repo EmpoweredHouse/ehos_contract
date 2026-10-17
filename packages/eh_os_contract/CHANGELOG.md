@@ -55,9 +55,11 @@ and the `ehos-dev:release` skill makes one.
   observed by any contract the process includes, suspends the promise as an outage of what its `eventually` or
   `or_else` depends on does: an accounting month neither opened nor blocked while the registries were down is
   suspended, not broken. Each name is an external of the domain, and not one `eventually` or `or_else` already
-  depends on (X4); a scenario's `outage` may name it. The process's page, `mix eh_os_contract.view` and its
-  `graph.v1` document show it, the last as a `waits_on` relation from the promise to the external. A promise
-  without it keeps its digest, so no process's version moves.
+  depends on, and one a contract the process includes uses (X4); a scenario's `outage` may name it. The
+  process's page, `mix eh_os_contract.view` and its `graph.v1` document show it, the last as a `waits_on`
+  relation from the promise to the external, which every process document now carries, empty without one, so
+  each process document's digest moves once. A promise without it keeps its digest, so no process's version
+  moves. An outage anywhere inside the window counts, even after the step that calls the system is done.
 
 ## [0.6.1] - 2026-10-17
 

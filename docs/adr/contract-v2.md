@@ -1714,7 +1714,9 @@ the person's.
 > itself, so two days of registries down read as a broken promise. A process module's `promise` now takes
 > `waits_on [:external]`: externals of the domain (X4, which also refuses one `eventually` or `or_else` already
 > depends on), whose outage, observed by any contract the process includes, suspends the promise as its events'
-> own dependencies do. `from` still counts for nothing. Following the chain of causes back from the awaited event
+> own dependencies do. `from` still counts for nothing. An outage anywhere inside the window counts, even after
+> the step that calls the system has happened: telling when that step is done would mean following the chain the
+> next sentence rejects. Following the chain of causes back from the awaited event
 > was rejected: it breaks at every command a person issues. So was `depends_on` on the awaited event, which would
 > say it calls a system it does not. [#355](https://github.com/EmpoweredHouse/eh-os-contract/issues/355)
 

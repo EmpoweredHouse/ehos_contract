@@ -33,7 +33,10 @@ defmodule EhOsContract.Contract.Links.Processes do
   # - **X4 for a promise** (plan DD, OW1 (#355)). Each system a promise `waits_on` is an
   #   external of the domain, and not one its `eventually` or `or_else` already depends
   #   on, which excuses it without saying so: two declarations of one dependency would
-  #   drift, and a reader could not tell which one is meant.
+  #   drift, and a reader could not tell which one is meant. And a contract the process
+  #   includes uses it, an event depending on it or an effect calling it: an outage is
+  #   recorded only under such a contract, and the report reads only the included ones,
+  #   so without one the promise would wait on a system no outage of which it can see.
   #
   # X7, a process module's `id:` taken by another process, is `Links.System`'s. The
   # error stands at the module's `use` for what names the whole module, and at the stage
@@ -163,15 +166,25 @@ defmodule EhOsContract.Contract.Links.Processes do
   defp waits_on(%{domain: domain} = p, included) do
     externals = Enum.map(domain.externals, & &1.name)
 
+    used =
+      for %{contract: %{model: model}} <- included,
+          external <-
+            Enum.map(model.events, & &1.depends_on) ++
+              Enum.flat_map(model.effects, &Enum.map(List.wrap(&1.calls), fn c -> system(c) end)),
+          external != nil,
+          into: MapSet.new(),
+          do: external
+
     for promise <- p.declarations.promises,
         name <- Enum.uniq(promise.waits_on),
-        problem <- waits_on_problems(name, depends_on(promise, included), externals, domain) do
+        problem <-
+          waits_on_problems(name, depends_on(promise, included), used, externals, domain) do
       {"X4: promise #{inspect(promise.name)}: waits_on #{inspect(name)} #{problem}",
        Links.at(promise)}
     end
   end
 
-  defp waits_on_problems(name, depends, externals, domain) do
+  defp waits_on_problems(name, depends, used, externals, domain) do
     cond do
       name not in externals ->
         ["is not an external of #{inspect(domain.module)}; #{suggest(name, externals)}"]
@@ -182,10 +195,20 @@ defmodule EhOsContract.Contract.Links.Processes do
             "saying so; leave it out of waits_on"
         ]
 
+      not MapSet.member?(used, name) ->
+        [
+          "is used by no contract the process includes: no event of one depends_on it and " <>
+            "no effect calls it, so no outage of it is recorded where the report reads; " <>
+            "include the contract whose step calls it"
+        ]
+
       true ->
         []
     end
   end
+
+  defp system({external, _operation}), do: external
+  defp system(external), do: external
 
   # --- X9, X4: scenarios -----------------------------------------------------------
 

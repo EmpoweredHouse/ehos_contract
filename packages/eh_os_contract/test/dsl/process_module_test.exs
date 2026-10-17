@@ -129,6 +129,28 @@ defmodule EhOsContract.ProcessModuleTest do
                without.digests["promise:reported_within_two_days"]
     end
 
+    test "waits_on is a set: its order moves neither the promise's digest nor the deploy's" do
+      waits = fn list ->
+        replace(
+          @body,
+          "or_else :reporting_not_required\n",
+          "or_else :reporting_not_required\n    waits_on #{list}\n"
+        )
+      end
+
+      one = compile_process("WaitsOnOrderOne", waits.("[:register, :mail]"))
+      other = compile_process("WaitsOnOrderOther", waits.("[:mail, :register]"))
+
+      assert [%{waits_on: [:mail, :register]} = first] = one.promises
+      assert [second] = other.promises
+
+      assert one.digests["promise:reported_within_two_days"] ==
+               other.digests["promise:reported_within_two_days"]
+
+      assert EhOsContract.Deployment.promise_digest(first) ==
+               EhOsContract.Deployment.promise_digest(second)
+    end
+
     test "without a deadline or the optional options, the model says nil" do
       model = compile_process("NoDeadline", @body)
 

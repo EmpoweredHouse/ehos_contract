@@ -457,6 +457,23 @@ defmodule EhOsContract.PagesTest do
                  "what rests on it: #{event.("payer_eligibility_checked")}"
     end
 
+    test "a promise that waits on a system says so, and the owner reads it without its code name" do
+      run = EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun)
+      [first | rest] = run.promises
+      run = %{run | promises: [Map.put(first, :waits_on, [:payer_registry]) | rest]}
+
+      render =
+        &Pages.render(UniversalityGate.Domain, [UniversalityGate.TreatmentEpisode, run], &1)
+
+      page = render.([])["processes/treatment_episode_run.md"]
+      assert page =~ ", waiting on "
+      assert page =~ "the promises that wait on it: `referral_reaches_a_decision`"
+
+      owner = render.(audience: :owner)["processes/treatment_episode_run.md"]
+      assert owner =~ " · a promise above waits on it"
+      refute owner =~ "referral_reaches_a_decision"
+    end
+
     test "an unconfirmed promise says the report leaves it out" do
       run = EhOsContract.Model.fetch(UniversalityGate.TreatmentEpisodeRun)
       [first | rest] = run.promises

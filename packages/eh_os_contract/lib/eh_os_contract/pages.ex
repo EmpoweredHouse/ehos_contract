@@ -1292,12 +1292,12 @@ defmodule EhOsContract.Pages do
         external = Enum.find(site.domain.externals, &(&1.name == x))
         name = if external, do: labelled(site, external), else: code(x)
         on_it = for {^x, e} <- resting, do: included_event(site, %{e | terminal: false})
-        waits = for {^x, pr} <- waiting, do: code(pr.name)
+        waits = for {^x, pr} <- waiting, do: pr
 
         bullet(
           ["#{name}"] ++
             if(on_it == [], do: [], else: [" · what rests on it: " | joined(on_it)]) ++
-            if(waits == [], do: [], else: [" · the promises that wait on it: " | joined(waits)])
+            waiting_on(site, waits)
         )
       end
 
@@ -1316,6 +1316,17 @@ defmodule EhOsContract.Pages do
         ]
     end
   end
+
+  # The promises that wait on a system. The owner reads a promise by its rule, above, and
+  # not by its name in the code.
+  defp waiting_on(_site, []), do: []
+  defp waiting_on(%{audience: :owner}, [_]), do: [" · a promise above waits on it"]
+
+  defp waiting_on(%{audience: :owner}, waits),
+    do: [" · #{length(waits)} promises above wait on it"]
+
+  defp waiting_on(_site, waits),
+    do: [" · the promises that wait on it: " | joined(Enum.map(waits, &code(&1.name)))]
 
   # A process module's scenarios: a promise judged at a moment, after what happened.
   defp process_scenarios(_site, _events, _p, []), do: []

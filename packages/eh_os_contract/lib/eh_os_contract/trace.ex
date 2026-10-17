@@ -317,34 +317,19 @@ defmodule EhOsContract.Trace do
       for name <- [promise.eventually, promise.or_else],
           name != nil,
           {contract, event} = Model.declaring(model, name),
-          external = event.depends_on,
-          external != nil,
-          at <- observed(contract, [external]) do
-        at
-      end
+          event.depends_on != nil,
+          do: {contract, event.depends_on}
+
+    # The contracts the process includes as the one rule for its includes reads them,
+    # which leaves out one this node cannot load or of another domain.
+    included = model |> Model.process_events() |> Enum.map(& &1.contract) |> Enum.uniq()
 
     waited =
-      case Map.get(promise, :waits_on, []) do
-        [] ->
-          []
+      for external <- Map.get(promise, :waits_on, []),
+          contract <- included,
+          do: {contract, external}
 
-        externals ->
-          contracts =
-            for stage <- Model.process(model).stages,
-                include <- stage.includes,
-                uniq: true,
-                do: include.contract
-
-          for contract <- contracts, at <- observed(contract, externals), do: at
-      end
-
-    Enum.uniq(awaited ++ waited)
-  end
-
-  @spec observed(module(), [atom()]) :: [DateTime.t()]
-  defp observed(contract, externals) do
-    observations = EhOsContract.Dependency.observations_by_external(contract)
-    Enum.flat_map(externals, &Map.get(observations, to_string(&1), []))
+    EhOsContract.Dependency.observations(Enum.uniq(awaited ++ waited))
   end
 
   @spec judge_per_run(trace(), [occurrence()], DateTime.t(), [DateTime.t()]) :: [verdict()]

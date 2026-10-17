@@ -532,7 +532,8 @@ defmodule EhOsContract.GraphRenderer.View do
   # colour of their own; each promise as a heavy arrow from the event that opens it to
   # the one that keeps it, with its window, and a dotted one to the event that keeps it
   # the other way; and the external systems its events rest on, hung off them by a dotted
-  # line, since an outage of one suspends a promise. A stage with more than one event says
+  # line, since an outage of one suspends a promise, as are those a promise waits on, off
+  # the event that opens it. A stage with more than one event says
   # on its title that it claims no order inside. Empty for another kind of document.
   # Called by `build/3`; public for its tests.
   @doc false

@@ -58,7 +58,7 @@ defmodule Taxvision.Processes.AccountingMonth do
     eventually :accounting_month_opened
     within {2, :day}
     or_else :registry_discrepancy_detected
-    waits_on([:registries])
+    waits_on [:registries]
     source "WF 00:34:17-00:36:07 (P1)"
   end
 

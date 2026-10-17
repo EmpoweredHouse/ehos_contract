@@ -121,7 +121,7 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  # Plan DD, P2e (#220): the clinic's visit, from three contexts' events.
+  # Plan DD, OW1 (#355): what a promise waits on through an earlier step.
   test "the accounting month's promise waits on the registries, and the clinical visit's on nothing" do
     d = Document.process(Taxvision.Processes.AccountingMonth)
     promise = "promise:taxvision.accounting_month:month_opens_or_is_blocked"
@@ -133,6 +133,7 @@ defmodule EhOsContract.GraphDocumentTest do
     assert Document.process(Rehmed.Processes.ClinicalVisit)["relations"]["waits_on"] == []
   end
 
+  # Plan DD, P2e (#220): the clinic's visit, from three contexts' events.
   test "the clinical visit's document has its stages, the events from three contracts and its promise" do
     d = Document.process(Rehmed.Processes.ClinicalVisit)
     stage = &Document.id([:stage, "rehmed.clinical_visit", &1])
