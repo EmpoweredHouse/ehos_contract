@@ -61,9 +61,9 @@ and the `ehos-dev:release` skill makes one.
   hold), required made optional, an enum given members, `:integer` made `:decimal`, `:id` made `:string`, inside
   lists and domain values too. A raised version's steps must cover what changed from every earlier recorded version:
   `rename:` a renamed field, `default:` a new required one, a function anything else. A field that becomes personal or
-  stops being, or is sealed by another identifier, a field holding personal data whose type or shape changes, an
-  identifier that seals a field given another `subject:`, and a field the log tags rows with that the version before
-  did not tag, are refused even with a step. `--forget TYPE` drops an event's versions from the declared one up, or
+  stops being, or is sealed by another identifier, a field holding personal data whose type or shape changes, a
+  personal field made required where old rows may lack it, an identifier that seals a field given another
+  `subject:`, and a field the log tags rows with that the version before did not tag, are refused even with a step. `--forget TYPE` drops an event's versions from the declared one up, or
   all of an event no longer declared, and records what is declared, for versions no log holds rows of. To use it, run
   `mix eh_os_contract.schema` once, commit the file and run `--check` beside `mix eh_os_contract.check`.
 
