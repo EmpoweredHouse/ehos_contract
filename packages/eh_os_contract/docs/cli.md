@@ -216,9 +216,10 @@ Keeps `eh_os_contract.lock`, the record of every event's fields by its
 `schema_version`, and refuses a change to the fields of a version it holds.
 
 The log keeps every event it ever recorded and reads each one again whenever it
-rebuilds a unit or a list, with today's declaration. A row written with fields the
-declaration no longer has does not read, so a change to an event's fields raises its
-`schema_version` and says, in an `upcast` step, how an old row reads. Nothing in a
+rebuilds a unit or a list, with today's declaration. A row that lacks a field the
+declaration now requires, or holds one in another shape or under another seal, does
+not read, so a change to an event's fields raises its `schema_version` and says, in an
+`upcast` step, how an old row reads. Nothing in a
 compile notices a change made without that: the code compiles, the tests pass on an
 empty log, and the deployed application fails on its first old row. This task
 notices it where the code is written.
@@ -267,10 +268,15 @@ writing nothing, when:
     each field that changed. Raise the event's `schema_version` and add its `upcast`
     step: the new version is recorded beside the old one.
   * the file holds a version newer than the one declared, whose rows would not read.
+  * the file holds an event no contract declares any more, renamed or removed, whose
+    rows would not read either.
 
-An event no contract declares any more stays in the file, since a log may still hold
-its rows. `--forget TYPE` drops every version of one event and records its current
-one: it says that no log holds rows of it, as of an event added in a branch that was
+Any change to a recorded version is refused, an optional field added included: raise
+the version, with an empty `upcast` step where old rows read as they are.
+
+`--forget TYPE` drops the event's versions from the one its contract declares up, or
+every version of an event no contract declares, and records what is declared: it says
+that no log holds rows of what it drops, as of a version added on a branch that was
 never deployed. It may be given more than once.
 
 `--check` writes nothing and fails when recording would change the file, or refuse.
