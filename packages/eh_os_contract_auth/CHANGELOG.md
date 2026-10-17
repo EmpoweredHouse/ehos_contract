@@ -24,16 +24,9 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-10-17
+## [0.4.0] - 2026-10-17
 
 ### Added
-
-- **`ehos.yaml/v4` and `ehos.manifest/v4`** (eh-os D-98, D-99, #306). `mix eh_os_contract.manifest` reads an
-  `ehos.yaml/v4`, EHOS's file copied byte for byte, and writes an `ehos.manifest/v4` for it, so an application
-  can name `needs.database.seed`, the command EHOS runs to seed an ephemeral environment, and `needs.secrets`,
-  the secrets its workload is given as environment variables. Both are carried as written. A v1 to v3 file
-  still makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release
-  produces, now ends with `ehos.manifest/v4`, which only an EHOS that accepts it (0.9 and later) deploys.
 
 - **`sign_in: absolute_limit`** (eh-os D-113): how long a session lasts from the person's sign-in at EHOS, in
   seconds, from a minute to 366 days; twelve hours when not given, as before (eh-os D-66). A host maps it from
@@ -46,6 +39,17 @@ and the `ehos-dev:release` skill makes one.
   than it. With an installation's limit longer than the application's, EHOS gave a code for a sign-in the new
   session refused at once, and the browser went between the page and EHOS without end. An application must run
   this version before its installation raises its limits.
+
+## [0.3.0] - 2026-10-17
+
+### Added
+
+- **`ehos.yaml/v4` and `ehos.manifest/v4`** (eh-os D-98, D-99, #306). `mix eh_os_contract.manifest` reads an
+  `ehos.yaml/v4`, EHOS's file copied byte for byte, and writes an `ehos.manifest/v4` for it, so an application
+  can name `needs.database.seed`, the command EHOS runs to seed an ephemeral environment, and `needs.secrets`,
+  the secrets its workload is given as environment variables. Both are carried as written. A v1 to v3 file
+  still makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release
+  produces, now ends with `ehos.manifest/v4`, which only an EHOS that accepts it (0.9 and later) deploys.
 
 ## [0.2.0] - 2026-10-16
 
