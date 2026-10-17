@@ -51,7 +51,12 @@ A contract often keeps the number of something a sibling decides: a clinic's set
 that booking made. The field's type says so, as it says which entity a field identifies:
 `field :visit_id, {:id, :visit}`. A unit keyed by that number says it in its identity, `identity visit_id:
 {:id, :visit}`. The name has to match exactly one unit of the domain's contracts or entity of the domain, or the
-contract does not compile.
+contract does not compile ([`X3`](../contract.md#refusals-x)).
+
+The compiler looks for the unit among the contracts of the project it compiles, so **a domain's contracts
+compile in one project**. A unit whose contract sits in a dependency is not seen: a correct reference to it is
+refused, and a reference to a name it shares with an entity of the domain resolves to the entity, so the pages
+and the context map's count point at the entity.
 
 A reference carries no event. It says what a number means, so the pages link the field to the unit, and
 `mix eh_os_contract.check` counts it as a dependency of this context on the sibling's: the context map has
