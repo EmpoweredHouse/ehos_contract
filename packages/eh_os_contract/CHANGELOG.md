@@ -48,6 +48,12 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-17
+
+### Changed
+
+- Released with eh_os_contract_auth 0.4.0; nothing in the engine changed.
+
 ## [0.6.0] - 2026-10-17
 
 ### Added
