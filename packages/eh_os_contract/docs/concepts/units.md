@@ -351,11 +351,11 @@ default for personal data, and a default that is not a value of its field
 A compile sees only today's declaration, so it cannot tell a field added to version 1 from version 1
 as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
 `mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
-them. `--check` fails when the declaration of a recorded version has other fields, or when a version is
-missing from the file:
+them. `--check` fails when the declaration of a recorded version has other fields, when the file
+records an event no contract declares any more, or when a version is missing from the file:
 
 ```
-** (Mix) an event version differs from eh_os_contract.lock:
+** (Mix) eh_os_contract.lock and the contracts disagree:
 
   * shop.orders.order_placed at schema_version 1: courier was added, [type: :string]. A row written
     at version 1 holds the fields the lock records, and is read with the declaration's: raise its
@@ -367,7 +367,8 @@ Run it beside `mix eh_os_contract.check`, and commit the file: a new version sho
 as the fields it records. A field's type there is what the log stores, so a domain value given another
 field changes every event that holds it, while renaming the value, relabelling a field or reordering
 the fields changes nothing. Any change to a recorded version is refused, an optional field added
-included. `--forget` is for an event no log holds rows of, as one added on a branch never deployed.
+included. `--forget TYPE` drops the event's versions from the declared one up, and is for versions
+no log holds rows of, as one added on a branch never deployed.
 
 ## What the compiler refuses
 

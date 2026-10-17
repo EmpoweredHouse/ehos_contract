@@ -265,9 +265,10 @@ mix eh_os_contract.subscriptions  where each subscription stands, and a way past
 mix eh_os_contract.rewrap         the subjects' data keys, rewrapped with the current master key
 ```
 
-`mix eh_os_contract.check` and `mix eh_os_contract.schema --check` are the ones to put in CI. Its findings are warnings and notices, each under a
+`mix eh_os_contract.check` is the one to put in CI. Its findings are warnings and notices, each under a
 stable name [listed with its reason](docs/rules.md); `--warnings-as-errors` fails the build on a warning.
-What is unambiguously wrong never gets that far: it does not compile.
+What is unambiguously wrong never gets that far: it does not compile. Beside it in CI goes
+`mix eh_os_contract.schema --check`, which fails when an event's fields changed without a new version.
 
 ## What it deliberately does not do
 
