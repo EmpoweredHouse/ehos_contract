@@ -24,6 +24,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
 ### Added
 
 - **`ehos.yaml/v4` and `ehos.manifest/v4`** (eh-os D-98, D-99, #306). `mix eh_os_contract.manifest` reads an

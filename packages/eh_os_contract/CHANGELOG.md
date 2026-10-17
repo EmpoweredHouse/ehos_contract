@@ -48,6 +48,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-17
+
 ### Added
 
 - **A change to an event's fields made without a new version is noticed** (plan DD, stage V3, #340): `mix
@@ -56,17 +58,19 @@ and the `ehos-dev:release` skill makes one.
   whether a field may be absent, is personal and whose identifier seals it. `--check` writes nothing and fails on a
   missing file or entry, on a recorded version whose fields changed so that an old row would not read, naming each
   field, on a recorded version newer than the declaration, and on an event no contract declares any more, renamed or
-  removed. A change old rows still read is recorded in place (plan DD, stage V4, #346): a field added as optional, a
-  field removed (kept, marked `removed: true`, so a field declared again under its name is held to what old rows
-  hold), required made optional, an enum given members, `:integer` made `:decimal`, `:id` made `:string`, inside
-  lists and domain values too. A raised version's steps must cover what changed from every earlier recorded version:
-  `rename:` a renamed field, `default:` a new required one, a function anything else. Refused even with a step: a
-  field that becomes personal or stops being, or is sealed by another identifier; a personal field whose type
-  changes, or a value holding personal data whose shape does; a required personal field, at any depth, that old rows
-  may lack; an identifier that seals a field given another `subject:`; and a field the log tags rows with that the
-  version before did not tag. `--forget TYPE` drops an event's versions from the declared one up, or
-  all of an event no longer declared, and records what is declared, for versions no log holds rows of. To use it, run
+  removed. `--forget TYPE` drops an event's versions from the declared one up, or all of an event no longer
+  declared, and records what is declared, for versions no log holds rows of. To use it, run
   `mix eh_os_contract.schema` once, commit the file and run `--check` beside `mix eh_os_contract.check`.
+
+- **The lock records in place a change old rows still read, and holds a new version's steps to what changed**
+  (plan DD, stage V4, #346). Recorded in place: a field added as optional, a field removed (kept, marked `removed:
+  true`, so a field declared again under its name is held to what old rows hold), required made optional, an enum
+  given members, `:integer` made `:decimal`, `:id` made `:string`, inside lists and domain values too. A raised
+  version's steps must cover what changed from every earlier recorded version: `rename:` a renamed field, `default:`
+  a new required one, a function anything else. Refused even with a step: a field that becomes personal or stops
+  being, or is sealed by another identifier; a personal field whose type changes, or a value holding personal data
+  whose shape does; a required personal field, at any depth, that old rows may lack; an identifier that seals a
+  field given another `subject:`; and a field the log tags rows with that the version before did not tag.
 
 - **An old row read through a function, where a rename and a default cannot say the change** (plan DD, stage V2,
   #338): `upcast from: 1, function: :amount_from_minor` names a function of the unit's implementation, which takes a
