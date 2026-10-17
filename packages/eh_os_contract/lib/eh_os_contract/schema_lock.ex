@@ -104,8 +104,9 @@ defmodule EhOsContract.SchemaLock do
       for {type, versions} <- Enum.sort(lock), not Map.has_key?(declared, type) do
         "#{type}: the lock records it at schema_version " <>
           Enum.map_join(versions |> Map.keys() |> Enum.sort(), ", ", &to_string/1) <>
-          ", and no contract declares it, so its rows would not read. Declare it again, or, " <>
-          "if no log holds rows of it, run `mix eh_os_contract.schema --forget #{type}`"
+          ", and no contract of the applications read (`applications:`, less `exclude:`) " <>
+          "declares it, so its rows would not read. Declare it again, or, if no log holds rows " <>
+          "of it, run `mix eh_os_contract.schema --forget #{type}`"
       end
 
     problems = problems ++ undeclared
@@ -222,11 +223,17 @@ defmodule EhOsContract.SchemaLock do
     {:ok, value(quoted)}
   catch
     :not_literal -> {:error, "it is not an Elixir literal"}
+    {:twice, :key} -> {:error, "a map in it gives a key twice"}
   end
 
   defp value(term) when is_atom(term) or is_number(term) or is_binary(term), do: term
   defp value(list) when is_list(list), do: Enum.map(list, &value/1)
-  defp value({:%{}, _meta, pairs}) when is_list(pairs), do: Map.new(pairs, &pair_value/1)
+  # A key given twice, as a merge resolved by hand leaves both sides, would keep one side.
+  defp value({:%{}, _meta, pairs}) when is_list(pairs) do
+    pairs = Enum.map(pairs, &pair_value/1)
+    map = Map.new(pairs)
+    if map_size(map) == length(pairs), do: map, else: throw({:twice, :key})
+  end
 
   defp value({:{}, _meta, elements}) when is_list(elements),
     do: elements |> value() |> List.to_tuple()
@@ -239,6 +246,10 @@ defmodule EhOsContract.SchemaLock do
   defp pair_value(_code), do: throw(:not_literal)
 
   defp quoted(text) do
+    if String.valid?(text), do: parsed(text), else: {:error, "it is not UTF-8 text"}
+  end
+
+  defp parsed(text) do
     case Code.string_to_quoted(text) do
       {:ok, quoted} ->
         {:ok, quoted}
@@ -265,7 +276,7 @@ defmodule EhOsContract.SchemaLock do
 
   defp fields?(fields),
     do:
-      Keyword.keyword?(fields) and
+      Keyword.keyword?(fields) and fields == Enum.uniq_by(fields, &elem(&1, 0)) and
         Enum.all?(fields, fn {_name, field} ->
           Keyword.keyword?(field) and Keyword.has_key?(field, :type)
         end)
@@ -290,6 +301,7 @@ defmodule EhOsContract.SchemaLock do
   end
 
   defp normal_type({:list, inner}), do: {:list, normal_type(inner)}
+  defp normal_type({:enum, members}) when is_list(members), do: {:enum, Enum.sort(members)}
 
   defp normal_type({:fields, fields} = type),
     do: if(fields?(fields), do: {:fields, normal_fields(fields)}, else: type)

@@ -16,7 +16,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
       mix eh_os_contract.schema                  # record what is new
       mix eh_os_contract.schema --check          # fail when anything is new or changed
-      mix eh_os_contract.schema --forget TYPE    # drop an event's versions, record it again
+      mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, record again
 
   It reads every contract of the applications `config :eh_os_contract, applications:`
   names, as `mix eh_os_contract.check` does, and keeps the file beside the project's
@@ -118,7 +118,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
     name = Path.relative_to_cwd(path)
 
     forgotten =
-      for type <- Keyword.get_values(opts, :forget), reduce: kept do
+      for type <- opts |> Keyword.get_values(:forget) |> Enum.uniq(), reduce: kept do
         lock ->
           unless Map.has_key?(lock, type) or Map.has_key?(declared, type),
             do: Mix.raise("--forget #{type}: no event of that type is in #{name} or declared")
@@ -146,14 +146,29 @@ defmodule Mix.Tasks.EhOsContract.Schema do
         )
 
       true ->
-        # Beside it and renamed over it, so that a write cut short leaves the old file.
-        File.write!(path <> ".tmp", SchemaLock.encode(merged))
-        File.rename!(path <> ".tmp", path)
+        write!(path, SchemaLock.encode(merged))
 
         case summary(kept, merged) do
           [] -> "#{name}: written, and no contract declares an event"
           said -> "#{name}: " <> Enum.join(said, "; ")
         end
+    end
+  end
+
+  # Beside it and renamed over it, so that a write cut short leaves the old file.
+  defp write!(path, text) do
+    temporary = path <> ".tmp"
+
+    with :ok <- File.write(temporary, text),
+         :ok <- File.rename(temporary, path) do
+      :ok
+    else
+      {:error, reason} ->
+        File.rm(temporary)
+
+        Mix.raise(
+          "#{Path.relative_to_cwd(path)} cannot be written: #{:file.format_error(reason)}"
+        )
     end
   end
 

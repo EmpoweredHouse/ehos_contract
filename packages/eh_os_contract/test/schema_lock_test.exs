@@ -157,7 +157,7 @@ defmodule EhOsContract.SchemaLockTest do
 
       assert problem =~
                "shop.orders.order_lost: the lock records it at schema_version 1, 2, and no " <>
-                 "contract declares it"
+                 "contract of the applications read (`applications:`, less `exclude:`) declares it"
 
       forgotten = SchemaLock.forget(kept, "shop.orders.order_lost")
       assert SchemaLock.merge(forgotten, lock(fields())) == {:ok, lock(fields())}
@@ -180,10 +180,24 @@ defmodule EhOsContract.SchemaLockTest do
       assert SchemaLock.decode(SchemaLock.encode(%{})) == {:ok, %{}}
     end
 
+    test "refuses a key or a field given twice, and text that is not UTF-8" do
+      for twice <- [
+            ~s|%{"a" => %{1 => []}, "a" => %{2 => []}}|,
+            ~s|%{"a" => %{1 => [], 1 => []}}|
+          ] do
+        assert SchemaLock.decode(twice) == {:error, "a map in it gives a key twice"}
+      end
+
+      assert {:error, "it is not a map of event types to versions"} =
+               SchemaLock.decode(~s|%{"a" => %{1 => [x: [type: :id], x: [type: :string]]}}|)
+
+      assert SchemaLock.decode("# caf" <> <<0xE9>> <> "\n%{}") == {:error, "it is not UTF-8 text"}
+    end
+
     test "reads fields and their keys in any order as written in order" do
       shuffled = ~s"""
       %{"#{@type_name}" => %{1 => [
-        total: [type: {:fields, [currency: [type: {:enum, [:eur, :pln]}], amount: [type: :decimal]]}],
+        total: [type: {:fields, [currency: [type: {:enum, [:pln, :eur]}], amount: [type: :decimal]]}],
         order_id: [type: :id],
         note: [personal: :customer_id, optional: true, type: :string],
         customer_id: [subject: :customer, type: :id],
@@ -260,11 +274,16 @@ defmodule EhOsContract.SchemaLockTest do
       File.write!(path, SchemaLock.encode(Map.merge(gone, lock(fields()))))
       changed = lock(fields() ++ [field(:courier, :string)])
 
-      assert_raise Mix.Error, ~r/no contract declares it/, fn ->
+      assert_raise Mix.Error, ~r/no contract of the applications read/, fn ->
         Schema.lock(path, lock(fields()), [])
       end
 
-      said = Schema.lock(path, changed, forget: @type_name, forget: "shop.orders.order_lost")
+      said =
+        Schema.lock(path, changed,
+          forget: @type_name,
+          forget: "shop.orders.order_lost",
+          forget: "shop.orders.order_lost"
+        )
 
       assert said =~ "recorded #{@type_name} at 1; forgot shop.orders.order_lost at 1"
       assert SchemaLock.decode(File.read!(path)) == {:ok, changed}
@@ -289,6 +308,21 @@ defmodule EhOsContract.SchemaLockTest do
     test "says it wrote a lock with no event in it", %{path: path} do
       assert Schema.lock(path, %{}, []) =~ "no contract declares an event"
       assert SchemaLock.decode(File.read!(path)) == {:ok, %{}}
+    end
+
+    test "leaves the old file, and no temporary one, when it cannot write", %{path: path} do
+      Schema.lock(path, lock(fields()), [])
+      before = File.read!(path)
+      dir = Path.dirname(path)
+      File.chmod!(dir, 0o500)
+      on_exit(fn -> File.chmod(dir, 0o700) end)
+
+      assert_raise Mix.Error, ~r/cannot be written/, fn ->
+        Schema.lock(path, lock(fields(), 2), [])
+      end
+
+      assert File.read!(path) == before
+      refute File.exists?(path <> ".tmp")
     end
 
     test "refuses a file it cannot read", %{path: path} do
