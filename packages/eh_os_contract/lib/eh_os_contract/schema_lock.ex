@@ -13,10 +13,11 @@ defmodule EhOsContract.SchemaLock do
   # domain value renamed changes nothing, and one given another field changes every
   # event that holds it.
   #
-  # Once recorded, a version's fields do not change: a row written with them would not
-  # read. A version newer than the declaration is refused too, since its rows would not
-  # read either. An event no contract declares any more stays, since logs may still hold
-  # its rows, until it is forgotten, which is the person's statement that none do.
+  # Once recorded, a version's fields do not change: a row lacking a field the declaration
+  # now requires, or holding one in another shape or under another seal, would not read.
+  # A version newer than the declaration is refused too, and so is an event no contract
+  # declares any more, since their rows would not read either. Forgetting is the person's
+  # statement that no log holds rows of what is forgotten.
   @moduledoc false
 
   alias EhOsContract.Codec
@@ -28,11 +29,14 @@ defmodule EhOsContract.SchemaLock do
   @typedoc "The lock: each event type's fields, by `schema_version`, sorted by name."
   @type t :: %{String.t() => %{pos_integer() => [{atom(), field()}]}}
 
+  # The order `field/2` writes a field's keys in.
+  @keys %{type: 0, optional: 1, personal: 2, subject: 3}
+
   @header """
   # The fields of every event, by its type in the log and its schema_version, as the log
   # stores them. Written by `mix eh_os_contract.schema` and checked by its `--check`: a
-  # version's fields do not change once recorded, since rows written with them would not
-  # read. Commit this file.
+  # version's fields do not change once recorded, since rows written with them are read
+  # with today's declaration. Commit this file.
   """
 
   @doc false
@@ -86,7 +90,8 @@ defmodule EhOsContract.SchemaLock do
 
   @doc false
   # `lock` with each version `declared` that it lacks; refused, with a sentence a problem,
-  # when a version it holds differs from the declaration or is newer than it.
+  # when a version it holds differs from the declaration or is newer than it, or when it
+  # holds an event nothing declares.
   @spec merge(t(), t()) :: {:ok, t()} | {:error, [String.t()]}
   def merge(lock, declared) do
     problems =
@@ -94,6 +99,16 @@ defmodule EhOsContract.SchemaLock do
           {version, fields} <- versions,
           problem <- problems(type, version, fields, Map.get(lock, type, %{})),
           do: problem
+
+    undeclared =
+      for {type, versions} <- Enum.sort(lock), not Map.has_key?(declared, type) do
+        "#{type}: the lock records it at schema_version " <>
+          Enum.map_join(versions |> Map.keys() |> Enum.sort(), ", ", &to_string/1) <>
+          ", and no contract declares it, so its rows would not read. Declare it again, or, " <>
+          "if no log holds rows of it, run `mix eh_os_contract.schema --forget #{type}`"
+      end
+
+    problems = problems ++ undeclared
 
     if problems == [] do
       {:ok, Map.merge(lock, declared, fn _type, kept, current -> Map.merge(kept, current) end)}
@@ -151,9 +166,18 @@ defmodule EhOsContract.SchemaLock do
   end
 
   @doc false
-  # `lock` without `type`, every version of it.
-  @spec forget(t(), String.t()) :: t()
-  def forget(lock, type), do: Map.delete(lock, type)
+  # `lock` without the versions of `type` from `from` up, and without `type` once none is
+  # left.
+  @spec forget(t(), String.t(), pos_integer()) :: t()
+  def forget(lock, type, from \\ 1) do
+    kept =
+      for {version, fields} <- Map.get(lock, type, %{}),
+          version < from,
+          into: %{},
+          do: {version, fields}
+
+    if kept == %{}, do: Map.delete(lock, type), else: Map.put(lock, type, kept)
+  end
 
   @doc false
   # The lock as the file holds it: an Elixir literal, one field a line, sorted.
@@ -187,7 +211,7 @@ defmodule EhOsContract.SchemaLock do
     with {:ok, quoted} <- quoted(text),
          {:ok, lock} <- literal(quoted),
          true <- lock?(lock) || {:error, "it is not a map of event types to versions"} do
-      {:ok, lock}
+      {:ok, Map.new(lock, fn {type, versions} -> {type, Map.new(versions, &normal/1)} end)}
     end
   end
 
@@ -241,6 +265,34 @@ defmodule EhOsContract.SchemaLock do
 
   defp fields?(fields),
     do:
-      is_list(fields) and
-        Enum.all?(fields, &match?({name, [{:type, _} | _]} when is_atom(name), &1))
+      Keyword.keyword?(fields) and
+        Enum.all?(fields, fn {_name, field} ->
+          Keyword.keyword?(field) and Keyword.has_key?(field, :type)
+        end)
+
+  # A version as `encode/1` writes it, whatever order a hand resolving a merge left its
+  # fields and their keys in, so that only a change of what they say is one.
+  defp normal({version, fields}), do: {version, normal_fields(fields)}
+
+  defp normal_fields(fields) do
+    fields
+    |> Enum.map(fn {name, field} -> {name, normal_field(field)} end)
+    |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  defp normal_field(field) do
+    field
+    |> Enum.map(fn
+      {:type, type} -> {:type, normal_type(type)}
+      other -> other
+    end)
+    |> Enum.sort_by(fn {key, _value} -> {Map.get(@keys, key, map_size(@keys)), key} end)
+  end
+
+  defp normal_type({:list, inner}), do: {:list, normal_type(inner)}
+
+  defp normal_type({:fields, fields} = type),
+    do: if(fields?(fields), do: {:fields, normal_fields(fields)}, else: type)
+
+  defp normal_type(type), do: type
 end

@@ -58,11 +58,20 @@ defmodule EhOsContract.SchemaLockTest do
              ]
     end
 
-    test "a reference is an :id, a list what it holds, a value its inner type" do
-      fields = [field(:visit, {:id, :visit}), field(:counts, {:list, :count})]
+    test "a reference is an :id, a list what it holds, a value its inner type or fields" do
+      fields = [
+        field(:visit, {:id, :visit}),
+        field(:counts, {:list, :count}),
+        field(:totals, {:list, :money})
+      ]
 
       assert SchemaLock.fields(fields, values()) == [
                counts: [type: {:list, :integer}],
+               totals: [
+                 type:
+                   {:list,
+                    {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}}
+               ],
                visit: [type: :id]
              ]
     end
@@ -92,7 +101,9 @@ defmodule EhOsContract.SchemaLockTest do
     test "records what the lock lacks, and keeps the rest" do
       other = %{"shop.orders.order_cancelled" => %{1 => [order_id: [type: :id]]}}
 
-      assert SchemaLock.merge(other, lock(fields())) == {:ok, Map.merge(other, lock(fields()))}
+      both = Map.merge(other, lock(fields()))
+
+      assert SchemaLock.merge(other, both) == {:ok, both}
       assert SchemaLock.merge(lock(fields()), lock(fields())) == {:ok, lock(fields())}
     end
 
@@ -104,7 +115,9 @@ defmodule EhOsContract.SchemaLockTest do
          "channel was [type: {:enum, [:shop, :web]}] and is [type: {:enum, [:web]}]"},
         {replace(fields(), :note, field(:note, :string, optional: true)),
          "note was [type: :string, optional: true, personal: :customer_id] and is"},
-        {replace(fields(), :order_id, field(:order_id, :id, optional: true)), "order_id was"}
+        {replace(fields(), :order_id, field(:order_id, :id, optional: true)), "order_id was"},
+        {replace(fields(), :customer_id, field(:customer_id, :id, subject: :patient)),
+         "customer_id was [type: :id, subject: :customer] and is [type: :id, subject: :patient]"}
       ]
 
       for {fields, said} <- changes do
@@ -136,15 +149,25 @@ defmodule EhOsContract.SchemaLockTest do
       assert problem =~ "the lock records schema_version 2, and its contract declares 1"
     end
 
-    test "keeps an event no contract declares any more until it is forgotten" do
-      gone = %{"shop.orders.order_lost" => %{1 => [order_id: [type: :id]]}}
+    test "refuses an event no contract declares any more, until it is forgotten" do
+      gone = %{"shop.orders.order_lost" => %{1 => [order_id: [type: :id]], 2 => []}}
+      kept = Map.merge(gone, lock(fields()))
 
-      assert {:ok, merged} = SchemaLock.merge(Map.merge(gone, lock(fields())), lock(fields()))
-      assert Map.has_key?(merged, "shop.orders.order_lost")
+      assert {:error, [problem]} = SchemaLock.merge(kept, lock(fields()))
 
-      refute merged
-             |> SchemaLock.forget("shop.orders.order_lost")
-             |> Map.has_key?("shop.orders.order_lost")
+      assert problem =~
+               "shop.orders.order_lost: the lock records it at schema_version 1, 2, and no " <>
+                 "contract declares it"
+
+      forgotten = SchemaLock.forget(kept, "shop.orders.order_lost")
+      assert SchemaLock.merge(forgotten, lock(fields())) == {:ok, lock(fields())}
+    end
+
+    test "forgets an event's versions from the one given up, and keeps those below" do
+      kept = %{@type_name => %{1 => [a: [type: :id]], 2 => [b: [type: :id]], 3 => []}}
+
+      assert SchemaLock.forget(kept, @type_name, 2) == %{@type_name => %{1 => [a: [type: :id]]}}
+      assert SchemaLock.forget(kept, @type_name, 1) == %{}
     end
   end
 
@@ -155,6 +178,20 @@ defmodule EhOsContract.SchemaLockTest do
       assert text =~ ~r/^      customer_id: \[type: :id, subject: :customer\],$/m
       assert SchemaLock.decode(text) == {:ok, lock(fields())}
       assert SchemaLock.decode(SchemaLock.encode(%{})) == {:ok, %{}}
+    end
+
+    test "reads fields and their keys in any order as written in order" do
+      shuffled = ~s"""
+      %{"#{@type_name}" => %{1 => [
+        total: [type: {:fields, [currency: [type: {:enum, [:eur, :pln]}], amount: [type: :decimal]]}],
+        order_id: [type: :id],
+        note: [personal: :customer_id, optional: true, type: :string],
+        customer_id: [subject: :customer, type: :id],
+        channel: [type: {:enum, [:shop, :web]}]
+      ]}}
+      """
+
+      assert SchemaLock.decode(shuffled) == {:ok, lock(fields())}
     end
 
     test "refuses what is not a literal, and never runs it" do
@@ -223,6 +260,10 @@ defmodule EhOsContract.SchemaLockTest do
       File.write!(path, SchemaLock.encode(Map.merge(gone, lock(fields()))))
       changed = lock(fields() ++ [field(:courier, :string)])
 
+      assert_raise Mix.Error, ~r/no contract declares it/, fn ->
+        Schema.lock(path, lock(fields()), [])
+      end
+
       said = Schema.lock(path, changed, forget: @type_name, forget: "shop.orders.order_lost")
 
       assert said =~ "recorded #{@type_name} at 1; forgot shop.orders.order_lost at 1"
@@ -231,6 +272,23 @@ defmodule EhOsContract.SchemaLockTest do
       assert_raise Mix.Error, ~r/--forget shop.orders.nothing/, fn ->
         Schema.lock(path, changed, forget: "shop.orders.nothing")
       end
+    end
+
+    test "--forget keeps the versions below the declared one", %{path: path} do
+      Schema.lock(path, lock(fields()), [])
+      Schema.lock(path, lock(fields() ++ [field(:courier, :string)], 2), [])
+      edited = lock(fields() ++ [field(:courier, :string, optional: true)], 2)
+
+      assert Schema.lock(path, edited, forget: @type_name) =~ "recorded #{@type_name} at 2"
+
+      assert {:ok, %{@type_name => %{1 => one, 2 => two}}} = SchemaLock.decode(File.read!(path))
+      assert one == lock(fields())[@type_name][1]
+      assert two == edited[@type_name][2]
+    end
+
+    test "says it wrote a lock with no event in it", %{path: path} do
+      assert Schema.lock(path, %{}, []) =~ "no contract declares an event"
+      assert SchemaLock.decode(File.read!(path)) == {:ok, %{}}
     end
 
     test "refuses a file it cannot read", %{path: path} do

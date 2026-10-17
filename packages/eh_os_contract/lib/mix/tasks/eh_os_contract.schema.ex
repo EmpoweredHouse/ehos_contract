@@ -6,9 +6,10 @@ defmodule Mix.Tasks.EhOsContract.Schema do
   `schema_version`, and refuses a change to the fields of a version it holds.
 
   The log keeps every event it ever recorded and reads each one again whenever it
-  rebuilds a unit or a list, with today's declaration. A row written with fields the
-  declaration no longer has does not read, so a change to an event's fields raises its
-  `schema_version` and says, in an `upcast` step, how an old row reads. Nothing in a
+  rebuilds a unit or a list, with today's declaration. A row that lacks a field the
+  declaration now requires, or holds one in another shape or under another seal, does
+  not read, so a change to an event's fields raises its `schema_version` and says, in an
+  `upcast` step, how an old row reads. Nothing in a
   compile notices a change made without that: the code compiles, the tests pass on an
   empty log, and the deployed application fails on its first old row. This task
   notices it where the code is written.
@@ -57,10 +58,15 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       each field that changed. Raise the event's `schema_version` and add its `upcast`
       step: the new version is recorded beside the old one.
     * the file holds a version newer than the one declared, whose rows would not read.
+    * the file holds an event no contract declares any more, renamed or removed, whose
+      rows would not read either.
 
-  An event no contract declares any more stays in the file, since a log may still hold
-  its rows. `--forget TYPE` drops every version of one event and records its current
-  one: it says that no log holds rows of it, as of an event added in a branch that was
+  Any change to a recorded version is refused, an optional field added included: raise
+  the version, with an empty `upcast` step where old rows read as they are.
+
+  `--forget TYPE` drops the event's versions from the one its contract declares up, or
+  every version of an event no contract declares, and records what is declared: it says
+  that no log holds rows of what it drops, as of a version added on a branch that was
   never deployed. It may be given more than once.
 
   `--check` writes nothing and fails when recording would change the file, or refuse.
@@ -117,7 +123,8 @@ defmodule Mix.Tasks.EhOsContract.Schema do
           unless Map.has_key?(lock, type) or Map.has_key?(declared, type),
             do: Mix.raise("--forget #{type}: no event of that type is in #{name} or declared")
 
-          SchemaLock.forget(lock, type)
+          from = declared |> Map.get(type, %{1 => []}) |> Map.keys() |> Enum.min()
+          SchemaLock.forget(lock, type, from)
       end
 
     merged =
@@ -142,7 +149,11 @@ defmodule Mix.Tasks.EhOsContract.Schema do
         # Beside it and renamed over it, so that a write cut short leaves the old file.
         File.write!(path <> ".tmp", SchemaLock.encode(merged))
         File.rename!(path <> ".tmp", path)
-        "#{name}: " <> Enum.join(summary(kept, merged), "; ")
+
+        case summary(kept, merged) do
+          [] -> "#{name}: written, and no contract declares an event"
+          said -> "#{name}: " <> Enum.join(said, "; ")
+        end
     end
   end
 
@@ -164,38 +175,43 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
   defp refusal(name, problems),
     do:
-      "#{if length(problems) == 1, do: "an event version differs", else: "#{length(problems)} event versions differ"} from #{name}:\n\n" <>
+      "#{name} and the contracts disagree:\n\n" <>
         Enum.map_join(problems, "\n\n", &("  * " <> &1))
 
   defp summary(kept, merged) do
-    recorded = versions(merged, kept)
-    dropped = versions(kept, merged, fn _fields, _other -> true end)
+    recorded = recorded(kept, merged)
+
+    dropped =
+      for {type, version, _fields} <- entries(kept),
+          not has?(merged, type, version),
+          do: {type, version}
 
     Enum.reject(
-      [listed("recorded", recorded), listed("forgot", dropped)],
+      [recorded && "recorded #{recorded}", listed(dropped) && "forgot #{listed(dropped)}"],
       &is_nil/1
     )
   end
 
-  # The versions `merged` holds and `kept` does not, as the person reads them.
-  defp recorded(kept, merged), do: listed(nil, versions(merged, kept))
-
-  # Each version of `lock` that `other` lacks, or, unless `same?` says otherwise, holds
-  # with other fields.
-  defp versions(lock, other, same? \\ &==/2) do
-    for {type, versions} <- Enum.sort(lock),
-        {version, fields} <- Enum.sort(versions),
-        kept = Map.get(other, type, %{}),
-        not Map.has_key?(kept, version) or not same?.(fields, Map.fetch!(kept, version)),
-        do: "#{type} at #{version}"
+  # The versions `merged` holds and `kept` does not hold alike, as the person reads them.
+  defp recorded(kept, merged) do
+    listed(
+      for {type, version, fields} <- entries(merged),
+          get_in(kept, [type, version]) != fields,
+          do: {type, version}
+    )
   end
 
-  defp listed(_verb, []), do: nil
-  defp listed(nil, [one]), do: one
-  defp listed(nil, many), do: "#{length(many)} event versions: #{Enum.join(many, ", ")}"
+  defp entries(lock),
+    do:
+      for(
+        {type, versions} <- Enum.sort(lock),
+        {version, fields} <- Enum.sort(versions),
+        do: {type, version, fields}
+      )
 
-  defp listed(verb, versions) when length(versions) > 5,
-    do: "#{verb} #{length(versions)} event versions"
+  defp has?(lock, type, version), do: Map.has_key?(Map.get(lock, type, %{}), version)
 
-  defp listed(verb, versions), do: "#{verb} #{Enum.join(versions, ", ")}"
+  defp listed([]), do: nil
+  defp listed(versions) when length(versions) > 5, do: "#{length(versions)} event versions"
+  defp listed(versions), do: Enum.map_join(versions, ", ", fn {type, v} -> "#{type} at #{v}" end)
 end
