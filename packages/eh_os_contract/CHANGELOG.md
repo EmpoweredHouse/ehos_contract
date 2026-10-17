@@ -48,6 +48,8 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-17
+
 ### Added
 
 - **Moves a verdict:** **A promise names the systems it waits on through an earlier step** (plan DD, stage OW1,
