@@ -269,8 +269,8 @@ contract and one of its events, or a list of them, and names the contract withou
 of one name are refused ([`N1`](#refusals-n)). The module refuses what it can see is wrong in itself: no `correlate` or an
 empty one, two, or a field named twice ([`R2`](#refusals-r)) or one of more than six fields ([`F9`](#refusals-f)), no stage, a stage that
 includes nothing, or an `include:` entry naming no event or no contract module ([`R3`](#refusals-r)), a promise or
-`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit, `deadline`
-twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
+`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit or longer than
+100 years, `deadline` twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
 under a run of it, named by its `id:`; `mix eh_os_contract.report`
 prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
@@ -469,7 +469,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `R2` | L2 | a process module without `correlate`, with an empty one, with two, or naming a field twice |
 | `R3` | L2 | a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R5` | L2 | a process module's promise whose `from`, `eventually` or `or_else`, or an `ends_on` event, the module does not include; `ends_on` declared twice |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit: a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, has an unknown unit, or is longer than 100 years (a year counted as 366 days, a month as a twelfth of that): a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
 
 <a id="refusals-k"></a>
 

@@ -283,7 +283,8 @@ under a term of a context whose events it includes when its id, a stage, a promi
   optional, personal or of another identifier ([`X6`](../contract.md#refusals-x)); two included events of one name ([`N1`](../contract.md#refusals-n)).
 - A promise naming an event the process does not include, an `ends_on` event it does not include, or
   `ends_on` twice ([`R5`](../contract.md#refusals-r)).
-- `within` or `deadline` in a calendar unit, negative, or malformed; `deadline` twice, or without `ends_on`
+- `within` or `deadline` in a calendar unit, negative, malformed or longer than 100 years; `deadline` twice, or
+  without `ends_on`
   ([`R6`](../contract.md#refusals-r)).
 - An `accountable` that is not an actor of the domain ([`X2`](../contract.md#refusals-x)); an `id:` another process of the system has
   ([`X7`](../contract.md#refusals-x)).
