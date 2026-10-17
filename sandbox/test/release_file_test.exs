@@ -32,7 +32,12 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
              "component" => "eh_os_contract",
              "version" => EhOsContract.version(),
              "commit" => @commit,
-             "produces" => ["ehos.manifest/v2", "ehos.manifest/v3", "eh_os_contract.api/v1"],
+             "produces" => [
+               "ehos.manifest/v2",
+               "ehos.manifest/v3",
+               "ehos.manifest/v4",
+               "eh_os_contract.api/v1"
+             ],
              "accepts" => ["ehos.credential/v1"],
              "requires" => %{},
              "packages" => %{

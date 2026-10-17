@@ -66,8 +66,8 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-EHOS deploys an image with its `ehos.manifest/v2`, or `v3` for an `ehos.yaml/v3`: the
-application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
+EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, or `v4` for an
+`ehos.yaml/v4` (which may name a seed and secrets): the application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
 offer. In CI, beside the image:
 
 ```bash
