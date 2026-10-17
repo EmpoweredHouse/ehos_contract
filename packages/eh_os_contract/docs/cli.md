@@ -226,7 +226,7 @@ notices it where the code is written.
 
     mix eh_os_contract.schema                  # record what is new
     mix eh_os_contract.schema --check          # fail when anything is new or changed
-    mix eh_os_contract.schema --forget TYPE    # drop an event's versions, record it again
+    mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, record again
 
 It reads every contract of the applications `config :eh_os_contract, applications:`
 names, as `mix eh_os_contract.check` does, and keeps the file beside the project's

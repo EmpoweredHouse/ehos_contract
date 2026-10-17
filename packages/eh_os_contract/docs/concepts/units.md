@@ -352,7 +352,8 @@ A compile sees only today's declaration, so it cannot tell a field added to vers
 as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
 `mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
 them. `--check` fails when the declaration of a recorded version has other fields, when the file
-records an event no contract declares any more, or when a version is missing from the file:
+records a version newer than the declared one or an event no contract declares any more, or when a
+version is missing from the file:
 
 ```
 ** (Mix) eh_os_contract.lock and the contracts disagree:
@@ -367,8 +368,9 @@ Run it beside `mix eh_os_contract.check`, and commit the file: a new version sho
 as the fields it records. A field's type there is what the log stores, so a domain value given another
 field changes every event that holds it, while renaming the value, relabelling a field or reordering
 the fields changes nothing. Any change to a recorded version is refused, an optional field added
-included. `--forget TYPE` drops the event's versions from the declared one up, and is for versions
-no log holds rows of, as one added on a branch never deployed.
+included. `--forget TYPE` drops the event's versions from the declared one up, or every version of an
+event no contract declares, and records what is declared: it is for versions no log holds rows of, as
+one added on a branch never deployed.
 
 ## What the compiler refuses
 
