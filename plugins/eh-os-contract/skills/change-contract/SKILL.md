@@ -45,11 +45,13 @@ comes first.
 **The schema lock notices a change made without a new version, after the fact.**
 `eh_os_contract.lock`, beside the project's `mix.lock`, records the fields of every event by its type
 and version, and `mix eh_os_contract.schema --check` fails when a recorded version's fields differ
-from the declaration: it names the field, as `courier was added, [type: :string]`. It refuses every
+from the declaration, naming the field (`courier was added, [type: :string]`), and when it records an
+event no contract declares any more, renamed or removed. It refuses every
 such change, an optional field added included, and it cannot say whether old rows exist. So its
 refusal starts this skill's analysis rather than settling it: raise the version with its step, or,
 when the count below is zero in every environment, `mix eh_os_contract.schema --forget TYPE` records
-the new fields in place of the old.
+the new fields in place of the old. It drops the versions from the declared one up and keeps those
+below, whose rows a log may hold; of an event no longer declared it drops every version.
 
 ## What the compiler already catches
 

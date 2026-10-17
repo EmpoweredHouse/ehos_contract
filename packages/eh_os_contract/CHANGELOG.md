@@ -55,8 +55,9 @@ and the `ehos-dev:release` skill makes one.
   `eh_os_contract.lock` beside the project's `mix.lock`, as a row holds them: a domain value as its shape, with
   whether a field may be absent, is personal and whose identifier seals it. `--check` writes nothing and fails on a
   missing file or entry, on a recorded version whose fields differ from the declaration, naming each field, and on a
-  recorded version newer than the declaration. `--forget TYPE` drops an event's versions and records it again, for an
-  event no log holds rows of. Until stage V4, every change to a recorded version is refused, an optional field added
+  recorded version newer than the declaration, or on an event no contract declares any more, renamed or removed.
+  `--forget TYPE` drops an event's versions from the declared one up, or all of an event no longer declared, and
+  records what is declared, for versions no log holds rows of. Until stage V4, every change to a recorded version is refused, an optional field added
   included. To use it, run `mix eh_os_contract.schema` once, commit the file and run `--check` beside
   `mix eh_os_contract.check`.
 
