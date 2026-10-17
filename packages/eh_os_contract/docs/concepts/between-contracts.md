@@ -55,8 +55,9 @@ contract does not compile ([`X3`](../contract.md#refusals-x)).
 
 The compiler looks for the unit among the contracts of the project it compiles, so **a domain's contracts
 compile in one project**. A unit whose contract sits in a dependency is not seen: a correct reference to it is
-refused, and a reference to a name it shares with an entity of the domain resolves to the entity, so the pages
-and the context map's count point at the entity.
+refused. And where such a unit shares its name with an entity of the domain, the compiler sees only the entity,
+so the reference resolves to it instead of being refused as naming both, as it is when both are in one project;
+the pages and the context map's count then point at the entity.
 
 A reference carries no event. It says what a number means, so the pages link the field to the unit, and
 `mix eh_os_contract.check` counts it as a dependency of this context on the sibling's: the context map has
