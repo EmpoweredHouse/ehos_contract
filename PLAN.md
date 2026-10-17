@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4 and V1–V4 in `main`; v0.6.0 released; wave 6 next)
+## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4, V1–V4 and wave 6's library stages in `main`; v0.7.0 released; PN1–PN3 next)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -25,15 +25,16 @@ since 9 October. Wave 5: L1 (#269), L2 (#272) and L3 (#286, in #289 and #292) ar
 (V1, #333) and by a function (V2, #338), the schema lock (V3, #340) and the lock against upcasts (V4, #346). v0.6.0
 released them on 17 October (#348; the engine 0.6.0, `eh_os_contract_auth` 0.3.0, the plugin
 `eh-os-contract-plugin-v0.8.0`). v0.6.1 released `eh_os_contract_auth` 0.4.0 the same day (#356): `sign_in:
-absolute_limit` and `max_age` for eh-os D-113 (#343). `main` is at 0.6.2-dev and 0.4.1-dev.
+absolute_limit` and `max_age` for eh-os D-113 (#343).
 
-**Next: wave 6** ("After v0.6.0", below the "Postęp" table, the user's decisions of 17 October). The order:
-- DU1 (a ceiling for durations, #193);
-- OW1 (`waits_on` on a promise, from #256);
-- RL1 and XA1 (docs: the relay and a seal; a domain compiled in one project, #287);
-- RE1 (release v0.7.0);
-- PN1–PN3 (the pins in ehos-tools, AppUnite's equipment application and `ehos-ledger`, each in its own
-  repository).
+**Wave 6** ("After v0.6.0", below the "Postęp" table, the user's decisions of 17 October): DU1, a ceiling of
+100 years for durations (#193, in #358); OW1, `waits_on` on a promise (#355, in #359; the plugin
+`eh-os-contract-plugin-v0.9.0`); RL1 and XA1, docs on the relay and a seal and on a domain compiled in one
+project (#360 and #287, in #361; #287 stays open). v0.7.0 releases them (#362; the engine 0.7.0,
+`eh_os_contract_graph` 0.4.0, the migration note in #362's description). `main` is at 0.7.1-dev and 0.4.1-dev.
+
+**Next: PN1–PN3**, the pins in ehos-tools, AppUnite's equipment application and `ehos-ledger`, each in its own
+repository and session, with the user's consent there (the stage's paragraph under "After v0.6.0").
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
@@ -1932,7 +1933,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | OW1 | 6 | a promise says what it waits on: `waits_on` | — | ☑ #359 | [#355](https://github.com/EmpoweredHouse/eh-os-contract/issues/355) |
 | RL1 | 6 | docs: the relay and a seal, settled by the lock | — | ☑ #361 | [#360](https://github.com/EmpoweredHouse/eh-os-contract/issues/360) |
 | XA1 | 6 | docs: a domain's contracts compile in one project | — | ☑ #361 | [#287](https://github.com/EmpoweredHouse/eh-os-contract/issues/287) |
-| RE1 | 6 | release v0.7.0 and its migration note | DU1, OW1, RL1, XA1 | ◐ `release/eh_os_contract-0.7.0` | — (`No issue: release`) |
+| RE1 | 6 | release v0.7.0 and its migration note | DU1, OW1, RL1, XA1 | ☑ #362 | — (`No issue: release`) |
 | PN1 | 6 | ehos-tools: `ehos_app`'s template and `ehosctl`'s pin, the lock in `mix precommit` | RE1 | ☐ | issue in ehos-tools |
 | PN2 | 6 | AppUnite's equipment application on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
 | PN3 | 6 | `ehos-ledger` on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
