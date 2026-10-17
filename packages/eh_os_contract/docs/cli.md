@@ -280,8 +280,8 @@ refuses, writing nothing, when:
     otherwise than above, with no step a function. A function covers every change a
     step could carry, since the engine cannot see what it does.
   * a field becomes personal or stops being, or another identifier seals it; a personal
-    field changes its type, or a value holding personal data its shape; a personal field
-    is made required where old rows may lack it; an identifier that seals a field
+    field changes its type, or a value holding personal data its shape; a required
+    personal field, at any depth, is one old rows may lack; an identifier that seals a field
     changes its `subject:`; or a field the log tags rows with (a required,
     non-personal `:id`, `:date` or `:timestamp`) was not tagged so under that name in
     the version before. Inside a domain value too. No step carries those: rows already

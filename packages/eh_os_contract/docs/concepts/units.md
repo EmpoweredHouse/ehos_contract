@@ -387,8 +387,8 @@ step, since rows already written keep what they were written with:
 - a field that becomes personal, stops being, or is sealed by another identifier;
 - a personal field whose type changes, or a value holding personal data whose shape changes, since a
   sealed value cannot be converted or its seal moved;
-- a personal field made required where old rows may lack it, since a default would be clear text and
-  a function makes no seal;
+- a required personal field old rows may lack, added, made required, or inside a value added or
+  reshaped, since a default would be clear text and a function makes no seal;
 - an identifier that seals a field given another `subject:`;
 - a field the log tags rows with that the version before did not tag under that name.
 

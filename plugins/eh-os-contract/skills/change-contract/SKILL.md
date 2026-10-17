@@ -53,8 +53,8 @@ member added, `:integer` to `:decimal`, `:id` to `:string` — it records in pla
 field marked so that a field declared again under its name is held to what old rows hold. A raised
 version's steps must cover each other change: `rename:` a renamed field, `default:` a new required
 one, `function:` anything else. A field turned personal or not, sealed by another identifier,
-personal and changing its type, holding personal data and changing its shape, personal and made
-required where old rows may lack it, or newly tagged by the log, it refuses even with a step. It
+personal and changing its type, holding personal data and changing its shape, a required personal
+field old rows may lack (at any depth), or newly tagged by the log, it refuses even with a step. It
 cannot say whether old rows exist, so its refusal starts this skill's analysis rather than settling
 it: raise the version with its step, or,
 when the count below is zero in every environment, `mix eh_os_contract.schema --forget TYPE` records
