@@ -79,10 +79,10 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @spec create(atom(), signed_in()) :: {:ok, String.t()}
   def create(name, signed_in) do
     %{credential: credential} = signed_in = checked!(signed_in)
-    key = SignIn.config(name).cipher_key
+    %{cipher_key: key, absolute_limit: absolute_limit} = SignIn.config(name)
     token = :crypto.strong_rand_bytes(@token_bytes)
     hash = :crypto.hash(:sha256, token)
-    limit = limit(name)
+    limit = limit(absolute_limit)
     repo = repo()
 
     session = %{
@@ -124,8 +124,9 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @spec fetch(atom(), term()) :: {:ok, t()} | {:error, :signed_out}
   def fetch(name, token) do
     with {:ok, hash} <- hash(token),
-         [row] <- repo().all(session_query(hash, limit(name))) do
-      decrypt(row, credentials(row.id), SignIn.config(name).cipher_key, hash)
+         %{cipher_key: key, absolute_limit: absolute_limit} = SignIn.config(name),
+         [row] <- repo().all(session_query(hash, limit(absolute_limit))) do
+      decrypt(row, credentials(row.id), key, hash)
     else
       _none -> {:error, :signed_out}
     end
@@ -423,8 +424,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   # D-66, D-113: a sign-in lives at most the child's absolute limit from `auth_time`, renewed or
   # not, twelve hours unless the installation sets another.
-  defp limit(name),
-    do: DateTime.add(EhOsContract.Clock.now(), -SignIn.config(name).absolute_limit)
+  defp limit(absolute_limit), do: DateTime.add(EhOsContract.Clock.now(), -absolute_limit)
 
   # A credential is bound to the application it is for, so one moved to another application's
   # row does not decrypt either.

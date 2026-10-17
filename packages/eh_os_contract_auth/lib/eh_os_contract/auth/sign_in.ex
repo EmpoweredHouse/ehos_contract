@@ -3,8 +3,8 @@ defmodule EhOsContract.Auth.SignIn do
   # docs/adr/browser-session.md, S1-S11. In the moduledoc: the addresses' form and the
   # post-logout address are D-68, the redirect URI D-64, `applications` naming only the others
   # D-69, the issuer's and the document's endpoints' form #89, starting while EHOS is down FM-19,
-  # the limits on every call to EHOS S6. In the typedoc of `t`: the cipher key S3, the random
-  # client secret S6.
+  # the limits on every call to EHOS S6, `absolute_limit` D-66 and D-113. In the typedoc of `t`: the
+  # cipher key S3, the random client secret S6.
   @moduledoc """
   Signing a person in to the application's pages through EHOS, with OpenID Connect:
   the application's client, and the process that keeps EHOS's discovery document and
@@ -43,9 +43,9 @@ defmodule EhOsContract.Auth.SignIn do
     * an address in `applications` is `address` itself: they are the other
       applications;
     * `secret_key_base` is shorter than 64 bytes, Phoenix's own minimum;
-    * `absolute_limit`, when given, is not whole seconds from a minute to 366 days. It is how
+    * `absolute_limit`, when given and not nil, is not whole seconds from a minute to 366 days. It is how
       long a session lasts from the person's sign-in at EHOS, renewed or not: the installation's,
-      `EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113), twelve hours when not given (D-66);
+      `EHOS_SIGN_IN_ABSOLUTE`, twelve hours when not given;
     * the file at `client_key_file` is not one private Ed25519 JWK with exactly
       `kty`, `crv`, `x`, `d`, `use: "sig"`, `alg: "Ed25519"` and a `kid` that is the
       RFC 7638 thumbprint of its public half. A PEM is refused.
@@ -500,8 +500,8 @@ defmodule EhOsContract.Auth.SignIn do
       secret_key_base: secret_key_base,
       cipher_key: Cipher.key(secret_key_base),
       request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}},
-      absolute_limit:
-        absolute_limit!(Keyword.get(sign_in, :absolute_limit, @default_absolute_limit))
+      # nil, as `System.get_env/1` gives it unset, is not given.
+      absolute_limit: absolute_limit!(sign_in[:absolute_limit] || @default_absolute_limit)
     }
   end
 

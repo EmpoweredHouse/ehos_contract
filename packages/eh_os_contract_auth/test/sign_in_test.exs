@@ -143,6 +143,15 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/at least 64 bytes/, fn -> SignIn.child_spec([]) end
     end
 
+    test "an absolute_limit is taken from a minute to 366 days, and nil is none" do
+      for {limit, held} <- [{60, 60}, {366 * 86_400, 366 * 86_400}, {nil, 43_200}] do
+        put_sign_in(absolute_limit: limit)
+        name = start!(FakeEhos.start())
+        assert SignIn.config(name).absolute_limit == held
+        stop_supervised!(name)
+      end
+    end
+
     # eh-os D-113: the installation's limit, EHOS_SIGN_IN_ABSOLUTE, as EHOS takes it.
     test "an absolute_limit that is not whole seconds from a minute to 366 days is refused" do
       for limit <- [59, 366 * 86_400 + 1, "2592000", 1.5] do

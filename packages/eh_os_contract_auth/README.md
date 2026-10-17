@@ -190,8 +190,9 @@ auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
 children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 ```
 
-`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` are for
-signing people in to the application in a browser, through EHOS: "Signing people in" below.
+`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, `EHOS_SIGN_IN_APPLICATIONS` and
+`EHOS_SIGN_IN_ABSOLUTE` are for signing people in to the application in a browser, through EHOS:
+"Signing people in" below.
 
 ## Signing people in
 
@@ -227,11 +228,17 @@ The child checks this at boot and refuses to start otherwise:
 - `absolute_limit`, when given, is whole seconds from a minute to 366 days.
 
 `absolute_limit` is how long a session lasts from the person's sign-in at EHOS, renewed or not:
-twelve hours when not given (eh-os D-66). EHOS gives the workload its installation's as
-`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints, so mapping it
-keeps the application's session from ending before or after EHOS's. Its idle limit,
-`EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and the
-session ends at the next renewal.
+twelve hours when not given or nil (eh-os D-66). EHOS gives the workload its installation's as
+`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints. Sign-in asks EHOS
+for no older sign-in than `absolute_limit` (`max_age`), so an application that keeps a shorter
+limit than its installation asks for the password sooner, never round and round EHOS. Its idle
+limit, `EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and
+the session ends at the next renewal.
+
+The browser keeps the session's token in the host's `Plug.Session` cookie. Without `max_age`
+there, the cookie ends when the browser closes, and the person signs in again then, however long
+`absolute_limit` is: a host that wants the session to outlast the browser gives the cookie
+`max_age: absolute_limit`.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.

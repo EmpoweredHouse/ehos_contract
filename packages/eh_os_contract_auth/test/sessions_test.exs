@@ -266,6 +266,31 @@ defmodule EhOsContract.Auth.SessionsTest do
         assert {:ok, _session} = Sessions.fetch(name, day_old)
         assert Sessions.fetch(name, month_old) == {:error, :signed_out}
       end)
+
+      # The next sign-in deletes by the configured limit too: the row a day old stays.
+      at(0, fn ->
+        {:ok, _new} = Sessions.create(name, signed_in(subject: "u-celina", auth_time: @now))
+      end)
+
+      assert count("eh_os_contract_auth_sessions") == 2
+    end
+
+    test "is a shorter configured absolute_limit as well", %{name: name} do
+      stop_supervised!(name)
+      put_sign_in(absolute_limit: 3600)
+      name = start!(FakeEhos.start())
+
+      {fresh, stale} =
+        at(-60, fn ->
+          {:ok, fresh} = Sessions.create(name, signed_in(auth_time: at_offset(-30 * 60)))
+          {:ok, stale} = Sessions.create(name, signed_in(auth_time: at_offset(-2 * 3600)))
+          {fresh, stale}
+        end)
+
+      at(0, fn ->
+        assert {:ok, _session} = Sessions.fetch(name, fresh)
+        assert Sessions.fetch(name, stale) == {:error, :signed_out}
+      end)
     end
   end
 
