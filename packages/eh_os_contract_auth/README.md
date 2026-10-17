@@ -237,8 +237,9 @@ the session ends at the next renewal.
 
 The browser keeps the session's token in the host's `Plug.Session` cookie. Without `max_age`
 there, the cookie ends when the browser closes, and the person signs in again then, however long
-`absolute_limit` is: a host that wants the session to outlast the browser gives the cookie
-`max_age: absolute_limit`.
+`absolute_limit` is: a host that wants the session to outlast the browser gives the cookie a
+`max_age` at least as long, such as EHOS's ceiling of 366 days, since the session's row, not the
+cookie, decides when it ends.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
