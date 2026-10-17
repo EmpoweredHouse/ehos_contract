@@ -1,0 +1,1 @@
+pre-pr-review, release 0.7.0: versions and changelog headings only (engine 0.7.0, graph 0.4.0), PLAN rows. No code; sections read whole. Gate EXIT=0 (sandbox 318+34p, check 0/47/47; engine 1859+10p, check 0/82/78; web 79; auth 340; graph 188). release_file: 0.7.0, auth 0.4.1-dev, graph 0.4.0, web 0.4.1-dev; produces manifest v2-v4, api/v1; accepts credential/v1.
