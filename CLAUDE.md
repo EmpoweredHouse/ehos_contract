@@ -111,7 +111,8 @@ and a message (`docs/contract.md`). Everything the library does reads those modu
   which transitions were not declared, which promises are broken, and which version of the contract is
   deployed and since when.
 - **Tasks:** `check` (the rules a compiler cannot hold: errors, warnings and notices), `report`, `graph`, `pages`, `glossary`,
-  `view`, `subscriptions`, `rewrap`.
+  `view`, `subscriptions`, `rewrap`, `schema` (every event's fields by version in the host's `eh_os_contract.lock`,
+  and a recorded version whose fields changed refused).
 
 **`packages/eh_os_contract_web`** is a dashboard a host mounts: each contract's conformance and its graph, and a
 JSON API with the model, the conformance and the OpenAPI and AsyncAPI documents. The host decides who may see it
@@ -134,7 +135,8 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
 `mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
-`eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
+`eh_os_contract.check`, `eh_os_contract.schema --check` (against `sandbox/eh_os_contract.lock`) and the sandbox's
+tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
 generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
 generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal

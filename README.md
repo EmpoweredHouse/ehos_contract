@@ -242,7 +242,7 @@ mix check
 ```
 
 `mix check` in `sandbox/` is the gate: formatting, `compile --force --warnings-as-errors`,
-`eh_os_contract.check` and the sandbox's own tests, then each package's own `mix check` as a
+`eh_os_contract.check`, `eh_os_contract.schema --check` and the sandbox's own tests, then each package's own `mix check` as a
 separate project — the engine's includes `eh_os_contract.docs --check` and `eh_os_contract.rules --check`. `--warnings-as-errors`
 matters because `boundary` reports module-boundary violations as warnings, so without that flag the
 boundaries below would be documentation rather than a check.
@@ -253,6 +253,7 @@ boundaries below would be documentation rather than a check.
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
 | `mix eh_os_contract.graph --contract <id> \| --domain <name> [--overlay [--since …]]` | a contract's or a domain's `graph.v1` document — steps, actors, read side, external systems, stages, promises, lifecycles, the context map — or, with `--overlay`, what the log says over it |
 | `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
+| `mix eh_os_contract.schema [--check \| --forget TYPE]` | records every event's fields by version in `eh_os_contract.lock`, and fails on a recorded version whose fields changed |
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
 | `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
 | `mix eh_os_contract.docs` / `rules` | inside `packages/eh_os_contract` only: regenerate `docs/dsl/` and `docs/rules.md` |

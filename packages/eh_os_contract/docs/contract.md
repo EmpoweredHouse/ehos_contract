@@ -435,6 +435,10 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `U3` | L2, L3 | an `upcast` renaming the unit's identity, or renaming onto or giving a default to a field the log tags rows with (a required, non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one); a default for a personal field, or for a domain value holding personal data |
 | `U4` | L2, L3 | an `upcast` default that is not a value of its field's type, or is nil |
 
+A compile sees only today's declaration, so it cannot refuse a change of fields made without a new
+version. `mix eh_os_contract.schema --check` does, against the fields the project's
+`eh_os_contract.lock` recorded for each version ([the page on units](concepts/units.md#an-event-that-already-has-rows)).
+
 <a id="refusals-c"></a>
 
 ### `C`: who may issue a command

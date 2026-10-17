@@ -208,6 +208,74 @@ this, and only then drop the old key. No event is rewritten; each data key is
 unwrapped with the key that wrapped it and wrapped again. It runs in batches of
 500, each its own transaction, so it can be stopped and run again.
 
+## mix eh_os_contract.schema
+
+Records the fields of every event, and checks that none changed
+
+Keeps `eh_os_contract.lock`, the record of every event's fields by its
+`schema_version`, and refuses a change to the fields of a version it holds.
+
+The log keeps every event it ever recorded and reads each one again whenever it
+rebuilds a unit or a list, with today's declaration. A row written with fields the
+declaration no longer has does not read, so a change to an event's fields raises its
+`schema_version` and says, in an `upcast` step, how an old row reads. Nothing in a
+compile notices a change made without that: the code compiles, the tests pass on an
+empty log, and the deployed application fails on its first old row. This task
+notices it where the code is written.
+
+    mix eh_os_contract.schema                  # record what is new
+    mix eh_os_contract.schema --check          # fail when anything is new or changed
+    mix eh_os_contract.schema --forget TYPE    # drop an event's versions, record it again
+
+It reads every contract of the applications `config :eh_os_contract, applications:`
+names, as `mix eh_os_contract.check` does, and keeps the file beside the project's
+`mix.lock` (in an umbrella, at its root). Commit the file: a change to it shows in a
+pull request as the fields that changed.
+
+### What it records
+
+An entry per event type, as the log names it, and version, with the fields as a row
+holds them:
+
+    %{
+      "shop.orders.order_placed" => %{
+        1 => [
+          customer_id: [type: :id, subject: :customer],
+          note: [type: :string, optional: true, personal: :customer_id],
+          order_id: [type: :id],
+          total: [
+            type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+          ]
+        ]
+      }
+    }
+
+A field's type is what the log stores: a built-in type, an enum as its members' names,
+a list as what it holds, and a domain value as its own shape, its inner type or its
+fields. Then whether it may be absent, whether it is personal and whose identifier
+seals it, and the subject an identifier names. Labels, the names of domain values,
+invariants and the order of fields change no stored row, and are left out: a domain
+value renamed changes nothing, and one given a field changes every event that holds
+it.
+
+### What it refuses
+
+Recording the current version of every event adds what the file lacks, and refuses,
+writing nothing, when:
+
+  * the file holds the event's current version with other fields. The message names
+    each field that changed. Raise the event's `schema_version` and add its `upcast`
+    step: the new version is recorded beside the old one.
+  * the file holds a version newer than the one declared, whose rows would not read.
+
+An event no contract declares any more stays in the file, since a log may still hold
+its rows. `--forget TYPE` drops every version of one event and records its current
+one: it says that no log holds rows of it, as of an event added in a branch that was
+never deployed. It may be given more than once.
+
+`--check` writes nothing and fails when recording would change the file, or refuse.
+Run it beside `mix eh_os_contract.check`.
+
 ## mix eh_os_contract.subscriptions
 
 Where each subscription stands, and a person's way past a poison event

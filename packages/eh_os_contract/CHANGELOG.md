@@ -50,6 +50,16 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **A change to an event's fields made without a new version is noticed** (plan DD, stage V3, #340): `mix
+  eh_os_contract.schema` records the fields of every event, by its type in the log and its `schema_version`, in
+  `eh_os_contract.lock` beside the project's `mix.lock`, as a row holds them: a domain value as its shape, with
+  whether a field may be absent, is personal and whose identifier seals it. `--check` writes nothing and fails on a
+  missing file or entry, on a recorded version whose fields differ from the declaration, naming each field, and on a
+  recorded version newer than the declaration. `--forget TYPE` drops an event's versions and records it again, for an
+  event no log holds rows of. Until stage V4, every change to a recorded version is refused, an optional field added
+  included. To use it, run `mix eh_os_contract.schema` once, commit the file and run `--check` beside
+  `mix eh_os_contract.check`.
+
 - **An old row read through a function, where a rename and a default cannot say the change** (plan DD, stage V2,
   #338): `upcast from: 1, function: :amount_from_minor` names a function of the unit's implementation, which takes a
   row's payload at that version as the log stores it and gives the next version's. The implementation does not
