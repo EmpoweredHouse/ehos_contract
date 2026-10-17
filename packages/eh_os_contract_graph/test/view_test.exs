@@ -379,6 +379,24 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
              ]
     end
 
+    test "hangs what a promise waits on off the event that opens it, with no arrowhead" do
+      promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      p1 = "external:Rehmed.Domain:p1"
+      waits = %{"id" => "waits_on:#{promise}:#{p1}", "from" => promise, "to" => p1}
+
+      document =
+        put_in(
+          Fixtures.document("process.rehmed.clinical_visit"),
+          ["relations", "waits_on"],
+          [waits]
+        )
+
+      assert [arrow] = for(r <- View.process(document).relations, r.type == "waits_on", do: r)
+
+      assert {arrow.from, arrow.to, arrow.words, arrow.line, arrow.head, arrow.facts} ==
+               {"event:rehmed.scheduling:visit_completed", p1, "waits on", "dotted", false, waits}
+    end
+
     test "draws the process with its run, and the actor accountable for it", %{view: view} do
       process = card(view, "process:rehmed.clinical_visit")
       assert process.group == nil

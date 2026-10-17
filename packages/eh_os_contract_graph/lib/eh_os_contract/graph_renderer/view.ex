@@ -593,7 +593,7 @@ defmodule EhOsContract.GraphRenderer.View do
     finish(
       "TB",
       processes ++ actors ++ events ++ systems,
-      accountable ++ order ++ promises ++ rests,
+      accountable ++ order ++ promises ++ rests ++ waits(document),
       groups
     )
   end
@@ -646,6 +646,25 @@ defmodule EhOsContract.GraphRenderer.View do
         words: if(type == "promise", do: window, else: "or else"),
         line: if(type == "promise", do: "thick", else: "dotted"),
         head: true
+      }
+    end
+  end
+
+  # What a promise waits on through an earlier step: a promise is no card here, so the
+  # arrow leaves the event that opens it, where its window starts, for the system.
+  defp waits(document) do
+    for r <- relations(document, "waits_on"),
+        opens <- relations(document, "opens"),
+        opens["to"] == r["from"] do
+      %{
+        id: "waits_on:#{opens["id"]}:#{r["id"]}",
+        type: "waits_on",
+        from: opens["from"],
+        to: r["to"],
+        facts: r,
+        words: "waits on",
+        line: "dotted",
+        head: false
       }
     end
   end

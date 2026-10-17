@@ -608,6 +608,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       assign(assigns,
         calls: Lookup.into(l, id, "calls"),
         rests: Lookup.into(l, id, "depends_on"),
+        waiting: Lookup.into(l, id, "waits_on"),
         backed: Lookup.into(l, id, "backed_by"),
         gives: gives
       )
@@ -632,6 +633,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
     </.part>
     <.part :if={@rests != []} title="Events resting on it">
       <.refs relations={@rests} side="from" ctx={@ctx} />
+    </.part>
+    <.part :if={@waiting != []} title="Promises waiting on it">
+      <.refs relations={@waiting} side="from" ctx={@ctx} />
     </.part>
     <.part :if={@gives != []} title="Gives the value of">
       <ul class="ehg-list">
@@ -780,7 +784,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
       assign(assigns,
         opens: Lookup.into(l, id, "opens"),
         fulfils: Lookup.into(l, id, "fulfils"),
-        or_else: Lookup.into(l, id, "or_else")
+        or_else: Lookup.into(l, id, "or_else"),
+        waits: Lookup.out(l, id, "waits_on")
       )
 
     ~H"""
@@ -789,6 +794,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part title="Kept by"><.refs relations={@fulfils} side="from" ctx={@ctx} /></.part>
     <.part :if={@or_else != []} title="Kept the other way by">
       <.refs relations={@or_else} side="from" ctx={@ctx} />
+    </.part>
+    <.part :if={@waits != []} title="Waits on, through an earlier step">
+      <.refs relations={@waits} side="to" ctx={@ctx} />
+      <p class="ehg-quiet">An outage of it inside the window excuses the promise.</p>
     </.part>
     <.unconfirmed promise={@node} ctx={@ctx} />
     """
@@ -972,6 +981,16 @@ defmodule EhOsContract.GraphRenderer.Panel do
       opens it, and the second keeps it{if @type == "or_else", do: " the other way"}.
     </p>
     <.unconfirmed promise={@facts} ctx={@ctx} />
+    """
+  end
+
+  defp relation_body(%{type: "waits_on"} = assigns) do
+    ~H"""
+    <p>
+      The promise <.ref id={@facts["from"]} ctx={@ctx} /> waits on
+      <.ref id={@facts["to"]} ctx={@ctx} /> through an earlier step: an outage of it inside
+      the promise's window excuses the promise.
+    </p>
     """
   end
 
