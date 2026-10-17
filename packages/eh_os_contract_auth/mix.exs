@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.3.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   @description "Verifies EHOS credentials and authorizes EhOsContract commands, recordings and queries."
