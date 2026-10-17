@@ -92,7 +92,9 @@ Pick by what the business says, not by what the code will look like:
 
 - **Yes** → a `promise` in the process module, with the number that was stated, and
   `unverified: true` until the process owner confirms it (`unverified-declaration`). Its `from`,
-  `eventually` and `or_else` are events the module includes (`R5`).
+  `eventually` and `or_else` are events the module includes (`R5`). When the awaited events follow
+  a step that calls an external system, and neither calls it itself, the promise says
+  `waits_on [:external]`, so an outage of it excuses the promise rather than breaking it (`X4`).
 - **No** → the structure stands on its own, and that is a complete answer. The contracts' declared
   paths give the report untraversed paths and drift, and a process module's stages and `ends_on`
   its runs and the runs that went out of order, without any clock

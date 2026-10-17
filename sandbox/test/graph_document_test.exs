@@ -122,6 +122,17 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   # Plan DD, P2e (#220): the clinic's visit, from three contexts' events.
+  test "the accounting month's promise waits on the registries, and the clinical visit's on nothing" do
+    d = Document.process(Taxvision.Processes.AccountingMonth)
+    promise = "promise:taxvision.accounting_month:month_opens_or_is_blocked"
+    registries = Document.id([:external, Taxvision.Domain, :registries])
+
+    assert [%{"from" => ^promise, "to" => ^registries}] = d["relations"]["waits_on"]
+    assert registries in Enum.map(d["nodes"]["external"], & &1["id"])
+
+    assert Document.process(Rehmed.Processes.ClinicalVisit)["relations"]["waits_on"] == []
+  end
+
   test "the clinical visit's document has its stages, the events from three contracts and its promise" do
     d = Document.process(Rehmed.Processes.ClinicalVisit)
     stage = &Document.id([:stage, "rehmed.clinical_visit", &1])

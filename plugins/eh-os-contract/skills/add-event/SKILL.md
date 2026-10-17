@@ -103,7 +103,9 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 - **When it ends a run**, the process module lists it in `ends_on`; a module's `deadline` does not
   compile without `ends_on` (`R6`).
 - `depends_on: :external` when the fact waits on a system; an outage then suspends a promise
-  instead of breaking it.
+  instead of breaking it. When the fact only follows a step that calls the system, as an opened month
+  follows the registry check, the event does not depend on it: the promise in the process module
+  says `waits_on [:external]`.
 - **Someone reads it.** `event-without-consumer` warns of an event nothing takes: no reaction, read
   model, boundary, sibling `consumes` or `publish`, no promise names it, no unit's lifecycle starts or
   moves on it, and no process module includes it.

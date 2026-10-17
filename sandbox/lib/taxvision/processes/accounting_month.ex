@@ -13,12 +13,11 @@ defmodule Taxvision.Processes.AccountingMonth do
   Nothing ends a run yet: the month closes past E9c, so the module declares no
   `ends_on`, and no deadline, which would measure a run to its end.
 
-  The scenarios show the promise judged (plan DD, S3 (#256)). None is excused, and
-  none can be yet: both endings follow the registry check, which depends on the
-  registries, but the library excuses a promise only by what its `eventually` and
-  `or_else` depend on themselves, and neither does. An outage of the registries is
-  refused in a scenario of this promise; whether it should reach one step upstream is
-  recorded on #256.
+  The scenarios show the promise judged (plan DD, S3 (#256)). Both endings follow the
+  registry check, which depends on the registries, though neither calls them itself,
+  so the promise says it `waits_on` them (plan DD, OW1 (#355)): registries down inside
+  the two days excuse a month neither opened nor blocked, and down after them excuse
+  nothing.
   """
 
   use EhOsContract.Process,
@@ -59,6 +58,7 @@ defmodule Taxvision.Processes.AccountingMonth do
     eventually :accounting_month_opened
     within {2, :day}
     or_else :registry_discrepancy_detected
+    waits_on([:registries])
     source "WF 00:34:17-00:36:07 (P1)"
   end
 
@@ -96,6 +96,24 @@ defmodule Taxvision.Processes.AccountingMonth do
     given :data_completeness_confirmed, %{company_id: "abilia", period_id: "2025-12"},
       at: "2026-01-01T08:00:00+01:00"
 
+    promise :month_opens_or_is_blocked, at: "2026-01-05T09:00:00+01:00"
+  end
+
+  scenario "rejestry niedostępne w ciągu dwóch dni, miesiąc nieotwarty — zawieszone",
+    verdict: :suspended do
+    given :data_completeness_confirmed, %{company_id: "abilia", period_id: "2025-12"},
+      at: "2026-01-01T08:00:00+01:00"
+
+    outage :registries, at: "2026-01-02T10:00:00+01:00"
+    promise :month_opens_or_is_blocked, at: "2026-01-05T09:00:00+01:00"
+  end
+
+  scenario "rejestry niedostępne dopiero po dwóch dniach — niedotrzymane",
+    verdict: :violated do
+    given :data_completeness_confirmed, %{company_id: "abilia", period_id: "2025-12"},
+      at: "2026-01-01T08:00:00+01:00"
+
+    outage :registries, at: "2026-01-03T09:00:00+01:00"
     promise :month_opens_or_is_blocked, at: "2026-01-05T09:00:00+01:00"
   end
 end
