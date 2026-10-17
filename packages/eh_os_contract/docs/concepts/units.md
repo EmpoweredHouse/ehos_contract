@@ -396,6 +396,13 @@ Each is a new event. `--forget TYPE` drops the event's versions from the declare
 version of an event no contract declares, and records what is declared: it is for versions no log
 holds rows of, as one added on a branch never deployed.
 
+Refusing a field that stops being personal also keeps a seal out of what the application publishes. A
+`publish` cannot name a personal field ([`D11`](../contract.md#refusals-d)), but rows written while a field was personal hold its
+value sealed, and the relay publishes a row in the event's current shape, its values as stored. A field
+that stops being personal, or one a personal field is renamed onto, would send those seals to every
+subscriber. The lock refuses both; without it, or after `--forget` of a version the log holds rows of,
+the relay publishes them (`EhOsContract.Relay`).
+
 ## What the compiler refuses
 
 The full table is in [the guide](../contract.md). The refusals a unit meets most:

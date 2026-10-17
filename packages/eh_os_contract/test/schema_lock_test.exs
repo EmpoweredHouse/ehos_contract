@@ -239,6 +239,18 @@ defmodule EhOsContract.SchemaLockTest do
       end
     end
 
+    # A personal field renamed onto one that is not: the relay would publish the seals of
+    # older rows under the new name, which only this refusal keeps out (#360).
+    test "refuses a personal field renamed onto one that is not personal, even with the step" do
+      remark = replace(fields(), :note, field(:remark, :string, optional: true))
+
+      assert {:error, [problem]} =
+               raised(fields(), remark, %{rename: %{note: :remark}, default: []})
+
+      assert problem =~ "whether a field is personal"
+      assert problem =~ "declare a new event instead"
+    end
+
     test "records a raised version beside the old one when its step covers each change" do
       cents = fields() ++ [field(:amount_minor, :integer)]
       decimal = fields() ++ [field(:amount, :decimal)]

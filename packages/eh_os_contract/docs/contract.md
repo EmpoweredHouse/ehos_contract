@@ -113,7 +113,8 @@ end
   streams is a `dcb`, which `consults` the events it decides over.
 - **A field can say which unit it identifies**, as it says which entity: `field :loan_id, {:id, :loan}`. The
   name is an entity of the domain or a unit of one of its contracts, and exactly one of them
-  ([`X3`](#refusals-x)). A unit keyed by another unit's number says so in its identity, `identity loan_id:
+  ([`X3`](#refusals-x)); a unit is looked for among the contracts the project compiles, so a domain's contracts
+  compile in one project. A unit keyed by another unit's number says so in its identity, `identity loan_id:
   {:id, :loan}`, or `identity [:period_id, loan_id: {:id, :loan}]` beside fields of its own. The log sees a
   plain `:id`; `mix eh_os_contract.check` counts a reference to another context's unit as one into that
   context, against the context map, and the pages link the field to the unit. A command never `reads:` a
@@ -527,7 +528,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | --- | --- | --- |
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
-| `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts, or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
+| `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts compiled in the same project (a domain's contracts compile in one project), or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
 | `X6` | L3 | a sibling event's field that a process manager's `correlate` (on an event it handles) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
