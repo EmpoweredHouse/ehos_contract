@@ -269,8 +269,8 @@ contract and one of its events, or a list of them, and names the contract withou
 of one name are refused ([`N1`](#refusals-n)). The module refuses what it can see is wrong in itself: no `correlate` or an
 empty one, two, or a field named twice ([`R2`](#refusals-r)) or one of more than six fields ([`F9`](#refusals-f)), no stage, a stage that
 includes nothing, or an `include:` entry naming no event or no contract module ([`R3`](#refusals-r)), a promise or
-`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit, `deadline`
-twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
+`ends_on` naming an event it does not include, or `ends_on` twice ([`R5`](#refusals-r)), a duration not in a fixed unit or longer than
+100 years, `deadline` twice, or a `deadline` with no `ends_on`, since a deadline measures a run to its end ([`R6`](#refusals-r)). It compiles to a
 model `EhOsContract.Model.fetch/1` returns, of kind `:process`. Dispatch files every event the process includes
 under a run of it, named by its `id:`; `mix eh_os_contract.report`
 prints a section for each process module, and the check reads it too. How runs, promises and deadlines are
@@ -469,7 +469,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `R2` | L2 | a process module without `correlate`, with an empty one, with two, or naming a field twice |
 | `R3` | L2 | a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R5` | L2 | a process module's promise whose `from`, `eventually` or `or_else`, or an `ends_on` event, the module does not include; `ends_on` declared twice |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit: a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, has an unknown unit, or is longer than 100 years (a year counted as 366 days, a month as a twelfth of that): a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
 
 <a id="refusals-k"></a>
 
@@ -528,7 +528,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts, or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
-| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's promise whose `waits_on` names no external of the domain, or one its `eventually` or `or_else` already depends on; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on or the promise `waits_on` |
+| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's promise whose `waits_on` names no external of the domain, one its `eventually` or `or_else` already depends on, or one no contract the process includes depends on or calls; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on or the promise `waits_on` |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
 | `X6` | L3 | a sibling event's field that a process manager's `correlate` (on an event it handles) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
 | `X7` | L3 | two process modules of the system with one `id:`, which keys their runs; two contracts with one `id:`, which types their events |

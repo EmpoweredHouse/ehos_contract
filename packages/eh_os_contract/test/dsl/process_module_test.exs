@@ -562,6 +562,31 @@ defmodule EhOsContract.ProcessModuleTest do
                ~s|R6: process "clinic.not_a_duration": deadline is 30, which is not {count, unit}|
     end
 
+    test "a within or a deadline longer than 100 years is refused" do
+      message =
+        refuse_process(
+          "CenturyDurations",
+          replace(@body, "within {2, :day}", "within {36_601, :day}") <>
+            "\n  deadline {878_401, :hour}\n"
+        )
+
+      assert message =~
+               "R6: promise :reported_within_two_days: within is longer than 100 years, the " <>
+                 "longest a duration may be"
+
+      assert message =~
+               ~s|R6: process "clinic.century_durations": deadline is longer than 100 years|
+    end
+
+    test "control: a within and a deadline of exactly 100 years compile" do
+      assert %{deadline: %{amount: 36_600, unit: :day}} =
+               compile_process(
+                 "CenturyDurationsKept",
+                 replace(@body, "within {2, :day}", "within {36_600, :day}") <>
+                   "\n  deadline {36_600, :day}\n"
+               )
+    end
+
     test "a deadline declared twice is refused at the second" do
       message =
         refuse_process(

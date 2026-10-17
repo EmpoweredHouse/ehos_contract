@@ -118,6 +118,34 @@ defmodule EhOsContract.Duration do
 
   def calendar_shift(%DateTime{} = at, duration), do: shift(at, duration)
 
+  # The ceiling is compared in seconds, a year counted at its longest, 366 days, and a
+  # month as a twelfth of that, so that 1200 months is 100 years as `{100, :year}` is
+  # (#193). Counted as 31 days, a month would put the cut at 1180, which no reader of
+  # the refusal would guess.
+  @counted Map.merge(@seconds, %{week: 7 * 86_400, month: 61 * 43_200, year: 366 * 86_400})
+
+  @ceiling {100, :year}
+
+  @doc """
+  The longest duration a contract or a process module may declare: 100 years.
+
+  A chosen limit, far inside what a date can hold: a timer longer than a century is a
+  mistake in the contract, and one of ten million years could not be set at all. A
+  promise or a deadline that long says nothing a run could keep or break.
+  """
+  @spec ceiling() :: {pos_integer(), :year}
+  def ceiling, do: @ceiling
+
+  @doc """
+  Whether a duration is longer than `ceiling/0`. A year counts as 366 days and a month
+  as a twelfth of that, so `{1200, :month}` is not too long and `{1201, :month}` is.
+  """
+  @spec too_long?({non_neg_integer(), unit() | :week | :month | :year}) :: boolean()
+  def too_long?({n, unit}) when is_map_key(@counted, unit),
+    do: n * @counted[unit] > in_seconds(@ceiling)
+
+  defp in_seconds({n, unit}), do: n * @counted[unit]
+
   @doc """
   The rejection message for an unsupported unit.
 

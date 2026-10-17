@@ -61,6 +61,15 @@ and the `ehos-dev:release` skill makes one.
   each process document's digest moves once. A promise without it keeps its digest, so no process's version
   moves. An outage anywhere inside the window counts, even after the step that calls the system is done.
 
+### Changed
+
+- **Breaking:** **A duration longer than 100 years does not compile** (plan DD, stage DU1, #193): a process
+  manager's timer's `wait`, a process module's `within` and its `deadline`. A year is counted as 366 days and a
+  month as a twelfth of that, so `wait: {100, :year}` and `wait: {1200, :month}` compile and `wait: {1201, :month}`
+  does not. The limit is a chosen one, far inside what a date can hold: `wait: {10_000_000, :year}` used to compile
+  and fail on every retry when its timer was set. A contract with a longer duration stops compiling; none is
+  expected to have one.
+
 ## [0.6.1] - 2026-10-17
 
 ### Changed

@@ -202,7 +202,8 @@ A promise is what the process owner agreed happens in a run: after one event, an
   ```
 
 `from`, `eventually` and `or_else` are events the process includes ([`R5`](../contract.md#refusals-r)). Each system of `waits_on` is
-an external of the domain, and not one `eventually` or `or_else` already depends on ([`X4`](../contract.md#refusals-x)).
+an external of the domain, not one `eventually` or `or_else` already depends on, and one a contract the process
+includes depends on or calls, since an outage is recorded only under such a contract ([`X4`](../contract.md#refusals-x)).
 
 Each run gets one of four verdicts per promise:
 
@@ -298,9 +299,10 @@ under a term of a context whose events it includes when its id, a stage, a promi
   optional, personal or of another identifier ([`X6`](../contract.md#refusals-x)); two included events of one name ([`N1`](../contract.md#refusals-n)).
 - A promise naming an event the process does not include, an `ends_on` event it does not include, or
   `ends_on` twice ([`R5`](../contract.md#refusals-r)).
-- A `waits_on` naming no external of the domain, or one the promise's `eventually` or `or_else` already
-  depends on ([`X4`](../contract.md#refusals-x)).
-- `within` or `deadline` in a calendar unit, negative, or malformed; `deadline` twice, or without `ends_on`
+- A `waits_on` naming no external of the domain, one the promise's `eventually` or `or_else` already
+  depends on, or one no contract the process includes uses ([`X4`](../contract.md#refusals-x)).
+- `within` or `deadline` in a calendar unit, negative, malformed or longer than 100 years; `deadline` twice, or
+  without `ends_on`
   ([`R6`](../contract.md#refusals-r)).
 - An `accountable` that is not an actor of the domain ([`X2`](../contract.md#refusals-x)); an `id:` another process of the system has
   ([`X7`](../contract.md#refusals-x)).
