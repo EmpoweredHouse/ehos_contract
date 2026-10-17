@@ -17,6 +17,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_people.v3.json` is that ledger written by hand from
   `ehos_yaml/accepted/people.yaml`, an `ehos.yaml/v3` that reads the company's people
   (`eh-os` D-81, issue #252).
+
+  `test/fixtures/manifests/ledger_secrets.v4.json` is that ledger written by hand from
+  `ehos_yaml/accepted/secrets.yaml`, an `ehos.yaml/v4` that seeds its database and is given
+  secrets (`eh-os` D-98, D-99, issue #306).
   """
 
   use ExUnit.Case, async: true
@@ -331,6 +335,30 @@ defmodule EhOsContract.Auth.ManifestTest do
 
         assert manifest["schema"] == "ehos.manifest/v2"
       end
+
+      file = %{"schema" => "ehos.yaml/v3", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v3"
+    end
+  end
+
+  describe "needs.database.seed and needs.secrets, from ehos.yaml/v4" do
+    test "makes an ehos.manifest/v4, carried as written, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_secrets.v4.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/secrets.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # EHOS refuses a v2 or v3 that names an ehos.yaml/v4: neither ever read a seed or a secret.
+    test "is the only thing that makes a v4" do
+      file = %{"schema" => "ehos.yaml/v4", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v4"
 
       file = %{"schema" => "ehos.yaml/v3", "health" => @health}
       assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v3"

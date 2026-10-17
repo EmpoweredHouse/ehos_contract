@@ -1,18 +1,23 @@
 defmodule EhOsContract.Auth.Manifest do
   # In `eh-os`: the manifest is D-52; `sign_in` D-69; `needs.people` and `ehos.manifest/v3`
-  # D-81; a capability naming its declaration's kind D-73; scope values on a binding D-40;
-  # `contracts` left out for the authority digest, issue #92.
+  # D-81; `needs.database.seed`, `needs.secrets` and `ehos.manifest/v4` D-98 and D-99; a
+  # capability naming its declaration's kind D-73; scope values on a binding D-40; `contracts`
+  # left out for the authority digest, issue #92.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v3` for an `ehos.yaml/v3`, and `ehos.manifest/v2` for an older one. v3 is
-  v2 whose `ehos_yaml` may be `ehos.yaml/v3`, and EHOS refuses a v2 that names it.
+  `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and
+  `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is
+  v3 whose `ehos_yaml` may be `ehos.yaml/v4`, and EHOS refuses a manifest that names a file
+  newer than its own version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
   becomes `ehos_yaml`, the version the file is written in. From `ehos.yaml/v2`, that
   includes `sign_in`, empty or not, whose `applications` must not name
   the application the generator finds below; from `ehos.yaml/v3`, `needs.people`, which
-  asks that the workload read the company's people. The generator adds:
+  asks that the workload read the company's people; from `ehos.yaml/v4`, `needs.database.seed`,
+  the command EHOS runs to seed an ephemeral environment, and `needs.secrets`, the secrets the
+  workload is given. The generator adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
       takes it from there; a domain without contracts is not counted. A project with
@@ -46,7 +51,7 @@ defmodule EhOsContract.Auth.Manifest do
   @max_application 63
 
   @doc """
-  Builds an `ehos.manifest/v2` or `v3` document from an `ehos.yaml` already read by
+  Builds an `ehos.manifest/v2`, `v3` or `v4` document from an `ehos.yaml` already read by
   `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the registered
   contracts.
 
@@ -90,16 +95,18 @@ defmodule EhOsContract.Auth.Manifest do
   produces, and what an EHOS has to accept for every manifest it writes to be deployed.
 
       iex> EhOsContract.Auth.Manifest.schemas()
-      ["ehos.manifest/v2", "ehos.manifest/v3"]
+      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4"]
 
-  `build/3` writes `ehos.manifest/v3` for an `ehos.yaml/v3` and `ehos.manifest/v2` for an
-  older one.
+  `build/3` writes `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an
+  `ehos.yaml/v3` and `ehos.manifest/v2` for an older one.
   """
   @spec schemas() :: [String.t()]
-  def schemas, do: ["ehos.manifest/v2", "ehos.manifest/v3"]
+  def schemas, do: ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4"]
 
   # `eh-os` D-81: a manifest keeps the meaning it had when EHOS accepted it, so the version that
-  # can carry `needs.people` is a new one, and an older file keeps its v2.
+  # can carry `needs.people` is a new one, and so is the one that can carry a seed or secrets
+  # (D-98, D-99); an older file keeps its older manifest.
+  defp manifest_schema("ehos.yaml/v4"), do: "ehos.manifest/v4"
   defp manifest_schema("ehos.yaml/v3"), do: "ehos.manifest/v3"
   defp manifest_schema(_older), do: "ehos.manifest/v2"
 
