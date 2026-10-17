@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4, V1 and V2 in `main`; v0.5.0 released)
+## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4, V1, V2 and V3 in `main`; v0.5.0 released)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -29,7 +29,7 @@ words' (V5, #322, in #324: storage version 4, every version moved once), and the
 the notice, `pages --audience owner` and the graph's switch "Owner"). Of the revision only V1–V4 remained, required
 before the first application keeps data it may not lose; the user started them on 16 October: V1 (upcasts
 declared, #333, in #337) and V2 (an upcast by a function, #338, in #339) are merged, and v0.5.0 is released; V3
-(the schema lock, #340) is next.
+(the schema lock, #340, in #342) is merged, and V4 (the lock against upcasts, #346) is next.
 
 **Open, the user's:** #287 (the compiler between modules does not see a unit declared in a dependency's contract);
 #256 (whether an outage one system upstream excuses a broken promise); #249 (a clinic's specialist's stand-in);
@@ -1909,8 +1909,8 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | O2 | 3 | a process's stage order on its picture | O1, G1 | ☑ #320 | [#319](https://github.com/EmpoweredHouse/eh-os-contract/issues/319) |
 | V1 | 4 | upcasty deklaratywne | W1, P2h | ☑ #337 | [#333](https://github.com/EmpoweredHouse/eh-os-contract/issues/333) |
 | V2 | 4 | upcast przez callback | V1 | ☑ #339 | [#338](https://github.com/EmpoweredHouse/eh-os-contract/issues/338) |
-| V3 | 4 | zamek schematów | V1 | ◐ `dd/340-schema-lock` | [#340](https://github.com/EmpoweredHouse/eh-os-contract/issues/340) |
-| V4 | 4 | zamek wobec upcastów | V3 | ⏸ with V1 | — |
+| V3 | 4 | zamek schematów | V1 | ☑ #342 | [#340](https://github.com/EmpoweredHouse/eh-os-contract/issues/340) |
+| V4 | 4 | zamek wobec upcastów | V3 | ◐ `dd/346-lock-against-upcasts` | [#346](https://github.com/EmpoweredHouse/eh-os-contract/issues/346) |
 | V5 | 4 | the agreement's version and the words' digest | P2h | ☑ #324 | [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322) |
 | PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☑ #265 | [#264](https://github.com/EmpoweredHouse/eh-os-contract/issues/264) |
 | PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☑ #267 | [#266](https://github.com/EmpoweredHouse/eh-os-contract/issues/266) |
