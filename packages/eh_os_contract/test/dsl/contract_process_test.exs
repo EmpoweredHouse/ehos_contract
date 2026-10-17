@@ -137,6 +137,36 @@ defmodule EhOsContract.ContractProcessTest do
 
       assert [%{timers: [%{wait: %{amount: 1, unit: :month}}]}] = model.process_managers
     end
+
+    test "a wait longer than 100 years is refused, and the message names the limit" do
+      message =
+        refuse_contract("CenturyWait", """
+        #{@bare_unit}
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed, sets: :reminder
+            timer :reminder, "Reminder", wait: {1201, :month}
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "R6: timer :reminder: wait is longer than 100 years, the longest a duration may " <>
+                 "be (a year counted as 366 days, a month as 31, a week as 7)"
+    end
+
+    test "control: a wait of 100 years compiles" do
+      model =
+        compile_contract("CenturyWaitKept", """
+        #{@bare_unit}
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed, sets: :reminder
+            timer :reminder, "Reminder", wait: {100, :year}
+            ends_on :visit_closed
+          end
+        """)
+
+      assert [%{timers: [%{wait: %{amount: 100, unit: :year}}]}] = model.process_managers
+    end
   end
 
   describe "K1: consuming a sibling's events" do

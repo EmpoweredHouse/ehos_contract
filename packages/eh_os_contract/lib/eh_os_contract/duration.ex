@@ -118,6 +118,29 @@ defmodule EhOsContract.Duration do
 
   def calendar_shift(%DateTime{} = at, duration), do: shift(at, duration)
 
+  # A calendar unit at its longest: what a ceiling in seconds must count it as, so
+  # that no shift by a duration under the ceiling lands further than the ceiling says.
+  @longest Map.merge(@seconds, %{week: 7 * 86_400, month: 31 * 86_400, year: 366 * 86_400})
+
+  @ceiling {100, :year}
+
+  @doc """
+  The longest duration a contract or a process module may declare: 100 years.
+
+  A timer whose wait is longer cannot be set, since no date that far ahead is stored,
+  and a promise or a deadline that long says nothing a run could keep or break. The
+  ceiling is compared in seconds (`seconds/1`), a calendar unit counted at its longest.
+  """
+  @spec ceiling() :: {pos_integer(), :year}
+  def ceiling, do: @ceiling
+
+  @doc """
+  A duration in seconds, a calendar unit counted at its longest: a week as 7 days, a
+  month as 31 and a year as 366. Read against `ceiling/0`, not to shift a moment.
+  """
+  @spec seconds({non_neg_integer(), atom()}) :: non_neg_integer()
+  def seconds({n, unit}), do: n * Map.fetch!(@longest, unit)
+
   @doc """
   The rejection message for an unsupported unit.
 

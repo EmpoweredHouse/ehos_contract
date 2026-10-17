@@ -227,6 +227,8 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 - A process manager that starts on nothing, has an empty `correlate`, or is delivered `:in_transaction`; a
   trigger that is neither an event it may take nor its own timer; a timer without exactly one of `wait:` and
   `at:` ([`P4`](../contract.md#refusals-p)).
+- A timer's `wait:` that is negative, malformed, or longer than 100 years, a year counted as 366 days and a
+  month as 31 ([`R6`](../contract.md#refusals-r)): no date that far ahead is stored, and the timer could never be set.
 - A command no actor may issue and no reaction issues ([`C1`](../contract.md#refusals-c)).
 - In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](../contract.md#refusals-i), [`I6`](../contract.md#refusals-i)).
 

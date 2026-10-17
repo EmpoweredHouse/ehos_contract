@@ -9,6 +9,7 @@ defmodule EhOsContract.Contract.Rules.Durations do
   #   (`EhOsContract.Duration`), or of weeks, months and years — a timer by the
   #   calendar, the user's choice of 27 September 2026 (plan EM3). `problems/2` says
   #   what is wrong with a duration, for a process module's `within` and `deadline` too.
+  #   No duration is longer than `EhOsContract.Duration.ceiling/0`, 100 years (#193).
   @moduledoc false
 
   alias EhOsContract.DslRules
@@ -44,13 +45,13 @@ defmodule EhOsContract.Contract.Rules.Durations do
   # What is wrong with a duration a rule counts in `units`, one sentence per problem
   # (R6): read by a process module's rules too (`EhOsContract.Process.Rules`).
   @spec problems(term(), [atom()]) :: [String.t()]
-  def problems({n, unit}, units) do
+  def problems({n, unit} = duration, units) do
     count =
       if is_integer(n) and n >= 0,
         do: [],
         else: ["counts #{inspect(n)}, which is not a non-negative integer"]
 
-    unit =
+    in_unit =
       cond do
         unit in units ->
           []
@@ -64,8 +65,24 @@ defmodule EhOsContract.Contract.Rules.Durations do
           ["is in #{inspect(unit)}, which is not one of #{inspect(units)}"]
       end
 
-    count ++ unit
+    count ++ in_unit ++ ceiling(duration, count == [] and in_unit == [])
   end
 
   def problems(other, _units), do: ["is #{inspect(other)}, which is not {count, unit}"]
+
+  # Above the ceiling a timer cannot be set and a window means nothing (#193). Asked
+  # only of a count and a unit that are otherwise right, so one mistake gets one
+  # sentence.
+  defp ceiling(duration, true) do
+    {years, :year} = Duration.ceiling()
+
+    if Duration.seconds(duration) > Duration.seconds(Duration.ceiling()),
+      do: [
+        "is longer than #{years} years, the longest a duration may be (a year counted as " <>
+          "366 days, a month as 31, a week as 7)"
+      ],
+      else: []
+  end
+
+  defp ceiling(_duration, false), do: []
 end
