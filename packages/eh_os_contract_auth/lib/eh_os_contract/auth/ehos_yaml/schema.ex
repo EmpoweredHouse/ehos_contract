@@ -115,6 +115,21 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   defp reason(:enum, %{"enum" => values}, _message), do: "must be #{Enum.join(values, " or ")}"
   defp reason(:pattern, %{"pattern" => pattern}, _message), do: "must match #{pattern}"
   defp reason(:not, %{"const" => value}, _message), do: "must not be #{value}"
+
+  # v4's reserved secret names: a `not` of patterns and values, said as what it refuses.
+  defp reason(:not, %{"anyOf" => [_ | _] = choices} = here, message) do
+    refused =
+      Enum.flat_map(choices, fn
+        %{"pattern" => pattern} -> ["match #{pattern}"]
+        %{"enum" => values} -> ["be #{Enum.join(values, ", ")}"]
+        %{"const" => value} -> ["be #{value}"]
+        _other -> []
+      end)
+
+    if length(refused) == length(here["anyOf"]),
+      do: "is a name EHOS reserves: it must not " <> Enum.join(refused, ", or "),
+      else: message
+  end
   defp reason(:minimum, %{"minimum" => min}, _message), do: "must be at least #{min}"
   defp reason(:maximum, %{"maximum" => max}, _message), do: "must be at most #{max}"
 

@@ -181,7 +181,12 @@ defmodule EhOsContract.Auth.EhosYamlTest do
 
     test "refuses a secret named as one EHOS gives every workload" do
       text = "schema: ehos.yaml/v4\nneeds:\n  secrets:\n    - name: database_url\n" <> @health
-      assert {:error, [%{path: "needs.secrets[0].name"}]} = EhosYaml.read(text)
+      assert {:error, [%{path: "needs.secrets[0].name", message: message}]} = EhosYaml.read(text)
+
+      assert message ==
+               "is a name EHOS reserves: it must not match " <>
+                 "^(ehos_|database_|phx_|otel_|pg|release_|erl_|elixir_|ld_|lc_|kubernetes_), " <>
+                 "or be secret_key_base, path, home, hostname, lang, shell, user, tmpdir"
     end
   end
 
