@@ -105,6 +105,30 @@ defmodule EhOsContract.ProcessModuleTest do
       assert Model.fetch(model) == model
     end
 
+    test "waits_on is in the model and the digest only where a promise declares it" do
+      without = compile_process("WaitsOnNone", @body)
+      refute Map.has_key?(hd(without.promises), :waits_on)
+
+      body =
+        replace(
+          @body,
+          "or_else :reporting_not_required\n",
+          "or_else :reporting_not_required\n    waits_on [:register, :register]\n"
+        )
+
+      with_it = compile_process("WaitsOnRegister", body)
+      assert [%{waits_on: [:register]}] = with_it.promises
+
+      # Adding the word moved no version of a promise without it; declaring it moves its own.
+      assert without.digests["promise:reported_within_two_days"] ==
+               compile_process("WaitsOnNoneAgain", @body).digests[
+                 "promise:reported_within_two_days"
+               ]
+
+      refute with_it.digests["promise:reported_within_two_days"] ==
+               without.digests["promise:reported_within_two_days"]
+    end
+
     test "without a deadline or the optional options, the model says nil" do
       model = compile_process("NoDeadline", @body)
 
@@ -173,7 +197,16 @@ defmodule EhOsContract.ProcessModuleTest do
                [:correlate] => [:fields],
                [:stage] => [:name, :label, :include],
                [:ends_on] => [:events],
-               [:promise] => [:name, :from, :eventually, :within, :or_else, :unverified, :source],
+               [:promise] => [
+                 :name,
+                 :from,
+                 :eventually,
+                 :within,
+                 :or_else,
+                 :waits_on,
+                 :unverified,
+                 :source
+               ],
                [:deadline] => [:within, :unverified],
                [:scenario] => [:description, :verdict, :via],
                [:scenario, :given] => [:event, :data, :at],

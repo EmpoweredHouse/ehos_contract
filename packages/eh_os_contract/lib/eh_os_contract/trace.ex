@@ -53,6 +53,12 @@ defmodule EhOsContract.Trace do
   run is whatever `eventually` or `or_else` depends on. Taking the union of the whole
   contract's dependencies would suspend a run because something unrelated was down.
 
+  **A promise may name what it waits on through an earlier step: `waits_on`.** An
+  accounting month opens, or is blocked, only after the company is checked against the
+  public registries, yet opening the month does not call them. `waits_on [:registries]`
+  says so, and an outage of the registries observed by any contract the process includes
+  counts as one of the events' own dependencies does.
+
   **This union is `eventually`'s dependency `or` `or_else`'s, not their
   intersection.** A narrower reading would suspend only when every still-possible
   route was blocked, since a wanted route with no dependency at all can never be
@@ -242,8 +248,9 @@ defmodule EhOsContract.Trace do
 
   - `now:` (required) — the moment of judgement, which tells `:pending` from
     `:violated`.
-  - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
-    unavailable; a window that closed empty with one inside it is `:suspended`.
+  - `outages:` — the moments a dependency of `eventually` or `or_else`, or a system
+    the promise `waits_on`, was seen unavailable; a window that closed empty with one
+    inside it is `:suspended`.
     Defaults to none.
 
   Occurrences of types other than the trace's three are ignored. For a trace with an
@@ -300,21 +307,44 @@ defmodule EhOsContract.Trace do
   # and including it would suspend runs on the strength of an outage that demonstrably
   # did not stop anything. Taking every dependency in the contract would be worse
   # still: a run would be excused because something it never touched was down.
+  #
+  # Beside them, the systems the promise says it `waits_on` through an earlier step
+  # (plan DD, OW1 (#355)), as observed by any contract the process includes: a registry
+  # down does not happen to one contract, and the step that calls it is one of the run's.
   @spec promised_outages(map(), map()) :: [DateTime.t()]
   defp promised_outages(model, promise) do
-    for name <- [promise.eventually, promise.or_else],
-        name != nil,
-        {contract, event} = Model.declaring(model, name),
-        external = event.depends_on,
-        external != nil,
-        at <-
-          Map.get(
-            EhOsContract.Dependency.observations_by_external(contract),
-            to_string(external),
-            []
-          ) do
-      at
-    end
+    awaited =
+      for name <- [promise.eventually, promise.or_else],
+          name != nil,
+          {contract, event} = Model.declaring(model, name),
+          external = event.depends_on,
+          external != nil,
+          at <- observed(contract, [external]) do
+        at
+      end
+
+    waited =
+      case Map.get(promise, :waits_on, []) do
+        [] ->
+          []
+
+        externals ->
+          contracts =
+            for stage <- Model.process(model).stages,
+                include <- stage.includes,
+                uniq: true,
+                do: include.contract
+
+          for contract <- contracts, at <- observed(contract, externals), do: at
+      end
+
+    Enum.uniq(awaited ++ waited)
+  end
+
+  @spec observed(module(), [atom()]) :: [DateTime.t()]
+  defp observed(contract, externals) do
+    observations = EhOsContract.Dependency.observations_by_external(contract)
+    Enum.flat_map(externals, &Map.get(observations, to_string(&1), []))
   end
 
   @spec judge_per_run(trace(), [occurrence()], DateTime.t(), [DateTime.t()]) :: [verdict()]

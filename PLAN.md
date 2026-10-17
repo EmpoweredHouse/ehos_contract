@@ -1929,7 +1929,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | C1 | 5 | debt: one list of the commands reactions issue, a contract's `correlate` naming a field twice, "Records only" in the graph | P2e | ☑ #305 | [#304](https://github.com/EmpoweredHouse/eh-os-contract/issues/304) |
 | G1 | 5 | the graph drawn like a catalog: cards of their kind, a legend, search, one canvas | C1 | ☑ #307, #308, #309, #310, #311, #312 | [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297) |
 | DU1 | 6 | a ceiling for durations: 100 years | — | ☐ | [#193](https://github.com/EmpoweredHouse/eh-os-contract/issues/193) |
-| OW1 | 6 | a promise says what it waits on: `waits_on` | — | ☐ | issue to open (from #256) |
+| OW1 | 6 | a promise says what it waits on: `waits_on` | — | ◐ `dd/355-promise-waits-on` | [#355](https://github.com/EmpoweredHouse/eh-os-contract/issues/355) |
 | RL1 | 6 | docs: the relay and a seal, settled by the lock | — | ☐ | issue to open (from #333, #338) |
 | XA1 | 6 | docs: a domain's contracts compile in one project | — | ☐ | [#287](https://github.com/EmpoweredHouse/eh-os-contract/issues/287) |
 | RE1 | 6 | release v0.7.0 and its migration note | DU1, OW1, RL1, XA1 | ☐ | — (`No issue: release`) |

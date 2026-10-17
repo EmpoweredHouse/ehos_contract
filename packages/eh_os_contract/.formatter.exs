@@ -203,6 +203,7 @@ spark_locals_without_parens = [
   via: 1,
   violated_by: 1,
   wait: 1,
+  waits_on: 1,
   where: 1,
   within: 1
 ]

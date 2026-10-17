@@ -966,6 +966,8 @@ between DSL modules record no compile dependency, §8):
 - X2: every `by:`, `recorded_by:`, `accountable` and scenario `actor` names an actor of this context.
 - X3: every non-built-in field type is a domain value; every `subject:` a domain subject.
 - X4: `depends_on` and `calls` name domain externals.
+  > *Changed 17 October 2026, plan DD, OW1:* so does a process module's promise's `waits_on` (§13's amendment of
+  > this date). [#355](https://github.com/EmpoweredHouse/eh-os-contract/issues/355)
 - X5: a consumed contract exists, and the event is `public`.
 - X6: **the fields a subscriber's declarations use — in `correlate`, `match`, `include` and `projects` —
   exist in the publisher's current schema with compatible types** (§7).
@@ -1705,6 +1707,16 @@ the person's.
 > process module's report carries the runs, durations and promises; `graph.v1` keeps its process, stage and
 > promise kinds, empty in a contract's document, until P2e draws a process module's (the user's choice: shapes
 > others read stay readable unchanged). [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
+
+> *Changed 17 October 2026, plan DD, OW1.* **A promise may name what it waits on through an earlier step.** The
+> rule that "only an outage of what `eventually` or `or_else` depends on suspends a run" turned out too narrow:
+> TaxVision's month opens, or is blocked, only after the registry check, and neither ending calls the registries
+> itself, so two days of registries down read as a broken promise. A process module's `promise` now takes
+> `waits_on [:external]`: externals of the domain (X4, which also refuses one `eventually` or `or_else` already
+> depends on), whose outage, observed by any contract the process includes, suspends the promise as its events'
+> own dependencies do. `from` still counts for nothing. Following the chain of causes back from the awaited event
+> was rejected: it breaks at every command a person issues. So was `depends_on` on the awaited event, which would
+> say it calls a system it does not. [#355](https://github.com/EmpoweredHouse/eh-os-contract/issues/355)
 
 | Fate | Modules |
 | --- | --- |

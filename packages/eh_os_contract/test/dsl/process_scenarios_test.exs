@@ -59,9 +59,10 @@ defmodule EhOsContract.ProcessScenariosTest do
     """
   end
 
-  # The process module `<prefix>Visit` over `<prefix>Reporting`, its scenario's first
-  # given at line 17 and its outage at line 19.
-  defp checked(prefix, given, outage) do
+  # The process module `<prefix>Visit` over `<prefix>Reporting`, its promise at line 9,
+  # its scenario's first given at line 17 and its outage at line 19. `waits` goes on the
+  # promise's `or_else` line, so that the lines stay where they are.
+  defp checked(prefix, given, outage, waits \\ "") do
     contract = inspect(Module.concat(@fixtures, "#{prefix}Reporting"))
 
     links([
@@ -79,7 +80,7 @@ defmodule EhOsContract.ProcessScenariosTest do
              from :visit_completed
              eventually :report_sent
              within {2, :day}
-             or_else :reporting_not_required
+             or_else :reporting_not_required#{waits}
            end
 
            scenario "rejestr nie działał, raport nie wysłany — obietnica zawieszona", verdict: :suspended do
@@ -437,8 +438,44 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       assert assert_linked(violations, "X4:", "proc_scenario_mail_visit.ex", 19) =~
                "outage :mail is of no external promise :reported_within_two_days waits on; its " <>
-                 "eventually and or_else depend on [:register], and an outage of anything else " <>
-                 "excuses nothing"
+                 "eventually and or_else depend on [:register], it waits on no other, and an " <>
+                 "outage of anything else excuses nothing"
+    end
+
+    test "control: an outage of a system the promise waits_on through an earlier step" do
+      assert checked(
+               "ProcScenarioWaits",
+               ~s|%{visit_id: "visit-anna", room: "12"}|,
+               ":mail",
+               "; waits_on [:mail]"
+             ) == []
+    end
+
+    test "waits_on names an external of the domain, and not one its events already depend on" do
+      unknown =
+        checked(
+          "ProcScenarioWaitsPost",
+          ~s|%{visit_id: "visit-anna", room: "12"}|,
+          ":register",
+          "; waits_on :maill"
+        )
+
+      assert assert_linked(unknown, "X4: promise", "proc_scenario_waits_post_visit.ex", 9) =~
+               "X4: promise :reported_within_two_days: waits_on :maill is not an external of " <>
+                 "#{inspect(@domain)}; did you mean :mail?"
+
+      twice =
+        checked(
+          "ProcScenarioWaitsTwice",
+          ~s|%{visit_id: "visit-anna", room: "12"}|,
+          ":register",
+          "; waits_on [:register]"
+        )
+
+      assert assert_linked(twice, "X4: promise", "proc_scenario_waits_twice_visit.ex", 9) =~
+               "X4: promise :reported_within_two_days: waits_on :register is what its " <>
+                 "eventually or or_else already depends_on, which excuses it without saying so; " <>
+                 "leave it out of waits_on"
     end
   end
 end

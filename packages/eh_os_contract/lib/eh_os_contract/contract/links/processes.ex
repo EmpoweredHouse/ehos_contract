@@ -26,9 +26,14 @@ defmodule EhOsContract.Contract.Links.Processes do
   #   contract that declares it declares, as a sibling event's data in a contract's
   #   scenario does (`EhOsContract.Contract.Links.Scenarios`): its fields, every required
   #   one and its unit's identity, each value of its type. An outage is of an external
-  #   the promise's `eventually` or `or_else` depends on: `from` already happened, so
-  #   what it needs was working, and an outage of anything else excuses nothing in the
-  #   report (`EhOsContract.Trace`), so a scenario of one would show what never happens.
+  #   the promise's `eventually` or `or_else` depends on, or one it `waits_on`: `from`
+  #   already happened, so what it needs was working, and an outage of anything else
+  #   excuses nothing in the report (`EhOsContract.Trace`), so a scenario of one would
+  #   show what never happens.
+  # - **X4 for a promise** (plan DD, OW1 (#355)). Each system a promise `waits_on` is an
+  #   external of the domain, and not one its `eventually` or `or_else` already depends
+  #   on, which excuses it without saying so: two declarations of one dependency would
+  #   drift, and a reader could not tell which one is meant.
   #
   # X7, a process module's `id:` taken by another process, is `Links.System`'s. The
   # error stands at the module's `use` for what names the whole module, and at the stage
@@ -54,7 +59,9 @@ defmodule EhOsContract.Contract.Links.Processes do
 
     namespace(p) ++
       accountable(p) ++
-      x5(p, included) ++ x6(p, included) ++ given_data(p, included) ++ outages(p, included)
+      x5(p, included) ++
+      x6(p, included) ++
+      waits_on(p, included) ++ given_data(p, included) ++ outages(p, included)
   end
 
   defp where(p), do: "process #{inspect(p.model.id)}"
@@ -151,6 +158,35 @@ defmodule EhOsContract.Contract.Links.Processes do
     end
   end
 
+  # --- X4: what a promise waits on -------------------------------------------------
+
+  defp waits_on(%{domain: domain} = p, included) do
+    externals = Enum.map(domain.externals, & &1.name)
+
+    for promise <- p.declarations.promises,
+        name <- Enum.uniq(promise.waits_on),
+        problem <- waits_on_problems(name, depends_on(promise, included), externals, domain) do
+      {"X4: promise #{inspect(promise.name)}: waits_on #{inspect(name)} #{problem}",
+       Links.at(promise)}
+    end
+  end
+
+  defp waits_on_problems(name, depends, externals, domain) do
+    cond do
+      name not in externals ->
+        ["is not an external of #{inspect(domain.module)}; #{suggest(name, externals)}"]
+
+      name in depends ->
+        [
+          "is what its eventually or or_else already depends_on, which excuses it without " <>
+            "saying so; leave it out of waits_on"
+        ]
+
+      true ->
+        []
+    end
+  end
+
   # --- X9, X4: scenarios -----------------------------------------------------------
 
   defp given_data(p, included) do
@@ -180,17 +216,25 @@ defmodule EhOsContract.Contract.Links.Processes do
         promise = Enum.find(p.model.promises, &(&1.name == judged.name)),
         promise != nil,
         depends = depends_on(promise, included),
+        waits = Map.get(promise, :waits_on, []),
         outage <- scenario.outages,
-        outage.external not in depends do
+        outage.external not in (depends ++ waits) do
       on =
         case depends do
           [] -> "on no external"
           some -> "on #{inspect(some)}"
         end
 
+      waits_on =
+        case waits do
+          [] -> "it waits on no other"
+          some -> "it waits_on #{inspect(some)}"
+        end
+
       {"X4: scenario #{inspect(scenario.description)}: outage #{inspect(outage.external)} " <>
          "is of no external promise #{inspect(promise.name)} waits on; its eventually and " <>
-         "or_else depend #{on}, and an outage of anything else excuses nothing", Links.at(outage)}
+         "or_else depend #{on}, #{waits_on}, and an outage of anything else excuses nothing",
+       Links.at(outage)}
     end
   end
 

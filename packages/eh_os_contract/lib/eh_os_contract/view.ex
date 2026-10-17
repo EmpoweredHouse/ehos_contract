@@ -96,7 +96,13 @@ defmodule EhOsContract.View do
             within = if pr.within, do: " within #{duration(pr.within)}", else: ""
             or_else = if pr.or_else, do: ", or else #{pr.or_else}", else: ""
 
-            "promise #{pr.name}  #{pr.from} → #{pr.eventually}#{within}#{or_else}" <>
+            waits =
+              case Map.get(pr, :waits_on, []) do
+                [] -> ""
+                names -> ", waits on #{list(names)}"
+              end
+
+            "promise #{pr.name}  #{pr.from} → #{pr.eventually}#{within}#{or_else}#{waits}" <>
               unverified(pr)
           end
       else

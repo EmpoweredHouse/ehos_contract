@@ -64,7 +64,7 @@ defmodule EhOsContract.Graph.Facts do
 
   @process_kinds ~w(process stage promise event contract context actor external)a
 
-  @process_types ~w(accountable_for opens fulfils or_else depends_on)a
+  @process_types ~w(accountable_for opens fulfils or_else depends_on waits_on)a
 
   # What tells apart two relations of one type between the same two nodes: a
   # subscription's `as`, a DCB's `match` and `where` (the prose by its hash) among them.
@@ -926,7 +926,8 @@ defmodule EhOsContract.Graph.Facts do
   declares it, so the two documents join — with the stage it sits in and whether it
   ends a run, the contracts those events come from and their contexts, the external
   systems those events rest on (`depends_on`, as in the contract's document), its
-  promises with the events that open, fulfil or settle each otherwise, and the actor
+  promises with the events that open, fulfil or settle each otherwise and the systems
+  each waits on (`waits_on`), and the actor
   accountable for it. Every kind and type present, empty or not.
   """
   @spec process(module() | map()) :: %{nodes: map(), relations: map()}
@@ -982,6 +983,13 @@ defmodule EhOsContract.Graph.Facts do
 
     rests = for {from, x} <- resting, do: {:depends_on, relation(from, id(:external, d, x))}
 
+    # What a promise waits on through an earlier step (plan DD, OW1 (#355)): an outage of
+    # it suspends the promise as one of its events' own dependencies does.
+    waiting =
+      for pr <- p.promises, x <- Map.get(pr, :waits_on, []), do: {promise_id.(pr.name), x}
+
+    waits = for {from, x} <- waiting, do: {:waits_on, relation(from, id(:external, d, x))}
+
     actors = List.wrap(accountable(domain, p.accountable))
 
     accountable =
@@ -1018,12 +1026,12 @@ defmodule EhOsContract.Graph.Facts do
       actor: for(a <- actors, do: actor(a, ctx)),
       external:
         for(
-          x <- declared(domain.externals, Enum.map(resting, &elem(&1, 1))),
+          x <- declared(domain.externals, Enum.map(resting ++ waiting, &elem(&1, 1))),
           do: external(x, ctx)
         )
     }
 
-    group(nodes, @process_kinds, typed(promised ++ accountable ++ rests), @process_types)
+    group(nodes, @process_kinds, typed(promised ++ accountable ++ rests ++ waits), @process_types)
   end
 
   # A contract as a node of a domain's or a process module's document. A contract has no

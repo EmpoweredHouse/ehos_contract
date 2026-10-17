@@ -200,13 +200,17 @@ defmodule EhOsContract.Deployment do
   defp key(%{id: id}), do: id
 
   # A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
-  # `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
+  # `or_else`, and `waits_on` where it is declared, so that a promise without it keeps
+  # its digest (plan DD, OW1 (#355)) — and nothing else. Confirming it (`unverified`) or citing a new `source`
   # changes no run's verdict, so it must not draw a boundary that stops judging the
   # runs before it. Public for its test.
   @doc false
   @spec promise_digest(map()) :: String.t()
   def promise_digest(promise),
-    do: promise |> Map.take([:from, :eventually, :within, :or_else]) |> EhOsContract.Digest.hash()
+    do:
+      promise
+      |> Map.take([:from, :eventually, :within, :or_else, :waits_on])
+      |> EhOsContract.Digest.hash()
 
   # A v2 contract's declared steps as the labels a deployment records:
   # `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,

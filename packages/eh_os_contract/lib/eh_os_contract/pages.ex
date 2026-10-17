@@ -1183,7 +1183,7 @@ defmodule EhOsContract.Pages do
         &bullet([included_event(site, %{&1 | terminal: false})])
       ),
       section("Promises", p.promises, &promise(site, events, &1)),
-      resting(site, events),
+      resting(site, events, p.promises),
       process_scenarios(site, events, p, Map.get(model, :scenarios, []))
     ]
   end
@@ -1269,23 +1269,36 @@ defmodule EhOsContract.Pages do
       event.(pr.eventually),
       if(pr.within, do: " within #{duration(pr.within)}"),
       if(pr.or_else, do: [", or else ", event.(pr.or_else)]),
+      case Map.get(pr, :waits_on, []) do
+        [] ->
+          []
+
+        waits ->
+          [", waiting on " | Enum.intersperse(Enum.map(waits, &external_name(site, &1)), ", ")]
+      end,
       if(pr.unverified, do: [".", unconfirmed(site, pr)]),
       source_note(pr)
     ])
   end
 
-  # The external systems the included events rest on: an outage of one suspends a
-  # promise instead of breaking it.
-  defp resting(site, events) do
+  # The external systems the included events rest on, and those a promise waits on
+  # through an earlier step: an outage of one suspends a promise instead of breaking it.
+  defp resting(site, events, promises) do
     resting = for e <- events, x = e.declaration[:depends_on], x != nil, do: {x, e}
+    waiting = for pr <- promises, x <- Map.get(pr, :waits_on, []), do: {x, pr}
 
     lines =
-      for x <- resting |> Enum.map(&elem(&1, 0)) |> Enum.uniq() do
+      for x <- (resting ++ waiting) |> Enum.map(&elem(&1, 0)) |> Enum.uniq() do
         external = Enum.find(site.domain.externals, &(&1.name == x))
         name = if external, do: labelled(site, external), else: code(x)
         on_it = for {^x, e} <- resting, do: included_event(site, %{e | terminal: false})
+        waits = for {^x, pr} <- waiting, do: code(pr.name)
 
-        bullet(["#{name} · what rests on it: " | joined(on_it)])
+        bullet(
+          ["#{name}"] ++
+            if(on_it == [], do: [], else: [" · what rests on it: " | joined(on_it)]) ++
+            if(waits == [], do: [], else: [" · the promises that wait on it: " | joined(waits)])
+        )
       end
 
     case lines do
@@ -1297,7 +1310,8 @@ defmodule EhOsContract.Pages do
           "",
           "## External systems",
           "",
-          "An outage of one suspends a promise whose events rest on it, rather than breaking it.",
+          "An outage of one suspends a promise whose events rest on it, or that waits on it, " <>
+            "rather than breaking it.",
           "" | lines
         ]
     end
