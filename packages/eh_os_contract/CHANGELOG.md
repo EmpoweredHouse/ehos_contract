@@ -50,6 +50,16 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
+- **An old row read through a function, where a rename and a default cannot say the change** (plan DD, stage V2,
+  #338): `upcast from: 1, function: :amount_from_minor` names a function of the unit's implementation, which takes a
+  row's payload at that version as the log stores it and gives the next version's. The implementation does not
+  compile without it (`I2`). Reading refuses the row, naming the step and never a value, when the function moved
+  or made a sealed personal value, changed a field the log tags rows with, raised, threw, exited, or gave no map. What
+  it gives is read as the log stores a value, so a decimal, a date or an atom key reads as an old row's own. A step by
+  a function takes neither `rename:` nor `default:`, and is not named like a command of the unit or like `emit`,
+  `reject` and `issue` (`U2`). `mix eh_os_contract.check` reports a unit with such a step and no implementation
+  (`declaration-without-implementation`), as it does a unit with commands.
+
 - **An event's old rows are read in its current shape** (plan DD, stage V1, #333): an `upcast` per version below
   `schema_version`, `upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]`. A row is read
   through the steps from its own version up, by every consumer and by a relay before it publishes. The log is never

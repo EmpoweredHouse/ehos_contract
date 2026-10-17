@@ -309,6 +309,36 @@ row of version 1 goes through both steps in turn.
   one (an enum's member as its name, a date as text). A row that holds the field keeps its own.
   A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
 - **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
+- **`function:`** names a function of the unit's implementation, for a change a rename and a default
+  cannot say: amounts stored in grosze read as a decimal, one field split in two. It is a step on its
+  own.
+
+```elixir
+event :fee_charged, "Fee charged", schema_version: 2 do
+  field :amount, :decimal
+
+  upcast from: 1, function: :amount_from_minor
+end
+```
+
+```elixir
+@impl true
+def amount_from_minor(%{"amount_minor" => minor} = data),
+  do: data |> Map.delete("amount_minor") |> Map.put("amount", Decimal.div(minor, 100))
+```
+
+The function takes the row's payload at that version as the log stores it, with string keys, and
+gives the next version's; what it gives is read as the log stores a value, so a decimal, a date or an
+atom key reads as an old row's own would. The implementation does not compile without it
+([`I2`](../contract.md#refusals-i)), and it is pure: it reads nothing but the row. The engine cannot
+see what it did, so it refuses the row, naming the step and never a value, when the function:
+
+- moved a sealed personal value, made one, or reordered a list holding one: a seal opens only under
+  the field it was sealed in, so a personal field is renamed with `rename:`, and its value, which the
+  function sees sealed, cannot be converted at all;
+- left a field the log tags rows with other than the row was written with, a new required `:id`
+  among them: that change is a new event;
+- raised, threw, exited, or gave no map.
 
 A step covers what it can say in words. What the log keeps beside a row's payload by a field's name
 cannot be carried across: the unit's identity, and every field the log tags each row with — a

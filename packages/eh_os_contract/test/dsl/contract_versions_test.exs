@@ -341,4 +341,123 @@ defmodule EhOsContract.ContractVersionsTest do
       )
     end
   end
+
+  # Plan DD, V2 (#338): a step by a function of the unit's implementation.
+  describe "a step by a function" do
+    test "a function step that renames or gives defaults too is refused" do
+      message =
+        refuse_contract(
+          "VersionsFunctionAndRename",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :demand_reason, :string
+
+                upcast from: 1, function: :from_one, rename: [reason: :demand_reason]
+              end
+          """)
+        )
+
+      assert message =~
+               "U2: event :demand_opened, `upcast from: 1` names the function :from_one and " <>
+                 "renames or gives defaults too"
+    end
+
+    test "a function named like a command of the unit is refused" do
+      message =
+        refuse_contract(
+          "VersionsFunctionCommand",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                upcast from: 1, function: :open_demand
+              end
+          """)
+        )
+
+      assert message =~
+               "U2: event :demand_opened, `upcast from: 1` names the function :open_demand, " <>
+                 "the name of a command of the unit"
+    end
+
+    test "a function named like what the implementation imports is refused" do
+      message =
+        refuse_contract(
+          "VersionsFunctionEmit",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                upcast from: 1, function: :emit
+              end
+          """)
+        )
+
+      assert message =~ "names the function :emit, which the implementation imports"
+    end
+
+    test "a step before a function is judged by its own names: onto a tagged field, refused" do
+      message =
+        refuse_contract(
+          "VersionsBeforeFunctionTagged",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 3 do
+                field :company_id, :id
+
+                upcast from: 1, rename: [company_ref: :company_id]
+                upcast from: 2, function: :from_two
+              end
+          """)
+        )
+
+      assert message =~
+               "U3: event :demand_opened, `upcast from: 1` renames :company_ref to :company_id"
+    end
+
+    test "a step before a function is not held to the names it leads to" do
+      compile_contract(
+        "VersionsBeforeFunction",
+        demand("""
+            event :demand_opened, "Otwarte", schema_version: 3 do
+              field :demand_reason, :string
+
+              upcast from: 1, rename: [reason: :why]
+              upcast from: 2, function: :from_two
+            end
+        """)
+      )
+    end
+
+    test "the implementation must define the function, and is shown the clause (I2)" do
+      model =
+        compile_contract(
+          "VersionsFunction",
+          demand("""
+              event :demand_opened, "Otwarte", schema_version: 2 do
+                field :amount, :decimal
+
+                upcast from: 1, function: :amount_from_minor
+              end
+          """)
+        )
+
+      assert hd(model.events).upcasts == [%{from: 1, function: :amount_from_minor}]
+
+      error =
+        assert_raise(CompileError, fn ->
+          compile(
+            """
+            defmodule EhOsContract.Fixtures.VersionsFunctionImpl do
+            use EhOsContract.Fixtures.VersionsFunction, aggregate: :demand
+
+            @impl true
+            def open_demand(_command, _state), do: {:ok, []}
+            end
+            """,
+            "versions_function_impl.ex"
+          )
+        end)
+
+      assert Exception.message(error) =~
+               "I2: EhOsContract.Fixtures.VersionsFunctionImpl does not define amount_from_minor/1"
+
+      assert Exception.message(error) =~ "def amount_from_minor(data) do"
+    end
+  end
 end

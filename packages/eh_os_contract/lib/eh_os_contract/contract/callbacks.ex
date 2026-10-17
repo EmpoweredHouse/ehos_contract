@@ -56,8 +56,17 @@ defmodule EhOsContract.Contract.Callbacks do
         for(e <- model.events, e.unit == name, do: e.name) ++ Enum.map(unit.consults, & &1.event)
       )
 
+    # Plan DD, V2 (#338): an upcast by a function, of an event of the unit, takes a row's
+    # payload at its version, as the log stores it, and gives the next version's.
+    upcasts =
+      for e <- model.events,
+          e.unit == name,
+          %{function: fun} <- Map.get(e, :upcasts, []),
+          uniq: true,
+          do: callback(fun, [quote(do: map())], quote(do: map()), names: [:data])
+
     %{
-      callbacks: commands,
+      callbacks: commands ++ upcasts,
       evolve:
         if(length(unit.state.fields) > length(unit.identity), do: evolve(model, state, events))
     }

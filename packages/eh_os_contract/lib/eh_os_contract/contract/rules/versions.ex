@@ -12,7 +12,9 @@ defmodule EhOsContract.Contract.Rules.Versions do
   #   `default:` — are fields the chain leads to: fields of the current declaration, or
   #   old names a later step renames. A rename's two names differ, its new names are
   #   atoms, an old name is renamed once, and no two old names of one step take the same
-  #   new one.
+  #   new one. A step by a function (`function:`, plan DD, V2, #338) is a step on its own,
+  #   without `rename:` or `default:`; what it gives is the function's, so a step before
+  #   it is not held to the names it leads to.
   # - **U3.** What the log keeps outside a row's payload is never renamed or given a
   #   default, since old rows keep it under their old names: the unit's identity, by which
   #   its stream is found, and every field the log tags — a required, non-personal `:id`,
@@ -38,7 +40,8 @@ defmodule EhOsContract.Contract.Rules.Versions do
     for unit <- declarations.units,
         event <- unit.events,
         violation <-
-          coverage(event) ++ targets(unit, event) ++ kept(unit, event) ++ defaults(event),
+          coverage(event) ++
+            targets(unit, event) ++ kept(unit, event) ++ defaults(event) ++ functions(unit, event),
         do: violation
   end
 
@@ -49,6 +52,10 @@ defmodule EhOsContract.Contract.Rules.Versions do
   def ends_as(event, from, name) do
     later = event.upcasts |> Enum.filter(&(&1.from > from)) |> Enum.sort_by(& &1.from)
 
+    if Enum.any?(later, & &1.function), do: nil, else: ends_through(event, later, name)
+  end
+
+  defp ends_through(event, later, name) do
     final =
       Enum.reduce(later, name, fn step, name ->
         case List.keyfind(step.rename, name, 0) do
@@ -100,12 +107,17 @@ defmodule EhOsContract.Contract.Rules.Versions do
         do: violation
   end
 
+  # What a step before a function leads to is the function's to say: anything.
   defp reachable(event, from, current) do
-    for later <- event.upcasts,
-        later.from > from,
-        {old, _new} <- later.rename,
-        into: current,
-        do: old
+    if opaque?(event, from) do
+      :any
+    else
+      for later <- event.upcasts,
+          later.from > from,
+          {old, _new} <- later.rename,
+          into: current,
+          do: old
+    end
   end
 
   defp step_targets(event, u, reachable) do
@@ -121,6 +133,7 @@ defmodule EhOsContract.Contract.Rules.Versions do
       for {kind, name} <-
             Enum.map(news, &{:rename, &1}) ++ Enum.map(u.default, &{:default, elem(&1, 0)}),
           is_atom(name),
+          reachable != :any,
           not MapSet.member?(reachable, name) do
         what = if kind == :rename, do: "renames a field to", else: "gives a default to"
 
@@ -148,7 +161,39 @@ defmodule EhOsContract.Contract.Rules.Versions do
         {"U2: #{at} renames #{n} fields to #{inspect(new)}; a field has one old name", u}
       end
 
-    not_atoms ++ unknown ++ same ++ renamed_twice ++ defaulted_twice ++ shared
+    both =
+      if u.function != nil and (u.rename != [] or u.default != []) do
+        [
+          {"U2: #{at} names the function #{inspect(u.function)} and renames or gives defaults " <>
+             "too; a step by a function is a step on its own: put what the function does in " <>
+             "it, or the renames in a step of their own", u}
+        ]
+      else
+        []
+      end
+
+    not_atoms ++ unknown ++ same ++ renamed_twice ++ defaulted_twice ++ shared ++ both
+  end
+
+  # U2, plan DD, V2 (#338): a step's function is a callback of the unit's implementation
+  # beside its commands', so it is not named like one.
+  defp functions(unit, event) do
+    commands = MapSet.new(unit.commands, & &1.name)
+
+    for u <- event.upcasts, u.function != nil, why = clash(u.function, commands), why != nil do
+      {"U2: event #{inspect(event.name)}, `upcast from: #{u.from}` names the function " <>
+         "#{inspect(u.function)}, #{why}; name it after what it reads", u}
+    end
+  end
+
+  # An implementation imports `emit/1`, `reject/1` and `issue/1`, so a function of one
+  # argument by those names cannot be defined beside them.
+  defp clash(fun, _commands) when fun in [:emit, :reject, :issue],
+    do: "which the implementation imports"
+
+  defp clash(fun, commands) do
+    if MapSet.member?(commands, fun),
+      do: "the name of a command of the unit, which the implementation holds too"
   end
 
   # U3: what the log keeps by a field's name, judged as each target ends.
@@ -161,12 +206,16 @@ defmodule EhOsContract.Contract.Rules.Versions do
           Enum.map(u.rename, fn {old, new} -> {:rename, old, new} end) ++
             Enum.map(u.default, fn {field, _value} -> {:default, field, field} end),
         is_atom(target),
+        # Before a step by a function, what a target ends as is the function's: it is
+        # judged by its own name, which the function is given.
         why =
           kept_why(kind, old, target, ends_as(event, u.from, target) || target, identity, fields),
         why != nil do
       {"U3: event #{inspect(event.name)}, `upcast from: #{u.from}` #{why}", u}
     end
   end
+
+  defp opaque?(event, from), do: Enum.any?(event.upcasts, &(&1.from > from and &1.function))
 
   defp kept_why(kind, old, target, final, identity, fields) do
     field = Map.get(fields, final)

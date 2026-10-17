@@ -35,18 +35,25 @@ defmodule EhOsContract.Contract.Doc do
   """
   @spec callback(map(), atom(), atom(), atom()) :: String.t()
   def callback(model, kind, name, callback) when kind in [:aggregate, :dcb] do
-    command = Enum.find(model.commands, &(&1.unit == name and &1.name == callback))
-    unit = declaration(model, kind, name)
-    own = for s <- model.scenarios, s.trigger.kind == :command, s.trigger.name == callback, do: s
+    case Enum.find(model.commands, &(&1.unit == name and &1.name == callback)) do
+      nil ->
+        upcast(model, name, callback)
 
-    paragraphs([
-      "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
-      list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
-      issued_in(command),
-      issued_by_person(command),
-      rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
-      scenarios(own)
-    ])
+      command ->
+        unit = declaration(model, kind, name)
+
+        own =
+          for s <- model.scenarios, s.trigger.kind == :command, s.trigger.name == callback, do: s
+
+        paragraphs([
+          "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
+          list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
+          issued_in(command),
+          issued_by_person(command),
+          rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
+          scenarios(own)
+        ])
+    end
   end
 
   def callback(model, kind, name, callback) when kind in [:policy, :process_manager] do
@@ -372,4 +379,21 @@ defmodule EhOsContract.Contract.Doc do
   defp list(title, items), do: Enum.join(["#{title}:" | Enum.map(items, &"- #{&1}")], "\n")
 
   defp paragraphs(parts), do: parts |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join("\n\n")
+
+  # Plan DD, V2 (#338): a function an event's step names.
+  defp upcast(model, unit, fun) do
+    steps =
+      for e <- model.events,
+          e.unit == unit,
+          %{function: ^fun} = step <- Map.get(e, :upcasts, []),
+          do: "`#{e.name}`#{label(e)}, from version #{step.from} to #{step.from + 1}"
+
+    paragraphs([
+      "Reads an older row of the log in the next version of its event's fields: takes the " <>
+        "row's payload as the log stores it, with string keys, and gives the next version's. " <>
+        "A sealed personal value stays at its field or goes; a field the log tags rows with " <>
+        "keeps its value.",
+      list("For", steps)
+    ])
+  end
 end

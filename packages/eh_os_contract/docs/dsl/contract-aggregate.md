@@ -282,6 +282,7 @@ version below `schema_version`; a row is read through each from its own version 
 | `from` | `pos_integer` | yes |  | The version this step reads. |
 | `rename` | `keyword` |  | `[]` | Each field of that version under its name in the next, as `old: :new`. |
 | `default` | `keyword` |  | `[]` | A value for each field the next version has and that one did not; a row that holds the field keeps its own. |
+| `function` | `atom` |  |  | A function of the unit's implementation that takes a row of that version, as the log stores it, and gives the next version's, for a change a rename and a default cannot say; a step on its own, without `rename:` or `default:`. |
 
 
 <a id="contract-aggregate-lifecycle"></a>

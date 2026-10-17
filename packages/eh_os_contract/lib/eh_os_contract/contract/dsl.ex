@@ -92,7 +92,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Upcast do
     @moduledoc false
-    defstruct [:from, rename: [], default: [], __spark_metadata__: nil]
+    defstruct [:from, :function, rename: [], default: [], __spark_metadata__: nil]
   end
 
   defmodule Consults do
@@ -491,7 +491,8 @@ defmodule EhOsContract.Contract.Dsl do
     version below `schema_version`; a row is read through each from its own version up.
     """,
     examples: [
-      "upcast from: 1, rename: [reason: :demand_reason], default: [priority: \"normal\"]"
+      "upcast from: 1, rename: [reason: :demand_reason], default: [priority: \"normal\"]",
+      "upcast from: 1, function: :amount_from_minor"
     ],
     target: Upcast,
     schema: [
@@ -507,6 +508,13 @@ defmodule EhOsContract.Contract.Dsl do
         doc:
           "A value for each field the next version has and that one did not; a row that " <>
             "holds the field keeps its own."
+      ],
+      function: [
+        type: :atom,
+        doc:
+          "A function of the unit's implementation that takes a row of that version, as " <>
+            "the log stores it, and gives the next version's, for a change a rename and a " <>
+            "default cannot say; a step on its own, without `rename:` or `default:`."
       ]
     ]
   }

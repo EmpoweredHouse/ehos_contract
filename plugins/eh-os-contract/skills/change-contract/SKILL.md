@@ -34,7 +34,10 @@ type it passes over is not decoded, so it breaks nothing. **An event's `upcast` 
 way to carry old rows across a breaking change**: raise its `schema_version`, and say how a row of
 the version before reads in the new one, a field renamed (`rename:`) or given a value it did not
 have (`default:`). The rows are never rewritten; each is read through the steps from its own
-version up. A change a step cannot say — a type, `personal:`, the identity — has no way across yet.
+version up. A change a rename and a default cannot say — a type, one field split in two — takes a
+step by a function of the unit's implementation, `upcast from: n, function: :name`, which turns the
+stored map of version n into version n + 1's. Whether a field is personal, the unit's identity, and
+a field the log tags rows with have no way across: those changes are a new event.
 By the time the compiler runs, the file already says whatever it says — which is why the analysis
 comes first.
 
@@ -70,7 +73,7 @@ rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 | A field of an event renamed | `changed` | Old rows hold the old name, so the new one reads as missing: a required one fails to decode. With history: raise `schema_version` with `upcast from: n, rename: [old: :new]`. A personal field may be renamed: its sealed value opens under the old name. The unit's identity may not, nor may a rename land on a field the log tags rows with: old rows keep their tags under the old name, and a boundary or a process finding rows by it would miss them (`U3`). That change is a new event. |
 | `schema_version` raised | `changed` | Every version below it needs its step (`U1`), empty when the fields kept their shape. A row is read through the steps from its own version; a row of a newer version than the code declares is not read at all, and its readers wait. |
 | A field removed from an event | `changed` | Old rows still decode — an undeclared key is ignored on read. Personal values stay sealed in the log until their subject is erased. |
-| A field's type changed; an enum member removed | `changed` | Old rows fail to decode (`:type`; a member the contract no longer declares does not fit) — unless every stored value also fits the new type: `:integer` to `:decimal`, `:id` to `:string`, a value of the same base type. Adding an enum member is compatible. |
+| A field's type changed; an enum member removed | `changed` | Old rows fail to decode (`:type`; a member the contract no longer declares does not fit) — unless every stored value also fits the new type: `:integer` to `:decimal`, `:id` to `:string`, a value of the same base type. Adding an enum member is compatible. With history: raise `schema_version` with `upcast from: n, function: :name`, a function of the unit's implementation that converts the stored value. |
 | `personal:` added to, or removed from, a field | `changed` | Old rows fail to decode: clear text where a sealed value is expected, or the reverse. |
 | An event renamed, removed, or moved to another contract | `removed` + `added` | The log stores the type as `"<contract id>.<event>"`. Folding a stream that holds the old type raises ("declares no event of type"); the report loses its runs. An event a person records has a capability, `<domain>.<event>`, and a rename withdraws its grant (see the command row). |
 | The contract's `id:` changed | `removed` + `added` | Every event type is `"<id>.<event>"`, so a new id renames every type the contract records: folding a stream that holds the old types raises, and the report starts from nothing. Every row and key names the id too (plan DD, ID4, #178): subscriptions, process managers and their timers, relays and inboxes (an inbox's durable consumer on the bus), reaction and idempotency keys and queued effect jobs are left behind under the old one. With history: do not, or reset the engine's schema (#173, #178). |
@@ -140,6 +143,5 @@ meets old rows, and write the decision and the data work into the pull request i
 ## Not this skill
 
 Whether the changed model is the right one — that belongs to whoever confirmed the process.
-An upcast by a function, for a change a rename and a default cannot say, and the schema lock that
-notices a change of fields made without a new version — plan items (V2–V4); until they exist, this
-skill's table is what notices it. A versioned history of deadlines is not planned.
+The schema lock that notices a change of fields made without a new version — plan items (V3, V4);
+until it exists, this skill's table is what notices it. A versioned history of deadlines is not planned.
