@@ -206,7 +206,9 @@ config :eh_os_contract_auth,
     client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
     address: "https://" <> System.fetch_env!("PHX_HOST"),
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
+    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
+    # How long a session lasts from the sign-in at EHOS, the installation's (eh-os D-113).
+    absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
   ]
 
 # the supervision tree, after EhOsContract.Auth; cacertfile: as for it
@@ -221,7 +223,15 @@ The child checks this at boot and refuses to start otherwise:
   trailing slash;
 - no address in `applications` is `address`: they are the other applications;
 - the issuer is `https://<host>[:port]` alone, as every parser reads it;
-- `secret_key_base` has at least 64 bytes.
+- `secret_key_base` has at least 64 bytes;
+- `absolute_limit`, when given, is whole seconds from a minute to 366 days.
+
+`absolute_limit` is how long a session lasts from the person's sign-in at EHOS, renewed or not:
+twelve hours when not given (eh-os D-66). EHOS gives the workload its installation's as
+`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints, so mapping it
+keeps the application's session from ending before or after EHOS's. Its idle limit,
+`EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and the
+session ends at the next renewal.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.

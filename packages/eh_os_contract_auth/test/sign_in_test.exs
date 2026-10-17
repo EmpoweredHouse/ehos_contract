@@ -143,6 +143,19 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/at least 64 bytes/, fn -> SignIn.child_spec([]) end
     end
 
+    # eh-os D-113: the installation's limit, EHOS_SIGN_IN_ABSOLUTE, as EHOS takes it.
+    test "an absolute_limit that is not whole seconds from a minute to 366 days is refused" do
+      for limit <- [59, 366 * 86_400 + 1, "2592000", 1.5] do
+        put_sign_in(absolute_limit: limit)
+
+        assert_raise ArgumentError,
+                     ~r/absolute_limit must be whole seconds from 60 to 31622400/,
+                     fn ->
+                       SignIn.child_spec([])
+                     end
+      end
+    end
+
     test "an issuer that is not https://<host>, localhost included, is refused at boot" do
       for issuer <- [
             "http://ehos.test",
