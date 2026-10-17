@@ -1,9 +1,10 @@
 defmodule Mix.Tasks.EhOsContract.Schema do
-  @shortdoc "Records the fields of every event, and checks that none changed"
+  @shortdoc "Records the fields of every event, and refuses a change old rows would not read"
 
   @moduledoc """
   Keeps `eh_os_contract.lock`, the record of every event's fields by its
-  `schema_version`, and refuses a change to the fields of a version it holds.
+  `schema_version`, and refuses a change to a recorded version that old rows would not
+  read, or a new version whose step does not cover what changed.
 
   The log keeps every event it ever recorded and reads each one again whenever it
   rebuilds a unit or a list, with today's declaration. A row that lacks a field the
@@ -51,18 +52,33 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
   ## What it refuses
 
-  Recording the current version of every event adds what the file lacks, and refuses,
-  writing nothing, when:
+  Recording the current version of every event adds what the file lacks, and records in
+  place a change old rows still read: a field added as optional, a field removed, a
+  required field made optional, an enum given members, an `:integer` made a `:decimal`,
+  an `:id` made a `:string`, and the same inside a list or a domain value. A field removed
+  stays in the file, marked `removed: true`, since old rows still hold it and rows written
+  since do not: a field declared again under its name is held to what both hold. It
+  refuses, writing nothing, when:
 
-    * the file holds the event's current version with other fields. The message names
-      each field that changed. Raise the event's `schema_version` and add its `upcast`
-      step: the new version is recorded beside the old one.
+    * the file holds the event's current version with fields an old row would not read
+      as: a field added as required, a type changed otherwise. The message names each
+      such field. Raise the event's `schema_version` and add its `upcast` step: the new
+      version is recorded beside the old one.
+    * the steps from a recorded version to the declared one do not cover what changed: a
+      field renamed without `rename:`, a required field added without `default:`, an
+      optional field made required (old rows hold an explicit `nil`), a type changed
+      otherwise than above, with no step a function. A function covers every change a
+      step could carry, since the engine cannot see what it does.
+    * a field becomes personal or stops being, or another identifier seals it; a personal
+      field changes its type, or a value holding personal data its shape; a required
+      personal field, at any depth, is one old rows may lack; an identifier that seals a field
+      changes its `subject:`; or a field the log tags rows with (a required,
+      non-personal `:id`, `:date` or `:timestamp`) was not tagged so under that name in
+      the version before. Inside a domain value too. No step carries those: rows already
+      sealed or tagged keep what they were written with. Declare a new event.
     * the file holds a version newer than the one declared, whose rows would not read.
     * the file holds an event no contract declares any more, renamed or removed, whose
       rows would not read either.
-
-  Any change to a recorded version is refused, an optional field added included: raise
-  the version, with an empty `upcast` step where old rows read as they are.
 
   `--forget TYPE` drops the event's versions from the one its contract declares up, or
   every version of an event no contract declares, and records what is declared: it says
@@ -99,8 +115,12 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       )
     end
 
-    declared = SchemaLock.declared(EhOsContract.Registry.contracts())
-    Mix.shell().info(lock(path(), declared, opts))
+    contracts = EhOsContract.Registry.contracts()
+    declared = SchemaLock.declared(contracts)
+
+    Mix.shell().info(
+      lock(path(), declared, Keyword.put(opts, :steps, SchemaLock.steps(contracts)))
+    )
   end
 
   # Beside `mix.lock`, wherever the project keeps it.
@@ -109,8 +129,9 @@ defmodule Mix.Tasks.EhOsContract.Schema do
     Path.join(Path.dirname(Path.expand(lockfile)), @file_name)
   end
 
-  # What the task does with the file at `path` and the entries `declared`: the line it
-  # prints, or `Mix.raise/1` with why. Called by this task and its tests.
+  # What the task does with the file at `path` and the entries `declared`, with each
+  # event's `:steps` in `opts`: the line it prints, or `Mix.raise/1` with why. Called by
+  # this task and its tests.
   @doc false
   @spec lock(Path.t(), SchemaLock.t(), keyword()) :: String.t()
   def lock(path, declared, opts) do
@@ -128,7 +149,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       end
 
     merged =
-      case SchemaLock.merge(forgotten, declared) do
+      case SchemaLock.merge(forgotten, declared, Keyword.get(opts, :steps, %{})) do
         {:ok, merged} -> merged
         {:error, problems} -> Mix.raise(refusal(name, problems))
       end
@@ -142,7 +163,8 @@ defmodule Mix.Tasks.EhOsContract.Schema do
 
       opts[:check] ->
         Mix.raise(
-          "#{name} lacks #{recorded(kept, merged)}: run `mix eh_os_contract.schema` and commit it"
+          "#{name} does not record #{recorded(kept, merged)} as the contracts declare it: run " <>
+            "`mix eh_os_contract.schema` and commit it"
         )
 
       true ->
