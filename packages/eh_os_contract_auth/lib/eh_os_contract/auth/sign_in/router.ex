@@ -84,12 +84,16 @@ defmodule EhOsContract.Auth.SignIn.Router do
           | params: Map.put(conn.params, "state", local_path(conn.params["return_to"]))
         }
 
+        # eh-os D-113: EHOS's limit may be longer than this application's. `max_age` makes EHOS
+        # ask for the password past this one's, so it never returns a sign-in the session would
+        # refuse at once, sending the browser round and round EHOS.
         opts =
           Authorize.init(
             client_store: ClientStore,
             redirect_uri: config.redirect_uri,
             require_pkce: true,
-            request_opts: config.request_opts
+            request_opts: config.request_opts,
+            url_extension: [{"max_age", Integer.to_string(config.absolute_limit)}]
           )
 
         try do
@@ -170,6 +174,8 @@ defmodule EhOsContract.Auth.SignIn.Router do
          %{"sub" => subject, "sid" => sid, "auth_time" => auth_time} <- claims,
          true <- Enum.all?([subject, sid, refresh_token, id_token, credential], &text?/1),
          {:ok, auth_time} <- DateTime.from_unix(auth_time),
+         # An EHOS that ignored `max_age` returns a sign-in the session would not read.
+         :ok <- within_limit(auth_time, config.absolute_limit),
          expires_at = Renewal.expires_at(credential, EhOsContract.Clock.now(), expires_in),
          # A credential within the renewal margin would be renewed by every request.
          true <- Renewal.beyond_margin?(expires_at) do
@@ -187,6 +193,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
          }
        }}
     else
+      {:error, :past_absolute_limit} = past -> past
       _incomplete -> {:error, :incomplete_token_response}
     end
   end
@@ -196,6 +203,12 @@ defmodule EhOsContract.Auth.SignIn.Router do
   # The credential is checked here as every request will check it, so one that can never pass
   # (another audience, keys not yet held) refuses this sign-in instead of sending the browser
   # round and round EHOS; and it must be the person the ID token names.
+  defp within_limit(auth_time, limit) do
+    if DateTime.diff(EhOsContract.Clock.now(), auth_time) < limit,
+      do: :ok,
+      else: {:error, :past_absolute_limit}
+  end
+
   defp verified(signed_in, verify_opts) do
     case EhOsContract.Auth.verify(signed_in.credential.token, verify_opts) do
       {:ok, %{subject: subject}} when subject == signed_in.subject -> :ok
