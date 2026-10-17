@@ -437,7 +437,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 A compile sees only today's declaration, so it cannot refuse a change of fields made without a new
 version. `mix eh_os_contract.schema --check` does, against the fields the project's
-`eh_os_contract.lock` recorded for each version ([the page on units](concepts/units.md#an-event-that-already-has-rows)).
+`eh_os_contract.lock` recorded for each version ([the page on units](concepts/units.md), "An event that already has rows").
 
 <a id="refusals-c"></a>
 
