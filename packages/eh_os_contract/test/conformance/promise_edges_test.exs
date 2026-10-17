@@ -129,6 +129,15 @@ defmodule EhOsContract.PromiseEdgesTest do
       within {1, :day}
     end
 
+    # Waits on the inspector through an earlier step: closing does not call it
+    # (plan DD, OW1 (#355)).
+    promise :closes_after_inspection do
+      from :opened
+      eventually :closed
+      within {1, :day}
+      waits_on [:inspector]
+    end
+
     # The dependency is on the **fallback** only. The wanted route depends on nothing.
     promise :closed_or_chased do
       from :opened
@@ -350,6 +359,28 @@ defmodule EhOsContract.PromiseEdgesTest do
       Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 15:00:00.000000Z])
 
       assert verdict(:inspected_within_a_day).verdict == :violated
+    end
+  end
+
+  describe "a promise that waits on a system through an earlier step" do
+    setup do
+      insert(:opened, @opened)
+      :ok
+    end
+
+    test "an outage of what it waits on, inside the window, suspends it" do
+      Dependency.unavailable!(Edges, :inspector, "test", ~U[2026-07-01 12:00:00.000000Z])
+
+      assert verdict(:closes_after_inspection).verdict == :suspended
+      # The control: the same run, the same outage, a promise that does not wait on it.
+      assert verdict(:closes_within_a_day).verdict == :violated
+    end
+
+    test "an outage after the window, or of a system it does not wait on, excuses nothing" do
+      Dependency.unavailable!(Edges, :inspector, "test", @one_microsecond_late)
+      Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 12:00:00.000000Z])
+
+      assert verdict(:closes_after_inspection).verdict == :violated
     end
   end
 

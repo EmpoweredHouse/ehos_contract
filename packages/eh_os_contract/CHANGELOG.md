@@ -48,6 +48,19 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **Moves a verdict:** **A promise names the systems it waits on through an earlier step** (plan DD, stage OW1,
+  #355): `waits_on [:registries]` in a process module's `promise`. An outage of one of them inside the window,
+  observed by any contract the process includes, suspends the promise as an outage of what its `eventually` or
+  `or_else` depends on does: an accounting month neither opened nor blocked while the registries were down is
+  suspended, not broken. Each name is an external of the domain, and not one `eventually` or `or_else` already
+  depends on, and one a contract the process includes uses (X4); a scenario's `outage` may name it. The
+  process's page, `mix eh_os_contract.view` and its `graph.v1` document show it, the last as a `waits_on`
+  relation from the promise to the external, which every process document now carries, empty without one, so
+  each process document's digest moves once. A promise without it keeps its digest, so no process's version
+  moves. An outage anywhere inside the window counts, even after the step that calls the system is done.
+
 ### Changed
 
 - **Breaking:** **A duration longer than 100 years does not compile** (plan DD, stage DU1, #193): a process

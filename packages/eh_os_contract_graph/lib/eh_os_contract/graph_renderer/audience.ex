@@ -142,9 +142,18 @@ defmodule EhOsContract.GraphRenderer.Audience do
 
     or_else = events.("or_else")
 
+    waits =
+      for(
+        r <- get_in(document, ["relations", "waits_on"]) || [],
+        r["from"] == promise["id"],
+        do: r["to"]
+      )
+      |> Enum.map_join(", ", &title(by_id[&1] || %{"name" => &1}))
+
     label =
       "After #{events.("opens")}, eventually #{events.("fulfils")}#{within}" <>
-        if(or_else == "", do: "", else: ", or else #{or_else}")
+        if(or_else == "", do: "", else: ", or else #{or_else}") <>
+        if(waits == "", do: "", else: ", waiting on #{waits}")
 
     %{promise | "label" => label}
   end

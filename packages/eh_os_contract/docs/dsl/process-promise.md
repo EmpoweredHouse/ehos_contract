@@ -26,6 +26,7 @@ After one event of a run, another eventually follows.
 | `eventually` | `atom` | yes |  | The event that keeps it. |
 | `within` | `any` |  |  | `{n, unit}`, in a fixed unit. |
 | `or_else` | `atom` |  |  | An event that keeps it the other way. |
+| `waits_on` | `atom \| list(atom)` |  | `[]` | External systems of the domain it waits on through an earlier step: an outage of one inside its window excuses it. |
 | `unverified` | `boolean` |  | `false` | Not confirmed by the process owner. |
 | `source` | `String.t` |  |  | Where the promise comes from. |
 

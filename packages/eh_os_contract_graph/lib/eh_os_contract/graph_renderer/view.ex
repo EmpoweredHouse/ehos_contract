@@ -532,7 +532,8 @@ defmodule EhOsContract.GraphRenderer.View do
   # colour of their own; each promise as a heavy arrow from the event that opens it to
   # the one that keeps it, with its window, and a dotted one to the event that keeps it
   # the other way; and the external systems its events rest on, hung off them by a dotted
-  # line, since an outage of one suspends a promise. A stage with more than one event says
+  # line, since an outage of one suspends a promise, as are those a promise waits on, off
+  # the event that opens it. A stage with more than one event says
   # on its title that it claims no order inside. Empty for another kind of document.
   # Called by `build/3`; public for its tests.
   @doc false
@@ -593,7 +594,7 @@ defmodule EhOsContract.GraphRenderer.View do
     finish(
       "TB",
       processes ++ actors ++ events ++ systems,
-      accountable ++ order ++ promises ++ rests,
+      accountable ++ order ++ promises ++ rests ++ waits(document),
       groups
     )
   end
@@ -646,6 +647,25 @@ defmodule EhOsContract.GraphRenderer.View do
         words: if(type == "promise", do: window, else: "or else"),
         line: if(type == "promise", do: "thick", else: "dotted"),
         head: true
+      }
+    end
+  end
+
+  # What a promise waits on through an earlier step: a promise is no card here, so the
+  # arrow leaves the event that opens it, where its window starts, for the system.
+  defp waits(document) do
+    for r <- relations(document, "waits_on"),
+        opens <- relations(document, "opens"),
+        opens["to"] == r["from"] do
+      %{
+        id: "waits_on:#{opens["id"]}:#{r["id"]}",
+        type: "waits_on",
+        from: opens["from"],
+        to: r["to"],
+        facts: r,
+        words: "waits on",
+        line: "dotted",
+        head: false
       }
     end
   end

@@ -954,4 +954,31 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "After the transaction, delivered at least once"
     end
   end
+
+  describe "a promise that waits on a system through an earlier step" do
+    setup do
+      promise = "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
+      p1 = "external:Rehmed.Domain:p1"
+
+      document =
+        put_in(
+          Fixtures.document("process.rehmed.clinical_visit"),
+          ["relations", "waits_on"],
+          [%{"id" => "waits_on:#{promise}:#{p1}", "from" => promise, "to" => p1}]
+        )
+
+      %{document: document, promise: promise, p1: p1}
+    end
+
+    test "the promise says what it waits on, and the system which promises wait on it", %{
+      document: document,
+      promise: promise,
+      p1: p1
+    } do
+      assert open(document, promise) =~
+               "Waits on, through an earlier step Rejestr zdarzeń medycznych P1 external"
+
+      assert open(document, p1) =~ "Promises waiting on it"
+    end
+  end
 end

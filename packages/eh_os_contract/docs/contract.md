@@ -290,8 +290,8 @@ end
 ```
 
 `outage :catalogue, at: "2026-09-10T08:00:00Z"` says an external system was seen unavailable then; it is one
-the events the promise waits on, `eventually` and `or_else`, depend on ([`X4`](#refusals-x)), since an outage of
-anything else excuses nothing. `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan` writes a test
+the events the promise waits on, `eventually` and `or_else`, depend on, or one the promise names in `waits_on`
+([`X4`](#refusals-x)), since an outage of anything else excuses nothing. `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan` writes a test
 per scenario, which builds each given as the event its contract declares, files it into its run and judges the
 promise as the report would, without a database. A scenario judges exactly one promise of the module, each
 description once ([`S1`](#refusals-s)); its givens are events the process includes ([`S2`](#refusals-s)), their
@@ -529,7 +529,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts compiled in the same project (a domain's contracts compile in one project), or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
-| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on |
+| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's promise whose `waits_on` names no external of the domain, one its `eventually` or `or_else` already depends on, or one no contract the process includes depends on or calls; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on or the promise `waits_on` |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
 | `X6` | L3 | a sibling event's field that a process manager's `correlate` (on an event it handles) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |
 | `X7` | L3 | two process modules of the system with one `id:`, which keys their runs; two contracts with one `id:`, which types their events |

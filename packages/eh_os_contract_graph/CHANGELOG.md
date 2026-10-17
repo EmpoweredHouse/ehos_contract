@@ -21,6 +21,13 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The process view draws what a promise waits on through an earlier step** (plan DD, stage OW1, #355): a
+  `graph.v1` document's `waits_on` relation is a dotted arrow, with no head, from the event that opens the promise
+  to the external system. The promise's panel names the systems it waits on, and the system's panel the promises
+  that wait on it; the owner's label of a promise ends with "waiting on" them.
+
 ## [0.3.0] - 2026-10-16
 
 ### Added

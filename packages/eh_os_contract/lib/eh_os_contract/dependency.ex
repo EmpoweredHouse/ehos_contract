@@ -90,10 +90,12 @@ defmodule EhOsContract.Dependency do
 
   A contract's externals are declared in its domain, and the contract uses one in two
   ways: an event `depends_on` it, or an effect `calls:` it. A promise reads an
-  observation only through the first (`EhOsContract.Trace`), so an observation about
-  an external only an effect calls suspends nothing. It is recorded all the same,
-  because the adapter that makes the call is the one wrapped in `observe/3`, and
-  refusing there would crash the effect in the middle of the outage it reports.
+  observation (`EhOsContract.Trace`) when the event it awaits depends on the external,
+  or when the promise `waits_on` it and the contract is one its process includes. An
+  observation about an external only an effect calls suspends a promise only through
+  the second, and is recorded all the same, because the adapter that makes the call
+  is the one wrapped in `observe/3`, and refusing there would crash the effect in the
+  middle of the outage it reports.
 
   A domain, or any module that is not a contract, is refused by name.
   """
@@ -148,6 +150,32 @@ defmodule EhOsContract.Dependency do
     |> bound(:<=, Keyword.get(opts, :until))
     |> repo().all()
     |> Enum.group_by(fn {external, _at} -> external end, fn {_external, at} -> at end)
+  end
+
+  # The moments each `{contract, external}` of `pairs` was seen unavailable, in one query
+  # for a promise's whole evaluation: what its awaited events depend on, and what it
+  # `waits_on` as observed by each contract its process includes. Not bounded in time,
+  # as `observations_by_external/2` is not when a promise is judged.
+  # Called by trace.ex.
+  @doc false
+  @spec observations([{module(), atom()}]) :: [DateTime.t()]
+  def observations([]), do: []
+
+  def observations(pairs) do
+    wanted =
+      MapSet.new(pairs, fn {contract, external} ->
+        {EhOsContract.Model.fetch(contract).id, to_string(external)}
+      end)
+
+    {contracts, externals} = Enum.unzip(wanted)
+
+    from(o in __MODULE__,
+      where: o.contract in ^Enum.uniq(contracts) and o.external in ^Enum.uniq(externals),
+      select: {o.contract, o.external, o.observed_at}
+    )
+    |> repo().all()
+    |> Enum.filter(fn {contract, external, _at} -> {contract, external} in wanted end)
+    |> Enum.map(fn {_contract, _external, at} -> at end)
   end
 
   @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()

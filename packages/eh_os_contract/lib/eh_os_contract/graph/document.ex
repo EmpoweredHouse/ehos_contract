@@ -93,7 +93,8 @@ defmodule EhOsContract.Graph.Document do
   `stage`, the `contract` that declares it and `terminal` when it ends a run, those
   contracts and their contexts, the external systems those events rest on
   (`depends_on`), its promises with the events that open (`opens`),
-  fulfil (`fulfils`) or otherwise settle (`or_else`) each, and the actor
+  fulfil (`fulfils`) or otherwise settle (`or_else`) each and the systems each waits on
+  through an earlier step (`waits_on`), and the actor
   `accountable_for` it — with what it is: its `id:` as `process`, its `module`, the
   domain it names, its `label` and `version`, and the document's `digest`.
 

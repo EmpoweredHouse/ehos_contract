@@ -233,7 +233,8 @@
         "id": "or_else:event:rehmed.statutory_reporting:p1_reporting_not_required:promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window",
         "to": "promise:rehmed.clinical_visit:medical_event_reported_within_statutory_window"
       }
-    ]
+    ],
+    "waits_on": []
   },
   "schema": "eh_os_contract.graph.v1",
   "version": "f5ab35d4f8d8"

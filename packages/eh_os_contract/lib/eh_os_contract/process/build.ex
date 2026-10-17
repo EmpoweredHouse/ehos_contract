@@ -118,11 +118,18 @@ defmodule EhOsContract.Process.Build do
     }
   end
 
+  # `waits_on` (plan DD, OW1 (#355)) is kept, with its part of the digest, only where a
+  # promise declares it, so that adding the word moved no version; sorted, since it is
+  # a set, so that the deploy's promise digest does not see its order either.
   defp promise(promise) do
     promise
     |> Map.from_struct()
     |> Map.delete(:__spark_metadata__)
     |> Map.update!(:within, &duration/1)
+    |> then(fn
+      %{waits_on: []} = p -> Map.delete(p, :waits_on)
+      p -> Map.update!(p, :waits_on, &(&1 |> Enum.uniq() |> Enum.sort()))
+    end)
   end
 
   # Declared at most once; the rules have refused a second before this runs.
@@ -183,7 +190,7 @@ defmodule EhOsContract.Process.Build do
   defp digest_form(own, stages),
     do: own |> digest_form() |> Map.put(:stages, Enum.map(stages, & &1.name))
 
-  @sets [:ends_on, :includes]
+  @sets [:ends_on, :includes, :waits_on]
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

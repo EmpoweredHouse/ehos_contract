@@ -2607,7 +2607,8 @@
             "opens",
             "fulfils",
             "or_else",
-            "depends_on"
+            "depends_on",
+            "waits_on"
           ],
           "additionalProperties": false,
           "properties": {
@@ -2639,6 +2640,12 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/relation_depends_on"
+              }
+            },
+            "waits_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_waits_on"
               }
             }
           }
@@ -3393,6 +3400,28 @@
     "relation_or_else": {
       "type": "object",
       "description": "process — an event settles a promise otherwise.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_waits_on": {
+      "type": "object",
+      "description": "process — a promise waits on an external system through an earlier step.",
       "required": [
         "id",
         "from",

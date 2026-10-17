@@ -235,7 +235,7 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Promise do
     @moduledoc false
     defstruct [:name, :from, :eventually, :within, :or_else, :source, unverified: false] ++
-                [__spark_metadata__: nil]
+                [waits_on: [], __spark_metadata__: nil]
   end
 
   defmodule Given do
@@ -1037,6 +1037,13 @@ defmodule EhOsContract.Contract.Dsl do
       eventually: [type: :atom, required: true, doc: "The event that keeps it."],
       within: [type: :any, doc: "`{n, unit}`, in a fixed unit."],
       or_else: [type: :atom, doc: "An event that keeps it the other way."],
+      waits_on: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "External systems of the domain it waits on through an earlier step: an outage " <>
+            "of one inside its window excuses it."
+      ],
       unverified: [type: :boolean, default: false, doc: "Not confirmed by the process owner."],
       source: [type: :string, doc: "Where the promise comes from."]
     ]
