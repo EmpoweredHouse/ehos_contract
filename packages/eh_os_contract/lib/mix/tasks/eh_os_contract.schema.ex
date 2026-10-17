@@ -139,7 +139,9 @@ defmodule Mix.Tasks.EhOsContract.Schema do
         )
 
       true ->
-        File.write!(path, SchemaLock.encode(merged))
+        # Beside it and renamed over it, so that a write cut short leaves the old file.
+        File.write!(path <> ".tmp", SchemaLock.encode(merged))
+        File.rename!(path <> ".tmp", path)
         "#{name}: " <> Enum.join(summary(kept, merged), "; ")
     end
   end
@@ -191,6 +193,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
   defp listed(_verb, []), do: nil
   defp listed(nil, [one]), do: one
   defp listed(nil, many), do: "#{length(many)} event versions: #{Enum.join(many, ", ")}"
+
   defp listed(verb, versions) when length(versions) > 5,
     do: "#{verb} #{length(versions)} event versions"
 
