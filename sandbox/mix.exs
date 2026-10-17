@@ -112,6 +112,9 @@ defmodule EhOsContractHost.MixProject do
         "format --check-formatted",
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
+        # Plan DD, V3 (#340): an event's fields changed without a new version, which
+        # nothing in a compile notices and the first old row in a log would.
+        "eh_os_contract.schema --check",
         "test",
         &package_test/1,
         &package_test_web/1,
