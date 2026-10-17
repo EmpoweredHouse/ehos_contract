@@ -2001,7 +2001,7 @@ application twice in a week; DU1 is Breaking, so applications would meet it on t
 
 **DU1 — a ceiling for durations** (#193). *The rule:* no duration a contract or a process module declares is longer
 than 100 years. Today `wait: {10_000_000, :year}` compiles and its timer fails on every retry when it is set.
-- The durations rule (R6, `EhOsContract.Contract.Rules.Process` and the process module's) refuses a duration
+- The durations rule (R6, `EhOsContract.Contract.Rules.Durations` and `EhOsContract.Process.Rules`) refuses a duration
   above the ceiling: a timer's `wait`, a promise's `within`, a process's `deadline`. The ceiling is in seconds, from
   `EhOsContract.Duration`'s seconds per unit, a calendar unit taken at its longest.
 - The refusal names the limit; a row in `docs/contract.md`'s table; a test with its control.
