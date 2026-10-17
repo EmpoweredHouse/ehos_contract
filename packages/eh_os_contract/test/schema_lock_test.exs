@@ -308,12 +308,52 @@ defmodule EhOsContract.SchemaLockTest do
             |> elem(1)
           ] do
         assert {:error, [problem]} = SchemaLock.merge(lock, lock(required))
-        assert problem =~ "it is personal and old rows may lack it, and no step fills it"
+        assert problem =~ "old rows may lack it, and no step fills it"
 
         two = %{@type_name => %{2 => lock(required)[@type_name][1]}}
 
         assert {:error, [problem]} =
                  SchemaLock.merge(lock, two, %{@type_name => %{1 => :function}})
+
+        assert problem =~ "no step fills it"
+      end
+    end
+
+    test "refuses a required personal field old rows lack, at any depth, even under a function" do
+      owner = field(:owner, :id, subject: :customer)
+      phone = field(:phone, :string, personal: :owner)
+      contact = fn fields -> %{name: :contact, type: nil, fields: fields} end
+
+      cases = [
+        {[field(:contact, :contact)], [owner, phone], [field(:contact, :contact)],
+         [owner, phone, field(:email, :string, personal: :owner)]},
+        {[field(:contact, {:list, :contact})], [owner, phone],
+         [field(:contact, {:list, :contact})],
+         [owner, phone, field(:email, :string, personal: :owner)]},
+        {[field(:contact, :contact)], [owner, phone], [field(:contact, :contact)],
+         [owner, field(:tel, :string, personal: :owner)]},
+        {[field(:contact, :contact)], [owner], [field(:contact, :contact)], [owner, phone]},
+        {[field(:contact, :string)], [owner], [field(:contact, :contact)], [owner, phone]},
+        {[], [owner], [field(:hint, :string, personal: :customer_id)], [owner]}
+      ]
+
+      for {was, was_value, is, is_value} <- cases do
+        lock = %{
+          @type_name => %{
+            1 =>
+              SchemaLock.fields(fields() ++ was, Map.put(values(), :contact, contact.(was_value)))
+          }
+        }
+
+        declared = %{
+          @type_name => %{
+            2 =>
+              SchemaLock.fields(fields() ++ is, Map.put(values(), :contact, contact.(is_value)))
+          }
+        }
+
+        assert {:error, [problem]} =
+                 SchemaLock.merge(lock, declared, %{@type_name => %{1 => :function}})
 
         assert problem =~ "no step fills it"
       end
