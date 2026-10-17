@@ -1,0 +1,1 @@
+Round 1 (correctness+security, one agent): loop fixed 5a18314f; nil, config once, README, S11, tests fixed 588ebc9e/93762726; optional key and rollout deletion no change needed; #336 skipped (commented there). Round 2: comment placement and <= boundary fixed 8e1eb50a; clock skew and refused-callback tokens no change needed. Checks: mix test 340/0, format, docs rc=0.
