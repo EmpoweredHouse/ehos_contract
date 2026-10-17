@@ -151,21 +151,27 @@ defmodule EhOsContract.ContractProcessTest do
 
       assert message =~
                "R6: timer :reminder: wait is longer than 100 years, the longest a duration may " <>
-                 "be (a year counted as 366 days, a month as 31, a week as 7)"
+                 "be (a year counted as 366 days, a month as a twelfth of that)"
     end
 
-    test "control: a wait of 100 years compiles" do
-      model =
-        compile_contract("CenturyWaitKept", """
-        #{@bare_unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
-            starts_on :visit_closed, sets: :reminder
-            timer :reminder, "Reminder", wait: {100, :year}
-            ends_on :visit_closed
-          end
-        """)
+    test "control: a wait of 100 years compiles, in years and in months" do
+      for {name, wait} <- [
+            {"CenturyWaitKept", "{100, :year}"},
+            {"CenturyMonths", "{1200, :month}"}
+          ] do
+        model =
+          compile_contract(name, """
+          #{@bare_unit}
+            process_manager :chase, "Pogoń", correlate: :visit_id do
+              starts_on :visit_closed, sets: :reminder
+              timer :reminder, "Reminder", wait: #{wait}
+              ends_on :visit_closed
+            end
+          """)
 
-      assert [%{timers: [%{wait: %{amount: 100, unit: :year}}]}] = model.process_managers
+        assert [%{timers: [%{wait: %{amount: amount}}]}] = model.process_managers
+        assert amount in [100, 1200]
+      end
     end
   end
 

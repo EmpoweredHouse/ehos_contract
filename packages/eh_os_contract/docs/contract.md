@@ -469,7 +469,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `R2` | L2 | a process module without `correlate`, with an empty one, with two, or naming a field twice |
 | `R3` | L2 | a process module with no stage, a stage that includes no event, or an `include:` entry naming no event or no contract module |
 | `R5` | L2 | a process module's promise whose `from`, `eventually` or `or_else`, or an `ends_on` event, the module does not include; `ends_on` declared twice |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, has an unknown unit, or is longer than 100 years (a year counted as 366 days, a month as 31, a week as 7): a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, has an unknown unit, or is longer than 100 years (a year counted as 366 days, a month as a twelfth of that): a process manager's timer's `wait`, a process module's `within` or `deadline`; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); a process module's `deadline` declared twice, or without `ends_on` |
 
 <a id="refusals-k"></a>
 

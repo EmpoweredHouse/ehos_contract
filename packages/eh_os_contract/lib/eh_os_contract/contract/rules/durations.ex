@@ -74,12 +74,10 @@ defmodule EhOsContract.Contract.Rules.Durations do
   # only of a count and a unit that are otherwise right, so one mistake gets one
   # sentence.
   defp ceiling(duration, true) do
-    {years, :year} = Duration.ceiling()
-
-    if Duration.seconds(duration) > Duration.seconds(Duration.ceiling()),
+    if Duration.too_long?(duration),
       do: [
-        "is longer than #{years} years, the longest a duration may be (a year counted as " <>
-          "366 days, a month as 31, a week as 7)"
+        "is longer than #{Duration.declared(Duration.ceiling())}, the longest a duration may " <>
+          "be (a year counted as 366 days, a month as a twelfth of that)"
       ],
       else: []
   end

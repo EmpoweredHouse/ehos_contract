@@ -118,28 +118,33 @@ defmodule EhOsContract.Duration do
 
   def calendar_shift(%DateTime{} = at, duration), do: shift(at, duration)
 
-  # A calendar unit at its longest: what a ceiling in seconds must count it as, so
-  # that no shift by a duration under the ceiling lands further than the ceiling says.
-  @longest Map.merge(@seconds, %{week: 7 * 86_400, month: 31 * 86_400, year: 366 * 86_400})
+  # The ceiling is compared in seconds, a year counted at its longest, 366 days, and a
+  # month as a twelfth of that, so that 1200 months is 100 years as `{100, :year}` is
+  # (#193). Counted as 31 days, a month would put the cut at 1180, which no reader of
+  # the refusal would guess.
+  @counted Map.merge(@seconds, %{week: 7 * 86_400, month: 61 * 43_200, year: 366 * 86_400})
 
   @ceiling {100, :year}
 
   @doc """
   The longest duration a contract or a process module may declare: 100 years.
 
-  A timer whose wait is longer cannot be set, since no date that far ahead is stored,
-  and a promise or a deadline that long says nothing a run could keep or break. The
-  ceiling is compared in seconds (`seconds/1`), a calendar unit counted at its longest.
+  A chosen limit, far inside what a date can hold: a timer longer than a century is a
+  mistake in the contract, and one of ten million years could not be set at all. A
+  promise or a deadline that long says nothing a run could keep or break.
   """
   @spec ceiling() :: {pos_integer(), :year}
   def ceiling, do: @ceiling
 
   @doc """
-  A duration in seconds, a calendar unit counted at its longest: a week as 7 days, a
-  month as 31 and a year as 366. Read against `ceiling/0`, not to shift a moment.
+  Whether a duration is longer than `ceiling/0`. A year counts as 366 days and a month
+  as a twelfth of that, so `{1200, :month}` is not too long and `{1201, :month}` is.
   """
-  @spec seconds({non_neg_integer(), atom()}) :: non_neg_integer()
-  def seconds({n, unit}), do: n * Map.fetch!(@longest, unit)
+  @spec too_long?({non_neg_integer(), unit() | :week | :month | :year}) :: boolean()
+  def too_long?({n, unit}) when is_map_key(@counted, unit),
+    do: n * @counted[unit] > in_seconds(@ceiling)
+
+  defp in_seconds({n, unit}), do: n * @counted[unit]
 
   @doc """
   The rejection message for an unsupported unit.
