@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — state on 17 October 2026 (waves 1–4, E13, wave 5's L1–L3, the process module, C1, G1, M1, O2, V5, L4, V1–V4 and wave 6's library stages in `main`; v0.7.0 released; PN1–PN3 next)
+## Handoff — state on 18 October 2026 (every stage of the DD programme's six waves done or dropped; v0.7.0 released and in every application)
 
 Kept in place, not a dated entry: this is the state **now**. Where it disagrees with the repository, the repository
 is right and this section is to be rewritten. The history this block used to carry (EH, EB, #99, E11–E12, the early
@@ -33,8 +33,14 @@ absolute_limit` and `max_age` for eh-os D-113 (#343).
 project (#360 and #287, in #361; #287 stays open). v0.7.0 releases them (#362; the engine 0.7.0,
 `eh_os_contract_graph` 0.4.0, the migration note in #362's description). `main` is at 0.7.1-dev and 0.4.1-dev.
 
-**Next: PN1–PN3**, the pins in ehos-tools, AppUnite's equipment application and `ehos-ledger`, each in its own
-repository and session, with the user's consent there (the stage's paragraph under "After v0.6.0").
+The applications moved to it on 18 October, each with `eh_os_contract.lock` committed and `mix
+eh_os_contract.schema --check` in its `mix precommit` and CI: ehos-tools' `ehos_app` template (PN1,
+EmpoweredHouse/ehos-tools#279), released as `ehosctl` 0.15.0 (EmpoweredHouse/ehos-tools#291), whose generator writes a
+new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/appunite-equipment#8); and
+`ehos-ledger` (PN3, EmpoweredHouse/ehos-ledger#9), which came from a pin before v0.3.0. **Wave 6 is closed.**
+
+**Next:** nothing planned. What is open is below; a new wave starts from the user's decisions, recorded as wave 6's
+were ("After v0.6.0").
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
@@ -70,14 +76,10 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 - The review note (`git notes --ref=review add …`) goes in a shell call of its own, before the one that opens the
   pull request: the hook reads it before the whole command runs.
 
-**Consent.** On 17 October the user confirmed the following for the next session's wave 6:
-- work on all of wave 6;
-- commits on a stage's branch at a green gate, issues and comments, push and pull requests, Auto-fix;
-- the plugin's tag after a merge that raises its version.
-
-Merges are the user's. A release tag, deleting branches or worktrees, and resetting the shared databases happen only
-on an explicit word. Work in another repository (PN1–PN3) runs in a session of its own there, which asks again.
-Nothing is written to `~/Projects/ai/empowered-house-context` or `~/Projects/ai/eh-os`.
+**Consent.** The user's consent of 17 October covered wave 6, which is done; the next work asks again. What
+holds whatever the work: merges are the user's; a release tag, deleting branches or worktrees, and resetting the
+shared databases happen only on an explicit word; work in another repository runs in a session of its own there,
+which asks again. Nothing is written to `~/Projects/ai/empowered-house-context` or `~/Projects/ai/eh-os`.
 
 **Language.** We talk in Polish; everything left in the repository and on GitHub is English, except the strings a
 client reads (`CLAUDE.md`). `PLAN.md` before 6 October stays Polish.
@@ -1934,9 +1936,9 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | RL1 | 6 | docs: the relay and a seal, settled by the lock | — | ☑ #361 | [#360](https://github.com/EmpoweredHouse/eh-os-contract/issues/360) |
 | XA1 | 6 | docs: a domain's contracts compile in one project | — | ☑ #361 | [#287](https://github.com/EmpoweredHouse/eh-os-contract/issues/287) |
 | RE1 | 6 | release v0.7.0 and its migration note | DU1, OW1, RL1, XA1 | ☑ #362 | — (`No issue: release`) |
-| PN1 | 6 | ehos-tools: `ehos_app`'s template and `ehosctl`'s pin, the lock in `mix precommit` | RE1 | ☐ | issue in ehos-tools |
-| PN2 | 6 | AppUnite's equipment application on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
-| PN3 | 6 | `ehos-ledger` on v0.7.0, its lock | RE1 | ☐ | issue in its repository |
+| PN1 | 6 | ehos-tools: `ehos_app`'s template and `ehosctl`'s pin, the lock in `mix precommit` | RE1 | ☑ [ehos-tools#279](https://github.com/EmpoweredHouse/ehos-tools/pull/279), [ehos-tools#291](https://github.com/EmpoweredHouse/ehos-tools/pull/291) | [ehos-tools#274](https://github.com/EmpoweredHouse/ehos-tools/issues/274) |
+| PN2 | 6 | AppUnite's equipment application on v0.7.0, its lock | RE1 | ☑ [appunite-equipment#8](https://github.com/EmpoweredHouse/appunite-equipment/pull/8) | [appunite-equipment#7](https://github.com/EmpoweredHouse/appunite-equipment/issues/7) |
+| PN3 | 6 | `ehos-ledger` on v0.7.0, its lock | RE1 | ☑ [ehos-ledger#9](https://github.com/EmpoweredHouse/ehos-ledger/pull/9) | [ehos-ledger#8](https://github.com/EmpoweredHouse/ehos-ledger/issues/8) |
 
 ### Revision of the remaining plan (13 October 2026) — the user's decision
 
