@@ -39,8 +39,8 @@ EmpoweredHouse/ehos-tools#279), released as `ehosctl` 0.15.0 (EmpoweredHouse/eho
 new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/appunite-equipment#8); and
 `ehos-ledger` (PN3, EmpoweredHouse/ehos-ledger#9), which came from a pin before v0.3.0. **Wave 6 is closed.**
 
-**Next:** nothing planned. What is open is below; a new wave starts from the user's decisions, recorded as wave 6's
-were ("After v0.6.0").
+**Next: the publication programme** (18 October, below): making the repository public. PB1 (#366) is in progress;
+whether the history is kept waits for the two clients' consent.
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
@@ -83,6 +83,34 @@ which asks again. Nothing is written to `~/Projects/ai/empowered-house-context` 
 
 **Language.** We talk in Polish; everything left in the repository and on GitHub is English, except the strings a
 client reads (`CLAUDE.md`). `PLAN.md` before 6 October stays Polish.
+
+## Publication programme (18 October 2026)
+
+**Why.** The user plans to make this repository public. An audit of 18 October found no secret in the tree or the
+history; what stands in the way is the clients' material (TaxVision's and Rehmed's trees, their distillations and
+workshop notes, their names in the packages' docs and tests), Polish outside the allowed strings, mostly in the
+engine's tests, and the Hex blockers in the packages' `mix.exs`. The user also wants the client material out of the
+sandbox, and the library tested on invented case studies rather than on client projects.
+
+**Decisions of 18 October (the user's).** The clients are asked for consent first: with it, this repository goes
+public with its history; without it, a new repository with a fresh history (rejected for now: `git filter-repo`,
+which changes every SHA and still leaves the old commits under GitHub's pull-request refs). The stages below do not
+depend on the answer. Still open: the library's name before the first Hex publish, whether AppUnite's equipment
+stays, whether `eh_os_contract_auth` is published under the library's name.
+
+| Stage | What | Issue | Status |
+| --- | --- | --- | --- |
+| PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ◐ `pb/366-host-repo` |
+| PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | — | ☐ |
+| PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | — | ☐ |
+| PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
+| PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
+| PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
+| PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
+
+**PB1.** `Taxvision.Repo` is the host's only repo, and `Taxvision.DataCase` / `CommitRepo` serve every database
+test, so no client can leave before the host has its own. Mechanical; the audience and the supplier stay until PB2
+and PB4 (the issue's "Out of scope").
 
 ## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
 

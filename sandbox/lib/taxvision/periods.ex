@@ -47,7 +47,7 @@ defmodule Taxvision.Periods do
   because which runs are silent is a question about one company.
   """
 
-  use Boundary, deps: [Taxvision.Repo, Taxvision.Domain], exports: []
+  use Boundary, deps: [EhOsContractHost.Repo, Taxvision.Domain], exports: []
 
   import Ecto.Query
 
@@ -74,7 +74,7 @@ defmodule Taxvision.Periods do
 
   @spec one(Ecto.Query.dynamic_expr()) :: t() | nil
   defp one(condition) do
-    Taxvision.Repo.one(
+    EhOsContractHost.Repo.one(
       from(p in Period,
         where: ^condition,
         select: %{id: p.id, name: p.name, starts_on: p.starts_on, ends_on: p.ends_on}
@@ -91,7 +91,7 @@ defmodule Taxvision.Periods do
   @spec ensure!(name()) :: t()
   def ensure!(name) do
     with {:ok, starts_on} <- month_start(name) do
-      Taxvision.Repo.insert_all(
+      EhOsContractHost.Repo.insert_all(
         Period,
         [
           %{

@@ -1,16 +1,16 @@
 import Config
 
-config :eh_os_contract_host, Taxvision.Repo,
+config :eh_os_contract_host, EhOsContractHost.Repo,
   database: "eh_os_contract_host_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
 # A second database for the tests the sandbox cannot host: dispatches racing over
-# one consistency boundary need real commits (`Taxvision.CommitRepo`, which
+# one consistency boundary need real commits (`EhOsContractHost.CommitRepo`, which
 # `test_helper.exs` drops and creates afresh before every run). Named after this
 # checkout, since every worktree's tests use the same Postgres and a run dropping
 # the database another is using would break that one.
-config :eh_os_contract_host, Taxvision.CommitRepo,
+config :eh_os_contract_host, EhOsContractHost.CommitRepo,
   username: "eh_os",
   password: "eh_os",
   hostname: "localhost",

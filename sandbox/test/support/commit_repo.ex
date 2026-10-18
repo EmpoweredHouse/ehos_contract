@@ -1,9 +1,9 @@
-defmodule Taxvision.CommitRepo do
+defmodule EhOsContractHost.CommitRepo do
   @moduledoc """
   The repo for the sandbox's tests that need real commits: concurrent dispatches
   over one consistency boundary (v2 plan, E9b).
 
-  `Taxvision.Repo` runs every test inside a transaction that rolls back, with one
+  `EhOsContractHost.Repo` runs every test inside a transaction that rolls back, with one
   connection per test, so no two decisions ever read the same boundary at once. A
   committed row in the log can never be deleted, since the log is append-only, so
   these tests get a database of their own, one per checkout, created afresh before each run and
@@ -14,11 +14,12 @@ defmodule Taxvision.CommitRepo do
   because rows from earlier tests of the same run are still there.
   """
 
+  use Boundary, top_level?: true, deps: [EhOsContractHost.Repo], exports: []
   use Ecto.Repo, otp_app: :eh_os_contract_host, adapter: Ecto.Adapters.Postgres
 
   @doc """
   Drops the database, creates it again and starts the repo on it, migrated to the
-  newest of `Taxvision.Repo`'s migrations: dropping is the only way the log empties.
+  newest of `EhOsContractHost.Repo`'s migrations: dropping is the only way the log empties.
   """
   @spec reset!() :: :ok
   def reset! do
@@ -44,7 +45,7 @@ defmodule Taxvision.CommitRepo do
     Code.put_compiler_option(:ignore_module_conflict, true)
 
     try do
-      path = Ecto.Migrator.migrations_path(Taxvision.Repo)
+      path = Ecto.Migrator.migrations_path(EhOsContractHost.Repo)
       Ecto.Migrator.run(__MODULE__, path, :up, all: true, log: false)
     after
       Code.put_compiler_option(:ignore_module_conflict, previous)

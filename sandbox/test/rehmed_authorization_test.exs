@@ -9,7 +9,7 @@ defmodule Rehmed.AuthorizationTest do
   refuses a credential without it. The rest are its controls.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
   use EhOsContract.Auth.Testing
 
   import Phoenix.ConnTest

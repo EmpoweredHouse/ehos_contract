@@ -2,11 +2,11 @@ defmodule EhOsContractHostWebTest do
   @moduledoc """
   The real host, mounted for real (PLAN.md, dopisek 23 sierpnia (8)) —
   proof that `EhOsContract.Web.Router.eh_os_contract_dashboard/2` works against
-  `eh_os_contract_host`'s own `Taxvision.Repo` and real contracts, not just
+  `eh_os_contract_host`'s own `EhOsContractHost.Repo` and real contracts, not just
   `packages/eh_os_contract_web`'s own test host and its invented fixture.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest

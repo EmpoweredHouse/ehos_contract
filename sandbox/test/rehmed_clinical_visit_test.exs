@@ -11,7 +11,7 @@ defmodule Rehmed.ClinicalVisitTest do
   the registry's integration, not by inserting rows.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
   alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling}

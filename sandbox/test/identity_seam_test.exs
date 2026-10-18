@@ -15,7 +15,7 @@ defmodule Taxvision.IdentitySeamTest do
   anything is decided; what the domain still decides is whether the month may open.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
   use EhOsContract.Auth.Testing
 
   import Phoenix.ConnTest

@@ -5,7 +5,7 @@ defmodule AppuniteEquipment.DemandsDispatchTest do
   `Computers` opens a demand for the person, both in the transaction of the event.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias AppuniteEquipment.Contracts.{Computers, Demands}
 

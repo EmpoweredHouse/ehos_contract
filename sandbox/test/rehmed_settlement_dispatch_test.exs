@@ -6,7 +6,7 @@ defmodule Rehmed.SettlementDispatchTest do
   dispatch's transaction and read back by its query.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.{Actor, Clock, Event, Rejection}
   alias Rehmed.Contracts.Settlement

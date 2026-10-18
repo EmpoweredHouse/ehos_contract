@@ -8,7 +8,7 @@ defmodule Taxvision.AccountingMonthTest do
   under the module's id, `"taxvision.accounting_month"` (plan DD, P2f, #222).
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
   alias Taxvision.Contracts.{AccountingMonth, RegistryWatch}

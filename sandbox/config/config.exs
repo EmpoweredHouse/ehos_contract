@@ -1,6 +1,6 @@
 import Config
 
-config :eh_os_contract_host, ecto_repos: [Taxvision.Repo]
+config :eh_os_contract_host, ecto_repos: [EhOsContractHost.Repo]
 
 # The database the engine reads the domains' `time_zone:` with (plan W2).
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
@@ -16,7 +16,7 @@ config :eh_os_contract,
   # that is — a library defaulting to its own name scans itself and reports a
   # healthy empty graph.
   applications: [:eh_os_contract_host],
-  repo: Taxvision.Repo,
+  repo: EhOsContractHost.Repo,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
   authorizer: EhOsContract.Auth,
@@ -37,7 +37,7 @@ config :eh_os_contract_auth,
   issuer: "https://ehos.invalid",
   audience: "taxvision/sandbox"
 
-config :eh_os_contract_host, Taxvision.Repo,
+config :eh_os_contract_host, EhOsContractHost.Repo,
   username: "eh_os",
   password: "eh_os",
   hostname: "localhost",
@@ -45,7 +45,7 @@ config :eh_os_contract_host, Taxvision.Repo,
   pool_size: 10
 
 config :eh_os_contract_host, Oban,
-  repo: Taxvision.Repo,
+  repo: EhOsContractHost.Repo,
   queues: [events: 10]
 
 # The real host (PLAN.md, dopisek 23 sierpnia (8)) — `server:`/`http:` differ

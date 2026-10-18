@@ -2,10 +2,10 @@ defmodule EhOsContract.DataCase do
   @moduledoc """
   The sandbox case for the engine's own tests.
 
-  The counterpart of what used to be `Taxvision.DataCase` and is now only the
-  client's. The difference is not cosmetic: this one knows nothing about a
-  company, a period or an accounting month, so a test using it cannot accidentally
-  depend on the client tree being there.
+  The counterpart of the sandbox's case, on the package's own repo
+  (`EhOsContract.TestRepo`). The difference is not cosmetic: this one knows nothing
+  about the sandbox, so a test using it cannot accidentally depend on the sandbox
+  being there.
   """
 
   use ExUnit.CaseTemplate

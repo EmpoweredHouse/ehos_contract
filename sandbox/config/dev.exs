@@ -1,6 +1,6 @@
 import Config
 
-config :eh_os_contract_host, Taxvision.Repo,
+config :eh_os_contract_host, EhOsContractHost.Repo,
   database: "eh_os_contract_host_dev",
   show_sensitive_data_on_connection_error: true
 

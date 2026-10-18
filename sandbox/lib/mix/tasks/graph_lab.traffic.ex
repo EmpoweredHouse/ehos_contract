@@ -142,12 +142,12 @@ defmodule Mix.Tasks.GraphLab.Traffic do
     end
 
     Mix.Task.run("app.config")
-    repo = Application.fetch_env!(:eh_os_contract_host, Taxvision.Repo)
+    repo = Application.fetch_env!(:eh_os_contract_host, EhOsContractHost.Repo)
     parameters = Keyword.put(repo[:parameters] || [], :application_name, @connection)
 
     Application.put_env(
       :eh_os_contract_host,
-      Taxvision.Repo,
+      EhOsContractHost.Repo,
       Keyword.put(repo, :parameters, parameters)
     )
 
