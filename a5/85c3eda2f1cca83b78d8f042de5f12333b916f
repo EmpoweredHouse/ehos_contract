@@ -1,0 +1,1 @@
+Fix-up for a review comment on #367: wording in docs/adr/architecture.md and PLAN.md only, neither read by mix check (checked: git diff --stat HEAD~1 HEAD). Documentation only, so no code review ran; the previous commit 3d5b7e92 carries the full review and a gate at EXIT=0.
