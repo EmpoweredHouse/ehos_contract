@@ -1,6 +1,5 @@
 defmodule EhOsContract.Web.Live.Graph do
-  # The second screen: the pictures of the contract model, live in the dashboard. See
-  # PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked.
+  # The second screen: the pictures of the contract model, live in the dashboard.
   #
   # **One explorer per domain** (plan DD, stage G1, #297, the user's decisions of
   # 15 October): the renderer's `EhOsContract.GraphRenderer.Explorer`, with the structure

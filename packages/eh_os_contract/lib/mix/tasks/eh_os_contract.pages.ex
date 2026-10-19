@@ -7,7 +7,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
       mix eh_os_contract.pages --output docs/model                  # write the pages
       mix eh_os_contract.pages --output docs/model --check          # are they current?
-      mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
+      mix eh_os_contract.pages --output docs/model --domain lending # when there is more than one domain
       mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
   The domain, its contracts and its process modules are found among the modules of

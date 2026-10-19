@@ -12,7 +12,7 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
       mix eh_os_contract.glossary                        # every term, in its context's language
       mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
       mix eh_os_contract.glossary --context settlement   # one context
-      mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
+      mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
   The domain is found among the modules of `config :eh_os_contract, applications:`.
   `--output` writes the glossary to a file.

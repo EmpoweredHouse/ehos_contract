@@ -31,7 +31,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   #   still publishes. The domain's `name:` is held to the same segment by the domain
   #   (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
   # - A contract has an `id:` (plan DD, ID1; required from ID3), the application's namespace, then one or more
-  #   dotted snake_case segments, none of them a version — `"rehmed.settlement"` — of at
+  #   dotted snake_case segments, none of them a version — `"lending.circulation"` — of at
   #   most #{@id_bytes} bytes: it names the contract to readers outside the code, prefixes
   #   its event types (`"<id>.<event>"`), and will prefix its rows' keys, where neither `:`
   #   nor `|` may stand.

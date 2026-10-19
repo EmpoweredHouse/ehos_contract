@@ -6,8 +6,8 @@ defmodule EhOsContract.ScenarioCase do
   @moduledoc """
   One test per scenario of a contract, run against its implementation:
 
-      defmodule Rehmed.VisitSettlementScenariosTest do
-        use EhOsContract.ScenarioCase, contract: Rehmed.Contracts.VisitSettlement
+      defmodule Lending.CirculationScenariosTest do
+        use EhOsContract.ScenarioCase, contract: Lending.Contracts.Circulation
       end
 
   It is in `lib/`, not in a test support directory, because a consumer's suite has
@@ -62,8 +62,8 @@ defmodule EhOsContract.ScenarioCase do
   log has.
 
   **A domain's examples.** `use EhOsContract.ScenarioCase, domain:
-  Rehmed.Domain` writes one test per example of every value's invariant, against the
-  module bound with `use Rehmed.Domain, value: :name`: the invariant's function
+  Lending.Domain` writes one test per example of every value's invariant, against the
+  module bound with `use Lending.Domain, value: :name`: the invariant's function
   answers `false` for each of its `violated_by:`, and every invariant of the value
   answers `true` for each of its `satisfied_by:` — and of what the value is made of,
   as dispatch asks them — since a value that keeps one invariant and breaks another
@@ -75,7 +75,7 @@ defmodule EhOsContract.ScenarioCase do
   decimal `2.50` is `2.5`.
 
   **A process's promise.** `use EhOsContract.ScenarioCase, process:
-  Rehmed.Processes.ClinicalVisit` writes one test per scenario of the process module,
+  Fulfilment.Processes.Order` writes one test per scenario of the process module,
   each judging its promise from the givens at the trigger's moment, with the
   scenario's outages, and asserting the verdict and the route it names
   (`judge/2`). No implementation runs: a promise is judged on events, whoever decided

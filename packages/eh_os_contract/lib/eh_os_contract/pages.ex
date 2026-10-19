@@ -14,8 +14,8 @@ defmodule EhOsContract.Pages do
   #     …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
   #     processes/clinical_visit.md                 a process module, by its id after the
   #                                                 domain's name, a dot a directory
-  #     graph/rehmed.settlement.json  a contract's graph.v1 document, by its id
-  #     graph/process/rehmed.clinical_visit.json    a process module's, by its id
+  #     graph/lending.circulation.json  a contract's graph.v1 document, by its id
+  #     graph/process/fulfilment.order.json         a process module's, by its id
   #
   # A process module's document has a directory of its own, as its API path has
   # (`/graph/process/<id>`): a process module may share its `id:` with a contract
@@ -247,7 +247,7 @@ defmodule EhOsContract.Pages do
   defp graph_path(model), do: "graph/#{model.id}.json"
 
   # A process module's page is named after its `id:` without the domain's name, each
-  # further segment a directory: `rehmed.clinical_visit` is `processes/clinical_visit.md`.
+  # further segment a directory: `fulfilment.order` is `processes/order.md`.
   # Two process modules of one domain cannot share it, since they cannot share an id.
   defp process_path!(model) do
     id!(model)

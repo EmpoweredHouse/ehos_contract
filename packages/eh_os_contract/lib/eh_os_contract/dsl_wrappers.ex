@@ -1,7 +1,7 @@
 defmodule EhOsContract.DslWrappers do
   # Options beside a `do` block, for the library's Spark DSLs (v2 §16, D13).
   #
-  # Elixir reads `context :settlement, "Rozliczenia", subdomain: :billing do … end`
+  # Elixir reads `context :circulation, "Circulation", subdomain: :core do … end`
   # as four arguments: the two positional ones, the keyword list, and `[do: …]`. A Spark
   # entity macro takes its positional arguments and one options list, so that call
   # names a macro Spark never defines. For every entity that takes a block, one that

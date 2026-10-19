@@ -3,7 +3,7 @@ defmodule EhOsContract.Dispatcher do
   A command to a contract, from the actor who issues it to the events in the log.
   `EhOsContract.dispatch/3` is how a host calls it.
 
-      EhOsContract.dispatch(Rehmed.Contracts.VisitSettlement,
+      EhOsContract.dispatch(Lending.Contracts.Circulation,
         %RecordPayment{visit_id: "w-1", method: :card, amount: 20_000},
         actor: actor, idempotency_key: "req-81")
 

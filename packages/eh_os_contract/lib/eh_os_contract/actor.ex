@@ -27,7 +27,7 @@ defmodule EhOsContract.Actor do
 
   @typedoc """
   The values a credential grants a scoped capability, per dimension, as sorted
-  strings: `%{"rehmed.open_visits_for_clinic" => %{"clinic_id" => ["7"]}}`.
+  strings: `%{"lending.open_loans_for_branch" => %{"branch_id" => ["7"]}}`.
   """
   @type scopes :: %{String.t() => %{String.t() => [String.t()]}}
 
@@ -44,8 +44,8 @@ defmodule EhOsContract.Actor do
   The actor of a verified credential: its subject, the capabilities it grants and
   the values of each scoped one, as the credential carries them.
 
-      EhOsContract.Actor.credential("u-81", ["rehmed.open_visits_for_clinic"],
-        %{"rehmed.open_visits_for_clinic" => %{"clinic_id" => ["7"]}})
+      EhOsContract.Actor.credential("u-81", ["lending.open_loans_for_branch"],
+        %{"lending.open_loans_for_branch" => %{"branch_id" => ["7"]}})
 
   Nothing here verifies anything: an actor built from a credential nobody checked
   is a hole the host opened, and the one place that builds these from a request

@@ -293,7 +293,7 @@ the change.
 ## Reading a process
 
 `mix eh_os_contract.pages` writes a page for each process module, named after its `id:` without the domain's
-name (`rehmed.clinical_visit` is `processes/clinical_visit.md`): what tells its runs apart, the actor
+name (`fulfilment.order` is `processes/order.md`): what tells its runs apart, the actor
 accountable for it, its stages in order with each included event linked to its page in its contract, the
 events that end a run, its promises and deadline, with an unconfirmed one said to be left out of the report,
 the external systems its events rest on, and its scenarios. The domain's page and the page of each contract

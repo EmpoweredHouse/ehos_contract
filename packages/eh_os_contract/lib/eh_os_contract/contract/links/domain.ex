@@ -34,7 +34,7 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **F8**, the part that needs the domain: a field a run or a process manager's
   #   record is told by, typed by a domain value, is of one resting on `:id`.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
-  #   `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
+  #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
   #   `reads:` is an entity the application keeps, never a unit, whose state is its
   #   events.

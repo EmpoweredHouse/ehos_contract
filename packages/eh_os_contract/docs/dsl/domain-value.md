@@ -23,7 +23,7 @@ A value type: one built-in type with an optional unit, or a set of fields.
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `unit` | `atom` |  |  | What a number counts, e.g. `:grosze`. |
+| `unit` | `atom` |  |  | What a number counts, e.g. `:cents`. |
 | `label` | `String.t` |  |  | What the business calls it. |
 | `context` | `atom` |  |  | The context the value belongs to. |
 | `source` | `String.t` |  |  | Where the value comes from in the material. |

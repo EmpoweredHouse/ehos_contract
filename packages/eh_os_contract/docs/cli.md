@@ -96,7 +96,7 @@ tells their runs apart.
     mix eh_os_contract.glossary                        # every term, in its context's language
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
     mix eh_os_contract.glossary --context settlement   # one context
-    mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
+    mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
 The domain is found among the modules of `config :eh_os_contract, applications:`.
 `--output` writes the glossary to a file.
@@ -110,10 +110,10 @@ contract or process module the registry finds — that is, of the binary that ru
 of its domain, and with `--overlay` what the log says over it
 (`EhOsContract.Graph.Overlay`).
 
-    mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
-    mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
-    mix eh_os_contract.graph --process rehmed.clinical_visit --overlay --output visit.json
-    mix eh_os_contract.graph --domain rehmed --output rehmed.json
+    mix eh_os_contract.graph --contract lending.circulation --output circulation.json
+    mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
+    mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
+    mix eh_os_contract.graph --domain lending --output lending.json
 
 `--contract` names a contract by its `id:`, `--process` a process module by its
 `id:`; a process module may share its id with a contract, so they are two options.
@@ -141,7 +141,7 @@ pages, one per element.
 
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?
-    mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
+    mix eh_os_contract.pages --output docs/model --domain lending # when there is more than one domain
     mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
 The domain, its contracts and its process modules are found among the modules of
@@ -344,7 +344,7 @@ each with its stages in order and the events each includes, by contract.
     mix eh_os_contract.view settlement                        # one context, without the processes
     mix eh_os_contract.view settlement/visit_settlement       # one unit, consumer or query
     mix eh_os_contract.view --details                         # with what each row declares
-    mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
+    mix eh_os_contract.view --domain lending                  # when there is more than one domain
 
 The domain, its contracts and process modules are found among the modules of
 `config :eh_os_contract, applications:`. `--output` writes the tree to a file.

@@ -98,8 +98,8 @@ defmodule EhOsContract.Graph.Document do
   `accountable_for` it — with what it is: its `id:` as `process`, its `module`, the
   domain it names, its `label` and `version`, and the document's `digest`.
 
-      EhOsContract.Graph.Document.process(Rehmed.Processes.ClinicalVisit)
-      #=> %{"kind" => "process", "process" => "rehmed.clinical_visit", ...}
+      EhOsContract.Graph.Document.process(Fulfilment.Processes.Order)
+      #=> %{"kind" => "process", "process" => "fulfilment.order", ...}
 
   An event's node carries what the process says of it; its fields and the unit that
   records it are in its contract's document, under the same id. The process module's
@@ -143,7 +143,7 @@ defmodule EhOsContract.Graph.Document do
   The order of `modules` does not matter.
 
       modules = EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
-      EhOsContract.Graph.Document.domain(Rehmed.Domain, modules)
+      EhOsContract.Graph.Document.domain(Lending.Domain, modules)
   """
   @spec domain(module() | map(), [module() | map()]) :: map()
   def domain(domain, modules) do
@@ -205,9 +205,9 @@ defmodule EhOsContract.Graph.Document do
   @doc """
   The id of a declaration: its kind, then what it is declared in — a contract's `id:`,
   or a domain's module — then the names that pick it out there —
-  `[:event, "rehmed.settlement", :visit_settled]` is
-  `"event:rehmed.settlement:visit_settled"`, `[:actor, Rehmed.Domain, :reception]` is
-  `"actor:Rehmed.Domain:reception"`.
+  `[:event, "lending.circulation", :copy_returned]` is
+  `"event:lending.circulation:copy_returned"`, `[:actor, Lending.Domain, :librarian]` is
+  `"actor:Lending.Domain:librarian"`.
   """
   @spec id([atom() | String.t()]) :: String.t()
   def id(parts), do: Enum.map_join(parts, ":", &part/1)

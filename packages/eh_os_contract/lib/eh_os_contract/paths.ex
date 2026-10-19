@@ -306,8 +306,8 @@ defmodule EhOsContract.Paths do
   `:until`): `%{type => occurrences}`, whatever contract or run they fall in. A type
   the log does not hold in the period has no entry. One query, however many types.
 
-      EhOsContract.Paths.occurrences_by_type(["rehmed.scheduling.visit_completed"])
-      #=> %{"rehmed.scheduling.visit_completed" => 12}
+      EhOsContract.Paths.occurrences_by_type(["lending.circulation.copy_returned"])
+      #=> %{"lending.circulation.copy_returned" => 12}
   """
   @spec occurrences_by_type([String.t()], keyword()) :: %{String.t() => non_neg_integer()}
   def occurrences_by_type(types, opts \\ [])

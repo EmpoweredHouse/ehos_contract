@@ -8,7 +8,7 @@ defmodule EhOsContract.Report do
 
   **The scaffolding is English; the contract's own labels are not translated.**
   `from_label`, `to_label` and a process's `label` print exactly as the contract
-  declares them — TaxVision's are Polish, a future contract's might not be. The
+  declares them — a client's may be Polish, another's English. The
   engine writes its own sentences in one language; it still does not decide what
   language the client wrote their labels in.
 

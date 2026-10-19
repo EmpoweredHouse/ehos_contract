@@ -5,11 +5,11 @@ defmodule EhOsContract.Process.Build do
   # Runs last, after every rule, so the model is only built from a process that is well
   # formed. It is plain data, as a contract's is (`EhOsContract.Contract.Build`):
   #
-  #     %{format: 1, kind: :process, module: Rehmed.Processes.ClinicalVisit,
-  #       id: "rehmed.clinical_visit", label: "…", domain: Rehmed.Domain,
+  #     %{format: 1, kind: :process, module: Fulfilment.Processes.Order,
+  #       id: "fulfilment.order", label: "…", domain: Fulfilment.Domain,
   #       accountable: :manager, source: nil, correlate: [:visit_id],
   #       stages: [%{name: :departure, label: nil,
-  #                  includes: [%{contract: Rehmed.Contracts.Scheduling, event: :visit_completed}]}],
+  #                  includes: [%{contract: Fulfilment.Contracts.Orders, event: :placed}]}],
   #       ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
   #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"},
   #       text_digest: "…", text_digests: %{"process" => "…", "stage:departure" => "…"}}

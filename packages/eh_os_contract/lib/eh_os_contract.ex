@@ -204,7 +204,7 @@ defmodule EhOsContract do
   a person's credential, is another.
 
       EhOsContract.call(
-        {:command, "rehmed.record_payment"},
+        {:command, "lending.pay_late_fee"},
         %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
         actor: actor, idempotency_key: "req-81"
       )

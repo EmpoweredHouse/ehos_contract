@@ -2,21 +2,21 @@ defmodule EhOsContract.Contract do
   @moduledoc """
   What is decided in one context of a business, written down: the contract DSL.
 
-      defmodule Rehmed.Contracts.VisitSettlement do
+      defmodule Lending.Contracts.Circulation do
         use EhOsContract.Contract,
-          domain: Rehmed.Domain,
-          context: :settlement,
-          id: "rehmed.visit_settlement"
+          domain: Lending.Domain,
+          context: :circulation,
+          id: "lending.circulation"
 
-        aggregate :visit_settlement, "Rozliczenie wizyty" do
-          identity :visit_id
+        aggregate :loan, "Loan" do
+          identity :loan_id
 
-          command :record_payment, "Przyjęcie płatności za wizytę",
-            by: :reception, emits: :payment_recorded do
+          command :pay_late_fee, "Take payment of a late fee",
+            by: :librarian, emits: :late_fee_paid do
             field :amount, :money
           end
 
-          event :payment_recorded, "Pacjent opłacił wizytę" do
+          event :late_fee_paid, "Late fee paid" do
             field :amount, :money
           end
         end
@@ -52,8 +52,8 @@ defmodule EhOsContract.Contract do
         type: :string,
         doc:
           "The contract's name, required (D11): the domain's `name:`, " <>
-            "then dotted snake_case segments, like `\"rehmed.settlement\"`; it types every " <>
-            "event the contract records, `\"rehmed.settlement.payment_recorded\"`."
+            "then dotted snake_case segments, like `\"lending.circulation\"`; it types every " <>
+            "event the contract records, `\"lending.circulation.late_fee_paid\"`."
       ]
     ]
 

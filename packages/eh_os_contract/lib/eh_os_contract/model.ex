@@ -88,17 +88,17 @@ defmodule EhOsContract.Model do
   only an integration records — has none, so no credential can be granted it; the
   application's own `:system` actor and the reactions reach it as before.
 
-      %{"rehmed.record_payment" =>
-          %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
+      %{"lending.pay_late_fee" =>
+          %{kind: :command, name: :pay_late_fee, roles: ["lending.librarian"], scope: nil}}
 
   **One more, which is the application's: `<name>.subscribe`** for each event it
   subscribes to from another application and a policy handles (D11), under the
-  publisher's name without its version — `subscribe "rehmed.visit.closed.v1"` asks for
-  `rehmed.visit.closed.subscribe` — with the event's name in the contract and no
+  publisher's name without its version — `subscribe "billing.invoice.issued.v1"` asks for
+  `billing.invoice.issued.subscribe` — with the event's name in the contract and no
   roles: EHOS grants it to the application per environment, never to a person, and
   the transport delivers by the grant. Nothing in this engine asks for it.
 
-      %{"rehmed.visit.closed.subscribe" =>
+      %{"billing.invoice.issued.subscribe" =>
           %{kind: :subscribe, name: :visit_closed, roles: [], scope: nil}}
 
   Derived from the declarations, never written down. The domain's name is read from
@@ -273,11 +273,11 @@ defmodule EhOsContract.Model do
   process manager or a read model. A domain generates one too, the behaviour of a
   value that declares invariants:
 
-      Model.module_for(Rehmed.Domain, :value, :money)
-      #=> Rehmed.Domain.Values.Money
+      Model.module_for(Lending.Domain, :value, :money)
+      #=> Lending.Domain.Values.Money
 
-      Model.module_for(Rehmed.Contracts.VisitSettlement, :command, :record_payment)
-      #=> Rehmed.Contracts.VisitSettlement.Commands.RecordPayment
+      Model.module_for(Lending.Contracts.Circulation, :command, :pay_late_fee)
+      #=> Lending.Contracts.Circulation.Commands.PayLateFee
 
   An event is named as the contract knows it. A local one is `C.Events.X`. One
   consumed from a sibling contract is the sibling's own struct, under its name

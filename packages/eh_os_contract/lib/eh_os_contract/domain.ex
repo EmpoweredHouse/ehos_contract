@@ -2,13 +2,13 @@ defmodule EhOsContract.Domain do
   @moduledoc """
   The vocabulary an application's contracts share: one module per application.
 
-      defmodule Rehmed.Domain do
-        use EhOsContract.Domain, name: :rehmed, language: :pl
+      defmodule Lending.Domain do
+        use EhOsContract.Domain, name: :lending, language: :en
 
-        subdomain :billing, "Rozliczenia z pacjentami", type: :supporting
-        context :settlement, "Rozliczenia", subdomain: :billing
-        actor :reception, :human, "Recepcja"
-        value :money, :integer, unit: :grosze, label: "Kwota"
+        subdomain :core, "Lending", type: :core
+        context :circulation, "Circulation", subdomain: :core
+        actor :librarian, :human, "Librarian"
+        value :money, :integer, unit: :cents, label: "Amount"
       end
 
   A domain module declares subdomains, contexts with their glossary, actors, subjects of
@@ -16,14 +16,14 @@ defmodule EhOsContract.Domain do
 
   A value may declare invariants, each with values that break it and keep it:
 
-      value :money, :integer, unit: :grosze do
-        invariant :not_negative, "Kwota nie jest ujemna",
+      value :money, :integer, unit: :cents do
+        invariant :not_negative, "An amount is not negative",
           violated_by: [-1],
           satisfied_by: [0, 15_000]
       end
 
-  The domain then generates a behaviour, `Rehmed.Domain.Values.Money`, and a module
-  bound with `use Rehmed.Domain, value: :money` defines one function per invariant,
+  The domain then generates a behaviour, `Lending.Domain.Values.Money`, and a module
+  bound with `use Lending.Domain, value: :money` defines one function per invariant,
   answering whether a value keeps it. Dispatch holds every value of the type to them,
   once the value fits its type and after the values it is made of: a command, or a
   recorded event, that carries a value breaking one is refused with
@@ -31,7 +31,7 @@ defmodule EhOsContract.Domain do
   a defect. Dispatch raises, too, on a value with invariants that no module implements.
   What is read back from the log is never held to them, so an invariant declared
   today does not make yesterday's events unreadable. `use EhOsContract.ScenarioCase,
-  domain: Rehmed.Domain` tests each example.
+  domain: Lending.Domain` tests each example.
   It compiles to plain data, `__eh_os_contract_model__/0`, which
   `EhOsContract.Model.fetch/1` returns for it. The data carries a `version`: a digest
   that ignores the order declarations are written in.

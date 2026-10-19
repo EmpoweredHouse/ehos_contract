@@ -310,7 +310,7 @@ row of version 1 goes through both steps in turn.
   A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
 - **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
 - **`function:`** names a function of the unit's implementation, for a change a rename and a default
-  cannot say: amounts stored in grosze read as a decimal, one field split in two. It is a step on its
+  cannot say: amounts stored in cents read as a decimal, one field split in two. It is a step on its
   own.
 
 ```elixir
