@@ -19,8 +19,10 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
   # clients' leave: lending's circulation (an aggregate, a boundary, a process manager with a
   # timer, an entity read and a supplied field) and membership (personal data, a read model and
   # its query), billing's subscriptions (a never-ending process manager, a policy, a
-  # publication) and payments (an effect and an external), fulfilment's shipping (a lifecycle),
-  # its order process with its overlay, and the billing and fulfilment domains.
+  # publication) and payments (an effect and an external), fulfilment's warehouse (grants scoped
+  # to a warehouse, and `actor_is`) and shipping (a lifecycle), its order process with its
+  # overlay, and the lending domain (two process modules, translated terms), the billing domain
+  # (a publication) and the fulfilment domain (three contexts).
 
   @dir Path.expand("../fixtures", __DIR__)
 
