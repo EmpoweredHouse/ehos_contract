@@ -368,6 +368,25 @@ domain in its box, hundreds of cards with no arrow once the Console sees a dozen
 
 Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297#issuecomment-6202758132).
 
+## Amendment, 19 October 2026: the Console takes the documents with a deployment
+
+The two amendments of 15 October say the Console reads each application's documents from its JSON API and
+fetches them. EHOS decided otherwise, in [D-123](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/adr/0123-ehos-takes-each-application-s-domain-graph-documents-with-its-deployment-and-joins-them-into-a-landscape-when-someone-reads-it.md), which the user accepted on 19 October. An
+application's pipeline writes each domain's `graph.v1` document from the commit it builds
+(`mix eh_os_contract.graph --domain <name>`) and submits them with the deployment, beside the image and the
+manifest. EHOS keeps them with that deployment and, when someone reads an environment's landscape, joins the
+documents of each application's latest active deployment there with `Landscape.join/1`, keeping nothing joined.
+EHOS calls no application's JSON API for them: an application's `GET /graph/…` serves its own dashboard, and
+whoever else its resolver lets in.
+
+Two things on this side follow. `graph.v1` still changes only by addition, since EHOS keeps what it knows of a
+document and drops the rest; a document whose `schema` names another version is skipped by EHOS, not refused,
+so a newer engine never stops a deployment by its version alone. And a release's `release.json` names the
+document's version among what the engine produces, `eh_os_contract.graph/v1`, as EHOS's `releases.md` names
+the interface.
+
+Recorded on [#344](https://github.com/EmpoweredHouse/eh-os-contract/issues/344).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with
