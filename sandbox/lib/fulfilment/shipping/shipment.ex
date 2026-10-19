@@ -1,10 +1,14 @@
 defmodule Fulfilment.Shipping.Shipment do
-  @moduledoc "**Invented.** Decides a shipment: booked once, and dispatched once it is booked."
+  @moduledoc """
+  **Invented.** Decides a shipment: booked once, and dispatched once it is booked. Its
+  status is the lifecycle's, which the engine computes from its events.
+  """
 
   use Fulfilment.Contracts.Shipping, aggregate: :shipment
 
   @impl true
-  def book_shipment(_command, %State{booked: true}), do: reject(:booked_once)
+  def book_shipment(_command, %State{status: status}) when status != nil,
+    do: reject(:booked_once)
 
   def book_shipment(%BookShipment{} = booking, _state) do
     emit(%Booked{
@@ -14,14 +18,7 @@ defmodule Fulfilment.Shipping.Shipment do
     })
   end
 
+  # The lifecycle admits it from `:booked` alone, before this runs.
   @impl true
-  def dispatch_parcel(%DispatchParcel{order_id: id}, %State{booked: true, dispatched: false}),
-    do: emit(%Dispatched{order_id: id})
-
-  def dispatch_parcel(_command, _state), do: reject(:dispatched_once_when_booked)
-
-  @impl true
-  def evolve(state, %Booked{}), do: %{state | booked: true}
-  def evolve(state, %Dispatched{}), do: %{state | dispatched: true}
-  def evolve(state, %Delivered{}), do: state
+  def dispatch_parcel(%DispatchParcel{order_id: id}, _state), do: emit(%Dispatched{order_id: id})
 end

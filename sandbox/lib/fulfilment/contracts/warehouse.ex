@@ -7,7 +7,7 @@ defmodule Fulfilment.Contracts.Warehouse do
   - **Leads and pickers are granted per warehouse** (`scope: :warehouse_id`): neither
     acts on another warehouse's pick lists, which the door refuses before anything is
     decided.
-  - **A pick list is confirmed by the picker it is assigned to** (`actor_is`): a
+  - **A pick list is confirmed and packed by the picker it is assigned to** (`actor_is`): a
     colleague in the same warehouse, granted the same, is refused by the business's own
     rule. The lead may assign it again until it is picked, so a list assigned to the
     wrong person, or to someone who left, is not stuck.
@@ -39,6 +39,7 @@ defmodule Fulfilment.Contracts.Warehouse do
 
     invariant :confirmed_by_its_picker, "A pick list is confirmed by the picker it is assigned to"
     invariant :picked_once, "A pick list is picked once"
+    invariant :packed_by_its_picker, "A parcel is packed by the picker the list is assigned to"
     invariant :picked_before_packed, "A parcel is packed once, from a picked list"
 
     command :open_pick_list, "Open a pick list",
@@ -65,7 +66,8 @@ defmodule Fulfilment.Contracts.Warehouse do
       by: :picker,
       scope: :warehouse_id,
       emits: :parcel_packed,
-      rejects: :picked_before_packed do
+      rejects: [:packed_by_its_picker, :picked_before_packed] do
+      actor_is :picker_id, or_rejects: :packed_by_its_picker
       field :weight_grams, :integer
     end
 
@@ -157,6 +159,8 @@ defmodule Fulfilment.Contracts.Warehouse do
   end
 
   scenario "a picked list is packed" do
+    actor :picker
+    as "picker-ada"
     given :opened, @list
     given :assigned, %{picker_id: "picker-ada"}
     given :picked
@@ -165,8 +169,21 @@ defmodule Fulfilment.Contracts.Warehouse do
   end
 
   scenario "a list not picked is not packed" do
+    actor :picker
+    as "picker-ada"
     given :opened, @list
+    given :assigned, %{picker_id: "picker-ada"}
     command :pack_parcel, %{weight_grams: 1_200}
     rejected :picked_before_packed
+  end
+
+  scenario "a colleague does not pack another's parcel" do
+    actor :picker
+    as "picker-bob"
+    given :opened, @list
+    given :assigned, %{picker_id: "picker-ada"}
+    given :picked
+    command :pack_parcel, %{weight_grams: 25_000}
+    rejected :packed_by_its_picker
   end
 end

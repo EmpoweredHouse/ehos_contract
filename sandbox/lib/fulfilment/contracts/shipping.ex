@@ -7,6 +7,11 @@ defmodule Fulfilment.Contracts.Shipping do
   The booking reads the warehouse's `parcel_packed` and its `weight_grams`, which is
   why a rename of that field on the warehouse's side breaks this contract's scenarios
   and the policy's pattern.
+
+  A shipment goes booked, with the carrier, delivered. The delivery is the carrier's to
+  record, and a recorded event is appended whatever the shipment's status: a delivery
+  reported for a parcel never handed over moves nothing, and the conformance report
+  counts it as a transition the lifecycle does not declare.
   """
 
   use EhOsContract.Contract,
@@ -19,9 +24,14 @@ defmodule Fulfilment.Contracts.Shipping do
   aggregate :shipment, "Shipment" do
     identity order_id: {:id, :order}
 
-    state do
-      field :booked, :boolean, default: false
-      field :dispatched, :boolean, default: false
+    lifecycle do
+      status :booked, "Booked"
+      status :dispatched, "With the carrier"
+      status :delivered, "Delivered", final: true
+
+      initial :booked, on: :booked
+      transition :booked, :dispatched, :dispatched
+      transition :dispatched, :delivered, :delivered
     end
 
     invariant :booked_once, "A shipment is booked once"
@@ -37,7 +47,9 @@ defmodule Fulfilment.Contracts.Shipping do
     command :dispatch_parcel, "Hand a parcel to the carrier",
       by: :dispatcher,
       emits: :dispatched,
-      rejects: :dispatched_once_when_booked
+      rejects: :dispatched_once_when_booked,
+      from: :booked,
+      or_rejects: :dispatched_once_when_booked
 
     event :booked, "Shipment booked" do
       field :service, :service

@@ -30,7 +30,7 @@ defmodule Fulfilment.Orders.Order do
   def cancel_order(%CancelOrder{order_id: id}, %State{placed: true, paid: false, cancelled: false}),
       do: emit(%Cancelled{order_id: id})
 
-  def cancel_order(_command, _state), do: reject(:only_an_unpaid_order_is_cancelled)
+  def cancel_order(_command, _state), do: reject(:only_an_open_unpaid_order_is_cancelled)
 
   @impl true
   def evolve(state, %Placed{warehouse_id: warehouse}),

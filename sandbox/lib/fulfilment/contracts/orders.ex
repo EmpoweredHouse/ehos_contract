@@ -21,7 +21,9 @@ defmodule Fulfilment.Contracts.Orders do
 
     invariant :placed_once, "An order is placed once"
     invariant :paid_once_while_open, "An order still open is paid, once"
-    invariant :only_an_unpaid_order_is_cancelled, "Only an order not yet paid is cancelled"
+
+    invariant :only_an_open_unpaid_order_is_cancelled,
+              "Only an order still open and unpaid is cancelled"
 
     command :place_order, "Place an order",
       by: :order_desk,
@@ -39,7 +41,7 @@ defmodule Fulfilment.Contracts.Orders do
     command :cancel_order, "Cancel an order",
       by: :order_desk,
       emits: :cancelled,
-      rejects: :only_an_unpaid_order_is_cancelled
+      rejects: :only_an_open_unpaid_order_is_cancelled
 
     event :placed, "Order placed" do
       field :warehouse_id, :id
@@ -92,10 +94,17 @@ defmodule Fulfilment.Contracts.Orders do
     expect :cancelled
   end
 
+  scenario "a cancelled order is not cancelled again" do
+    given :placed, @placed
+    given :cancelled
+    command :cancel_order
+    rejected :only_an_open_unpaid_order_is_cancelled
+  end
+
   scenario "a paid order is not cancelled" do
     given :placed, @placed
     given :payment_confirmed, %{warehouse_id: "w-1"}
     command :cancel_order
-    rejected :only_an_unpaid_order_is_cancelled
+    rejected :only_an_open_unpaid_order_is_cancelled
   end
 end

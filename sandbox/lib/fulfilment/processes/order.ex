@@ -5,7 +5,9 @@ defmodule Fulfilment.Processes.Order do
 
   The shop promises that a paid order leaves the warehouse within a day. The day counts
   from the payment, an event in the middle of the run, not from the order's placing: an
-  order left unpaid for a week has not broken anything the shop answers for.
+  order left unpaid for a week has not broken that promise. The deadline is the whole
+  run's, unpaid time included: an order is delivered, or cancelled by the desk, within
+  two weeks of being placed, so an order left unpaid is the desk's to cancel.
   """
 
   use EhOsContract.Process,
