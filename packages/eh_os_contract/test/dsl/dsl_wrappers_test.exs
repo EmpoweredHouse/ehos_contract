@@ -9,8 +9,8 @@ defmodule EhOsContract.DslWrappersTest do
   2. the formatter keeps the four-argument form without parentheses.
 
   If either fails, D13's fallback is options inside the block, and the question goes
-  back to the user. A domain test in `sandbox/` pins the second in a consumer,
-  through `import_deps`.
+  back to the user. `sandbox/test/lending_domain_test.exs` pins the second in a
+  consumer, through `import_deps`.
   """
 
   use EhOsContract.DslCase, async: false
@@ -43,10 +43,10 @@ defmodule EhOsContract.DslWrappersTest do
     test "compiles to the same model as the options written inside the block" do
       beside =
         compiled("Beside", """
-          context :settlement, "Settlement", subdomain: :supporting, source: "CTX-05" do
+          context :settlement, "Settlement", subdomain: :supporting, source: "CTX-12" do
             term "Wizyta", definition: "Spotkanie pacjenta ze specjalistą" do
               translation :en, "Visit", definition: "A patient's appointment with a specialist"
-              avoid "Session"
+              avoid "Seans"
             end
           end
 
@@ -59,12 +59,12 @@ defmodule EhOsContract.DslWrappersTest do
         compiled("Inside", """
           context :settlement, "Settlement" do
             subdomain :supporting
-            source "CTX-05"
+            source "CTX-12"
 
             term "Wizyta" do
               definition "Spotkanie pacjenta ze specjalistą"
               translation :en, "Visit", definition: "A patient's appointment with a specialist"
-              avoid "Session"
+              avoid "Seans"
             end
           end
 

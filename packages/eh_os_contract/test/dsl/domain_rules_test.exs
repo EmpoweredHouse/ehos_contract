@@ -60,8 +60,8 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "control: a label in Polish passes" do
       compiles("LabelsGiven", """
-        context :settlement, "Settlement", subdomain: :supporting
-        actor :reception, :human, "Reception"
+        context :settlement, "Należności", subdomain: :supporting
+        actor :reception, :human, "Recepcja"
       """)
     end
   end
@@ -563,9 +563,9 @@ defmodule EhOsContract.DomainRulesTest do
         refused("ExternalsWrong", """
           context :settlement, "Settlement", subdomain: :supporting
           external :einvoicing, "E-invoicing registry", direction: :outbound
-          external :p1, "P1", direction: :outbound
+          external :registry, "Health registry", direction: :outbound
           external :settlement, "External settlement", direction: :inbound
-          relation :conformist, upstream: :einvoicing, downstream: :p1
+          relation :conformist, upstream: :einvoicing, downstream: :registry
           relation :partnership, between: [:settlement, :einvoicing]
         """)
 
@@ -919,7 +919,7 @@ defmodule EhOsContract.DomainRulesTest do
         @periods <>
           """
             entity :period, "Period", context: :month, identity: :period_id,
-              source: "US-MON-01" do
+              source: "US-INV-07" do
               field :name, :string
               field :ends_on, :date
               field :previous_id, {:id, :period}, optional: true

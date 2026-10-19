@@ -31,7 +31,7 @@ defmodule EhOsContract.ProcessModuleTest do
       eventually :report_sent
       within {2, :day}
       or_else :reporting_not_required
-      source "Regulation 2025/866"
+      source "Example Act, s. 12"
     end
   """
 
@@ -53,7 +53,7 @@ defmodule EhOsContract.ProcessModuleTest do
                kind: :process,
                module: EhOsContract.Fixtures.ClinicalVisit,
                id: "clinic.clinical_visit",
-               label: "Wizyta",
+               label: "Visit",
                domain: Clinic,
                accountable: :manager,
                source: "Workshop 2",
@@ -92,7 +92,7 @@ defmodule EhOsContract.ProcessModuleTest do
                  within: %{amount: 2, unit: :day},
                  or_else: :reporting_not_required,
                  unverified: false,
-                 source: "Regulation 2025/866"
+                 source: "Example Act, s. 12"
                }
              ] = model.promises
 
@@ -201,7 +201,7 @@ defmodule EhOsContract.ProcessModuleTest do
         compile_process(
           "WordsB",
           @body
-          |> replace(~s(source "Regulation 2025/866"), ~s(source "Regulation 2026/1"))
+          |> replace(~s(source "Example Act, s. 12"), ~s(source "Example Act, s. 13"))
           |> replace(~s("Closing"), ~s("Closing the visit")),
           id: "clinic.words_a"
         )

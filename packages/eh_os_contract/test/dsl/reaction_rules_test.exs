@@ -28,7 +28,7 @@ defmodule EhOsContract.ReactionRulesTest do
 
     policy :report_on_close, "Closing — a report or a skip",
       handles: :closed, issues: [:report, :waive] do
-      constraint :only_reportable, "We report only the services that must be reported", source: "P-07"
+      constraint :only_reportable, "We report only the services that must be reported", source: "Q-21"
       constraint :one_answer, "Every closing gets exactly one answer"
     end
 
@@ -37,7 +37,7 @@ defmodule EhOsContract.ReactionRulesTest do
     end
 
     effect :send_report, "Send the report", handles: :reported, idempotency: [key: :event_id, owner: :self] do
-      constraint :within_limits, "The adapter keeps within the rate limits and retries", source: "03 §4.2"
+      constraint :within_limits, "The adapter keeps within the rate limits and retries", source: "07 §2.3"
     end
 
     process_manager :chase, "Chase" do
@@ -112,7 +112,7 @@ defmodule EhOsContract.ReactionRulesTest do
       [pm] = model.process_managers
 
       assert [
-               %{name: :only_reportable, source: "P-07"},
+               %{name: :only_reportable, source: "Q-21"},
                %{name: :one_answer, source: nil}
              ] = policy.constraints
 

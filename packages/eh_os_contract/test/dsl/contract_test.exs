@@ -20,7 +20,7 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    aggregate :visit, "Visit", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
       state do
@@ -60,7 +60,7 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    aggregate :visit, "Visit", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
       event :closed, "Closed"
@@ -100,7 +100,7 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    aggregate :visit, "Visit", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
       state do
@@ -155,7 +155,7 @@ defmodule EhOsContract.ContractTest do
                    name: :visit,
                    kind: :aggregate,
                    label: "Visit",
-                   source: "AGG-03",
+                   source: "AGG-11",
                    identity: [:visit_id],
                    consults: [],
                    state: %{
@@ -441,7 +441,7 @@ defmodule EhOsContract.ContractTest do
       unit: "Visit",
       command: "Complete the visit",
       event: "Visit completed",
-      source: "W1 00:12:40",
+      source: "M1 00:12:40",
       scenario: "reception completes the visit",
       room: "room 2"
     }
@@ -455,7 +455,7 @@ defmodule EhOsContract.ContractTest do
           | unit: "A patient's visit",
             command: "The patient leaves",
             event: "The patient left the room",
-            source: "W1 00:13:05",
+            source: "M1 00:13:05",
             scenario: "the patient leaves the room"
         })
 

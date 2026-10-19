@@ -22,23 +22,23 @@ defmodule EhOsContract.SourcesTest do
     end
 
     policy :report_on_close, "A closed visit is reported",
-      handles: :visit_closed, issues: :report_visit, source: "P-07"
+      handles: :visit_closed, issues: :report_visit, source: "Q-21"
 
     effect :notify_registry, "Notify the registry",
-      handles: :visit_reported, idempotency: [key: :event_id, owner: :self], source: "P-08"
+      handles: :visit_reported, idempotency: [key: :event_id, owner: :self], source: "Q-22"
 
-    process_manager :chase, "Chasing the report", source: "P-09" do
+    process_manager :chase, "Chasing the report", source: "Q-23" do
       correlate :visit_id
       starts_on :visit_closed, sets: :due
-      timer :due, "Due", wait: {24, :hour}, issues: :report_visit, source: "H21"
+      timer :due, "Due", wait: {24, :hour}, issues: :report_visit, source: "K14"
       ends_on :visit_reported
     end
 
-    read_model :visits, "Visits", projects: :visit_closed, source: "R-01" do
+    read_model :visits, "Visits", projects: :visit_closed, source: "V-31" do
       field :visit_id, :id
     end
 
-    query :visits_of, "Reception's visits", reads: :visits, by: :reception, source: "R-02" do
+    query :visits_of, "Reception's visits", reads: :visits, by: :reception, source: "V-32" do
       param :visit_id, :id
     end
   """
@@ -95,12 +95,12 @@ defmodule EhOsContract.SourcesTest do
     context :scheduling, "Schedule", subdomain: :billing
     subdomain :billing, "Settlement", type: :supporting
 
-    actor :reception, :human, "Reception", source: "W1 00:03:10"
+    actor :reception, :human, "Reception", source: "M1 00:03:10"
     subject :patient, "Patient", source: "GDPR"
-    value :money, :integer, unit: :cents, source: "E-55"
-    external :p1, "Registry P1", direction: :outbound, source: "Regulation 2025/866"
-    relation :customer_supplier, upstream: :scheduling, downstream: :settlement, source: "W2"
-    relation :partnership, between: [:settlement, :scheduling], source: "W3"
+    value :money, :integer, unit: :cents, source: "E-82"
+    external :registry, "Health registry", direction: :outbound, source: "Example Act, s. 12"
+    relation :customer_supplier, upstream: :scheduling, downstream: :settlement, source: "M2"
+    relation :partnership, between: [:settlement, :scheduling], source: "M3"
   """
 
   @domain_unsourced """
@@ -111,7 +111,7 @@ defmodule EhOsContract.SourcesTest do
     actor :reception, :human, "Reception"
     subject :patient, "Patient"
     value :money, :integer, unit: :cents
-    external :p1, "Registry P1", direction: :outbound
+    external :registry, "Health registry", direction: :outbound
     relation :customer_supplier, upstream: :scheduling, downstream: :settlement
   """
 
@@ -132,9 +132,9 @@ defmodule EhOsContract.SourcesTest do
       [query] = model.queries
 
       assert {policy.source, effect.source, pm.source, timer.source} ==
-               {"P-07", "P-08", "P-09", "H21"}
+               {"Q-21", "Q-22", "Q-23", "K14"}
 
-      assert {read_model.source, query.source} == {"R-01", "R-02"}
+      assert {read_model.source, query.source} == {"V-31", "V-32"}
     end
 
     test "without one, keeps the key as nil", %{
@@ -179,11 +179,11 @@ defmodule EhOsContract.SourcesTest do
     test "keeps each declaration's source in the model" do
       model = domain("Sourced", @domain_sourced)
 
-      assert [%{source: "W1 00:03:10"}] = model.actors
+      assert [%{source: "M1 00:03:10"}] = model.actors
       assert [%{source: "GDPR"}] = model.subjects
-      assert [%{source: "E-55"}] = model.values
-      assert [%{source: "Regulation 2025/866"}] = model.externals
-      assert [%{source: "W2"}, %{source: "W3"}] = model.relations
+      assert [%{source: "E-82"}] = model.values
+      assert [%{source: "Example Act, s. 12"}] = model.externals
+      assert [%{source: "M2"}, %{source: "M3"}] = model.relations
     end
 
     test "without one, keeps the key as nil" do
@@ -204,19 +204,19 @@ defmodule EhOsContract.SourcesTest do
       dir = "settlement/paged"
 
       index = pages["index.md"]
-      assert index =~ "- `reception` — Reception · human · _source: W1 00:03:10_"
+      assert index =~ "- `reception` — Reception · human · _source: M1 00:03:10_"
       assert index =~ "- `patient` — Patient · _source: GDPR_"
-      assert index =~ "- `p1` — Registry P1 · outbound · _source: Regulation 2025/866_"
-      assert index =~ "[`settlement`](settlement/index.md) · _source: W2_"
-      assert index =~ "[`scheduling`](scheduling/index.md) · _source: W3_"
-      assert pages["values/money.md"] =~ "_Source: E-55_"
+      assert index =~ "- `registry` — Health registry · outbound · _source: Example Act, s. 12_"
+      assert index =~ "[`settlement`](settlement/index.md) · _source: M2_"
+      assert index =~ "[`scheduling`](scheduling/index.md) · _source: M3_"
+      assert pages["values/money.md"] =~ "_Source: E-82_"
 
-      assert pages["#{dir}/policies/report_on_close.md"] =~ "_Source: P-07_"
-      assert pages["#{dir}/effects/notify_registry.md"] =~ "_Source: P-08_"
-      assert pages["#{dir}/process_managers/chase.md"] =~ "_Source: P-09_"
-      assert pages["#{dir}/process_managers/chase.md"] =~ "· _source: H21_"
-      assert pages["#{dir}/read_models/visits.md"] =~ "_Source: R-01_"
-      assert pages["#{dir}/queries/visits_of.md"] =~ "_Source: R-02_"
+      assert pages["#{dir}/policies/report_on_close.md"] =~ "_Source: Q-21_"
+      assert pages["#{dir}/effects/notify_registry.md"] =~ "_Source: Q-22_"
+      assert pages["#{dir}/process_managers/chase.md"] =~ "_Source: Q-23_"
+      assert pages["#{dir}/process_managers/chase.md"] =~ "· _source: K14_"
+      assert pages["#{dir}/read_models/visits.md"] =~ "_Source: V-31_"
+      assert pages["#{dir}/queries/visits_of.md"] =~ "_Source: V-32_"
     end
   end
 end

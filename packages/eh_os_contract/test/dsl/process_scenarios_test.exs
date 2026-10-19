@@ -131,7 +131,7 @@ defmodule EhOsContract.ProcessScenariosTest do
       via: :eventually do
       given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00Z"
       given :report_sent, %{visit_id: "visit-anna"}, at: "2026-09-08T10:00:00Z"
-      outage :p1, at: "2026-09-08T08:00:00Z"
+      outage :registry, at: "2026-09-08T08:00:00Z"
       promise :reported_within_two_days, at: "2026-09-10T09:00:00Z"
     end
   """
@@ -170,7 +170,7 @@ defmodule EhOsContract.ProcessScenariosTest do
                    },
                    %{event: :report_sent, data: %{visit_id: "visit-anna"}}
                  ],
-                 outages: [%{external: :p1, at: "2026-09-08T08:00:00Z"}],
+                 outages: [%{external: :registry, at: "2026-09-08T08:00:00Z"}],
                  promise: %{name: :reported_within_two_days, at: "2026-09-10T09:00:00Z"}
                }
              ]
@@ -275,7 +275,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
     test "an outage's or the trigger's at: that is no timestamp is refused" do
       outage = replace(@scenario, ~s|at: "2026-09-08T08:00:00Z"|, ~s|at: "Tuesday"|)
-      refuse(outage, ~s|outage :p1, at: "Tuesday" is not an ISO 8601 timestamp|, 28)
+      refuse(outage, ~s|outage :registry, at: "Tuesday" is not an ISO 8601 timestamp|, 28)
 
       trigger = replace(@scenario, ~s|at: "2026-09-10T09:00:00Z"|, ~s|at: "Wednesday"|)
       refuse(trigger, ~s|promise, at: "Wednesday" is not an ISO 8601 timestamp|, 29)
@@ -306,7 +306,7 @@ defmodule EhOsContract.ProcessScenariosTest do
       unexcused =
         @scenario
         |> replace("verdict: :satisfied,\n    via: :eventually", "verdict: :suspended")
-        |> replace(~s|    outage :p1, at: "2026-09-08T08:00:00Z"\n|, "")
+        |> replace(~s|    outage :registry, at: "2026-09-08T08:00:00Z"\n|, "")
 
       refuse(unexcused, "verdict :suspended, and no outage excuses the promise", 23)
 
@@ -345,8 +345,8 @@ defmodule EhOsContract.ProcessScenariosTest do
     end
 
     test "a route outside the two is refused" do
-      scenario = replace(@scenario, "via: :eventually", "via: :p1")
-      refuse(scenario, "via :p1 is not one of [:eventually, :or_else]", 23)
+      scenario = replace(@scenario, "via: :eventually", "via: :registry")
+      refuse(scenario, "via :registry is not one of [:eventually, :or_else]", 23)
     end
 
     test "via: :or_else for a promise without one is refused, and compiles for one with it" do
@@ -395,7 +395,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       refuse(
         outage,
-        "outage :p1 at 2026-09-11T08:00:00Z is after the moment the promise is judged",
+        "outage :registry at 2026-09-11T08:00:00Z is after the moment the promise is judged",
         28
       )
     end
@@ -408,7 +408,7 @@ defmodule EhOsContract.ProcessScenariosTest do
           ~s|given :report_sent, %{visit_id: "visit-anna"}|
         )
         |> replace(~s|at: "2026-09-10T09:00:00Z"|, ~s|at: "2026-09-07T09:00:30Z"|)
-        |> replace(~s|outage :p1, at: "2026-09-08T08:00:00Z"\n|, "")
+        |> replace(~s|outage :registry, at: "2026-09-08T08:00:00Z"\n|, "")
 
       refuse(scenario, "given :report_sent at 2026-09-07T09:01:00Z is after the moment", 27)
     end

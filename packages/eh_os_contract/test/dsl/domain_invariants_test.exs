@@ -44,7 +44,7 @@ defmodule EhOsContract.DomainInvariantsTest do
             invariant :in_order, "A period ends no earlier than it starts",
               violated_by: [%{from: "2026-02-01", to: "2026-01-31"}],
               satisfied_by: [%{from: "2026-01-01", to: "2026-01-01"}],
-              source: "W2 00:14:10"
+              source: "M2 00:14:10"
 
             invariant :within_a_year, "A period lasts at most a year",
               violated_by: [%{from: "2026-01-01", to: "2027-01-02"}],
@@ -60,7 +60,7 @@ defmodule EhOsContract.DomainInvariantsTest do
                  label: "A period ends no earlier than it starts",
                  violated_by: [%{from: "2026-02-01", to: "2026-01-31"}],
                  satisfied_by: [%{from: "2026-01-01", to: "2026-01-01"}],
-                 source: "W2 00:14:10"
+                 source: "M2 00:14:10"
                },
                %{name: :within_a_year}
              ] = period.invariants

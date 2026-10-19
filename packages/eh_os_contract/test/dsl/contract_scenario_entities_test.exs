@@ -64,7 +64,7 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
           """
 
             scenario "booking" do
-              given_entity :service, %{service_id: "s-1", p1_reported: true}
+              given_entity :service, %{service_id: "s-1", registry_reported: true}
               command :book_visit, %{service_id: "s-1"}
               expect :visit_booked
             end
@@ -80,7 +80,7 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
     cancelled = Enum.find(model.scenarios, &(&1.description == "cancellation"))
 
     assert booked.given_entities == [
-             %{entity: :service, data: %{service_id: "s-1", p1_reported: true}}
+             %{entity: :service, data: %{service_id: "s-1", registry_reported: true}}
            ]
 
     # Kept only where given, so no other scenario's digest moves.
