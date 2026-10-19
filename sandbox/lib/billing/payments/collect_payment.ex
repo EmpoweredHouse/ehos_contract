@@ -5,8 +5,10 @@ defmodule Billing.Payments.CollectPayment do
 
   A gateway that answers it is unavailable is an outage, not a refused payment: the call
   is wrapped in `EhOsContract.Dependency.observe/3`, which records an observation of it,
-  and the effect fails, so the payment is tried again. The request's
-  identifier is the idempotency key, so a second delivery records nothing new.
+  and the effect fails, so the payment is tried again. The request's identifier is the
+  idempotency key of both the charge and the record, so a second delivery neither
+  charges again nor records anything new: the gateway keeps it for the charge
+  (`owner: :downstream`).
   """
 
   use Billing.Contracts.Payments, effect: :collect_payment
@@ -22,7 +24,7 @@ defmodule Billing.Payments.CollectPayment do
 
     with {:ok, _charge} <-
            Dependency.observe(Payments, :payment_gateway, fn ->
-             PaymentGateway.charge(id, amount)
+             PaymentGateway.charge(id, amount, "payment:#{meta.id}")
            end),
          {:ok, _receipt} <-
            EhOsContract.record(

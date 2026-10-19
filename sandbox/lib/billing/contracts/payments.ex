@@ -7,7 +7,10 @@ defmodule Billing.Contracts.Payments do
   payment is then charged through the payment gateway, by an effect. The gateway may
   be down. The effect reports that as an outage of the gateway, fails, and is tried
   again, and the integration records the payment once the gateway takes it. A payment
-  the gateway never takes is written off by the account manager.
+  the gateway never takes is written off by the account manager. A write-off while an
+  attempt is still to come does not stop that attempt: a payment the gateway takes after
+  its write-off is recorded collected all the same, and refunding it is the account
+  manager's.
   """
 
   use EhOsContract.Contract,
@@ -61,7 +64,7 @@ defmodule Billing.Contracts.Payments do
   effect :collect_payment, "Charge the customer through the gateway",
     handles: :requested,
     calls: {:payment_gateway, :charge},
-    idempotency: [key: :event_id, owner: :self]
+    idempotency: [key: :event_id, owner: :downstream]
 
   @requested %{subscription_id: "sub-1", period_id: "2026-01", amount: 2_200}
 

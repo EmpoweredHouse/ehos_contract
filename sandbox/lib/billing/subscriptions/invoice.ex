@@ -35,6 +35,8 @@ defmodule Billing.Subscriptions.Invoice do
   def issue_invoice(_command, %State{issued: true}), do: reject(:issued_once_with_lines)
   def issue_invoice(_command, %State{lines: []}), do: reject(:issued_once_with_lines)
 
+  # Lines added by `add_invoice_line/2` cannot sum past it; a history from elsewhere, as
+  # the properties generate, can.
   def issue_invoice(_command, %State{total: total}) when total > @largest_amount,
     do: reject(:total_fits_an_amount)
 

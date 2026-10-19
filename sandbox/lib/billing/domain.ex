@@ -1,7 +1,7 @@
 defmodule Billing.Domain do
   @moduledoc """
-  The vocabulary of subscription billing: subscriptions, billed once a month with the
-  usage they recorded, and payments, collected through a payment gateway.
+  **Invented.** The vocabulary of subscription billing: subscriptions, billed once a
+  month with the usage they recorded, and payments, collected through a payment gateway.
   """
 
   use EhOsContract.Domain, name: :billing, language: :en
@@ -46,10 +46,20 @@ defmodule Billing.Domain do
       satisfied_by: ["2026-07", "2026-12"]
   end
 
-  value :money, :integer, unit: :cents, label: "Amount"
+  value :money, :integer, unit: :cents, label: "Amount" do
+    invariant :not_negative, "An amount is not negative",
+      violated_by: [-1, -2_000],
+      satisfied_by: [0, 2_000]
+  end
+
+  value :quantity, :integer, label: "Units" do
+    invariant :not_negative, "A number of units is not negative",
+      violated_by: [-1],
+      satisfied_by: [0, 40]
+  end
 
   value :usage_record, label: "Usage record" do
     field :usage_id, :id
-    field :units, :integer
+    field :units, :quantity
   end
 end

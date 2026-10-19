@@ -34,7 +34,10 @@ has a domain, contracts and implementations that decide and react, so that dispa
 something to check. What writing a contract teaches goes into the library's work, not into notes about a
 client, and a contract that cannot be written is a **better** result than one written beside the material. An
 invented medical domain, `UniversalityGate`, lives in `packages/eh_os_contract/test/support/` and says so in its
-first line. GraphLab (`sandbox/lib/graph_lab/`) is no client's: a changed copy of Rehmed with the cases the
+first line. The publication programme's invented case studies (PB2, #369) sit beside them, each under
+`sandbox/lib/<name>/` and saying it is invented in its first line: the same mechanisms tested on material
+anyone may read, so that the clients' trees can leave. One of them, `Billing`, is the sandbox's one publishing
+application, which the credential verifier's audience and `ehos.yaml` name. GraphLab (`sandbox/lib/graph_lab/`) is no client's: a changed copy of Rehmed with the cases the
 clients' material lacks, made only to draw the graph on, so it may change for the graph's sake; `mix
 graph_lab.traffic` fills the development log with its runs.
 

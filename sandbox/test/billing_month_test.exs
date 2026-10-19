@@ -220,6 +220,17 @@ defmodule Billing.MonthTest do
     assert closed("sub-1") == []
   end
 
+  test "negative usage is refused before it is decided" do
+    subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
+
+    assert {:error, {:invalid, [usage: _]}} =
+             EhOsContract.dispatch(
+               Subscriptions,
+               %RecordUsage{subscription_id: "sub-1", usage: %{usage_id: "usage-1", units: -40}},
+               actor: @manager
+             )
+  end
+
   defp observations do
     Repo.all(
       from(o in "eh_os_contract_dependency_observations",
