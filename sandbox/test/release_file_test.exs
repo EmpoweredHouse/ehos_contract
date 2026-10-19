@@ -36,7 +36,8 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
                "ehos.manifest/v2",
                "ehos.manifest/v3",
                "ehos.manifest/v4",
-               "eh_os_contract.api/v1"
+               "eh_os_contract.api/v1",
+               "eh_os_contract.graph/v1"
              ],
              "accepts" => ["ehos.credential/v1"],
              "requires" => %{},
@@ -52,7 +53,23 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
   # What a release produces is what the manifest generator can write, not a list kept here.
   test "produces the manifest versions EhOsContract.Auth.Manifest writes" do
     produces = ReleaseFile.release(@commit)["produces"]
-    assert produces -- ["eh_os_contract.api/v1"] == EhOsContract.Auth.Manifest.schemas()
+
+    assert produces -- ["eh_os_contract.api/v1", "eh_os_contract.graph/v1"] ==
+             EhOsContract.Auth.Manifest.schemas()
+  end
+
+  # The graph document names its version in its own `schema`; the release names that version in
+  # D-91's form, so a v2 of the document cannot ship with the release still saying v1.
+  test "produces the graph document's version, as its JSON Schema names it" do
+    [named] =
+      EhOsContract.Graph.Document.schema_path()
+      |> File.read!()
+      |> Jason.decode!()
+      |> schema_consts()
+      |> Enum.uniq()
+
+    [name, "v" <> version] = String.split(named, ~r/\.(?=v\d+\z)/)
+    assert "#{name}/v#{version}" in ReleaseFile.release(@commit)["produces"]
   end
 
   test "refuses a commit that is not 40 lowercase hex characters, and writes nothing" do
@@ -78,4 +95,17 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
 
     assert_raise OptionParser.ParseError, fn -> ReleaseFile.run(["--image", "x"]) end
   end
+
+  defp schema_consts(%{} = map) do
+    own =
+      case map do
+        %{"schema" => %{"const" => named}} when is_binary(named) -> [named]
+        _ -> []
+      end
+
+    own ++ Enum.flat_map(Map.values(map), &schema_consts/1)
+  end
+
+  defp schema_consts(list) when is_list(list), do: Enum.flat_map(list, &schema_consts/1)
+  defp schema_consts(_value), do: []
 end

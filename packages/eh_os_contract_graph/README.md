@@ -49,7 +49,8 @@ leads: a contract or a process of the map, a unit of a contract, an event's unit
 
 The host gives it a loader, `EhOsContract.GraphRenderer.Loader`: `document/2` and `overlay/2` of a domain, a
 contract or a process module, which the explorer calls in the background the first time the reader enters a
-picture. An application reads its engine; the EHOS Console reads each application's `GET <mount>/graph/…`.
+picture. An application reads its engine; a host with only the application's JSON API reads
+`GET <mount>/graph/…`.
 
 ## Drawing a document
 
@@ -129,7 +130,7 @@ landscape = EhOsContract.GraphRenderer.Landscape.join([{"taxvision", taxvision},
 A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
 boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
 subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
-the applications it sees together, from each one's `GET <mount>/graph/domain/<name>`.
+the applications it sees together, from the domain documents each submitted with its deployment (eh-os D-123).
 
 ## Using it
 

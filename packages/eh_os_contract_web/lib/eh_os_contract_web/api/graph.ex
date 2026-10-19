@@ -1,6 +1,6 @@
 defmodule EhOsContract.Web.Api.Graph do
-  # The `graph.v1` documents and their overlays (plan E13a): what a renderer draws, in
-  # the dashboard or in EHOS Console, as the engine gives it.
+  # The `graph.v1` documents and their overlays (plan E13a): what a renderer outside the
+  # application draws, as the engine gives it. The dashboard reads the engine directly.
   #
   #     GET <mount>/graph                                       contracts, process modules and domains, with versions and digests
   #     GET <mount>/graph/rehmed.settlement                     a contract's document, its digest as the ETag

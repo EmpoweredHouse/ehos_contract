@@ -1,7 +1,8 @@
 defmodule EhOsContract.GraphRenderer.Explorer do
   # Plan DD, stage G1 (#297): one canvas with two viewpoints, the user's decisions of
-  # 15 October — the renderer holds the navigation, so the EHOS Console draws what the
-  # dashboard draws, and a host gives it a loader the explorer calls in the background.
+  # 15 October — the renderer holds the navigation, so any host draws what the dashboard
+  # draws, and a host gives it a loader the explorer calls in the background. The EHOS
+  # Console draws only the landscape, from the domain documents of each deployment (eh-os D-123).
   @moduledoc """
   An application's contracts as one canvas the reader moves through: the component a host
   renders to show a domain's graph, with its documents from a loader

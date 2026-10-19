@@ -65,7 +65,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert "process:web_test_host.case_run" in cards(view)
   end
 
-  # The EHOS Console draws the same explorer from the JSON API: the dashboard's loader
+  # A host with only the JSON API draws the same explorer from it: the dashboard's loader
   # answers with the documents the API serves, and overlays of the same documents.
   test "the dashboard's loader gives the documents the API serves" do
     served =
