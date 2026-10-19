@@ -109,8 +109,6 @@ them, not against memory:
   `-dev`: only a release changes it (`ehos-dev:release`).
 - `.claude/skills/write-docs/SKILL.md`, when the change touches a public module or function: does
   its `@doc` still describe it, and does it read for a host rather than the team.
-- On a stage branch (`dsl-v2/eN-*`): the rules of every commit and the stage's acceptance
-  criteria in `PLAN.md`, "Dopisek 25 września (2) — Etap 6".
 
 Kinds of problems a review here found that neither file names yet:
 

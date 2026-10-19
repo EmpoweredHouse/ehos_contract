@@ -6,7 +6,7 @@ description: Before adding a new business entity, action, screen or table to an 
 # Deciding where a new feature lives, before writing it
 
 Checked on 30 September 2026 (plan E11e) against `packages/eh_os_contract/docs/contract.md`,
-`packages/eh_os_contract/docs/rules.md` and `CLAUDE.md`, "Czym biblioteka jest, a czym nie". Not yet run on a real feature:
+`packages/eh_os_contract/docs/rules.md` and `CLAUDE.md`, "What the library is, and is not". Not yet run on a real feature:
 read what it says against those before trusting it.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
@@ -33,7 +33,7 @@ A rule the business states about when it may happen (an invariant), another acto
 reacts to it, a promise that runs from it, a run it ends. Any of these → contract. None of them →
 plain application code: a function, a table, a screen. That is a real and common answer, not a
 failure to find a contract angle. `contract-distillation`'s first step asks the same thing of a
-workshop sticky, and on Rehmed it rejected 15 of 22 candidates: most "actions" were fields somebody
+workshop sticky, and on a clinic's workshop it rejected 15 of 22 candidates: most "actions" were fields somebody
 fills in.
 
 A contract is also not where the client's state is answered from. A read model and its query may
@@ -120,7 +120,7 @@ Pick by what the business says, not by what the code will look like:
 2. **Answer Question 1, then 1a or 2 and 3, and write the answers down before searching** — otherwise
    the search below gets read to justify the answer that is less work.
 3. **Look for what exists.** For plain code: the exports of the context modules
-   (`sandbox/lib/taxvision/*.ex`, `sandbox/lib/rehmed/*.ex`) and existing migrations. For a
+   (`sandbox/lib/<case>/*.ex`, such as `sandbox/lib/lending/circulation.ex`) and existing migrations. For a
    declaration: the contract of the context (`sandbox/lib/*/contracts/`), the domain, and
    `mix eh_os_contract.check` — a `declaration-without-implementation` or
    `contract-without-implementation` line means "declared, not built", not "missing".

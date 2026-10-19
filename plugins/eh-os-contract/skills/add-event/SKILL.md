@@ -55,17 +55,17 @@ process includes it from the contract that declares it (`X5`).
 
 ## The name, and the label
 
-- **From the material, never invented.** `CLAUDE.md` names TaxVision's source, the workshop's
-  event-storming output; cite yours in
-  `source:` ("03 §4.2", "AG:694"), as the sandbox contracts do — an identifier of the material,
+- **From the material, never invented.** Name the event from the workshop's event-storming output,
+  and cite it in
+  `source:` ("03 §4.2", "AG:694") — an identifier of the material,
   never a person's name, since it goes into the exported model and the pages. With no material behind it, go back
   to `contract-distillation` rather than keep a plausible `snake_case`.
 - **Past tense** — no check reads the tense; **snake_case and unique** among the contract's
   commands, events, timers and consumed events together (`N1`); not a reserved word or a clash
   (`N2`); a literal atom.
 - **`event-name-with-aggregate-prefix`** warns when an event's name starts with its unit's:
-  `accounting_month_opened` in the unit `accounting_month`. The event keeps the workshop's name; either
-  the unit takes another name from the material, or the warning stays, and is true (`PLAN.md`, EL1).
+  `loan_opened` in the unit `loan`. The event keeps the workshop's name; either
+  the unit takes another name from the material, or the warning stays, and is true.
 - **The name lasts.** The log stores the type as `"<contract id>.<event>"`, and renaming it later leaves
   every old row of a type the contract no longer declares.
 - **The label is the business's sentence**, in the domain's `language:`, written as the process owner
@@ -77,8 +77,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 
 - Built-in: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`.
   Anything else is a `value` of the domain (`X3`), and a thing the business recognises — money, a
-  period, a NIP — is one: `value :money, :integer, unit: :grosze`, with invariants that dispatch
-  holds every value to. Some sandbox fields end in `_minor` instead; a new field uses a value.
+  period, a tax number — is one: `value :money, :integer, unit: :cents`, with invariants that dispatch
+  holds every value to. A new field uses a value, never an integer named `_minor`.
 - **`:string` is text a person typed.** A code, a number or a choice has a type of its own; a
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
   log as written after its subject is erased.
@@ -87,7 +87,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   unit's identity counts), required, not `personal:`, and the same kind of identifier as in the
   module's other events.
 - **Every required, non-personal `:id` field becomes a tag** a boundary can `match:` on — also one
-  typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a PESEL, a patient's number at a payer — is never an `:id`.
+  typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a national id number, a patient's number at a payer — is never an `:id`.
 - **Personal data** is `personal: :patient_id`, naming a required, non-personal `:id` field of the
   same event that declares `subject: :patient`, a subject of the domain (`F5`). It is sealed with
   that subject's key and reads back as `%EhOsContract.Erased{}` after erasure.
@@ -103,8 +103,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 - **When it ends a run**, the process module lists it in `ends_on`; a module's `deadline` does not
   compile without `ends_on` (`R6`).
 - `depends_on: :external` when the fact waits on a system; an outage then suspends a promise
-  instead of breaking it. When the fact only follows a step that calls the system, as an opened month
-  follows the registry check, the event does not depend on it: the promise in the process module
+  instead of breaking it. When the fact only follows a step that calls the system, as a dispatched parcel
+  follows the carrier's booking, the event does not depend on it: the promise in the process module
   says `waits_on [:external]`.
 - **Someone reads it.** `event-without-consumer` warns of an event nothing takes: no reaction, read
   model, boundary, sibling `consumes` or `publish`, no promise names it, no unit's lifecycle starts or
@@ -119,7 +119,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   either way.
 - **Leaving the application** is a separate declaration, `publish :name, as: "<domain>.<name>.v1",
   from: :event, fields: [...]` — a versioned name with the fields that cross, and no personal ones
-  (`D11`), as `Taxvision.Contracts.AccountingMonth` publishes the opened month. Not every event.
+  (`D11`), as `Billing.Contracts.Subscriptions` publishes the issued invoice. Not every event.
 
 ## Procedure
 

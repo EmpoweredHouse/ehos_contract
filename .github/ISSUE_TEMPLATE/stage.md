@@ -4,7 +4,7 @@ about: One stage of a planned programme (see PLAN.md and the ehos-dev:stage-issu
 labels: []
 ---
 
-Stage <code> of the <programme> programme, wave <n>. Status and order: the "Postęp" table in `PLAN.md`.
+Stage <code> of the <programme> programme, wave <n>. Status and order: the programme's table in `PLAN.md` ("Postęp" for the DD programme).
 
 ## In short
 

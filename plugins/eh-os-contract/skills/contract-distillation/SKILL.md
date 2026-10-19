@@ -32,8 +32,8 @@ Nothing is written into `process-native-software` from here without asking first
 ## The domain comes first
 
 Contexts, actors, invariants, read models and the relations between contexts are all in workshop
-material — the mapping of 25 September found almost all of them in both clients'
-(`PLAN.md`, "Dopisek 25 września") — and the domain and the contract have a word for each. A
+material — a mapping of two clients' workshops on 25 September 2026 found almost all of them in
+both — and the domain and the contract have a word for each. A
 distillation that skips them leaves the contract's author to mine the transcript again. So distill
 the domain once per client, then each process against it.
 
@@ -102,7 +102,7 @@ confidence of everything downstream depends on it.
    reading this as "is it stored in a field": ICD codes are a field, yet may still be a precondition
    someone enforces. Ask about the dependency, not the storage.
 
-   This exists because a real run got it wrong by a factor of three: the Rehmed distillation
+   This exists because a real run got it wrong by a factor of three: a clinic's distillation
    produced 22 candidates, the contract needed 7, and six of the fifteen removed were edits to one
    document that survived into a compiled contract, a diagram and a client-facing PDF before someone
    who knew the domain said *that is a field the specialist fills in*. Big Picture Event Storming
@@ -161,8 +161,8 @@ confidence of everything downstream depends on it.
 ## Output
 
 A Markdown document following [output-template.md](output-template.md): the domain first, then one
-section per process. Save it under this repository's `docs/`, named for the client and date
-as `docs/rehmed-2026-08-18-distillation.md` is, and say where; not in `process-native-software`'s
+section per process. Save it under the `docs/` of the repository you work in, named for the client and date,
+`docs/<client>-<yyyy-mm-dd>-distillation.md`, and say where; not in `process-native-software`'s
 `output/`, which is that repository's pipeline.
 
 ## Quality check before finishing
@@ -181,5 +181,5 @@ as `docs/rehmed-2026-08-18-distillation.md` is, and say where; not in `process-n
 Writing the domain or the contract — a later, person-led step, from this document and the client's
 confirmation of everything marked unverified (then `module-boundary-check`, `add-event`,
 `write-decider`, `write-reaction`). Replacing `process-extraction`'s map, or
-`docs/warsztat-rehmed.md`'s prepared questions for a live session: this runs afterwards, on material
+a facilitator's prepared questions for a live session: this runs afterwards, on material
 that exists.

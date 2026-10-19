@@ -146,7 +146,7 @@ meets old rows, and write the decision and the data work into the pull request i
 - **No new key to paper over a missing one.** A category the DSL has no word for is a vocabulary
   decision for the user, with an example.
 - **Host-visible shapes go to the user before they change**: a capability, a command's fields, a
-  publication, a query's parameters (`PLAN.md`, strategy of stage 6).
+  publication, a query's parameters.
 
 ## Procedure
 

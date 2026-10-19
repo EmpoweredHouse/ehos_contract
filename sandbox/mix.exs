@@ -50,10 +50,9 @@ defmodule EhOsContractHost.MixProject do
       # alone, so a client tree reaching into the engine's internals fails to
       # compile rather than merely warning.
       {:eh_os_contract, path: "../packages/eh_os_contract"},
-      # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
-      # because :eh_os_contract_web has no `mod:` of its own to start — EhOsContractHostWeb's
-      # own supervisor references its modules directly (PLAN.md, dopisek 23
-      # sierpnia (8)) instead of relying on the OTP application list.
+      # The dashboard. `runtime: false` because :eh_os_contract_web has no `mod:` of
+      # its own to start — EhOsContractHostWeb's own supervisor references its modules
+      # directly instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
       # The graph renderer (plan E13b), which the dashboard draws with. Direct, the same
       # reasoning as `:telemetry` above: test/graph_renderer_test.exs draws every client
@@ -128,7 +127,7 @@ defmodule EhOsContractHost.MixProject do
   #
   # Since 2026-08-21 most of the tests live in `packages/eh_os_contract/test/` and `mix
   # test` in this project no longer reaches them — it runs this application's, which
-  # are now only TaxVision's and Rehmed's. A gate that stopped covering the engine on
+  # are only its own case studies'. A gate that stopped covering the engine on
   # the day the engine got its own suite would be the worst possible outcome of that
   # move, so the gate runs both.
   #
