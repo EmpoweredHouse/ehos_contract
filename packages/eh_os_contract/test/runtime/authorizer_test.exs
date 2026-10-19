@@ -9,7 +9,7 @@ defmodule EhOsContract.AuthorizerTest do
   alias EhOsContract.{Actor, Authorizer}
   alias EhOsContract.Authorizer.Request
 
-  @query "rehmed.open_visits_for_clinic"
+  @query "clinic.open_visits_for_clinic"
 
   defp request(capability, scope \\ nil),
     do: %Request{
@@ -22,14 +22,14 @@ defmodule EhOsContract.AuthorizerTest do
     }
 
   defp anna(scopes \\ %{}),
-    do: Actor.credential("u-1", ["rehmed.record_payment", @query], scopes)
+    do: Actor.credential("u-1", ["clinic.record_payment", @query], scopes)
 
   describe "check/2" do
     test "a capability the credential does not grant is refused; one it grants passes" do
-      assert Authorizer.check(anna(), request("rehmed.close_settlement")) ==
+      assert Authorizer.check(anna(), request("clinic.close_settlement")) ==
                {:error, :missing_capability}
 
-      assert Authorizer.check(anna(), request("rehmed.record_payment")) == :ok
+      assert Authorizer.check(anna(), request("clinic.record_payment")) == :ok
     end
 
     test "a scoped value within the grant passes, and one outside it is refused" do
@@ -88,13 +88,13 @@ defmodule EhOsContract.AuthorizerTest do
     end
 
     test "an implementation's refusal is the answer, with its own reason" do
-      assert Authorizer.run(anna(), request("rehmed.record_payment"), Refuses) ==
+      assert Authorizer.run(anna(), request("clinic.record_payment"), Refuses) ==
                {:error, :suspended}
     end
 
     test "an implementation that allows what the credential does not grant raises" do
       assert_raise Authorizer.WidenedError, ~r/may narrow a grant, never widen it/, fn ->
-        Authorizer.run(anna(), request("rehmed.close_settlement"), Widens)
+        Authorizer.run(anna(), request("clinic.close_settlement"), Widens)
       end
 
       assert_raise Authorizer.WidenedError, fn ->
@@ -103,13 +103,13 @@ defmodule EhOsContract.AuthorizerTest do
     end
 
     test "control: the same permissive implementation passes what the credential grants" do
-      assert Authorizer.run(anna(), request("rehmed.record_payment"), Widens) == :ok
+      assert Authorizer.run(anna(), request("clinic.record_payment"), Widens) == :ok
     end
 
     test "the default implementation is check/2" do
       assert Authorizer.impl() == Authorizer.Default
 
-      assert Authorizer.run(anna(), request("rehmed.close_settlement")) ==
+      assert Authorizer.run(anna(), request("clinic.close_settlement")) ==
                {:error, :missing_capability}
     end
   end

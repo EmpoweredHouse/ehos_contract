@@ -10,7 +10,7 @@ defmodule EhOsContract.CodecTest do
 
   @values %{
     money: %{name: :money, type: :integer, fields: []},
-    method: %{name: :method, type: {:enum, [card: "Karta", cash: "Gotówka"]}, fields: []},
+    method: %{name: :method, type: {:enum, [card: "Card", cash: "Cash"]}, fields: []},
     address: %{
       name: :address,
       type: nil,
@@ -41,7 +41,7 @@ defmodule EhOsContract.CodecTest do
     on: ~D[2026-09-01],
     at: ~U[2026-09-01 09:00:00.000000Z],
     codes: [:a, :b],
-    address: %{city: "Kraków", zip: nil},
+    address: %{city: "Lisbon", zip: nil},
     note: nil
   }
 
@@ -94,7 +94,7 @@ defmodule EhOsContract.CodecTest do
              "on" => "2026-09-01",
              "at" => "2026-09-01T09:00:00.000000Z",
              "codes" => ["a", "b"],
-             "address" => %{"city" => "Kraków", "zip" => nil},
+             "address" => %{"city" => "Lisbon", "zip" => nil},
              "note" => nil
            }
 
