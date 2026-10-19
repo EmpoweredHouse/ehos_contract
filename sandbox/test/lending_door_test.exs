@@ -192,4 +192,40 @@ defmodule Lending.DoorTest do
     assert command(token, "lending.send_overdue_notice", @loan).status == 404
     assert Repo.all(from(e in Event, select: e.type)) == []
   end
+
+  # The helper every host audits its door with refuses each way a door can be wrong.
+  describe "the check itself" do
+    test "fails on a declared capability with no entry point, naming it" do
+      entries = Map.delete(entries(), "lending.pay_late_fee")
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          assert_every_entry_refuses(@contracts, entries)
+        end
+
+      assert error.message =~ "no entry for: lending.pay_late_fee"
+    end
+
+    test "fails on an entry the contract does not declare, naming it" do
+      entries = Map.put(entries(), "lending.forgive_everything", fn _token -> :ok end)
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          assert_every_entry_refuses(@contracts, entries)
+        end
+
+      assert error.message =~ "not declared: lending.forgive_everything"
+    end
+
+    test "fails on an entry point that never asks" do
+      entries = Map.put(entries(), "lending.waive_late_fee", fn _token -> :ok end)
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          assert_every_entry_refuses(@contracts, entries)
+        end
+
+      assert error.message =~ "the entry point for lending.waive_late_fee did not ask"
+    end
+  end
 end
