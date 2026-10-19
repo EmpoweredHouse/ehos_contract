@@ -10,14 +10,14 @@ defmodule EhOsContract.ContractFieldsTest do
 
   defp unit(fields) do
     """
-      aggregate :visit, "Wizyta" do
+      aggregate :visit, "Visit" do
         identity :visit_id
 
-        command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed do
+        command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed do
     #{fields}
         end
 
-        event :visit_closed, "Wizyta zamknięta"
+        event :visit_closed, "Visit closed"
       end
     """
   end
@@ -26,10 +26,10 @@ defmodule EhOsContract.ContractFieldsTest do
     test "a unit's identity is held to a field's name, at the unit" do
       message =
         refuse_contract("IdentityForms", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity [:"a|b", :__meta__, :visit_id, :visit_id]
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -48,10 +48,10 @@ defmodule EhOsContract.ContractFieldsTest do
     test "an identity field typed otherwise than :id or {:id, name} is refused, at the unit" do
       message =
         refuse_contract("IdentityTypes", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity [:visit_id, clinic_id: :string, generated: :uuid]
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -68,10 +68,10 @@ defmodule EhOsContract.ContractFieldsTest do
     test "a generated identity typed as another's number is refused" do
       message =
         refuse_contract("IdentityGeneratedRef", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity [visit_id: {:id, :booking}], generated: :uuid
-            command :open_visit, "Otwarcie wizyty", by: :reception, emits: :visit_opened, creates: true
-            event :visit_opened, "Wizyta otwarta"
+            command :open_visit, "Opening a visit", by: :reception, emits: :visit_opened, creates: true
+            event :visit_opened, "Visit opened"
           end
         """)
 
@@ -82,10 +82,10 @@ defmodule EhOsContract.ContractFieldsTest do
 
     test "control: a typed identity is injected as an :id that refers to what it names" do
       compile_contract("IdentityTyped", """
-        aggregate :visit_documentation, "Dokumentacja wizyty" do
+        aggregate :visit_documentation, "A visit's documentation" do
           identity [:period_id, visit_id: {:id, :visit}]
-          command :document, "Dokumentuj", by: :reception, emits: :documented
-          event :documented, "Udokumentowano"
+          command :document, "Document", by: :reception, emits: :documented
+          event :documented, "Documented"
         end
       """)
 
@@ -147,14 +147,14 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: the same name in two structs is two fields" do
       assert %{} =
                compile_contract("FieldInTwoStructs", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
 
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed do
+                   command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed do
                      field :note, :string
                    end
 
-                   event :visit_closed, "Wizyta zamknięta" do
+                   event :visit_closed, "Visit closed" do
                      field :note, :string
                    end
                  end
@@ -169,7 +169,7 @@ defmodule EhOsContract.ContractFieldsTest do
           "BadTypes",
           unit("""
                 field :none, {:enum, []}
-                field :twice, {:list, {:enum, [:card, card: "Karta"]}}
+                field :twice, {:list, {:enum, [:card, card: "Card"]}}
                 field :number, 42
                 field :blank, {:enum, [:card, cash: " "]}
           """)
@@ -192,7 +192,7 @@ defmodule EhOsContract.ContractFieldsTest do
                  unit("""
                        field :at, :timestamp
                        field :lines, {:list, :money}
-                       field :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+                       field :method, {:enum, [card: "Card", cash: "Cash"]}
                        field :amount, :money
                  """)
                )
@@ -200,7 +200,7 @@ defmodule EhOsContract.ContractFieldsTest do
       assert Enum.map(fields, & &1.type) == [
                :timestamp,
                {:list, :money},
-               {:enum, [card: "Karta", cash: "Gotówka"]},
+               {:enum, [card: "Card", cash: "Cash"]},
                :money
              ]
     end
@@ -219,15 +219,15 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: a state field with one compiles" do
       assert %{units: [%{state: %{fields: [_id, %{name: :paid, default: 0}]}}]} =
                compile_contract("DefaultInState", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
 
                    state do
                      field :paid, :integer, default: 0
                    end
 
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta"
+                   command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+                   event :visit_closed, "Visit closed"
                  end
                """)
     end
@@ -237,18 +237,18 @@ defmodule EhOsContract.ContractFieldsTest do
     test "an event's correlation field declared optional or personal is refused" do
       message =
         refuse_contract("OptionalCorrelation", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-            event :visit_closed, "Wizyta zamknięta" do
+            event :visit_closed, "Visit closed" do
               field :patient_id, :id, subject: :patient
               field :clinic_id, :id, optional: true
               field :episode_id, :id, personal: :patient_id
             end
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate [:visit_id, :clinic_id, :episode_id]
             starts_on :visit_closed
             ends_on :visit_closed
@@ -268,16 +268,16 @@ defmodule EhOsContract.ContractFieldsTest do
     test "a correlation field named twice is reported once" do
       message =
         refuse_contract("CorrelatedTwiceOptional", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-            event :visit_closed, "Wizyta zamknięta" do
+            event :visit_closed, "Visit closed" do
               field :clinic_id, :id, optional: true
             end
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate [:clinic_id, :clinic_id]
             starts_on :visit_closed
             ends_on :visit_closed
@@ -293,16 +293,16 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: an optional field outside the correlation compiles" do
       assert %{} =
                compile_contract("OptionalElsewhere", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+                   command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-                   event :visit_closed, "Wizyta zamknięta" do
+                   event :visit_closed, "Visit closed" do
                      field :note, :string, optional: true
                    end
                  end
 
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate :visit_id
                    starts_on :visit_closed
                    ends_on :visit_closed
@@ -315,17 +315,17 @@ defmodule EhOsContract.ContractFieldsTest do
     test "an event's field, or a manager's state field, of another type is refused" do
       message =
         refuse_contract("TextCorrelation", """
-          aggregate :invoice, "Faktura" do
+          aggregate :invoice, "Invoice" do
             identity :invoice_id
-            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+            command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
 
-            event :invoice_recorded, "Zarejestrowano" do
+            event :invoice_recorded, "Recorded" do
               field :invoice_number, :string
               field :batches, {:list, :id}
             end
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate [:invoice_number, :batches, :reminder]
 
             state do
@@ -355,19 +355,19 @@ defmodule EhOsContract.ContractFieldsTest do
       # or not, and a sibling's event with that field of that type then passes X6.
       message =
         refuse_contract("UnhandledCorrelation", """
-          aggregate :invoice, "Faktura" do
+          aggregate :invoice, "Invoice" do
             identity :invoice_id
-            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
-            command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
+            command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
+            command :note_invoice, "Note", by: :reception, emits: :invoice_noted
 
-            event :invoice_recorded, "Zarejestrowano"
+            event :invoice_recorded, "Recorded"
 
-            event :invoice_noted, "Notatka" do
+            event :invoice_noted, "Note" do
               field :ref, :string
             end
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :ref
             starts_on :invoice_recorded
             ends_on :invoice_recorded
@@ -383,21 +383,21 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: a later event's field gives a manager's undeclared correlation nothing" do
       assert %{} =
                compile_contract("LaterCorrelation", """
-                 aggregate :invoice, "Faktura" do
+                 aggregate :invoice, "Invoice" do
                    identity :invoice_id
-                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
-                   command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
+                   command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
+                   command :note_invoice, "Note", by: :reception, emits: :invoice_noted
 
-                   event :invoice_recorded, "Zarejestrowano" do
+                   event :invoice_recorded, "Recorded" do
                      field :ref, :id
                    end
 
-                   event :invoice_noted, "Notatka" do
+                   event :invoice_noted, "Note" do
                      field :ref, :string
                    end
                  end
 
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate :ref
                    starts_on :invoice_recorded
                    ends_on :invoice_recorded
@@ -408,25 +408,25 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: an earlier unit's identity types a manager's undeclared correlation" do
       assert %{} =
                compile_contract("IdentityCorrelation", """
-                 aggregate :invoice, "Faktura" do
+                 aggregate :invoice, "Invoice" do
                    identity :invoice_id
-                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
-                   event :invoice_recorded, "Zarejestrowano" do
+                   command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
+                   event :invoice_recorded, "Recorded" do
                      field :batch_id, :id
                    end
                  end
 
-                 aggregate :payment, "Płatność" do
+                 aggregate :payment, "Payment" do
                    identity :payment_id
-                   command :record_payment, "Płatność", by: :reception, emits: :payment_recorded
+                   command :record_payment, "Payment", by: :reception, emits: :payment_recorded
 
-                   event :payment_recorded, "Zapłacono" do
+                   event :payment_recorded, "Paid" do
                      field :batch_id, :id
                      field :invoice_id, :string
                    end
                  end
 
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate :invoice_id
                    starts_on :invoice_recorded
                    ends_on :invoice_recorded
@@ -437,16 +437,16 @@ defmodule EhOsContract.ContractFieldsTest do
     test "a handled event that also types a manager's correlation is one finding" do
       message =
         refuse_contract("HandledAndTyping", """
-          aggregate :invoice, "Faktura" do
+          aggregate :invoice, "Invoice" do
             identity :invoice_id
-            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+            command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
 
-            event :invoice_recorded, "Zarejestrowano" do
+            event :invoice_recorded, "Recorded" do
               field :ref, :string
             end
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :ref
             starts_on :invoice_recorded
             ends_on :invoice_recorded
@@ -459,18 +459,18 @@ defmodule EhOsContract.ContractFieldsTest do
     test "control: an :id, an entity's identifier and a domain value compile here" do
       assert %{} =
                compile_contract("IdCorrelation", """
-                 aggregate :invoice, "Faktura" do
+                 aggregate :invoice, "Invoice" do
                    identity :invoice_id
-                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+                   command :record_invoice, "Invoice", by: :reception, emits: :invoice_recorded
 
-                   event :invoice_recorded, "Zarejestrowano" do
+                   event :invoice_recorded, "Recorded" do
                      field :clinic_id, {:id, :clinic}
                      field :period, :period
                      field :batch_id, :id
                    end
                  end
 
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate [:invoice_id, :clinic_id, :period, :batch_id]
                    starts_on :invoice_recorded
                    ends_on :invoice_recorded
@@ -485,13 +485,13 @@ defmodule EhOsContract.ContractFieldsTest do
 
       message =
         refuse_contract("SevenFields", """
-          aggregate :ledger, "Księga" do
+          aggregate :ledger, "Ledger" do
             identity #{seven}
-            command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
-            event :ledger_opened, "Otwarto"
+            command :open_ledger, "Opening", by: :reception, emits: :ledger_opened
+            event :ledger_opened, "Opened"
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate #{seven}
             starts_on :ledger_opened
             ends_on :ledger_opened
@@ -511,13 +511,13 @@ defmodule EhOsContract.ContractFieldsTest do
 
       assert %{} =
                compile_contract("SixFields", """
-                 aggregate :ledger, "Księga" do
+                 aggregate :ledger, "Ledger" do
                    identity #{six}
-                   command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
-                   event :ledger_opened, "Otwarto"
+                   command :open_ledger, "Opening", by: :reception, emits: :ledger_opened
+                   event :ledger_opened, "Opened"
                  end
 
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate #{six}
                    starts_on :ledger_opened
                    ends_on :ledger_opened
@@ -581,18 +581,18 @@ defmodule EhOsContract.ContractFieldsTest do
     # Line 4 of the file is the first line of the body.
     defp outside(state, params, scope) do
       """
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
-          command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+          command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-          event :visit_closed, "Wizyta zamknięta" do
+          event :visit_closed, "Visit closed" do
             field :patient_id, :id, subject: :patient
             field :name, :string, personal: :patient_id
           end
         end
 
-        process_manager :chase, "Pogoń za dokumentacją" do
+        process_manager :chase, "Chasing the documentation" do
           correlate :visit_id
 
           state do
@@ -602,12 +602,12 @@ defmodule EhOsContract.ContractFieldsTest do
           starts_on :visit_closed
         end
 
-        read_model :visits, "Wizyty", projects: :visit_closed do
+        read_model :visits, "Visits", projects: :visit_closed do
           field :patient_id, :id, subject: :patient
           field :name, :string, personal: :patient_id
         end
 
-        query :visits_of, "Wizyty pacjenta", reads: :visits, by: :reception do
+        query :visits_of, "A patient's visits", reads: :visits, by: :reception do
       #{params}
           scope #{inspect(scope)}
         end
@@ -660,18 +660,18 @@ defmodule EhOsContract.ContractFieldsTest do
     test "in a command, an event and the state" do
       message =
         refuse_contract("IdentityAgain", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             state do
               field :visit_id, :id
             end
 
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed do
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed do
               field :visit_id, :id
             end
 
-            event :visit_closed, "Wizyta zamknięta" do
+            event :visit_closed, "Visit closed" do
               field :visit_id, :id
             end
           end
@@ -696,24 +696,24 @@ defmodule EhOsContract.ContractFieldsTest do
     # recorded event's at 22.
     defp supplied(state, scope, command, decided, recorded) do
       """
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
           state do
             field :notes, :integer, default: 0#{state}
           end
 
-          command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed,
+          command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed,
             scope: :clinic_id do
             field :clinic_id, :id#{scope}
-            field :p1_reported, :boolean#{command}
+            field :reported_to_registry, :boolean#{command}
           end
 
-          event :visit_closed, "Wizyta zamknięta" do
-            field :p1_reported, :boolean#{decided}
+          event :visit_closed, "Visit closed" do
+            field :reported_to_registry, :boolean#{decided}
           end
 
-          event :patient_arrived, "Pacjent przyszedł", recorded_by: :reception do
+          event :patient_arrived, "Patient arrived", recorded_by: :reception do
             field :arrived_at, :timestamp#{recorded}
           end
         end
@@ -735,7 +735,7 @@ defmodule EhOsContract.ContractFieldsTest do
                  "supplies anything (supplied_wrong.ex:13)"
 
       assert message =~
-               "F10: event :visit_closed, field :p1_reported is supplied_by: :host, and only " <>
+               "F10: event :visit_closed, field :reported_to_registry is supplied_by: :host, and only " <>
                  "a command's field or a recorded event's (recorded_by:) is one a request fills, " <>
                  "which the host can fill instead (supplied_wrong.ex:18)"
     end
@@ -748,9 +748,9 @@ defmodule EhOsContract.ContractFieldsTest do
       [command] = model.commands
       decided = Enum.find(model.events, &(&1.name == :visit_closed))
 
-      assert field.(command.fields, :p1_reported).supplied_by == :host
+      assert field.(command.fields, :reported_to_registry).supplied_by == :host
 
-      refute Map.has_key?(field.(decided.fields, :p1_reported), :supplied_by),
+      refute Map.has_key?(field.(decided.fields, :reported_to_registry), :supplied_by),
              "a field without supplied_by: has no key, so no contract written before T1 moves"
     end
   end

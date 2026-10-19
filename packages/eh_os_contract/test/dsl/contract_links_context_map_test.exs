@@ -17,18 +17,18 @@ defmodule EhOsContract.ContractLinksContextMapTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :context_map, language: :pl
+        use EhOsContract.Domain, name: :context_map, language: :en
 
-        subdomain :core, "Rdzeń", type: :core
-        context :scheduling, "Umawianie", subdomain: :core
-        context :settlement, "Rozliczenia", subdomain: :core
-        context :archive, "Archiwum", subdomain: :core
-        context :payers, "Płatnicy", subdomain: :core
-        context :catalogue, "Katalog", subdomain: :core
-        context :pricing, "Cennik", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        subdomain :core, "Core", type: :core
+        context :scheduling, "Scheduling", subdomain: :core
+        context :settlement, "Settlement", subdomain: :core
+        context :archive, "Archive", subdomain: :core
+        context :payers, "Payers", subdomain: :core
+        context :catalogue, "Catalogue", subdomain: :core
+        context :pricing, "Price list", subdomain: :core
+        actor :reception, :human, "Reception"
 
-        value :tariff, :integer, label: "Taryfa", context: :settlement
+        value :tariff, :integer, label: "Tariff", context: :settlement
 
         value :invoice_line do
           field :price, :tariff
@@ -60,8 +60,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
       aggregate :#{under}, "#{name}" do
         identity :visit_id
-        command :act_#{under}, "Działaj", by: :reception, emits: :acted_#{under}
-        event :acted_#{under}, "Zadziałano"
+        command :act_#{under}, "Act", by: :reception, emits: :acted_#{under}
+        event :acted_#{under}, "Acted"
       end
     end
     """
@@ -111,8 +111,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
           {"x11_unit_keeper.ex",
            mapped("X11UnitKeeper", :scheduling)
            |> String.replace(
-             ~s(event :acted_x11_unit_keeper, "Zadziałano"),
-             ~s(event :acted_x11_unit_keeper, "Zadziałano" do\n) <>
+             ~s(event :acted_x11_unit_keeper, "Acted"),
+             ~s(event :acted_x11_unit_keeper, "Acted" do\n) <>
                "      field :ledger_id, {:id, :x11_unit_ledger}\n    end"
            )},
           {"x11_unit_ledger.ex", mapped("X11UnitLedger", :settlement)}
@@ -128,8 +128,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
           {"x11_value.ex",
            mapped("X11Value", :scheduling)
            |> String.replace(
-             ~s(event :acted_x11_value, "Zadziałano"),
-             ~s(event :acted_x11_value, "Zadziałano" do\n      field :price, :tariff\n    end)
+             ~s(event :acted_x11_value, "Acted"),
+             ~s(event :acted_x11_value, "Acted" do\n      field :price, :tariff\n    end)
            )}
         ])
 
@@ -143,8 +143,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
           {"x11_through.ex",
            mapped("X11Through", :scheduling)
            |> String.replace(
-             ~s(event :acted_x11_through, "Zadziałano"),
-             ~s(event :acted_x11_through, "Zadziałano" do\n      field :line, :invoice_line\n    end)
+             ~s(event :acted_x11_through, "Acted"),
+             ~s(event :acted_x11_through, "Acted" do\n      field :line, :invoice_line\n    end)
            )}
         ])
 
@@ -156,11 +156,11 @@ defmodule EhOsContract.ContractLinksContextMapTest do
       compile(
         """
         defmodule #{@ns}.Elsewhere do
-          use EhOsContract.Domain, name: :elsewhere, language: :pl
+          use EhOsContract.Domain, name: :elsewhere, language: :en
 
-          subdomain :core, "Rdzeń", type: :core
-          context :settlement, "Rozliczenia", subdomain: :core
-          actor :reception, :human, "Recepcja"
+          subdomain :core, "Core", type: :core
+          context :settlement, "Settlement", subdomain: :core
+          actor :reception, :human, "Reception"
         end
         """,
         "x11_elsewhere_domain.ex"
@@ -187,8 +187,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
           {"x11_value_ok.ex",
            mapped("X11ValueOk", :payers)
            |> String.replace(
-             ~s(event :acted_x11_value_ok, "Zadziałano"),
-             ~s(event :acted_x11_value_ok, "Zadziałano" do\n      field :price, :tariff\n    end)
+             ~s(event :acted_x11_value_ok, "Acted"),
+             ~s(event :acted_x11_value_ok, "Acted" do\n      field :price, :tariff\n    end)
            )}
         ])
 
@@ -207,7 +207,7 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
     test "a read model taking the upstream contract's event" do
       read_model =
-        ~s(read_model :ledgers, "Księgi", projects: :acted_x12_ledger, ) <>
+        ~s(read_model :ledgers, "Ledgers", projects: :acted_x12_ledger, ) <>
           "delivery: :at_least_once do\n" <>
           "    field :visit_id, :id\n  end"
 
@@ -232,10 +232,10 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
              consumes #{@ns}.X12DcbLedger, :acted_x12_dcb_ledger
 
-             dcb :slot, "Termin" do
+             dcb :slot, "Slot" do
                identity :visit_id
-               command :hold_slot, "Wstrzymaj", by: :reception, emits: :slot_held
-               event :slot_held, "Wstrzymano"
+               command :hold_slot, "Hold", by: :reception, emits: :slot_held
+               event :slot_held, "Held"
                consults :acted_x12_dcb_ledger, match: :visit_id
              end
            end
@@ -247,7 +247,7 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
     test "one error a taker, however many times its contract consumes the sibling" do
       read_model =
-        ~s(read_model :twice, "Dwa razy", projects: :ledger_acted, delivery: :at_least_once do\n) <>
+        ~s(read_model :twice, "Twice", projects: :ledger_acted, delivery: :at_least_once do\n) <>
           "    field :visit_id, :id\n  end"
 
       violations =
@@ -255,8 +255,8 @@ defmodule EhOsContract.ContractLinksContextMapTest do
           {"x12_twice_ledger.ex",
            mapped("X12TwiceLedger", :settlement)
            |> String.replace(
-             ~s(event :acted_x12_twice_ledger, "Zadziałano"),
-             ~s(event :acted_x12_twice_ledger, "Zadziałano"\n    event :closed_x12, "Zamknięto")
+             ~s(event :acted_x12_twice_ledger, "Acted"),
+             ~s(event :acted_x12_twice_ledger, "Acted"\n    event :closed_x12, "Closed")
            )
            |> String.replace(
              "emits: :acted_x12_twice_ledger",
@@ -276,7 +276,7 @@ defmodule EhOsContract.ContractLinksContextMapTest do
 
     test "control: a policy taking it, and issuing a command of its own context" do
       policy =
-        ~s(policy :translate, "Przetłumacz", handles: :acted_x12_ledger_ok, ) <>
+        ~s(policy :translate, "Translate", handles: :acted_x12_ledger_ok, ) <>
           "issues: :act_x12_translator, delivery: :at_least_once, " <>
           "idempotency: [key: :event_id, owner: :infrastructure]"
 
