@@ -28,9 +28,9 @@ defmodule EhOsContractHostWebTest do
     # `EhOsContractHostWeb.Resolver` lets everyone in read-only: this host has no
     # login, and says so rather than inheriting a default.
     assert html =~ "Access: read only"
-    # Taxvision.Contracts.AccountingMonth, this host's own real contract, under its id
-    # (plan DD, P1a, #183) — not packages/eh_os_contract_web's invented fixture.
-    assert html =~ "taxvision.accounting_month"
+    # This host's own contracts, under their ids (plan DD, P1a, #183) — not
+    # packages/eh_os_contract_web's fixture.
+    assert html =~ "fulfilment.warehouse"
     assert html =~ "lending.circulation"
   end
 
@@ -45,20 +45,21 @@ defmodule EhOsContractHostWebTest do
              report["processes"]
   end
 
-  # Plan DD, P2w (#259): the clinic's visit, a process module, on the conformance wire.
+  # Plan DD, P2w (#259): an order, a process module across three contracts, on the
+  # conformance wire.
   test "the conformance endpoint serves a process module's report", %{conn: conn} do
-    conn = get(conn, "/api/eh_os_contract/conformance?process=rehmed.clinical_visit")
+    conn = get(conn, "/api/eh_os_contract/conformance?process=fulfilment.order")
 
     assert conn.status == 200
     report = Jason.decode!(conn.resp_body)["report"]
-    assert report["process"] == "rehmed.clinical_visit"
+    assert report["process"] == "fulfilment.order"
 
-    assert [%{"promises" => [%{"promise" => "medical_event_reported_within_statutory_window"}]}] =
+    assert [%{"promises" => [%{"promise" => "dispatched_within_a_day_of_payment"}]}] =
              report["processes"]
   end
 
   test "the live socket upgrade reaches the same screen as the dead render", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/dashboard/contract")
-    assert html =~ "taxvision.accounting_month"
+    assert html =~ "fulfilment.warehouse"
   end
 end

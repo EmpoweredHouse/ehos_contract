@@ -8,6 +8,10 @@ defmodule Fulfilment.Processes.Order do
   order left unpaid for a week has not broken that promise. The deadline is the whole
   run's, unpaid time included: an order is delivered, or cancelled by the desk, within
   two weeks of being placed, so an order left unpaid is the desk's to cancel.
+
+  The promise waits on the carrier: a parcel is booked with it before the dispatcher
+  hands it over, though neither the payment nor the hand-over calls it. The carrier down
+  inside the day excuses a parcel not yet handed over.
   """
 
   use EhOsContract.Process,
@@ -33,6 +37,7 @@ defmodule Fulfilment.Processes.Order do
     from :payment_confirmed
     eventually :dispatched
     within {24, :hour}
+    waits_on [:carrier]
   end
 
   deadline {14, :day}
@@ -52,6 +57,12 @@ defmodule Fulfilment.Processes.Order do
     given :payment_confirmed, @paid, at: "2026-09-08T09:00:00Z"
     given :dispatched, %{order_id: "order-1"}, at: "2026-09-10T09:00:00Z"
     promise :dispatched_within_a_day_of_payment, at: "2026-09-11T09:00:00Z"
+  end
+
+  scenario "the carrier down inside the day — suspended", verdict: :suspended do
+    given :payment_confirmed, @paid, at: "2026-09-08T09:00:00Z"
+    outage :carrier, at: "2026-09-08T15:00:00Z"
+    promise :dispatched_within_a_day_of_payment, at: "2026-09-10T09:00:00Z"
   end
 
   scenario "paid this morning — still running", verdict: :pending do
