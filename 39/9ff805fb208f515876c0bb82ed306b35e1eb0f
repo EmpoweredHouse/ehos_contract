@@ -1,0 +1,1 @@
+Fix for CI's graph renderer gate (doc_coverage_test: no design-record code in a published doc); the package's 188 tests pass locally. No new behaviour; the citation moved to a comment.
