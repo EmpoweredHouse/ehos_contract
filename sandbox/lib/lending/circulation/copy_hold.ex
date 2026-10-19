@@ -18,6 +18,7 @@ defmodule Lending.Circulation.CopyHold do
 
   @impl true
   def evolve(state, %HoldPlaced{member_id: member}), do: %{state | held_by: member}
+
   def evolve(%State{held_by: member} = state, %CopyLent{member_id: member}),
     do: %{state | held_by: nil}
 

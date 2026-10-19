@@ -22,9 +22,14 @@ defmodule Lending.Domain do
       translation :de, "Ausleihe", definition: "Ein Exemplar, das bis zur Rückgabe verliehen ist"
     end
 
-    term "Member", definition: "Whom a copy is lent to, by the card they show"
+    term "Member", definition: "Whom a copy is lent to, by the card they show" do
+      translation :de, "Mitglied", definition: "Wem ein Exemplar gegen Karte verliehen wird"
+    end
 
-    term "Fee", definition: "What a copy back after its due date costs, by the desk's tariff"
+    term "Fee", definition: "What a copy back after its due date costs, by the desk's tariff" do
+      translation :de, "Gebühr",
+        definition: "Was ein nach der Frist zurückgegebenes Exemplar nach Tarif kostet"
+    end
 
     term "Hold", definition: "A copy kept for one member when it comes back" do
       translation :de, "Vormerkung",
@@ -33,13 +38,19 @@ defmodule Lending.Domain do
   end
 
   context :membership, "Membership", subdomain: :supporting do
-    term "Membership", definition: "A member's registration, with how to reach them"
+    term "Membership", definition: "A member's registration, with how to reach them" do
+      translation :de, "Mitgliedschaft",
+        definition: "Die Anmeldung eines Mitglieds, mit seinen Kontaktdaten"
+    end
 
     term "Member", definition: "A person registered to borrow" do
       translation :de, "Mitglied", definition: "Eine Person, die ausleihen darf"
     end
 
-    term "Card", definition: "What a member shows to borrow; the card system may suspend it"
+    term "Card", definition: "What a member shows to borrow; the card system may suspend it" do
+      translation :de, "Ausweis",
+        definition: "Was ein Mitglied zum Ausleihen vorzeigt; das Kartensystem kann ihn sperren"
+    end
   end
 
   # Circulation lends to whom membership registered, and reads the card it issued.

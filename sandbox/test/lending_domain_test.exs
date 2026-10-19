@@ -22,7 +22,7 @@ defmodule Lending.DomainTest do
     assert Enum.map(model.values, & &1.name) == [:money]
   end
 
-  test "each term carries its German translation" do
+  test "every term carries its German translation" do
     translations =
       for context <- EhOsContract.Model.fetch(Lending.Domain).contexts,
           %{text: text, translations: translations} <- context.terms,
@@ -32,8 +32,12 @@ defmodule Lending.DomainTest do
     assert translations == [
              {"Copy", "Exemplar"},
              {"Loan", "Ausleihe"},
+             {"Member", "Mitglied"},
+             {"Fee", "Gebühr"},
              {"Hold", "Vormerkung"},
-             {"Member", "Mitglied"}
+             {"Membership", "Mitgliedschaft"},
+             {"Member", "Mitglied"},
+             {"Card", "Ausweis"}
            ]
   end
 

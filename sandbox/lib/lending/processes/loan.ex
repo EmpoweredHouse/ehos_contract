@@ -1,8 +1,9 @@
 defmodule Lending.Processes.Loan do
   @moduledoc """
   **Invented.** A loan, from the copy going out to its return, with the notices that
-  chase it. The library promises a copy back within three weeks, which is what the
-  due date says, and a loan longer than three months is overdue.
+  chase it. The library promises a copy back within three weeks, its standard loan
+  period, whatever due date the desk gave: a loan the desk lent for longer still counts
+  against it. A loan longer than three months is overdue.
   """
 
   use EhOsContract.Process,

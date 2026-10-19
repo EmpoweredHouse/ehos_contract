@@ -36,5 +36,6 @@ defmodule Lending.Membership.Registration do
   @impl true
   def evolve(state, %MemberRegistered{member_id: member}),
     do: %{state | registered: true, member_id: member}
+
   def evolve(state, %EmailChanged{}), do: state
 end

@@ -19,4 +19,12 @@ defmodule Lending.Entities do
       :error -> :not_found
     end
   end
+
+  # An entity of the domain nobody wrote a clause for: said by name, rather than a
+  # FunctionClauseError whose log would print the actor.
+  def fetch(_actor, domain, entity, _id) do
+    raise ArgumentError,
+          "#{inspect(__MODULE__)} keeps no #{inspect(entity)} of #{inspect(domain)}: add it " <>
+            "here, beside the cards"
+  end
 end

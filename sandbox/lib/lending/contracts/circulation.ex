@@ -148,6 +148,15 @@ defmodule Lending.Contracts.Circulation do
     ends_on :copy_returned
   end
 
+  # The loan Ada took out, which the scenarios after the first few start from.
+  @lent %{
+    loan_id: "loan-1",
+    copy_id: "copy-1",
+    member_id: "member-ada",
+    card_id: "card-ada",
+    due_at: "2026-01-22T17:00:00Z"
+  }
+
   # The loan
 
   scenario "a copy is lent on a card in good standing" do
@@ -181,13 +190,7 @@ defmodule Lending.Contracts.Circulation do
   scenario "a loan is not lent twice" do
     given_entity :card, %{card_id: "card-ada", suspended: false}
 
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     command :lend_copy, %{
       copy_id: "copy-2",
@@ -200,26 +203,14 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "back on time — no fee" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     command :return_copy, %{late_fee: 0}
     expect :copy_returned
   end
 
   scenario "back late — the desk's fee is charged" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     command :return_copy, %{late_fee: 150}
     expect :copy_returned
@@ -232,13 +223,7 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "a copy comes back once" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     given :copy_returned
     command :return_copy, %{late_fee: 0}
@@ -246,26 +231,14 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "a copy still out is chased" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     command :send_overdue_notice
     expect :overdue_notice_sent
   end
 
   scenario "a copy back is not chased" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     given :copy_returned
     command :send_overdue_notice
@@ -273,13 +246,7 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "a late fee is paid at the desk" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     given :copy_returned
     given :late_fee_charged, %{fee: 150}
@@ -288,13 +255,7 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "a late fee is waived" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     given :copy_returned
     given :late_fee_charged, %{fee: 150}
@@ -303,13 +264,7 @@ defmodule Lending.Contracts.Circulation do
   end
 
   scenario "a fee already paid is not waived" do
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     given :copy_returned
     given :late_fee_charged, %{fee: 150}
@@ -347,13 +302,7 @@ defmodule Lending.Contracts.Circulation do
   scenario "a copy lent to its holder can be held again" do
     given :hold_placed, %{copy_id: "copy-1", member_id: "member-ada"}
 
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     command :place_hold, %{copy_id: "copy-1", member_id: "member-bob"}
     expect :hold_placed, %{member_id: "member-bob"}
@@ -385,13 +334,7 @@ defmodule Lending.Contracts.Circulation do
   scenario "a lent copy is first chased on its due date" do
     target :overdue_chase
 
-    on :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    on :copy_lent, @lent
 
     sets :reminder
     state %{remind_at: "2026-01-22T17:00:00Z"}
@@ -400,13 +343,7 @@ defmodule Lending.Contracts.Circulation do
   scenario "the reminder sends the notice" do
     target :overdue_chase
 
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     on :reminder
     issues :send_overdue_notice, %{loan_id: "loan-1"}
@@ -415,13 +352,7 @@ defmodule Lending.Contracts.Circulation do
   scenario "a notice sent — the next one a week later" do
     target :overdue_chase
 
-    given :copy_lent, %{
-      loan_id: "loan-1",
-      copy_id: "copy-1",
-      member_id: "member-ada",
-      card_id: "card-ada",
-      due_at: "2026-01-22T17:00:00Z"
-    }
+    given :copy_lent, @lent
 
     on :overdue_notice_sent, %{loan_id: "loan-1"}
     sets :reminder
