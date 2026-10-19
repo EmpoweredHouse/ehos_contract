@@ -1,0 +1,1 @@
+Merge of main (#370, lending) into fulfilment. Conflicts resolved keeping both sides: the router mounts /api/fulfilment and /api/lending (doc names both); e10's totals count lending's two notices and fulfilment's three (47 warnings, 52 notices); graph_document's prefixes list Lending. and Fulfilment. Gate: mix check EXIT=0; sandbox 43 properties, 425 tests.
