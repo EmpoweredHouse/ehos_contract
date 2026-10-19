@@ -15,10 +15,10 @@ defmodule EhOsContract.ContractLinksSystemTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        actor :reception, :human, "Reception"
 
         subdomain :core, "Core", type: :core
       end
@@ -44,10 +44,10 @@ defmodule EhOsContract.ContractLinksSystemTest do
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-      aggregate #{inspect(unit)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Unit" do
         identity :case_id
-        command #{inspect(command)}, "Komenda", by: :reception, emits: :done
-        event :done, "Zrobione"
+        command #{inspect(command)}, "Command", by: :reception, emits: :done
+        event :done, "Done"
       end
     #{Keyword.get(opts, :extra, "")}
     end
@@ -59,11 +59,11 @@ defmodule EhOsContract.ContractLinksSystemTest do
   describe "D14: a command, query or recorded event name is the domain's" do
     test "a command of one name in two contracts, and a query named like a command" do
       query = """
-        read_model :cases, "Sprawy", projects: :done do
+        read_model :cases, "Cases", projects: :done do
           field :case_id, :id
         end
 
-        query :open_a, "Sprawy", reads: :cases, by: :reception
+        query :open_a, "Cases", reads: :cases, by: :reception
       """
 
       violations =
@@ -99,11 +99,11 @@ defmodule EhOsContract.ContractLinksSystemTest do
       defmodule #{inspect(@fixtures)}.SysNameD do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sys_name_d"
 
-        aggregate :fourth, "Jednostka" do
+        aggregate :fourth, "Unit" do
           identity :case_id
-          command :open_d, "Komenda", by: :reception, emits: :done
-          event :done, "Zrobione"
-          event :open_a, "Otwarte", recorded_by: :reception
+          command :open_d, "Command", by: :reception, emits: :done
+          event :done, "Done"
+          event :open_a, "Opened", recorded_by: :reception
         end
       end
       """

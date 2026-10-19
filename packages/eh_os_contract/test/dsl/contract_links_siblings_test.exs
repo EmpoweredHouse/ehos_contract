@@ -16,13 +16,13 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        context :scheduling, "Umawianie wizyt", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        context :scheduling, "Scheduling visits", subdomain: :core
+        actor :reception, :human, "Reception"
 
-        entity :visit, "Wizyta", context: :settlement, identity: :visit_id do
+        entity :visit, "Visit", context: :settlement, identity: :visit_id do
         end
 
         value :visit_code, :id
@@ -46,12 +46,12 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{domain}, context: :settlement, id: "#{Keyword.get(opts, :namespace, "clinic")}.#{contract_name(name)}"
 
-      aggregate :booking, "Rezerwacja" do
+      aggregate :booking, "Booking" do
         identity :booking_id
 
-        command :book_visit, "Rezerwacja wizyty", by: :reception, emits: :visit_booked
+        command :book_visit, "Booking a visit", by: :reception, emits: :visit_booked
 
-        event :visit_booked, "Wizyta zarezerwowana" do
+        event :visit_booked, "Visit booked" do
     #{fields}
         end
       end
@@ -73,22 +73,22 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
       consumes #{inspect(Module.concat(@fixtures, publisher))}, #{consumes}
 
-      aggregate :billing, "Rozliczenie" do
+      aggregate :billing, "Billing" do
         identity :visit_id
-        command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
-        event :visit_billed, "Wizyta rozliczona"
+        command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
+        event :visit_billed, "Visit billed"
       end
 
-      process_manager :chase, "Pogoń za rozliczeniem", correlate: :visit_id do
+      process_manager :chase, "Chasing the bill", correlate: :visit_id do
         starts_on :visit_booked, issues: :bill_visit
         ends_on :visit_billed
       end
 
-      dcb :visit_slot, "Termin wizyty" do
+      dcb :visit_slot, "A visit's slot" do
         identity :visit_id
 
-        command :hold_slot, "Wstrzymanie terminu", by: :reception, emits: :slot_held
-        event :slot_held, "Termin wstrzymany"
+        command :hold_slot, "Holding a slot", by: :reception, emits: :slot_held
+        event :slot_held, "Slot held"
 
         consults :visit_booked, match: :visit_id
       end
@@ -134,16 +134,16 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
       consumes #{inspect(Module.concat(@fixtures, "SibTwoValuesBooking"))}, :visit_booked
 
-      aggregate :billing, "Rozliczenie" do
+      aggregate :billing, "Billing" do
         identity :billing_id
-        command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+        command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
 
-        event :visit_billed, "Wizyta rozliczona" do
+        event :visit_billed, "Visit billed" do
           field :visit_id, :visit_code
         end
       end
 
-      process_manager :chase, "Pogoń za rozliczeniem" do
+      process_manager :chase, "Chasing the bill" do
         correlate :visit_id
         starts_on :visit_booked
         ends_on :visit_billed
@@ -314,10 +314,10 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
 
         consumes #{inspect(Module.concat(@fixtures, publisher))}, :visit_booked
 
-        aggregate :billing, "Rozliczenie" do
+        aggregate :billing, "Billing" do
           identity :visit_id
-          command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
-          event :visit_billed, "Wizyta rozliczona"
+          command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
+          event :visit_billed, "Visit billed"
         end
 
       #{reaction}
@@ -325,9 +325,9 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
       """
     end
 
-    @policy ~s(policy :bill_on_booking, "Rezerwacja — wizyta do rozliczenia", ) <>
+    @policy ~s(policy :bill_on_booking, "A booking — a visit to bill", ) <>
               "handles: :visit_booked, issues: :bill_visit"
-    @read_model ~s(read_model :bookings, "Rezerwacje", projects: :visit_booked do\n) <>
+    @read_model ~s(read_model :bookings, "Bookings", projects: :visit_booked do\n) <>
                   "    field :visit_id, :id\n  end"
 
     defp across(test, context, reaction) do
@@ -364,11 +364,11 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
            |> String.replace("emits: :visit_booked", "emits: [:visit_booked, :visit_moved]")
            |> String.replace(
              "    event :visit_booked,",
-             "    event :visit_moved, \"Wizyta przesunięta\"\n    event :visit_booked,"
+             "    event :visit_moved, \"Visit moved\"\n    event :visit_booked,"
            )},
           {"sib_x10_renamed_billing.ex",
            reacting("#{camel}Billing", "#{camel}Booking", """
-             policy :bill_on_booking, "Rezerwacja — wizyta do rozliczenia",
+             policy :bill_on_booking, "A booking — a visit to bill",
                handles: [:booked, :visit_billed, :visit_moved], issues: :bill_visit
            """)
            |> String.replace(
@@ -417,16 +417,16 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
     test "left out, delivery is :in_transaction in the model, and the version does not move" do
       body = fn delivery ->
         """
-          aggregate :billing, "Rozliczenie" do
+          aggregate :billing, "Billing" do
             identity :visit_id
-            command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
-            event :visit_billed, "Wizyta rozliczona"
+            command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
+            event :visit_billed, "Visit billed"
           end
 
-          policy :bill_again, "Rozliczona — rozlicz ponownie", handles: :visit_billed,
+          policy :bill_again, "Billed — bill again", handles: :visit_billed,
             issues: :bill_visit#{delivery}
 
-          read_model :billed, "Rozliczone", projects: :visit_billed#{delivery} do
+          read_model :billed, "Billed", projects: :visit_billed#{delivery} do
             field :visit_id, :id
           end
         """

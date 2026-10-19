@@ -16,10 +16,10 @@ defmodule EhOsContract.ContractIdTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        actor :reception, :human, "Reception"
 
         subdomain :core, "Core", type: :core
       end
@@ -39,10 +39,10 @@ defmodule EhOsContract.ContractIdTest do
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement#{id}
 
-      aggregate #{inspect(unit)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Unit" do
         identity :case_id
-        command #{inspect(:"open_#{unit}")}, "Otwórz", by: :reception, emits: #{inspect(:"#{unit}_opened")}
-        event #{inspect(:"#{unit}_opened")}, "Otwarto"
+        command #{inspect(:"open_#{unit}")}, "Open", by: :reception, emits: #{inspect(:"#{unit}_opened")}
+        event #{inspect(:"#{unit}_opened")}, "Opened"
       end
     end
     """

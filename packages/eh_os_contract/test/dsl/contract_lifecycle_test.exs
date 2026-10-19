@@ -10,17 +10,17 @@ defmodule EhOsContract.ContractLifecycleTest do
   # A visit is booked, the patient arrives, the visit closes; a booked visit can be
   # cancelled, and a visit can be moved back to booked before the patient arrives.
   @visit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      invariant :only_a_booked_visit, "Tylko umówiona wizyta"
-      invariant :only_an_open_visit, "Tylko otwarta wizyta"
+      invariant :only_a_booked_visit, "Only a booked visit"
+      invariant :only_an_open_visit, "Only an open visit"
 
       lifecycle do
-        status :booked, "Umówiona"
-        status :in_progress, "W trakcie"
-        status :closed, "Zamknięta", final: true
-        status :cancelled, "Odwołana", final: true
+        status :booked, "Booked"
+        status :in_progress, "In progress"
+        status :closed, "Closed", final: true
+        status :cancelled, "Cancelled", final: true
 
         initial :booked, on: :visit_booked
         transition :booked, :patient_arrived, :in_progress
@@ -28,24 +28,24 @@ defmodule EhOsContract.ContractLifecycleTest do
         transition :in_progress, :visit_closed, :closed
       end
 
-      command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
+      command :book_visit, "Booking", by: :reception, emits: :visit_booked
 
-      command :admit_patient, "Przyjęcie", by: :reception, emits: :patient_arrived,
+      command :admit_patient, "Admission", by: :reception, emits: :patient_arrived,
         from: [:booked, :booked], or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
 
-      command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled,
+      command :cancel_visit, "Cancellation", by: :reception, emits: :visit_cancelled,
         from: :booked, or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
 
-      command :close_visit, "Zamknięcie", by: :reception, emits: [:visit_closed, :note_added],
+      command :close_visit, "Closing", by: :reception, emits: [:visit_closed, :note_added],
         from: :in_progress, or_rejects: :only_an_open_visit, rejects: :only_an_open_visit
 
-      command :add_note, "Notatka", by: :reception, emits: :note_added
+      command :add_note, "Note", by: :reception, emits: :note_added
 
-      event :visit_booked, "Umówiono"
-      event :patient_arrived, "Pacjent przyszedł"
-      event :note_added, "Dodano notatkę"
-      event :visit_cancelled, "Odwołano"
-      event :visit_closed, "Zamknięto"
+      event :visit_booked, "Visit booked"
+      event :patient_arrived, "Patient arrived"
+      event :note_added, "Note added"
+      event :visit_cancelled, "Visit cancelled"
+      event :visit_closed, "Visit closed"
     end
 
     scenario "a visit the patient came to is not admitted again" do
@@ -69,10 +69,10 @@ defmodule EhOsContract.ContractLifecycleTest do
       assert [%{lifecycle: lifecycle}] = model.units
 
       assert Enum.map(lifecycle.statuses, &{&1.name, &1.label, &1.final}) == [
-               {:booked, "Umówiona", false},
-               {:in_progress, "W trakcie", false},
-               {:closed, "Zamknięta", true},
-               {:cancelled, "Odwołana", true}
+               {:booked, "Booked", false},
+               {:in_progress, "In progress", false},
+               {:closed, "Closed", true},
+               {:cancelled, "Cancelled", true}
              ]
 
       assert lifecycle.initial == [%{status: :booked, on: :visit_booked, source: nil}]
@@ -99,13 +99,13 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "a transition from several statuses is one per status in the model" do
       model =
         compile_contract("LifecycleSeveral", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :moved, "Przełożona"
-              status :cancelled, "Odwołana", final: true
+              status :booked, "Booked"
+              status :moved, "Moved"
+              status :cancelled, "Cancelled", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_moved, :moved
@@ -113,13 +113,13 @@ defmodule EhOsContract.ContractLifecycleTest do
               transition [:booked, :moved, :booked], :visit_cancelled, :cancelled
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-            command :move_visit, "Przełożenie", by: :reception, emits: :visit_moved
-            command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked
+            command :move_visit, "Moving", by: :reception, emits: :visit_moved
+            command :cancel_visit, "Cancellation", by: :reception, emits: :visit_cancelled
 
-            event :visit_booked, "Umówiono"
-            event :visit_moved, "Przełożono"
-            event :visit_cancelled, "Odwołano"
+            event :visit_booked, "Visit booked"
+            event :visit_moved, "Visit moved"
+            event :visit_cancelled, "Visit cancelled"
           end
         """)
 
@@ -141,10 +141,10 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "a unit without a lifecycle has no lifecycle key, so its digest does not move" do
       model =
         compile_contract("LifecycleNone", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto"
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -155,25 +155,25 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "a lifecycle moves its aggregate's digest, and the contract's version" do
       without =
         compile_contract("LifecycleDigestWithout", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto"
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
       with_lifecycle =
         compile_contract("LifecycleDigestWith", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             lifecycle do
-              status :closed, "Zamknięta", final: true
+              status :closed, "Closed", final: true
               initial :closed, on: :visit_closed
             end
 
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_closed, "Zamknięto"
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -186,13 +186,13 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "twice, empty, a status twice or not snake_case is refused" do
       message =
         refuse_contract("LifecycleShape", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :booked, "Umówiona"
-              status :Closed, "Zamknięta", final: true
+              status :booked, "Booked"
+              status :booked, "Booked"
+              status :Closed, "Closed", final: true
               initial :booked, on: :visit_booked
               transition :booked, :visit_closed, :Closed
             end
@@ -200,13 +200,13 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_booked, "Umówiono"
-            event :visit_closed, "Zamknięto"
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            event :visit_booked, "Visit booked"
+            event :visit_closed, "Visit closed"
           end
 
-          aggregate :room, "Gabinet" do
+          aggregate :room, "Room" do
             identity :visit_id
 
             state do
@@ -216,8 +216,8 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
             end
 
-            command :open_room, "Otwarcie", by: :reception, emits: :room_opened
-            event :room_opened, "Otwarto"
+            command :open_room, "Opening", by: :reception, emits: :room_opened
+            event :room_opened, "Opened"
           end
         """)
 
@@ -245,17 +245,17 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "a lifecycle on a boundary is not a word of the boundary (L1)" do
       source =
         contract("LifecycleBoundary", """
-          dcb :seat, "Miejsce" do
+          dcb :seat, "Seat" do
             identity :seat_id
             consults :seat_taken, match: :seat_id
 
             lifecycle do
-              status :taken, "Zajęte", final: true
+              status :taken, "Taken", final: true
               initial :taken, on: :seat_taken
             end
 
-            command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken
-            event :seat_taken, "Zajęto"
+            command :take_seat, "Taking", by: :reception, emits: :seat_taken
+            event :seat_taken, "Seat taken"
           end
         """)
 
@@ -272,12 +272,12 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "an unknown status or event, an event starting twice and a pair moving twice are refused" do
       message =
         refuse_contract("LifecycleNames", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :closed, "Zamknięta", final: true
+              status :booked, "Booked"
+              status :closed, "Closed", final: true
 
               initial :booked, on: :visit_booked
               initial :closed, on: :visit_booked
@@ -289,10 +289,10 @@ defmodule EhOsContract.ContractLifecycleTest do
               transition [], :visit_booked, :closed
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            event :visit_booked, "Umówiono"
-            event :visit_closed, "Zamknięto"
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            event :visit_booked, "Visit booked"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -331,15 +331,15 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "an unreached status, a final one left and a dead end are refused" do
       message =
         refuse_contract("LifecycleReach", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :waiting, "Oczekuje"
-              status :archived, "Zarchiwizowana"
-              status :closed, "Zamknięta", final: true
-              status :cancelled_once, "Odwołana", final: true
+              status :booked, "Booked"
+              status :waiting, "Waiting"
+              status :archived, "Archived"
+              status :closed, "Closed", final: true
+              status :cancelled_once, "Cancelled", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_closed, :closed
@@ -351,14 +351,14 @@ defmodule EhOsContract.ContractLifecycleTest do
               transition :booked, :visit_cancelled, :cancelled_once
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-            command :add_note, "Notatka", by: :reception, emits: :note_added
-            command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled
-            event :visit_booked, "Umówiono"
-            event :note_added, "Dodano notatkę"
-            event :visit_cancelled, "Odwołano"
-            event :visit_closed, "Zamknięto"
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
+            command :add_note, "Note", by: :reception, emits: :note_added
+            command :cancel_visit, "Cancellation", by: :reception, emits: :visit_cancelled
+            event :visit_booked, "Visit booked"
+            event :note_added, "Note added"
+            event :visit_cancelled, "Visit cancelled"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -383,54 +383,54 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "each way from: or or_rejects: can be wrong is refused" do
       message =
         refuse_contract("LifecycleFrom", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id, generated: :uuid
 
-            invariant :only_a_booked_visit, "Tylko umówiona wizyta"
+            invariant :only_a_booked_visit, "Only a booked visit"
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :in_progress, "W trakcie"
-              status :closed, "Zamknięta", final: true
+              status :booked, "Booked"
+              status :in_progress, "In progress"
+              status :closed, "Closed", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :patient_arrived, :in_progress
               transition :in_progress, :visit_closed, :closed
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked,
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked,
               creates: true, from: :booked, or_rejects: :only_a_booked_visit,
               rejects: :only_a_booked_visit
 
-            command :admit_patient, "Przyjęcie", by: :reception, emits: :patient_arrived,
+            command :admit_patient, "Admission", by: :reception, emits: :patient_arrived,
               from: :boked
 
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed,
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed,
               from: :booked, or_rejects: :closed_once, rejects: :only_a_booked_visit
 
-            command :reopen_visit, "Otwarcie", by: :reception, emits: :patient_arrived,
+            command :reopen_visit, "Opening", by: :reception, emits: :patient_arrived,
               from: [:in_progress, :closed], or_rejects: :only_a_booked_visit
 
-            command :readmit, "Ponowne przyjęcie", by: :reception, emits: :patient_arrived,
+            command :readmit, "Readmission", by: :reception, emits: :patient_arrived,
               from: [:booked, :in_progress], or_rejects: :only_a_booked_visit,
               rejects: :only_a_booked_visit
 
-            command :remind, "Przypomnienie", by: :reception, emits: :patient_arrived,
+            command :remind, "Reminder", by: :reception, emits: :patient_arrived,
               or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
 
-            event :visit_booked, "Umówiono"
-            event :patient_arrived, "Pacjent przyszedł"
-            event :visit_closed, "Zamknięto"
+            event :visit_booked, "Visit booked"
+            event :patient_arrived, "Patient arrived"
+            event :visit_closed, "Visit closed"
           end
 
-          aggregate :room, "Gabinet" do
+          aggregate :room, "Room" do
             identity :visit_id
-            invariant :free_room, "Wolny gabinet"
+            invariant :free_room, "A free room"
 
-            command :open_room, "Otwarcie", by: :reception, emits: :room_opened,
+            command :open_room, "Opening", by: :reception, emits: :room_opened,
               from: :free, or_rejects: :free_room, rejects: :free_room
 
-            event :room_opened, "Otwarto"
+            event :room_opened, "Opened"
           end
         """)
 
@@ -483,27 +483,27 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "an actor_is invariant is no rule to refuse on in a stuck status" do
       message =
         refuse_contract("LifecycleStuckPerson", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id, generated: :uuid
 
             state do
               field :specialist_id, :id, optional: true
             end
 
-            invariant :only_a_booked_visit, "Tylko umówiona wizyta"
-            invariant :own_visit, "Tylko własna wizyta"
+            invariant :only_a_booked_visit, "Only a booked visit"
+            invariant :own_visit, "Only one's own visit"
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :in_progress, "W trakcie"
+              status :booked, "Booked"
+              status :in_progress, "In progress"
 
               initial :booked, on: :visit_booked
               transition :booked, :patient_arrived, :in_progress
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked, creates: true
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked, creates: true
 
-            command :readmit, "Ponowne przyjęcie", by: :reception, emits: :patient_arrived,
+            command :readmit, "Readmission", by: :reception, emits: :patient_arrived,
               from: [:booked, :in_progress], or_rejects: :only_a_booked_visit,
               rejects: [:only_a_booked_visit, :own_visit] do
               actor_is :specialist_id, or_rejects: :own_visit
@@ -519,15 +519,15 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "from: is no word of a boundary's command (L1)" do
       message =
         refuse_contract("LifecycleFromBoundary", """
-          dcb :seat, "Miejsce" do
+          dcb :seat, "Seat" do
             identity :seat_id
             consults :seat_taken, match: :seat_id
-            invariant :free_seat, "Wolne miejsce"
+            invariant :free_seat, "A free seat"
 
-            command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken,
+            command :take_seat, "Taking", by: :reception, emits: :seat_taken,
               from: :free, rejects: :free_seat
 
-            event :seat_taken, "Zajęto"
+            event :seat_taken, "Seat taken"
           end
         """)
 
@@ -537,19 +537,19 @@ defmodule EhOsContract.ContractLifecycleTest do
 
     test "a creating command that emits no initial event is refused" do
       assert refuse_contract("LifecycleCreates", """
-               aggregate :visit, "Wizyta" do
+               aggregate :visit, "Visit" do
                  identity :visit_id, generated: :uuid
 
                  lifecycle do
-                   status :booked, "Umówiona", final: true
+                   status :booked, "Booked", final: true
                    initial :booked, on: :visit_booked
                  end
 
-                 command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-                 command :draft_visit, "Szkic", by: :reception, emits: :drafted, creates: true
+                 command :book_visit, "Booking", by: :reception, emits: :visit_booked
+                 command :draft_visit, "Draft", by: :reception, emits: :drafted, creates: true
 
-                 event :visit_booked, "Umówiono"
-                 event :drafted, "Szkic"
+                 event :visit_booked, "Visit booked"
+                 event :drafted, "Draft"
                end
              """) =~
                "T4: command :draft_visit creates: its aggregate, and emits none of its " <>
@@ -560,16 +560,16 @@ defmodule EhOsContract.ContractLifecycleTest do
     test "control: a status no event leaves compiles when the decision has a rule to refuse on there" do
       model =
         compile_contract("LifecycleFiner", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            invariant :only_a_booked_visit, "Tylko umówiona wizyta"
-            invariant :not_while_paid, "Nie po opłaceniu"
+            invariant :only_a_booked_visit, "Only a booked visit"
+            invariant :not_while_paid, "Not once paid"
 
             lifecycle do
-              status :booked, "Umówiona"
-              status :paid, "Opłacona"
-              status :closed, "Zamknięta", final: true
+              status :booked, "Booked"
+              status :paid, "Paid"
+              status :closed, "Closed", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_paid, :paid
@@ -577,16 +577,16 @@ defmodule EhOsContract.ContractLifecycleTest do
               transition :paid, :visit_closed, :closed
             end
 
-            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed
 
-            command :pay_visit, "Opłata", by: :reception, emits: :visit_paid,
+            command :pay_visit, "Payment", by: :reception, emits: :visit_paid,
               from: [:booked, :paid], or_rejects: :only_a_booked_visit,
               rejects: [:only_a_booked_visit, :not_while_paid]
 
-            event :visit_booked, "Umówiono"
-            event :visit_paid, "Opłacono"
-            event :visit_closed, "Zamknięto"
+            event :visit_booked, "Visit booked"
+            event :visit_paid, "Visit paid"
+            event :visit_closed, "Visit closed"
           end
 
           scenario "a closed visit is not paid" do

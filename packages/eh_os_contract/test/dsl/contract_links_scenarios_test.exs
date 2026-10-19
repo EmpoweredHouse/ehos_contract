@@ -14,16 +14,16 @@ defmodule EhOsContract.ContractLinksScenariosTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        actor :reception, :human, "Reception"
 
-        value :money, :integer, unit: :grosze
+        value :money, :integer, unit: :cents
         value :status, {:enum, [:active, :expired]}
 
-        entity :service, "Usługa", context: :settlement, identity: :service_id do
-          field :p1_reported, :boolean
+        entity :service, "Service", context: :settlement, identity: :service_id do
+          field :reported_to_registry, :boolean
           field :fee, :money, optional: true
         end
 
@@ -50,21 +50,21 @@ defmodule EhOsContract.ContractLinksScenariosTest do
        defmodule #{inspect(Module.concat(@fixtures, name))} do
          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-         aggregate :visit, "Wizyta" do
+         aggregate :visit, "Visit" do
            identity :visit_id
 
-           command :register, "Rejestracja", by: :reception, emits: :registered do
+           command :register, "Registration", by: :reception, emits: :registered do
              field :status, :status
              field :address, :address
              field :amounts, {:list, :money}
            end
 
-           event :registered, "Zarejestrowano" do
+           event :registered, "Registered" do
              field :status, :status
            end
          end
 
-         scenario "rejestracja" do
+         scenario "registration" do
            command :register, #{command}
            expect :registered, #{expected}
          end
@@ -76,7 +76,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       assert links([
                registration(
                  "ScnValuesRight",
-                 ~s|%{status: :active, address: %{street: "Polna", city: "Kraków"}, amounts: [100, 200]}|,
+                 ~s|%{status: :active, address: %{street: "Elm Street", city: "Springfield"}, amounts: [100, 200]}|,
                  "%{status: :active}"
                )
              ]) == []
@@ -87,7 +87,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
         links([
           registration(
             "ScnValuesWrong",
-            ~s|%{status: :unknown, address: %{street: "Polna", zip: "30-001"}, amounts: [100, "200"]}|,
+            ~s|%{status: :unknown, address: %{street: "Elm Street", zip: "12345"}, amounts: [100, "200"]}|,
             "%{status: :gone}"
           )
         ])
@@ -95,7 +95,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       file = "scn_values_wrong.ex"
 
       assert assert_linked(violations, "field :status: :unknown", file, 19) =~
-               ~s|X9: scenario "rejestracja": command :register, field :status: :unknown is not | <>
+               ~s|X9: scenario "registration": command :register, field :status: :unknown is not | <>
                  "one of [:active, :expired]"
 
       assert_linked(violations, "field :address: :address has no field :zip", file, 19)
@@ -114,25 +114,25 @@ defmodule EhOsContract.ContractLinksScenariosTest do
        defmodule #{inspect(Module.concat(@fixtures, name))} do
          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-         aggregate :visit, "Wizyta" do
+         aggregate :visit, "Visit" do
            identity :visit_id
-           command :register, "Rejestracja", by: :reception, emits: :registered
+           command :register, "Registration", by: :reception, emits: :registered
 
-           event :registered, "Zarejestrowano" do
+           event :registered, "Registered" do
              field :status, :status
            end
          end
 
-         read_model :statuses, "Statusy", projects: :registered do
+         read_model :statuses, "Statuses", projects: :registered do
            field :visit_id, :id
            field :status, :status
          end
 
-         query :with_status, "Wizyty o statusie", reads: :statuses, by: :reception do
+         query :with_status, "Visits with a status", reads: :statuses, by: :reception do
            param :status, :status
          end
 
-         scenario "wizyty aktywne" do
+         scenario "active visits" do
            query :with_status, #{params}
            answers #{rows}
          end
@@ -145,10 +145,10 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       file = "scn_query_wrong.ex"
 
       assert assert_linked(violations, "field :status: :asleep", file, 23) =~
-               ~s|X9: scenario "wizyty aktywne": query :with_status, field :status: :asleep|
+               ~s|X9: scenario "active visits": query :with_status, field :status: :asleep|
 
       assert assert_linked(violations, "field :status: :gone", file, 24) =~
-               ~s|X9: scenario "wizyty aktywne": a row of read model :statuses, field :status|
+               ~s|X9: scenario "active visits": a row of read model :statuses, field :status|
 
       assert length(violations) == 2
     end
@@ -166,12 +166,12 @@ defmodule EhOsContract.ContractLinksScenariosTest do
        defmodule #{inspect(Module.concat(@fixtures, name))} do
          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-         aggregate :booking, "Rezerwacja" do
+         aggregate :booking, "Booking" do
            identity :booking_id
 
-           command :book_visit, "Rezerwacja wizyty", by: :reception, emits: :visit_booked
+           command :book_visit, "Booking a visit", by: :reception, emits: :visit_booked
 
-           event :visit_booked, "Wizyta zarezerwowana" do
+           event :visit_booked, "Visit booked" do
              field :visit_id, :id
              field :room, :string
              field :note, :string, optional: true
@@ -190,16 +190,16 @@ defmodule EhOsContract.ContractLinksScenariosTest do
 
          consumes #{inspect(Module.concat(@fixtures, booking))}, :visit_booked
 
-         aggregate :billing, "Rozliczenie" do
+         aggregate :billing, "Billing" do
            identity :visit_id
-           command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
-           event :visit_billed, "Wizyta rozliczona"
+           command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
+           event :visit_billed, "Visit billed"
          end
 
-         policy :bill_on_booking, "Rozlicz po rezerwacji",
+         policy :bill_on_booking, "Bill after booking",
            handles: :visit_booked, issues: :bill_visit
 
-         scenario "rezerwacja rozliczona" do
+         scenario "a booking billed" do
            on :visit_booked, #{data}
            issues :bill_visit
          end
@@ -232,7 +232,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       file = "scn_sibling_wrong_billing.ex"
 
       assert assert_linked(violations, "no field :rooom", file, 16) =~
-               ~s|X9: scenario "rezerwacja rozliczona": event :visit_booked of | <>
+               ~s|X9: scenario "a booking billed": event :visit_booked of | <>
                  "#{inspect(@fixtures)}.ScnSiblingWrongBooking (scn_sibling_wrong_booking.ex:9): " <>
                  "no field :rooom"
 
@@ -250,21 +250,21 @@ defmodule EhOsContract.ContractLinksScenariosTest do
        defmodule #{inspect(Module.concat(@fixtures, name))} do
          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-         domain_service :pricing, "Cennik" do
-           function :fee, "Opłata" do
+         domain_service :pricing, "Price list" do
+           function :fee, "Fee" do
              argument :status, :status
              argument :address, :address
              returns :money
 
-             rule :by_status, "Zależna od statusu",
+             rule :by_status, "Depends on the status",
                examples: #{examples}
            end
          end
 
-         aggregate :visit, "Wizyta" do
+         aggregate :visit, "Visit" do
            identity :visit_id
-           command :close, "Zamknięcie", by: :reception, emits: :closed
-           event :closed, "Zamknięto"
+           command :close, "Closing", by: :reception, emits: :closed
+           event :closed, "Closed"
          end
        end
        """}
@@ -274,7 +274,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       assert links([
                pricing(
                  "RuleValuesRight",
-                 ~s|[{[:active, %{street: "Polna", city: "Kraków"}], 100}]|
+                 ~s|[{[:active, %{street: "Elm Street", city: "Springfield"}], 100}]|
                )
              ]) == []
     end
@@ -284,7 +284,7 @@ defmodule EhOsContract.ContractLinksScenariosTest do
         links([
           pricing(
             "RuleValuesWrong",
-            ~s|[{[:lapsed, %{street: "Polna"}], "sto"}]|
+            ~s|[{[:lapsed, %{street: "Elm Street"}], "a hundred"}]|
           )
         ])
 
@@ -297,7 +297,12 @@ defmodule EhOsContract.ContractLinksScenariosTest do
       )
 
       assert_linked(violations, "argument :address: :address needs :city", "rule_values_wrong.ex")
-      assert_linked(violations, ~s|the result: "sto" is not an :integer|, "rule_values_wrong.ex")
+
+      assert_linked(
+        violations,
+        ~s|the result: "a hundred" is not an :integer|,
+        "rule_values_wrong.ex"
+      )
     end
   end
 
@@ -309,17 +314,17 @@ defmodule EhOsContract.ContractLinksScenariosTest do
        defmodule #{inspect(Module.concat(@fixtures, name))} do
          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-         aggregate :visit, "Wizyta" do
+         aggregate :visit, "Visit" do
            identity :visit_id
 
-           command :book_visit, "Umów", by: :reception, emits: :visit_booked, reads: [service: :service_id] do
+           command :book_visit, "Book", by: :reception, emits: :visit_booked, reads: [service: :service_id] do
              field :service_id, {:id, :service}
            end
 
-           event :visit_booked, "Umówiono"
+           event :visit_booked, "Visit booked"
          end
 
-         scenario "umówienie" do
+         scenario "booking" do
            given_entity :service, #{row}
            command :book_visit, %{service_id: "s-1"}
            expect :visit_booked
@@ -329,18 +334,22 @@ defmodule EhOsContract.ContractLinksScenariosTest do
     end
 
     test "control: a row of the entity's fields, its identity among them, passes" do
-      assert links([booking("ScnEntityRight", ~s|%{service_id: "s-1", p1_reported: true}|)]) ==
+      assert links([
+               booking("ScnEntityRight", ~s|%{service_id: "s-1", reported_to_registry: true}|)
+             ]) ==
                []
     end
 
     test "a field the entity lacks, one it requires, and a value of the wrong type" do
       violations =
-        links([booking("ScnEntityWrong", ~s|%{p1_reported: "tak", fee: -1.5, colour: :red}|)])
+        links([
+          booking("ScnEntityWrong", ~s|%{reported_to_registry: "yes", fee: -1.5, colour: :red}|)
+        ])
 
       for problem <- [
             "given_entity :service, no field :colour",
             "given_entity :service, needs :service_id",
-            ~s|given_entity :service, field :p1_reported: "tak" is not a :boolean|,
+            ~s|given_entity :service, field :reported_to_registry: "yes" is not a :boolean|,
             "given_entity :service, field :fee:"
           ] do
         assert_linked(violations, problem, "scn_entity_wrong.ex")
