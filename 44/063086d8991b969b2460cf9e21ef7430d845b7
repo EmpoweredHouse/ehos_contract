@@ -1,0 +1,4 @@
+Review of pb/375-english-dsl-tests-1 (34ce9326..44063086). One reviewer covered correctness and security/performance together (a translation of test files; the code-review skill forks into another worktree, so the diff was reviewed by hand).
+Findings: no defect; no assertion weakened, no vacuous pass, language: :pl -> :en changes nothing a test checks. Fixed in 44063086: a comment named a client contract and its recorded version; source codes and a responsibility taken from the clinic workshop material replaced by invented ones. No change needed: a test name says "typo" for :teller (the path it covers, an unknown actor with no suggestion, is unchanged).
+Kept on purpose: the Translated domain (language: :pl with translation :en) and a label in Polish in contract_names_test.
+Gate: mix check in sandbox EXIT=0 on 44063086; engine 1860 tests, as on main.
