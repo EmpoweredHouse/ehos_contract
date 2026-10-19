@@ -135,14 +135,14 @@ defmodule EhOsContract.ContractDomainServicesTest do
   test "control: a service with functions, arguments of every shape and rules compiles into the model" do
     model =
       compile_contract("ServicesRight", """
-        domain_service :pricing, "Price list", source: "AGG-06" do
+        domain_service :pricing, "Price list", source: "U-08" do
           function :price, "A service's price" do
             argument :service_id, {:id, :service}
             argument :minutes, :integer, optional: true
             returns :money
             rule :rounded, "Rounded to whole units of currency",
               examples: [{["s-1", 61], 2}, {["s-1", nil], 0}],
-              source: "W1 00:10:00"
+              source: "W2 00:42:00"
           end
 
           function :free, "Whether free" do
@@ -154,7 +154,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
       #{@unit}
       """)
 
-    assert [%{name: :pricing, source: "AGG-06", functions: [price, free]}] = model.domain_services
+    assert [%{name: :pricing, source: "U-08", functions: [price, free]}] = model.domain_services
 
     assert [
              %{name: :service_id, type: :id, refers_to: :service},
@@ -306,8 +306,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     refute with_one.version == without.version
 
     # The version the invented ledger had before the kind existed, read on the
-    # commit before EM2; the sandbox's clinic settlement contract kept its
-    # recorded 2ae1d0074cbc the same way. An empty group hashed in would move both.
+    # commit before EM2; a contract of the sandbox kept its recorded version the
+    # same way. An empty group hashed in would move both.
     # The ledger's moved once since, from 4e94b8af0057, with plan EP4: its reactions'
     # `idempotency` names a key and an owner; and from 06808eb90e9f with plan N1: its
     # scenarios lost the raw `scope` key, keeping the resolved `target`; and from

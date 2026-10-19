@@ -15,17 +15,17 @@ defmodule EhOsContract.ContractDocTest do
       field :visit_id, :id
     end
 
-    aggregate :visit, "Visit", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "U-04" do
       identity :visit_id
 
       state do
         field :paid, :boolean, default: false
       end
 
-      invariant :paid_in_full, "Paid in full", source: "E-12"
+      invariant :paid_in_full, "Paid in full", source: "R-17"
 
       command :close, "Closing", by: :reception, emits: :closed, rejects: :paid_in_full,
-        source: "C-04"
+        source: "K-09"
 
       command :pay, "Payment", by: :reception, emits: :paid, rejects: :positive do
         field :amount, :integer
@@ -45,7 +45,7 @@ defmodule EhOsContract.ContractDocTest do
     end
 
     policy :remind_on_arrival, "Remind on arrival", handles: :arrived, issues: :remind,
-      source: "P-01" do
+      source: "S-03" do
       constraint :once, "One reminder per visit"
       constraint :quiet, "Not at night"
     end
@@ -57,7 +57,7 @@ defmodule EhOsContract.ContractDocTest do
     process_manager :chase, "Chase" do
       correlate :visit_id
       starts_on :paid, sets: :due, issues: :remind
-      timer :due, "Due", wait: {1, :day}, issues: :remind, source: "H21"
+      timer :due, "Due", wait: {1, :day}, issues: :remind, source: "W1-07"
       ends_on :closed
       invariant :one_timer, "One reminder at a time"
     end
@@ -121,13 +121,13 @@ defmodule EhOsContract.ContractDocTest do
   test "a command's callback: what it emits, the rules it refuses on and where, its scenarios",
        %{model: model} do
     assert Doc.callback(model, :aggregate, :visit, :close) == """
-           Decides command `close` — "Closing" (source: C-04).
+           Decides command `close` — "Closing" (source: K-09).
 
            Emits, when it accepts:
            - `closed` — "Closed"
 
            Refuses with `reject/1` on:
-           - invariant `paid_in_full` — "Paid in full" (source: E-12) — refused in "unpaid — cancellation refused"
+           - invariant `paid_in_full` — "Paid in full" (source: R-17) — refused in "unpaid — cancellation refused"
 
            Scenarios:
            - "paid — closed": emits `closed`\
@@ -140,7 +140,7 @@ defmodule EhOsContract.ContractDocTest do
   test "a policy's callback: the event, where it comes from, what it issues, each rule's rung",
        %{model: model} do
     assert Doc.callback(model, :policy, :remind_on_arrival, :arrived) == """
-           Reacts to `arrived` (received from another application as `clinic.visit.arrived.v1`), for policy `remind_on_arrival` — "Remind on arrival" (source: P-01).
+           Reacts to `arrived` (received from another application as `clinic.visit.arrived.v1`), for policy `remind_on_arrival` — "Remind on arrival" (source: S-03).
 
            May issue:
            - `remind` — "Reminder"
@@ -157,7 +157,7 @@ defmodule EhOsContract.ContractDocTest do
   test "a process manager's timer and reaction, an effect, a read model, a query, a service and evolve",
        %{model: model} do
     assert Doc.callback(model, :process_manager, :chase, :due) == """
-           Fires on timer `due` — "Due" (source: H21) of process manager `chase` — "Chase".
+           Fires on timer `due` — "Due" (source: W1-07) of process manager `chase` — "Chase".
 
            May issue:
            - `remind` — "Reminder"
@@ -202,10 +202,10 @@ defmodule EhOsContract.ContractDocTest do
     assert Doc.moduledoc(model, :aggregate, :visit, "How it is bound.") == """
            How it is bound.
 
-           Aggregate `visit` — "Visit" (source: AGG-03).
+           Aggregate `visit` — "Visit" (source: U-04).
 
            Rules:
-           - invariant `paid_in_full` — "Paid in full" (source: E-12) — refused in "unpaid — cancellation refused"
+           - invariant `paid_in_full` — "Paid in full" (source: R-17) — refused in "unpaid — cancellation refused"
            - constraint `positive` — "The amount is positive" — of command `pay`, refused in "zero amount — refused"\
            """
   end

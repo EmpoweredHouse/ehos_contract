@@ -20,7 +20,7 @@ defmodule EhOsContract.ContractConstraintsTest do
       command :record_payment, "Recording a payment",
         by: :reception, emits: :payment_recorded, rejects: :positive_amount do
         field :amount, :integer
-        constraint :positive_amount, "Payment amount is positive", source: "E-55"
+        constraint :positive_amount, "Payment amount is positive", source: "R-31"
       end
 
       command :note, "Note", by: :reception, emits: :noted
@@ -91,7 +91,7 @@ defmodule EhOsContract.ContractConstraintsTest do
       record = Enum.find(model.commands, &(&1.name == :record_payment))
 
       assert record.constraints == [
-               %{name: :positive_amount, label: "Payment amount is positive", source: "E-55"}
+               %{name: :positive_amount, label: "Payment amount is positive", source: "R-31"}
              ]
 
       refute Map.has_key?(Enum.find(model.commands, &(&1.name == :note)), :constraints)

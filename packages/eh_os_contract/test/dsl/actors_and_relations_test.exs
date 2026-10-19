@@ -30,8 +30,8 @@ defmodule EhOsContract.ActorsAndRelationsTest do
     end
 
     actor :manager, :human, "Practice manager" do
-      responsibility :overdue_work, "Clears the overdue reports, which they see as a count",
-        source: "P-25"
+      responsibility :waiting_requests, "Answers the waiting requests, which they see as a list",
+        source: "S-12"
     end
 
     actor :reception, :human, "Reception"
@@ -39,7 +39,7 @@ defmodule EhOsContract.ActorsAndRelationsTest do
     relation :partnership,
       between: [:scheduling, :documentation],
       terms: [{"Visit", "Visit"}],
-      source: "30-contexts.md"
+      source: "contexts.md"
   end
   """
 
@@ -53,7 +53,7 @@ defmodule EhOsContract.ActorsAndRelationsTest do
       manager = Enum.find(domain.actors, &(&1.name == :manager))
       reception = Enum.find(domain.actors, &(&1.name == :reception))
 
-      assert [%{name: :overdue_work, source: "P-25"}] = manager.responsibilities
+      assert [%{name: :waiting_requests, source: "S-12"}] = manager.responsibilities
       assert reception.responsibilities == []
       assert [%{type: :partnership, terms: [["Visit", "Visit"]]}] = domain.relations
     end
@@ -222,8 +222,8 @@ defmodule EhOsContract.ActorsAndRelationsTest do
       text = domain |> Pages.render([]) |> Map.values() |> Enum.join("\n")
 
       assert text =~
-               "  - responsibility `overdue_work` — Clears the overdue reports, which they see " <>
-                 "as a count · _source: P-25_"
+               "  - responsibility `waiting_requests` — Answers the waiting requests, which they see " <>
+                 "as a list · _source: S-12_"
 
       assert text =~ ~s|· terms: "Visit" ↔ "Visit"|
 
