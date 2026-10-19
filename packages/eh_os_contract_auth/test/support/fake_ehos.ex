@@ -81,7 +81,7 @@ defmodule EhOsContract.Auth.FakeEhos do
           "sub" => "u-anna",
           "sid" => "sid-" <> Integer.to_string(System.unique_integer([:positive])),
           "auth_time" => System.os_time(:second),
-          "audience" => "rehmed/test",
+          "audience" => "clinic/test",
           "client_id" => client_id
         },
         Map.new(claims)

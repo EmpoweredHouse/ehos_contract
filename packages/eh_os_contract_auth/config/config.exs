@@ -15,7 +15,7 @@ config :eh_os_contract_auth,
 
 config :eh_os_contract_auth,
   issuer: "https://ehos.test",
-  audience: "rehmed/test",
+  audience: "clinic/test",
   # Test keys may be pinned (`EhOsContract.Auth.Keys.pin/2`); nowhere but a test.
   pin_keys: true
 

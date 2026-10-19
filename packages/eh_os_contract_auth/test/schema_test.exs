@@ -251,14 +251,14 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     request = %Authorizer.Request{
       kind: :command,
-      capability: "rehmed.record_payment",
-      contract: Rehmed.Contracts.VisitSettlement,
-      contract_id: "rehmed.visit_settlement",
+      capability: "clinic.record_payment",
+      contract: Clinic.Contracts.VisitSettlement,
+      contract_id: "clinic.visit_settlement",
       version: "3f2a",
       scope: nil
     }
 
-    assert Auth.authorize(Actor.credential("u-anna", ["rehmed.record_payment"]), request) == :ok
+    assert Auth.authorize(Actor.credential("u-anna", ["clinic.record_payment"]), request) == :ok
 
     assert Auth.authorize(Actor.credential("u-bartek", []), request) ==
              {:error, :missing_capability}

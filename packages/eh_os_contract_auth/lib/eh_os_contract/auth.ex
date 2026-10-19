@@ -10,7 +10,7 @@ defmodule EhOsContract.Auth do
 
       config :eh_os_contract_auth,
         issuer: "https://ehos.example.com",
-        audience: "rehmed/production"
+        audience: "clinic/production"
         # jwks_url: defaults to the issuer's "/.well-known/jwks.json"
 
       # the application's supervision tree, after the repo

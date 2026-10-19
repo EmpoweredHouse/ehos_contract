@@ -250,7 +250,7 @@ and the `ehos-dev:release` skill makes one.
     that domain's contracts to an application of its own, or removes its `publish`.
 
 - **Breaking:** **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
-  holds `"rehmed.visit_settlement"` where it held `"Rehmed.Contracts.VisitSettlement"`, as every row of the engine
+  holds `"clinic.visit_settlement"` where it held `"Clinic.Contracts.VisitSettlement"`, as every row of the engine
   does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
   `EhOsContract.Authorizer.Request.contract_id`, new and set by the engine on every request, so this package needs
   an `eh_os_contract` from #178 on: against an older one every `authorize/2` raises.

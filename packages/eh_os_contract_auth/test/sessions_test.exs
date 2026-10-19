@@ -16,7 +16,7 @@ defmodule EhOsContract.Auth.SessionsTest do
 
   @moduletag :tmp_dir
 
-  @own "https://rehmed.test"
+  @own "https://clinic.test"
   @ledger "https://ledger.test.ehos.test"
 
   setup %{tmp_dir: dir} do
@@ -27,7 +27,7 @@ defmodule EhOsContract.Auth.SessionsTest do
     {key_file, _key} = FakeEhos.client_key_file(dir)
 
     Application.put_env(:eh_os_contract_auth, :sign_in,
-      client_id: "rehmed/test",
+      client_id: "clinic/test",
       client_key_file: key_file,
       address: @own,
       secret_key_base: String.duplicate("s", 64),

@@ -24,9 +24,9 @@ defmodule EhOsContract.Auth.SignInTest do
     {key_file, key} = FakeEhos.client_key_file(dir)
 
     Application.put_env(:eh_os_contract_auth, :sign_in,
-      client_id: "rehmed/test",
+      client_id: "clinic/test",
       client_key_file: key_file,
-      address: "https://rehmed.test",
+      address: "https://clinic.test",
       secret_key_base: String.duplicate("s", 64),
       applications: %{"ledger" => "https://ledger.test.ehos.test"}
     )
@@ -40,11 +40,11 @@ defmodule EhOsContract.Auth.SignInTest do
       name = start!(ehos)
       config = SignIn.config(name)
 
-      assert config.client_id == "rehmed/test"
+      assert config.client_id == "clinic/test"
       assert config.issuer == "https://ehos.test"
-      assert config.redirect_uri == "https://rehmed.test/auth/ehos/callback"
+      assert config.redirect_uri == "https://clinic.test/auth/ehos/callback"
       # Exactly the string EHOS compares (eh-os D-68).
-      assert config.post_logout_redirect_uri == "https://rehmed.test/"
+      assert config.post_logout_redirect_uri == "https://clinic.test/"
       assert config.applications == %{"ledger" => "https://ledger.test.ehos.test"}
 
       # Every call oidcc makes goes through the package's transport, with a deadline.
@@ -77,7 +77,7 @@ defmodule EhOsContract.Auth.SignInTest do
       refute error.message =~ String.duplicate("s", 64)
 
       Application.put_env(:eh_os_contract_auth, :sign_in, sign_in)
-      put_sign_in(redirect_uri: "https://rehmed.test/elsewhere")
+      put_sign_in(redirect_uri: "https://clinic.test/elsewhere")
       assert_raise ArgumentError, ~r/not \[:redirect_uri\]/, fn -> SignIn.child_spec([]) end
     end
 
@@ -88,19 +88,19 @@ defmodule EhOsContract.Auth.SignInTest do
 
     test "an address that is not exactly https://<host> is refused (eh-os D-68)" do
       for address <- [
-            "https://rehmed.test/",
-            "https://rehmed.test/pages",
-            "https://rehmed.test?x=1",
-            "https://rehmed.test:8443",
-            "https://Rehmed.test",
-            "http://rehmed.test",
+            "https://clinic.test/",
+            "https://clinic.test/pages",
+            "https://clinic.test?x=1",
+            "https://clinic.test:8443",
+            "https://Clinic.test",
+            "http://clinic.test",
             # #89: what a browser reads as another address.
             "https://127.1",
             "https://0x7f000001",
-            "https://rehmed.test\\evil",
-            "https://rehmed.test%2fevil",
-            "https://rehmed.test.",
-            "rehmed.test",
+            "https://clinic.test\\evil",
+            "https://clinic.test%2fevil",
+            "https://clinic.test.",
+            "clinic.test",
             nil
           ] do
         put_sign_in(address: address)
@@ -129,7 +129,7 @@ defmodule EhOsContract.Auth.SignInTest do
     # eh-os D-69: applications names the other applications. Under the own address,
     # Session.credential/3 would hand out this application's own credential as another's.
     test "an application at this application's own address is refused" do
-      put_sign_in(applications: %{"ledger" => "https://rehmed.test"})
+      put_sign_in(applications: %{"ledger" => "https://clinic.test"})
 
       assert_raise ArgumentError,
                    ~r/"ledger" in applications is this application's address/,
@@ -545,7 +545,7 @@ defmodule EhOsContract.Auth.SignInTest do
       name = start!(ehos)
 
       assert {:ok, %Oidcc.ClientContext{} = context} = SignIn.client_context(name)
-      assert context.client_id == "rehmed/test"
+      assert context.client_id == "clinic/test"
       assert context.client_secret == SignIn.config(name).client_secret
       assert %JOSE.JWK{fields: %{"kid" => kid}} = context.client_jwks
       assert kid == key["kid"]
@@ -566,7 +566,7 @@ defmodule EhOsContract.Auth.SignInTest do
          %{ehos: ehos, key: key} do
       name = start!(ehos)
       config = SignIn.config(name)
-      FakeEhos.grant(ehos, "code-1", "rehmed/test", %{"nonce" => "n-1"})
+      FakeEhos.grant(ehos, "code-1", "clinic/test", %{"nonce" => "n-1"})
       {:ok, context} = SignIn.client_context(name)
 
       assert {:ok, %Oidcc.Token{id: %Oidcc.Token.Id{claims: claims}}} =
@@ -577,7 +577,7 @@ defmodule EhOsContract.Auth.SignInTest do
                  request_opts: config.request_opts
                })
 
-      assert %{"sub" => "u-anna", "aud" => "rehmed/test"} = claims
+      assert %{"sub" => "u-anna", "aud" => "clinic/test"} = claims
 
       assert [form] = FakeEhos.token_requests(ehos)
 
@@ -596,8 +596,8 @@ defmodule EhOsContract.Auth.SignInTest do
       assert {true, %JOSE.JWT{fields: fields}, _jws} =
                JOSE.JWT.verify_strict(public, [header["alg"]], assertion)
 
-      assert fields["iss"] == "rehmed/test"
-      assert fields["sub"] == "rehmed/test"
+      assert fields["iss"] == "clinic/test"
+      assert fields["sub"] == "clinic/test"
     end
   end
 

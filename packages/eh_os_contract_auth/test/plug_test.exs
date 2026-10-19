@@ -20,7 +20,7 @@ defmodule EhOsContract.Auth.PlugTest do
   end
 
   defp call(opts, authorization) do
-    conn = conn(:post, "/commands/rehmed.record_payment")
+    conn = conn(:post, "/commands/clinic.record_payment")
     conn = if authorization, do: put_req_header(conn, "authorization", authorization), else: conn
     BearerPlug.call(conn, opts)
   end
@@ -29,7 +29,7 @@ defmodule EhOsContract.Auth.PlugTest do
 
   test "an option verify/2 does not take is refused at init, not ignored" do
     assert_raise ArgumentError, ~r/not \[:audiance\]/, fn ->
-      BearerPlug.init(audiance: "rehmed/staging")
+      BearerPlug.init(audiance: "clinic/staging")
     end
   end
 
@@ -58,7 +58,7 @@ defmodule EhOsContract.Auth.PlugTest do
 
   test "a refused credential is 401 with its reason, and no row", %{pair: pair, opts: opts} do
     for {token, reason} <- [
-          {credential(pair, %{"aud" => "rehmed/production"}), "wrong_audience"},
+          {credential(pair, %{"aud" => "clinic/production"}), "wrong_audience"},
           {credential(pair, %{"exp" => 0}), "expired"},
           {credential(key_pair()), "unknown_key"},
           {"not-a-credential", "bad_signature"}

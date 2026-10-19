@@ -7,18 +7,18 @@ defmodule EhOsContract.Auth.Testing do
       use EhOsContract.Auth.Testing
 
       test "every entry point refuses a credential without the capability" do
-        assert_every_entry_refuses([Rehmed.Contracts.VisitSettlement], %{
-          "rehmed.record_payment" => fn token ->
+        assert_every_entry_refuses([Clinic.Contracts.VisitSettlement], %{
+          "clinic.record_payment" => fn token ->
             build_conn()
             |> put_req_header("authorization", "Bearer " <> token)
-            |> post("/api/commands/rehmed.record_payment", %{visit_id: "visit-anna"})
+            |> post("/api/commands/clinic.record_payment", %{visit_id: "visit-anna"})
           end,
           # … one entry per capability the contracts declare
         })
       end
 
       test "a receptionist records a payment" do
-        token = credential("u-anna", ["rehmed.record_payment"])
+        token = credential("u-anna", ["clinic.record_payment"])
         # … call the entry point with it, and assert what it did
       end
 

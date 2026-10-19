@@ -10,7 +10,7 @@ defmodule EhOsContract.Auth.Plug do
 
       scope "/api" do
         pipe_through :eh_os_contract_api
-        forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+        forward "/", EhOsContract.Plug, contracts: [Clinic.Contracts.VisitSettlement]
       end
 
   A request with `authorization: Bearer <credential>` that `EhOsContract.Auth.verify/2`
