@@ -14,7 +14,7 @@ defmodule EhOsContractHost.CommitRepo do
   because rows from earlier tests of the same run are still there.
   """
 
-  use Boundary, top_level?: true, deps: [EhOsContractHost.Repo], exports: []
+  use Boundary, top_level?: true, deps: [], exports: []
   use Ecto.Repo, otp_app: :eh_os_contract_host, adapter: Ecto.Adapters.Postgres
 
   @doc """

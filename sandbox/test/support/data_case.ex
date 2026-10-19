@@ -4,12 +4,9 @@ defmodule EhOsContractHost.DataCase do
   use Boundary, top_level?: true, deps: [EhOsContract, EhOsContractHost.Repo], exports: []
   use ExUnit.CaseTemplate
 
-  import Ecto.Query
-
   using do
     quote do
       import Ecto.Query
-      import EhOsContractHost.DataCase
 
       alias EhOsContractHost.Repo
     end
@@ -28,13 +25,5 @@ defmodule EhOsContractHost.DataCase do
     EhOsContractHost.Repo.delete_all(EhOsContract.Deployment)
 
     :ok
-  end
-
-  def events_of(type) do
-    name = to_string(type)
-
-    EhOsContractHost.Repo.all(
-      from(e in EhOsContract.Event, where: e.type == ^name, order_by: e.occurred_at)
-    )
   end
 end

@@ -39,7 +39,7 @@ EmpoweredHouse/ehos-tools#279), released as `ehosctl` 0.15.0 (EmpoweredHouse/eho
 new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/appunite-equipment#8); and
 `ehos-ledger` (PN3, EmpoweredHouse/ehos-ledger#9), which came from a pin before v0.3.0. **Wave 6 is closed.**
 
-**Next: the publication programme** (18 October, below): making the repository public. PB1 (#366) is in progress;
+**Next: the publication programme** (18 October, below): making the repository public. Giving the sandbox host its own repo (PB1, #366) is in progress;
 whether the history is kept waits for the two clients' consent.
 
 **Open, the user's:**
