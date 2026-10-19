@@ -1,0 +1,1 @@
+Merge of main (#370, lending) into billing. Conflicts resolved keeping both sides: e10's check totals now count lending's two notices and billing's three warnings and two notices (50 warnings, 51 notices); graph_document's prefixes list both Lending. and Billing.; graph_lab.traffic also leaves Lending. out. Gate: mix check EXIT=0; sandbox 54 properties, 437 tests.
