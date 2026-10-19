@@ -1,5 +1,5 @@
 defmodule Lending.Membership.MemberContact do
-  @moduledoc "**Invented.** Answers the desk: a member's name and latest e-mail."
+  @moduledoc "**Invented.** Answers the desk: a member's name and latest e-mail, per membership."
 
   use Lending.Contracts.Membership, query: :member_contact
 
@@ -16,7 +16,8 @@ defmodule Lending.Membership.MemberContact do
         email: m.email
       }
     )
-    |> EhOsContract.Config.fetch!(:repo).one()
-    |> then(&(&1 && struct(Row, &1)))
+    |> order_by([m], m.membership_id)
+    |> EhOsContract.Config.fetch!(:repo).all()
+    |> Enum.map(&struct(Row, &1))
   end
 end

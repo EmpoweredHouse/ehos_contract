@@ -68,10 +68,11 @@ defmodule Lending.Contracts.Membership do
     field :email, :string, personal: :member_id
   end
 
+  # A member may hold more than one membership, each with its own details, so the
+  # query answers each of them.
   query :member_contact, "How to reach a member",
     reads: :member_directory,
-    by: :librarian,
-    returns: :one do
+    by: :librarian do
     param :member_id, :id
   end
 
@@ -152,6 +153,6 @@ defmodule Lending.Contracts.Membership do
     }
 
     query :member_contact, %{member_id: "member-ada"}
-    answers %{member_id: "member-ada", email: "ada@example.net"}
+    answers [%{member_id: "member-ada", email: "ada@example.net"}]
   end
 end
