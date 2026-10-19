@@ -19,10 +19,10 @@ defmodule EhOsContract.CompilerTest do
 
   @domain """
   defmodule Fx.Domain do
-    use EhOsContract.Domain, name: :fx, language: :pl
+    use EhOsContract.Domain, name: :fx, language: :en
 
-    context :settlement, "Rozliczenia", subdomain: :core
-    actor :reception, :human, "Recepcja"
+    context :settlement, "Settlement", subdomain: :core
+    actor :reception, :human, "Reception"
 
     subdomain :core, "Core", type: :core
   end
@@ -33,11 +33,11 @@ defmodule EhOsContract.CompilerTest do
   defmodule Fx.Visit do
     use EhOsContract.Contract, domain: Fx.Domain, context: :settlement, id: "fx.visit"
 
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta"
+      command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+      event :visit_closed, "Visit closed"
     end
   end
   """
@@ -69,8 +69,8 @@ defmodule EhOsContract.CompilerTest do
       "lib/domain.ex",
       String.replace(
         @domain,
-        ~s|actor :reception, :human, "Recepcja"|,
-        ~s|actor :cashier, :human, "Kasjer"|
+        ~s|actor :reception, :human, "Reception"|,
+        ~s|actor :cashier, :human, "Cashier"|
       )
     )
 
@@ -89,12 +89,12 @@ defmodule EhOsContract.CompilerTest do
   defmodule Fx.Booking do
     use EhOsContract.Contract, domain: Fx.Domain, context: :settlement, id: "fx.booking"
 
-    aggregate :booking, "Rezerwacja" do
+    aggregate :booking, "Booking" do
       identity :booking_id
 
-      command :book_visit, "Rezerwacja wizyty", by: :reception, emits: :visit_booked
+      command :book_visit, "Booking a visit", by: :reception, emits: :visit_booked
 
-      event :visit_booked, "Wizyta zarezerwowana" do
+      event :visit_booked, "Visit booked" do
         field :visit_id, :id
         field :room, :string
       end
@@ -109,13 +109,13 @@ defmodule EhOsContract.CompilerTest do
 
     consumes Fx.Booking, :visit_booked
 
-    aggregate :billing, "Rozliczenie" do
+    aggregate :billing, "Billing" do
       identity :visit_id
-      command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
-      event :visit_billed, "Wizyta rozliczona"
+      command :bill_visit, "Billing a visit", by: :reception, emits: :visit_billed
+      event :visit_billed, "Visit billed"
     end
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
       starts_on :visit_booked
       ends_on :visit_billed
@@ -168,7 +168,7 @@ defmodule EhOsContract.CompilerTest do
   # Plan DD, P2b (#205): a process module names its contracts as `consumes` does.
   @clinical_visit """
   defmodule Fx.ClinicalVisit do
-    use EhOsContract.Process, id: "fx.clinical_visit", domain: Fx.Domain, label: "Wizyta"
+    use EhOsContract.Process, id: "fx.clinical_visit", domain: Fx.Domain, label: "Visit"
 
     correlate :visit_id
     stage :closing, include: [{Fx.Visit, :visit_closed}]
@@ -187,8 +187,8 @@ defmodule EhOsContract.CompilerTest do
     assert {_, 0} = compile(dir)
 
     edit(dir, "lib/visit.ex", @visit, [
-      {~s|event :visit_closed, "Wizyta zamknięta"|,
-       ~s|event :visit_closed, "Wizyta zamknięta" do\n        field :note, :string, optional: true\n      end|}
+      {~s|event :visit_closed, "Visit closed"|,
+       ~s|event :visit_closed, "Visit closed" do\n        field :note, :string, optional: true\n      end|}
     ])
 
     {output, status} = compile(dir)

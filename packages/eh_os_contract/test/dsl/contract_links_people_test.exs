@@ -15,11 +15,11 @@ defmodule EhOsContract.ContractLinksPeopleTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :documentation, "Dokumentacja", subdomain: :core
-        actor :specialist, :human, "Specjalista"
-        actor :night_shift, :system, "Nocna zmiana"
+        context :documentation, "Documentation", subdomain: :core
+        actor :specialist, :human, "Specialist"
+        actor :night_shift, :system, "Night shift"
 
         subdomain :core, "Core", type: :core
       end
@@ -37,26 +37,26 @@ defmodule EhOsContract.ContractLinksPeopleTest do
      defmodule #{inspect(Module.concat(@fixtures, name))} do
        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :documentation, id: "clinic.#{contract_name(name)}"
 
-       aggregate :visit, "Wizyta" do
+       aggregate :visit, "Visit" do
          identity :visit_id
 
          state do
            field :specialist_id, :id, optional: true
          end
 
-         invariant :own_visit, "Tylko własna wizyta"
+         invariant :own_visit, "Only one's own visit"
 
-         command :close_visit, "Zamknij", by: #{inspect(by)}, emits: :closed, rejects: :own_visit do
+         command :close_visit, "Close", by: #{inspect(by)}, emits: :closed, rejects: :own_visit do
            actor_is :specialist_id, or_rejects: :own_visit
          end
 
-         command :note_visit, "Notatka", by: :specialist, emits: :noted
+         command :note_visit, "Note", by: :specialist, emits: :noted
 
-         event :closed, "Zamknięto"
-         event :noted, "Zanotowano"
+         event :closed, "Closed"
+         event :noted, "Noted"
        end
 
-       scenario "zamyka ktoś inny" do
+       scenario "someone else closes" do
          #{closer}
          command :close_visit
          rejected :own_visit
@@ -70,7 +70,7 @@ defmodule EhOsContract.ContractLinksPeopleTest do
   test "control: a person in by:, and scenarios that name the person or are the application's" do
     assert links([
              desk("PeopleRight", [:specialist, :night_shift], """
-               scenario "nocna zmiana zamyka" do
+               scenario "the night shift closes" do
                  actor :night_shift
                  command :close_visit
                  expect :closed
@@ -94,20 +94,20 @@ defmodule EhOsContract.ContractLinksPeopleTest do
     violations =
       links([
         desk("PeopleWrong", [:specialist, :night_shift], """
-          scenario "specjalista zamyka" do
+          scenario "a specialist closes" do
             actor :specialist
             command :close_visit
             expect :closed
           end
 
-          scenario "nocna zmiana jako ktoś" do
+          scenario "the night shift as someone" do
             actor :night_shift
             as "specialist-ewa"
             command :close_visit
             expect :closed
           end
 
-          scenario "notatka" do
+          scenario "a note" do
             actor :specialist
             as "specialist-ewa"
             command :note_visit
@@ -117,11 +117,11 @@ defmodule EhOsContract.ContractLinksPeopleTest do
       ])
 
     for problem <- [
-          ~s|X2: scenario "specjalista zamyka": actor :specialist is a person, and the command | <>
+          ~s|X2: scenario "a specialist closes": actor :specialist is a person, and the command | <>
             "names who must issue it: say which person with as",
-          ~s|X2: scenario "nocna zmiana jako ktoś": as "specialist-ewa" names a person beside | <>
+          ~s|X2: scenario "the night shift as someone": as "specialist-ewa" names a person beside | <>
             ":night_shift, a :system actor, whom dispatch never compares",
-          ~s|X2: scenario "notatka": as "specialist-ewa" names a person, and the command names | <>
+          ~s|X2: scenario "a note": as "specialist-ewa" names a person, and the command names | <>
             "nobody who must issue it"
         ] do
       assert_linked(violations, problem, "people_wrong.ex")

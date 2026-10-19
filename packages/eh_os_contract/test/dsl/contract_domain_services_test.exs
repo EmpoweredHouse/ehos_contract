@@ -10,30 +10,30 @@ defmodule EhOsContract.ContractDomainServicesTest do
   use EhOsContract.DslCase, async: false
 
   @unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
-      event :visit_closed, "Zamknięto"
+      command :close_visit, "Closing", by: :reception, emits: :visit_closed
+      event :visit_closed, "Closed"
     end
   """
 
   test "two functions or two rules of one name, a Kernel clash and a repeated argument are refused" do
     message =
       refuse_contract("ServicesNamed", """
-        domain_service :pricing, "Cennik" do
-          function :price, "Cena" do
+        domain_service :pricing, "Price list" do
+          function :price, "Price" do
             argument :minutes, :integer
             argument :minutes, :integer
             returns :integer
-            rule :rounded, "Zaokrąglona", examples: [{[1, 2], 3}]
-            rule :rounded, "Zaokrąglona w górę", examples: [{[1, 2], 3}]
+            rule :rounded, "Rounded", examples: [{[1, 2], 3}]
+            rule :rounded, "Rounded up", examples: [{[1, 2], 3}]
           end
 
-          function :price, "Cena druga" do
+          function :price, "Second price" do
             returns :integer
           end
 
-          function :send, "Wyślij" do
+          function :send, "Send" do
             argument :to, :string
             argument :What, :string
             returns :boolean
@@ -61,13 +61,13 @@ defmodule EhOsContract.ContractDomainServicesTest do
   test "a function a behaviour's module defines already is refused; evolve is not" do
     message =
       refuse_contract("ServicesTaken", """
-        domain_service :lookup, "Wyszukiwanie" do
-          function :behaviour_info, "Informacja" do
+        domain_service :lookup, "Lookup" do
+          function :behaviour_info, "Information" do
             argument :what, :string
             returns :string
           end
 
-          function :module_info, "Moduł" do
+          function :module_info, "Module" do
             returns :string
           end
         end
@@ -85,8 +85,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
   test "control: a function named evolve compiles, since a service's module has no evolve/2" do
     assert %{domain_services: [%{functions: [%{name: :evolve}]}]} =
              compile_contract("ServicesEvolve", """
-               domain_service :growth, "Wzrost" do
-                 function :evolve, "Następna wartość" do
+               domain_service :growth, "Growth" do
+                 function :evolve, "Next value" do
                    argument :value, :integer
                    returns :integer
                  end
@@ -98,8 +98,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
   test "a function that says nothing of what it returns is refused" do
     assert refuse_contract("ServicesSilent", """
-             domain_service :pricing, "Cennik" do
-               function :price, "Cena" do
+             domain_service :pricing, "Price list" do
+               function :price, "Price" do
                  argument :minutes, :integer
                end
              end
@@ -113,8 +113,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
   test "a malformed argument or result type is refused" do
     message =
       refuse_contract("ServicesTyped", """
-        domain_service :pricing, "Cennik" do
-          function :price, "Cena" do
+        domain_service :pricing, "Price list" do
+          function :price, "Price" do
             argument :method, {:enum, []}
             returns "integer"
           end
@@ -135,17 +135,17 @@ defmodule EhOsContract.ContractDomainServicesTest do
   test "control: a service with functions, arguments of every shape and rules compiles into the model" do
     model =
       compile_contract("ServicesRight", """
-        domain_service :pricing, "Cennik", source: "AGG-06" do
-          function :price, "Cena usługi" do
+        domain_service :pricing, "Price list", source: "AGG-06" do
+          function :price, "A service's price" do
             argument :service_id, {:id, :service}
             argument :minutes, :integer, optional: true
             returns :money
-            rule :rounded, "Zaokrąglona do pełnych złotych",
+            rule :rounded, "Rounded to whole units of currency",
               examples: [{["s-1", 61], 2}, {["s-1", nil], 0}],
               source: "W1 00:10:00"
           end
 
-          function :free, "Czy bezpłatna" do
+          function :free, "Whether free" do
             argument :service_id, :id
             returns :boolean, optional: true
           end
@@ -176,12 +176,12 @@ defmodule EhOsContract.ContractDomainServicesTest do
   describe "S9: a rule is shown on examples (plan EL2b)" do
     defp rule(examples) do
       """
-        domain_service :pricing, "Cennik" do
-          function :price, "Cena" do
+        domain_service :pricing, "Price list" do
+          function :price, "Price" do
             argument :minutes, :integer
             argument :method, {:enum, [:card, :cash]}, optional: true
             returns :integer
-            rule :rounded, "Zaokrąglona", #{examples}
+            rule :rounded, "Rounded", #{examples}
           end
         end
 
@@ -244,12 +244,12 @@ defmodule EhOsContract.ContractDomainServicesTest do
     test "each runs the function through the contract's module and compares what it returns" do
       model =
         compile_contract("RuleRun", """
-          domain_service :pricing, "Cennik" do
-            function :price, "Cena" do
+          domain_service :pricing, "Price list" do
+            function :price, "Price" do
               argument :minutes, :integer
               returns :decimal
 
-              rule :per_minute, "Złoty za minutę", examples: [{[3], "3.00"}, {[0], 0}]
+              rule :per_minute, "One unit of currency a minute", examples: [{[3], "3.00"}, {[0], 0}]
             end
           end
 
@@ -295,7 +295,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
   test "a contract without domain services hashes as it did before they existed" do
     with_one =
-      compile_contract("ServicesOne", "#{@unit}\n  domain_service :pricing, \"Cennik\"\n",
+      compile_contract("ServicesOne", "#{@unit}\n  domain_service :pricing, \"Price list\"\n",
         id: "clinic.services"
       )
 
@@ -306,7 +306,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
     refute with_one.version == without.version
 
     # The version the invented ledger had before the kind existed, read on the
-    # commit before EM2; the sandbox's Rehmed.Contracts.VisitSettlement kept its
+    # commit before EM2; the sandbox's clinic settlement contract kept its
     # recorded 2ae1d0074cbc the same way. An empty group hashed in would move both.
     # The ledger's moved once since, from 4e94b8af0057, with plan EP4: its reactions'
     # `idempotency` names a key and an owner; and from 06808eb90e9f with plan N1: its

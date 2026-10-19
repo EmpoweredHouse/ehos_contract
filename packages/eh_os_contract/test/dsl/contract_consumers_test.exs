@@ -8,12 +8,12 @@ defmodule EhOsContract.ContractConsumersTest do
   use EhOsContract.DslCase, async: false
 
   @unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      command :remind, "Przypomnienie", by: :reception, emits: :reminded
-      event :visit_closed, "Wizyta zamknięta"
-      event :reminded, "Przypomniano"
+      command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+      command :remind, "Reminder", by: :reception, emits: :reminded
+      event :visit_closed, "Visit closed"
+      event :reminded, "Reminded"
     end
   """
 
@@ -22,7 +22,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("PolicyWrong", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij po zamknięciu",
+          policy :remind_on_close, "Remind after closing",
             handles: [:visit_closed, :visit_lost],
             issues: [:remind, :send_invoice]
         """)
@@ -42,7 +42,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("PolicyHandlesNothing", """
         #{@unit}
-          policy :remind_on_nothing, "Przypomnij bez powodu", handles: [], issues: :remind
+          policy :remind_on_nothing, "Remind for no reason", handles: [], issues: :remind
         """)
 
       assert message =~
@@ -54,7 +54,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("EffectHandlesNothing", """
         #{@unit}
-          effect :notify_nobody, "Powiadom bez powodu", handles: [], delivery: :in_transaction
+          effect :notify_nobody, "Notify for no reason", handles: [], delivery: :in_transaction
         """)
 
       assert message =~
@@ -68,7 +68,7 @@ defmodule EhOsContract.ContractConsumersTest do
                  consumes Clinic.Contracts.Booking, :visit_booked
 
                #{@unit}
-                 policy :remind_on_booking, "Przypomnij po rezerwacji",
+                 policy :remind_on_booking, "Remind after booking",
                    handles: :visit_booked,
                    issues: :remind
                """)
@@ -80,10 +80,10 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("EffectWrong", """
         #{@unit}
-          effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, delivery: :in_transaction
-          effect :notify_again, "Powiadom ponownie", handles: :visit_closed, calls: :mail
+          effect :notify, "Notify", handles: :visit_closed, calls: :mail, delivery: :in_transaction
+          effect :notify_again, "Notify again", handles: :visit_closed, calls: :mail
 
-          policy :remind_later, "Przypomnij później",
+          policy :remind_later, "Remind later",
             handles: :visit_closed,
             issues: :remind,
             delivery: :at_least_once
@@ -108,9 +108,9 @@ defmodule EhOsContract.ContractConsumersTest do
              } =
                compile_contract("EffectRight", """
                #{@unit}
-                 effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
+                 effect :notify, "Notify", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
 
-                 process_manager :chase, "Pogoń", correlate: :visit_id do
+                 process_manager :chase, "Chase", correlate: :visit_id do
                    starts_on :visit_closed
                    ends_on :visit_closed
                  end
@@ -125,7 +125,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ManagerUncorrelated", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: [] do
+          process_manager :chase, "Chase", correlate: [] do
             starts_on :visit_closed
             ends_on :visit_closed
           end
@@ -141,7 +141,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ManagerCorrelatedTwice", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: [:visit_id, :visit_id] do
+          process_manager :chase, "Chase", correlate: [:visit_id, :visit_id] do
             starts_on :visit_closed
             ends_on :visit_closed
           end
@@ -157,7 +157,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("TimerUnlabelled", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             starts_on :visit_opened, sets: :later
             timer :later, wait: {1, :day}
           end
@@ -172,7 +172,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ManagerWrong", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             state do
               field :due_on, :date
             end
@@ -219,7 +219,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ManagerIdle", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             ends_on :visit_closed
           end
         """)
@@ -231,7 +231,7 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ManagerInline", """
         #{@unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id, delivery: :in_transaction do
+          process_manager :chase, "Chase", correlate: :visit_id, delivery: :in_transaction do
             starts_on :visit_closed
           end
         """)
@@ -245,7 +245,7 @@ defmodule EhOsContract.ContractConsumersTest do
       assert %{process_managers: [manager]} =
                compile_contract("ManagerRight", """
                #{@unit}
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate :visit_id
 
                    state do
@@ -272,11 +272,11 @@ defmodule EhOsContract.ContractConsumersTest do
       message =
         refuse_contract("ReadWrong", """
         #{@unit}
-          read_model :closed_visits, "Zamknięte wizyty", projects: [:visit_closed, :visit_lost] do
+          read_model :closed_visits, "Closed visits", projects: [:visit_closed, :visit_lost] do
             field :closed_on, :date
           end
 
-          query :closed_today, "Zamknięte dziś", reads: :open_visits, by: :reception
+          query :closed_today, "Closed today", reads: :open_visits, by: :reception
         """)
 
       assert message =~

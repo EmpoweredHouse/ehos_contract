@@ -14,39 +14,39 @@ defmodule EhOsContract.ContractConstraintsTest do
   alias EhOsContract.ScenarioCase
 
   @payments """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      command :record_payment, "Przyjęcie płatności",
+      command :record_payment, "Recording a payment",
         by: :reception, emits: :payment_recorded, rejects: :positive_amount do
         field :amount, :integer
-        constraint :positive_amount, "Kwota płatności jest dodatnia", source: "E-55"
+        constraint :positive_amount, "The payment's amount is positive", source: "E-55"
       end
 
-      command :note, "Notatka", by: :reception, emits: :noted
+      command :note, "Note", by: :reception, emits: :noted
 
-      event :payment_recorded, "Zapłacono" do
+      event :payment_recorded, "Paid" do
         field :amount, :integer
       end
 
-      event :noted, "Zanotowano"
+      event :noted, "Noted"
     end
 
-    read_model :payments, "Płatności", projects: :payment_recorded do
+    read_model :payments, "Payments", projects: :payment_recorded do
       field :amount, :integer
     end
 
-    query :payments_of, "Płatności wizyty", reads: :payments, by: :reception do
+    query :payments_of, "A visit's payments", reads: :payments, by: :reception do
       param :visit_id, :id
-      constraint :own_clinic, "Recepcja widzi tylko wizyty swojej przychodni"
+      constraint :own_clinic, "Reception sees only its own clinic's visits"
     end
 
-    scenario "płatność 0 zł — odmowa" do
+    scenario "a payment of 0 — refused" do
       command :record_payment, %{amount: 0}
       rejected :positive_amount
     end
 
-    scenario "płatność 100 zł — przyjęta" do
+    scenario "a payment of 100 — accepted" do
       command :record_payment, %{amount: 100}
       expect :payment_recorded
     end
@@ -91,7 +91,7 @@ defmodule EhOsContract.ContractConstraintsTest do
       record = Enum.find(model.commands, &(&1.name == :record_payment))
 
       assert record.constraints == [
-               %{name: :positive_amount, label: "Kwota płatności jest dodatnia", source: "E-55"}
+               %{name: :positive_amount, label: "The payment's amount is positive", source: "E-55"}
              ]
 
       refute Map.has_key?(Enum.find(model.commands, &(&1.name == :note)), :constraints)
@@ -101,7 +101,7 @@ defmodule EhOsContract.ContractConstraintsTest do
       scenario =
         Enum.find(
           Model.fetch(EhOsContract.Fixtures.Payments).scenarios,
-          &(&1.description == "płatność 0 zł — odmowa")
+          &(&1.description == "a payment of 0 — refused")
         )
 
       assert ScenarioCase.run(
@@ -132,32 +132,32 @@ defmodule EhOsContract.ContractConstraintsTest do
     test "does not see the order constraints are written in" do
       body = fn first, second ->
         """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: [:positive, :whole] do
+            command :record_payment, "Payment", by: :reception, emits: :paid, rejects: [:positive, :whole] do
               field :amount, :integer
         #{first}
         #{second}
             end
 
-            event :paid, "Zapłacono"
+            event :paid, "Paid"
           end
 
-          scenario "0 zł" do
+          scenario "zero" do
             command :record_payment, %{amount: 0}
             rejected :positive
           end
 
-          scenario "pół grosza" do
+          scenario "half a cent" do
             command :record_payment, %{amount: 1}
             rejected :whole
           end
         """
       end
 
-      positive = ~s|      constraint :positive, "Kwota jest dodatnia"|
-      whole = ~s|      constraint :whole, "Kwota jest w pełnych groszach"|
+      positive = ~s|      constraint :positive, "The amount is positive"|
+      whole = ~s|      constraint :whole, "The amount is in whole cents"|
 
       one = compile_contract("ConstraintsOrderOne", body.(positive, whole), id: "clinic.ordered")
 
@@ -173,18 +173,18 @@ defmodule EhOsContract.ContractConstraintsTest do
     test "A7: a constraint the command does not reject on, one named twice, one named as an invariant" do
       message =
         refuse_contract("ConstraintsWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            invariant :paid_once, "Wizyta jest opłacona raz"
+            invariant :paid_once, "A visit is paid once"
 
-            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: [:paid_once, :positive] do
-              constraint :positive, "Kwota jest dodatnia"
-              constraint :positive, "Kwota jest większa od zera"
-              constraint :paid_once, "Raz"
-              constraint :in_hours, "W godzinach pracy"
+            command :record_payment, "Payment", by: :reception, emits: :paid, rejects: [:paid_once, :positive] do
+              constraint :positive, "The amount is positive"
+              constraint :positive, "The amount is greater than zero"
+              constraint :paid_once, "Once"
+              constraint :in_hours, "During working hours"
             end
 
-            event :paid, "Zapłacono"
+            event :paid, "Paid"
           end
         """)
 
@@ -205,18 +205,18 @@ defmodule EhOsContract.ContractConstraintsTest do
     test "S8: a constraint no scenario refuses the command on" do
       message =
         refuse_contract("ConstraintUncovered", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: :positive do
+            command :record_payment, "Payment", by: :reception, emits: :paid, rejects: :positive do
               field :amount, :integer
-              constraint :positive, "Kwota jest dodatnia"
+              constraint :positive, "The amount is positive"
             end
 
-            event :paid, "Zapłacono"
+            event :paid, "Paid"
           end
 
-          scenario "płatność przyjęta" do
+          scenario "a payment accepted" do
             command :record_payment, %{amount: 1}
             expect :paid
           end
@@ -230,24 +230,24 @@ defmodule EhOsContract.ContractConstraintsTest do
     test "N1: a constraint's name is snake_case, and a query's are named once" do
       message =
         refuse_contract("ConstraintNames", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: :PositiveAmount do
-              constraint :PositiveAmount, "Kwota jest dodatnia"
+            command :record_payment, "Payment", by: :reception, emits: :paid, rejects: :PositiveAmount do
+              constraint :PositiveAmount, "The amount is positive"
             end
 
-            event :paid, "Zapłacono"
+            event :paid, "Paid"
           end
 
-          read_model :payments, "Płatności", projects: :paid do
+          read_model :payments, "Payments", projects: :paid do
             field :visit_id, :id
           end
 
-          query :payments_of, "Płatności", reads: :payments, by: :reception do
+          query :payments_of, "Payments", reads: :payments, by: :reception do
             param :visit_id, :id
-            constraint :own_clinic, "Tylko własna przychodnia"
-            constraint :own_clinic, "Tylko własna przychodnia, drugi raz"
+            constraint :own_clinic, "Only one's own clinic"
+            constraint :own_clinic, "Only one's own clinic, a second time"
           end
         """)
 
