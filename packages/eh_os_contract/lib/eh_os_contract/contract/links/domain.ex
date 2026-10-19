@@ -28,13 +28,13 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **D11**, the part that needs the domain: a publication carries no field of a
   #   type that holds personal data; a copy on a broker cannot be erased.
   # - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
-  #   scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
+  #   scope dimension, `actor :lead, :human, "…", scope: [:warehouse_id]`, since a
   #   grant to that actor carries the values the answer is narrowed to. The same for a
   #   scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   # - **F8**, the part that needs the domain: a field a run or a process manager's
   #   record is told by, typed by a domain value, is of one resting on `:id`.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
-  #   `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
+  #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
   #   `reads:` is an entity the application keeps, never a unit, whose state is its
   #   events.

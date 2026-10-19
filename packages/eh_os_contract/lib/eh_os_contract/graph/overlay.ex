@@ -139,7 +139,7 @@ defmodule EhOsContract.Graph.Overlay do
   earlier one's, with how many runs — as the report counts them
   (`EhOsContract.StageOrder`).
 
-      EhOsContract.Graph.Overlay.process(Rehmed.Processes.ClinicalVisit,
+      EhOsContract.Graph.Overlay.process(Fulfilment.Processes.Order,
         since: ~U[2026-07-01 00:00:00Z]
       )
   """

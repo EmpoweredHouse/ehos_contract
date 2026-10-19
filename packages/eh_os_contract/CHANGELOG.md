@@ -56,6 +56,10 @@ and the `ehos-dev:release` skill makes one.
 
 ### Changed
 
+- **The documentation's examples are in English, on invented material** (the publication programme, PB3,
+  #375). The module docs, the DSL reference, `docs/authorization.md`, `docs/cli.md` and the older entries of this
+  changelog take their examples from a library lending copies, a shop fulfilling orders and a subscription billing
+  instead of a clinic with Polish labels, and a value's `unit:` example is `:cents`. Nothing a host calls changed.
 - **Moves a verdict:** **an outage is stamped with the engine's clock** (#369).
   `EhOsContract.Dependency.observe/3` and `unavailable!/4` take the moment from `EhOsContract.Clock.now/0`
   instead of the wall clock. Outside `EhOsContract.Clock.at/2` nothing changes; inside it, as in a host's
@@ -66,9 +70,9 @@ and the `ehos-dev:release` skill makes one.
 ### Added
 
 - **Moves a verdict:** **A promise names the systems it waits on through an earlier step** (plan DD, stage OW1,
-  #355): `waits_on [:registries]` in a process module's `promise`. An outage of one of them inside the window,
+  #355): `waits_on [:metering]` in a process module's `promise`. An outage of one of them inside the window,
   observed by any contract the process includes, suspends the promise as an outage of what its `eventually` or
-  `or_else` depends on does: an accounting month neither opened nor blocked while the registries were down is
+  `or_else` depends on does: an invoice neither issued nor disputed while the metering system was down is
   suspended, not broken. Each name is an external of the domain, and not one `eventually` or `or_else` already
   depends on, and one a contract the process includes uses (X4); a scenario's `outage` may name it. The
   process's page, `mix eh_os_contract.view` and its `graph.v1` document show it, the last as a `waits_on`
@@ -556,7 +560,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   which a boundary, a subscription, a read model and the report would otherwise skip without a word; it also names the
   history of a contract removed on purpose. The log's distinct types are read one index step each, so a long log
   costs no more than a short one with as many types.
-- **A contract can name itself: `use EhOsContract.Contract, …, id: "rehmed.settlement"`** (plan DD, stage ID1). The
+- **A contract can name itself: `use EhOsContract.Contract, …, id: "lending.circulation"`** (plan DD, stage ID1). The
   domain's `name:`, then dotted snake_case segments, none of them a version, at most 100 bytes (**D11**, at compile
   time); under the domain's own namespace (D11, L3) and unique in the application (**X7**). Optional for now, in the
   model as `:id` only where given, and outside the contract's version and its declarations' digests, so no deployment
@@ -569,10 +573,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   transition from several statuses needs a scenario from each, and one on an event no command of the unit
   emits (recorded only), or from a status no such command's `from:` admits, is left out. A new warning only: no verdict moves, but a host running
   `check --warnings-as-errors` with such a transition turns red until it adds the scenario.
-- **T1: a field the host gives, not the caller.** `field :p1_reported, :boolean, supplied_by: :host`, on a
+- **T1: a field the host gives, not the caller.** `field :late_fee, :money, supplied_by: :host`, on a
   command's field or a recorded event's (**F10** refuses it anywhere else, and on a command's `scope` field).
   Through `EhOsContract.call/3` — and `EhOsContract.Plug` — a request that sends it at all, even as `null`, is
-  refused by name, `{:invalid, [p1_reported: :supplied]}` (422 `{"invalid": {"p1_reported": "supplied"}}`). Once
+  refused by name, `{:invalid, [late_fee: :supplied]}` (422 `{"invalid": {"late_fee": "supplied"}}`). Once
   the caller is authorized and what it sent — its fields, its idempotency key — is found sound, the new behaviour
   `EhOsContract.Supplier` gives the value, one call per command with the fields the request gave, its answer held
   to exactly the fields asked for, their types and invariants. Its `{:error, reason}` refuses the request with
@@ -601,7 +605,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **LC4a (#99): `T4` lets a command be issued where its decision only refuses.** A status in `from:` that
   none of the command's events can leave is no longer refused when `rejects:` names a rule besides
   `or_rejects:`: `from:` says where the decision runs, not where it accepts, and a decision may refuse there on
-  a rule finer than the status (AppUnite's `:for_sale_not_issued`). Without such a rule it is still refused, and
+  a rule finer than the status (an item put up for sale but never handed out). Without such a rule it is still refused, and
   so is an emitted event that no status in `from:` lets out.
 - **LC3 (#99): the report asks the first two questions of a lifecycle.** For each aggregate that
   declares one, `EhOsContract.Conformance` reports under `lifecycles` how often each declared transition was
@@ -629,7 +633,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   model carries them.
 - **EP5b: what an actor answers for, and the words a relation pairs.** An actor may name its
   `responsibility`s (named prose, shown on the domain's page). **A relation's `terms` are pairs**, `terms:
-  [{"Wizyta", "Wizyta"}]` — the word of the first end (upstream, or the first of `between:`) and of the
+  [{"Member", "Member"}]` — the word of the first end (upstream, or the first of `between:`) and of the
   second; a flat list of strings no longer compiles. D5 refuses a word of a context end that its glossary does
   not define, and the glossary shows, under a term, what the other end calls it. Pairs are allowed in a
   symmetric relation too, where ESDM has none. Moves the version of a domain whose relation has `terms`; an
@@ -671,7 +675,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   declaration without it keeps its digest; setting or changing one moves the declaration's digest and the
   version, as a label does.
 - **E12d: `EhOsContract.call/3`, the one way in for data from outside.** A command, a recording or a query
-  by its capability's name (`{:command, "rehmed.record_payment"}`), with the data as a caller sent it and a
+  by its capability's name (`{:command, "lending.pay_late_fee"}`), with the data as a caller sent it and a
   credential's actor: it asks the `EhOsContract.Authorizer` before it says what is wrong with what was sent,
   then goes through `dispatch/3`, `record/3` or `query/3`. `EhOsContract.Plug` is now one door onto it, with
   the same statuses and bodies as before; `EhOsContract.Dispatcher.route/3` names the contract and the
@@ -820,13 +824,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **EL2: `constraint` in a command and a query** (ESDM's constraints). A command's is checked as an invariant
   is: `rejects:` names it, `reject/1` refuses on it, and a `rejected` scenario of the command is required for
   each (A7, S8); a query's is prose. A command or a query declaring none keeps its version.
-- **EL2: a directed relation may end at an external system**, `relation :conformist, upstream: :ksef,
-  downstream: :settlement`, with the other end a context (D5); a name both a context and an external fails the
+- **EL2: a directed relation may end at an external system**, `relation :conformist, upstream: :tax_registry,
+  downstream: :invoicing`, with the other end a context (D5); a name both a context and an external fails the
   compile (D1). `orphan-external-system` counts a relation's end as a use, and `orphan-context-mapping` counts a
   relation to an external as crossed when a contract of its context calls it, depends on it or acts through an
   actor it backs.
-- **EL2: `issued_by:` on a field**, the domain external that gives its value (a number P1 or KSeF assigns):
-  `field :p1_report_id, :id, issued_by: :medical_event_registry`, with an entity reference too. An unknown
+- **EL2: `issued_by:` on a field**, the domain external that gives its value (a number a registry assigns):
+  `field :invoice_number, :id, issued_by: :tax_registry`, with an entity reference too. An unknown
   external fails the compile (X4 in a contract, D8 in a domain). `view --details` shows it; `check` counts it as
   a use of the external. A field without it keeps its digest.
 - **EL2: `relation-against-references`**, a warning of `check`: a contract of a directed relation's upstream
@@ -870,7 +874,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   `optional:` a `nil` result is still refused. `returns` is its own declaration now, and a function without one
   does not compile (F2).
 - **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
-  changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
+  changes — `entity :period, "Billing period", context: :invoicing, identified_by: :period_id do field … end`. A field
   of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and
   in the tags, with `refers_to: :period` beside it. D6 checks the entity and every field naming one, X3 a
   contract's. The library keeps no rows of it. A domain declaring no entity keeps its version.
@@ -918,8 +922,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **E7c: `mix eh_os_contract.check` reads v2 contracts** (`EhOsContract.Check.v2_findings/1`): a process with no
   `accountable`, a declaration or promise not confirmed, a promise with no `within`, a `deadline` no run can be
   seen to end, and whether the contract is implemented — not at all is noted (D3), in part is a warning. What
-  the DSL refuses to compile is not repeated. The sandbox gains one warning (`Rehmed.Contracts.VisitSettlement`
-  has no `accountable`), which E6's port had taken out of the output.
+  the DSL refuses to compile is not repeated. The sandbox gains one warning (a contract with no
+  `accountable`), which E6's port had taken out of the output.
 - **A v2 process's declared shape** (after E7c): `EhOsContract.Graph.declared_to_mermaid/2` draws a v2 process as
   it draws a v1 one — stages as lanes, the contract's own and included events in them, promises as arrows with
   their window, endings and externals marked. `mix eh_os_contract.graph --process NAME --mermaid` draws it for a
@@ -1023,7 +1027,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).
 - Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
-  `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
+  `context :circulation, "Circulation", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
   written.
 - `EhOsContract.Actor` and `EhOsContract.Authorizer` (D14): who acts, and the question v2 dispatch will ask
@@ -1151,14 +1155,14 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   unit's Mermaid diagram are gone from the pages. **A host that commits the pages and checks them with `--check`**
   runs the task once. Moves no verdict.
 - **Breaking:** **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
-  user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
+  user's decision). `report.contract` is the contract's `id:` (`"lending.circulation"`), as every row of the log names
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
   report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
   `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
   A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
   its id.
 - **Breaking:** **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
-  `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
+  `GET <mount>/conformance?contract=lending.circulation`, `<mount>/model/lending.circulation`, `<mount>/openapi/…` and
   `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
   id and add `"module"`; the model index is `eh_os_contract.model-index.v2`. `EhOsContract.Registry.contract/1`
   finds a registered contract by its whole id. The OpenAPI and AsyncAPI documents keep the module as their title
@@ -1180,8 +1184,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   and the screen print a STEPS block before PROCESS; with no event it says "this contract recorded no event in this
   period", and a contract with no steps says "The contract declares no steps."
 - **Breaking:** **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
-  `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
-  where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers
+  `contract` column of events, commands, deployments and dependency observations holds `"lending.circulation"`
+  where it held `"Lending.Contracts.Circulation"`; so do the keys of subscriptions, relays, inboxes and process managers
   (`"<id>:<kind>:<name>"`), a reaction's command key and the chain of reactions stored with an event. Moving a
   contract's module no longer cuts it off from its history. No table changes shape. **A host resets the engine's
   schema before upgrading, as for ID3** — one reset covers both: rows written before name modules and are not read.
@@ -1200,7 +1204,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   since every row and key names the id, the two would share one history.
 - **Breaking:** **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
   without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
-  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's
+  `"loan.copy_lent"` — to `"<id>.<event>"` — `"lending.circulation.copy_lent"`. **A host resets the engine's
   schema before upgrading** (`EhOsContract.Migrations.down/up`, or a fresh database), not only the events table:
   subscriptions, the relay, process managers, runs and the commands' idempotency rows all point into the old log.
   Events stored under the old types are not read, and nothing reports them: an aggregate whose stream holds one
@@ -1264,22 +1268,22 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
   none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
 - **Breaking:** **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
-  `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
+  `timer :documentation_due, "Documentation due", wait: {24, :hour}, …`. The label names what the timer is for,
   not how long it waits, which `wait:` or `at:` says, and a blank one is refused (N1). A process manager's page
   prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
   and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
   contract with a timer.
-- **Breaking:** **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
-  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
+- **Breaking:** **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "billing.invoice.issued.v1",
+  as: :invoice_issued do … end` no longer compiles; write `subscribe "billing.invoice.issued.v1", as: :invoice_issued do
   … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
   and reads its events from this log; a published name given to it is refused by K1, which says to write
   `subscribe` instead. D11 says `subscribe`, and with no list of events to take, it no longer refuses one. The
   model is unchanged, so **no version moves**.
-- **Breaking:** **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
+- **Breaking:** **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Service", context:
   :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
   `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a
   required, non-personal `:id`, as it adds a unit's. An identity some system gives takes `issued_by:` on the
-  entity, `identity: :number, issued_by: :ksef`, and the model keeps it on the injected field. D6 refuses an
+  entity, `identity: :number, issued_by: :tax_registry`, and the model keeps it on the injected field. D6 refuses an
   identity not in snake_case or declared again as a field; D8 holds an entity's `issued_by:` to the domain's
   externals. **Moves the version** of every domain with an entity, whose model now says `identity`.
 - **Breaking:** **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
@@ -1415,7 +1419,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
     - The rule is stricter than the key's columns need, so a key never depends on what a text column, `jsonb` and
       an index entry happen to hold.
       - What failed the write before was a NUL, invalid UTF-8, or a key past about 2.7 KB.
-      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
+      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `café-1`, a
         key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
     - The OpenAPI document gives the header's pattern.
     - A reaction's key is held to it too, since a reaction's actor is a struct any caller can build. The key the
@@ -1471,7 +1475,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   domain that declared one no longer compiles. `mix eh_os_contract.pages` refuses a page named after a
   domain's element ending in a newline, as it refuses one with a space.
 - **Breaking:** **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
-  also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
+  also matches before a final newline, so `"billing.invoice.issued.v1\n"` compiled; on a broker such a name
   breaks the subject line. A contract that declared one no longer compiles.
 - **Breaking:** **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
   an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
@@ -1562,8 +1566,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **Breaking:** **EL2b: N2 refuses a callback named after a function every module defines** at its arity: an event
   `:module_info` (its handler would define `module_info/1`) fails the compile, as a domain service's function
   of that name already did.
-- **Breaking:** **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
-  domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
+- **Breaking:** **EL2: a subdomain is named, and a context names it.** `subdomain :core, "Lending", type: :core` in the
+  domain, then `context :circulation, …, subdomain: :core`; `subdomain:` on a context no longer takes the kind,
   and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
   `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
 - **Breaking:** **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;

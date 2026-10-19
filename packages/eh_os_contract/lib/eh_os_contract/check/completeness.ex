@@ -824,8 +824,8 @@ defmodule EhOsContract.Check.Completeness do
 
   # A name of a thing that says a term another context has and its own does not: a
   # word of another context's language in this one's code. A word the context's own
-  # terms cover is its own, as "Visit" is of every context of Rehmed that has it, and
-  # so is one inside a longer term of its own ("Visit date"). A field named like the
+  # terms cover is its own, as "Member" is of both lending contexts that have it, and
+  # so is one inside a longer term of its own (a term "Member card" covers "Member"). A field named like the
   # identity of a unit of another context refers to that unit, as a field typed
   # `{:id, entity}` refers to an entity, and is not read. One finding per name of a
   # contract, at its first declaration.

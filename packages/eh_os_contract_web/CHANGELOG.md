@@ -177,7 +177,7 @@ and the `ehos-dev:release` skill makes one.
   `"contract" => <id>`, where it was `select_process` with `"<module>:<process>"`.
 
 - **Breaking:** **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
-  eh-os-contract#183). `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/<id>`,
+  eh-os-contract#183). `GET <mount>/conformance?contract=lending.circulation`, `<mount>/model/<id>`,
   `<mount>/openapi/<id>` and `<mount>/asyncapi/<id>` take the contract's id; a module's name is an unknown contract,
   and a parameter given as a list or a map is a bad request. The indexes list `"contract"` as the id and add
   `"module"`; the model index is `eh_os_contract.model-index.v2`. OpenAPI and AsyncAPI documents carry the id as

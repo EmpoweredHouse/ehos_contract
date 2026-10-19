@@ -25,6 +25,6 @@ How two contexts relate: one of the eight context-mapping patterns.
 | `upstream` | `atom` |  |  | The upstream context of a directed relation. |
 | `downstream` | `atom` |  |  | The downstream context of a directed relation. |
 | `between` | `list(atom)` |  | `[]` | The two contexts of a symmetric relation. |
-| `terms` | `list({String.t, String.t})` |  | `[]` | Terms the relation translates, as pairs: the word of the first end, upstream or the first of `between:`, and the word of the second, each a term of its context's glossary. `{"Wizyta", "Wizyta"}`. |
+| `terms` | `list({String.t, String.t})` |  | `[]` | Terms the relation translates, as pairs: the word of the first end, upstream or the first of `between:`, and the word of the second, each a term of its context's glossary. `{"Member", "Member"}`. |
 | `source` | `String.t` |  |  | Where the relation comes from in the material. |
 

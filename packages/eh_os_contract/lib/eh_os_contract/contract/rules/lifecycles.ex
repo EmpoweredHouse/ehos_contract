@@ -304,8 +304,8 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
 
   # Whether the graph lets the command's events out of the statuses it is issued in:
   # each event a transition names leaves at least one of them. A status in `from:`
-  # that none of the events can leave is where the decision only refuses (plan LC4a,
-  # AppUnite's `:for_sale_not_issued`), so it needs a rule of its own in `rejects:`.
+  # that none of the events can leave is where the decision only refuses (plan LC4a:
+  # an item put up for sale but never handed out), so it needs a rule of its own in `rejects:`.
   # Checked only once every status in `from:` is a declared one that is not final,
   # which the checks above report.
   defp graph(command, what, where, statuses, allowed, moving) do

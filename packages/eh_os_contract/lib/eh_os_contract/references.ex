@@ -124,7 +124,7 @@ defmodule EhOsContract.References do
     )
   end
 
-  @doc "A referent in words: `entity :service`, `unit :visit of Rehmed.Contracts.Scheduling`."
+  @doc "A referent in words: `entity :service`, `unit :loan of Lending.Contracts.Circulation`."
   @spec describe(referent()) :: String.t()
   def describe({:entity, name}), do: "entity #{inspect(name)}"
   def describe({:unit, c, name}), do: "unit #{inspect(name)} of #{inspect(c.module)}"

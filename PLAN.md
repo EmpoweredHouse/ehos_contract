@@ -103,7 +103,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | --- | --- | --- | --- |
 | PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
 | PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ☑ #370, #372, #373, #374 |
-| PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | — | ☐ |
+| PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ◐ `pb/375-*` |
 | PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
@@ -116,6 +116,11 @@ and PB4 (the issue's "Out of scope").
 **Invented case studies (PB2).** Three English domains in `sandbox/lib/` (lending, subscription billing, order
 fulfilment) test the eleven behaviours only client material covers; billing takes over the publication, the audience
 and `ehos.yaml` from TaxVision. Four pull requests from `main`: lending, billing, fulfilment, then graph fixtures.
+
+**English in the packages (PB3).** The engine's tests, the graph package's tests (moved onto PB2's fixtures, the
+clients' deleted), the packages' docs and changelogs, the plugin's skills and the examples of `docs/adr/` lose their
+Polish and the clients' names; a few strings that test a second language or non-ASCII text stay. Six pull requests
+from `main` on disjoint files; the issue keeps what each holds and what was kept on purpose.
 
 ## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
 

@@ -6,7 +6,7 @@ defmodule EhOsContract.Duration do
   # **at run time**, during assertion evaluation, at the client's. A textbook shape
   # of drift: the DSL accepted a word the mechanism could not compute.
   #
-  # It was invisible because both our contracts count in days — TaxVision `{2, :day}`,
+  # It was invisible because both our contracts count in days — the first client's `{2, :day}`,
   # and the universality gate fixture `{3, :day}` and `{90, :day}`. Writing the
   # second one, the habit of the first was copied without thinking: for a treatment
   # episode `{3, :month}` is more natural than 90 days. The universality gate let

@@ -7,10 +7,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   of its domain, and with `--overlay` what the log says over it
   (`EhOsContract.Graph.Overlay`).
 
-      mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
-      mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
-      mix eh_os_contract.graph --process rehmed.clinical_visit --overlay --output visit.json
-      mix eh_os_contract.graph --domain rehmed --output rehmed.json
+      mix eh_os_contract.graph --contract lending.circulation --output circulation.json
+      mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
+      mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
+      mix eh_os_contract.graph --domain lending --output lending.json
 
   `--contract` names a contract by its `id:`, `--process` a process module by its
   `id:`; a process module may share its id with a contract, so they are two options.

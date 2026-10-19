@@ -55,7 +55,7 @@ defmodule EhOsContract.Domain.Rules do
   # `violated_by:`.
   #
   # **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
-  # `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
+  # `subdomain :core, "Lending", type: :core`; the kind is the subdomain's.
   #
   # **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   # identified by its `identity`, a snake_case name the library injects as a required,
@@ -832,7 +832,7 @@ defmodule EhOsContract.Domain.Rules do
     ends = Enum.reject([relation.upstream, relation.downstream | relation.between], &is_nil/1)
 
     # Plan EL2: an end of a directed relation may be an external system, as in ESDM
-    # (`conformist` to KSeF); the other end is then a context, since a relation between
+    # (`conformist` to a tax authority's e-invoicing registry); the other end is then a context, since a relation between
     # two systems outside is not this domain's. A symmetric relation joins contexts.
     known = if directed?, do: MapSet.union(contexts, externals), else: contexts
 

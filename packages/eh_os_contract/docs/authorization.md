@@ -8,13 +8,17 @@ record an event. This page explains how the pieces fit, and what is built today.
 **The contract says what can be done and which role may do it; EHOS decides which people get which
 roles; the application checks it on every call, locally, without asking EHOS.**
 
+The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
+pickers and each is granted one warehouse: the sandbox's `Fulfilment.Contracts.Warehouse`, with a query
+and a recorded event added for this page.
+
 Three places, each answering its own question:
 
 | Where | Question | Example |
 | --- | --- | --- |
-| The contract | What can be done, and by which role? | `command :record_payment, by: :reception` |
-| EHOS | Which person holds which role, where? | Anna is bound to `rehmed.reception` in `rehmed/production`, for clinic 7 |
-| The application | Does this caller's credential allow this call? | Anna's credential lists `rehmed.record_payment` |
+| The contract | What can be done, and by which role? | `command :assign_pick_list, by: :lead` |
+| EHOS | Which person holds which role, where? | Mira is bound to `fulfilment.lead` in `fulfilment/production`, for warehouse 7 |
+| The application | Does this caller's credential allow this call? | Mira's credential lists `fulfilment.assign_pick_list` |
 
 The model is role-based access control flattened into capabilities, the shape Kubernetes RBAC and
 cloud IAM use: roles are bound to people, and the credential carries the union of the capabilities
@@ -27,9 +31,9 @@ Names are derived from the contract, never written by hand, so the list EHOS gra
 from the code (`EhOsContract.Model.capabilities/1`):
 
 - a **capability** per command, per query and per recorded event a person may use: `<domain>.<name>`,
-  e.g. `rehmed.record_payment`, `rehmed.open_visits_for_clinic`, `rehmed.patient_arrived`, where
+  e.g. `fulfilment.assign_pick_list`, `fulfilment.open_pick_lists_for_warehouse`, `fulfilment.shelf_found_empty`, where
   `<domain>` is the domain's `name:`;
-- a **role** per `:human` actor of the domain: `<domain>.<actor>`, e.g. `rehmed.reception`. A role
+- a **role** per `:human` actor of the domain: `<domain>.<actor>`, e.g. `fulfilment.lead`. A role
   grants the capabilities of every declaration whose `by:` or `recorded_by:` names that actor.
 
 **Only what a person may do is a capability.** A declaration whose `by:` or `recorded_by:` names no
@@ -51,11 +55,11 @@ sequenceDiagram
 
     Note over A,E: at deployment
     A->>E: manifest: capabilities and roles, derived from the contract
-    Note over E: an administrator binds Anna to rehmed.reception
+    Note over E: an administrator binds Mira to fulfilment.lead
     P->>E: sign in
     E-->>P: credential (10 minutes): sub, aud, cap, scp
     E-->>A: public keys (JWKS), fetched every 5 minutes and kept in DB
-    P->>A: POST /commands/rehmed.record_payment + credential
+    P->>A: POST /commands/fulfilment.assign_pick_list + credential
     Note over A: the auth package verifies the signature,<br/>builds the actor from the claims
     Note over A: the engine asks the Authorizer:<br/>does the credential grant this capability?
     A->>DB: events and the command's row, in one transaction
@@ -67,7 +71,7 @@ sequenceDiagram
    the version of its `ehos.yaml`, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
    `eh_os_contract_auth` writes.
 2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
-   optionally with scope values ("clinic 7").
+   optionally with scope values ("warehouse 7").
 3. **Sign-in.** The person signs in to EHOS and receives a credential: a JWT signed with Ed25519, valid
    for ten minutes, for one application and environment (`aud`). It carries `sub` (who), `cap` (every
    capability of every role bound to them there) and `scp` (the values of scoped capabilities).
@@ -116,7 +120,7 @@ be asking itself; EHOS issues no credential to a job; and a policy runs in the t
 command that set it off, so a refusal there would fail a person's command for a reason that is not
 theirs. Its permission was given when the contract said `issues:` or `by:` and a reviewer approved
 it; the compiler and dispatch hold it to that. A `:system` actor can do only what the contract names
-it for: `Actor.system(:nightly_import)` cannot record a payment unless a declaration says
+it for: `Actor.system(:nightly_import)` cannot assign a pick list unless a declaration says
 `by: :nightly_import`, and a person's actor cannot be passed off as one, because the domain must
 declare the actor `:system`.
 
@@ -136,7 +140,7 @@ One callback:
 ```
 
 The request names the kind (`:command` or `:query`), the capability, the contract and its version, and
-for a scoped query the dimension and the value asked for (`{"clinic_id", "7"}`).
+for a scoped command or query the dimension and the value asked for (`{"warehouse_id", "7"}`).
 
 **The decision is `EhOsContract.Authorizer.check/2`**, and it reads nothing but the actor and the
 request:
@@ -178,36 +182,40 @@ A query may be scoped by one field of its read model ([`D10`](contract.md#refusa
 
 ```elixir
 # in the domain
-actor :reception, :human, "Recepcja", scope: [:clinic_id]
+actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
 
 # in the contract
-query :open_visits_for_clinic, "Otwarte wizyty w przychodni",
-  reads: :open_visits, by: [:reception], scope: :clinic_id do
-  param :clinic_id, :id
+query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
+  reads: :open_pick_lists, by: [:lead], scope: :warehouse_id do
+  param :warehouse_id, :id
 end
 ```
+
+A command may be scoped the same way, by one of its fields: `assign_pick_list` is `scope:
+:warehouse_id`, so a lead granted warehouse 7 cannot assign a pick list of warehouse 12, and its
+credential needs the values for it as for the query.
 
 EHOS binds the role with values, and the credential carries them:
 
 ```json
 {
-  "cap": ["rehmed.open_visits_for_clinic"],
-  "scp": {"rehmed.open_visits_for_clinic": {"clinic_id": ["7"]}}
+  "cap": ["fulfilment.open_pick_lists_for_warehouse"],
+  "scp": {"fulfilment.open_pick_lists_for_warehouse": {"warehouse_id": ["7"]}}
 }
 ```
 
 - **Before the implementation runs**, the value of the scope parameter is checked against the
-  granted values. Asking for clinic 12 with a grant for clinic 7 is `{:error, :outside_scope}`, and the
+  granted values. Asking for warehouse 12 with a grant for warehouse 7 is `{:error, :outside_scope}`, and the
   query's code never runs.
 - **A scoped capability without values is refused** (`:unscoped_grant`): the check fails closed.
 - **After the implementation answers**, every row's scope field is checked against the grant again.
   A row outside it raises `EhOsContract.Authorizer.OutsideScopeError` and no row is returned, so a
-  wrong `where` cannot hand one clinic another clinic's rows.
+  wrong `where` cannot hand one warehouse another warehouse's rows.
 - Values are compared as the strings the credential carries, so a granted value that is not of the
   field's type matches nothing instead of failing a cast.
 - The application's own `:system` actor named in the query's `by:` is not narrowed.
 
-`scope` is one field compared for equality. "Only the visits I handled" or a rule over several fields
+`scope` is one field compared for equality. "Only the pick lists assigned to me" or a rule over several fields
 stays in the application's code.
 
 ## Recording an event
@@ -215,7 +223,7 @@ stays in the application's code.
 `EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
 observation or an integration's answer. Its capability is `<domain>.<event>`, with the roles of
 the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command —
-reception marking that the patient arrived needs `rehmed.patient_arrived`. A `:system` actor the
+a picker reporting a shelf found empty needs `fulfilment.shelf_found_empty`. A `:system` actor the
 event names records it without a credential. `EhOsContract.Plug` serves it as
 `POST <mount>/records/<capability>` with the event's fields as the body.
 
@@ -248,12 +256,12 @@ their capabilities:
 
 ```elixir
 # in the host's router, after the plug that verifies the credential
-forward "/api", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+forward "/api", EhOsContract.Plug, contracts: [Fulfilment.Contracts.Warehouse]
 ```
 
 ```text
-POST /api/commands/rehmed.record_payment     {"visit_id": "w-1", "method": "card", "amount": 20000}
-GET  /api/queries/rehmed.open_visits_for_clinic?clinic_id=7
+POST /api/commands/fulfilment.assign_pick_list            {"warehouse_id": "7", "order_id": "order-1", "picker_id": "u-82"}
+GET  /api/queries/fulfilment.open_pick_lists_for_warehouse?warehouse_id=7
 ```
 
 It authenticates nobody. The actor is `conn.assigns.eh_os_contract_actor`, which the plug in front of
@@ -282,8 +290,8 @@ credential's actor.
 
 ```elixir
 EhOsContract.call(
-  {:command, "rehmed.record_payment"},
-  %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
+  {:command, "fulfilment.assign_pick_list"},
+  %{"warehouse_id" => "7", "order_id" => "order-1", "picker_id" => "u-82"},
   actor: actor, idempotency_key: "req-81"
 )
 #=> {:ok, %EhOsContract.Receipt{...}}
@@ -300,10 +308,11 @@ is why the plug no longer does.
 
 ```elixir
 actor =
-  EhOsContract.Actor.credential("u-81", ["rehmed.record_payment"])
+  EhOsContract.Actor.credential("u-81", ["fulfilment.assign_pick_list"],
+    %{"fulfilment.assign_pick_list" => %{"warehouse_id" => ["7"]}})
 
-EhOsContract.dispatch(Rehmed.Contracts.VisitSettlement,
-  %RecordPayment{visit_id: "w-1", method: :card, amount: 20_000},
+EhOsContract.dispatch(Fulfilment.Contracts.Warehouse,
+  %AssignPickList{warehouse_id: "7", order_id: "order-1", picker_id: "u-82"},
   actor: actor, idempotency_key: "req-81")
 #=> {:ok, %EhOsContract.Receipt{...}}
 

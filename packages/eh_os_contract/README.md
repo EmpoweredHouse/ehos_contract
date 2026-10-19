@@ -133,7 +133,7 @@ goes behind the `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: 
 To erase a subject — a person who asked for their data to be removed:
 
 ```elixir
-EhOsContract.erase(:patient, "p-17", actor: actor)
+EhOsContract.erase(:member, "member-17", actor: actor)
 ```
 
 It deletes the subject's data key, records the erasure and appends an event saying so; the

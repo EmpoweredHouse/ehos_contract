@@ -321,7 +321,7 @@ defmodule EhOsContract.Domain.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The value's name, used as a field type."],
       type: [type: :any, doc: "The built-in type, when the value is not a set of fields."],
-      unit: [type: :atom, doc: "What a number counts, e.g. `:grosze`."],
+      unit: [type: :atom, doc: "What a number counts, e.g. `:cents`."],
       label: [type: :string, doc: "What the business calls it."],
       context: [type: :atom, doc: "The context the value belongs to."],
       source: [type: :string, doc: "Where the value comes from in the material."]
@@ -412,7 +412,7 @@ defmodule EhOsContract.Domain.Dsl do
         doc:
           "Terms the relation translates, as pairs: the word of the first end, upstream or " <>
             "the first of `between:`, and the word of the second, each a term of its " <>
-            "context's glossary. `{\"Wizyta\", \"Wizyta\"}`."
+            "context's glossary. `{\"Member\", \"Member\"}`."
       ],
       source: [type: :string, doc: "Where the relation comes from in the material."]
     ]

@@ -4,12 +4,12 @@ defmodule EhOsContract.Implementation do
   How code binds to a contract, and what the contract checks in it while it
   compiles.
 
-      defmodule Rehmed.Settlement.VisitSettlement do
-        use Rehmed.Contracts.VisitSettlement, aggregate: :visit_settlement
+      defmodule Lending.Circulation.Loan do
+        use Lending.Contracts.Circulation, aggregate: :loan
 
         @impl true
-        def record_payment(%RecordPayment{visit_id: id, amount: a}, _state),
-          do: emit(%PaymentRecorded{visit_id: id, amount: a})
+        def pay_late_fee(%PayLateFee{loan_id: id, method: m}, _state),
+          do: emit(%LateFeePaid{loan_id: id, method: m})
       end
 
   `use C, aggregate: :name` — or `dcb:`, `policy:`, `effect:`, `process_manager:`,
@@ -44,20 +44,20 @@ defmodule EhOsContract.Implementation do
   | value, of a domain | one per invariant, `(value) :: boolean` |
 
   `reads` holds each entity the command reads under the name its `reads:` gives it,
-  as the host's `EhOsContract.Entities` returned it: `%{service: %{service_id: "s-1",
-  p1_reported: true}}`.
+  as the host's `EhOsContract.Entities` returned it: `%{card: %{card_id: "card-1",
+  suspended: false}}`.
 
   A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
   unit's own, a boundary's consulted ones too, and a process manager's triggers.
 
-  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`:
-  the behaviour is `Rehmed.Domain.Values.Money`, with one function per
+  **A domain's value** is bound the same way, `use Lending.Domain, value: :money`:
+  the behaviour is `Lending.Domain.Values.Money`, with one function per
   invariant the value declares, and I1 and I2 hold as they do for a contract. There
   is nothing to alias and nothing to emit.
 
-      defmodule Rehmed.Money do
-        use Rehmed.Domain, value: :money
+      defmodule Lending.Money do
+        use Lending.Domain, value: :money
 
         @impl true
         def not_negative(amount), do: amount >= 0

@@ -3,21 +3,21 @@ defmodule EhOsContract.StageOrder do
   @moduledoc """
   Which runs of a process reached a later stage before an earlier one.
 
-  A process's stages are in an order: a clinic's visit goes from the patient leaving,
-  through the specialist's close, to the report to the register. A run whose report
-  went out before the visit was closed did something the process does not say. This
-  counts such runs, and names the pairs of stages that were out of order:
+  A process's stages are in an order: a shop's order goes from its placing, through
+  picking in the warehouse, to shipping. A run whose parcel was booked with the carrier
+  before it was picked did something the process does not say. This counts such runs,
+  and names the pairs of stages that were out of order:
 
       %{runs: 3,
-        pairs: [%{earlier: :closing, later: :reporting, runs: 3,
-                  earlier_label: "Zamknięcie", later_label: "Zgłoszenie"}]}
+        pairs: [%{earlier: :picking, later: :shipping, runs: 3,
+                  earlier_label: "Picking", later_label: "Shipping"}]}
 
   A stage's label is its name where it declares none.
 
   The rules, each a choice made on purpose:
 
-  - **A stage is entered by its first event.** A run that closed, reported and closed
-    again counts its close by the first one, so a reopened visit does not show here.
+  - **A stage is entered by its first event.** A run that was picked, booked and picked
+    again counts its picking by the first one, so a repacked order does not show here.
   - **Order is the log's, not the clock's.** The first event of each stage is the one
     at the smallest position in the log, so clocks that disagree never decide it. A
     process includes only contracts of its own application, so all its stages are in

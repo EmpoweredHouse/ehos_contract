@@ -33,8 +33,8 @@ defmodule EhOsContract.Entities do
 
   - **`{:ok, row}`**, a map or a struct with atom keys, an Ecto schema included. The
     engine keeps the fields the domain declares for the entity, its identity among
-    them, and drops the rest; the decision gets `%{service: %{service_id: "s-1",
-    p1_reported: true}}`. A declared field missing from the row, or of the wrong type,
+    them, and drops the rest; the decision gets `%{card: %{card_id: "card-1",
+    suspended: false}}`. A declared field missing from the row, or of the wrong type,
     raises `EhOsContract.Entities.UnfitRowError`, naming the field and never its value:
     the host's code and the domain disagree.
   - **`:not_found`** refuses the command as a field naming nothing:

@@ -7,10 +7,10 @@ defmodule Mix.Tasks.EhOsContract.View do
   each with its stages in order and the events each includes, by contract.
 
       mix eh_os_contract.view                                   # the whole domain
-      mix eh_os_contract.view settlement                        # one context, without the processes
-      mix eh_os_contract.view settlement/visit_settlement       # one unit, consumer or query
+      mix eh_os_contract.view circulation                       # one context, without the processes
+      mix eh_os_contract.view circulation/loan                  # one unit, consumer or query
       mix eh_os_contract.view --details                         # with what each row declares
-      mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
+      mix eh_os_contract.view --domain lending                  # when there is more than one domain
 
   The domain, its contracts and process modules are found among the modules of
   `config :eh_os_contract, applications:`. `--output` writes the tree to a file.

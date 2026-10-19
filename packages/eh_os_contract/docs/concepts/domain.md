@@ -73,7 +73,7 @@ translations; `--language en` prints each term in English, or notes that it has 
 
 Labels are in the context's language and identifiers are in the domain's `code_language:`, English unless
 `use EhOsContract.Domain` says otherwise. A term's **word in code** is its translation into that language — or
-the term itself, in a context written in it — so a term "Wypożyczenie" with `translation :en, "Loan"` is the
+the term itself, in a context written in it — so a term "Ausleihe" with `translation :en, "Loan"` is the
 word `loan`, and `:loan`, `:loan_id` and `:return_loan` are named with it. A term with several words is
 matched as those words in a row: "Due date" is in `:due_date_set`, not in `:date_due`. Inflected forms are not
 matched.

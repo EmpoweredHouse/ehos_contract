@@ -112,14 +112,14 @@ end
 | Route | What |
 | --- | --- |
 | `GET /api/conformance?contract=…&since=…&until=…` | the conformance report, `eh_os_contract.conformance.v3` |
-| `GET /api/model`, `/api/model/rehmed.settlement` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
-| `GET /api/asyncapi`, `/api/asyncapi/rehmed.settlement` | what a contract publishes, as AsyncAPI |
-| `GET /api/openapi`, `/api/openapi/rehmed.settlement` | its commands and queries, as OpenAPI |
+| `GET /api/model`, `/api/model/lending.circulation` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
+| `GET /api/asyncapi`, `/api/asyncapi/billing.subscriptions` | what a contract publishes, as AsyncAPI |
+| `GET /api/openapi`, `/api/openapi/lending.circulation` | its commands and queries, as OpenAPI |
 | `GET /api/graph` | every contract, process module and domain with its version and graph digest |
-| `GET /api/graph/rehmed.settlement` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |
-| `GET /api/graph/rehmed.settlement/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
-| `GET /api/graph/process/rehmed.clinical_visit`, `…/overlay` | the same for a process module: its stages, the events they include, its promises; over it its runs, the events' occurrences and each promise's verdicts |
-| `GET /api/graph/domain/Rehmed.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts, process modules and what crosses between them |
+| `GET /api/graph/lending.circulation` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |
+| `GET /api/graph/lending.circulation/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
+| `GET /api/graph/process/fulfilment.order`, `…/overlay` | the same for a process module: its stages, the events they include, its promises; over it its runs, the events' occurrences and each promise's verdicts |
+| `GET /api/graph/domain/Lending.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts, process modules and what crosses between them |
 
 **Which to read.** A graph or a picture of a contract — a renderer — reads
 `/graph`: its document holds every fact a picture or a panel shows, by stable ids, and its

@@ -3,12 +3,12 @@ defmodule EhOsContract.Web.Api.Graph do
   # application draws, as the engine gives it. The dashboard reads the engine directly.
   #
   #     GET <mount>/graph                                       contracts, process modules and domains, with versions and digests
-  #     GET <mount>/graph/rehmed.settlement                     a contract's document, its digest as the ETag
-  #     GET <mount>/graph/rehmed.settlement/overlay?since=…&until=…   what the log says over it
-  #     GET <mount>/graph/process/rehmed.clinical_visit         a process module's document
-  #     GET <mount>/graph/process/rehmed.clinical_visit/overlay?since=…&until=…
-  #     GET <mount>/graph/domain/Rehmed.Domain                  a domain's document
-  #     GET <mount>/graph/domain/Rehmed.Domain/overlay?since=…&until=…
+  #     GET <mount>/graph/lending.circulation                    a contract's document, its digest as the ETag
+  #     GET <mount>/graph/lending.circulation/overlay?since=…&until=…   what the log says over it
+  #     GET <mount>/graph/process/fulfilment.order              a process module's document
+  #     GET <mount>/graph/process/fulfilment.order/overlay?since=…&until=…
+  #     GET <mount>/graph/domain/Lending.Domain                 a domain's document
+  #     GET <mount>/graph/domain/Lending.Domain/overlay?since=…&until=…
   #
   # A contract is named by its `id:`, as the model and conformance APIs name it (plan
   # DD, P1a, #183); a module's name is an unknown contract. A process module is named by
