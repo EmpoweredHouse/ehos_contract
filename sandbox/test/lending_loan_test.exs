@@ -64,13 +64,14 @@ defmodule Lending.LoanTest do
   defp verdicts(opts),
     do: Trace.evaluate(Lending.Processes.LateFee, :settled_within_thirty_days, opts)
 
-  test "nothing before the due date, a notice at it, and another a week later" do
+  test "nothing before the due date, a notice at it, and another a week after the due date" do
     lend("loan-1")
 
     drain(DateTime.add(@due, -60))
     assert notices("loan-1") == []
 
-    drain(DateTime.add(@due, 60))
+    # An hour late: the next reminder is still a week after the due date.
+    drain(DateTime.add(@due, 3600))
     assert length(notices("loan-1")) == 1
 
     drain(later(6))
