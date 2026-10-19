@@ -102,7 +102,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | Stage | What | Issue | Status |
 | --- | --- | --- | --- |
 | PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
-| PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ◐ `pb/369-lending` |
+| PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ◐ #370, #372, #373; `pb/369-graph-fixtures` |
 | PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | — | ☐ |
 | PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |

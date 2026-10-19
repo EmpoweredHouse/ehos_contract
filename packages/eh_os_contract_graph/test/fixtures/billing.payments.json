@@ -1,0 +1,603 @@
+{
+  "context": "context:Billing.Domain:payments",
+  "contract": "billing.payments",
+  "digest": "a5191c7fa0b7",
+  "domain": "Billing.Domain",
+  "kind": "contract",
+  "module": "Billing.Contracts.Payments",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Billing.Domain:account_manager",
+        "label": "Account manager",
+        "name": "account_manager",
+        "responsibilities": [],
+        "role": "billing.account_manager",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "system",
+        "context": "context:Billing.Domain:payments",
+        "id": "actor:Billing.Domain:gateway_integration",
+        "label": "Payment gateway integration",
+        "name": "gateway_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "command:billing.payments:request_payment",
+        "label": "Ask for a payment",
+        "name": "request_payment",
+        "source": null,
+        "unit": "unit:billing.payments:payment"
+      },
+      {
+        "capability": "billing.write_off_payment",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:billing.payments:write_off_payment",
+        "label": "Write a payment off",
+        "name": "write_off_payment",
+        "source": null,
+        "unit": "unit:billing.payments:payment"
+      }
+    ],
+    "constraint": [],
+    "context": [
+      {
+        "id": "context:Billing.Domain:payments",
+        "label": "Payments",
+        "name": "payments",
+        "source": null
+      }
+    ],
+    "domain_service": [],
+    "effect": [
+      {
+        "delivery": "at_least_once",
+        "id": "effect:billing.payments:collect_payment",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "downstream"
+        },
+        "label": "Charge the customer through the gateway",
+        "name": "collect_payment",
+        "source": null
+      }
+    ],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.payments:requested",
+        "label": "Payment requested",
+        "name": "requested",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.payments.requested",
+        "unit": "unit:billing.payments:payment"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.payments:collected",
+        "label": "Payment collected",
+        "name": "collected",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.payments.collected",
+        "unit": "unit:billing.payments:payment"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:billing.payments:written_off",
+        "label": "Payment written off",
+        "name": "written_off",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.payments.written_off",
+        "unit": "unit:billing.payments:payment"
+      },
+      {
+        "declared_as": "event:billing.subscriptions:issued",
+        "declared_in": "billing.subscriptions",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.payments:issued",
+        "label": "Invoice issued",
+        "name": "issued",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.issued"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Billing.Domain:payment_gateway",
+        "label": "Payment gateway",
+        "name": "payment_gateway",
+        "operations": [
+          {
+            "label": "Charge a customer's card",
+            "name": "charge",
+            "source": null
+          }
+        ],
+        "source": null,
+        "unavailable_looks_like": "the gateway answers that it is unavailable, or does not answer"
+      }
+    ],
+    "invariant": [
+      {
+        "id": "invariant:billing.payments:unit:payment:requested_once",
+        "label": "A payment is asked for once",
+        "name": "requested_once",
+        "of": "unit:billing.payments:payment",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.payments:unit:payment:only_an_unpaid_payment_is_written_off",
+        "label": "Only a payment still owed is written off",
+        "name": "only_an_unpaid_payment_is_written_off",
+        "of": "unit:billing.payments:payment",
+        "source": null
+      }
+    ],
+    "policy": [
+      {
+        "delivery": "at_least_once",
+        "id": "policy:billing.payments:request_payment_for_invoice",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "infrastructure"
+        },
+        "label": "Ask for the payment of an issued invoice",
+        "name": "request_payment_for_invoice",
+        "source": null
+      }
+    ],
+    "process_manager": [],
+    "publication": [],
+    "query": [],
+    "read_model": [],
+    "status": [],
+    "subject": [],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:billing.payments:payment",
+        "identity": [
+          "subscription_id",
+          "period_id"
+        ],
+        "label": "Payment",
+        "name": "payment",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "requested",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "settled",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Billing.Domain:money",
+        "invariants": [
+          {
+            "label": "An amount is not negative",
+            "name": "not_negative",
+            "satisfied_by": [
+              0,
+              2000
+            ],
+            "source": null,
+            "violated_by": [
+              -1,
+              -2000
+            ]
+          }
+        ],
+        "label": "Amount",
+        "name": "money",
+        "source": null,
+        "type": "integer",
+        "unit": "cents"
+      }
+    ]
+  },
+  "relations": {
+    "allowed_in": [],
+    "backed_by": [
+      {
+        "from": "actor:Billing.Domain:gateway_integration",
+        "id": "backed_by:actor:Billing.Domain:gateway_integration:external:Billing.Domain:payment_gateway",
+        "to": "external:Billing.Domain:payment_gateway"
+      }
+    ],
+    "builds": [
+      {
+        "from": "event:billing.payments:requested",
+        "id": "builds:event:billing.payments:requested:unit:billing.payments:payment",
+        "to": "unit:billing.payments:payment"
+      },
+      {
+        "from": "event:billing.payments:collected",
+        "id": "builds:event:billing.payments:collected:unit:billing.payments:payment",
+        "to": "unit:billing.payments:payment"
+      },
+      {
+        "from": "event:billing.payments:written_off",
+        "id": "builds:event:billing.payments:written_off:unit:billing.payments:payment",
+        "to": "unit:billing.payments:payment"
+      }
+    ],
+    "calls": [
+      {
+        "from": "effect:billing.payments:collect_payment",
+        "id": "calls:effect:billing.payments:collect_payment:external:Billing.Domain:payment_gateway:charge",
+        "operation": "charge",
+        "to": "external:Billing.Domain:payment_gateway"
+      }
+    ],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [
+      {
+        "from": "event:billing.payments:collected",
+        "id": "depends_on:event:billing.payments:collected:external:Billing.Domain:payment_gateway",
+        "to": "external:Billing.Domain:payment_gateway"
+      }
+    ],
+    "emits": [
+      {
+        "from": "command:billing.payments:request_payment",
+        "id": "emits:command:billing.payments:request_payment:event:billing.payments:requested",
+        "to": "event:billing.payments:requested"
+      },
+      {
+        "from": "command:billing.payments:write_off_payment",
+        "id": "emits:command:billing.payments:write_off_payment:event:billing.payments:written_off",
+        "to": "event:billing.payments:written_off"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "handled_by": [
+      {
+        "from": "event:billing.payments:issued",
+        "id": "handled_by:event:billing.payments:issued:policy:billing.payments:request_payment_for_invoice",
+        "to": "policy:billing.payments:request_payment_for_invoice"
+      },
+      {
+        "from": "event:billing.payments:requested",
+        "id": "handled_by:event:billing.payments:requested:effect:billing.payments:collect_payment",
+        "to": "effect:billing.payments:collect_payment"
+      }
+    ],
+    "issues": [
+      {
+        "from": "policy:billing.payments:request_payment_for_invoice",
+        "id": "issues:policy:billing.payments:request_payment_for_invoice:command:billing.payments:request_payment",
+        "to": "command:billing.payments:request_payment"
+      }
+    ],
+    "may_ask": [],
+    "may_issue": [
+      {
+        "from": "actor:Billing.Domain:account_manager",
+        "id": "may_issue:actor:Billing.Domain:account_manager:command:billing.payments:write_off_payment",
+        "to": "command:billing.payments:write_off_payment"
+      }
+    ],
+    "may_record": [
+      {
+        "from": "actor:Billing.Domain:gateway_integration",
+        "id": "may_record:actor:Billing.Domain:gateway_integration:event:billing.payments:collected",
+        "to": "event:billing.payments:collected"
+      }
+    ],
+    "projected_into": [],
+    "published_as": [],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:billing.payments:request_payment",
+        "id": "refused_on:command:billing.payments:request_payment:invariant:billing.payments:unit:payment:requested_once",
+        "to": "invariant:billing.payments:unit:payment:requested_once"
+      },
+      {
+        "from": "command:billing.payments:write_off_payment",
+        "id": "refused_on:command:billing.payments:write_off_payment:invariant:billing.payments:unit:payment:only_an_unpaid_payment_is_written_off",
+        "to": "invariant:billing.payments:unit:payment:only_an_unpaid_payment_is_written_off"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [
+      {
+        "covers": [
+          "handled_by:event:billing.payments:issued:policy:billing.payments:request_payment_for_invoice",
+          "issues:policy:billing.payments:request_payment_for_invoice:command:billing.payments:request_payment"
+        ],
+        "description": "an issued invoice asks for its payment",
+        "event": {
+          "data": {
+            "period_id": "2026-01",
+            "subscription_id": "sub-1",
+            "total": 2200
+          },
+          "event": "event:billing.payments:issued"
+        },
+        "id": "scenario:billing.payments:an issued invoice asks for its payment",
+        "illustrates": [],
+        "issues": [
+          {
+            "command": "command:billing.payments:request_payment",
+            "data": {
+              "amount": 2200,
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            }
+          }
+        ],
+        "target": "policy:billing.payments:request_payment_for_invoice"
+      }
+    ],
+    "process_manager": [],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:billing.payments:request_payment",
+          "data": {
+            "amount": 2200,
+            "period_id": "2026-01",
+            "subscription_id": "sub-1"
+          }
+        },
+        "covers": [
+          "emits:command:billing.payments:request_payment:event:billing.payments:requested"
+        ],
+        "description": "a payment is asked for",
+        "expect": [
+          {
+            "data": {
+              "amount": 2200
+            },
+            "event": "event:billing.payments:requested"
+          }
+        ],
+        "given": [],
+        "id": "scenario:billing.payments:a payment is asked for",
+        "target": "unit:billing.payments:payment"
+      },
+      {
+        "command": {
+          "command": "command:billing.payments:request_payment",
+          "data": {
+            "amount": 2200
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.payments:request_payment:invariant:billing.payments:unit:payment:requested_once"
+        ],
+        "description": "a payment is asked for once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 2200,
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.payments:requested"
+          }
+        ],
+        "id": "scenario:billing.payments:a payment is asked for once",
+        "rejected": "invariant:billing.payments:unit:payment:requested_once",
+        "target": "unit:billing.payments:payment"
+      },
+      {
+        "command": {
+          "command": "command:billing.payments:write_off_payment",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:billing.payments:write_off_payment:event:billing.payments:written_off"
+        ],
+        "description": "a payment the gateway never took is written off",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:billing.payments:written_off"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "amount": 2200,
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.payments:requested"
+          }
+        ],
+        "id": "scenario:billing.payments:a payment the gateway never took is written off",
+        "target": "unit:billing.payments:payment"
+      },
+      {
+        "command": {
+          "command": "command:billing.payments:write_off_payment",
+          "data": {}
+        },
+        "covers": [
+          "refused_on:command:billing.payments:write_off_payment:invariant:billing.payments:unit:payment:only_an_unpaid_payment_is_written_off"
+        ],
+        "description": "a payment collected is not written off",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 2200,
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.payments:requested"
+          },
+          {
+            "data": {
+              "amount": 2200
+            },
+            "event": "event:billing.payments:collected"
+          }
+        ],
+        "id": "scenario:billing.payments:a payment collected is not written off",
+        "rejected": "invariant:billing.payments:unit:payment:only_an_unpaid_payment_is_written_off",
+        "target": "unit:billing.payments:payment"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "105f0d8bcae4"
+}

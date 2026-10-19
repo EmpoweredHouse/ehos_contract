@@ -869,8 +869,10 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
         assert leaked == [], "#{where}: #{inspect(leaked)}"
 
+        # The panel's words for how a reaction is delivered, not the business's: a parcel
+        # may well be delivered.
         refute LazyHTML.text(html) =~
-                 ~r/delivered|idempoten|One run per|transaction|In the log as/i,
+                 ~r/delivered at least once|idempoten|One run per|transaction|In the log as/i,
                where
       end
     end
