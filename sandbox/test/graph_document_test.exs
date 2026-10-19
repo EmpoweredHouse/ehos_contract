@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphDocumentTest do
   @moduledoc """
-  Plan E13a: the `graph.v1` document of every contract and every domain of the client
-  trees — TaxVision, Rehmed, AppUnite's equipment — holds to the schema the engine
+  Plan E13a: the `graph.v1` document of every contract and every domain of the sandbox —
+  the client trees and the invented case studies — holds to the schema the engine
   ships, every id in it resolves, and none carries a personal value of Rehmed's. The
   engine's own suite checks its fixtures; these are the documents a renderer will
   actually be given.
@@ -26,7 +26,7 @@ defmodule EhOsContract.GraphDocumentTest do
   test "every contract and every domain gives a document, all of them" do
     names = documents() |> Enum.map(&elem(&1, 0)) |> Enum.map(&inspect/1)
 
-    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment. Lending. Billing.) do
+    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment. Lending. Billing. Fulfilment.) do
       assert Enum.count(names, &String.starts_with?(&1, prefix)) >= 2, prefix
     end
   end

@@ -191,6 +191,67 @@
       usage: [type: {:fields, [units: [type: :integer], usage_id: [type: :id]]}]
     ]
   },
+  "fulfilment.orders.cancelled" => %{
+    1 => [
+      order_id: [type: :id]
+    ]
+  },
+  "fulfilment.orders.payment_confirmed" => %{
+    1 => [
+      order_id: [type: :id],
+      warehouse_id: [type: :id]
+    ]
+  },
+  "fulfilment.orders.placed" => %{
+    1 => [
+      items: [type: :integer],
+      order_id: [type: :id],
+      warehouse_id: [type: :id]
+    ]
+  },
+  "fulfilment.shipping.booked" => %{
+    1 => [
+      order_id: [type: :id],
+      service: [type: {:enum, [:freight, :parcel]}],
+      weight_grams: [type: :integer]
+    ]
+  },
+  "fulfilment.shipping.delivered" => %{
+    1 => [
+      order_id: [type: :id]
+    ]
+  },
+  "fulfilment.shipping.dispatched" => %{
+    1 => [
+      order_id: [type: :id]
+    ]
+  },
+  "fulfilment.warehouse.assigned" => %{
+    1 => [
+      order_id: [type: :id],
+      picker_id: [type: :id],
+      warehouse_id: [type: :id]
+    ]
+  },
+  "fulfilment.warehouse.opened" => %{
+    1 => [
+      order_id: [type: :id],
+      warehouse_id: [type: :id]
+    ]
+  },
+  "fulfilment.warehouse.parcel_packed" => %{
+    1 => [
+      order_id: [type: :id],
+      warehouse_id: [type: :id],
+      weight_grams: [type: :integer]
+    ]
+  },
+  "fulfilment.warehouse.picked" => %{
+    1 => [
+      order_id: [type: :id],
+      warehouse_id: [type: :id]
+    ]
+  },
   "graph-lab.clinical_documentation.diagnosis_coded" => %{
     1 => [
       icd10: [type: :string, personal: :patient_id],
