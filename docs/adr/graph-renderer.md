@@ -372,7 +372,7 @@ Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297#i
 
 The first amendment of 15 October says the Console reads each application's documents from its JSON API and
 fetches them. EHOS decided instead that it takes the documents with each deployment and never from a running
-application ([D-123](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/adr/0123-ehos-takes-each-application-s-domain-graph-documents-with-its-deployment-and-joins-them-into-a-landscape-when-someone-reads-it.md), accepted by the user on 19 October). An application's pipeline writes each domain's `graph.v1` document from the commit it builds
+application ([D-123](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/adr/0123-ehos-takes-each-application-s-domain-graph-documents-with-its-deployment-and-joins-them-into-a-landscape-when-someone-reads-it.md), accepted by the user on 19 October). An application's pipeline writes each domain's graph document (`graph.v1`) from the commit it builds
 (`mix eh_os_contract.graph --domain <name>`) and submits them with the deployment, beside the image and the
 manifest. EHOS keeps them with that deployment and, when someone reads an environment's landscape, joins the
 documents of each application's latest active deployment there with `Landscape.join/1`, keeping nothing joined.
