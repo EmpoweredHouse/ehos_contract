@@ -20,43 +20,43 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       defmodule #{inspect(@visits)} do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(@visits)}"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
-          command :book, "Umów", by: :reception, emits: :booked
-          command :note, "Notatka", by: :reception, emits: :noted
-          command :reschedule, "Przełóż", by: :reception, emits: :rescheduled
-          command :close, "Zamknij", by: :reception, emits: :visit_closed
+          command :book, "Book", by: :reception, emits: :booked
+          command :note, "Note", by: :reception, emits: :noted
+          command :reschedule, "Reschedule", by: :reception, emits: :rescheduled
+          command :close, "Close", by: :reception, emits: :visit_closed
 
-          event :booked, "Umówiono"
-          event :noted, "Zanotowano"
-          event :rescheduled, "Przełożono"
-          event :visit_closed, "Zamknięto"
+          event :booked, "Booked"
+          event :noted, "Noted"
+          event :rescheduled, "Rescheduled"
+          event :visit_closed, "Closed"
         end
 
-        aggregate :drawer, "Szuflada" do
+        aggregate :drawer, "Drawer" do
           identity :visit_id
         end
 
-        read_model :bookings, "Wizyty", projects: :booked do
+        read_model :bookings, "Visits", projects: :booked do
           field :visit_id, :id
         end
 
-        read_model :forgotten, "Zapomniane", projects: :booked do
+        read_model :forgotten, "Forgotten", projects: :booked do
           field :visit_id, :id
         end
 
-        query :bookings_of, "Wizyty", reads: :bookings, by: :reception do
+        query :bookings_of, "Visits", reads: :bookings, by: :reception do
           param :visit_id, :id
         end
 
-        process_manager :reminder, "Przypomnienie" do
+        process_manager :reminder, "Reminder" do
           correlate :visit_id
           starts_on :booked, sets: :remind
           timer :remind, "Remind", wait: {1, :day}
         end
 
-        process_manager :follow_up, "Kontrola" do
+        process_manager :follow_up, "Follow-up" do
           correlate :visit_id
           starts_on :booked
           on :rescheduled
@@ -67,15 +67,15 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       defmodule #{inspect(@slots)} do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(@slots)}"
 
-        dcb :slot, "Termin" do
+        dcb :slot, "Slot" do
           identity [:room_id, :slot_id]
 
           consults :taken, match: :room_id
-          consults :room_closed, where: "każdy zamknięty gabinet"
+          consults :room_closed, where: "every closed room"
 
-          command :take, "Zajmij", by: :reception, emits: :taken
-          event :taken, "Zajęto"
-          event :room_closed, "Zamknięto gabinet", recorded_by: :reception
+          command :take, "Take", by: :reception, emits: :taken
+          event :taken, "Taken"
+          event :room_closed, "Room closed", recorded_by: :reception
         end
       end
       """,
@@ -131,25 +131,25 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       defmodule EhOsContract.CheckCompletenessContractTest.FanOut do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.fan_out"
 
-        aggregate :batch, "Paczka" do
+        aggregate :batch, "Batch" do
           identity :batch_id
-          command :start, "Rozpocznij", by: :reception, emits: :started
-          command :handle_item, "Obsłuż", emits: :item_handled
-          event :started, "Rozpoczęto"
-          event :item_handled, "Obsłużono"
+          command :start, "Start", by: :reception, emits: :started
+          command :handle_item, "Handle", emits: :item_handled
+          event :started, "Started"
+          event :item_handled, "Handled"
         end
 
-        policy :handle_each, "Obsłuż każdy", handles: :started, issues: :handle_item
-        policy :handle_one, "Obsłuż jeden", handles: :started, issues: :handle_item
+        policy :handle_each, "Handle each", handles: :started, issues: :handle_item
+        policy :handle_one, "Handle one", handles: :started, issues: :handle_item
 
-        scenario "dwa elementy" do
+        scenario "two items" do
           target :handle_each
           on :started
           issues :handle_item
           issues :handle_item
         end
 
-        scenario "jeden element" do
+        scenario "one item" do
           target :handle_one
           on :started
           issues :handle_item
@@ -169,7 +169,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
              )
 
     assert message =~ "policy :handle_each"
-    assert message =~ "scenario \"dwa elementy\" shows it issuing 2 commands"
+    assert message =~ "scenario \"two items\" shows it issuing 2 commands"
     assert Finding.place(finding) == {"fan_out.ex", 12}
   end
 
@@ -179,23 +179,23 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       defmodule EhOsContract.CheckCompletenessContractTest.Intake do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.intake"
 
-        aggregate :referral, "Skierowanie" do
+        aggregate :referral, "Referral" do
           identity :visit_id
 
-          command :receive, "Przyjmij", by: :reception, emits: :received
-          command :withdraw, "Wycofaj", by: :reception, emits: :withdrawn
-          command :accept, "Zaakceptuj", by: :reception, emits: :accepted
-          command :forward, "Przekaż", by: :reception, emits: :forwarded
-          command :sign, "Podpisz", by: :reception, emits: :signed
+          command :receive, "Receive", by: :reception, emits: :received
+          command :withdraw, "Withdraw", by: :reception, emits: :withdrawn
+          command :accept, "Accept", by: :reception, emits: :accepted
+          command :forward, "Forward", by: :reception, emits: :forwarded
+          command :sign, "Sign", by: :reception, emits: :signed
 
-          event :received, "Przyjęto"
-          event :withdrawn, "Wycofano"
-          event :accepted, "Zaakceptowano"
-          event :forwarded, "Przekazano"
-          event :signed, "Podpisano"
+          event :received, "Received"
+          event :withdrawn, "Withdrawn"
+          event :accepted, "Accepted"
+          event :forwarded, "Forwarded"
+          event :signed, "Signed"
         end
 
-        process_manager :chase, "Ponaglenie" do
+        process_manager :chase, "Chase" do
           correlate :visit_id
           starts_on :received
           ends_on :withdrawn
@@ -205,7 +205,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       end
 
       defmodule EhOsContract.CheckCompletenessContractTest.Referral do
-        use EhOsContract.Process, id: "clinic.referral", domain: Clinic, label: "Skierowanie"
+        use EhOsContract.Process, id: "clinic.referral", domain: Clinic, label: "Referral"
 
         correlate :visit_id
 

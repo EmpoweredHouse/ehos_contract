@@ -20,58 +20,58 @@ defmodule EhOsContract.CheckCoreTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :core_rules, language: :pl
+        use EhOsContract.Domain, name: :core_rules, language: :en
 
-        subdomain :core, "Rdzeń", type: :core
-        subdomain :generic, "Ogólne", type: :generic
+        subdomain :core, "Core", type: :core
+        subdomain :generic, "Generic", type: :generic
 
-        context :scheduling, "Umawianie", subdomain: :core
-        context :reporting, "Sprawozdawczość", subdomain: :generic
+        context :scheduling, "Scheduling", subdomain: :core
+        context :reporting, "Reporting", subdomain: :generic
 
-        actor :reception, :human, "Recepcja"
+        actor :reception, :human, "Front desk"
       end
 
       defmodule #{inspect(@visits)} do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling,
           id: "core_rules.visits"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          invariant :once, "Wizyta kończy się raz"
+          invariant :once, "A visit ends once"
 
-          command :book, "Umów", by: :reception, emits: :booked
-          command :close, "Zamknij", by: :reception, emits: :closed, rejects: :once
-          command :remind, "Przypomnij", emits: :reminded
-          command :chase, "Pogoń", emits: :chased
-          command :confirm, "Potwierdź", by: :reception, emits: :confirmed
+          command :book, "Book", by: :reception, emits: :booked
+          command :close, "Close", by: :reception, emits: :closed, rejects: :once
+          command :remind, "Remind", emits: :reminded
+          command :chase, "Chase", emits: :chased
+          command :confirm, "Confirm", by: :reception, emits: :confirmed
 
-          event :booked, "Umówiona"
-          event :closed, "Zamknięta"
-          event :reminded, "Przypomniano"
-          event :chased, "Pogoniono"
-          event :confirmed, "Potwierdzona"
+          event :booked, "Booked"
+          event :closed, "Closed"
+          event :reminded, "Reminded"
+          event :chased, "Chased"
+          event :confirmed, "Confirmed"
         end
 
-        aggregate :draft, "Szkic" do
+        aggregate :draft, "Draft" do
           identity :draft_id
         end
 
-        aggregate :arrival, "Przyjście" do
+        aggregate :arrival, "Arrival" do
           identity :arrival_id
-          event :arrived, "Pacjent przyszedł", recorded_by: :reception
+          event :arrived, "Patient arrived", recorded_by: :reception
         end
 
-        policy :remind_on_booking, "Przypomnij po umówieniu", handles: :booked, issues: :remind
-        policy :confirm_on_booking, "Potwierdź po umówieniu", handles: :booked, issues: :confirm
+        policy :remind_on_booking, "Remind after booking", handles: :booked, issues: :remind
+        policy :confirm_on_booking, "Confirm after booking", handles: :booked, issues: :confirm
 
-        process_manager :chasing, "Pogoń za wizytą" do
+        process_manager :chasing, "Chase a visit" do
           correlate :visit_id
           starts_on :booked, sets: :chase_due
-          timer :chase_due, "Termin pogoni", wait: {1, :day}, issues: :chase
+          timer :chase_due, "Chase due", wait: {1, :day}, issues: :chase
           ends_on :closed
         end
 
-        scenario "zamknięta wizyta nie zamyka się drugi raz" do
+        scenario "a closed visit does not close a second time" do
           given :closed
           command :close
           rejected :once
@@ -82,10 +82,10 @@ defmodule EhOsContract.CheckCoreTest do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting,
           id: "core_rules.reports"
 
-        aggregate :report, "Raport" do
+        aggregate :report, "Report" do
           identity :report_id
-          command :file, "Złóż", by: :reception, emits: :filed
-          event :filed, "Złożony"
+          command :file, "File", by: :reception, emits: :filed
+          event :filed, "Filed"
         end
       end
       """,

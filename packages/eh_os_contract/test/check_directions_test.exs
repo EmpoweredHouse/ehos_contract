@@ -14,18 +14,18 @@ defmodule EhOsContract.CheckDirectionsTest do
     compile(
       """
       defmodule EhOsContract.CheckDirectionsTest.Clinic do
-        use EhOsContract.Domain, name: :directions, language: :pl
+        use EhOsContract.Domain, name: :directions, language: :en
 
-        subdomain :core, "Rdzeń", type: :core
-        context :reporting, "Raporty", subdomain: :core
-        actor :reception, :human, "Recepcja"
-        actor :bank_feed, :system, "Wyciągi", backed_by: :ksef
-        actor :p1_answers, :system, "Odpowiedzi P1", backed_by: :p1
+        subdomain :core, "Core", type: :core
+        context :reporting, "Reports", subdomain: :core
+        actor :reception, :human, "Front desk"
+        actor :bank_feed, :system, "Bank statements", backed_by: :e_invoicing
+        actor :registry_answers, :system, "Registry answers", backed_by: :health_registry
         external :bank, "Bank", direction: :inbound
-        external :ksef, "KSeF", direction: :outbound
-        external :p1, "P1", direction: :bidirectional
+        external :e_invoicing, "E-invoicing registry", direction: :outbound
+        external :health_registry, "Health registry", direction: :bidirectional
 
-        entity :invoice, "Faktura", context: :reporting, identity: :number, issued_by: :ksef do
+        entity :invoice, "Invoice", context: :reporting, identity: :number, issued_by: :e_invoicing do
         end
       end
 
@@ -34,19 +34,19 @@ defmodule EhOsContract.CheckDirectionsTest do
           domain: EhOsContract.CheckDirectionsTest.Clinic,
           context: :reporting, id: "directions.reports"
 
-        aggregate :report, "Raport" do
+        aggregate :report, "Report" do
           identity :report_id
 
-          command :file, "Złóż", by: [:reception, :bank_feed, :p1_answers], emits: :filed do
-            field :invoice_no, :id, issued_by: :ksef
-            field :p1_no, :id, issued_by: :p1
+          command :file, "File", by: [:reception, :bank_feed, :registry_answers], emits: :filed do
+            field :invoice_no, :id, issued_by: :e_invoicing
+            field :registry_no, :id, issued_by: :health_registry
           end
 
-          event :filed, "Złożono"
+          event :filed, "Filed"
         end
 
-        effect :ask_bank, "Zapytaj bank", handles: :filed, calls: :bank, idempotency: [key: :report_id, owner: :self]
-        effect :send_p1, "Wyślij do P1", handles: :filed, calls: :p1, idempotency: [key: :report_id, owner: :self]
+        effect :ask_bank, "Ask the bank", handles: :filed, calls: :bank, idempotency: [key: :report_id, owner: :self]
+        effect :send_to_registry, "Send to the health registry", handles: :filed, calls: :health_registry, idempotency: [key: :report_id, owner: :self]
       end
       """,
       "clinic.ex"
@@ -62,9 +62,10 @@ defmodule EhOsContract.CheckDirectionsTest do
           do: {f.message, Finding.place(f)}
 
     assert [
-             {"actor :bank_feed is backed_by: :ksef" <> _, {"clinic.ex", 7}},
-             {"entity :invoice, identity :number is issued_by: :ksef" <> _, {"clinic.ex", 13}},
-             {"field :invoice_no is issued_by: :ksef" <> _, _command}
+             {"actor :bank_feed is backed_by: :e_invoicing" <> _, {"clinic.ex", 7}},
+             {"entity :invoice, identity :number is issued_by: :e_invoicing" <> _,
+              {"clinic.ex", 13}},
+             {"field :invoice_no is issued_by: :e_invoicing" <> _, _command}
            ] = Enum.sort(found)
   end
 end

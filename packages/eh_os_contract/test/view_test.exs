@@ -16,12 +16,12 @@ defmodule EhOsContract.ViewTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        context :archive, "Archiwum", subdomain: :generic
-        actor :reception, :human, "Recepcja"
-        external :sms, "Bramka SMS", direction: :outbound
+        context :settlement, "Settlement", subdomain: :core
+        context :archive, "Archive", subdomain: :generic
+        actor :reception, :human, "Front desk"
+        external :sms, "SMS gateway", direction: :outbound
 
         subdomain :core, "Core", type: :core
         subdomain :generic, "Generic", type: :generic
@@ -30,42 +30,42 @@ defmodule EhOsContract.ViewTest do
       defmodule #{inspect(@visits)} do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(@visits)}"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          invariant :paid_once, "Wizyta jest opłacona raz"
+          invariant :paid_once, "A visit is paid once"
 
-          command :pay, "Zapłać", by: :reception, emits: :paid, rejects: [:paid_once, :positive] do
+          command :pay, "Pay", by: :reception, emits: :paid, rejects: [:paid_once, :positive] do
             field :amount, :integer
-            constraint :positive, "Kwota jest dodatnia"
+            constraint :positive, "The amount is positive"
           end
 
-          event :paid, "Zapłacono" do
+          event :paid, "Paid" do
             field :amount, :integer
           end
 
-          event :noted, "Zanotowano", recorded_by: :reception do
+          event :noted, "Noted", recorded_by: :reception do
             field :sms_id, :id, issued_by: :sms
           end
         end
 
-        policy :thank, "Podziękuj", handles: :paid, issues: :pay
+        policy :thank, "Thank", handles: :paid, issues: :pay
         effect :text, "SMS", handles: :paid, calls: :sms, idempotency: [key: :visit_id, owner: :self]
 
-        read_model :payments, "Płatności", projects: :paid do
+        read_model :payments, "Payments", projects: :paid do
           field :amount, :integer
         end
 
-        query :payments_of, "Płatności", reads: :payments, by: :reception do
+        query :payments_of, "Payments", reads: :payments, by: :reception do
           param :visit_id, :id
         end
 
-        scenario "druga płatność odrzucona" do
+        scenario "a second payment is rejected" do
           given :paid, %{amount: 1}
           command :pay, %{amount: 1}
           rejected :paid_once
         end
 
-        scenario "płatność 0 zł odrzucona" do
+        scenario "a payment of 0 is rejected" do
           command :pay, %{amount: 0}
           rejected :positive
         end
@@ -81,7 +81,7 @@ defmodule EhOsContract.ViewTest do
     assert View.render(@domain, [@visits]) ==
              """
              domain clinic  2 contexts · 1 contract
-             ├─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
+             ├─ context settlement  Settlement · subdomain core (core) · 1 contract
              │  └─ contract #{inspect(@visits)}
              │     ├─ aggregate visit  1 cmd · 2 evts
              │     │  ├─ command pay  → paid
@@ -91,7 +91,7 @@ defmodule EhOsContract.ViewTest do
              │     ├─ effect text  ← paid → sms
              │     ├─ read model payments  ← paid
              │     └─ query payments_of  → payments
-             └─ context archive  Archiwum · subdomain generic (generic) · no contract\
+             └─ context archive  Archive · subdomain generic (generic) · no contract\
              """
   end
 
@@ -99,15 +99,15 @@ defmodule EhOsContract.ViewTest do
     assert View.render(@domain, [@visits], path: [:settlement, :visit], details: true) ==
              """
              domain clinic  2 contexts · 1 contract
-             └─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
+             └─ context settlement  Settlement · subdomain core (core) · 1 contract
                 └─ contract #{inspect(@visits)}
                    └─ aggregate visit  1 cmd · 2 evts
                       │  identity: visit_id
-                      │  invariant paid_once — Wizyta jest opłacona raz
+                      │  invariant paid_once — A visit is paid once
                       ├─ command pay  → paid
                       │     visit_id: :id
                       │     amount: :integer
-                      │     constraint positive — Kwota jest dodatnia
+                      │     constraint positive — The amount is positive
                       ├─ event paid  ← pay
                       │     visit_id: :id
                       │     amount: :integer
