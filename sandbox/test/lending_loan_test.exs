@@ -80,6 +80,19 @@ defmodule Lending.LoanTest do
     assert length(notices("loan-1")) == 2
   end
 
+  test "a loan due long ago is reminded once, and a week later, not once a missed week" do
+    lend("loan-1")
+
+    drain(later(70))
+    assert length(notices("loan-1")) == 1
+
+    drain(later(76))
+    assert length(notices("loan-1")) == 1
+
+    drain(later(77) |> DateTime.add(3600))
+    assert length(notices("loan-1")) == 2
+  end
+
   test "a copy back before its due date is never chased" do
     lend("loan-1")
     send!(%ReturnCopy{loan_id: "loan-1", late_fee: 0}, later(-2))
