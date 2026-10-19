@@ -19,7 +19,7 @@ defmodule EhOsContract.UniversalityGateTest do
   # Its run, a process module since plan DD, P2g (#228).
   @run UniversalityGate.TreatmentEpisodeRun
 
-  test "the shapes TaxVision does not have survive the translation" do
+  test "the shapes an accounting domain does not have survive the translation" do
     model = Model.fetch(@contract)
     events = Map.new(model.events, &{&1.name, &1})
 

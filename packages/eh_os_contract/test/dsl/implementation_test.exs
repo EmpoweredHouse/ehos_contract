@@ -10,47 +10,47 @@ defmodule EhOsContract.ImplementationTest do
   alias EhOsContract.Fixtures.Billing
 
   @contract """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
       state do
         field :paid, :integer, default: 0
       end
 
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :integer
       end
 
-      command :close, "Zamknięcie",
+      command :close, "Closing",
         by: :reception,
         emits: [:closed, :closed_without_payment],
         rejects: :paid_in_full
 
-      command :remind, "Przypomnienie", emits: :reminded
+      command :remind, "Reminder", emits: :reminded
 
-      event :payment_recorded, "Zapłacono" do
+      event :payment_recorded, "Paid" do
         field :amount, :integer
       end
 
-      event :closed, "Zamknięto"
-      event :closed_without_payment, "Zamknięto bez płatności"
-      event :reminded, "Przypomniano"
+      event :closed, "Closed"
+      event :closed_without_payment, "Closed without payment"
+      event :reminded, "Reminded"
     end
 
-    policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
-    effect :notify, "Powiadom", handles: :closed, idempotency: [key: :event_id, owner: :downstream]
+    policy :remind_on_payment, "Remind after a payment", handles: :payment_recorded, issues: :remind
+    effect :notify, "Notify", handles: :closed, idempotency: [key: :event_id, owner: :downstream]
 
     # Marks time and issues nothing, so it has nothing to define.
-    process_manager :watch, "Obserwacja" do
+    process_manager :watch, "Observation" do
       correlate :visit_id
       starts_on :payment_recorded, sets: :look
       timer :look, "Look", wait: {1, :day}
       ends_on :closed
     end
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
 
       state do
@@ -62,24 +62,24 @@ defmodule EhOsContract.ImplementationTest do
       ends_on :closed
     end
 
-    read_model :payments, "Płatności", projects: :payment_recorded do
+    read_model :payments, "Payments", projects: :payment_recorded do
       field :visit_id, :id
       field :amount, :integer
     end
 
-    query :payments_of, "Płatności wizyty", reads: :payments, by: :reception do
+    query :payments_of, "A visit's payments", reads: :payments, by: :reception do
       param :visit_id, :id
     end
 
-    domain_service :pricing, "Cennik" do
-      function :price, "Cena usługi" do
+    domain_service :pricing, "Price list" do
+      function :price, "Price of a service" do
         argument :service_id, :id
         argument :minutes, :integer, optional: true
         returns :integer
       end
     end
 
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 100}
       command :close
       rejected :paid_in_full
@@ -365,7 +365,7 @@ defmodule EhOsContract.ImplementationTest do
     test "an event the boundary both emits and consults is named once" do
       compile(
         contract("SelfConsulting", """
-          dcb :invoicing, "Fakturowanie" do
+          dcb :invoicing, "Invoicing" do
             identity :payer_id
             consults :invoice_issued, match: :payer_id
 
@@ -373,9 +373,9 @@ defmodule EhOsContract.ImplementationTest do
               field :issued, :integer, default: 0
             end
 
-            command :issue, "Wystawienie", by: :reception, emits: :invoice_issued
-            event :invoice_issued, "Wystawiono"
-            event :invoice_noted, "Odnotowano", recorded_by: :reception
+            command :issue, "Issuing", by: :reception, emits: :invoice_issued
+            event :invoice_issued, "Issued"
+            event :invoice_noted, "Noted", recorded_by: :reception
           end
         """),
         "self_consulting.ex"

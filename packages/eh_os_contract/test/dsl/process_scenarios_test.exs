@@ -21,12 +21,12 @@ defmodule EhOsContract.ProcessScenariosTest do
       defmodule #{inspect(@domain)} do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
-        context :reporting, "Zgłoszenia", subdomain: :core
-        actor :reception, :human, "Recepcja", context: :reporting
-        actor :register_link, :system, "Integracja z rejestrem", backed_by: :register, context: :reporting
-        external :register, "Rejestr zdarzeń medycznych", direction: :bidirectional
-        external :mail, "Poczta", direction: :outbound
-        external :archive, "Archiwum", direction: :outbound
+        context :reporting, "Reports", subdomain: :core
+        actor :reception, :human, "Reception", context: :reporting
+        actor :register_link, :system, "Registry integration", backed_by: :register, context: :reporting
+        external :register, "Medical incident registry", direction: :bidirectional
+        external :mail, "Mail", direction: :outbound
+        external :archive, "Archive", direction: :outbound
 
         subdomain :core, "Core", type: :core
       end
@@ -44,21 +44,21 @@ defmodule EhOsContract.ProcessScenariosTest do
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting, id: "clinic.#{contract_name(name)}"
 
-      aggregate :report, "Zgłoszenie" do
+      aggregate :report, "Report" do
         identity :visit_id
 
-        command :complete_visit, "Zakończenie wizyty", by: :reception, emits: :visit_completed
-        command :waive_report, "Pominięcie zgłoszenia", by: :reception, emits: :reporting_not_required
+        command :complete_visit, "Completing the visit", by: :reception, emits: :visit_completed
+        command :waive_report, "Skipping the report", by: :reception, emits: :reporting_not_required
 
-        event :visit_completed, "Wizyta zakończona" do
+        event :visit_completed, "Visit completed" do
           field :room, :string
         end
 
-        event :report_sent, "Zgłoszenie wysłane", recorded_by: :register_link, depends_on: :register
-        event :reporting_not_required, "Zgłoszenie niewymagane"
+        event :report_sent, "Report sent", recorded_by: :register_link, depends_on: :register
+        event :reporting_not_required, "Report not required"
       end
 
-      effect :mail_report, "Wysłanie zgłoszenia pocztą",
+      effect :mail_report, "Sending the report by mail",
         handles: :report_sent,
         calls: :mail,
         idempotency: [key: :event_id, owner: :self]
@@ -90,7 +90,7 @@ defmodule EhOsContract.ProcessScenariosTest do
              or_else :reporting_not_required#{waits}
            end
 
-           scenario "rejestr nie działał, raport nie wysłany — obietnica zawieszona", verdict: :suspended do
+           scenario "the registry was down, report not sent — promise suspended", verdict: :suspended do
              given :visit_completed, #{given}, at: "2026-09-07T09:00:00Z"
              given :reporting_not_required, %{visit_id: "visit-anna"}, at: "2026-09-08T09:00:00Z"
              outage #{outage}, at: "2026-09-08T08:00:00Z"
@@ -126,7 +126,7 @@ defmodule EhOsContract.ProcessScenariosTest do
   # Line 23 is the scenario, 26 its first given, 27 the second, 28 the outage, 29 the
   # trigger.
   @scenario """
-    scenario "raport wysłany następnego dnia — obietnica dotrzymana",
+    scenario "report sent the next day — promise kept",
       verdict: :satisfied,
       via: :eventually do
       given :visit_completed, %{visit_id: "visit-anna"}, at: "2026-09-07T09:00:00Z"
@@ -159,7 +159,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       assert model.scenarios == [
                %{
-                 description: "raport wysłany następnego dnia — obietnica dotrzymana",
+                 description: "report sent the next day — promise kept",
                  verdict: :satisfied,
                  via: :eventually,
                  given: [
@@ -197,7 +197,7 @@ defmodule EhOsContract.ProcessScenariosTest do
           ""
         )
 
-      refuse(scenario, ~r/S1: scenario "raport.*" judges no promise/, 23)
+      refuse(scenario, ~r/S1: scenario "report.*" judges no promise/, 23)
     end
 
     test "a scenario that judges two promises is refused" do
@@ -225,7 +225,7 @@ defmodule EhOsContract.ProcessScenariosTest do
     end
 
     test "two scenarios with one description are refused" do
-      refuse(@scenario <> "\n" <> @scenario, ~s|has two scenarios described "raport|)
+      refuse(@scenario <> "\n" <> @scenario, ~s|has two scenarios described "report|)
     end
   end
 
@@ -235,7 +235,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       refuse(
         scenario,
-        "S2: scenario \"raport wysłany następnego dnia — obietnica dotrzymana\": given " <>
+        "S2: scenario \"report sent the next day — promise kept\": given " <>
           ":report_queued is not an event of the run of process \"clinic.visit\"",
         27
       )
@@ -259,7 +259,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       refuse(
         scenario,
-        "S3: scenario \"raport wysłany następnego dnia — obietnica dotrzymana\": given " <>
+        "S3: scenario \"report sent the next day — promise kept\": given " <>
           ":report_sent happened at 2026-09-06T10:00:00Z, before the given before it " <>
           "(2026-09-07T09:00:00Z)",
         27
@@ -274,11 +274,11 @@ defmodule EhOsContract.ProcessScenariosTest do
     end
 
     test "an outage's or the trigger's at: that is no timestamp is refused" do
-      outage = replace(@scenario, ~s|at: "2026-09-08T08:00:00Z"|, ~s|at: "wtorek"|)
-      refuse(outage, ~s|outage :p1, at: "wtorek" is not an ISO 8601 timestamp|, 28)
+      outage = replace(@scenario, ~s|at: "2026-09-08T08:00:00Z"|, ~s|at: "Tuesday"|)
+      refuse(outage, ~s|outage :p1, at: "Tuesday" is not an ISO 8601 timestamp|, 28)
 
-      trigger = replace(@scenario, ~s|at: "2026-09-10T09:00:00Z"|, ~s|at: "środa"|)
-      refuse(trigger, ~s|promise, at: "środa" is not an ISO 8601 timestamp|, 29)
+      trigger = replace(@scenario, ~s|at: "2026-09-10T09:00:00Z"|, ~s|at: "Wednesday"|)
+      refuse(trigger, ~s|promise, at: "Wednesday" is not an ISO 8601 timestamp|, 29)
     end
   end
 
@@ -289,7 +289,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       refuse(
         scenario,
-        "S11: scenario \"raport wysłany następnego dnia — obietnica dotrzymana\" says no verdict",
+        "S11: scenario \"report sent the next day — promise kept\" says no verdict",
         23
       )
     end
@@ -385,7 +385,7 @@ defmodule EhOsContract.ProcessScenariosTest do
 
       refuse(
         given,
-        "S11: scenario \"raport wysłany następnego dnia — obietnica dotrzymana\": given " <>
+        "S11: scenario \"report sent the next day — promise kept\": given " <>
           ":report_sent at 2026-09-08T10:00:00Z is after the moment the promise is judged, " <>
           "2026-09-08T09:00:00Z",
         27
@@ -425,7 +425,7 @@ defmodule EhOsContract.ProcessScenariosTest do
         checked("ProcScenarioData", ~s|%{visit_id: "visit-anna", rom: 12}|, ":register")
 
       assert assert_linked(violations, "X9:", "proc_scenario_data_visit.ex", 17) =~
-               ~s|X9: scenario "rejestr nie działał, raport nie wysłany — obietnica zawieszona": | <>
+               ~s|X9: scenario "the registry was down, report not sent — promise suspended": | <>
                  "event :visit_completed of #{inspect(@fixtures)}.ProcScenarioDataReporting: " <>
                  "no field :rom"
 

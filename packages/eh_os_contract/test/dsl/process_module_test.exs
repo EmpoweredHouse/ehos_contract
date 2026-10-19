@@ -19,7 +19,7 @@ defmodule EhOsContract.ProcessModuleTest do
     correlate :visit_id
 
     stage :departure, include: [{Clinic.Scheduling, :visit_completed}]
-    stage :closing, "Zamknięcie", include: [{Clinic.Documentation, :visit_closed_clinically}]
+    stage :closing, "Closing", include: [{Clinic.Documentation, :visit_closed_clinically}]
 
     stage :reporting,
       include: [{Clinic.Reporting, [:report_queued, :report_sent, :reporting_not_required]}]
@@ -31,7 +31,7 @@ defmodule EhOsContract.ProcessModuleTest do
       eventually :report_sent
       within {2, :day}
       or_else :reporting_not_required
-      source "Dz.U. 2025 poz. 866"
+      source "Regulation 2025/866"
     end
   """
 
@@ -45,7 +45,7 @@ defmodule EhOsContract.ProcessModuleTest do
       model =
         compile_process("ClinicalVisit", @body <> "\n  deadline {30, :day}, unverified: true\n",
           accountable: :manager,
-          source: "Warsztat 2"
+          source: "Workshop 2"
         )
 
       assert %{
@@ -56,7 +56,7 @@ defmodule EhOsContract.ProcessModuleTest do
                label: "Wizyta",
                domain: Clinic,
                accountable: :manager,
-               source: "Warsztat 2",
+               source: "Workshop 2",
                correlate: [:visit_id],
                ends_on: [:report_sent, :reporting_not_required],
                deadline: %{amount: 30, unit: :day, unverified: true}
@@ -70,7 +70,7 @@ defmodule EhOsContract.ProcessModuleTest do
                },
                %{
                  name: :closing,
-                 label: "Zamknięcie",
+                 label: "Closing",
                  includes: [%{contract: Clinic.Documentation, event: :visit_closed_clinically}]
                },
                %{
@@ -92,7 +92,7 @@ defmodule EhOsContract.ProcessModuleTest do
                  within: %{amount: 2, unit: :day},
                  or_else: :reporting_not_required,
                  unverified: false,
-                 source: "Dz.U. 2025 poz. 866"
+                 source: "Regulation 2025/866"
                }
              ] = model.promises
 
@@ -201,8 +201,8 @@ defmodule EhOsContract.ProcessModuleTest do
         compile_process(
           "WordsB",
           @body
-          |> replace(~s(source "Dz.U. 2025 poz. 866"), ~s(source "Dz.U. 2026 poz. 1"))
-          |> replace(~s("Zamknięcie"), ~s("Zamknięcie wizyty")),
+          |> replace(~s(source "Regulation 2025/866"), ~s(source "Regulation 2026/1"))
+          |> replace(~s("Closing"), ~s("Closing the visit")),
           id: "clinic.words_a"
         )
 
@@ -322,7 +322,7 @@ defmodule EhOsContract.ProcessModuleTest do
 
     test "a blank label is refused, the process's at the use and a stage's at the stage" do
       message =
-        refuse_process("BlankLabels", replace(@body, ~s|"Zamknięcie"|, ~s|" "|), label: "")
+        refuse_process("BlankLabels", replace(@body, ~s|"Closing"|, ~s|" "|), label: "")
 
       assert message =~
                ~s|N1: process "clinic.blank_labels" has a blank label; say what the business | <>
@@ -407,8 +407,8 @@ defmodule EhOsContract.ProcessModuleTest do
           "EmptyStage",
           replace(
             @body,
-            ~s|stage :closing, "Zamknięcie", include: [{Clinic.Documentation, :visit_closed_clinically}]|,
-            ~s|stage :closing, "Zamknięcie"|
+            ~s|stage :closing, "Closing", include: [{Clinic.Documentation, :visit_closed_clinically}]|,
+            ~s|stage :closing, "Closing"|
           )
         )
 

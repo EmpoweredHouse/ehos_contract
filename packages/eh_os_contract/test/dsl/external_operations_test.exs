@@ -22,15 +22,15 @@ defmodule EhOsContract.ExternalOperationsTest do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
         subdomain :core, "Core", type: :core
-        context :reporting, "Zgłoszenia", subdomain: :core
-        actor :specialist, :human, "Specjalista"
+        context :reporting, "Reports", subdomain: :core
+        actor :specialist, :human, "Specialist"
 
-        external :p1, "Rejestr P1", direction: :bidirectional do
-          operation :submit_report, "Przyjmij zgłoszenie zdarzenia medycznego", source: "X-01"
-          operation :withdraw_report, "Wycofaj zgłoszenie"
+        external :p1, "Registry P1", direction: :bidirectional do
+          operation :submit_report, "Accept a report of a medical incident", source: "X-01"
+          operation :withdraw_report, "Withdraw the report"
         end
 
-        external :mail, "Poczta", direction: :outbound
+        external :mail, "Mail", direction: :outbound
       end
       """,
       "operations_clinic.ex"
@@ -38,14 +38,14 @@ defmodule EhOsContract.ExternalOperationsTest do
 
     compile(
       reporting("OperationsModel", """
-        effect :send, "Wyślij", handles: :queued,
+        effect :send, "Send", handles: :queued,
           calls: [{:p1, :submit_report}, :mail],
           idempotency: [key: :event_id, owner: :downstream]
 
-        effect :notify, "Powiadom", handles: :queued, calls: :mail,
+        effect :notify, "Notify", handles: :queued, calls: :mail,
           idempotency: [key: :event_id, owner: :self]
 
-        effect :resend, "Wyślij ponownie", handles: :queued,
+        effect :resend, "Send again", handles: :queued,
           calls: [{:p1, :submit_report}, {:p1, :submit_report}],
           idempotency: [key: :event_id, owner: :downstream]
       """),
@@ -60,10 +60,10 @@ defmodule EhOsContract.ExternalOperationsTest do
     defmodule EhOsContract.Fixtures.#{name} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting, id: "clinic.#{contract_name(name)}"
 
-      aggregate :report, "Zgłoszenie" do
+      aggregate :report, "Report" do
         identity :report_id
-        command :queue, "Zakolejkuj", by: :specialist, emits: :queued
-        event :queued, "Zakolejkowano"
+        command :queue, "Queue", by: :specialist, emits: :queued
+        event :queued, "Queued"
       end
 
     #{effects}
@@ -81,7 +81,7 @@ defmodule EhOsContract.ExternalOperationsTest do
       mail = Enum.find(domain.externals, &(&1.name == :mail))
 
       assert [
-               %{name: :submit_report, label: "Przyjmij zgłoszenie zdarzenia medycznego"},
+               %{name: :submit_report, label: "Accept a report of a medical incident"},
                %{name: :withdraw_report, source: nil}
              ] = p1.operations
 
@@ -94,9 +94,9 @@ defmodule EhOsContract.ExternalOperationsTest do
           use EhOsContract.Domain, name: :clinic, language: :pl
 
           subdomain :core, "Core", type: :core
-          context :reporting, "Zgłoszenia", subdomain: :core
-          external :p1, "Rejestr P1", direction: :bidirectional
-          external :mail, "Poczta", direction: :outbound
+          context :reporting, "Reports", subdomain: :core
+          external :p1, "Registry P1", direction: :bidirectional
+          external :mail, "Mail", direction: :outbound
         end
         """,
         "operations_bare.ex"
@@ -114,12 +114,12 @@ defmodule EhOsContract.ExternalOperationsTest do
           use EhOsContract.Domain, name: :clinic, language: :pl
 
           subdomain :core, "Core", type: :core
-          context :reporting, "Zgłoszenia", subdomain: :core
+          context :reporting, "Reports", subdomain: :core
 
-          external :p1, "Rejestr P1", direction: :bidirectional do
-            operation :submit, "Przyjmij"
-            operation :submit, "Przyjmij jeszcze raz"
-            operation :Withdraw, "Wycofaj"
+          external :p1, "Registry P1", direction: :bidirectional do
+            operation :submit, "Accept"
+            operation :submit, "Accept again"
+            operation :Withdraw, "Withdraw"
           end
         end
         """
@@ -134,7 +134,7 @@ defmodule EhOsContract.ExternalOperationsTest do
   describe "X4: a call to a system with operations" do
     test "control: a call naming an operation, and a bare call to a system without any" do
       assert links("OperationsRight", """
-               effect :send, "Wyślij", handles: :queued,
+               effect :send, "Send", handles: :queued,
                  calls: [{:p1, :submit_report}, :mail],
                  idempotency: [key: :event_id, owner: :downstream]
              """) == []
@@ -143,10 +143,10 @@ defmodule EhOsContract.ExternalOperationsTest do
     test "refuses an operation the system does not declare, and a bare call to one that does" do
       violations =
         links("OperationsWrong", """
-          effect :send, "Wyślij", handles: :queued, calls: {:p1, :submit_reprot},
+          effect :send, "Send", handles: :queued, calls: {:p1, :submit_reprot},
             idempotency: [key: :event_id, owner: :downstream]
 
-          effect :resend, "Wyślij ponownie", handles: :queued, calls: :p1,
+          effect :resend, "Send again", handles: :queued, calls: :p1,
             idempotency: [key: :event_id, owner: :downstream]
         """)
 
@@ -167,7 +167,7 @@ defmodule EhOsContract.ExternalOperationsTest do
     test "refuses an operation of a system without any, and names a repeated call once" do
       violations =
         links("OperationsNone", """
-          effect :send, "Wyślij", handles: :queued, calls: [{:mail, :send}, :p1, :p1],
+          effect :send, "Send", handles: :queued, calls: [{:mail, :send}, :p1, :p1],
             idempotency: [key: :event_id, owner: :downstream]
         """)
 
@@ -185,7 +185,7 @@ defmodule EhOsContract.ExternalOperationsTest do
     test "names the system first when it is not one of the domain's" do
       violations =
         links("OperationsNoSystem", """
-          effect :send, "Wyślij", handles: :queued, calls: {:p2, :submit_report},
+          effect :send, "Send", handles: :queued, calls: {:p2, :submit_report},
             idempotency: [key: :event_id, owner: :downstream]
         """)
 
@@ -201,11 +201,11 @@ defmodule EhOsContract.ExternalOperationsTest do
         use EhOsContract.Domain, name: :quiet, language: :pl
 
         subdomain :core, "Core", type: :core
-        context :reporting, "Zgłoszenia", subdomain: :core
-        actor :specialist, :human, "Specjalista"
+        context :reporting, "Reports", subdomain: :core
+        actor :specialist, :human, "Specialist"
 
-        external :p1, "Rejestr P1", direction: :bidirectional do
-          operation :submit_report, "Przyjmij zgłoszenie"
+        external :p1, "Registry P1", direction: :bidirectional do
+          operation :submit_report, "Accept a report"
         end
       end
 
@@ -214,10 +214,10 @@ defmodule EhOsContract.ExternalOperationsTest do
           domain: EhOsContract.ExternalOperationsTest.Quiet,
           context: :reporting, id: "quiet.quiet_reports"
 
-        aggregate :report, "Zgłoszenie" do
+        aggregate :report, "Report" do
           identity :report_id
-          command :queue, "Zakolejkuj", by: :specialist, emits: :queued
-          event :queued, "Zakolejkowano"
+          command :queue, "Queue", by: :specialist, emits: :queued
+          event :queued, "Queued"
         end
       end
       """,
@@ -265,7 +265,7 @@ defmodule EhOsContract.ExternalOperationsTest do
       assert text =~ "Calls: `p1` (`submit_report`), `mail`."
 
       assert text =~
-               "  - operation `submit_report` — Przyjmij zgłoszenie zdarzenia medycznego · " <>
+               "  - operation `submit_report` — Accept a report of a medical incident · " <>
                  "_source: X-01_"
     end
 

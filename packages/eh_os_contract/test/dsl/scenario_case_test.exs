@@ -12,68 +12,68 @@ defmodule EhOsContract.ScenarioCaseTest do
   alias EhOsContract.ScenarioCase
 
   @contract """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
       state do
         field :paid, :integer, default: 0
       end
 
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
-      command :record_payment, "Przyjęcie płatności",
+      command :record_payment, "Recording a payment",
         by: :reception,
         emits: [:payment_recorded, :receipt_issued] do
         field :amount, :integer
         field :paid_at, :timestamp
       end
 
-      command :close, "Zamknięcie", by: :reception, emits: :closed, rejects: :paid_in_full
-      command :remind, "Przypomnienie", emits: :reminded
+      command :close, "Closing", by: :reception, emits: :closed, rejects: :paid_in_full
+      command :remind, "Reminder", emits: :reminded
 
-      event :payment_recorded, "Zapłacono" do
+      event :payment_recorded, "Paid" do
         field :amount, :integer
         field :paid_at, :timestamp
       end
 
-      event :receipt_issued, "Wydano paragon"
-      event :closed, "Zamknięto"
-      event :reminded, "Przypomniano"
+      event :receipt_issued, "Receipt issued"
+      event :closed, "Closed"
+      event :reminded, "Reminded"
     end
 
-    policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
+    policy :remind_on_payment, "Remind after a payment", handles: :payment_recorded, issues: :remind
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
       starts_on :payment_recorded, sets: :later
       timer :later, "Later", wait: {1, :day}, issues: :remind
       ends_on :closed
     end
 
-    scenario "płatność — paragon wśród zdarzeń" do
+    scenario "payment — a receipt among the events" do
       command :record_payment, %{amount: 100, paid_at: "2026-09-01T09:00:00Z"}
       expect :payment_recorded, %{paid_at: "2026-09-01T09:00:00Z"}
       expect :receipt_issued
     end
 
-    scenario "sam paragon wystarcza" do
+    scenario "a receipt alone is enough" do
       command :record_payment, %{amount: 100, paid_at: "2026-09-01T09:00:00Z"}
       expect :receipt_issued
     end
 
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 50, paid_at: "2026-09-01T09:00:00Z"}
       command :close
       rejected :paid_in_full
     end
 
-    scenario "zapłacono całość — wizyta zamknięta" do
+    scenario "paid in full — visit closed" do
       given :payment_recorded, %{visit_id: "w-7", amount: 100, paid_at: "2026-09-01T09:00:00Z"}
       command :close
       expect :closed, %{visit_id: "w-7"}
     end
 
-    scenario "płatność z września — wizyta zamknięta" do
+    scenario "a September payment — visit closed" do
       given :payment_recorded, %{visit_id: "w-8", amount: 100, paid_at: "2026-09-01T09:00:00Z"},
         at: "2026-09-01T09:00:00Z"
 
@@ -81,13 +81,13 @@ defmodule EhOsContract.ScenarioCaseTest do
       expect :closed, %{visit_id: "w-8"}
     end
 
-    scenario "płatność — przypomnienie" do
+    scenario "payment — reminder" do
       target :remind_on_payment
       on :payment_recorded, %{amount: 1, paid_at: "2026-09-01T09:00:00Z"}
       issues :remind
     end
 
-    scenario "pogoń — timer wydaje przypomnienie" do
+    scenario "chase — the timer issues a reminder" do
       target :chase
       given :payment_recorded, %{visit_id: "w-3", amount: 1, paid_at: "2026-09-01T09:00:00Z"}
       on :later
@@ -205,32 +205,32 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert run("płatność z września — wizyta zamknięta", [september])
+      assert run("a September payment — visit closed", [september])
 
       # Without at:, the given happened on 1 January 2026, the scenario's first moment.
-      assert failure("zapłacono całość — wizyta zamknięta", [september]) =~
+      assert failure("paid in full — visit closed", [september]) =~
                "{:error, %EhOsContract.Rejection{invariant: :paid_in_full}}"
     end
 
     test "the model keeps a given's at: only where it is set" do
       assert [%{at: "2026-09-01T09:00:00Z"}] =
-               scenario("płatność z września — wizyta zamknięta").given
+               scenario("a September payment — visit closed").given
 
-      assert [given] = scenario("zapłacono całość — wizyta zamknięta").given
+      assert [given] = scenario("paid in full — visit closed").given
       refute Map.has_key?(given, :at)
     end
 
     test "an at: that is no timestamp, or earlier than the given before it, is refused" do
       body = fn first, second ->
         """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close, "Zamknięcie", by: :reception, emits: :closed
-            event :opened, "Otwarto", recorded_by: :reception
-            event :closed, "Zamknięto"
+            command :close, "Closing", by: :reception, emits: :closed
+            event :opened, "Opened", recorded_by: :reception
+            event :closed, "Closed"
           end
 
-          scenario "dwa zdarzenia — zamknięcie" do
+          scenario "two events — closing" do
             given :opened#{if first, do: ", at: #{inspect(first)}"}
             given :opened, at: #{inspect(second)}
             command :close
@@ -240,7 +240,7 @@ defmodule EhOsContract.ScenarioCaseTest do
       end
 
       assert refuse_contract("DatedOrder", body.("2026-09-02T09:00:00Z", "2026-09-01T09:00:00Z")) =~
-               ~s|S3: scenario "dwa zdarzenia — zamknięcie": given :opened happened at | <>
+               ~s|S3: scenario "two events — closing": given :opened happened at | <>
                  "2026-09-01T09:00:00Z, before the given before it (2026-09-02T09:00:00Z)"
 
       assert refuse_contract("DatedForm", body.("2026-09-01", "2026-09-02T09:00:00Z")) =~
@@ -276,13 +276,13 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      message = failure("płatność — paragon wśród zdarzeń", [reversed])
+      message = failure("payment — a receipt among the events", [reversed])
 
       assert message =~
                "the scenario requires these events to appear among those produced, in this order"
 
       # Control: the one expected event alone is a subsequence either way.
-      assert run("sam paragon wystarcza", [reversed])
+      assert run("a receipt alone is enough", [reversed])
     end
 
     test "a field the scenario names with another value, a timestamp read as one" do
@@ -302,7 +302,7 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert failure("płatność — paragon wśród zdarzeń", [late]) =~
+      assert failure("payment — a receipt among the events", [late]) =~
                ":payment_recorded %{paid_at: ~U[2026-09-01 09:00:00Z]}"
     end
 
@@ -323,11 +323,11 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert failure("zapłacono całość — wizyta zamknięta", [forgetful]) =~
+      assert failure("paid in full — visit closed", [forgetful]) =~
                "expected command :close to emit events, and it returned " <>
                  "{:error, %EhOsContract.Rejection{invariant: :paid_in_full}}"
 
-      assert run("zapłacono za mało — zamknięcie odrzucone", [forgetful])
+      assert run("paid too little — closing rejected", [forgetful])
     end
 
     test "an event the command does not emit, built without emit/1" do
@@ -347,7 +347,7 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert failure("sam paragon wystarcza", [sly]) =~
+      assert failure("a receipt alone is enough", [sly]) =~
                "EhOsContract.Fixtures.Scenarios.Events.Closed is not among what command " <>
                  ":record_payment emits, [:payment_recorded, :receipt_issued]"
     end
@@ -356,7 +356,7 @@ defmodule EhOsContract.ScenarioCaseTest do
       compile("""
       defmodule EhOsContract.Fixtures.MomentDomain do
         use EhOsContract.Domain, name: :moments, language: :pl
-        context :clinic, "Przychodnia", subdomain: :core
+        context :clinic, "Clinic", subdomain: :core
         value :moment, :timestamp
 
         subdomain :core, "Core", type: :core
@@ -365,24 +365,24 @@ defmodule EhOsContract.ScenarioCaseTest do
       defmodule EhOsContract.Fixtures.Moments do
         use EhOsContract.Contract, domain: EhOsContract.Fixtures.MomentDomain, context: :clinic, id: "moments.moments"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
-          command :arrive, "Przyjście", by: :reception, emits: :arrived do
+          command :arrive, "Arrival", by: :reception, emits: :arrived do
             field :at, :moment
           end
 
-          event :arrived, "Przyszedł" do
+          event :arrived, "Arrived" do
             field :at, :moment
           end
         end
 
-        scenario "przyszedł wczoraj" do
-          command :arrive, %{at: "wczoraj"}
+        scenario "arrived yesterday" do
+          command :arrive, %{at: "yesterday"}
           expect :arrived
         end
 
-        scenario "przyszedł o dziewiątej" do
+        scenario "arrived at nine" do
           command :arrive, %{at: "2026-09-01T09:00:00Z"}
           expect :arrived, %{at: "2026-09-01T09:00:00Z"}
         end
@@ -406,7 +406,7 @@ defmodule EhOsContract.ScenarioCaseTest do
         end
 
       assert error.message ==
-               ~s|scenario data, field :at: "wczoraj" is not an ISO 8601 timestamp with an | <>
+               ~s|scenario data, field :at: "yesterday" is not an ISO 8601 timestamp with an | <>
                  ~s|offset, "2026-09-01T09:00:00Z"|
 
       assert ScenarioCase.run(EhOsContract.Fixtures.Moments, nine, implementations)
@@ -428,13 +428,13 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert failure("sam paragon wystarcza", [mapped]) =~
+      assert failure("a receipt alone is enough", [mapped]) =~
                ~s|command :record_payment emits structs, and the code produced | <>
                  ~s|%{visit_id: "scenario"}, which is not one|
     end
 
     test "no implementation, and two" do
-      assert failure("sam paragon wystarcza", []) =~
+      assert failure("a receipt alone is enough", []) =~
                "no module implements aggregate :visit of EhOsContract.Fixtures.Scenarios, so " <>
                  "its scenario has nothing to run"
 
@@ -453,7 +453,7 @@ defmodule EhOsContract.ScenarioCaseTest do
           def evolve(state, _event), do: state
         """)
 
-      assert failure("sam paragon wystarcza", [twin | @right]) =~
+      assert failure("a receipt alone is enough", [twin | @right]) =~
                "aggregate :visit of " <>
                  "EhOsContract.Fixtures.Scenarios has 2 implementations"
     end
