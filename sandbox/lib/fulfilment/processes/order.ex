@@ -9,9 +9,10 @@ defmodule Fulfilment.Processes.Order do
   run's, unpaid time included: an order is delivered, or cancelled by the desk, within
   two weeks of being placed, so an order left unpaid is the desk's to cancel.
 
-  The promise waits on the carrier: a parcel is booked with it before the dispatcher
-  hands it over, though neither the payment nor the hand-over calls it. The carrier down
-  inside the day excuses a parcel not yet handed over.
+  The promise waits on the carrier: the dispatcher hands a parcel to the carrier's
+  collection, and a carrier that is down collects nothing, though no step before the
+  delivery it reports calls it. The carrier down inside the day excuses a parcel not yet
+  handed over.
   """
 
   use EhOsContract.Process,
