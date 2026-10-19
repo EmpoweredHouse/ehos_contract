@@ -47,7 +47,7 @@ defmodule EhOsContractHost.MixProject do
       {:boundary, "~> 0.10", runtime: false},
       # The engine, extracted 2026-08-20. A path dependency rather than a copy:
       # the build system now enforces the boundary that `boundary` was enforcing
-      # alone, so a client tree reaching into the engine's internals fails to
+      # alone, so a domain's tree reaching into the engine's internals fails to
       # compile rather than merely warning.
       {:eh_os_contract, path: "../packages/eh_os_contract"},
       # The dashboard. `runtime: false` because :eh_os_contract_web has no `mod:` of
@@ -55,8 +55,8 @@ defmodule EhOsContractHost.MixProject do
       # directly instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
       # The graph renderer (plan E13b), which the dashboard draws with. Direct, the same
-      # reasoning as `:telemetry` above: test/graph_renderer_test.exs draws every client
-      # tree's document with it.
+      # reasoning as `:telemetry` above: test/graph_renderer_test.exs draws every case
+      # study's document with it.
       {:eh_os_contract_graph, path: "../packages/eh_os_contract_graph"},
       # The credential verifier (v2 stage EA): the `EhOsContract.Authorizer` this host
       # configures, and the bearer plug in front of the commands it serves over HTTP.
@@ -76,7 +76,7 @@ defmodule EhOsContractHost.MixProject do
       # phoenix_live_view's own dependency tree (packages/eh_os_contract_web hit the
       # same thing first).
       {:lazy_html, ">= 0.1.0", only: :test},
-      # The graph documents of every client tree are held to the engine's schema
+      # The graph documents of every case study are held to the engine's schema
       # (plan E13a). Direct, although `:eh_os_contract_auth` brings it: the same
       # reasoning as `:telemetry` above. Not `only: :test`, which Mix refuses for a
       # dependency `:eh_os_contract_auth` declares for every environment; `runtime:

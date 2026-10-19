@@ -4,7 +4,7 @@ defmodule Lending do
   to its members. It exists so that the library's mechanisms are tested on material
   anyone may read (the publication programme, PB2, #369).
 
-  Like the client trees beside it, this one is contracts and the code they need to
+  Like the other case studies beside it, this one is contracts and the code they need to
   run: a domain, two contracts, two process modules, the decisions, reactions and
   the one table they need, and stand-ins for the desk's tariff and the card system.
   No screen and no real integration.

@@ -268,7 +268,7 @@ boundaries below would be documentation rather than a check.
 | [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
 | [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress) |
 | [`sandbox`](sandbox) | a host application around the packages, with the test material below |
-| [`docs`](docs) | the starting assumptions (`docs/adr/`), distillations of the test material, and workshop material |
+| [`docs`](docs) | the starting assumptions and the design record (`docs/adr/`) |
 
 The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
 of it requiring a client application to exist. That is the part meant to eventually ship to Hex.
@@ -277,9 +277,9 @@ of it requiring a client application to exist. That is the part meant to eventua
 [above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
 router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
 
-The sandbox — `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/` and `sandbox/lib/appunite_equipment/`, the
-domains, contracts and implementations of three unrelated businesses, accounting, healthcare and a company's
-equipment — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
+The sandbox — `sandbox/lib/lending/`, `sandbox/lib/billing/` and `sandbox/lib/fulfilment/`, the domains,
+contracts and implementations of three invented businesses, a library lending copies, a company billing
+subscriptions and a shop fulfilling orders — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
 imagination. [`boundary`](https://hex.pm/packages/boundary) enforces the line between the two
 from the first commit, so it's a fact the compiler checks, not a promise in a document.
 

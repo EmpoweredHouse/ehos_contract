@@ -5,7 +5,7 @@ defmodule Fulfilment do
   library's mechanisms are tested on material anyone may read (the publication
   programme, PB2, #369).
 
-  Like the client trees beside it, this one is contracts and the code they need to
+  Like the other case studies beside it, this one is contracts and the code they need to
   run: a domain, three contracts, a process module, and the decisions and reactions.
   No screen and no real integration.
 

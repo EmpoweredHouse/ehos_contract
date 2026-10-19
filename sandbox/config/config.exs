@@ -8,8 +8,8 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 # The engine is its own application since 2026-08-20, so its configuration is
 # keyed by its own name. It reads the repo from configuration rather than
 # through a module reference — that is what keeps the package from depending on
-# a client application at compile time, and it is why extracting it needed no
-# change to either client tree.
+# a host application at compile time, and it is why extracting it needed no
+# change to the host's trees.
 config :eh_os_contract,
   # Which applications hold the contracts. The engine scans the binary that
   # actually runs, and after the extraction it can no longer guess whose binary
@@ -20,9 +20,8 @@ config :eh_os_contract,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
   authorizer: EhOsContract.Auth,
-  # The fields the host gives, a return's late fee and a settlement's total, and the
-  # entities a command reads, a membership card and a clinic's service: each domain's
-  # stand-in answers for its own.
+  # The field the host gives, a return's late fee, and the entity a command reads, a
+  # membership card: each domain's stand-in answers for its own.
   supplier: EhOsContractHost.Supplier,
   entities: EhOsContractHost.Entities
 

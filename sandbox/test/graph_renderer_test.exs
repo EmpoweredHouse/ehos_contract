@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphRendererTest do
   @moduledoc """
   Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
-  the sandbox, the client trees and the invented case studies, as the engine gives it
+  the sandbox's case studies, as the engine gives it
   today, with the overlay the engine reads from the log over it. The renderer's own suite runs on fixtures taken once, which do not
   follow these trees as they change; this does, and holds the fixtures to today's schema.
   """
@@ -96,8 +96,8 @@ defmodule EhOsContract.GraphRendererTest do
     assert Enum.sum(numbered) > 0
   end
 
-  # Plan E13b, batch 4: the panels read the document by joins alone, so a shape a client
-  # wrote and no fixture has shows here first.
+  # Plan E13b, batch 4: the panels read the document by joins alone, so a shape a case
+  # study has and no fixture has shows here first.
   test "every element of every view has a panel, with the log, naming only what can be selected" do
     for {name, document, overlay} <- overlays(),
         lookup = Lookup.new(document),

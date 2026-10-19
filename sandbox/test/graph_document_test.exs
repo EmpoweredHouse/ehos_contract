@@ -95,20 +95,12 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   # The values the exported model is held to (`E10OutputsTest`), in every graph document:
-  # the library's member's name and e-mail, and the clinic's patient while the clinic's
-  # tree is still registered here (publication programme, PB4, #386).
+  # the library's member's name and e-mail.
   test "no document carries a personal scenario value" do
     for {module, document} <- documents() do
       encoded = Jason.encode!(document)
 
-      for personal <- [
-            "Ada Lovelace",
-            "ada@example.org",
-            "ada@example.net",
-            "85010112345",
-            "M54.5",
-            "93.39"
-          ] do
+      for personal <- ["Ada Lovelace", "ada@example.org", "ada@example.net"] do
         refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
       end
     end

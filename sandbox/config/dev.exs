@@ -16,7 +16,7 @@ config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
 
 config :logger, level: :info
 
-# The master key of Rehmed's personal fields — a PESEL, the ICD codes (E9). A key
+# The master key of the personal fields — a library member's name and e-mail. A key
 # made for this sandbox's development database and nothing else; a real host reads
 # its keys from the runtime environment (`EhOsContract.Vault`).
 config :eh_os_contract, EhOsContract.Vault,
