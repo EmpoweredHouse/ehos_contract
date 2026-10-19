@@ -135,9 +135,10 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 
 ## Writing
 
-- Code, commit messages, pull requests, issues, `README.md` and `docs/` are in English. The only Polish is
-  text the client reads in sentences, inside strings: labels, glossary terms, scenario descriptions
-  (`CLAUDE.md` lists them).
+- Code, commit messages, pull requests, issues, `README.md` and `docs/` are in English, and so are the
+  sandbox's case studies. A string in another language is there only where a test of the packages needs a
+  second language or non-ASCII text, and only in text a client reads in sentences: labels, glossary terms,
+  scenario descriptions (`CLAUDE.md` lists them).
 - Codes are for the compiler and the tests. In prose a code never stands alone: the meaning first, the code in
   parentheses — "a reaction to another context's event that leaves delivery out (X10)".
 - Plain writing: the problem before the solution, a concrete example over an adjective, active voice, no
