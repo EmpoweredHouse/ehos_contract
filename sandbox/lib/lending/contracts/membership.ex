@@ -20,10 +20,16 @@ defmodule Lending.Contracts.Membership do
 
     state do
       field :registered, :boolean, default: false
+      field :member_id, :id, optional: true
     end
 
     invariant :registered_once, "A membership is registered once"
-    invariant :only_a_registered_member_changes, "Only a registered member's details change"
+
+    # The e-mail is sealed with the key of the member the command names, so a change
+    # naming another member than the one registered would put that member's data on
+    # this membership, where erasing either of them leaves it readable.
+    invariant :only_a_registered_member_changes,
+              "Only the member a membership was registered for changes its details"
 
     command :register_member, "Register a member",
       by: :librarian,
@@ -116,6 +122,18 @@ defmodule Lending.Contracts.Membership do
       email: "ada@example.net"
     }
 
+    rejected :only_a_registered_member_changes
+  end
+
+  scenario "another member's e-mail is not put on a membership" do
+    given :member_registered, %{
+      membership_id: "membership-ada",
+      member_id: "member-ada",
+      name: "Ada Lovelace",
+      email: "ada@example.org"
+    }
+
+    command :change_email, %{member_id: "member-bob", email: "bob@example.org"}
     rejected :only_a_registered_member_changes
   end
 
