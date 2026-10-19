@@ -11,66 +11,66 @@ defmodule EhOsContract.SourcesTest do
   alias EhOsContract.{Model, Pages}
 
   @sourced """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      command :close_visit, "Zamknij wizytę", by: :reception, emits: :visit_closed
-      command :report_visit, "Zgłoś wizytę", emits: :visit_reported
+      command :close_visit, "Close the visit", by: :reception, emits: :visit_closed
+      command :report_visit, "Report the visit", emits: :visit_reported
 
-      event :visit_closed, "Wizyta zamknięta"
-      event :visit_reported, "Wizyta zgłoszona"
+      event :visit_closed, "Visit closed"
+      event :visit_reported, "Visit reported"
     end
 
-    policy :report_on_close, "Zamknięta wizyta jest zgłaszana",
+    policy :report_on_close, "A closed visit is reported",
       handles: :visit_closed, issues: :report_visit, source: "P-07"
 
-    effect :notify_registry, "Powiadom rejestr",
+    effect :notify_registry, "Notify the registry",
       handles: :visit_reported, idempotency: [key: :event_id, owner: :self], source: "P-08"
 
-    process_manager :chase, "Pogoń za zgłoszeniem", source: "P-09" do
+    process_manager :chase, "Chasing the report", source: "P-09" do
       correlate :visit_id
       starts_on :visit_closed, sets: :due
       timer :due, "Due", wait: {24, :hour}, issues: :report_visit, source: "H21"
       ends_on :visit_reported
     end
 
-    read_model :visits, "Wizyty", projects: :visit_closed, source: "R-01" do
+    read_model :visits, "Visits", projects: :visit_closed, source: "R-01" do
       field :visit_id, :id
     end
 
-    query :visits_of, "Wizyty recepcji", reads: :visits, by: :reception, source: "R-02" do
+    query :visits_of, "Reception's visits", reads: :visits, by: :reception, source: "R-02" do
       param :visit_id, :id
     end
   """
 
   @unsourced """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      command :close_visit, "Zamknij wizytę", by: :reception, emits: :visit_closed
-      command :report_visit, "Zgłoś wizytę", emits: :visit_reported
+      command :close_visit, "Close the visit", by: :reception, emits: :visit_closed
+      command :report_visit, "Report the visit", emits: :visit_reported
 
-      event :visit_closed, "Wizyta zamknięta"
-      event :visit_reported, "Wizyta zgłoszona"
+      event :visit_closed, "Visit closed"
+      event :visit_reported, "Visit reported"
     end
 
-    policy :report_on_close, "Zamknięta wizyta jest zgłaszana",
+    policy :report_on_close, "A closed visit is reported",
       handles: :visit_closed, issues: :report_visit
 
-    effect :notify_registry, "Powiadom rejestr", handles: :visit_reported, idempotency: [key: :event_id, owner: :self]
+    effect :notify_registry, "Notify the registry", handles: :visit_reported, idempotency: [key: :event_id, owner: :self]
 
-    process_manager :chase, "Pogoń za zgłoszeniem" do
+    process_manager :chase, "Chasing the report" do
       correlate :visit_id
       starts_on :visit_closed, sets: :due
       timer :due, "Due", wait: {24, :hour}, issues: :report_visit
       ends_on :visit_reported
     end
 
-    read_model :visits, "Wizyty", projects: :visit_closed do
+    read_model :visits, "Visits", projects: :visit_closed do
       field :visit_id, :id
     end
 
-    query :visits_of, "Wizyty recepcji", reads: :visits, by: :reception do
+    query :visits_of, "Reception's visits", reads: :visits, by: :reception do
       param :visit_id, :id
     end
   """
@@ -91,27 +91,27 @@ defmodule EhOsContract.SourcesTest do
   end
 
   @domain_sourced """
-    context :settlement, "Rozliczenia", subdomain: :billing
-    context :scheduling, "Grafik", subdomain: :billing
-    subdomain :billing, "Rozliczenia", type: :supporting
+    context :settlement, "Settlement", subdomain: :billing
+    context :scheduling, "Schedule", subdomain: :billing
+    subdomain :billing, "Settlement", type: :supporting
 
-    actor :reception, :human, "Recepcja", source: "W1 00:03:10"
-    subject :patient, "Pacjent", source: "RODO"
-    value :money, :integer, unit: :grosze, source: "E-55"
-    external :p1, "Rejestr P1", direction: :outbound, source: "Dz.U. 2025 poz. 866"
+    actor :reception, :human, "Reception", source: "W1 00:03:10"
+    subject :patient, "Patient", source: "GDPR"
+    value :money, :integer, unit: :cents, source: "E-55"
+    external :p1, "Registry P1", direction: :outbound, source: "Regulation 2025/866"
     relation :customer_supplier, upstream: :scheduling, downstream: :settlement, source: "W2"
     relation :partnership, between: [:settlement, :scheduling], source: "W3"
   """
 
   @domain_unsourced """
-    context :settlement, "Rozliczenia", subdomain: :billing
-    context :scheduling, "Grafik", subdomain: :billing
-    subdomain :billing, "Rozliczenia", type: :supporting
+    context :settlement, "Settlement", subdomain: :billing
+    context :scheduling, "Schedule", subdomain: :billing
+    subdomain :billing, "Settlement", type: :supporting
 
-    actor :reception, :human, "Recepcja"
-    subject :patient, "Pacjent"
-    value :money, :integer, unit: :grosze
-    external :p1, "Rejestr P1", direction: :outbound
+    actor :reception, :human, "Reception"
+    subject :patient, "Patient"
+    value :money, :integer, unit: :cents
+    external :p1, "Registry P1", direction: :outbound
     relation :customer_supplier, upstream: :scheduling, downstream: :settlement
   """
 
@@ -180,9 +180,9 @@ defmodule EhOsContract.SourcesTest do
       model = domain("Sourced", @domain_sourced)
 
       assert [%{source: "W1 00:03:10"}] = model.actors
-      assert [%{source: "RODO"}] = model.subjects
+      assert [%{source: "GDPR"}] = model.subjects
       assert [%{source: "E-55"}] = model.values
-      assert [%{source: "Dz.U. 2025 poz. 866"}] = model.externals
+      assert [%{source: "Regulation 2025/866"}] = model.externals
       assert [%{source: "W2"}, %{source: "W3"}] = model.relations
     end
 
@@ -204,9 +204,9 @@ defmodule EhOsContract.SourcesTest do
       dir = "settlement/paged"
 
       index = pages["index.md"]
-      assert index =~ "- `reception` — Recepcja · human · _source: W1 00:03:10_"
-      assert index =~ "- `patient` — Pacjent · _source: RODO_"
-      assert index =~ "- `p1` — Rejestr P1 · outbound · _source: Dz.U. 2025 poz. 866_"
+      assert index =~ "- `reception` — Reception · human · _source: W1 00:03:10_"
+      assert index =~ "- `patient` — Patient · _source: GDPR_"
+      assert index =~ "- `p1` — Registry P1 · outbound · _source: Regulation 2025/866_"
       assert index =~ "[`settlement`](settlement/index.md) · _source: W2_"
       assert index =~ "[`scheduling`](scheduling/index.md) · _source: W3_"
       assert pages["values/money.md"] =~ "_Source: E-55_"
