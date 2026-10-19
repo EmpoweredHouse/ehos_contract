@@ -300,6 +300,16 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert [%{words: "async", line: "dotted"}] =
                between(view, timer, "command:lending.circulation:send_overdue_notice")
 
+      # A reaction in the transaction that records the event is a solid arrow saying nothing.
+      view = View.contract(Fixtures.document("billing.subscriptions"))
+      policy = "policy:billing.subscriptions:invoice_the_period"
+
+      assert [%{line: "solid", words: nil}] =
+               between(view, "event:billing.subscriptions:billing_period_closed", policy)
+
+      assert [%{line: "solid", words: nil}] =
+               between(view, policy, "command:billing.subscriptions:add_invoice_line")
+
       view = View.contract(Fixtures.document("billing.payments"))
       gateway = "external:Billing.Domain:payment_gateway"
       integration = "actor:Billing.Domain:gateway_integration"
@@ -450,34 +460,16 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   end
 
   describe "unit/2, one unit" do
-    # No unit of the case studies consults an event of another contract, so the hold on a copy
-    # is given one here, as the engine writes it: membership's card suspended.
+    # No unit of the case studies consults an event of another contract; in circulation's
+    # variant the hold on a copy consults membership's member_registered.
     test "says which contract an event it consults from elsewhere is declared in" do
       hold = "unit:lending.circulation:copy_hold"
-      event = "event:lending.circulation:card_suspended"
+      event = "event:lending.circulation:member_registered"
 
-      suspended = %{
-        "id" => event,
-        "name" => "card_suspended",
-        "label" => "Card suspended",
-        "declared_as" => "event:lending.membership:card_suspended",
-        "declared_in" => "lending.membership"
-      }
-
-      consulted = %{
-        "id" => "consulted_by:card",
-        "from" => event,
-        "to" => hold,
-        "match" => ["member_id"]
-      }
-
-      document =
-        Fixtures.document("lending.circulation")
-        |> update_in(["nodes", "event"], fn events -> events ++ [suspended] end)
-        |> update_in(["relations", "consulted_by"], fn rs -> rs ++ [consulted] end)
-
-      view = View.unit(document, hold)
+      view = View.unit(Fixtures.circulation_variant(), hold)
       assert card(view, event).foot == "lending.membership"
+
+      assert [%{words: "consulted by member_id"}] = between(view, event, hold)
 
       own = for %{kind: "event", facts: %{"unit" => ^hold}} = e <- view.nodes, do: e
       assert own != []
@@ -492,8 +484,10 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert card(view, "event:lending.circulation:withdrawn_from_circulation").foot == "Copy"
     end
 
+    # Circulation's variant gives lending a copy a constraint, which no command of the case
+    # studies has.
     test "lists the state's fields on its card, and counts the scenarios on each arrow" do
-      document = Fixtures.document("lending.circulation")
+      document = Fixtures.circulation_variant()
       id = "unit:lending.circulation:loan"
       view = View.unit(document, id)
       state = card(view, id)
@@ -501,7 +495,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert state.tag == "aggregate"
       assert "loan_id: id · identity" in state.lines
       assert "fee_owed: boolean" in state.lines
-      assert kinds(view) == ~w(command event invariant unit)
+      assert kinds(view) == ~w(command constraint event invariant unit)
 
       pinned =
         for s <- document["scenarios"]["unit"], c <- s["covers"], reduce: %{} do
@@ -630,16 +624,9 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
                  "context:Fulfilment.Domain:shipping"
                )
 
-      # No context of the case studies is in a pattern declared between its two ends, so the
-      # warehouse and shipping are given one here, as the engine writes it.
-      partnership = %{
-        "id" => "partnership:warehouse:shipping",
-        "from" => "context:Fulfilment.Domain:warehouse",
-        "to" => "context:Fulfilment.Domain:shipping",
-        "symmetric" => true
-      }
-
-      view = View.context_map(put_in(c.document, ["relations", "partnership"], [partnership]))
+      # No context of the case studies is in a pattern declared between its two ends, nor
+      # keeps an anticorruption layer; the domain's variant has both.
+      view = View.context_map(Fixtures.fulfilment_variant())
 
       assert [%{words: "partnership", head: false, line: "solid"}] =
                view
@@ -648,6 +635,13 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
                  "context:Fulfilment.Domain:shipping"
                )
                |> Enum.filter(&(&1.type == "partnership"))
+
+      assert [%{words: "anticorruption layer", head: true}] =
+               between(
+                 view,
+                 "external:Fulfilment.Domain:carrier",
+                 "context:Fulfilment.Domain:warehouse"
+               )
     end
 
     test "draws the contracts in their contexts, and what one consumes from another", c do
@@ -722,13 +716,19 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "a process's event says the context of its contract, and its card no key of a run" do
-      document = Fixtures.document("process.fulfilment.order")
+      # Each case study's context is labelled as its contract's module is named, so shipping
+      # is labelled apart here, and the foot cannot be the module's last segment.
+      document =
+        Fixtures.relabel(Fixtures.document("process.fulfilment.order"), %{
+          "context:Fulfilment.Domain:shipping" => "Dispatch"
+        })
+
       view = View.build(document, :process, nil, :owner)
 
       event = Enum.find(view.nodes, &(&1.id == "event:fulfilment.shipping:dispatched"))
       assert event.label == "Parcel handed to the carrier"
       assert event.name == nil
-      assert event.foot == "Shipping"
+      assert event.foot == "Dispatch"
 
       process = Enum.find(view.nodes, &(&1.kind == "process"))
       # The engineer reads "one run per order_id" there too; the owner reads the deadline alone.

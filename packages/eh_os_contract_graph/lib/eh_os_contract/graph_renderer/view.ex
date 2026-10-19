@@ -271,8 +271,9 @@ defmodule EhOsContract.GraphRenderer.View do
   kind or footer holds it, ignoring case. `nil` for a blank query, which finds nothing and
   dims nothing. The dot where a new aggregate starts says nothing and is never searched.
 
-      View.matches(view, "withdraw")
-      #=> MapSet.new(["command:lending.circulation:withdraw_copy"])
+      View.matches(View.contract(circulation), "withdraw")
+      #=> MapSet.new(["command:lending.circulation:withdraw_copy",
+      #     "event:lending.circulation:withdrawn_from_circulation"])
   """
   @spec matches(t(), String.t() | nil) :: MapSet.t(String.t()) | nil
   def matches(view, query) do

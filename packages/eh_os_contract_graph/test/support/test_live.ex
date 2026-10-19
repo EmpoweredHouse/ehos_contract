@@ -66,7 +66,8 @@ defmodule EhOsContract.GraphRenderer.FixtureLoader do
 
   # `opts`: `raise:` a ref whose load raises, `nil_for:` one answered `{:ok, nil}`,
   # `fail_once:` an Agent holding refs whose first load fails, `notify:` a pid told of
-  # every load, and `bare: true` a domain with no contract, so no system to draw.
+  # every load, `bare: true` a domain with no contract, so no system to draw, and `labels:`
+  # labels by node id for every document it loads (`Fixtures.relabel/2`).
   @impl true
   def document(ref, opts) do
     if ref == opts[:raise], do: raise("the loader failed")
@@ -84,7 +85,7 @@ defmodule EhOsContract.GraphRenderer.FixtureLoader do
         {:ok, put_in(Fixtures.document("domain.fulfilment"), ["nodes", "contract"], [])}
 
       name = @documents[ref] ->
-        {:ok, Fixtures.document(name)}
+        {:ok, Fixtures.relabel(Fixtures.document(name), opts[:labels] || %{})}
 
       true ->
         {:error, :not_found}

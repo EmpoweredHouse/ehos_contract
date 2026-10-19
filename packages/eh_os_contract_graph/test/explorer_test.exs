@@ -253,14 +253,18 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     end
 
     test "a host starts it for the owner, and its next render keeps the reader's switch" do
-      view = start(%{"audience" => :owner})
+      # Each case study's context is labelled as its contract's module is named, so the
+      # warehouse is labelled apart here.
+      labels = %{"context:Fulfilment.Domain:warehouse" => "Stock room"}
+      view = start(%{"audience" => :owner, "opts" => [labels: labels]})
       assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Owner"
 
       # A contract is read by its context's label, and has no name in code under it.
       warehouse =
         view |> page() |> LazyHTML.query(~s([data-ehg-node="contract:fulfilment.warehouse"]))
 
-      assert LazyHTML.text(warehouse) =~ "Warehouse"
+      assert LazyHTML.text(warehouse) =~ "Stock room"
+      refute LazyHTML.text(warehouse) =~ "Warehouse"
       assert warehouse |> LazyHTML.query(".ehg-name") |> Enum.count() == 0
       refute text(page(view), ".ehg-actors") =~ "Role in EHOS"
 

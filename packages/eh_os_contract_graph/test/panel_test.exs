@@ -234,6 +234,10 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert open("lending.circulation", "command:lending.circulation:lend_copy") =~
                "Reads before deciding Membership card entity, the row its card_id names"
 
+      # Circulation's variant adds a read whose field names no entity, said by its name.
+      assert open(Fixtures.circulation_variant(), "command:lending.circulation:lend_copy") =~
+               "tariff, the row its copy_id names"
+
       text = open("fulfilment.warehouse", "command:fulfilment.warehouse:confirm_pick")
       assert text =~ "Only the person its unit's picker_id names; anyone else is refused."
 
@@ -275,11 +279,12 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "Picker actor issues"
       refute text =~ "picker-ada"
 
-      text =
-        open("lending.circulation", "command:lending.circulation:lend_copy", :all, nil, :owner)
+      lend = "command:lending.circulation:lend_copy"
+      text = open(Fixtures.circulation_variant(), lend, :all, nil, :owner)
 
       assert text =~ "Reads before deciding Membership card entity"
       refute text =~ "card_id"
+      refute text =~ "tariff"
     end
   end
 
@@ -324,7 +329,8 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "EHOS grants it as lending.member_contact."
       assert text =~ "Reads Member directory read model Returns a list of rows."
       assert text =~ "What a row holds"
-      assert text =~ "Asked with member_id member-ada It answers"
+      # The member's e-mail is personal, so the document holds none to show.
+      assert text =~ "Asked with member_id member-ada It answers email — member_id member-ada"
     end
 
     test "a read model: what builds it, its fields, who reads it" do
@@ -397,8 +403,8 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "Stands behind Payment gateway integration actor"
     end
 
-    # No person of the case studies records an event, so the librarian is given a grant to
-    # record one here, as the engine writes it.
+    # No person of the case studies records an event. In this variant of the lending domain
+    # the librarian records a late fee paid at the desk, a grant as the engine writes one.
     test "an actor of the domain, selected though no view draws it: what the role may do by contract" do
       text = open("domain.lending", "actor:Lending.Domain:librarian", :context_map)
 
@@ -407,10 +413,10 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "issues lending.lend_copy"
       assert text =~ "asks lending.member_contact"
 
-      found = %{
-        "capability" => "lending.copy_found",
+      paid = %{
+        "capability" => "lending.late_fee_paid",
         "contract" => "contract:lending.circulation",
-        "declaration" => "event:lending.circulation:copy_found",
+        "declaration" => "event:lending.circulation:late_fee_paid",
         "kind" => "record"
       }
 
@@ -418,24 +424,31 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
         update_in(Fixtures.document("domain.lending"), ["nodes", "actor"], fn actors ->
           for a <- actors do
             if a["name"] == "librarian",
-              do: update_in(a, ["capabilities"], &(&1 ++ [found])),
+              do: update_in(a, ["capabilities"], &(&1 ++ [paid])),
               else: a
           end
         end)
 
       assert open(document, "actor:Lending.Domain:librarian", :context_map) =~
-               "records lending.copy_found"
+               "records lending.late_fee_paid"
     end
 
-    # No actor of the case studies has a responsibility, so the warehouse lead is given one.
+    # No actor of the case studies has a responsibility. In this variant of the warehouse's
+    # document the lead has one, as the engine writes it.
     test "an actor of a contract: what it may issue, with each grant" do
       lead = "actor:Fulfilment.Domain:lead"
+
+      responsibility = %{
+        "name" => "pick_lists",
+        "label" => "Keeps the pick lists moving",
+        "source" => nil
+      }
 
       document =
         update_in(Fixtures.document("fulfilment.warehouse"), ["nodes", "actor"], fn actors ->
           for a <- actors do
             if a["id"] == lead,
-              do: Map.put(a, "responsibilities", [%{"label" => "Keeps the pick lists moving"}]),
+              do: Map.put(a, "responsibilities", [responsibility]),
               else: a
           end
         end)
@@ -869,7 +882,12 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     end
 
     test "a process: its deadline, who answers for it and its runs, without the key its runs are told by" do
-      document = Fixtures.order_with_other_way()
+      # Each case study's context is labelled as its contract's module is named, so orders is
+      # labelled apart here, and the contract cannot be read by the module's last segment.
+      document =
+        Fixtures.relabel(Fixtures.order_with_other_way(), %{
+          "context:Fulfilment.Domain:orders" => "Customer orders"
+        })
 
       overlay =
         put_in(
@@ -885,7 +903,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "A run ends within 14 days."
       assert text =~ "Accountable Dispatcher actor"
       # A contract by its context's label, a promise by its rule.
-      assert text =~ "Includes events of Orders contract"
+      assert text =~ "Includes events of Customer orders contract"
       assert text =~ "Promises After Payment confirmed, eventually"
       assert text =~ "within 24 hours, or else Order cancelled promise"
       assert text =~ "From the log 4 runs."
