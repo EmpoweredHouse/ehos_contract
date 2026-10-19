@@ -41,7 +41,7 @@ defmodule EhOsContract.CodecTest do
     on: ~D[2026-09-01],
     at: ~U[2026-09-01 09:00:00.000000Z],
     codes: [:a, :b],
-    address: %{city: "Lisbon", zip: nil},
+    address: %{city: "Zürich", zip: nil},
     note: nil
   }
 
@@ -94,7 +94,7 @@ defmodule EhOsContract.CodecTest do
              "on" => "2026-09-01",
              "at" => "2026-09-01T09:00:00.000000Z",
              "codes" => ["a", "b"],
-             "address" => %{"city" => "Lisbon", "zip" => nil},
+             "address" => %{"city" => "Zürich", "zip" => nil},
              "note" => nil
            }
 

@@ -24,6 +24,13 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Changed
+
+- **The documentation's examples name no client** (the publication programme, PB3, #375). The module docs,
+  the README and the older entries of this changelog took their audience, contract and capabilities from a real
+  clinic; they now use an invented one (`clinic/production`, `Clinic.Contracts.VisitSettlement`). Nothing a host
+  calls changed.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added
