@@ -62,6 +62,39 @@ defmodule EhOsContract.PlugTest do
     assert json(again)["positions"] == [position]
   end
 
+  # A unit whose identity the library gives exists only once a command made it, so a
+  # recording for an identity nobody was given names no unit: 404, not a refusal, which
+  # would read as a missing capability.
+  test "a recording for a unit no command created answers 404 not_created" do
+    opts = EhOsContract.Plug.init(contracts: [BoundaryRig.Waitlist])
+
+    registrar = Actor.credential("u-registrar", ["boundary_rig.place_confirmed"])
+
+    record = fn entry_id ->
+      post("/records/boundary_rig.place_confirmed", %{entry_id: entry_id})
+      |> assign(:eh_os_contract_actor, registrar)
+      |> EhOsContract.Plug.call(opts)
+    end
+
+    conn = record.("entry-made-up")
+    assert {conn.status, json(conn)} == {404, %{"error" => "not_created"}}
+    assert Repo.all(from(e in Event, where: like(e.type, "boundary_rig.waitlist.%"))) == []
+
+    # The control: for an entry a command made, the same recording is appended.
+    {:ok, %{identity: %{entry_id: id}}} =
+      EhOsContract.dispatch(
+        BoundaryRig.Waitlist,
+        %BoundaryRig.Waitlist.Commands.JoinWaitlist{
+          course_id: "course-math",
+          student_id: "student-anna"
+        },
+        actor: Actor.credential("u-registrar", ["boundary_rig.join_waitlist"]),
+        idempotency_key: "join-anna"
+      )
+
+    assert record.(id).status == 200
+  end
+
   test "a person's observation is recorded under the event's capability, and not without it" do
     auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
 
