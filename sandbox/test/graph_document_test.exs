@@ -100,7 +100,7 @@ defmodule EhOsContract.GraphDocumentTest do
     for {module, document} <- documents() do
       encoded = Jason.encode!(document)
 
-      for personal <- ["Ada Lovelace", "ada@example.org", "ada@example.net"] do
+      for personal <- ["Ada Lovelace", "ada@example.org", "ada@example.net", "bob@example.org"] do
         refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
       end
     end

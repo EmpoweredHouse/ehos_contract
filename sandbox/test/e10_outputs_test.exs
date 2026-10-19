@@ -28,8 +28,8 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert output =~ "eh_os_contract.check: 0 errors, 3 warnings, 7 notices"
   end
 
-  # The personal values the scenarios give: the library's member.
-  @personal ["Ada Lovelace", "ada@example.org", "ada@example.net"]
+  # The personal values the scenarios give: the library's member, and another's e-mail.
+  @personal ["Ada Lovelace", "ada@example.org", "ada@example.net", "bob@example.org"]
 
   # The library's membership gives a member's name and e-mail to its query's scenario.
   test "no exported model carries a personal scenario value" do
@@ -96,8 +96,9 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   # The sandbox's `ehos.yaml` names the invented `Billing`, the one domain that publishes
-  # among the case studies registered beside it (publication programme, PB2, #369). The capabilities are the commands a person issues; what only the monthly
-  # billing and the policies issue has none.
+  # among the case studies registered beside it (publication programme, PB2, #369). The
+  # capabilities are the commands a person issues; what only the monthly billing and the
+  # policies issue has none.
   @tag :tmp_dir
   test "the manifest task extends ehos.yaml with billing's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "billing.json")

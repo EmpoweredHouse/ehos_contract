@@ -16,7 +16,7 @@ config :eh_os_contract_host, EhOsContractHost.CommitRepo,
   hostname: "localhost",
   port: 5433,
   database: "eh_os_contract_host_test_commits_#{:erlang.phash2(__DIR__)}",
-  # Ten desks and the manager at once. The sandbox's phase of the gate then holds
+  # Ten members racing for one copy, and the test reading after them. The sandbox's phase of the gate then holds
   # 22 of Postgres's 100 connections; the engine's phase holds 70 on its own.
   pool_size: 12
 

@@ -1,9 +1,10 @@
 defmodule EhOsContract.GraphRendererTest do
   @moduledoc """
   Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
-  the sandbox's case studies, as the engine gives it
-  today, with the overlay the engine reads from the log over it. The renderer's own suite runs on fixtures taken once, which do not
-  follow these trees as they change; this does, and holds the fixtures to today's schema.
+  the sandbox's case studies, as the engine gives it today, with the overlay the engine
+  reads from the log over it. The renderer's own suite runs on fixtures taken once, which
+  do not follow these trees as they change; this does, and holds the fixtures to today's
+  schema.
   """
 
   use EhOsContractHost.DataCase, async: false
