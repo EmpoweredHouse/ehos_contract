@@ -49,6 +49,11 @@ defmodule Billing.Contracts.Subscriptions do
     invariant :only_an_ended_period_of_the_subscription_is_closed,
               "Only a month that has ended, since the subscription started, is closed"
 
+    # The close's invoice is the fee and a line per usage record, each at most an
+    # amount, and their sum too: a bill that cannot be carried is refused here, before
+    # any of it is invoiced, rather than issued without the line that did not fit.
+    invariant :bill_fits_an_amount, "A period's bill, fee and usage together, fits in an amount"
+
     invariant :usage_recorded_once, "A usage record is recorded once"
 
     command :start_subscription, "Start a subscription",
@@ -74,7 +79,8 @@ defmodule Billing.Contracts.Subscriptions do
       rejects: [
         :only_an_active_subscription_is_billed,
         :period_closed_once,
-        :only_an_ended_period_of_the_subscription_is_closed
+        :only_an_ended_period_of_the_subscription_is_closed,
+        :bill_fits_an_amount
       ] do
       field :period_id, :billing_period
     end
@@ -240,6 +246,17 @@ defmodule Billing.Contracts.Subscriptions do
     given :subscribed, @started
     command :close_billing_period, %{period_id: "2026-01"}
     rejected :only_an_ended_period_of_the_subscription_is_closed
+  end
+
+  scenario "a bill too large for an amount is not closed" do
+    given :subscribed, %{subscription_id: "sub-1", monthly_fee: 2_000, unit_price: 5_000_000_000},
+      at: "2026-01-01T09:00:00Z"
+
+    given :usage_recorded, %{usage: %{usage_id: "usage-1", units: 5_000_000_000}},
+      at: "2026-02-02T09:00:00Z"
+
+    command :close_billing_period, %{period_id: "2026-01"}
+    rejected :bill_fits_an_amount
   end
 
   scenario "a month before the subscription started is not closed" do

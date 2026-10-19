@@ -9,6 +9,9 @@ defmodule Billing.Subscriptions.Subscription do
 
   alias Billing.Periods
 
+  # An amount is a 64-bit integer of cents.
+  @largest_amount 9_223_372_036_854_775_807
+
   @impl true
   def start_subscription(_command, %State{active: true}), do: reject(:started_once)
   def start_subscription(_command, %State{cancelled: true}), do: reject(:started_once)
@@ -43,6 +46,9 @@ defmodule Billing.Subscriptions.Subscription do
       not of_the_subscription?(period, state) or not ended?(period, command.__meta__) ->
         reject(:only_an_ended_period_of_the_subscription_is_closed)
 
+      not fits?(state) ->
+        reject(:bill_fits_an_amount)
+
       true ->
         emit(%BillingPeriodClosed{
           subscription_id: command.subscription_id,
@@ -52,6 +58,12 @@ defmodule Billing.Subscriptions.Subscription do
           usage: Enum.reverse(state.unbilled)
         })
     end
+  end
+
+  # The fee and every usage line, each at most an amount, and their sum.
+  defp fits?(%State{monthly_fee: fee, unit_price: price, unbilled: usage}) do
+    lines = [fee | Enum.map(usage, &(&1.units * price))]
+    Enum.all?(lines, &(&1 <= @largest_amount)) and Enum.sum(lines) <= @largest_amount
   end
 
   # Names are YYYY-MM, so they compare as the months do.
