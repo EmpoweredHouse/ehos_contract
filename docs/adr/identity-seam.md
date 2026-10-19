@@ -1,3 +1,8 @@
+> **19 October 2026:** the client's name in this file was replaced by a description, "the first client" (an
+> accounting firm), and its module named by what it was
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What happened and what was decided did not
+> change.
+
 > The design detail behind `§16–17` — identity bought, behind a protocol seam, vendor and topology left open.
 > What is here is the provider survey, their licences and a list of things to check in a PoC: material we do
 > not want to research twice.
@@ -12,15 +17,15 @@
 > management, from a scope in which this project was to own EHOS as a whole. That scope is gone. `PNS.Auth`,
 > `oidcc`, the accounts screen and the provisional login were removed; the engine takes an actor as an opaque
 > subject in `ctx.actor` and verifies nothing. Token verification moved to the one application with a request
-> edge (`Taxvision.Identity`), and dashboard access to a `PNS.Web.Resolver` the host must supply. The three
-> levels below still hold — they now describe the client application's edge, not the engine's. The PoC files
-> this document cites (`docker-compose.identity.yml`, `priv/poc/`, `docs/identity-admin-guide.md`) are in git
+> edge (the first client's `Identity` module), and dashboard access to a `PNS.Web.Resolver` the host must supply.
+> The three levels below still hold — they now describe the client application's edge, not the engine's. The PoC
+> files this document cites (`docker-compose.identity.yml`, `priv/poc/`, `docs/identity-admin-guide.md`) are in git
 > history, not in the tree.
 >
 > **25 September 2026 — the issuer is EHOS, and the verifier is a package of this repository.** "Identity
 > bought", the provider survey and the sidecar topology below describe a choice that `eh-os` made the other way:
 > EHOS issues ten-minute Ed25519 JWTs carrying capabilities and publishes its keys as JWKS (`eh-os` D-24, D-33).
-> Verification leaves `Taxvision.Identity`'s HMAC for `eh_os_contract_auth`, a package beside the engine that
+> Verification leaves the first client's HMAC for `eh_os_contract_auth`, a package beside the engine that
 > implements the contract's `EhOsContract.Authorizer` ([contract v2](contract-v2.md) §16 D14, `PLAN.md` stage
 > EA). The engine still verifies nothing. The three levels below still hold: level 2 is now the credential's
 > `cap`, derived from the contract's `by:`.
@@ -54,7 +59,7 @@ the engine (`oidcc`) and a `behaviour` for the handful of user-management calls 
 
 ## Three levels, so "IAM" does not read as one thing
 
-The word covers three questions with three different owners. Worked through on a TaxVision-shaped example —
+The word covers three questions with three different owners. Worked through on the first client's shape —
 an accounting API, an HR API, a frontend, and a user-management API — on 4 August.
 
 | | Question | Owner |

@@ -1,5 +1,11 @@
 # Contract v2 — the starting assumptions
 
+> **19 October 2026:** the clients' names in this file were replaced by descriptions — "the first client" (an
+> accounting firm) and "the clinic" — and their examples translated into English, with module names, identifiers
+> and the national registries they name renamed to match
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What happened, what was measured and what
+> each example illustrates did not change.
+
 **What version two of the library is being built to be, stated before it is built.** Decided with the
 product owner on 25 September 2026; the plan that executes it, stage by stage, is [`PLAN.md`](../../PLAN.md),
 "Dopisek 25 września (2) — Etap 6". Like [architecture](architecture.md) was for v1, this file is a premise
@@ -30,7 +36,7 @@ contracts onto ESDM's vocabulary:
 - Almost everything ESDM requires and the contracts lack — contexts with subdomains, context maps,
   aggregates with invariants, actors, read models — already exists in both clients' workshop material.
   Distillation dropped it because the DSL had nowhere to put it.
-- The Rehmed model filed two timed promises as invariants, for the same reason.
+- The clinic's model filed two timed promises as invariants, for the same reason.
 
 ## 2. Direction and decisions
 
@@ -164,15 +170,16 @@ scenario        description!   scope · actor
 > `avoid text!, reason` at a term and at a translation.
 >
 > *Changed 27 September 2026, plan EL2, the user's choice.* **An end of a directed relation may be an external
-> system**, under the same keys, as ESDM allows: `relation :conformist, upstream: :ksef, downstream: :settlement`.
-> The other end is then a context, a symmetric relation joins contexts only, and D1 refuses a name that is both a
-> context and an external.
+> system**, under the same keys, as ESDM allows: `relation :conformist, upstream: :e_invoicing, downstream:
+> :settlement`. The other end is then a context, a symmetric relation joins contexts only, and D1 refuses a name
+> that is both a context and an external.
 >
 > *Added 27 September 2026, plan EL2, a question the user added after EM.* **A field may say which external
-> gives its value:** `field :p1_report_id, :id, issued_by: :medical_event_registry`, in a contract (X4) and in a
-> domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
-> issued_by: :ksef`, which is why it is an option and not `{:id, :ksef}`. ESDM has no such field. An external
-> identifier that is personal data (a PESEL, a patient's number at a payer) is still never an `:id` (§14).
+> gives its value:** `field :registry_report_id, :id, issued_by: :medical_event_registry`, in a contract (X4) and
+> in a domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
+> issued_by: :e_invoicing`, which is why it is an option and not `{:id, :e_invoicing}`. ESDM has no such field. An
+> external identifier that is personal data (a national id, a patient's number at a payer) is still never an `:id`
+> (§14).
 >
 > *Added 28 September 2026, plan EL2b, the user's choice of 27 September.* **A value's invariant is checked, and
 > shown on examples:** `value :money, :integer do invariant :not_negative, "…", violated_by: [-1],
@@ -191,7 +198,7 @@ scenario        description!   scope · actor
 > one context, it is still `:in_transaction`, and the version does not move.
 >
 > *Changed 6 October 2026, plan DD, ID1.* **A contract may name itself: `use EhOsContract.Contract, domain!, context!,
-> id`.** `id` is the domain's `name:`, then dotted snake_case segments, unversioned (`"rehmed.settlement"`), at most
+> id`.** `id` is the domain's `name:`, then dotted snake_case segments, unversioned (`"clinic.settlement"`), at most
 > 100 bytes, no segment a version (D11, L2), under the domain's namespace (D11, L3) and unique in the application
 > (X7). Its identity until
 > now came from the module and the process's name; `id` is the step towards an identity a rename of either does not
@@ -217,7 +224,7 @@ scenario        description!   scope · actor
 > *Added 7 October 2026, plan DD, P2c.* **A process module's runs are filed under its `id:`.** The links compiler
 > checks the module against the contracts it names (X1, X2, X5, X6, X7, and the id's domain prefix under D11), and
 > dispatch writes a row of `eh_os_contract_event_runs` for every process module that includes the event, its process
-> column the module's id (`"rehmed.clinical_visit"`), where a contract's process is filed under its short name. The
+> column the module's id (`"clinic.clinical_visit"`), where a contract's process is filed under its short name. The
 > id is namespaced and survives renaming the module, the reason contracts' rows moved to ids in ID3–ID4; a process
 > that moves from a contract into a module therefore starts its runs afresh under the new key.
 > ([#210](https://github.com/EmpoweredHouse/eh-os-contract/issues/210))
@@ -325,26 +332,26 @@ scenario        description!   scope · actor
 > **5 October 2026, plan N2 — `consumes` for a sibling, `subscribe` for another application.** `consumes` named two
 > mechanisms: a sibling contract's events, read from this log (`consumes Module, [:event]`), and another
 > application's published event, taken into an inbox by a policy only (`consumes "<name>", as: …`, D11, D12). The
-> second is now `subscribe "rehmed.visit.closed.v1", as: :visit_closed do … end`, the word its capability,
+> second is now `subscribe "clinic.visit.closed.v1", as: :visit_closed do … end`, the word its capability,
 > `<name>.subscribe`, already used; `consumes` takes a module only. The examples below that write `consumes "<name>"`
 > are left as written.
 
-> **5 October 2026, plan N3 — a timer has a label.** `timer :chase, "Termin dokumentacji", wait: {24, :hour}, …`:
-> required and positional, as every other declaration's, and naming what the timer is for, never how long it
+> **5 October 2026, plan N3 — a timer has a label.** `timer :chase, "Documentation deadline", wait: {24, :hour},
+> …`: required and positional, as every other declaration's, and naming what the timer is for, never how long it
 > waits — `wait:` or `at:` says that. §4.6's example below is left without one; its compiled copy adds it.
 
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus
   the name of a domain `value`. Every built-in type names a shape, never a thing — a domain type is a
-  `value` in the client's domain module, so `:money` belongs to Rehmed, not to the library. `:string` still
+  `value` in the client's domain module, so `:money` belongs to the clinic, not to the library. `:string` still
   means text a human typed, and `check` still reacts to it.
-- Enum members are atoms, optionally with a label: `{:enum, [card: "Karta", cash: "Gotówka"]}`.
+- Enum members are atoms, optionally with a label: `{:enum, [card: "Card", cash: "Cash"]}`.
 - `optional: true` is legal, except on a field used as identity, correlation, `match` or a tag.
 - `default:` only in `state`.
 - `personal: :patient_id` marks a field as personal data of the subject whose identifier is in the named
   field of the same struct; that field declares `subject: :patient`, a `subject` of the domain (§14).
-- A value with one type and a unit (`value :money, :integer, unit: :grosze`) is how a number says what it
+- A value with one type and a unit (`value :money, :integer, unit: :cents`) is how a number says what it
   counts — the gap VisitSettlement's moduledoc records and today closes with the `_minor` suffix.
 
 ### 4.4 Names Elixir reserves
@@ -356,37 +363,38 @@ library. Hence `expect` (not `then`), `command` / `on` / `query` as scenario tri
 trailing keyword list as options. A command, event or timer whose callback would clash with a Kernel
 function at the same arity (a command called `:send`) does not compile.
 
-### 4.5 A complete example: Rehmed VisitSettlement
+### 4.5 A complete example: the clinic's VisitSettlement
 
-This rewrites `sandbox/lib/rehmed/contracts/visit_settlement.ex` and `sandbox/lib/rehmed/settlement.ex`. It
-translates rather than fixes: the port keeps what the v1 contract says, including the contested handoff.
+This rewrites the clinic's v1 contract and its implementation, `contracts/visit_settlement.ex` and `settlement.ex`
+in the clinic's tree in the sandbox as of this date. It translates rather than fixes: the port keeps what the v1
+contract says, including the contested handoff.
 
 ```elixir
-defmodule Rehmed.Domain do
-  @moduledoc "Vocabulary shared by Rehmed contracts: contexts, actors, value types."
-  use EhOsContract.Domain, name: :rehmed, language: :pl
+defmodule Clinic.Domain do
+  @moduledoc "Vocabulary shared by the clinic's contracts: contexts, actors, value types."
+  use EhOsContract.Domain, name: :clinic, language: :en
   use Boundary, deps: [EhOsContract], exports: [{Values, []}]
 
-  context :scheduling, "Umawianie i zasoby", subdomain: :core           # CTX-01
-  context :settlement, "Rozliczenia", subdomain: :supporting            # CTX-05
+  context :scheduling, "Scheduling and resources", subdomain: :core     # CTX-01
+  context :settlement, "Settlement", subdomain: :supporting             # CTX-05
   relation :customer_supplier, upstream: :scheduling, downstream: :settlement
 
-  actor :reception, :human, "Recepcja"          # A-02
-  actor :specialist, :human, "Specjalista"      # A-03
-  actor :manager, :human, "Menedżer"            # A-05
+  actor :reception, :human, "Reception"         # A-02
+  actor :specialist, :human, "Specialist"       # A-03
+  actor :manager, :human, "Manager"             # A-05
 
-  value :money, :integer, unit: :grosze, label: "Kwota"
+  value :money, :integer, unit: :cents, label: "Amount"
   value :payment_method,
-    {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]}   # AGG-06
+    {:enum, [card: "Card", cash: "Cash", transfer: "Transfer", voucher: "Voucher"]}   # AGG-06
 end
 ```
 
 ```elixir
-defmodule Rehmed.Contracts.VisitSettlement do
+defmodule Clinic.Contracts.VisitSettlement do
   @moduledoc "(carried over from v1, in English)"
-  use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
+  use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement
 
-  aggregate :visit_settlement, "Rozliczenie wizyty" do
+  aggregate :visit_settlement, "Visit settlement" do
     identity :visit_id
 
     state do
@@ -395,80 +403,80 @@ defmodule Rehmed.Contracts.VisitSettlement do
       field :handed_over_on, :date, optional: true
     end
 
-    invariant :payment_lines_sum_to_total, "Linie płatności sumują się do wartości rozliczenia",
-      source: "W1 02:02:07; AGG-03 niezmiennik 1"
+    invariant :payment_lines_sum_to_total, "Payment lines sum to the settlement's total",
+      source: "W1 02:02:07; AGG-03 invariant 1"
 
-    command :add_service_line, "Dodanie usługi do rozliczenia wizyty",
+    command :add_service_line, "Adding a service to the visit's settlement",
       by: :specialist, emits: :service_line_added,
-      source: "Event model §4, C-23, aktor A-03; W2 00:51:18" do
+      source: "Event model §4, C-23, actor A-03; W2 00:51:18" do
       field :service_id, :id
     end
 
-    command :hand_over_visit, "Oznaczenie wizyty jako wykonanej",
+    command :hand_over_visit, "Marking the visit as performed",
       by: :specialist, emits: :visit_handed_over,
-      source: "Event model §4, C-68, aktor A-03; Appunite 2026-08-17" do
+      source: "Event model §4, C-68, actor A-03; team decision 2026-08-17" do
       field :total, :money          # F1, §16
     end
 
-    command :record_payment, "Przyjęcie płatności za wizytę",
+    command :record_payment, "Accepting payment for the visit",
       by: :reception, emits: :payment_recorded,
-      source: "Event model §4, C-31, aktor A-02; ESB L8" do
+      source: "Event model §4, C-31, actor A-02; ESB L8" do
       field :method, :payment_method
       field :amount, :money
     end
 
-    command :close_settlement, "Zamknięcie rozliczenia wizyty",
+    command :close_settlement, "Closing the visit's settlement",
       by: :reception,
       emits: [:visit_closed_commercially, :visit_closed_without_payment],
       rejects: :payment_lines_sum_to_total,
-      source: "Event model §4, C-30, aktor A-02; H28"
+      source: "Event model §4, C-30, actor A-02; H28"
 
-    command :book_correction, "Zaksięgowanie korekty rozliczenia",
+    command :book_correction, "Booking a settlement correction",
       by: :reception, emits: :settlement_corrected,
-      source: "Event model §4, C-46, aktor A-02; process 10" do
+      source: "Event model §4, C-46, actor A-02; process 10" do
       field :delta, :money
     end
 
     stage :charging do
-      event :service_line_added, "Dodano usługę do rozliczenia wizyty" do
+      event :service_line_added, "A service was added to the visit's settlement" do
         field :service_id, :id
       end
 
-      event :visit_handed_over, "Wizyta oznaczona jako wykonana i gotowa do rozliczenia" do
+      event :visit_handed_over, "The visit was marked performed and ready to settle" do
         field :total, :money
       end
     end
 
     stage :payment do
-      event :payment_recorded, "Pacjent opłacił wizytę" do
+      event :payment_recorded, "The patient paid for the visit" do
         field :method, :payment_method
         field :amount, :money
       end
 
-      event :visit_closed_commercially, "Recepcja zamknęła wizytę", terminal: true
-      event :visit_closed_without_payment, "Zamknięto wizytę bez płatności", terminal: true
+      event :visit_closed_commercially, "Reception closed the visit", terminal: true
+      event :visit_closed_without_payment, "The visit was closed without payment", terminal: true
 
-      event :settlement_corrected, "Zaksięgowano korektę rozliczenia" do
+      event :settlement_corrected, "A settlement correction was booked" do
         field :delta, :money
         field :business_date, :date
       end
     end
   end
 
-  process :visit_settlement, "Rozliczenie wizyty" do
+  process :visit_settlement, "Visit settlement" do
     correlate :visit_id
     stage :charging
     stage :payment
   end
 
-  scenario "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka" do
+  scenario "a 150 visit and a 50 penalty, 200 paid — the settlement closes" do
     given :visit_handed_over, %{total: 20_000}
     given :payment_recorded, %{method: :card, amount: 20_000}
     command :close_settlement
     expect :visit_closed_commercially
   end
 
-  scenario "ta sama kwota w dwóch liniach — split jest poprawny, nie defektem" do
+  scenario "the total in two lines — the split is correct, not a defect" do
     given :visit_handed_over, %{total: 20_000}
     given :payment_recorded, %{method: :card, amount: 15_000}
     given :payment_recorded, %{method: :cash, amount: 5_000}
@@ -476,14 +484,14 @@ defmodule Rehmed.Contracts.VisitSettlement do
     expect :visit_closed_commercially
   end
 
-  scenario "zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone" do
+  scenario "150 paid of 200 owed — the settlement is rejected" do
     given :visit_handed_over, %{total: 20_000}
     given :payment_recorded, %{method: :card, amount: 15_000}
     command :close_settlement
     rejected :payment_lines_sum_to_total
   end
 
-  scenario "nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne" do
+  scenario "nothing paid — the visit closes without payment, and that is legal" do
     given :visit_handed_over, %{total: 20_000}
     command :close_settlement
     expect :visit_closed_without_payment
@@ -492,12 +500,12 @@ end
 ```
 
 ```elixir
-defmodule Rehmed.Settlement.VisitSettlement do
+defmodule Clinic.Settlement.VisitSettlement do
   @moduledoc """
   Decides the commercial side of one visit. A partial payment is refused rather than
   modelled: a settlement that can be short is a receivable (AGG-20).
   """
-  use Rehmed.Contracts.VisitSettlement, aggregate: :visit_settlement
+  use Clinic.Contracts.VisitSettlement, aggregate: :visit_settlement
 
   @impl true
   def add_service_line(%AddServiceLine{visit_id: id, service_id: s}, _state),
@@ -533,8 +541,8 @@ defmodule Rehmed.Settlement.VisitSettlement do
 end
 
 # sandbox/test: one generated test per scenario
-defmodule Rehmed.VisitSettlementScenariosTest do
-  use EhOsContract.ScenarioCase, contract: Rehmed.Contracts.VisitSettlement
+defmodule Clinic.VisitSettlementScenariosTest do
+  use EhOsContract.ScenarioCase, contract: Clinic.Contracts.VisitSettlement
 end
 ```
 
@@ -542,8 +550,8 @@ end
 > `process :visit_settlement` block, the `stage :charging` and `stage :payment` groups in the unit and
 > `terminal: true` on the two closing events are the form a contract lost (§4.2's amendment of this date). Written
 > today, the contract keeps the unit with its events, and the run is a process module beside it:
-> `use EhOsContract.Process, id: "rehmed.visit_settlement", domain: Rehmed.Domain, label: "Rozliczenie wizyty"`,
-> `correlate :visit_id`, `stage :charging, include: [{Rehmed.Contracts.VisitSettlement, [...]}]`, `stage
+> `use EhOsContract.Process, id: "clinic.visit_settlement", domain: Clinic.Domain, label: "Visit settlement"`,
+> `correlate :visit_id`, `stage :charging, include: [{Clinic.Contracts.VisitSettlement, [...]}]`, `stage
 > :payment, include: …`, and `ends_on [:visit_closed_commercially, :visit_closed_without_payment]`. The test that
 > compiles this section strips the old form (`without_process/1`).
 > [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
@@ -557,39 +565,39 @@ Names the material does not provide are marked *illustrative*; a real port does 
 
 > **25 September 2026, E4 — D14 (§16) renames the last example's result.** Written per actor, as below, it is
 > the model's `grants`. `EhOsContract.Model.capabilities/1` gives the same capabilities under the names EHOS
-> grants: `%{"rehmed.record_payment" => %{kind: :command, name: :record_payment, roles: ["rehmed.reception"],
+> grants: `%{"clinic.record_payment" => %{kind: :command, name: :record_payment, roles: ["clinic.reception"],
 > scope: nil}, …}`. The domain's `name:` is read from the compiled domain at the call, because a contract
 > records no compile dependency on it (§8).
 
 ```elixir
-# consumes + public + policy (TaxVision; the command name is illustrative)
-event :registry_data_consistent, "Dane firmy zgadzają się z rejestrami", public: true   # in AccountingMonth
+# consumes + public + policy (the first client; the command name is illustrative)
+event :registry_data_consistent, "The company's data matches the registries", public: true   # in AccountingMonth
 
-consumes Taxvision.Contracts.AccountingMonth, :registry_data_consistent
-policy :tasks_follow_consistent_registry, "Zgodne rejestry — taski na miesiąc",
+consumes Bookkeeping.Contracts.AccountingMonth, :registry_data_consistent
+policy :tasks_follow_consistent_registry, "Registries consistent — the month's tasks",
   handles: :registry_data_consistent, issues: :generate_monthly_tasks
 
-defmodule Taxvision.Tasks.TasksFollowConsistentRegistry do
-  use Taxvision.Contracts.MonthlyTasks, policy: :tasks_follow_consistent_registry
+defmodule Bookkeeping.Tasks.TasksFollowConsistentRegistry do
+  use Bookkeeping.Contracts.MonthlyTasks, policy: :tasks_follow_consistent_registry
   @impl true
   def registry_data_consistent(%RegistryDataConsistent{company_id: c, period_id: p}),
     do: issue(%GenerateMonthlyTasks{company_id: c, period_id: p})
 end
 
 # effect — side effects only; an external call cannot run in the transaction
-effect :notify_about_discrepancy, "Powiadom księgową o rozjeździe",
+effect :notify_about_discrepancy, "Notify the accountant of the discrepancy",
   handles: :registry_discrepancy_detected, calls: :mail,
   idempotency: [key: :event_id, owner: :downstream]
 
 # a fact recorded rather than decided (D6): an observation, or an integration's answer
-event :visit_completed, "Pacjent wyszedł z gabinetu", recorded_by: :specialist do
+event :visit_completed, "The patient left the consulting room", recorded_by: :specialist do
   field :service_id, :id
 end
-event :p1_report_sent, "Wysłano zgłoszenie zdarzenia medycznego do P1",
-  recorded_by: :p1_integration, depends_on: :medical_event_registry   # a :system actor backed_by the external
+event :registry_report_sent, "The medical event was reported to the registry",
+  recorded_by: :registry_integration, depends_on: :medical_event_registry   # a :system actor backed_by the external
 
 # process manager (ClinicalVisit; the command name is illustrative)
-process_manager :documentation_chase, "Pogoń za dokumentacją wizyty" do
+process_manager :documentation_chase, "Chasing the visit's documentation" do
   correlate :visit_id
   starts_on :visit_completed, sets: :chase
   timer :chase, wait: {24, :hour}, issues: :chase_documentation
@@ -597,56 +605,56 @@ process_manager :documentation_chase, "Pogoń za dokumentacją wizyty" do
 end
 
 # read model + query (R-07)
-read_model :daily_totals, "Suma dnia według metody płatności", projects: :payment_recorded do
+read_model :daily_totals, "The day's total by payment method", projects: :payment_recorded do
   field :business_date, :date
   field :method, :payment_method
   field :total, :money
 end
-query :daily_totals_for, "Suma dnia dla recepcji", reads: :daily_totals, by: [:reception, :manager] do
+query :daily_totals_for, "The day's total for reception", reads: :daily_totals, by: [:reception, :manager] do
   field :business_date, :date
 end
 
 # a run over foreign events, and a promise (ClinicalVisit)
-consumes Rehmed.Contracts.Scheduling, :visit_completed
-consumes Rehmed.Contracts.Reporting, [:p1_report_sent, :p1_reporting_not_required]
-process :clinical_visit, "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego" do
+consumes Clinic.Contracts.Scheduling, :visit_completed
+consumes Clinic.Contracts.Reporting, [:registry_report_sent, :registry_reporting_not_required]
+process :clinical_visit, "Visit: performed, documented and reported as a medical event" do
   correlate :visit_id
   stage :departure do include :visit_completed end
   stage :closing
   stage :reporting do
-    include :p1_report_sent, terminal: true
-    include :p1_reporting_not_required, terminal: true
+    include :registry_report_sent, terminal: true
+    include :registry_reporting_not_required, terminal: true
   end
   promise :medical_event_reported_within_statutory_window do
     from :visit_completed
-    eventually :p1_report_sent
+    eventually :registry_report_sent
     within {2, :day}
-    or_else :p1_reporting_not_required
-    source "Dz.U. 2025 poz. 866"
+    or_else :registry_reporting_not_required
+    source "the statutory reporting rule, 2025"
   end
 end
 
 # dynamic consistency boundary (PayerSettlement)
-dcb :payer_period, "Rozliczenie płatnika za okres" do
+dcb :payer_period, "A payer's settlement for a period" do
   identity [:payer_id, :period_id]
   consults :visit_marked_settled_with_payer, match: [:payer_id, :period_id]
   consults :visit_excluded_from_invoice, match: [:payer_id, :period_id]
-  consults :visit_completed, where: "wykonana wizyta tego płatnika w tym okresie"   # check: not machine-checkable
+  consults :visit_completed, where: "a performed visit of this payer in this period"   # check: not machine-checkable
   invariant :every_delivered_visit_settled_or_excluded,
-    "Każda wykonana wizyta płatnika w okresie jest na fakturze albo wykluczona z powodem", source: "AG:694"
-  command :issue_payer_invoice, "Wystawienie faktury miesięcznej dla płatnika", by: :manager,
+    "Every performed visit of the payer in the period is on the invoice or excluded with a reason", source: "AG:694"
+  command :issue_payer_invoice, "Issuing the payer's monthly invoice", by: :manager,
     emits: :payer_invoice_issued, rejects: :every_delivered_visit_settled_or_excluded do
     field :invoice_id, :id
   end
   stage :invoicing do
-    event :payer_invoice_issued, "Wystawiono fakturę miesięczną dla płatnika", terminal: true do
+    event :payer_invoice_issued, "The payer's monthly invoice was issued", terminal: true do
       field :invoice_id, :id
     end
   end
 end
 
 # capabilities, derived from by: and recorded_by:
-EhOsContract.Model.capabilities(Rehmed.Contracts.VisitSettlement)
+EhOsContract.Model.capabilities(Clinic.Contracts.VisitSettlement)
 #=> %{reception: %{commands: [:book_correction, :close_settlement, :record_payment], queries: []}, ...}
 with :ok <- EhOsContract.Capability.check(%RecordPayment{} = cmd, roles),
      do: EhOsContract.dispatch(cmd, actor: %{subject: user_id, roles: roles})   # dispatch checks again
@@ -662,7 +670,7 @@ with :ok <- EhOsContract.Capability.check(%RecordPayment{} = cmd, roles),
 > *Changed 13 October 2026, plan DD, P2h.* **A run over foreign events is a process module.** The ClinicalVisit
 > example above, a `process` that `include`s consumed events, `terminal:` on an `include` and a `stage` group in
 > PayerSettlement's boundary, no longer compiles: a process module includes each event from the contract that
-> declares it, `stage :departure, include: [{Rehmed.Contracts.Scheduling, :visit_completed}]`, with no `consumes`
+> declares it, `stage :departure, include: [{Clinic.Contracts.Scheduling, :visit_completed}]`, with no `consumes`
 > needed for it, ends a run with `ends_on`, and carries the promise.
 > [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)
 
@@ -1093,7 +1101,7 @@ applications belongs to EHOS.
 ## 8. Compile-time dependencies
 
 ```
-Rehmed.Domain  <..no-depend..  Rehmed.Contracts.VisitSettlement  <==compile==  Rehmed.Settlement.VisitSettlement
+Clinic.Domain  <..no-depend..  Clinic.Contracts.VisitSettlement  <==compile==  Clinic.Settlement.VisitSettlement
                                (+ Commands.*, Events.*, Aggregates.*)          (use + macros read the model;
 Contracts.ClinicalVisit ..no-depend (consumes)..> Contracts.Scheduling         struct literals = compile deps)
 ```
@@ -1114,7 +1122,7 @@ Contracts.ClinicalVisit ..no-depend (consumes)..> Contracts.Scheduling         s
 as `%{amount: 24, unit: :hour}` — so it encodes to JSON for EHOS unchanged:
 
 ```elixir
-%{format: 1, kind: :contract, domain: Rehmed.Domain, context: :settlement,
+%{format: 1, kind: :contract, domain: Clinic.Domain, context: :settlement,
   process: %{name: :visit_settlement, label: "…", correlate: [:visit_id], stages: [...], includes: %{}, promises: %{}},
   units: %{visit_settlement: %{kind: :aggregate, identity: [:visit_id], state: %{...}, invariants: %{...}}},
   commands: %{close_settlement: %{unit: :visit_settlement, by: [:reception], emits: [...], rejects: [...], fields: %{}}},
@@ -1354,13 +1362,13 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > X6 already required `:id` of a sibling's). A subject's identifier is such a field, so "every event about
   > subject p-17" is now one lookup in the tags' index, which erasure leaves alone — as it leaves the same
   > identifier in the payload and in stream ids, by the design above. That holds only while an `:id` is an
-  > opaque identifier: a natural one, such as a PESEL, must never be an `:id`, as it must never be an
+  > opaque identifier: a natural one, such as a national id, must never be an `:id`, as it must never be an
   > idempotency key.
   > **28 September 2026, E9c.** "`:id` field" includes a field typed by a domain value whose base type is `:id`:
-  > TaxVision names a period "2026-07" and holds the name to a format by the value's invariant, and a month's
-  > boundary matches Registry Watch's events on it. The value is still an opaque identifier in the sense above
-  > — a month's name, not a person's number. A unit's identity stays a plain `:id`, so the invariant holds where
-  > a field is typed by the value and not on an identity.
+  > The first client names a period "2026-07" and holds the name to a format by the value's invariant, and a
+  > month's boundary matches the events of the first client's monthly registry check on it. The value is still an
+  > opaque identifier in the sense above — a month's name, not a person's number. A unit's identity stays a plain
+  > `:id`, so the invariant holds where a field is typed by the value and not on an identity.
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
@@ -1510,9 +1518,9 @@ the person's.
 > `POST …/commands/<capability>` and `GET …/queries/<capability>` with the actor another plug built.
 
 > *Added 30 September 2026, plan E11f, the user's choice.* **A unit reads only what its `evolve/2` folds.**
-> TaxVision's `TurnoverMatching` decoded every statement of the month, each a whole list of turnovers, on
-> every match, although its `evolve/2` passes statements over — quadratic in a statement's length. When
-> every clause of `evolve/2` that does not name an event struct is exactly `def evolve(state, _), do:
+> The first client's boundary over a month's bank statements decoded every statement of the month, each a whole
+> list of turnovers, on every match, although its `evolve/2` passes statements over — quadratic in a statement's
+> length. When every clause of `evolve/2` that does not name an event struct is exactly `def evolve(state, _), do:
 > state`, the implementation records the events it folds (`__eh_os_implementation__/0`, `folds`), and
 > dispatch decodes only those. An aggregate still reads its whole stream, whose version is the condition,
 > and records every type it met in `given_types`. A boundary's query, and so its conflict condition, is
@@ -1710,8 +1718,8 @@ the person's.
 
 > *Changed 17 October 2026, plan DD, OW1.* **A promise may name what it waits on through an earlier step.** The
 > rule that "only an outage of what `eventually` or `or_else` depends on suspends a run" turned out too narrow:
-> TaxVision's month opens, or is blocked, only after the registry check, and neither ending calls the registries
-> itself, so two days of registries down read as a broken promise. A process module's `promise` now takes
+> The first client's month opens, or is blocked, only after the registry check, and neither ending calls the
+> registries itself, so two days of registries down read as a broken promise. A process module's `promise` now takes
 > `waits_on [:external]`: externals of the domain (X4, which also refuses one `eventually` or `or_else` already
 > depends on), whose outage, observed by any contract the process includes, suspends the promise as its events'
 > own dependencies do. `from` still counts for nothing. An outage anywhere inside the window counts, even after
@@ -1729,7 +1737,7 @@ the person's.
 
 ## 14. Crypto-shredding
 
-- **Declaration.** The domain declares `subject :patient, "Pacjent"`. An identifier field declares
+- **Declaration.** The domain declares `subject :patient, "Patient"`. An identifier field declares
   `subject: :patient`; a personal field declares `personal: :patient_id`. The model exposes each personal
   field as `{field, subject_type, subject_id_field}`.
 - **Gates.** A personal field may not be a unit key, a tag, a correlation or instance field, `identity`,
@@ -1810,7 +1818,7 @@ one is a dated note here.
 | --- | --- |
 | D1 | Names: `emits:` (ESDM says `publishes`); `promise` instead of `trace`, which collides with process mining's "trace" (one case's event sequence); event type `"<process>.<event>"` (*changed 6 October 2026, plan DD, ID3: `"<contract id>.<event>"`, §8*); actor kinds `:human \| :system`, ESDM's pair — a service is a `:system` actor `backed_by` an external. |
 | D2 | Migrations collapse into one version at the cut, as V01 did ("the final shape, not the history"). |
-| D3 | A contract without an implementation stays legal (Rehmed, the invented fixtures); `check` notes it. |
+| D3 | A contract without an implementation stays legal (the clinic's contracts, and the invented fixtures); `check` notes it. |
 | D4 | ESDM's rules split as §6 does: structural rules are L2/L3 errors, completeness rules are L5 warnings. |
 | D5 | Stages by nesting inside units, and `include` for foreign events (*changed 13 October 2026, plan DD, P2h: a contract has no stages; a process module's `stage … include:` names each event by its contract, §4.2*). |
 | D6 | The 15 events no command publishes — observations and integrations' answers — declare `recorded_by:` and enter through `record/3`; no command name is invented, which "names come from the workshop" forbids. |
@@ -1854,14 +1862,14 @@ G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions record
 > **25 September 2026, E4's first commit — D13's conditions hold, and one assumption under them was
 > wrong.** `EhOsContract.DslWrappers` generates the wrappers from the entity definitions and imports them where
 > Spark imports the entities: a top-level entity's through the section, a nested one's through its parent.
-> Both conditions are pinned in `test/dsl/dsl_wrappers_test.exs` and, in a consumer, in
-> `sandbox/test/rehmed_domain_test.exs`. A refusal beside a wrapped block, whether Spark's schema check or
-> a D rule, carries the declaration's file and line. The formatter keeps the four-argument form without
+> Both conditions are pinned in `test/dsl/dsl_wrappers_test.exs` and, in a consumer, in the test of the clinic's
+> domain in its tree in the sandbox, as of this date. A refusal beside a wrapped block, whether Spark's schema
+> check or a D rule, carries the declaration's file and line. The formatter keeps the four-argument form without
 > parentheses, **but not because of an export**: it never adds parentheses to a call that has a `do` block,
 > whatever `locals_without_parens` lists. The wrappers' arities are therefore not exported, and
 > `spark_locals_without_parens` stays what `mix spark.formatter` writes. One thing D13 did not foresee: an
 > entity with an optional positional argument already has the arity its shorter wrapper would take.
-> `value :address, label: "Adres" do … end` reaches Spark's `value(name, type, opts)` with the keyword list
+> `value :address, label: "Address" do … end` reaches Spark's `value(name, type, opts)` with the keyword list
 > in `type`. Without a block, Spark itself reads a keyword list in the last optional argument as options.
 > The wrappers give such an entity a `transform` that applies the same rule when a block follows, and that
 > checks the options against the entity's schema. Spark checks the argument's own type before any transform
@@ -1873,25 +1881,25 @@ G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions record
 
 ```elixir
 # in the domain
-actor :reception, :human, "Recepcja", scope: [:clinic_id]
+actor :reception, :human, "Reception", scope: [:clinic_id]
 
 # in the contract
-read_model :open_visits, "Wizyty do rozliczenia", projects: [:visit_handed_over, :payment_recorded,
-                                                             :visit_closed_commercially] do
+read_model :open_visits, "Visits to settle", projects: [:visit_handed_over, :payment_recorded,
+                                                        :visit_closed_commercially] do
   field :clinic_id, :id
   field :total, :money
   field :paid, :money, default: 0
 end
 
-query :open_visits_for_clinic, "Otwarte wizyty w przychodni",
+query :open_visits_for_clinic, "Open visits at the clinic",
   reads: :open_visits, by: [:reception], returns: :many do
   param :clinic_id, :id
   scope :clinic_id
 end
 
 # the implementation
-defmodule Rehmed.Settlement.Queries do
-  use Rehmed.Contracts.VisitSettlement, query: :open_visits_for_clinic
+defmodule Clinic.Settlement.Queries do
+  use Clinic.Contracts.VisitSettlement, query: :open_visits_for_clinic
 
   @impl true
   def open_visits_for_clinic(%OpenVisitsForClinic{clinic_id: id}, _ctx),
@@ -1925,19 +1933,19 @@ casts them to the field's type; a scoped capability without an entry there is re
 **D11 and D12, from both sides.**
 
 ```elixir
-# the publisher: Rehmed
-publish :visit_closed, as: "rehmed.visit.closed.v1",
+# the publisher: the clinic
+publish :visit_closed, as: "clinic.visit.closed.v1",
   from: :visit_closed_commercially,
   fields: [:visit_id, :closed_at],
   idempotent_on: [:visit_id]
 
 # the subscriber: another application
-consumes "rehmed.visit.closed.v1", as: :visit_closed do
+consumes "clinic.visit.closed.v1", as: :visit_closed do
   field :visit_id, :id
   field :closed_at, :timestamp
 end
 
-policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
+policy :invoice_on_visit_close, "An invoice when a visit closes",
   handles: :visit_closed, issues: :add_invoice_line
 ```
 
@@ -1946,7 +1954,7 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
   (`eh-os` C-2); `idempotent_on` naming a field outside `fields`; a `consumes "<name>"` whose policy matches a
   field the declaration does not list.
 - **What each side knows.** The publisher knows only that the event leaves; it never names a subscriber. The
-  subscriber's `consumes` derives the capability `rehmed.visit.closed.subscribe`, which the application
+  subscriber's `consumes` derives the capability `clinic.visit.closed.subscribe`, which the application
   requests and an owner grants per environment (`eh-os` D-10); EHOS turns the grant into a route of its v1
   relay or a broker consumer and its ACL, which closes `eh-os` G-16 once a broker exists.
 - **Relay.** One more ordered subscription over the log (§12): for every event with a `publish`, it builds the
@@ -2010,7 +2018,7 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 > keyed `"<contract>:relay:<name>"`, fed by the same runner and rows as a policy, reading up to 100 events of
 > the one type it publishes. Four things the text above left open:
 >
-> - **The id's second half is the versioned name** (`as:`, `"rehmed.visit.closed.v1"`), not the declaration's
+> - **The id's second half is the versioned name** (`as:`, `"clinic.visit.closed.v1"`), not the declaration's
 >   name, which stays inside the publisher as its source event does (`eh-os` D-41 leaves the source out of the
 >   manifest for that reason). Two publications of one event — `v1` beside `v2` while consumers move — still
 >   get two ids.
@@ -2081,8 +2089,8 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >   whose policy raises, rolls back and is answered `:nack`, logged by name, id and kind of failure: nothing is
 >   lost while the declaration or the code is put right. The inbox counts no attempts; the transport's limit
 >   (JetStream's `MaxDeliver`) stops a message that never succeeds.
-> - **`<name>.subscribe` drops the version**, as the example above has it: `consumes "rehmed.visit.closed.v1"`
->   asks for `rehmed.visit.closed.subscribe`. It is in `EhOsContract.Model.capabilities/1` with no roles, the
+> - **`<name>.subscribe` drops the version**, as the example above has it: `consumes "clinic.visit.closed.v1"`
+>   asks for `clinic.visit.closed.subscribe`. It is in `EhOsContract.Model.capabilities/1` with no roles, the
 >   application's and never a person's, and nothing in the engine asks for it; only for an event a policy
 >   handles, since only then is there an inbox to read what the grant delivers.
 > - **What the policy is told.** The received struct's `__meta__` has the message's correlation, so the
@@ -2127,15 +2135,15 @@ layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not i
 ## 19. Open questions
 
 - The ten defects found in the four contracts (`PLAN.md`, 25 September) stay questions; ports translate, they do
-  not fix. Defects 2 (the TaxVision window belongs in `unverified`) and 5 (`open_month` has a source in
+  not fix. Defects 2 (the first client's window belongs in `unverified`) and 5 (`open_month` has a source in
   US-MON-01) go in as one-line changes with their citations.
 - `consults … where:` is prose, so nothing checks it mechanically; whether some criteria can be `match`es is a
   modelling question per boundary.
-- H177 in the Rehmed material makes the handoff a conditional command and moves the price freeze to settlement,
+- H177 in the clinic's material makes the handoff a conditional command and moves the price freeze to settlement,
   contradicting DEC-18, on which `visit_handed_over` stands. It waits for ratification.
 - The upcaster contract — one callback per type and version, or a chain — is decided in the stage that first
   needs it.
-- Whether commands get `scope` as queries do (D10). The TaxVision material has the case
+- Whether commands get `scope` as queries do (D10). The first client's material has the case
   (`actor_company == company_id`, `PLAN.md` 22 September, step C).
   > **28 September 2026, E9c — answered.** They do, the user's choice of 27 September (plan, "Po E8 —
   > kolejność zmieniona"): `command :open_month, "…", by: :accountant, scope: :company_id`. The scope is one

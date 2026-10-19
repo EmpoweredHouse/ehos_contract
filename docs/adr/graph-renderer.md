@@ -1,5 +1,8 @@
 # The graph renderer — what draws a `graph.v1` document
 
+> **19 October 2026:** the client's name in this file was replaced by a description, "the equipment client"
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What was measured did not change.
+
 > **Status: accepted**, 7 October 2026: C, as recommended under "Decision". Proposed the same day; the options
 > and their costs come first, then the decision. Stage: E13b, step 1 (`PLAN.md`, "E13b — renderer i ekran"),
 > pull request [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
@@ -66,8 +69,8 @@ puts the nodes in the same places. In the prototype A and C produced identical l
 the first visit to the screen: the download, then the parse. After that the file is cached until the next
 release of the package. The sandbox serves static files with `gzip: false`, so unless a proxy compresses
 them, the minified size is what travels, not the gzipped size.
-- **Readability of a large contract is a matter of views, not of the library.** AppUnite `computers` (62
-nodes, 111 relations) was equally unreadable fitted to the screen in A and in C. A large contract needs
+- **Readability of a large contract is a matter of views, not of the library.** The equipment client's `computers`
+(62 nodes, 111 relations) was equally unreadable fitted to the screen in A and in C. A large contract needs
 filtering, grouping and focus. That belongs to the specification of the views, which is not settled.
 
 
@@ -144,8 +147,8 @@ moved to our CSS, removed it.
 - **Routing around cards costs time, and the routes need care.** The router runs after the layout, so dagre
 leaves room for labels where the arrows no longer go, and some labels land on cards. Many arrows share one
 orthogonal trunk, which makes it hard to follow one of them. Mounting took 0.3 to 0.4 s for a typical
-contract and 1.2 to 2 s for AppUnite `computers` (111 relations), depending on the router's step, against
-under 35 ms in A and C. Each of these is tunable, but it is tuning.
+contract and 1.2 to 2 s for the equipment client's `computers` (111 relations), depending on the router's
+step, against under 35 ms in A and C. Each of these is tunable, but it is tuning.
 - **The largest bundle of the three**, since dagre comes again through the layout package (below).
 
 
@@ -302,15 +305,15 @@ the cards, not the package.
 "Positions in a constructed stylesheet" (above) held for what the layout sets once, and was wrong for what
 changes on every frame. The zoom was a rule written to a constructed stylesheet on every frame of a pan or a
 zoom, and so, later, was the panel's width while its edge was dragged. Chrome restyles only what a changed rule
-can match; WebKit styles the whole page again whenever a stylesheet changes, so on AppUnite's `computers` (nine
-canvases, about 1,250 elements) Safari stuttered on every pan, zoom and drag while Chrome ran smoothly. A Web
-Animation (`element.animate(…, {duration: 0, fill: "forwards"})`, its keyframes set again on each frame) holds
-the value instead: the policy allows it, being neither an attribute nor a stylesheet, LiveView's patches keep
-it, being no attribute, and a change restyles the one element. So the rule the package carries is now:
-**positions and sizes in a constructed stylesheet, written when the layout changes; what changes on every frame
-in a Web Animation; never a `style` attribute.** The user confirmed the difference in Safari. A custom property
-on `:root`, written on every frame, cost Chrome too — every element inherits it — and was replaced the same day
-by a rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
+can match; WebKit styles the whole page again whenever a stylesheet changes, so on the equipment client's
+`computers` (nine canvases, about 1,250 elements) Safari stuttered on every pan, zoom and drag while Chrome ran
+smoothly. A Web Animation (`element.animate(…, {duration: 0, fill: "forwards"})`, its keyframes set again on each
+frame) holds the value instead: the policy allows it, being neither an attribute nor a stylesheet, LiveView's
+patches keep it, being no attribute, and a change restyles the one element. So the rule the package carries is now:
+**positions and sizes in a constructed stylesheet, written when the layout changes; what changes on every frame in
+a Web Animation; never a `style` attribute.** The user confirmed the difference in Safari. A custom property on
+`:root`, written on every frame, cost Chrome too — every element inherits it — and was replaced the same day by a
+rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
 [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
 
 ## Amendment, 9 October 2026: the dependencies' licences

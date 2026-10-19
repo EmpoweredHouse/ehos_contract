@@ -1,5 +1,8 @@
 # Design rationale
 
+> **19 October 2026:** the national registries and the vendor this file named were replaced by descriptions
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What was argued did not change.
+
 Why [the architecture](architecture.md) is the way it is. That file states each decision and what it beat in
 one line; this one carries the argument behind it, decision by decision, plus the vocabulary, the alternatives
 in full, and the reasoning behind the open questions.
@@ -319,9 +322,10 @@ rule held, or the clock was stopped because a declared dependency was unavailabl
 that is the whole question — were we late, or was the ministry down.
 
 *Instead of* calling vendors from domain code, after which that distinction is unavailable. Events are
-named after the business fact, never the vendor, and states with legal weight stay separate — for KSeF,
-*submitted*, *accepted* and *UPO held* are three events. Adapters are also the first reusable capability:
-KSeF, JPK, Comarch and bank feeds are not client-specific.
+named after the business fact, never the vendor, and states with legal weight stay separate — for the tax
+authority's e-invoicing registry, *submitted*, *accepted* and *receipt held* are three events. Adapters are
+also the first reusable capability: the e-invoicing registry, the tax audit file, accounting packages and bank
+feeds are not client-specific.
 
 Keeping implementation-swapping and environment configuration apart is what lets you express
 real-adapter-against-sandbox, which is the scheduled test that catches an external API change. Collapsed

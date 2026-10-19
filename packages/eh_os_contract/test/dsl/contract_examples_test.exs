@@ -30,22 +30,22 @@ defmodule EhOsContract.ContractExamplesTest do
 
   # {text in the ADR, text compiled, why}
   @amendments [
-    {~s|"Dane firmy zgadzają się z rejestrami", public: true|,
-     ~s|"Dane firmy zgadzają się z rejestrami"|,
+    {~s|"The company's data matches the registries", public: true|,
+     ~s|"The company's data matches the registries"|,
      "D11: public: retired; a sibling process consumes the event without a flag"},
     {"by: [:reception, :manager] do\n  field :business_date, :date",
      "by: [:reception, :manager] do\n  param :business_date, :date",
      "D10: param replaces field for a query's parameters"},
-    {~s|  context :scheduling, "Umawianie i zasoby", subdomain: :core|,
-     ~s|  subdomain :core, "Rdzeń", type: :core\n| <>
-       ~s|  subdomain :supporting, "Wsparcie", type: :supporting\n| <>
-       ~s|  context :scheduling, "Umawianie i zasoby", subdomain: :core|,
+    {~s|  context :scheduling, "Scheduling and resources", subdomain: :core|,
+     ~s|  subdomain :core, "Core", type: :core\n| <>
+       ~s|  subdomain :supporting, "Supporting", type: :supporting\n| <>
+       ~s|  context :scheduling, "Scheduling and resources", subdomain: :core|,
      "plan EL2: a context names a subdomain the domain declares (D7)"},
     {"timer :chase, wait: {24, :hour}",
-     ~s|timer :chase, "Termin dokumentacji", wait: {24, :hour}|,
+     ~s|timer :chase, "Documentation deadline", wait: {24, :hour}|,
      "plan N3: a timer's label is required, and names what the timer is for"},
-    {"use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement\n",
-     ~s|use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.visit_settlement"\n|,
+    {"use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement\n",
+     ~s|use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement, id: "clinic.visit_settlement"\n|,
      "plan DD, ID3 (#173): a contract names its id, which labels its events"}
   ]
 
@@ -57,31 +57,31 @@ defmodule EhOsContract.ContractExamplesTest do
     if File.exists?(@adr) do
       adr = File.read!(@adr)
       [domain, contract | _] = blocks(section(adr, "4.5"))
-      compile(amend(domain), "rehmed/domain.ex")
-      compile(contract |> amend() |> without_process(), "rehmed/contracts/visit_settlement.ex")
+      compile(amend(domain), "clinic/domain.ex")
+      compile(contract |> amend() |> without_process(), "clinic/contracts/visit_settlement.ex")
       %{four_six: fragments(section(adr, "4.6"))}
     else
       :ok
     end
   end
 
-  describe "v2 §4.5, Rehmed VisitSettlement" do
+  describe "v2 §4.5, the clinic's VisitSettlement" do
     test "the domain and the contract compile as written" do
-      model = Model.fetch(Rehmed.Contracts.VisitSettlement)
-      assert %{domain: Rehmed.Domain, context: :settlement} = model
+      model = Model.fetch(Clinic.Contracts.VisitSettlement)
+      assert %{domain: Clinic.Domain, context: :settlement} = model
       assert Enum.map(model.units, & &1.name) == [:visit_settlement]
       assert length(model.commands) == 5
       assert length(model.scenarios) == 4
       refute Map.has_key?(model, :process)
 
-      assert Enum.map(Model.fetch(Rehmed.Domain).actors, & &1.name) ==
+      assert Enum.map(Model.fetch(Clinic.Domain).actors, & &1.name) ==
                [:reception, :specialist, :manager]
     end
 
     test "§4.6's capabilities are what the contract derives", %{four_six: fragments} do
       # `#=> %{reception: %{commands: [...], queries: []}, ...}` is written per actor.
       # Since D14 that view is the model's `grants`, and `Model.capabilities/1` gives
-      # the same capabilities under the names EHOS grants: `rehmed.<command>`.
+      # the same capabilities under the names EHOS grants: `clinic.<command>`.
       [_, expected] =
         Regex.run(
           ~r/#=> %\{reception: (%\{commands: \[[^\]]*\], queries: \[\]\})/,
@@ -89,44 +89,44 @@ defmodule EhOsContract.ContractExamplesTest do
         )
 
       {expected, _} = Code.eval_string(expected)
-      model = Model.fetch(Rehmed.Contracts.VisitSettlement)
+      model = Model.fetch(Clinic.Contracts.VisitSettlement)
 
       assert Map.take(model.grants.reception, [:commands, :queries]) == expected
 
       reception =
         for {name, %{roles: roles}} <- Model.capabilities(model),
-            "rehmed.reception" in roles,
+            "clinic.reception" in roles,
             do: name
 
-      assert Enum.sort(reception) == Enum.map(expected.commands, &"rehmed.#{&1}")
+      assert Enum.sort(reception) == Enum.map(expected.commands, &"clinic.#{&1}")
     end
   end
 
   describe "v2 §4.6, the other kinds" do
-    test "consumes and a policy, with the event it consumes (TaxVision)", %{four_six: f} do
+    test "consumes and a policy, with the event it consumes (bookkeeping)", %{four_six: f} do
       [publisher, subscriber] = String.split(f.consumes, "\n\n", parts: 2)
 
       compile_example("AccountingMonth", """
-        use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting, id: "taxvision.accounting_month"
+        use EhOsContract.Contract, domain: Bookkeeping.Domain, context: :accounting, id: "bookkeeping.accounting_month"
 
-        aggregate :accounting_month, "Miesiąc księgowy" do
+        aggregate :accounting_month, "Accounting month" do
           identity [:company_id, :period_id]
-          command :confirm_registry_data, "Potwierdzenie danych", by: :accountant, emits: :registry_data_consistent
+          command :confirm_registry_data, "Confirming the data", by: :accountant, emits: :registry_data_consistent
       #{amend(publisher)}
         end
       """)
 
       model =
         compile_example("MonthlyTasks", """
-          use EhOsContract.Contract, domain: Taxvision.Domain, context: :tasks, id: "taxvision.monthly_tasks"
+          use EhOsContract.Contract, domain: Bookkeeping.Domain, context: :tasks, id: "bookkeeping.monthly_tasks"
 
-          aggregate :monthly_tasks, "Taski miesiąca" do
+          aggregate :monthly_tasks, "The month's tasks" do
             identity [:company_id, :period_id]
-            command :generate_monthly_tasks, "Wygenerowanie tasków", emits: :monthly_tasks_generated
-            event :monthly_tasks_generated, "Wygenerowano taski"
+            command :generate_monthly_tasks, "Generating the tasks", emits: :monthly_tasks_generated
+            event :monthly_tasks_generated, "The tasks were generated"
           end
 
-        #{String.replace(subscriber, "Taxvision.Contracts.AccountingMonth", inspect(example(:AccountingMonth)))}
+        #{String.replace(subscriber, "Bookkeeping.Contracts.AccountingMonth", inspect(example(:AccountingMonth)))}
         """)
 
       assert [%{handles: [:registry_data_consistent], issues: [:generate_monthly_tasks]}] =
@@ -136,12 +136,12 @@ defmodule EhOsContract.ContractExamplesTest do
     test "an effect", %{four_six: f} do
       model =
         compile_example("Notification", """
-          use EhOsContract.Contract, domain: Taxvision.Domain, context: :accounting, id: "taxvision.notification"
+          use EhOsContract.Contract, domain: Bookkeeping.Domain, context: :accounting, id: "bookkeeping.notification"
 
-          aggregate :registry_check, "Kontrola rejestrów" do
+          aggregate :registry_check, "Registry check" do
             identity :company_id
-            command :check_registry, "Kontrola", by: :accountant, emits: :registry_discrepancy_detected
-            event :registry_discrepancy_detected, "Wykryto rozjazd"
+            command :check_registry, "Checking", by: :accountant, emits: :registry_discrepancy_detected
+            event :registry_discrepancy_detected, "A discrepancy was found"
           end
 
         #{f.effect}
@@ -160,9 +160,9 @@ defmodule EhOsContract.ContractExamplesTest do
     test "facts recorded rather than decided (D6)", %{four_six: f} do
       model =
         compile_example("Recorded", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.recorded"
+          use EhOsContract.Contract, domain: Clinic.Domain, context: :clinical, id: "clinic.recorded"
 
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
         #{f.recorded}
           end
@@ -170,7 +170,7 @@ defmodule EhOsContract.ContractExamplesTest do
 
       assert [
                %{recorded_by: [:specialist]},
-               %{recorded_by: [:p1_integration], depends_on: :medical_event_registry}
+               %{recorded_by: [:registry_integration], depends_on: :medical_event_registry}
              ] =
                model.events
 
@@ -180,16 +180,16 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a process manager", %{four_six: f} do
       model =
         compile_example("DocumentationChase", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical, id: "rehmed.documentation_chase"
+          use EhOsContract.Contract, domain: Clinic.Domain, context: :clinical, id: "clinic.documentation_chase"
 
-          consumes Rehmed.Contracts.Scheduling, :visit_completed
+          consumes Clinic.Contracts.Scheduling, :visit_completed
 
-          aggregate :visit_documentation, "Dokumentacja wizyty" do
+          aggregate :visit_documentation, "The visit's documentation" do
             identity :visit_id
-            command :chase_documentation, "Ponaglenie", emits: :documentation_chased
-            command :close_visit_clinically, "Zamknięcie", by: :specialist, emits: :visit_closed_clinically
-            event :documentation_chased, "Ponaglono"
-            event :visit_closed_clinically, "Zamknięto klinicznie"
+            command :chase_documentation, "Chasing", emits: :documentation_chased
+            command :close_visit_clinically, "Closing", by: :specialist, emits: :visit_closed_clinically
+            event :documentation_chased, "The documentation was chased"
+            event :visit_closed_clinically, "The visit was closed clinically"
           end
 
         #{amend(f.process_manager)}
@@ -198,7 +198,11 @@ defmodule EhOsContract.ContractExamplesTest do
       assert [
                %{
                  timers: [
-                   %{name: :chase, label: "Termin dokumentacji", wait: %{amount: 24, unit: :hour}}
+                   %{
+                     name: :chase,
+                     label: "Documentation deadline",
+                     wait: %{amount: 24, unit: :hour}
+                   }
                  ]
                }
              ] =
@@ -208,12 +212,12 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a read model and a query", %{four_six: f} do
       model =
         compile_example("DailyTotals", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.daily_totals"
+          use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement, id: "clinic.daily_totals"
 
-          aggregate :visit_settlement, "Rozliczenie wizyty" do
+          aggregate :visit_settlement, "Visit settlement" do
             identity :visit_id
-            command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded
-            event :payment_recorded, "Pacjent opłacił wizytę"
+            command :record_payment, "Accepting payment", by: :reception, emits: :payment_recorded
+            event :payment_recorded, "The patient paid for the visit"
           end
 
         #{amend(f.read_model)}
@@ -225,15 +229,15 @@ defmodule EhOsContract.ContractExamplesTest do
     test "a dynamic consistency boundary (PayerSettlement)", %{four_six: f} do
       model =
         compile_example("PayerSettlement", """
-          use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement, id: "rehmed.payer_settlement"
+          use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement, id: "clinic.payer_settlement"
 
-          consumes Rehmed.Contracts.VisitSettlement, [:visit_marked_settled_with_payer, :visit_excluded_from_invoice]
-          consumes Rehmed.Contracts.Scheduling, :visit_completed
+          consumes Clinic.Contracts.VisitSettlement, [:visit_marked_settled_with_payer, :visit_excluded_from_invoice]
+          consumes Clinic.Contracts.Scheduling, :visit_completed
 
         #{without_process(f.dcb)}
 
           # S8: the invariant needs a scenario that is rejected on it.
-          scenario "wizyta ani na fakturze, ani wykluczona — faktura odrzucona" do
+          scenario "a visit neither on the invoice nor excluded — the invoice is rejected" do
             given :visit_completed
             command :issue_payer_invoice, %{invoice_id: "f-1"}
             rejected :every_delivered_visit_settled_or_excluded
@@ -309,7 +313,7 @@ defmodule EhOsContract.ContractExamplesTest do
     adr = File.read!(@adr)
 
     for {what, text} <- [
-          process: ~s|process :visit_settlement, "Rozliczenie wizyty" do|,
+          process: ~s|process :visit_settlement, "Visit settlement" do|,
           stage: "stage :charging do",
           terminal: ", terminal: true"
         ] do
