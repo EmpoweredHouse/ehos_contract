@@ -3,7 +3,7 @@ defmodule EhOsContractHostWeb.Router do
   Three mounts. Two from `eh_os_contract_web`: the dashboard at `/dashboard` for a person,
   and the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
   And the commands, recordings and queries of the sandbox's domains, each at
-  `/api/<domain>` (`/api/fulfilment`, `/api/rehmed`, …), served by `EhOsContract.Plug`
+  `/api/<domain>` (`/api/fulfilment`, `/api/lending`, …), served by `EhOsContract.Plug`
   behind `EhOsContract.Auth.Plug`, which verifies the bearer credential. Nothing else
   lives here — this project has no other frontend, and `docs/adr/architecture.md` §16-17
   puts frontends outside the engine regardless.
@@ -56,6 +56,13 @@ defmodule EhOsContractHostWeb.Router do
         Fulfilment.Contracts.Warehouse,
         Fulfilment.Contracts.Shipping
       ]
+  end
+
+  scope "/api/lending" do
+    pipe_through :commands
+
+    forward "/", EhOsContract.Plug,
+      contracts: [Lending.Contracts.Membership, Lending.Contracts.Circulation]
   end
 
   scope "/api/rehmed" do
