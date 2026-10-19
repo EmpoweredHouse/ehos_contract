@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
       |> schema_consts()
       |> Enum.uniq()
 
-    [name, "v" <> version] = String.split(named, ~r/\.(?=v\d+$)/)
+    [name, "v" <> version] = String.split(named, ~r/\.(?=v\d+\z)/)
     assert "#{name}/v#{version}" in ReleaseFile.release(@commit)["produces"]
   end
 

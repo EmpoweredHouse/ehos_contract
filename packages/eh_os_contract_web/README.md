@@ -96,8 +96,9 @@ runs in EHOS.
 ## The API
 
 `eh_os_contract_api/2` mounts read-only JSON routes in a scope of their own (its docs
-show the pipeline): what a client of the engine — EHOS Console, a CI job, a renderer —
-reads without the dashboard.
+show the pipeline): what a client of the engine — a CI job, a renderer, a tool —
+reads without the dashboard. The EHOS Console does not call it: it takes each domain's graph
+document with the application's deployment (eh-os D-123).
 
 ```elixir
 scope "/" do
@@ -120,7 +121,7 @@ end
 | `GET /api/graph/process/rehmed.clinical_visit`, `…/overlay` | the same for a process module: its stages, the events they include, its promises; over it its runs, the events' occurrences and each promise's verdicts |
 | `GET /api/graph/domain/Rehmed.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts, process modules and what crosses between them |
 
-**Which to read.** A graph or a picture of a contract — the EHOS Console, a renderer — reads
+**Which to read.** A graph or a picture of a contract — a renderer — reads
 `/graph`: its document holds every fact a picture or a panel shows, by stable ids, and its
 overlay what the log says over them. `/model` is the contract as its DSL declares it, one
 key per declaration, for a reader that works with the declarations themselves rather than a
