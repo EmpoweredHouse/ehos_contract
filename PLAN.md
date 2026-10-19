@@ -42,8 +42,8 @@ new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/
 **Next: the publication programme** (18 October, below): making the repository public. The sandbox host owns its repo since PB1 (#366, in #367).
 Invented case studies test what only client material tested (PB2, #369, done); the packages, their tests, the
 skills and the design record are in English and name no client (PB3, #375, done); next is moving the client trees
-out (PB4). Whether the history is kept waits for the two clients' consent. Before `docs/adr/` is published, #379
-(people named, private links) is the user's to decide.
+out (PB4). Whether the history is kept waits for the two clients' consent. Before `docs/adr/` is published, the user
+decides what becomes of the people it names and its links into private repositories (#379).
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
