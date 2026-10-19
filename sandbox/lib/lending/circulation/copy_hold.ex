@@ -2,7 +2,7 @@ defmodule Lending.Circulation.CopyHold do
   @moduledoc """
   **Invented.** Decides a hold on a copy, over everything the boundary consults: the
   holds placed on the copy, its loans and its withdrawal. A hold stands until the copy
-  is lent, and a withdrawn copy takes none. Dispatch decides again when any of them was
+  is lent to the member it is held for, and a withdrawn copy takes none. Dispatch decides again when any of them was
   appended after the read, so two members asking at once get one hold between them.
   """
 
@@ -18,6 +18,9 @@ defmodule Lending.Circulation.CopyHold do
 
   @impl true
   def evolve(state, %HoldPlaced{member_id: member}), do: %{state | held_by: member}
-  def evolve(state, %CopyLent{}), do: %{state | held_by: nil}
+  def evolve(%State{held_by: member} = state, %CopyLent{member_id: member}),
+    do: %{state | held_by: nil}
+
+  def evolve(state, %CopyLent{}), do: state
   def evolve(state, %WithdrawnFromCirculation{}), do: %{state | withdrawn: true}
 end

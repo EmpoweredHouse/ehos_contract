@@ -14,6 +14,13 @@ defmodule Lending.Contracts.Circulation do
     over the copy's loans, its withdrawal and every hold on it, since none of them is
     the hold's own stream: two members asking for one copy at once get one hold
     between them, and a copy withdrawn while a hold waits to be appended refuses it.
+    The hold ends when the copy is lent to the member it was kept for.
+
+  A loan asks nothing of its copy: the desk lends the copy in hand, so whether it was
+  held for someone else, or is recorded as out or withdrawn, is the desk's to notice.
+  Such a loan leaves the hold standing. A member's id is a plain identifier here, not
+  their personal data: once the member is erased, the loans and holds keep it and say
+  nothing more about the person.
   """
 
   use EhOsContract.Contract,
@@ -345,6 +352,21 @@ defmodule Lending.Contracts.Circulation do
 
     command :place_hold, %{copy_id: "copy-1", member_id: "member-bob"}
     expect :hold_placed, %{member_id: "member-bob"}
+  end
+
+  scenario "a copy lent to someone else stays held" do
+    given :hold_placed, %{copy_id: "copy-1", member_id: "member-ada"}
+
+    given :copy_lent, %{
+      loan_id: "loan-1",
+      copy_id: "copy-1",
+      member_id: "member-bob",
+      card_id: "card-bob",
+      due_at: "2026-01-22T17:00:00Z"
+    }
+
+    command :place_hold, %{copy_id: "copy-1", member_id: "member-cy"}
+    rejected :one_hold_per_copy
   end
 
   scenario "a withdrawn copy takes no hold" do
