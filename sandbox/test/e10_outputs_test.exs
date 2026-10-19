@@ -47,19 +47,33 @@ defmodule EhOsContractHost.E10OutputsTest do
     # nothing during its run, and the core unit that only records, which the set holds on
     # purpose. The notices: its contexts' words no term covers, three core commands that
     # refuse nothing, one free-text field, and two values with no label.
-    assert output =~ "eh_os_contract.check: 0 errors, 47 warnings, 47 notices"
+    # Publication programme, PB2 (#369): the library (`Lending`) adds two notices, its
+    # contexts' words no term covers.
+    assert output =~ "eh_os_contract.check: 0 errors, 47 warnings, 49 notices"
   end
 
+  # The personal values the scenarios give: the clinic's patient, and the library's member.
+  @personal [
+    "85010112345",
+    "M54.5",
+    "93.39",
+    "Ada Lovelace",
+    "ada@example.org",
+    "ada@example.net"
+  ]
+
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
-  # a sibling's event: its personal fields are declared there, not in the consumer.
-  test "no exported model carries Rehmed's personal scenario values" do
+  # a sibling's event: its personal fields are declared there, not in the consumer. The
+  # library's membership gives a member's name and e-mail to its query's scenario.
+  test "no exported model carries a personal scenario value" do
     contracts = EhOsContract.Registry.contracts()
     assert Rehmed.Contracts.StatutoryReporting in contracts
+    assert Lending.Contracts.Membership in contracts
 
     for contract <- contracts do
       encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()
 
-      for personal <- ["85010112345", "M54.5", "93.39"] do
+      for personal <- @personal do
         refute encoded =~ personal, "#{inspect(contract)} exports #{personal}"
       end
     end
@@ -67,14 +81,14 @@ defmodule EhOsContractHost.E10OutputsTest do
 
   # Plan DD, S3 (#256): a process module carries scenarios too. It is not exported yet
   # (P2e, #220), so its model is held to the same, as what an export will be made from.
-  test "no process module's model carries Rehmed's personal scenario values" do
+  test "no process module's model carries a personal scenario value" do
     processes = EhOsContract.Registry.processes()
     assert Rehmed.Processes.ClinicalVisit in processes
 
     for process <- processes do
       model = process |> EhOsContract.Model.fetch() |> inspect(limit: :infinity)
 
-      for personal <- ["85010112345", "M54.5", "93.39"] do
+      for personal <- @personal do
         refute model =~ personal, "#{inspect(process)} carries #{personal}"
       end
     end

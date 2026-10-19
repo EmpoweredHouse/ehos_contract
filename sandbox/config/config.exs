@@ -20,12 +20,11 @@ config :eh_os_contract,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
   authorizer: EhOsContract.Auth,
-  # Rehmed's settlement `total` is the host's to give (plan T1s); a stand-in
-  # for its systems answers it.
-  supplier: Rehmed.Supplier,
-  # Rehmed's booking reads the service it names from the clinic's catalogue (plan DD,
-  # T2s (#245)); a stand-in catalogue answers it.
-  entities: Rehmed.Entities
+  # The fields the host gives, a return's late fee and a settlement's total, and the
+  # entities a command reads, a membership card and a clinic's service: each domain's
+  # stand-in answers for its own.
+  supplier: EhOsContractHost.Supplier,
+  entities: EhOsContractHost.Entities
 
 # EHOS's address and this application's audience. There is no EHOS beside the
 # sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot

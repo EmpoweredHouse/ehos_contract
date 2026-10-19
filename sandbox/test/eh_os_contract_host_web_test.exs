@@ -31,6 +31,18 @@ defmodule EhOsContractHostWebTest do
     # Taxvision.Contracts.AccountingMonth, this host's own real contract, under its id
     # (plan DD, P1a, #183) — not packages/eh_os_contract_web's invented fixture.
     assert html =~ "taxvision.accounting_month"
+    assert html =~ "lending.circulation"
+  end
+
+  test "the conformance endpoint serves the library's late fee", %{conn: conn} do
+    conn = get(conn, "/api/eh_os_contract/conformance?process=lending.late_fee")
+
+    assert conn.status == 200
+    report = Jason.decode!(conn.resp_body)["report"]
+    assert report["process"] == "lending.late_fee"
+
+    assert [%{"promises" => [%{"promise" => "settled_within_thirty_days"}]}] =
+             report["processes"]
   end
 
   # Plan DD, P2w (#259): the clinic's visit, a process module, on the conformance wire.
