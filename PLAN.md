@@ -108,7 +108,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
 
-**PB1.** `Taxvision.Repo` is the host's only repo, and `Taxvision.DataCase` / `CommitRepo` serve every database
+**The host's own repo (PB1).** `Taxvision.Repo` is the host's only repo, and `Taxvision.DataCase` / `CommitRepo` serve every database
 test, so no client can leave before the host has its own. Mechanical; the audience and the supplier stay until PB2
 and PB4 (the issue's "Out of scope").
 

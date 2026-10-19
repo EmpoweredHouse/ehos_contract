@@ -606,9 +606,9 @@ what would falsify them, which is why this section exists.
   does not fire for `insert/update/delete` on a changeset — those name another module's schema, which
   `boundary` catches at compile time — and it does not see raw SQL, which is the one genuinely invisible
   entrance and the case this deferral rests on models generating idiomatic Ecto.
-  *Amended, 19 October 2026, at PB1:* the skeleton that showed this, a `prepare_query/3` in the client's repo
-  collecting the tables under a process flag nothing set, went when the sandbox host took its own repo. The
-  finding stands, and one trap of the hook it would be is worth keeping: a join's source is `{nil, SchemaModule}`,
+  *Amended, 19 October 2026, when the sandbox host took its own repo (PB1):* the skeleton that showed this, a
+  `prepare_query/3` in the client's repo collecting the tables under a process flag nothing set, went with that
+  repo. The finding stands, and one trap of the hook it would be is worth keeping: a join's source is `{nil, SchemaModule}`,
   so the table has to come from `SchemaModule.__schema__(:source)`, or a join reads as `nil` and the check falls
   silent exactly where it should refuse. ([#366](https://github.com/EmpoweredHouse/eh-os-contract/issues/366))
 
