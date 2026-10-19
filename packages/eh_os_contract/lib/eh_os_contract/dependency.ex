@@ -66,6 +66,15 @@ defmodule EhOsContract.Dependency do
   Only `{:error, :unavailable}` counts. Every other result, including other errors, passes
   through untouched and unrecorded, because a suspension deletes a violation from the
   report and guessing in that direction hides real problems.
+
+  The observation is stamped with `EhOsContract.Clock.now/0`: the moment
+  `EhOsContract.Clock.at/2` sets, as for the events the same code appends, or now.
+
+      def charge(customer, amount) do
+        EhOsContract.Dependency.observe(MyApp.Contracts.Payments, :payment_gateway, fn ->
+          MyApp.Gateway.charge(customer, amount)
+        end)
+      end
   """
   @spec observe(module(), atom(), (-> term())) :: term()
   def observe(contract, external, fun) do
@@ -97,14 +106,15 @@ defmodule EhOsContract.Dependency do
   is the one wrapped in `observe/3`, and refusing there would crash the effect in the
   middle of the outage it reports.
 
-  A domain, or any module that is not a contract, is refused by name.
+  A domain, or any module that is not a contract, is refused by name. `now` is the
+  moment the outage was seen, `EhOsContract.Clock.now/0` unless given.
   """
   # Recording an observation about an external only an effect calls was decided by the
   # user, 29 September 2026, in the review of plan E11a.
   @spec unavailable!(module(), atom()) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil, DateTime.t()) :: t()
-  def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
+  def unavailable!(contract, external, reason \\ nil, now \\ EhOsContract.Clock.now()) do
     unless external in used(contract) do
       raise ArgumentError,
             "#{inspect(contract)} uses no external #{inspect(external)}: no event of it " <>

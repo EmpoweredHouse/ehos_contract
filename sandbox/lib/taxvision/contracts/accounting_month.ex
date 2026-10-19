@@ -40,8 +40,9 @@ defmodule Taxvision.Contracts.AccountingMonth do
   ## Out to Shugyo
 
   Shugyo reads the month's events (03 §3, the event stream from every context to Shugyo, A9); the opening
-  leaves as `taxvision.accounting_month.opened.v1`. The relay is E12's, so nothing
-  leaves yet.
+  left as `taxvision.accounting_month.opened.v1` until the publication programme (PB2,
+  #369) gave the sandbox's one publication to an invented domain, `Billing`: a host
+  publishes under one application's name, and the material is leaving the repository.
 
   ## The run
 
@@ -179,12 +180,6 @@ defmodule Taxvision.Contracts.AccountingMonth do
     handles: :bank_turnover_list_created,
     issues: :run_matching,
     source: "P6"
-
-  publish :month_opened,
-    as: "taxvision.accounting_month.opened.v1",
-    from: :accounting_month_opened,
-    fields: [:company_id, :period_id],
-    idempotent_on: [:company_id, :period_id]
 
   scenario "dane zgodne — miesiąc się otwiera" do
     given :registry_data_consistent, %{company_id: "c-1", period_id: "2026-08"}
