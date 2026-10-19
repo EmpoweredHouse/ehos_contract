@@ -23,10 +23,10 @@ defmodule EhOsContract.GraphRenderer.Loader do
   A host that has only the application's JSON API reads
   `GET <mount>/graph/domain/<name>`, `…/graph/<contract>` and `…/graph/process/<id>`,
   each with `/overlay`, and decodes them; `opts` is what it passed beside the module,
-  `loader={{MyLoader, app: "rehmed"}}`, so one loader serves several applications.
+  `loader={{MyLoader, app: "lending"}}`, so one loader serves several applications.
 
   **A reference** names a document: `{:domain, name}` (the domain's module, as the
-  documents name it, e.g. `"Rehmed.Domain"`), `{:contract, id}` and `{:process, id}` (the
+  documents name it, e.g. `"Lending.Domain"`), `{:contract, id}` and `{:process, id}` (the
   ids the domain's document gives its contract and process nodes as `name`).
 
   **What it answers:** `{:ok, document}` with string keys, as JSON decodes it;

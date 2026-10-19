@@ -42,7 +42,7 @@ leads: a contract or a process of the map, a unit of a contract, an event's unit
 <.live_component
   module={EhOsContract.GraphRenderer.Explorer}
   id="graph"
-  domain="Rehmed.Domain"
+  domain="Lending.Domain"
   loader={MyAppWeb.GraphLoader}
 />
 ```
@@ -124,7 +124,7 @@ which name on the wire, and which subscribe to one by its name; each knows only 
 two sides by that name into one landscape, which the canvas draws with `view={:landscape}`:
 
 ```elixir
-landscape = EhOsContract.GraphRenderer.Landscape.join([{"taxvision", taxvision}, {"ledger", ledger}])
+landscape = EhOsContract.GraphRenderer.Landscape.join([{"billing", billing}, {"ledger", ledger}])
 ```
 
 A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the

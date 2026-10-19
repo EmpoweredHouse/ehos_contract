@@ -232,7 +232,7 @@ defmodule EhOsContract.GraphRenderer.View do
   what is left. A group keeps its cards. How a large picture is read one neighbourhood at
   a time; an `id` the view does not draw leaves it as it is.
 
-      View.around(view, "command:rehmed.settlement:close_settlement")
+      View.around(view, "command:lending.circulation:return_copy")
   """
   @spec around(t(), String.t()) :: t()
   def around(view, id) do
@@ -271,8 +271,9 @@ defmodule EhOsContract.GraphRenderer.View do
   kind or footer holds it, ignoring case. `nil` for a blank query, which finds nothing and
   dims nothing. The dot where a new aggregate starts says nothing and is never searched.
 
-      View.matches(view, "cancel")
-      #=> MapSet.new(["command:scheduling:cancel_visit"])
+      View.matches(View.contract(circulation), "withdraw")
+      #=> MapSet.new(["command:lending.circulation:withdraw_copy",
+      #     "event:lending.circulation:withdrawn_from_circulation"])
   """
   @spec matches(t(), String.t() | nil) :: MapSet.t(String.t()) | nil
   def matches(view, query) do

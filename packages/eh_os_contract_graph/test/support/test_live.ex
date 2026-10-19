@@ -51,23 +51,23 @@ end
 defmodule EhOsContract.GraphRenderer.FixtureLoader do
   @moduledoc false
   # A loader over the fixture documents, as a host's would be over its engine or its API:
-  # Rehmed's domain, three of its contracts and its clinical visit; anything else fails,
-  # and `opts` may name a ref that raises.
+  # the fulfilment domain, two of its three contracts and its order process; anything else
+  # fails, and `opts` may name a ref that raises.
   @behaviour EhOsContract.GraphRenderer.Loader
 
   alias EhOsContract.GraphRenderer.Fixtures
 
   @documents %{
-    {:domain, "Rehmed.Domain"} => "domain.rehmed",
-    {:contract, "rehmed.settlement"} => "rehmed.settlement",
-    {:contract, "rehmed.statutory_reporting"} => "rehmed.statutory_reporting",
-    {:contract, "rehmed.external_payers"} => "rehmed.external_payers",
-    {:process, "rehmed.clinical_visit"} => "process.rehmed.clinical_visit"
+    {:domain, "Fulfilment.Domain"} => "domain.fulfilment",
+    {:contract, "fulfilment.warehouse"} => "fulfilment.warehouse",
+    {:contract, "fulfilment.shipping"} => "fulfilment.shipping",
+    {:process, "fulfilment.order"} => "process.fulfilment.order"
   }
 
   # `opts`: `raise:` a ref whose load raises, `nil_for:` one answered `{:ok, nil}`,
   # `fail_once:` an Agent holding refs whose first load fails, `notify:` a pid told of
-  # every load, and `bare: true` a domain with no contract, so no system to draw.
+  # every load, `bare: true` a domain with no contract, so no system to draw, and `labels:`
+  # labels by node id for every document it loads (`Fixtures.relabel/2`).
   @impl true
   def document(ref, opts) do
     if ref == opts[:raise], do: raise("the loader failed")
@@ -82,10 +82,10 @@ defmodule EhOsContract.GraphRenderer.FixtureLoader do
         {:error, :timeout}
 
       opts[:bare] && match?({:domain, _}, ref) ->
-        {:ok, put_in(Fixtures.document("domain.rehmed"), ["nodes", "contract"], [])}
+        {:ok, put_in(Fixtures.document("domain.fulfilment"), ["nodes", "contract"], [])}
 
       name = @documents[ref] ->
-        {:ok, Fixtures.document(name)}
+        {:ok, Fixtures.relabel(Fixtures.document(name), opts[:labels] || %{})}
 
       true ->
         {:error, :not_found}
@@ -97,8 +97,8 @@ defmodule EhOsContract.GraphRenderer.FixtureLoader do
     if pid = opts[:notify], do: send(pid, {:overlay, ref})
 
     case ref do
-      {:process, "rehmed.clinical_visit"} ->
-        {:ok, Fixtures.overlay("process.rehmed.clinical_visit")}
+      {:process, "fulfilment.order"} ->
+        {:ok, Fixtures.overlay("process.fulfilment.order")}
 
       _other ->
         {:ok, nil}
@@ -118,7 +118,7 @@ defmodule EhOsContract.GraphRenderer.ExplorerLive do
       {:ok,
        assign(socket,
          opts: session["opts"] || [],
-         domain: session["domain"] || "Rehmed.Domain",
+         domain: session["domain"] || "Fulfilment.Domain",
          audience: session["audience"] || :engineering,
          renders: 0
        )}

@@ -17,7 +17,7 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   EHOS Console holds those each application submitted with its deployment:
 
       landscape =
-        Landscape.join([{"taxvision", taxvision_domain}, {"ledger", ledger_domain}])
+        Landscape.join([{"billing", billing_domain}, {"ledger", ledger_domain}])
 
   ```heex
   <.live_component
@@ -64,7 +64,7 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   `GET <mount>/graph/domain/<name>` answers it, decoded. An application with several
   domains has an entry for each. The order of the entries is the order of their boxes.
 
-      Landscape.join([{"taxvision", taxvision_domain}, {"ledger", ledger_domain}])
+      Landscape.join([{"billing", billing_domain}, {"ledger", ledger_domain}])
       #=> %{"kind" => "landscape", "digest" => "…", "nodes" => %{"domain" => [...],
       #     "contract" => [...], "publication" => [...], "event" => [...]},
       #     "relations" => %{"publishes" => [...], "subscribed_by" => [...]}}

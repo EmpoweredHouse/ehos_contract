@@ -11,7 +11,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       <.live_component
         module={EhOsContract.GraphRenderer.Explorer}
         id="graph"
-        domain="Rehmed.Domain"
+        domain="Lending.Domain"
         loader={MyAppWeb.GraphLoader}
       />
 
@@ -27,7 +27,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       <.live_component
         module={EhOsContract.GraphRenderer.Explorer}
         id="graph"
-        domain="Rehmed.Domain"
+        domain="Lending.Domain"
         loader={MyAppWeb.GraphLoader}
         audience={:owner}
       />
@@ -36,8 +36,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   does not set it back, so `audience` is read when the explorer starts, and anything but
   `:engineering` or `:owner` there raises an `ArgumentError`.
 
-  **Two viewpoints**, as tabs over the canvas, share a path ("Rehmed.Domain ›
-  rehmed.scheduling › visit") that goes back up:
+  **Two viewpoints**, as tabs over the canvas, share a path ("Lending.Domain ›
+  lending.circulation › loan") that goes back up:
 
   - **Structure:** the domain's system — its contracts in their contexts, what one consumes
     from another, the drift's numbers on each — with a switch to its context map; a

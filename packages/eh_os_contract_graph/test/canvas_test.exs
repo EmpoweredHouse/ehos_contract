@@ -13,10 +13,9 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       render_component(Canvas, id: "graph", document: document, overlay: overlay, view: view)
       |> LazyHTML.from_fragment()
 
-  # Every view of every fixture, the test bed among them.
+  # Every view of every fixture and its variants, the test bed among them.
   defp every_view do
-    for name <- Fixtures.names(),
-        document = Fixtures.document(name),
+    for {name, document} <- Fixtures.documents(),
         {spec, _title} <- [{:all, nil} | View.views(document)],
         do: {"#{name} #{inspect(spec)}", document, spec}
   end
@@ -30,8 +29,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
   describe "what it renders" do
     test "a card per node and a label per relation of the view, with the ids the hook reads" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         view = View.all(document)
         html = draw(document)
 
@@ -94,7 +92,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a label names its arrow's line and head, and one with nothing to say is blank" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
       html = draw(document, nil, :process)
       relations = View.process(document).relations
       [promise] = for %{type: "promise"} = r <- relations, do: r.id
@@ -104,7 +102,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       label = at(html, "data-ehg-relation", promise)
       assert LazyHTML.attribute(label, "data-line") == ["thick"]
       assert LazyHTML.attribute(label, "data-head") == ["arrow"]
-      assert LazyHTML.text(label) =~ "within 2 days"
+      assert LazyHTML.text(label) =~ "within 24 hours"
       refute "ehg-blank" in classes(label)
 
       assert "ehg-blank" in classes(at(html, "data-ehg-relation", precedes))
@@ -117,36 +115,36 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     test "a state card lists its fields, an end of a lifecycle and its start have their looks" do
       html =
         draw(
-          Fixtures.document("rehmed.settlement"),
+          Fixtures.document("lending.circulation"),
           nil,
-          {:unit, "unit:rehmed.settlement:visit_settlement"}
+          {:unit, "unit:lending.circulation:loan"}
         )
 
       fields =
         html
-        |> at("data-ehg-node", "unit:rehmed.settlement:visit_settlement")
+        |> at("data-ehg-node", "unit:lending.circulation:loan")
         |> LazyHTML.query(".ehg-field")
         |> Enum.map(&LazyHTML.text/1)
 
-      assert "visit_id: id · identity" in fields
+      assert "loan_id: id · identity" in fields
 
-      unit = "unit:appunite_equipment.demands:demand"
-      html = draw(Fixtures.document("appunite_equipment.demands"), nil, {:lifecycle, unit})
+      unit = "unit:fulfilment.shipping:shipment"
+      html = draw(Fixtures.document("fulfilment.shipping"), nil, {:lifecycle, unit})
       start = at(html, "data-ehg-node", unit)
 
       assert LazyHTML.attribute(start, "data-kind") == ["start"]
       assert String.trim(LazyHTML.text(start)) == ""
 
       assert html
-             |> at("data-ehg-node", "status:appunite_equipment.demands:demand:fulfilled")
+             |> at("data-ehg-node", "status:fulfilment.shipping:shipment:delivered")
              |> LazyHTML.attribute("data-variant") == ["final"]
     end
 
     # Plan DD, C1 (#304): a unit the document says records only says so on its card and on
     # its box, beside its kind; one it does not, not.
     test "a unit that records only says so beside its kind, on its card and on its box" do
-      unit = "unit:taxvision.registry_watch:client"
-      document = Fixtures.document("taxvision.registry_watch")
+      unit = "unit:fulfilment.warehouse:pick_list"
+      document = Fixtures.document("fulfilment.warehouse")
 
       recording =
         update_in(document, ["nodes", "unit"], fn units ->
@@ -176,29 +174,28 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a card shows its kind as a badge with an icon, and where it lives in a footer" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
       html = draw(document, nil, :process)
-      card = at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+      card = at(html, "data-ehg-node", "event:fulfilment.shipping:dispatched")
 
       assert card |> LazyHTML.query(".ehg-kind") |> LazyHTML.text() == "event"
       assert Enum.count(LazyHTML.query(card, ".ehg-kind svg.ehg-icon[aria-hidden]")) == 1
 
-      assert card |> LazyHTML.query(".ehg-foot") |> LazyHTML.text() ==
-               "rehmed.statutory_reporting"
+      assert card |> LazyHTML.query(".ehg-foot") |> LazyHTML.text() == "fulfilment.shipping"
     end
 
     test "a name in code may break after a dot or an underscore, and keeps its text" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
       html = draw(document, nil, :process)
-      card = at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+      card = at(html, "data-ehg-node", "event:fulfilment.orders:payment_confirmed")
 
-      assert card |> LazyHTML.query(".ehg-name") |> LazyHTML.text() == "p1_report_sent"
-      assert Enum.count(LazyHTML.query(card, ".ehg-name wbr")) == 2
-      assert Enum.count(LazyHTML.query(card, ".ehg-foot wbr")) == 2
+      assert card |> LazyHTML.query(".ehg-name") |> LazyHTML.text() == "payment_confirmed"
+      assert Enum.count(LazyHTML.query(card, ".ehg-name wbr")) == 1
+      assert Enum.count(LazyHTML.query(card, ".ehg-foot wbr")) == 1
     end
 
     test "a legend under the canvas lists what the view draws" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
       legend = document |> draw(nil, :process) |> LazyHTML.query("ul.ehg-legend")
 
       assert LazyHTML.attribute(LazyHTML.query(legend, ".ehg-legend-kind"), "data-kind") ==
@@ -211,7 +208,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a legend says what each swatch shows to a reader who cannot see it" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
       legend = document |> draw(nil, :process) |> LazyHTML.query("ul.ehg-legend[aria-label]")
 
       texts =
@@ -222,13 +219,13 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a contract's card on the domain's map says its drift" do
-      document = Fixtures.document("domain.rehmed")
+      document = Fixtures.document("domain.fulfilment")
 
       overlay = %{
         "document_digest" => document["digest"],
         "nodes" => %{
-          "contract:rehmed.settlement" => %{"untraversed" => 2, "undeclared" => 0},
-          "contract:rehmed.scheduling" => %{"untraversed" => 0, "undeclared" => 0}
+          "contract:fulfilment.warehouse" => %{"untraversed" => 2, "undeclared" => 0},
+          "contract:fulfilment.shipping" => %{"untraversed" => 0, "undeclared" => 0}
         },
         "relations" => %{},
         "observed" => %{"relations" => %{"undeclared" => []}}
@@ -237,12 +234,12 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       html = draw(document, overlay, :system)
 
       assert html
-             |> at("data-ehg-node", "contract:rehmed.settlement")
+             |> at("data-ehg-node", "contract:fulfilment.warehouse")
              |> LazyHTML.query(".ehg-drift")
              |> LazyHTML.text() == "2 never taken"
 
       assert html
-             |> at("data-ehg-node", "contract:rehmed.scheduling")
+             |> at("data-ehg-node", "contract:fulfilment.shipping")
              |> LazyHTML.query(".ehg-drift")
              |> Enum.count() == 0
     end
@@ -275,7 +272,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
   describe "the overlay" do
     setup do
-      document = Fixtures.document("taxvision.registry_watch")
+      document = Fixtures.document("lending.circulation")
       [step | _] = document["relations"]["emits"]
       [event | _] = document["nodes"]["event"]
 
@@ -327,8 +324,8 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
   # Plan DD, P2e (#220).
   describe "a process's overlay" do
     setup do
-      document = Fixtures.document("process.rehmed.clinical_visit")
-      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+      document = Fixtures.order_with_other_way()
+      overlay = Fixtures.overlay("process.fulfilment.order")
       relations = View.process(document).relations
       [promise] = for %{type: "promise"} = r <- relations, do: r
       [other_way] = for %{type: "or_else"} = r <- relations, do: r.id
@@ -348,20 +345,17 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     test "its runs on the process, and each event's occurrences, 0 included", c do
       overlay =
         c.overlay
-        |> put_in(["nodes", "process:rehmed.clinical_visit", "runs"], 3)
-        |> put_in(["nodes", "event:rehmed.scheduling:visit_completed"], %{"occurrences" => 3})
+        |> put_in(["nodes", "process:fulfilment.order", "runs"], 3)
+        |> put_in(["nodes", "event:fulfilment.orders:payment_confirmed"], %{"occurrences" => 3})
 
       html = draw(c.document, overlay, :process)
 
-      assert count(html, "data-ehg-node", "process:rehmed.clinical_visit") == ["×3"]
-      assert count(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed") == ["×3"]
-
-      assert count(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent") == [
-               "×0"
-             ]
+      assert count(html, "data-ehg-node", "process:fulfilment.order") == ["×3"]
+      assert count(html, "data-ehg-node", "event:fulfilment.orders:payment_confirmed") == ["×3"]
+      assert count(html, "data-ehg-node", "event:fulfilment.shipping:dispatched") == ["×0"]
 
       # Nothing the log counts is not an event.
-      assert count(html, "data-ehg-node", "actor:Rehmed.Domain:manager") == []
+      assert count(html, "data-ehg-node", "actor:Fulfilment.Domain:dispatcher") == []
     end
 
     test "a promise's verdicts on its arrow, a broken one in the error colour", c do
@@ -413,7 +407,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
   describe "the bar over the canvas" do
     setup do
-      document = Fixtures.document("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
 
       {:ok, view, _html} =
         live_isolated(build_conn(), TestLive,
@@ -428,24 +422,24 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     test "the search dims what it does not find, and Enter selects the first card it finds", %{
       view: view
     } do
-      view |> element("form.ehg-search") |> render_change(%{"q" => "wyszedł"})
+      view |> element("form.ehg-search") |> render_change(%{"q" => "handed"})
       html = shown(view)
 
       refute "is-unmatched" in classes(
-               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+               at(html, "data-ehg-node", "event:fulfilment.shipping:dispatched")
              )
 
       assert "is-unmatched" in classes(
-               at(html, "data-ehg-node", "event:rehmed.statutory_reporting:p1_report_sent")
+               at(html, "data-ehg-node", "event:fulfilment.shipping:booked")
              )
 
       assert html |> LazyHTML.query(".ehg-found") |> LazyHTML.text() =~ "1 found"
 
-      view |> element("form.ehg-search") |> render_submit(%{"q" => "wyszedł"})
+      view |> element("form.ehg-search") |> render_submit(%{"q" => "handed"})
       html = shown(view)
 
       assert "is-selected" in classes(
-               at(html, "data-ehg-node", "event:rehmed.scheduling:visit_completed")
+               at(html, "data-ehg-node", "event:fulfilment.shipping:dispatched")
              )
 
       assert html |> LazyHTML.query(".ehg[data-reveal]") |> LazyHTML.attribute("data-reveal") == [
@@ -458,13 +452,13 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     } do
       count = fn v -> v |> shown() |> LazyHTML.query("button.ehg-card") |> Enum.count() end
       all = count.(view)
-      id = "event:rehmed.scheduling:visit_completed"
+      id = "event:fulfilment.orders:payment_confirmed"
 
       view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
       view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
 
       around =
-        "process.rehmed.clinical_visit"
+        "process.fulfilment.order"
         |> Fixtures.document()
         |> View.process()
         |> View.around(id)
@@ -484,7 +478,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
     test "closing the panel leaves focus too", %{view: view} do
       view
-      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> element(~s(button[data-ehg-node="event:fulfilment.orders:payment_confirmed"]))
       |> render_click()
 
       view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
@@ -512,15 +506,14 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       view
       |> with_target("#graph")
       |> render_click("select", %{
-        "id" =>
-          "precedes:stage:rehmed.clinical_visit:departure:stage:rehmed.clinical_visit:closing"
+        "id" => "precedes:stage:fulfilment.order:picking:stage:fulfilment.order:shipping"
       })
 
       refute has_element?(view, "button.ehg-tool", "Focus on the selection")
     end
 
     test "closing the panel by the selected card again leaves focus too", %{view: view} do
-      card = ~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"])
+      card = ~s(button[data-ehg-node="event:fulfilment.orders:payment_confirmed"])
       view |> element(card) |> render_click()
       view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
       view |> element(card) |> render_click()
@@ -530,7 +523,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
     test "another canvas's selection closes this panel and keeps its focus", %{view: view} do
       view
-      |> element(~s(button[data-ehg-node="event:rehmed.scheduling:visit_completed"]))
+      |> element(~s(button[data-ehg-node="event:fulfilment.orders:payment_confirmed"]))
       |> render_click()
 
       view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
@@ -576,8 +569,8 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "the log's switch draws the declaration alone, and back" do
-      document = Fixtures.document("process.rehmed.clinical_visit")
-      overlay = Fixtures.overlay("process.rehmed.clinical_visit")
+      document = Fixtures.document("process.fulfilment.order")
+      overlay = Fixtures.overlay("process.fulfilment.order")
 
       {:ok, view, _html} =
         live_isolated(build_conn(), TestLive,
@@ -668,8 +661,8 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     end
 
     test "a group's title selects the group, and marks its cards" do
-      document = Fixtures.document("rehmed.settlement")
-      unit = "unit:rehmed.settlement:visit_settlement"
+      document = Fixtures.document("lending.membership")
+      unit = "unit:lending.membership:membership"
 
       {:ok, view, _html} =
         live_isolated(build_conn(), TestLive,
@@ -682,11 +675,11 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert "is-selected" in classes(at(html, "data-ehg-group", unit))
 
       assert "is-near" in classes(
-               at(html, "data-ehg-node", "command:rehmed.settlement:close_settlement")
+               at(html, "data-ehg-node", "command:lending.membership:register_member")
              )
 
-      assert "is-far" in classes(at(html, "data-ehg-node", "actor:Rehmed.Domain:reception"))
-      assert html |> LazyHTML.query(".ehg-panel h4") |> LazyHTML.text() == "Rozliczenie wizyty"
+      assert "is-far" in classes(at(html, "data-ehg-node", "actor:Lending.Domain:librarian"))
+      assert html |> LazyHTML.query(".ehg-panel h4") |> LazyHTML.text() == "Membership"
     end
 
     test "a second click, the close button, or an unknown id leave nothing new selected", %{

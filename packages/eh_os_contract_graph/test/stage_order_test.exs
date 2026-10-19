@@ -8,28 +8,28 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
 
   alias EhOsContract.GraphRenderer.{Canvas, Fixtures, Lookup, Panel, View}
 
-  @closing "stage:rehmed.clinical_visit:closing"
-  @reporting "stage:rehmed.clinical_visit:reporting"
-  @id "out_of_order:#{@reporting}:#{@closing}"
+  @picking "stage:fulfilment.order:picking"
+  @shipping "stage:fulfilment.order:shipping"
+  @id "out_of_order:#{@shipping}:#{@picking}"
 
   defp overlay do
-    Fixtures.overlay("process.rehmed.clinical_visit")
+    Fixtures.overlay("process.fulfilment.order")
     |> put_in(["observed", "relations", "out_of_order"], [
-      %{"id" => @id, "from" => @reporting, "to" => @closing, "runs" => 3}
+      %{"id" => @id, "from" => @shipping, "to" => @picking, "runs" => 3}
     ])
   end
 
-  defp document, do: Fixtures.document("process.rehmed.clinical_visit")
+  defp document, do: Fixtures.document("process.fulfilment.order")
 
   test "draws an arrow from the later stage back to the earlier one" do
     view = View.build(document(), :process, overlay())
 
-    assert [%{id: @id, from: @reporting, to: @closing, words: "entered first", line: "dotted"}] =
+    assert [%{id: @id, from: @shipping, to: @picking, words: "entered first", line: "dotted"}] =
              Enum.filter(view.relations, &(&1.type == "out_of_order"))
   end
 
   test "draws none without an overlay, or with one where every run kept the order" do
-    for o <- [nil, Fixtures.overlay("process.rehmed.clinical_visit")] do
+    for o <- [nil, Fixtures.overlay("process.fulfilment.order")] do
       refute Enum.any?(
                View.build(document(), :process, o).relations,
                &(&1.type == "out_of_order")
@@ -76,7 +76,7 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
     precedes =
       LazyHTML.query(
         html,
-        ~s(button.ehg-relation[data-ehg-relation="precedes:#{@closing}:#{@reporting}"])
+        ~s(button.ehg-relation[data-ehg-relation="precedes:#{@picking}:#{@shipping}"])
       )
 
     assert LazyHTML.attribute(precedes, "data-observed") == []
@@ -87,21 +87,21 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
     entries = [
       "not a map",
       7,
-      %{"id" => %{}, "from" => @reporting, "to" => @closing, "runs" => 1},
+      %{"id" => %{}, "from" => @shipping, "to" => @picking, "runs" => 1},
       %{
-        "id" => "precedes:#{@closing}:#{@reporting}",
-        "from" => @reporting,
-        "to" => @closing,
+        "id" => "precedes:#{@picking}:#{@shipping}",
+        "from" => @shipping,
+        "to" => @picking,
         "runs" => 1
       },
-      %{"id" => @id, "from" => @reporting, "to" => @closing, "runs" => %{"x" => 1}},
-      %{"id" => @id, "from" => @reporting, "to" => @closing, "runs" => 2}
+      %{"id" => @id, "from" => @shipping, "to" => @picking, "runs" => %{"x" => 1}},
+      %{"id" => @id, "from" => @shipping, "to" => @picking, "runs" => 2}
     ]
 
     for hostile <- [entries, %{"a" => 1}, "x"] do
       o =
         put_in(
-          Fixtures.overlay("process.rehmed.clinical_visit"),
+          Fixtures.overlay("process.fulfilment.order"),
           ["observed", "relations", "out_of_order"],
           hostile
         )
@@ -119,7 +119,7 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
 
     o =
       put_in(
-        Fixtures.overlay("process.rehmed.clinical_visit"),
+        Fixtures.overlay("process.fulfilment.order"),
         ["observed", "relations", "out_of_order"],
         entries
       )
@@ -141,7 +141,7 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
 
   test "an overlay whose observed part is not an object draws the picture without it" do
     for observed <- ["invalid", %{"relations" => "x"}, nil] do
-      o = Map.put(Fixtures.overlay("process.rehmed.clinical_visit"), "observed", observed)
+      o = Map.put(Fixtures.overlay("process.fulfilment.order"), "observed", observed)
       view = View.build(document(), :process, o)
       refute Enum.any?(view.relations, &View.observed?/1)
     end
@@ -161,7 +161,7 @@ defmodule EhOsContract.GraphRenderer.StageOrderTest do
       |> String.split()
       |> Enum.join(" ")
 
-    assert text =~ "3 runs entered reporting"
-    assert text =~ "before closing"
+    assert text =~ "3 runs entered Shipping"
+    assert text =~ "before Picking"
   end
 end
