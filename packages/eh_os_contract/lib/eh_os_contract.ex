@@ -36,6 +36,7 @@ defmodule EhOsContract do
       DomainService,
       Conformance.Wire,
       Deployment,
+      Dependency,
       Domain,
       {Domain.Dsl, []},
       Duration,

@@ -30,12 +30,13 @@ config :eh_os_contract,
 # EHOS's address and this application's audience. There is no EHOS beside the
 # sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot
 # that it has no keys and refuses every real credential; the tests pin a key of
-# their own (`EhOsContract.Auth.Testing`). The application is `taxvision`, as in
-# `ehos.yaml` (`application: taxvision`): of the sandbox's domains only TaxVision
-# publishes, so it is the one `EhOsContract.Auth` requires the audience to name (#180).
+# their own (`EhOsContract.Auth.Testing`). The application is `billing`, as in
+# `ehos.yaml` (`application: billing`): of the sandbox's domains only the invented
+# `Billing` publishes, so it is the one `EhOsContract.Auth` requires the audience to
+# name (#180).
 config :eh_os_contract_auth,
   issuer: "https://ehos.invalid",
-  audience: "taxvision/sandbox"
+  audience: "billing/sandbox"
 
 config :eh_os_contract_host, EhOsContractHost.Repo,
   username: "eh_os",

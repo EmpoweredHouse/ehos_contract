@@ -1,8 +1,8 @@
 # Test data for the manifest task, not a deployment: the sandbox is the library's first consumer,
-# and nobody deploys it. It holds two domains, TaxVision and Rehmed, so it must name the one an
-# image would be. The format is EHOS's (eh-os D-51, docs/ehos-yaml.md).
+# and nobody deploys it. It holds several domains, so it must name the one an image would be:
+# `billing`, the one that publishes. The format is EHOS's (eh-os D-51, docs/ehos-yaml.md).
 schema: ehos.yaml/v1
-application: taxvision
+application: billing
 serves:
   - name: web
     port: 4010

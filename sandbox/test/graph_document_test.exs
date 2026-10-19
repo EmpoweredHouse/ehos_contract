@@ -26,7 +26,7 @@ defmodule EhOsContract.GraphDocumentTest do
   test "every contract and every domain gives a document, all of them" do
     names = documents() |> Enum.map(&elem(&1, 0)) |> Enum.map(&inspect/1)
 
-    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment.) do
+    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment. Billing.) do
       assert Enum.count(names, &String.starts_with?(&1, prefix)) >= 2, prefix
     end
   end

@@ -26,8 +26,8 @@ defmodule GraphLab do
   - **Processes:** two sharing an event, one over one contract, one with no end; stages
     with labels; promises kept by their event or another way; a deadline.
 
-  **It does not publish.** The sandbox is one application to EHOS, `taxvision`
-  (`config :eh_os_contract_auth, audience: "taxvision/sandbox"`), and an application
+  **It does not publish.** The sandbox is one application to EHOS, `billing`
+  (`config :eh_os_contract_auth, audience: "billing/sandbox"`), and an application
   publishes only under its own name, so a publication here would stop the host at boot.
 
   Its contracts change at will for the graph's sake: nothing outside the set depends on

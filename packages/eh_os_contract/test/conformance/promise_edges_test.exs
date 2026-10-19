@@ -460,6 +460,20 @@ defmodule EhOsContract.PromiseEdgesTest do
       assert %{"inspector" => [_one]} = Dependency.observations_by_external(Edges)
     end
 
+    test "an outage observed under the engine's clock is stamped with the clock's time" do
+      # A host's test that moves the clock (`EhOsContract.Clock.at/2`) and has its adapter
+      # report an outage inside the window gets a suspended run, as it would in
+      # production; stamped with the wall clock, the outage fell outside the window.
+      insert(:opened, @opened)
+
+      EhOsContract.Clock.at(DateTime.add(@opened, 3600), fn ->
+        assert Dependency.observe(Edges, :inspector, fn -> {:error, :unavailable} end) ==
+                 {:error, :unavailable}
+      end)
+
+      assert verdict(:inspected_within_a_day).verdict == :suspended
+    end
+
     test "an adapter's `{:ok, _}` passes through, and records nothing" do
       # The common case, and the one that must cost nothing: a row per successful call
       # would make the table of outages the busiest table of the application.
