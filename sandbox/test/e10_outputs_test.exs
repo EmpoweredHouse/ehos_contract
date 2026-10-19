@@ -47,7 +47,9 @@ defmodule EhOsContractHost.E10OutputsTest do
     # nothing during its run, and the core unit that only records, which the set holds on
     # purpose. The notices: its contexts' words no term covers, three core commands that
     # refuse nothing, one free-text field, and two values with no label.
-    assert output =~ "eh_os_contract.check: 0 errors, 47 warnings, 47 notices"
+    # Publication programme, PB2 (#369): the invented fulfilment (`Fulfilment`) adds three
+    # notices, its contexts' words no term covers, and no warning.
+    assert output =~ "eh_os_contract.check: 0 errors, 47 warnings, 50 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
@@ -108,6 +110,17 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert message["x-eh-os-contract-source-event"] == "accounting_month_opened"
     assert message["x-eh-os-contract-idempotent-on"] == ["company_id", "period_id"]
     assert message["payload"]["required"] == ["company_id", "period_id"]
+  end
+
+  test "the warehouse's OpenAPI surface: a picker's commands scoped, and none of the policy's" do
+    document = EhOsContract.OpenAPI.document(Fulfilment.Contracts.Warehouse)
+
+    assert Map.has_key?(document["paths"], "/commands/fulfilment.confirm_pick")
+    refute Map.has_key?(document["paths"], "/commands/fulfilment.open_pick_list")
+
+    operation = document["paths"]["/commands/fulfilment.confirm_pick"]["post"]
+    assert operation["x-eh-os-contract-scope"] == "warehouse_id"
+    assert operation["x-eh-os-contract-roles"] == ["fulfilment.picker"]
   end
 
   test "TaxVision's OpenAPI surface contains human commands but not policy commands" do
