@@ -19,7 +19,10 @@ defmodule Fulfilment.Domain do
   context :warehouse, "Warehouse", subdomain: :supporting do
     term "Order", definition: "What a pick list is opened for, once it is paid"
     term "Pick list", definition: "The items of one order to take off the shelves"
-    term "Picker", definition: "Who takes a pick list's items off the shelves"
+
+    term "Picker",
+      definition: "Who takes a pick list's items off the shelves, as the lead assigns"
+
     term "Parcel", definition: "A picked order, packed and weighed"
   end
 
@@ -36,7 +39,8 @@ defmodule Fulfilment.Domain do
 
   actor :order_desk, :human, "Order desk"
 
-  # A picker is granted the warehouses they work in, and acts in no other.
+  # A lead and a picker are granted the warehouses they work in, and act in no other.
+  actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
   actor :picker, :human, "Picker", scope: [:warehouse_id]
 
   actor :dispatcher, :human, "Dispatcher"

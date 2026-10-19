@@ -12,7 +12,7 @@ defmodule Fulfilment do
   What it is here to show, each with its test in `sandbox/test/fulfilment_*`:
 
   - warehouse staff granted per warehouse (`scope:`), and a pick list confirmed only by
-    the picker who claimed it (`actor_is`), over HTTP: 401, 403 `missing_capability`,
+    the picker it is assigned to (`actor_is`), over HTTP: 401, 403 `missing_capability`,
     403 `outside_scope` and the business's own refusal;
   - a field another context consumes, renamed by its publisher, breaking the
     subscriber's contract and its implementation;

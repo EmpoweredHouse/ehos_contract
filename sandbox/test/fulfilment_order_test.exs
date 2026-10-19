@@ -13,11 +13,14 @@ defmodule Fulfilment.OrderTest do
   alias Fulfilment.Contracts.Orders.Commands.{ConfirmPayment, PlaceOrder}
   alias Fulfilment.Contracts.Shipping.Commands.DispatchParcel
   alias Fulfilment.Contracts.Shipping.Events.Delivered
-  alias Fulfilment.Contracts.Warehouse.Commands.{ClaimPickList, ConfirmPick, PackParcel}
+  alias Fulfilment.Contracts.Warehouse.Commands.{AssignPickList, ConfirmPick, PackParcel}
 
   @desk Actor.credential("desk-cy", ["fulfilment.place_order", "fulfilment.confirm_payment"])
   @dispatcher Actor.credential("dispatcher-di", ["fulfilment.dispatch_parcel"])
-  @picker_capabilities ~w(fulfilment.claim_pick_list fulfilment.confirm_pick fulfilment.pack_parcel)
+  @picker_capabilities ~w(fulfilment.confirm_pick fulfilment.pack_parcel)
+  @lead Actor.credential("lead-lu", ["fulfilment.assign_pick_list"], %{
+          "fulfilment.assign_pick_list" => %{"warehouse_id" => ["w-1"]}
+        })
   @picker Actor.credential(
             "picker-ada",
             @picker_capabilities,
@@ -44,7 +47,7 @@ defmodule Fulfilment.OrderTest do
     at(@paid, Orders, %ConfirmPayment{order_id: id}, @desk)
     Clock.at(@paid, fn -> Testing.drain() end)
 
-    at(@paid, Warehouse, struct!(ClaimPickList, Map.put(list, :picker_id, "picker-ada")), @picker)
+    at(@paid, Warehouse, struct!(AssignPickList, Map.put(list, :picker_id, "picker-ada")), @lead)
     at(@paid, Warehouse, struct!(ConfirmPick, list), @picker)
     at(@paid, Warehouse, struct!(PackParcel, Map.put(list, :weight_grams, 1_200)), @picker)
     Clock.at(@paid, fn -> Testing.drain() end)
@@ -74,7 +77,7 @@ defmodule Fulfilment.OrderTest do
              "fulfilment.orders.placed",
              "fulfilment.orders.payment_confirmed",
              "fulfilment.warehouse.opened",
-             "fulfilment.warehouse.claimed",
+             "fulfilment.warehouse.assigned",
              "fulfilment.warehouse.picked",
              "fulfilment.warehouse.parcel_packed",
              "fulfilment.shipping.booked",

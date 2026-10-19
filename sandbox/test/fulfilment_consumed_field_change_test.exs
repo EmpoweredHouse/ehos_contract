@@ -154,8 +154,8 @@ defmodule Fulfilment.ConsumedFieldChangeTest do
 
   test "control: a field of an event nobody consumes touches neither side" do
     ns = namespace("Unconsumed")
-    rename = rename_on("claimed", "picker_id", "claimed_by")
-    assert rename.(File.read!(@publisher)) =~ "field :claimed_by, :id"
+    rename = rename_on("assigned", "picker_id", "assignee_id")
+    assert rename.(File.read!(@publisher)) =~ "field :assignee_id, :id"
 
     assert contracts(ns, rename) == []
     assert policy(ns) == :compiled

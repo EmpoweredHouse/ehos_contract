@@ -20,7 +20,7 @@ defmodule Fulfilment.Processes.Order do
     include: [{Fulfilment.Contracts.Orders, [:placed, :payment_confirmed, :cancelled]}]
 
   stage :picking, "Picking",
-    include: [{Fulfilment.Contracts.Warehouse, [:opened, :claimed, :picked, :parcel_packed]}]
+    include: [{Fulfilment.Contracts.Warehouse, [:opened, :assigned, :picked, :parcel_packed]}]
 
   stage :shipping, "Shipping",
     include: [{Fulfilment.Contracts.Shipping, [:booked, :dispatched, :delivered]}]

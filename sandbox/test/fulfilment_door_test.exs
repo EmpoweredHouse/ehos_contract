@@ -10,7 +10,7 @@ defmodule Fulfilment.DoorTest do
   | may they act in **this warehouse** | the grant's scope (`scope: :warehouse_id`) | 403 `outside_scope` |
 
   and past the door the business's own rule, that a pick list is confirmed by the
-  picker who claimed it (`actor_is`), answered 422 like any other refusal.
+  picker it is assigned to (`actor_is`), answered 422 like any other refusal.
   """
 
   use EhOsContractHost.DataCase, async: false
@@ -22,7 +22,7 @@ defmodule Fulfilment.DoorTest do
   alias EhOsContract.{Actor, Event, Testing}
   alias Fulfilment.Contracts.{Orders, Shipping, Warehouse}
   alias Fulfilment.Contracts.Orders.Commands.{ConfirmPayment, PlaceOrder}
-  alias Fulfilment.Contracts.Warehouse.Commands.ClaimPickList
+  alias Fulfilment.Contracts.Warehouse.Commands.AssignPickList
 
   @endpoint EhOsContractHostWeb.Endpoint
 
@@ -40,13 +40,13 @@ defmodule Fulfilment.DoorTest do
 
   # A picker granted the capabilities in `warehouses`.
   defp picker(id, warehouses) do
-    capabilities = ~w(fulfilment.claim_pick_list fulfilment.confirm_pick fulfilment.pack_parcel)
+    capabilities = ~w(fulfilment.confirm_pick fulfilment.pack_parcel)
     credential(id, capabilities, Map.new(capabilities, &{&1, %{"warehouse_id" => warehouses}}))
   end
 
   defp picked, do: Repo.all(from(e in Event, where: e.type == "fulfilment.warehouse.picked"))
 
-  # Order 1 placed and paid, its pick list opened by the policy and claimed by Ada, as the
+  # Order 1 placed and paid, its pick list opened by the policy and assigned to Ada, as the
   # desk and the floor would leave it.
   setup do
     Testing.drain()
@@ -67,10 +67,10 @@ defmodule Fulfilment.DoorTest do
     {:ok, _} =
       EhOsContract.dispatch(
         Warehouse,
-        struct!(ClaimPickList, Map.put(@list, :picker_id, "picker-ada")),
+        struct!(AssignPickList, Map.put(@list, :picker_id, "picker-ada")),
         actor:
-          Actor.credential("picker-ada", ["fulfilment.claim_pick_list"], %{
-            "fulfilment.claim_pick_list" => %{"warehouse_id" => ["w-1"]}
+          Actor.credential("lead-lu", ["fulfilment.assign_pick_list"], %{
+            "fulfilment.assign_pick_list" => %{"warehouse_id" => ["w-1"]}
           })
       )
 
@@ -104,14 +104,14 @@ defmodule Fulfilment.DoorTest do
     assert picked() == []
   end
 
-  test "a colleague in the same warehouse: the business refuses, by who claimed the list" do
+  test "a colleague in the same warehouse: the business refuses, by whom the list is assigned to" do
     assert answer(command(picker("picker-bob", ["w-1"]), @confirm, @list)) ==
              {422, %{"rejected" => "confirmed_by_its_picker"}}
 
     assert picked() == []
   end
 
-  test "the picker who claimed it, in their warehouse: confirmed" do
+  test "the picker it is assigned to, in their warehouse: confirmed" do
     assert command(picker("picker-ada", ["w-1"]), @confirm, @list).status == 200
     assert [%Event{actor: "actor:picker-ada"}] = picked()
   end
@@ -123,7 +123,7 @@ defmodule Fulfilment.DoorTest do
       "fulfilment.place_order" => %{order_id: "order-2", warehouse_id: "w-1", items: 3},
       "fulfilment.confirm_payment" => order,
       "fulfilment.cancel_order" => order,
-      "fulfilment.claim_pick_list" => Map.put(@list, :picker_id, "picker-bob"),
+      "fulfilment.assign_pick_list" => Map.put(@list, :picker_id, "picker-bob"),
       @confirm => @list,
       "fulfilment.pack_parcel" => Map.put(@list, :weight_grams, 1_200),
       "fulfilment.dispatch_parcel" => %{order_id: "order-1"}
@@ -153,5 +153,19 @@ defmodule Fulfilment.DoorTest do
              service: "parcel",
              weight_grams: 1
            }).status == 404
+
+    # The carrier's recording is its integration's alone: a person's credential that
+    # names it is refused.
+    delivered =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> put_req_header("content-type", "application/json")
+      |> post(
+        "/api/fulfilment/records/fulfilment.delivered",
+        Jason.encode!(%{order_id: "order-1"})
+      )
+
+    assert delivered.status in [403, 404]
+    assert Repo.all(from(e in Event, where: e.type == "fulfilment.shipping.delivered")) == []
   end
 end

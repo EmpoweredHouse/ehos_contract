@@ -164,7 +164,7 @@
       order_id: [type: :id]
     ]
   },
-  "fulfilment.warehouse.claimed" => %{
+  "fulfilment.warehouse.assigned" => %{
     1 => [
       order_id: [type: :id],
       picker_id: [type: :id],
