@@ -39,8 +39,9 @@ EmpoweredHouse/ehos-tools#279), released as `ehosctl` 0.15.0 (EmpoweredHouse/eho
 new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/appunite-equipment#8); and
 `ehos-ledger` (PN3, EmpoweredHouse/ehos-ledger#9), which came from a pin before v0.3.0. **Wave 6 is closed.**
 
-**Next: the publication programme** (18 October, below): making the repository public. Giving the sandbox host its own repo (PB1, #366) is in progress;
-whether the history is kept waits for the two clients' consent.
+**Next: the publication programme** (18 October, below): making the repository public. The sandbox host owns its repo since PB1 (#366, in #367).
+Invented case studies that test what only client material tests today (PB2, #369) are in progress; whether the
+history is kept waits for the two clients' consent.
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
@@ -100,8 +101,8 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 
 | Stage | What | Issue | Status |
 | --- | --- | --- | --- |
-| PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ◐ `pb/366-host-repo` |
-| PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | — | ☐ |
+| PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
+| PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ◐ `pb/369-lending` |
 | PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | — | ☐ |
 | PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
@@ -111,6 +112,10 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 **The host's own repo (PB1).** `Taxvision.Repo` is the host's only repo, and `Taxvision.DataCase` / `CommitRepo` serve every database
 test, so no client can leave before the host has its own. Mechanical; the audience and the supplier stay until PB2
 and PB4 (the issue's "Out of scope").
+
+**Invented case studies (PB2).** Three English domains in `sandbox/lib/` (lending, subscription billing, order
+fulfilment) test the eleven behaviours only client material covers; billing takes over the publication, the audience
+and `ehos.yaml` from TaxVision. Four pull requests from `main`: lending, billing, fulfilment, then graph fixtures.
 
 ## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
 

@@ -21,5 +21,5 @@ defmodule Rehmed do
   declaration is absent and the moduledoc says so.
   """
 
-  use Boundary, deps: [EhOsContract], exports: []
+  use Boundary, deps: [EhOsContract], exports: [Supplier, Entities]
 end
