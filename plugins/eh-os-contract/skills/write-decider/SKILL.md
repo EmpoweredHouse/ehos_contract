@@ -30,14 +30,16 @@ to the contract, and `change-contract` comes first if the unit already has histo
 
 ## What binds, and what the compiler already checks
 
-An excerpt of `Lending.Circulation.Loan`, in the sandbox's invented lending case — the module has a
-callback for every command of the unit:
+An excerpt of `Lending.Circulation.Loan`, in the sandbox's invented lending case, with a catch-all
+`evolve/2` clause the real module does not need — the module has a callback for every command of the
+unit:
 
 ```elixir
 defmodule Lending.Circulation.Loan do
   use Lending.Contracts.Circulation, aggregate: :loan
 
   @impl true
+  def return_copy(_command, %State{lent: false}), do: reject(:only_a_copy_out_comes_back)
   def return_copy(_command, %State{returned: true}), do: reject(:only_a_copy_out_comes_back)
 
   def return_copy(%ReturnCopy{loan_id: id, late_fee: 0}, _state),
@@ -47,11 +49,15 @@ defmodule Lending.Circulation.Loan do
     do: emit([%CopyReturned{loan_id: id}, %LateFeeCharged{loan_id: id, fee: fee}])
 
   @impl true
+  def evolve(state, %CopyLent{}), do: %{state | lent: true}
   def evolve(state, %CopyReturned{}), do: %{state | returned: true}
   def evolve(state, %LateFeeCharged{}), do: %{state | fee_owed: true}
   def evolve(state, _changes_nothing), do: state
 end
 ```
+
+`late_fee` is declared `supplied_by: :host` in the contract: the desk's tariff gives it, and a caller
+that sends one is refused, so the decision can charge it without trusting the caller.
 
 The `use` gives the module the behaviour the contract generated (`C.Aggregates.<Name>` or
 `C.Dcbs.<Name>`), the commands, events and `State` by their short names, and `emit/1` and
@@ -131,10 +137,10 @@ stream will ever hold, written under every version of the code:
   explicitly, and name the catch-all for what it lets through, as `_changes_nothing` above.
 - **Keep the catch-all exactly `def evolve(state, _), do: state`.** Then dispatch reads and decodes only
   the events the other clauses name, and a boundary conflicts only on them. Any other catch-all, or a
-  guard on the event, makes it read everything the unit could see — for `TurnoverMatching`, every
-  statement of the month on every match.
-- Time for the state comes from the event, `event.__meta__.occurred_at`, as `closed_on` does in
-  `VisitSettlement`.
+  guard on the event, makes it read everything the unit could see — for a boundary over a month's
+  bank statements, every statement of the month on every match.
+- Time for the state comes from the event, `event.__meta__.occurred_at`: a `returned_on` folded
+  from `CopyReturned`, never `Date.utc_today/0`.
 
 ## A boundary (`dcb`)
 
@@ -171,7 +177,7 @@ every event it `consults`, folded in the log's order. Two things differ:
    none, and run it. Every scenario of the unit is a test of this module.
 6. Give the module its place in `boundary`: under the context module that owns it, as its siblings
    are (`sandbox/lib/lending/circulation.ex`), and never reaching another context's tables.
-7. Run the gate from `sandbox/` (`CLAUDE.md`, "Brama") and read any new `emits-never-produced` line.
+7. Run the gate from `sandbox/` (`CLAUDE.md`, "The gate") and read any new `emits-never-produced` line.
 8. If a clause encodes an assumption nobody stated — a partial payment refused rather than modelled
    — say so in the moduledoc. That clause is where the
    reviewer's attention goes. A rule the contract names is not restated there: the contract says it,

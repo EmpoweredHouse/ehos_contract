@@ -127,7 +127,7 @@ defmodule EhOsContractHost.MixProject do
   #
   # Since 2026-08-21 most of the tests live in `packages/eh_os_contract/test/` and `mix
   # test` in this project no longer reaches them — it runs this application's, which
-  # are now only TaxVision's and Rehmed's. A gate that stopped covering the engine on
+  # are only its own case studies'. A gate that stopped covering the engine on
   # the day the engine got its own suite would be the worst possible outcome of that
   # move, so the gate runs both.
   #

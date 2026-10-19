@@ -161,7 +161,7 @@ confidence of everything downstream depends on it.
 ## Output
 
 A Markdown document following [output-template.md](output-template.md): the domain first, then one
-section per process. Save it under this repository's `docs/`, named for the client and date,
+section per process. Save it under the `docs/` of the repository you work in, named for the client and date,
 `docs/<client>-<yyyy-mm-dd>-distillation.md`, and say where; not in `process-native-software`'s
 `output/`, which is that repository's pipeline.
 

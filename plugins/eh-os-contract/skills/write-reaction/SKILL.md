@@ -116,12 +116,12 @@ part of it itself, and the rest is yours:
   <index>"`, `"pm:<contract>:<name>:<source id>:<index>"`. A second delivery appends nothing, so a
   policy or a process manager needs nothing more — which is why `P3` does not ask a process manager.
 - **An effect's side effect is not keyed by the library.** Pass `event.__meta__.id` on to the system
-  called (`owner: :downstream`, as `send_p1_report` declares: P1 is where a second report would be
-  filed), or record the answer with an idempotency key derived from it (`owner: :self`), as
-  `LookUpRegistries` does with `"registry-status-checked:#{meta.id}"`. The far end is where a
+  called (`owner: :downstream`: the far end is where a second charge or a second report would be
+  refused), or record the answer with an idempotency key derived from it (`owner: :self`), such as
+  `"gateway-answered:#{meta.id}"`. `Billing.Payments.CollectPayment` is the first kind. The far end is where a
   duplicate e-mail is sent.
 - **A read model writes the host's tables.** Key its rows by the event (`on_conflict: :nothing` on
-  the event's id, as `DailyTotals` does), or a replay double-counts.
+  the event's id, as `Lending.Membership.Directory` does), or a replay double-counts.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
   publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery reacts
   once either way; the same fact published again under a new id reacts once only when the publisher
@@ -161,8 +161,8 @@ it. What was published before is asked of its owner (`eh-os` D-03).
   over, and nothing refuses it at compile time for a local event (`F4` only refuses them optional
   or personal; `X6` checks a sibling's): check each event it names carries them.
   Its state holds no personal data (`F7`): it lives outside the log, where erasure cannot reach.
-- A timer's label is required and names what the timer is for, "Documentation due", never how
-  long it waits, "A day for the documentation": `wait:` or `at:` says when, the pages print it beside the
+- A timer's label is required and names what the timer is for, "Reminder", never how
+  long it waits, "Three days later": `wait:` or `at:` says when, the pages print it beside the
   label, and a label that says it drifts the day someone changes `wait:` (plan N3).
 - A timer fires `wait:` after the event that set it, or `at:` a `:timestamp` of its state. The
   firing is an event in the log, so a timer fired twice dispatches once, and a replay recomputes the
@@ -185,11 +185,11 @@ it. What was published before is asked of its owner (`eh-os` D-03).
 4. Declare it in the contract, then a scenario for it: an `on` event with the `issues` it expects
    for a policy or a process manager — and for a process manager whose `evolve/2` decides something
    no command shows, the `state` its run holds after the event, one scenario per branch, as
-   `monthly_registry_check` has for a date moved on and a date left be — a `query` with `answers`
+   `monthly_billing` has for a date moved on and a date left be — a `query` with `answers`
    for a read model
    (`reaction-without-scenario`). Give every rule a scenario that names it in `illustrates:` —
-   one for each way the rule decides, as `report_on_clinical_close` has one for a reported service
-   and one for the rest — before the code: the scenario is the test the implementation is written
+   one for each way the rule decides, as `book_carrier` has one for a parcel and one for
+   freight — before the code: the scenario is the test the implementation is written
    against, and a rule without one is prose alone (`prose-without-scenario`). An effect has no
    scenario (`S6`): its constraints stay prose, and its test is yours.
 5. Bind the module (`use <Contract>, policy: :name`), compile, and add what `I2` asks for. `issue/1`

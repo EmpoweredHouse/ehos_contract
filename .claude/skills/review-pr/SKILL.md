@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/ or sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
 ---
 
 # Reviewing a pull request
@@ -90,7 +90,7 @@ once per pattern. In a pull request here that is:
   count.
 - **A host-visible shape** — a capability (a command's or query's name), a command's fields, a
   query's parameters, a publication, configuration, a status. These go to the user before they
-  change (`PLAN.md`, stage 6 strategy).
+  change.
 
 ### Verified in reverse
 
