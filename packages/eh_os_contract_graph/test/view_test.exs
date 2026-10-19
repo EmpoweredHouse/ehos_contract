@@ -17,8 +17,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
 
   describe "all/1" do
     test "keeps every node of every fixture, each with the kind of its group" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         view = View.all(document)
 
         assert Enum.map(view.nodes, & &1.id) |> Enum.sort() ==
@@ -31,8 +30,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "keeps every relation whose two ends are nodes, and only those" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         ids = MapSet.new(Fixtures.nodes(document), & &1["id"])
         view = View.all(document)
 
@@ -99,8 +97,8 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "every view a fixture lists is built, and a unit it does not have is empty" do
-      for name <- Fixtures.names(), {spec, _title} <- View.views(Fixtures.document(name)) do
-        assert View.build(Fixtures.document(name), spec).nodes != [], "#{name}: #{inspect(spec)}"
+      for {name, document} <- Fixtures.documents(), {spec, _title} <- View.views(document) do
+        assert View.build(document, spec).nodes != [], "#{name}: #{inspect(spec)}"
       end
 
       document = Fixtures.document("lending.membership")
@@ -699,8 +697,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   # Plan DD, L4 (#326): what a view draws for the business owner.
   describe "build/4 for the owner" do
     test "a card says its label alone, and nothing only the code reads is drawn" do
-      for name <- Fixtures.names(),
-          document = Fixtures.document(name),
+      for {name, document} <- Fixtures.documents(),
           {spec, _title} <- View.views(document),
           view = View.build(document, spec, nil, :owner) do
         where = "#{name} #{inspect(spec)}"
@@ -749,8 +746,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "the engineer's view is the one before the switch" do
-      for name <- Fixtures.names(),
-          document = Fixtures.document(name),
+      for {_name, document} <- Fixtures.documents(),
           {spec, _title} <- View.views(document),
           do: assert(View.build(document, spec, nil, :engineering) == View.build(document, spec))
     end

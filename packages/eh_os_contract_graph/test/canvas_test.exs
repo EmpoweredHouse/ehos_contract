@@ -13,10 +13,9 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       render_component(Canvas, id: "graph", document: document, overlay: overlay, view: view)
       |> LazyHTML.from_fragment()
 
-  # Every view of every fixture, the test bed among them.
+  # Every view of every fixture and its variants, the test bed among them.
   defp every_view do
-    for name <- Fixtures.names(),
-        document = Fixtures.document(name),
+    for {name, document} <- Fixtures.documents(),
         {spec, _title} <- [{:all, nil} | View.views(document)],
         do: {"#{name} #{inspect(spec)}", document, spec}
   end
@@ -30,8 +29,7 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
 
   describe "what it renders" do
     test "a card per node and a label per relation of the view, with the ids the hook reads" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         view = View.all(document)
         html = draw(document)
 
