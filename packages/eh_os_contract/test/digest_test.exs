@@ -48,8 +48,8 @@ defmodule EhOsContract.DigestTest do
 
   describe "exported document hashes" do
     test "length-prefix strings, so delimiters cannot make different documents collide" do
-      left = ["Wizyta", "Pacjent"]
-      right = ["Wizyta,s:Pacjent"]
+      left = ["Visit", "Patient"]
+      right = ["Visit,s:Patient"]
 
       # Contract versions retain the historical encoding; E10 documents do not
       # inherit its delimiter ambiguity.
@@ -92,9 +92,9 @@ defmodule EhOsContract.DigestTest do
   describe "the agreement and its words" do
     @event %{
       name: :visit_completed,
-      label: "Wizyta zakończona",
+      label: "Visit completed",
       source: "W1 00:12:40",
-      fields: [%{name: :room, type: :string, label: "Gabinet", default: %{label: "2"}}]
+      fields: [%{name: :room, type: :string, label: "Room", default: %{label: "2"}}]
     }
 
     test "the agreement leaves every word out, at any depth, and keeps data whole" do
@@ -107,9 +107,9 @@ defmodule EhOsContract.DigestTest do
     test "the words keep what the agreement leaves out, and whose it is" do
       assert EhOsContract.Digest.words(@event) == %{
                name: :visit_completed,
-               label: "Wizyta zakończona",
+               label: "Visit completed",
                source: "W1 00:12:40",
-               fields: [%{name: :room, label: "Gabinet"}]
+               fields: [%{name: :room, label: "Room"}]
              }
 
       assert EhOsContract.Digest.words(%{name: :x, type: :string, label: nil}) == nil
@@ -123,10 +123,13 @@ defmodule EhOsContract.DigestTest do
     end
 
     test "a scenario's words are its description, and its data is the agreement's" do
-      scenario = %{description: "recepcja kończy wizytę", given: [%{data: %{label: "a"}}]}
+      scenario = %{
+        description: "the front desk completes a visit",
+        given: [%{data: %{label: "a"}}]
+      }
 
       assert EhOsContract.Digest.words(:scenarios, scenario) ==
-               %{description: "recepcja kończy wizytę"}
+               %{description: "the front desk completes a visit"}
 
       assert EhOsContract.Digest.agreement(:scenarios, scenario) ==
                %{given: [%{data: %{label: "a"}}]}

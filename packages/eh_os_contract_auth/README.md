@@ -41,7 +41,7 @@ config :eh_os_contract, authorizer: EhOsContract.Auth
 
 config :eh_os_contract_auth,
   issuer: "https://ehos.example.com",
-  audience: "rehmed/production"
+  audience: "clinic/production"
   # jwks_url: defaults to the issuer's "/.well-known/jwks.json"
 
 # the application's supervision tree, after the repo
@@ -452,7 +452,7 @@ end
 
 scope "/api" do
   pipe_through :commands
-  forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+  forward "/", EhOsContract.Plug, contracts: [Clinic.Contracts.VisitSettlement]
 end
 ```
 
@@ -468,13 +468,13 @@ names nobody; the rows are the decisions about actors that did verify.
 use EhOsContract.Auth.Testing
 
 test "every entry point refuses a credential without the capability" do
-  assert_every_entry_refuses([Rehmed.Contracts.VisitSettlement], %{
-    "rehmed.record_payment" => fn token -> post_command(token, "rehmed.record_payment", ...) end,
+  assert_every_entry_refuses([Clinic.Contracts.VisitSettlement], %{
+    "clinic.record_payment" => fn token -> post_command(token, "clinic.record_payment", ...) end,
     # ... one entry per capability the contracts declare
   })
 end
 
-token = credential("u-anna", ["rehmed.record_payment"])
+token = credential("u-anna", ["clinic.record_payment"])
 ```
 
 The engine cannot drive a host's door, so the host maps every capability its contracts declare to a
@@ -597,8 +597,8 @@ A JWT, `alg: "Ed25519"` and nothing else, with `iss`, `sub`, `aud` (one string),
 `jti`, `cap` (the capabilities, sorted), and `scp` when a capability is scoped:
 
 ```json
-{"sub": "u-81", "aud": "rehmed/production", "cap": ["rehmed.open_visits_for_clinic"],
- "scp": {"rehmed.open_visits_for_clinic": {"clinic_id": ["7"]}}}
+{"sub": "u-81", "aud": "clinic/production", "cap": ["clinic.open_visits_for_clinic"],
+ "scp": {"clinic.open_visits_for_clinic": {"clinic_id": ["7"]}}}
 ```
 
 The grants travel in the credential. The application stores none and asks EHOS about none. A

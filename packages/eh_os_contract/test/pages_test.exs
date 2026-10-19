@@ -114,7 +114,7 @@ defmodule EhOsContract.PagesTest do
 
       assert splitting =~ "## `half` — Half of an amount, rounded down"
       assert splitting =~ "Returns [`amount`](../../../values/amount.md), or nothing"
-      assert splitting =~ "- **`rounded_down`** — An odd amount loses its last grosz"
+      assert splitting =~ "- **`rounded_down`** — An odd amount loses its last cent"
       assert splitting =~ "  - `half(5)` returns `2`"
       assert splitting =~ "  - `half(1)` returns `nil`"
     end
@@ -347,12 +347,12 @@ defmodule EhOsContract.PagesTest do
     till = %{
       till
       | commands: [
-          %{pay_in | fields: [%{till_id | label: "Kasa | punkt\nsprzedaży"} | fields]} | commands
+          %{pay_in | fields: [%{till_id | label: "Till | point\nof sale"} | fields]} | commands
         ]
     }
 
     page = Pages.render(ValueRig.Domain, [till])["till/till/commands/pay_in.md"]
-    assert page =~ "| `till_id` | `:id` | Kasa \\| punkt sprzedaży |  |"
+    assert page =~ "| `till_id` | `:id` | Till \\| point of sale |  |"
 
     domain = EhOsContract.Model.fetch(ValueRig.Domain)
     [amount | rest] = domain.values

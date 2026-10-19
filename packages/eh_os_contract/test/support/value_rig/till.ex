@@ -49,8 +49,8 @@ defmodule ValueRig.Till do
       argument :amount, :integer
       returns :amount, optional: true
 
-      rule :rounded_down, "An odd amount loses its last grosz", examples: [{[5], 2}, {[4], 2}]
-      rule :nothing_of_one, "One grosz halves into nothing", examples: [{[1], nil}]
+      rule :rounded_down, "An odd amount loses its last cent", examples: [{[5], 2}, {[4], 2}]
+      rule :nothing_of_one, "One cent halves into nothing", examples: [{[1], nil}]
     end
   end
 end

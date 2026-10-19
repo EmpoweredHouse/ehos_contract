@@ -16,17 +16,17 @@ defmodule EhOsContract.CheckTransitionsTest do
   setup_all do
     compile(
       contract("TransitionLoans", """
-        aggregate :loan, "Wypożyczenie" do
+        aggregate :loan, "Loan" do
           identity :loan_id
 
-          invariant :checked_before_return, "Zwrot przyjmuje się po sprawdzeniu sprzętu"
-          invariant :only_a_lent_loan, "Archiwizuje się tylko wypożyczony sprzęt"
+          invariant :checked_before_return, "A return is accepted once the equipment is checked"
+          invariant :only_a_lent_loan, "Only lent equipment is archived"
 
           lifecycle do
-            status :open, "Otwarte"
-            status :lent, "Wypożyczone"
-            status :closed, "Zamknięte", final: true
-            status :archived, "Zarchiwizowane", final: true
+            status :open, "Open"
+            status :lent, "Lent"
+            status :closed, "Closed", final: true
+            status :archived, "Archived", final: true
 
             initial :open, on: :opened
             transition :open, :lent, :lent
@@ -36,51 +36,51 @@ defmodule EhOsContract.CheckTransitionsTest do
             transition [:open, :lent], :archived, :archived
           end
 
-          command :open_loan, "Otwórz", by: :reception, emits: :opened
-          command :lend, "Wypożycz", by: :reception, emits: :lent
-          command :close_loan, "Zamknij", by: :reception, emits: :closed
+          command :open_loan, "Open", by: :reception, emits: :opened
+          command :lend, "Lend", by: :reception, emits: :lent
+          command :close_loan, "Close", by: :reception, emits: :closed
 
-          command :archive_loan, "Archiwizuj", by: :reception, emits: :archived, from: :lent,
+          command :archive_loan, "Archive", by: :reception, emits: :archived, from: :lent,
             or_rejects: :only_a_lent_loan, rejects: :only_a_lent_loan
 
-          command :return_loan, "Zwróć", by: :reception, emits: :returned,
+          command :return_loan, "Return", by: :reception, emits: :returned,
             rejects: :checked_before_return
 
-          event :opened, "Otwarto"
-          event :lent, "Wypożyczono"
-          event :returned, "Zwrócono"
-          event :noted, "Odnotowano", recorded_by: :reception
-          event :closed, "Zamknięto"
-          event :archived, "Zarchiwizowano"
+          event :opened, "Opened"
+          event :lent, "Lent"
+          event :returned, "Returned"
+          event :noted, "Noted", recorded_by: :reception
+          event :closed, "Closed"
+          event :archived, "Archived"
         end
 
-        scenario "otwarte — wypożyczone" do
+        scenario "open — lent" do
           given :opened
           command :lend
           expect :lent
         end
 
-        scenario "wypożyczone — zamknięte" do
+        scenario "lent — closed" do
           given :opened
           given :lent
           command :close_loan
           expect :closed
         end
 
-        scenario "wypożyczone — zarchiwizowane" do
+        scenario "lent — archived" do
           given :opened
           given :lent
           command :archive_loan
           expect :archived
         end
 
-        scenario "otwarte — archiwizacja odrzucona" do
+        scenario "open — archiving rejected" do
           given :opened
           command :archive_loan
           rejected :only_a_lent_loan
         end
 
-        scenario "wypożyczone — zwrot odrzucony" do
+        scenario "lent — return rejected" do
           given :opened
           given :lent
           command :return_loan

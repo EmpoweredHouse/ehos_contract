@@ -4,7 +4,7 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
   screens render real `EhOsContract.Conformance.report/2` output, not hand-built
   data, without needing any client tree.
 
-  **In the v2 DSL since E7c** (v2 plan, "Losy fikstur"), with two policies. A case is opened and decided; an approved case is closed and a
+  **In the v2 DSL since E7c**, with two policies. A case is opened and decided; an approved case is closed and a
   rejected one closed as rejected, each by its policy inside the transaction. This
   suite only ever takes the approval, so the rejection's steps are real, unforced
   untraversed steps rather than ones asserted into existence.

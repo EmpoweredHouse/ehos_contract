@@ -21,35 +21,35 @@ defmodule EhOsContract.CheckContractsTest do
       defmodule #{inspect(@visits)} do
         use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.#{contract_name(@visits)}"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
-          command :book, "Umów", by: :reception, emits: :booked do
+          command :book, "Book", by: :reception, emits: :booked do
             field :note, :string
           end
 
-          command :arrive, "Przyjdź", by: :reception, emits: [:arrived, :no_show]
-          command :reopen, "Otwórz", by: :reception, emits: :reopened
+          command :arrive, "Arrive", by: :reception, emits: [:arrived, :no_show]
+          command :reopen, "Reopen", by: :reception, emits: :reopened
 
-          event :booked, "Umówiono" do
+          event :booked, "Booked" do
             field :note, :string
           end
 
-          event :reopened, "Otwarto ponownie" do
+          event :reopened, "Reopened" do
             field :attempt, :integer
           end
 
-          event :arrived, "Przyszedł"
-          event :no_show, "Nie przyszedł"
+          event :arrived, "Arrived"
+          event :no_show, "Did not arrive"
         end
 
-        policy :greet, "Powitanie", handles: :booked, issues: :arrive
-        policy :reopen_after_arrival, "Ponowne otwarcie", handles: :arrived, issues: :reopen
-        effect :log_booking, "Zapis", handles: :booked, delivery: :in_transaction
+        policy :greet, "Greeting", handles: :booked, issues: :arrive
+        policy :reopen_after_arrival, "Reopening", handles: :arrived, issues: :reopen
+        effect :log_booking, "Log", handles: :booked, delivery: :in_transaction
       end
 
       defmodule #{inspect(@run)} do
-        use EhOsContract.Process, id: "clinic.visit_run", domain: Clinic, label: "Wizyta"
+        use EhOsContract.Process, id: "clinic.visit_run", domain: Clinic, label: "Visit"
 
         correlate :visit_id
 
@@ -108,17 +108,17 @@ defmodule EhOsContract.CheckContractsTest do
 
         consumes #{inspect(@visits)}, :arrived, as: [arrived: :patient_here]
 
-        aggregate :desk, "Recepcja" do
+        aggregate :desk, "Front desk" do
           identity :visit_id
-          command :check_in, "Zameldowanie", emits: :checked_in
-          event :checked_in, "Zameldowano"
+          command :check_in, "Check-in", emits: :checked_in
+          event :checked_in, "Checked in"
         end
 
-        policy :check_in_on_arrival, "Meldunek", handles: :patient_here, issues: :check_in
+        policy :check_in_on_arrival, "Check in on arrival", handles: :patient_here, issues: :check_in
       end
 
       defmodule EhOsContract.CheckContractsTest.FrontdeskRun do
-        use EhOsContract.Process, id: "clinic.frontdesk_run", domain: Clinic, label: "Recepcja"
+        use EhOsContract.Process, id: "clinic.frontdesk_run", domain: Clinic, label: "Front desk"
 
         correlate :visit_id
 
@@ -180,14 +180,14 @@ defmodule EhOsContract.CheckContractsTest do
 
         consumes EhOsContract.CheckContractsTest.Nowhere, :arrived
 
-        aggregate :desk, "Recepcja" do
+        aggregate :desk, "Front desk" do
           identity :visit_id
-          command :greet, "Powitaj", by: :reception, emits: :greeted
-          event :greeted, "Powitano"
+          command :greet, "Greet", by: :reception, emits: :greeted
+          event :greeted, "Greeted"
         end
 
-        policy :greet_on_arrival, "Powitanie", handles: :arrived, issues: :greet
-        policy :count_arrival, "Liczenie", handles: :arrived, issues: :greet
+        policy :greet_on_arrival, "Greeting", handles: :arrived, issues: :greet
+        policy :count_arrival, "Counting", handles: :arrived, issues: :greet
       end
       """,
       "orphaned.ex"
@@ -204,10 +204,10 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Notes do
-        use EhOsContract.Domain, name: :notes, language: :pl
+        use EhOsContract.Domain, name: :notes, language: :en
 
-        context :desk, "Recepcja", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :desk, "Front desk", subdomain: :core
+        actor :reception, :human, "Front desk"
         value :remark, :string
         value :again, :remark
 
@@ -222,11 +222,11 @@ defmodule EhOsContract.CheckContractsTest do
       defmodule EhOsContract.CheckContractsTest.Desk do
         use EhOsContract.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk, id: "notes.desk"
 
-        aggregate :desk, "Recepcja" do
+        aggregate :desk, "Front desk" do
           identity :visit_id
-          command :note, "Notatka", by: :reception, emits: :noted
+          command :note, "Note", by: :reception, emits: :noted
 
-          event :noted, "Zanotowano" do
+          event :noted, "Noted" do
             field :lines, {:list, :string}
             field :remark, :again
             field :contact, :contact
@@ -252,13 +252,13 @@ defmodule EhOsContract.CheckContractsTest do
 
         consumes #{inspect(@visits)}, :booked, as: [booked: :visit_booked]
 
-        aggregate :desk, "Recepcja" do
+        aggregate :desk, "Front desk" do
           identity :visit_id
-          command :prepare, "Przygotuj", by: :reception, emits: :prepared
-          event :prepared, "Przygotowano"
+          command :prepare, "Prepare", by: :reception, emits: :prepared
+          event :prepared, "Prepared"
         end
 
-        policy :prepare_desk, "Przygotowanie", handles: :visit_booked, issues: :prepare
+        policy :prepare_desk, "Preparation", handles: :visit_booked, issues: :prepare
       end
       """,
       "reception.ex"
@@ -280,19 +280,19 @@ defmodule EhOsContract.CheckContractsTest do
 
         consumes #{inspect(@visits)}, :booked
 
-        aggregate :bill, "Rachunek" do
+        aggregate :bill, "Bill" do
           identity :visit_id
-          command :open_bill, "Otwórz rachunek", by: :reception, emits: :bill_opened
-          event :bill_opened, "Rachunek otwarty"
+          command :open_bill, "Open a bill", by: :reception, emits: :bill_opened
+          event :bill_opened, "Bill opened"
         end
 
-        policy :bill_on_booking, "Umówiono — rachunek", handles: :booked, issues: :open_bill,
+        policy :bill_on_booking, "Booked — a bill", handles: :booked, issues: :open_bill,
           delivery: :in_transaction
-        policy :bill_later, "Umówiono — rachunek później", handles: :booked, issues: :open_bill,
+        policy :bill_later, "Booked — a bill later", handles: :booked, issues: :open_bill,
           delivery: :at_least_once, idempotency: [key: :event_id, owner: :infrastructure]
-        effect :note_booking, "Zapis", handles: :booked, delivery: :in_transaction
+        effect :note_booking, "Log", handles: :booked, delivery: :in_transaction
 
-        read_model :booked, "Umówione", projects: :booked, delivery: :in_transaction do
+        read_model :booked, "Booked", projects: :booked, delivery: :in_transaction do
           field :visit_id, :id
         end
       end
@@ -333,13 +333,13 @@ defmodule EhOsContract.CheckContractsTest do
 
         consumes #{inspect(@visits)}, :booked
 
-        aggregate :desk, "Recepcja" do
+        aggregate :desk, "Front desk" do
           identity :visit_id
-          command :prepare, "Przygotuj", by: :reception, emits: :prepared
-          event :prepared, "Przygotowano"
+          command :prepare, "Prepare", by: :reception, emits: :prepared
+          event :prepared, "Prepared"
         end
 
-        policy :prepare_desk, "Przygotowanie", handles: :booked, issues: :prepare,
+        policy :prepare_desk, "Preparation", handles: :booked, issues: :prepare,
           delivery: :in_transaction
       end
       """,
