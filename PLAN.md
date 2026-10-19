@@ -40,8 +40,10 @@ new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/
 `ehos-ledger` (PN3, EmpoweredHouse/ehos-ledger#9), which came from a pin before v0.3.0. **Wave 6 is closed.**
 
 **Next: the publication programme** (18 October, below): making the repository public. The sandbox host owns its repo since PB1 (#366, in #367).
-Invented case studies test what only client material tested (PB2, #369, done); next is English in the
-packages (PB3). Whether the history is kept waits for the two clients' consent.
+Invented case studies test what only client material tested (PB2, #369, done); the packages, their tests, the
+skills and the design record are in English and name no client (PB3, #375, done); next is moving the client trees
+out (PB4). Whether the history is kept waits for the two clients' consent. Before `docs/adr/` is published, #379
+(people named, private links) is the user's to decide.
 
 **Open, the user's:**
 - #249: a clinic specialist's stand-in, which waits for the clinic;
@@ -103,7 +105,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | --- | --- | --- | --- |
 | PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
 | PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ☑ #370, #372, #373, #374 |
-| PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ◐ `pb/375-*` |
+| PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ☑ #376, #378, #380, #381, #382, #383, #384 |
 | PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
