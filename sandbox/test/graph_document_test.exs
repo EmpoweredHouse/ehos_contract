@@ -26,7 +26,7 @@ defmodule EhOsContract.GraphDocumentTest do
   test "every contract and every domain gives a document, all of them" do
     names = documents() |> Enum.map(&elem(&1, 0)) |> Enum.map(&inspect/1)
 
-    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment. Billing.) do
+    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment. Lending. Billing.) do
       assert Enum.count(names, &String.starts_with?(&1, prefix)) >= 2, prefix
     end
   end
@@ -96,12 +96,20 @@ defmodule EhOsContract.GraphDocumentTest do
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing, a
   # sibling's event, whose personal fields are declared there: the same values the
-  # exported model is held to (`E10OutputsTest`), in every graph document.
-  test "no document carries Rehmed's personal scenario values" do
+  # exported model is held to (`E10OutputsTest`), in every graph document, and the
+  # library's member's name and e-mail.
+  test "no document carries a personal scenario value" do
     for {module, document} <- documents() do
       encoded = Jason.encode!(document)
 
-      for personal <- ["85010112345", "M54.5", "93.39"] do
+      for personal <- [
+            "85010112345",
+            "M54.5",
+            "93.39",
+            "Ada Lovelace",
+            "ada@example.org",
+            "ada@example.net"
+          ] do
         refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
       end
     end
@@ -110,6 +118,16 @@ defmodule EhOsContract.GraphDocumentTest do
     reporting = Document.contract(Rehmed.Contracts.StatutoryReporting)
     assert [%{"event" => %{"data" => data}} | _] = reporting["scenarios"]["policy"]
     assert Map.has_key?(data, "pesel") and data["pesel"] == nil
+
+    # The library's member, given to a query's scenario, keeps the name's key and not its
+    # value, and so does the row the query answers.
+    membership = Document.contract(Lending.Contracts.Membership)
+
+    assert [%{"given" => [%{"data" => registered} | _], "answers" => [row]}] =
+             membership["scenarios"]["query"]
+
+    assert Map.has_key?(registered, "name") and registered["name"] == nil
+    assert Map.has_key?(row, "email") and row["email"] == nil
   end
 
   test "a domain's document does not depend on the order its contracts are given in" do

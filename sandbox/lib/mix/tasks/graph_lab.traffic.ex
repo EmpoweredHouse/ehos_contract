@@ -127,7 +127,7 @@ defmodule Mix.Tasks.GraphLab.Traffic do
   # that names the set's domain: the credential verifier stops a host whose audience names
   # none of the domains it runs, or one where another domain publishes, so the invented
   # billing, the sandbox's publishing application, is left out too.
-  @others ["Taxvision.", "Rehmed.", "AppuniteEquipment.", "Billing."]
+  @others ["Taxvision.", "Rehmed.", "AppuniteEquipment.", "Lending.", "Billing."]
   @audience "graph-lab/dev"
 
   # The name this task's own connections give the database, so that it can tell them from
