@@ -53,13 +53,25 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert output =~ "eh_os_contract.check: 0 errors, 50 warnings, 54 notices"
   end
 
-  # The personal values the scenarios give: the library's member.
-  @personal ["Ada Lovelace", "ada@example.org", "ada@example.net"]
+  # The personal values the scenarios give: the library's member, and the clinic's patient
+  # while the clinic's tree is still registered here (publication programme, PB4, #386).
+  @personal [
+    "Ada Lovelace",
+    "ada@example.org",
+    "ada@example.net",
+    "85010112345",
+    "M54.5",
+    "93.39"
+  ]
 
   # The library's membership gives a member's name and e-mail to its query's scenario.
   test "no exported model carries a personal scenario value" do
     contracts = EhOsContract.Registry.contracts()
     assert Lending.Contracts.Membership in contracts
+
+    # The check is not empty: the contract does hold the value its export must not carry.
+    assert inspect(EhOsContract.Model.fetch(Lending.Contracts.Membership), limit: :infinity) =~
+             "Ada Lovelace"
 
     for contract <- contracts do
       encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()

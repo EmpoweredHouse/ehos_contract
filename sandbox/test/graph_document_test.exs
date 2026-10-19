@@ -95,19 +95,26 @@ defmodule EhOsContract.GraphDocumentTest do
   end
 
   # The values the exported model is held to (`E10OutputsTest`), in every graph document:
-  # the library's member's name and e-mail.
+  # the library's member's name and e-mail, and the clinic's patient while the clinic's
+  # tree is still registered here (publication programme, PB4, #386).
   test "no document carries a personal scenario value" do
     for {module, document} <- documents() do
       encoded = Jason.encode!(document)
 
-      for personal <- ["Ada Lovelace", "ada@example.org", "ada@example.net"] do
+      for personal <- [
+            "Ada Lovelace",
+            "ada@example.org",
+            "ada@example.net",
+            "85010112345",
+            "M54.5",
+            "93.39"
+          ] do
         refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
       end
     end
 
-    # And the check is not empty: the scenarios are there, with what is not personal.
-    # The library's member, given to a query's scenario, keeps the name's key and not its
-    # value, and so does the row the query answers.
+    # And the check is not empty: the library's member, given to a query's scenario, keeps
+    # the name's key and not its value, and so does the row the query answers.
     membership = Document.contract(Lending.Contracts.Membership)
 
     assert [%{"given" => [%{"data" => registered} | _], "answers" => [row]}] =
