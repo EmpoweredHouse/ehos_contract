@@ -14,69 +14,69 @@ defmodule EhOsContract.ReactionRulesTest do
   alias EhOsContract.{Model, Pages, View}
 
   @visits """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close, "Zamknij", by: :reception, emits: :closed
-      command :report, "Zgłoś", emits: :reported
-      command :waive, "Pomiń", emits: :waived
-      event :closed, "Zamknięto" do
+      command :close, "Close", by: :reception, emits: :closed
+      command :report, "Report", emits: :reported
+      command :waive, "Skip", emits: :waived
+      event :closed, "Closed" do
         field :reportable, :boolean
       end
-      event :reported, "Zgłoszono"
-      event :waived, "Pominięto"
+      event :reported, "Reported"
+      event :waived, "Skipped"
     end
 
-    policy :report_on_close, "Zamknięcie — zgłoszenie albo pominięcie",
+    policy :report_on_close, "Closing — a report or a skip",
       handles: :closed, issues: [:report, :waive] do
-      constraint :only_reportable, "Zgłaszamy tylko usługi podlegające zgłoszeniu", source: "P-07"
-      constraint :one_answer, "Każde zamknięcie dostaje dokładnie jedną odpowiedź"
+      constraint :only_reportable, "We report only the services that must be reported", source: "Q-21"
+      constraint :one_answer, "Every closing gets exactly one answer"
     end
 
-    policy :remind_on_waive, "Pominięcie — przypomnienie", handles: :waived, issues: :report do
-      constraint :quiet_hours, "Nie przypominamy w nocy"
+    policy :remind_on_waive, "Skipping — reminder", handles: :waived, issues: :report do
+      constraint :quiet_hours, "No reminders at night"
     end
 
-    effect :send_report, "Wyślij zgłoszenie", handles: :reported, idempotency: [key: :event_id, owner: :self] do
-      constraint :within_limits, "Adapter pilnuje limitów zapytań i ponawia je", source: "03 §4.2"
+    effect :send_report, "Send the report", handles: :reported, idempotency: [key: :event_id, owner: :self] do
+      constraint :within_limits, "The adapter keeps within the rate limits and retries", source: "07 §2.3"
     end
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
       starts_on :closed, sets: :due
       timer :due, "Due", wait: {1, :day}, issues: :report
       ends_on :reported
-      invariant :one_timer, "Wizyta ma najwyżej jedno przypomnienie naraz"
-      constraint :business_days, "Przypomnienie przychodzi w dzień roboczy"
+      invariant :one_timer, "A visit has at most one reminder at a time"
+      constraint :business_days, "A reminder comes on a business day"
     end
 
-    read_model :visits, "Wizyty", projects: :closed do
+    read_model :visits, "Visits", projects: :closed do
       field :visit_id, :id
     end
 
-    query :visits_of, "Wizyty", reads: :visits, by: :reception do
+    query :visits_of, "Visits", reads: :visits, by: :reception do
       param :visit_id, :id
-      constraint :own_clinic, "Recepcja widzi tylko wizyty swojej przychodni"
+      constraint :own_clinic, "Reception sees only its own clinic's visits"
     end
 
-    scenario "fizjoterapia — zgłoszenie", illustrates: :only_reportable do
+    scenario "physiotherapy — report", illustrates: :only_reportable do
       on :closed, %{reportable: true}
       target :report_on_close
       issues :report
     end
 
-    scenario "zamknięcie — przypomnienie za dzień",
+    scenario "closing — a reminder in a day",
       illustrates: [:one_timer, :business_days] do
       on :closed, %{reportable: true}
       target :chase
       sets :due
     end
 
-    scenario "przypomnienie — zgłoszenie", illustrates: :one_timer do
+    scenario "reminder — report", illustrates: :one_timer do
       on :due
       issues :report
     end
 
-    scenario "wizyty recepcji" do
+    scenario "reception's visits" do
       query :visits_of, %{visit_id: "visit-anna"}
       answers []
     end
@@ -92,8 +92,8 @@ defmodule EhOsContract.ReactionRulesTest do
       """
       defmodule EhOsContract.ReactionRulesTest.Domain do
         use EhOsContract.Domain, name: :clinic, language: :pl
-        subdomain :billing, "Rozliczenia", type: :supporting
-        context :settlement, "Rozliczenia", subdomain: :billing
+        subdomain :billing, "Settlement", type: :supporting
+        context :settlement, "Settlement", subdomain: :billing
       end
       """,
       "reaction_rules_domain.ex"
@@ -112,41 +112,46 @@ defmodule EhOsContract.ReactionRulesTest do
       [pm] = model.process_managers
 
       assert [
-               %{name: :only_reportable, source: "P-07"},
+               %{name: :only_reportable, source: "Q-21"},
                %{name: :one_answer, source: nil}
              ] = policy.constraints
 
-      assert [%{name: :within_limits, label: "Adapter pilnuje limitów zapytań i ponawia je"}] =
+      assert [
+               %{
+                 name: :within_limits,
+                 label: "The adapter keeps within the rate limits and retries"
+               }
+             ] =
                effect.constraints
 
       assert [%{name: :one_timer}] = pm.invariants
       assert [%{name: :business_days}] = pm.constraints
 
       assert %{illustrates: [:only_reportable]} =
-               Enum.find(model.scenarios, &(&1.description == "fizjoterapia — zgłoszenie"))
+               Enum.find(model.scenarios, &(&1.description == "physiotherapy — report"))
     end
 
     test "leaves the keys out where nothing is declared, so no digest moves" do
       model =
         compile_contract("ReactionRulesNone", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close, "Zamknij", by: :reception, emits: :closed
-            command :report, "Zgłoś", emits: :reported
-            event :closed, "Zamknięto"
-            event :reported, "Zgłoszono"
+            command :close, "Close", by: :reception, emits: :closed
+            command :report, "Report", emits: :reported
+            event :closed, "Closed"
+            event :reported, "Reported"
           end
 
-          policy :report_on_close, "Zamknięcie", handles: :closed, issues: :report
-          effect :send_report, "Wyślij", handles: :reported, idempotency: [key: :event_id, owner: :self]
+          policy :report_on_close, "Closing", handles: :closed, issues: :report
+          effect :send_report, "Send", handles: :reported, idempotency: [key: :event_id, owner: :self]
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :visit_id
             starts_on :closed
             ends_on :reported
           end
 
-          scenario "zamknięcie — zgłoszenie" do
+          scenario "closing — report" do
             on :closed
             target :report_on_close
             issues :report
@@ -170,47 +175,47 @@ defmodule EhOsContract.ReactionRulesTest do
     test "refuses a rule the scenario's target does not have" do
       message =
         refuse_contract("IllustratesUnknown", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close, "Zamknij", by: :reception, emits: :closed
-            command :report, "Zgłoś", emits: :reported
-            event :closed, "Zamknięto"
-            event :reported, "Zgłoszono"
+            command :close, "Close", by: :reception, emits: :closed
+            command :report, "Report", emits: :reported
+            event :closed, "Closed"
+            event :reported, "Reported"
           end
 
-          policy :report_on_close, "Zamknięcie", handles: :closed, issues: :report do
-            constraint :only_reportable, "Tylko usługi podlegające zgłoszeniu"
+          policy :report_on_close, "Closing", handles: :closed, issues: :report do
+            constraint :only_reportable, "Reportable services only"
           end
 
-          scenario "zamknięcie — zgłoszenie", illustrates: :one_answer do
+          scenario "closing — report", illustrates: :one_answer do
             on :closed
             issues :report
           end
         """)
 
       assert message =~
-               ~s|S10: scenario "zamknięcie — zgłoszenie" illustrates :one_answer, which is no | <>
+               ~s|S10: scenario "closing — report" illustrates :one_answer, which is no | <>
                  "rule of policy :report_on_close: it illustrates the policy's constraints by name"
     end
 
     test "sends a command's scenario to `rejected`" do
       message =
         refuse_contract("IllustratesCommand", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            invariant :paid, "Zapłacono"
-            command :close, "Zamknij", by: :reception, emits: :closed, rejects: :paid
-            event :closed, "Zamknięto"
+            invariant :paid, "Paid"
+            command :close, "Close", by: :reception, emits: :closed, rejects: :paid
+            event :closed, "Closed"
           end
 
-          scenario "zamknięcie bez zapłaty", illustrates: :paid do
+          scenario "closing without payment", illustrates: :paid do
             command :close
             rejected :paid
           end
         """)
 
       assert message =~
-               ~s|S10: scenario "zamknięcie bez zapłaty" names rules in illustrates:, but a | <>
+               ~s|S10: scenario "closing without payment" names rules in illustrates:, but a | <>
                  "command's scenario shows the rules it is refused on with " <>
                  "`rejected`"
     end
@@ -218,50 +223,50 @@ defmodule EhOsContract.ReactionRulesTest do
     test "refuses a rule a query does not have, and a rule named twice" do
       message =
         refuse_contract("IllustratesQuery", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close, "Zamknij", by: :reception, emits: :closed
-            event :closed, "Zamknięto"
+            command :close, "Close", by: :reception, emits: :closed
+            event :closed, "Closed"
           end
 
-          read_model :visits, "Wizyty", projects: :closed do
+          read_model :visits, "Visits", projects: :closed do
             field :visit_id, :id
           end
 
-          query :visits_of, "Wizyty", reads: :visits, by: :reception do
+          query :visits_of, "Visits", reads: :visits, by: :reception do
             param :visit_id, :id
-            constraint :own_clinic, "Tylko swoja przychodnia"
+            constraint :own_clinic, "Own clinic only"
           end
 
-          scenario "wizyty", illustrates: [:own_clinic, :own_clinic, :all_clinics] do
+          scenario "visits", illustrates: [:own_clinic, :own_clinic, :all_clinics] do
             query :visits_of, %{visit_id: "visit-anna"}
             answers []
           end
         """)
 
       assert message =~
-               ~s|S10: scenario "wizyty" illustrates :all_clinics, which is no rule of query | <>
+               ~s|S10: scenario "visits" illustrates :all_clinics, which is no rule of query | <>
                  ":visits_of: it illustrates the query's constraints by name"
 
-      assert message =~ ~s|S10: scenario "wizyty" illustrates :own_clinic twice|
+      assert message =~ ~s|S10: scenario "visits" illustrates :own_clinic twice|
     end
   end
 
   test "N1 refuses a process manager's constraint and invariant of one name" do
     message =
       refuse_contract("RulesTwice", """
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          command :close, "Zamknij", by: :reception, emits: :closed
-          event :closed, "Zamknięto"
+          command :close, "Close", by: :reception, emits: :closed
+          event :closed, "Closed"
         end
 
-        process_manager :chase, "Pogoń" do
+        process_manager :chase, "Chase" do
           correlate :visit_id
           starts_on :closed
           ends_on :closed
-          invariant :one_timer, "Jedno przypomnienie"
-          constraint :one_timer, "Jedno przypomnienie"
+          invariant :one_timer, "One reminder"
+          constraint :one_timer, "One reminder"
         end
       """)
 
@@ -297,9 +302,13 @@ defmodule EhOsContract.ReactionRulesTest do
   test "view --details lists each reaction's rules", %{model: model, domain: domain} do
     tree = View.render(domain, [%{model | domain: domain.module}], details: true)
 
-    assert tree =~ "constraint only_reportable — Zgłaszamy tylko usługi podlegające zgłoszeniu"
-    assert tree =~ "constraint within_limits — Adapter pilnuje limitów zapytań i ponawia je"
-    assert tree =~ "invariant one_timer — Wizyta ma najwyżej jedno przypomnienie naraz"
+    assert tree =~
+             "constraint only_reportable — We report only the services that must be reported"
+
+    assert tree =~
+             "constraint within_limits — The adapter keeps within the rate limits and retries"
+
+    assert tree =~ "invariant one_timer — A visit has at most one reminder at a time"
   end
 
   test "the pages list each reaction's rules, and what a scenario illustrates", %{
@@ -310,14 +319,14 @@ defmodule EhOsContract.ReactionRulesTest do
     dir = "settlement/reaction_rules"
 
     policy = pages["#{dir}/policies/report_on_close.md"]
-    assert policy =~ "## Constraints\n\n- `only_reportable` — Zgłaszamy tylko usługi"
+    assert policy =~ "## Constraints\n\n- `only_reportable` — We report only the services"
     assert policy =~ "issues `report` — illustrates `only_reportable`"
 
     assert pages["#{dir}/effects/send_report.md"] =~
-             "- `within_limits` — Adapter pilnuje limitów zapytań i ponawia je"
+             "- `within_limits` — The adapter keeps within the rate limits and retries"
 
     pm = pages["#{dir}/process_managers/chase.md"]
-    assert pm =~ "## Invariants\n\n- `one_timer` — Wizyta ma najwyżej jedno przypomnienie naraz"
+    assert pm =~ "## Invariants\n\n- `one_timer` — A visit has at most one reminder at a time"
     assert pm =~ "## Constraints\n\n- `business_days`"
   end
 end

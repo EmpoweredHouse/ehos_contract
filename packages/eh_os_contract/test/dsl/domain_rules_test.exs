@@ -42,7 +42,7 @@ defmodule EhOsContract.DomainRulesTest do
           actor :reception, :human, ""
           subject :patient, "\\u2066\\u200F\\u2069"
 
-          entity :service, "Usługa", context: :settlement, identity: :service_id do
+          entity :service, "Service", context: :settlement, identity: :service_id do
             field :name, :string, label: ""
           end
         """)
@@ -60,7 +60,7 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "control: a label in Polish passes" do
       compiles("LabelsGiven", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
+        context :settlement, "Należności", subdomain: :supporting
         actor :reception, :human, "Recepcja"
       """)
     end
@@ -70,8 +70,8 @@ defmodule EhOsContract.DomainRulesTest do
     test "two contexts of one name are refused at the second" do
       message =
         refused("TwoContexts", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          context :settlement, "Rozliczenia 2", subdomain: :supporting
+          context :settlement, "Settlement", subdomain: :supporting
+          context :settlement, "Settlement 2", subdomain: :supporting
         """)
 
       assert message =~ "D1: two contexts are named :settlement (two_contexts.ex:5)"
@@ -80,14 +80,14 @@ defmodule EhOsContract.DomainRulesTest do
     test "every kind is checked, and every violation is reported at once" do
       message =
         refused("EveryKind", """
-          actor :reception, :human, "Recepcja"
-          actor :reception, :human, "Recepcja"
-          subject :patient, "Pacjent"
-          subject :patient, "Pacjent"
+          actor :reception, :human, "Reception"
+          actor :reception, :human, "Reception"
+          subject :patient, "Patient"
+          subject :patient, "Patient"
           value :money, :integer
           value :money, :integer
-          external :registry, "Rejestr", direction: :outbound
-          external :registry, "Rejestr", direction: :outbound
+          external :registry, "Registry", direction: :outbound
+          external :registry, "Registry", direction: :outbound
         """)
 
       assert message =~ "two actors are named :reception (every_kind.ex:5)"
@@ -99,16 +99,16 @@ defmodule EhOsContract.DomainRulesTest do
     test "a name that is not snake_case is refused, whatever it names" do
       message =
         refused("NameForms", """
-          context :"front desk", "Recepcja", subdomain: :supporting
-          subject :Patient, "Pacjent"
+          context :"front desk", "Reception", subdomain: :supporting
+          subject :Patient, "Patient"
           value :"a/b", :integer
-          external :"registry-v2", "Rejestr", direction: :outbound
-          subdomain true, "Prawda", type: :generic
-          context :"desk#{"\\n"}", "Recepcja 2", subdomain: :supporting
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          actor :Reception, :human, "Recepcja"
+          external :"registry-v2", "Registry", direction: :outbound
+          subdomain true, "True", type: :generic
+          context :"desk#{"\\n"}", "Reception 2", subdomain: :supporting
+          context :settlement, "Settlement", subdomain: :supporting
+          actor :Reception, :human, "Reception"
 
-          entity :"Invoice", "Faktura", context: :settlement, identity: :invoice_no do
+          entity :"Invoice", "Invoice", context: :settlement, identity: :invoice_no do
           end
         """)
 
@@ -188,9 +188,9 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "D1: value :id is named after a built-in field type"
 
       compiles("NotBuiltInName", """
-        context :front_desk2, "Recepcja", subdomain: :supporting
-        subject :patient, "Pacjent"
-        external :registry_v2, "Rejestr", direction: :outbound
+        context :front_desk2, "Reception", subdomain: :supporting
+        subject :patient, "Patient"
+        external :registry_v2, "Registry", direction: :outbound
         value :money, :integer
         value :money_amount, :integer
         value :desk2, :integer
@@ -200,22 +200,22 @@ defmodule EhOsContract.DomainRulesTest do
     test "a term defined twice in one context is refused" do
       message =
         refused("TwoTerms", """
-          context :settlement, "Rozliczenia" do
+          context :settlement, "Settlement" do
             subdomain :supporting
-            term "Wizyta", definition: "Spotkanie"
-            term "Wizyta", definition: "Inne spotkanie"
+            term "Visit", definition: "Meeting"
+            term "Visit", definition: "Another meeting"
           end
         """)
 
       assert message =~
-               ~s|D1: context :settlement defines the term "Wizyta" twice (two_terms.ex:7)|
+               ~s|D1: context :settlement defines the term "Visit" twice (two_terms.ex:7)|
     end
 
     test "the same relation twice is refused, a symmetric one in either order" do
       message =
         refused("TwoRelations", """
-          context :scheduling, "Umawianie", subdomain: :core
-          context :settlement, "Rozliczenia", subdomain: :supporting
+          context :scheduling, "Scheduling", subdomain: :core
+          context :settlement, "Settlement", subdomain: :supporting
           relation :customer_supplier, upstream: :scheduling, downstream: :settlement
           relation :customer_supplier, upstream: :scheduling, downstream: :settlement
           relation :partnership, between: [:scheduling, :settlement]
@@ -231,10 +231,10 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "the control: one name per kind, and one name reused across kinds, compile" do
       compiles("UniqueNames", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
-        actor :settlement, :system, "Rozliczenia"
+        context :settlement, "Settlement", subdomain: :supporting
+        actor :settlement, :system, "Settlement"
         value :money, :integer
-        subject :patient, "Pacjent"
+        subject :patient, "Patient"
       """)
     end
   end
@@ -243,7 +243,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a second translation into one language is refused" do
       message =
         refused("TwoEnglish", """
-          context :settlement, "Rozliczenia" do
+          context :settlement, "Settlement" do
             subdomain :supporting
 
             term "Wizyta" do
@@ -261,7 +261,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a translation into the domain's language is refused" do
       message =
         refused("IntoPolish", """
-          context :settlement, "Rozliczenia" do
+          context :settlement, "Settlement" do
             subdomain :supporting
 
             term "Wizyta" do
@@ -294,7 +294,7 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "the control: one translation per other language compiles" do
       compiles("Translated", """
-        context :settlement, "Rozliczenia" do
+        context :settlement, "Settlement" do
           subdomain :supporting
 
           term "Wizyta" do
@@ -326,8 +326,8 @@ defmodule EhOsContract.DomainRulesTest do
     end
 
     test "a unit on a type that does not count is refused" do
-      assert refused("UnitOnText", "  value :note, :string, unit: :grosze\n") =~
-               "D3: value :note has unit :grosze, and a unit counts only an :integer or a :decimal"
+      assert refused("UnitOnText", "  value :note, :string, unit: :cents\n") =~
+               "D3: value :note has unit :cents, and a unit counts only an :integer or a :decimal"
     end
 
     test "an unknown type, a malformed enum and a repeated member are refused" do
@@ -337,7 +337,7 @@ defmodule EhOsContract.DomainRulesTest do
           value :method, {:enum, []}
           value :status, {:enum, [:open, :closed, :open]}
           value :flag, {:enum, [true]}
-          value :method_blank, {:enum, [card: "Karta", cash: ""]}
+          value :method_blank, {:enum, [card: "Card", cash: ""]}
           value :flag_labelled, {:enum, [{false, ""}, {nil, "Brak"}]}
 
           value :line do
@@ -384,10 +384,10 @@ defmodule EhOsContract.DomainRulesTest do
     test "a value's field takes no default, and its subject and personal must hold" do
       message =
         refused("FieldOptions", """
-          subject :patient, "Pacjent"
+          subject :patient, "Patient"
 
           value :contact do
-            field :note, :string, default: "brak"
+            field :note, :string, default: "none"
             field :owner_id, :id, subject: :nobody
             field :patient_id, :id, subject: :patient, optional: true
             field :phone, :string, personal: :patient_id
@@ -414,22 +414,22 @@ defmodule EhOsContract.DomainRulesTest do
     test "the control: a unit on a value whose type is another numeric value compiles" do
       compiles("UnitOnAlias", """
         value :money, :integer
-        value :fee, :money, unit: :grosze
+        value :fee, :money, unit: :cents
       """)
     end
 
     test "a unit on a value whose type is a non-numeric value is still refused" do
       assert refused(
                "UnitOnTextAlias",
-               "  value :note, :string\n  value :memo, :note, unit: :grosze\n"
+               "  value :note, :string\n  value :memo, :note, unit: :cents\n"
              ) =~
-               "D3: value :memo has unit :grosze"
+               "D3: value :memo has unit :cents"
     end
 
     test "a personal field of a value that holds personal data of its own is refused" do
       message =
         refused("PersonalInPersonal", """
-          subject :patient, "Pacjent"
+          subject :patient, "Patient"
 
           value :contact do
             field :patient_id, :id, subject: :patient
@@ -453,7 +453,7 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "the control: a personal field of a required subject identifier compiles" do
       compiles("PersonalField", """
-        subject :patient, "Pacjent"
+        subject :patient, "Patient"
 
         value :contact do
           field :patient_id, :id, subject: :patient
@@ -464,10 +464,10 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "the control: every built-in type, a unit, labels, lists and nested values compile" do
       compiles("WellFormed", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
-        value :money, :integer, unit: :grosze, label: "Kwota", context: :settlement
+        context :settlement, "Settlement", subdomain: :supporting
+        value :money, :integer, unit: :cents, label: "Amount", context: :settlement
         value :rate, :decimal, unit: :percent
-        value :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+        value :method, {:enum, [card: "Card", cash: "Cash"]}
         value :status, {:enum, [:open, :closed]}
 
         value :line do
@@ -491,13 +491,13 @@ defmodule EhOsContract.DomainRulesTest do
     test "an actor whose name is not snake_case is refused, since it is a role" do
       message =
         refused("ActorNames", """
-          actor :"*", :human, "Wszyscy"
-          actor :"billing.clerk", :human, "Księgowa"
-          actor :Reception, :human, "Recepcja"
-          actor :"clerk\n", :human, "Urzędnik"
-          actor :front_desk2, :human, "Recepcja 2"
-          actor :"Registry Bot", :system, "Robot rejestru"
-          actor true, :human, "Prawda"
+          actor :"*", :human, "Everyone"
+          actor :"billing.clerk", :human, "Accountant"
+          actor :Reception, :human, "Reception"
+          actor :"clerk\n", :human, "Clerk"
+          actor :front_desk2, :human, "Reception 2"
+          actor :"Registry Bot", :system, "Registry robot"
+          actor true, :human, "True"
         """)
 
       assert message =~
@@ -516,8 +516,8 @@ defmodule EhOsContract.DomainRulesTest do
     test "a human actor with backed_by is refused" do
       message =
         refused("BackedPerson", """
-          external :payer_registry, "Rejestr płatnika", direction: :outbound
-          actor :reception, :human, "Recepcja", backed_by: :payer_registry
+          external :payer_registry, "Payer registry", direction: :outbound
+          actor :reception, :human, "Reception", backed_by: :payer_registry
         """)
 
       assert message =~
@@ -529,7 +529,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a system actor backed by an undeclared external, and an undeclared context, are refused" do
       message =
         refused("UnknownBacking", """
-          actor :gateway, :system, "Bramka", backed_by: :payer_registry, context: :billing
+          actor :gateway, :system, "Gateway", backed_by: :payer_registry, context: :billing
         """)
 
       assert message =~
@@ -541,32 +541,32 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "the control: a system actor backed by a declared external, in a declared context, compiles" do
       compiles("Backed", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
-        external :payer_registry, "Rejestr płatnika", direction: :outbound
-        actor :gateway, :system, "Bramka", backed_by: :payer_registry, context: :settlement
-        actor :reception, :human, "Recepcja", context: :settlement
+        context :settlement, "Settlement", subdomain: :supporting
+        external :payer_registry, "Payer registry", direction: :outbound
+        actor :gateway, :system, "Gateway", backed_by: :payer_registry, context: :settlement
+        actor :reception, :human, "Reception", context: :settlement
       """)
     end
   end
 
   describe "D5 and D1, since plan EL2: a directed relation may end at an external system" do
     test "control: settlement conforms to an external, as ESDM allows" do
-      compiles("ConformsToKsef", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
-        external :ksef, "KSeF", direction: :outbound
-        relation :conformist, upstream: :ksef, downstream: :settlement
+      compiles("ConformsToRegistry", """
+        context :settlement, "Settlement", subdomain: :supporting
+        external :einvoicing, "E-invoicing registry", direction: :outbound
+        relation :conformist, upstream: :einvoicing, downstream: :settlement
       """)
     end
 
     test "two externals, a symmetric relation to one, and a name both kinds have are refused" do
       message =
         refused("ExternalsWrong", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          external :ksef, "KSeF", direction: :outbound
-          external :p1, "P1", direction: :outbound
-          external :settlement, "Rozliczenia zewnętrzne", direction: :inbound
-          relation :conformist, upstream: :ksef, downstream: :p1
-          relation :partnership, between: [:settlement, :ksef]
+          context :settlement, "Settlement", subdomain: :supporting
+          external :einvoicing, "E-invoicing registry", direction: :outbound
+          external :registry, "Health registry", direction: :outbound
+          external :settlement, "External settlement", direction: :inbound
+          relation :conformist, upstream: :einvoicing, downstream: :registry
+          relation :partnership, between: [:settlement, :einvoicing]
         """)
 
       assert message =~
@@ -574,7 +574,7 @@ defmodule EhOsContract.DomainRulesTest do
                  "context (externals_wrong.ex:8)"
 
       assert message =~
-               "D5: relation :partnership is symmetric and names external :ksef: a symmetric " <>
+               "D5: relation :partnership is symmetric and names external :einvoicing: a symmetric " <>
                  "relation joins contexts; an external may end a directed one (externals_wrong.ex:9)"
 
       assert message =~
@@ -665,7 +665,7 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "control: a dash inside, an underscore anywhere after the first letter, digits" do
       for {name, index} <-
-            Enum.with_index([:"my-shop", :dispatch_rig, :shop_, :rehmed, :a, :shop2, :"a-b_c-9"]) do
+            Enum.with_index([:"my-shop", :dispatch_rig, :shop_, :lending, :a, :shop2, :"a-b_c-9"]) do
         module = "GoodName#{index}"
         compiled = Code.compile_string(named(module, name)) |> Enum.map(&elem(&1, 0))
         assert Module.concat(__MODULE__, module) in compiled
@@ -678,8 +678,8 @@ defmodule EhOsContract.DomainRulesTest do
         Exception.message(
           compile_error(
             named("BadNameAndMore", :"acme.billing", """
-              actor :reception, :human, "Recepcja"
-              actor :reception, :human, "Recepcja"
+              actor :reception, :human, "Reception"
+              actor :reception, :human, "Reception"
             """),
             "bad_name_and_more.ex"
           )
@@ -695,7 +695,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a value's and an entity's field is snake_case and named once" do
       message =
         refused("FieldNames", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
+          context :settlement, "Settlement", subdomain: :supporting
 
           value :address do
             field :City, :string
@@ -703,7 +703,7 @@ defmodule EhOsContract.DomainRulesTest do
             field :street, :string, optional: true
           end
 
-          entity :invoice, "Faktura", context: :settlement, identity: :invoice_no do
+          entity :invoice, "Invoice", context: :settlement, identity: :invoice_no do
             field :"Invoice No", :string
           end
         """)
@@ -722,32 +722,32 @@ defmodule EhOsContract.DomainRulesTest do
     test "an entity issued by an unknown external is refused, and its field; control: a known one" do
       message =
         refused("IssuedWrong", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          external :ksef, "KSeF", direction: :outbound
+          context :settlement, "Settlement", subdomain: :supporting
+          external :einvoicing, "E-invoicing registry", direction: :outbound
 
-          entity :invoice, "Faktura", context: :settlement, identity: :invoice_no, issued_by: :kse do
-            field :seller_id, :id, issued_by: :kse
+          entity :invoice, "Invoice", context: :settlement, identity: :invoice_no, issued_by: :einvoice do
+            field :seller_id, :id, issued_by: :einvoice
           end
         """)
 
       assert message =~
-               "D8: entity :invoice, identity :invoice_no is issued_by: :kse, which is not an " <>
-                 "external of this domain; did you mean :ksef? (issued_wrong.ex:7)"
+               "D8: entity :invoice, identity :invoice_no is issued_by: :einvoice, which is not an " <>
+                 "external of this domain; did you mean :einvoicing? (issued_wrong.ex:7)"
 
       assert message =~
-               "D8: entity :invoice, field :seller_id is issued_by: :kse, which is not an external " <>
-                 "of this domain; did you mean :ksef? (issued_wrong.ex:8)"
+               "D8: entity :invoice, field :seller_id is issued_by: :einvoice, which is not an external " <>
+                 "of this domain; did you mean :einvoicing? (issued_wrong.ex:8)"
 
       compiles("IssuedRight", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
-        external :ksef, "KSeF", direction: :outbound
+        context :settlement, "Settlement", subdomain: :supporting
+        external :einvoicing, "E-invoicing registry", direction: :outbound
 
-        entity :invoice, "Faktura", context: :settlement, identity: :invoice_no, issued_by: :ksef do
+        entity :invoice, "Invoice", context: :settlement, identity: :invoice_no, issued_by: :einvoicing do
         end
       """)
 
       [invoice] = Module.concat(__MODULE__, IssuedRight).__eh_os_contract_model__().entities
-      assert [%{name: :invoice_no, issued_by: :ksef}] = invoice.fields
+      assert [%{name: :invoice_no, issued_by: :einvoicing}] = invoice.fields
     end
   end
 
@@ -755,7 +755,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a context naming an undeclared subdomain is refused, with the closest name" do
       message =
         refused("UnknownSubdomain", """
-          context :settlement, "Rozliczenia", subdomain: :suporting
+          context :settlement, "Settlement", subdomain: :suporting
         """)
 
       assert message =~
@@ -765,7 +765,7 @@ defmodule EhOsContract.DomainRulesTest do
 
     test "control: a context naming a declared one compiles, and the kind is the subdomain's" do
       compiles("KnownSubdomain", """
-        context :settlement, "Rozliczenia", subdomain: :supporting
+        context :settlement, "Settlement", subdomain: :supporting
       """)
 
       model = Module.concat(__MODULE__, KnownSubdomain).__eh_os_contract_model__()
@@ -777,8 +777,8 @@ defmodule EhOsContract.DomainRulesTest do
 
   describe "D5: a relation's roles fit its type, and its ends exist" do
     @contexts """
-      context :scheduling, "Umawianie", subdomain: :core
-      context :settlement, "Rozliczenia", subdomain: :supporting
+      context :scheduling, "Scheduling", subdomain: :core
+      context :settlement, "Settlement", subdomain: :supporting
     """
 
     test "a directed relation written with between is refused" do
@@ -833,7 +833,7 @@ defmodule EhOsContract.DomainRulesTest do
 
   describe "D6: an entity, and every field that names one" do
     @periods """
-      context :month, "Miesiąc", subdomain: :core
+      context :month, "Month", subdomain: :core
     """
 
     test "an unknown context, a wrong identity and a personal field are refused" do
@@ -842,19 +842,19 @@ defmodule EhOsContract.DomainRulesTest do
           "EntityWrong",
           @periods <>
             """
-              entity :period, "Okres", context: :billing, identity: :"Period key" do
+              entity :period, "Period", context: :billing, identity: :"Period key" do
                 field :name, :string
               end
 
-              entity :service, "Usługa", context: :month, identity: :service_id do
+              entity :service, "Service", context: :month, identity: :service_id do
                 field :service_id, :id, optional: true
               end
 
-              entity :invoice, "Faktura", context: :month, identity: :number do
-                field :number, :id, issued_by: :ksef
+              entity :invoice, "Invoice", context: :month, identity: :number do
+                field :number, :id, issued_by: :einvoicing
               end
 
-              entity :clinic, "Placówka", context: :month, identity: :clinic_id do
+              entity :clinic, "Clinic", context: :month, identity: :clinic_id do
                 field :owner, :string, personal: :clinic_id
               end
             """
@@ -875,7 +875,7 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~
                "D6: entity :invoice declares field :number, which is its identity; the library " <>
                  "injects it as a required, non-personal :id, so declare no field for it, and " <>
-                 "write issued_by: :ksef on the entity, which gives it (entity_wrong.ex:14)"
+                 "write issued_by: :einvoicing on the entity, which gives it (entity_wrong.ex:14)"
 
       assert message =~
                "D6: entity :clinic, field :owner has personal:, and an entity's rows are the " <>
@@ -888,7 +888,7 @@ defmodule EhOsContract.DomainRulesTest do
           "ReferenceWrong",
           @periods <>
             """
-              entity :period, "Okres", context: :month, identity: :period_id do
+              entity :period, "Period", context: :month, identity: :period_id do
                 field :previous_id, {:id, :perod}
               end
 
@@ -918,8 +918,8 @@ defmodule EhOsContract.DomainRulesTest do
         "EntityRight",
         @periods <>
           """
-            entity :period, "Okres", context: :month, identity: :period_id,
-              source: "US-MON-01" do
+            entity :period, "Period", context: :month, identity: :period_id,
+              source: "US-INV-07" do
               field :name, :string
               field :ends_on, :date
               field :previous_id, {:id, :period}, optional: true
@@ -961,14 +961,14 @@ defmodule EhOsContract.DomainRulesTest do
           "EntityFields",
           @periods <>
             """
-              subject :patient, "Pacjent"
+              subject :patient, "Patient"
 
               value :contact do
                 field :patient_id, :id, subject: :patient
                 field :phone, :string, personal: :patient_id
               end
 
-              entity :card, "Karta", context: :month, identity: :card_id do
+              entity :card, "Card", context: :month, identity: :card_id do
                 field :number, :string
                 field :number, :string
                 field :holder_id, :id, subject: :holder
@@ -993,9 +993,9 @@ defmodule EhOsContract.DomainRulesTest do
         "PersonalToEntity",
         @periods <>
           """
-            subject :patient, "Pacjent"
+            subject :patient, "Patient"
 
-            entity :card, "Karta", context: :month, identity: :card_id do
+            entity :card, "Card", context: :month, identity: :card_id do
             end
 
             value :contact do
@@ -1074,7 +1074,7 @@ defmodule EhOsContract.DomainRulesTest do
       error =
         domain(
           "UnknownOption",
-          ~s|  context :settlement, "Rozliczenia", subdomain: :supporting, colour: :blue|
+          ~s|  context :settlement, "Settlement", subdomain: :supporting, colour: :blue|
         )
         |> compile_error("unknown_option_domain.ex")
 
@@ -1085,7 +1085,7 @@ defmodule EhOsContract.DomainRulesTest do
     test "a translation without its definition is refused (plan EL2, as in ESDM)" do
       message =
         refused("TranslationWithoutDefinition", """
-          context :settlement, "Rozliczenia", subdomain: :supporting do
+          context :settlement, "Settlement", subdomain: :supporting do
             term "Wizyta", definition: "Spotkanie" do
               translation :en, "Visit"
             end

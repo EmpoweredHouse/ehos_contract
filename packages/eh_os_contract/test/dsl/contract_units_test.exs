@@ -11,17 +11,17 @@ defmodule EhOsContract.ContractUnitsTest do
     test "nothing, or another unit's event, is refused" do
       message =
         refuse_contract("EmitsWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: []
-            command :bill_visit, "Rozliczenie", by: :reception, emits: [:visit_closed, :invoice_issued]
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing the visit", by: :reception, emits: []
+            command :bill_visit, "Bill", by: :reception, emits: [:visit_closed, :invoice_issued]
+            event :visit_closed, "Visit closed"
           end
 
-          aggregate :invoice, "Faktura" do
+          aggregate :invoice, "Invoice" do
             identity :visit_id
-            command :issue_invoice, "Wystawienie", by: :reception, emits: :invoice_issued
-            event :invoice_issued, "Wystawiono"
+            command :issue_invoice, "Issuing", by: :reception, emits: :invoice_issued
+            event :invoice_issued, "Issued"
           end
         """)
 
@@ -38,11 +38,11 @@ defmodule EhOsContract.ContractUnitsTest do
     test "an event no command emits and nobody records is refused" do
       message =
         refuse_contract("NeverOccurs", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
-            event :visit_forgotten, "Zapomniano"
+            command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
+            event :visit_forgotten, "Forgotten"
           end
         """)
 
@@ -54,11 +54,11 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: an event recorded rather than decided compiles (D6)" do
       assert %{grants: %{specialist: %{records: [:visit_completed]}}} =
                compile_contract("Recorded", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta"
-                   event :visit_completed, "Pacjent wyszedł z gabinetu", recorded_by: :specialist
+                   command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+                   event :visit_closed, "Visit closed"
+                   event :visit_completed, "The patient left the room", recorded_by: :specialist
                  end
                """)
     end
@@ -68,16 +68,16 @@ defmodule EhOsContract.ContractUnitsTest do
     test "an invariant the unit does not declare is refused" do
       message =
         refuse_contract("RejectsWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            invariant :paid, "Zapłacono"
+            invariant :paid, "Paid"
 
-            command :close_visit, "Zamknięcie wizyty",
+            command :close_visit, "Closing the visit",
               by: :reception,
               emits: :visit_closed,
               rejects: [:paid, :booked]
 
-            event :visit_closed, "Wizyta zamknięta"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -93,10 +93,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "consulting nothing is refused" do
       message =
         refuse_contract("ConsultsNothing", """
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity :visit_id
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         """)
 
@@ -107,13 +107,13 @@ defmodule EhOsContract.ContractUnitsTest do
     test "an unknown event, no criterion, and a match outside the identity are refused" do
       message =
         refuse_contract("ConsultsWrong", """
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity [:visit_id, :period_id]
             consults :visit_invoiced
             consults :visit_settled, match: [:period_id, :payer_id]
             consults :period_closed, match: :period_id
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         """)
 
@@ -137,11 +137,11 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a match naming a field twice is refused, naming the field" do
       message =
         refuse_contract("ConsultsMatchTwice", """
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity :period_id
             consults :period_closed, match: [:period_id, :period_id]
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         """)
 
@@ -153,11 +153,11 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a wrong field named twice in a match is reported once" do
       message =
         refuse_contract("ConsultsWrongTwice", """
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity :period_id
             consults :period_closed, match: [:payer_id, :payer_id]
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         """)
 
@@ -189,15 +189,19 @@ defmodule EhOsContract.ContractUnitsTest do
     end
 
     test "control: consulting a consumed event, by prose, compiles" do
-      assert %{units: [%{consults: [%{event: :visit_completed, where: "wykonana wizyta"}]}]} =
+      assert %{
+               units: [
+                 %{consults: [%{event: :visit_completed, where: "a visit that took place"}]}
+               ]
+             } =
                compile_contract("ConsultsConsumed", """
                  consumes Clinic.Contracts.Scheduling, :visit_completed
 
-                 dcb :payer_period, "Okres płatnika" do
+                 dcb :payer_period, "Payer's period" do
                    identity :visit_id
-                   consults :visit_completed, where: "wykonana wizyta"
-                   command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-                   event :period_closed, "Zamknięto okres"
+                   consults :visit_completed, where: "a visit that took place"
+                   command :close_period, "Closing the period", by: :manager, emits: :period_closed
+                   event :period_closed, "Period closed"
                  end
                """)
     end
@@ -207,7 +211,7 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a second state block is refused, in a unit and in a process manager" do
       message =
         refuse_contract("StateTwice", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             state do
@@ -218,11 +222,11 @@ defmodule EhOsContract.ContractUnitsTest do
               field :due, :integer, default: 0
             end
 
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             state do
             end
 
@@ -243,16 +247,16 @@ defmodule EhOsContract.ContractUnitsTest do
     test "two identity fields, no creating command, and creates: without a generated identity" do
       message =
         refuse_contract("GeneratedWrong", """
-          aggregate :booking, "Rezerwacja" do
+          aggregate :booking, "Booking" do
             identity [:clinic_id, :booking_id], generated: :uuid
-            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
-            event :cancelled, "Odwołano"
+            command :cancel, "Cancellation", by: :reception, emits: :cancelled
+            event :cancelled, "Cancelled"
           end
 
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :open_visit, "Otwarcie", by: :reception, emits: :opened, creates: true
-            event :opened, "Otwarto"
+            command :open_visit, "Opening", by: :reception, emits: :opened, creates: true
+            event :opened, "Opened"
           end
         """)
 
@@ -270,11 +274,11 @@ defmodule EhOsContract.ContractUnitsTest do
 
     test "creates: on a boundary's command says a boundary has no generated identity" do
       assert refuse_contract("GeneratedOnBoundary", """
-               dcb :seat, "Miejsce" do
+               dcb :seat, "Seat" do
                  identity :seat_id
                  consults :seat_taken, match: :seat_id
-                 command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken, creates: true
-                 event :seat_taken, "Zajęto"
+                 command :take_seat, "Taking", by: :reception, emits: :seat_taken, creates: true
+                 event :seat_taken, "Taken"
                end
              """) =~
                "A6: command :take_seat creates: dcb :seat, whose identity is not generated; a " <>
@@ -285,10 +289,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "identity with another option than generated: is refused at the declaration" do
       source =
         contract("GeneratedTypo", """
-          aggregate :booking, "Rezerwacja" do
+          aggregate :booking, "Booking" do
             identity :booking_id, generate: :uuid
-            command :book, "Rezerwacja", by: :reception, emits: :booked, creates: true
-            event :booked, "Zarezerwowano"
+            command :book, "Booking", by: :reception, emits: :booked, creates: true
+            event :booked, "Reserved"
           end
         """)
 
@@ -304,10 +308,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "an identity typed as a second argument is refused, naming the form that types it" do
       source =
         contract("IdentityPositional", """
-          aggregate :visit_note, "Notatka" do
+          aggregate :visit_note, "Note" do
             identity :visit_id, {:id, :visit}
-            command :note, "Zanotuj", by: :reception, emits: :noted
-            event :noted, "Zanotowano"
+            command :note, "Write down", by: :reception, emits: :noted
+            event :noted, "Written down"
           end
         """)
 
@@ -323,20 +327,20 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: a generated identity with a creating command compiles into the model" do
       model =
         compile_contract("GeneratedRight", """
-          aggregate :booking, "Rezerwacja" do
+          aggregate :booking, "Booking" do
             identity :booking_id, generated: :uuid
 
-            command :book_visit, "Umów wizytę", by: :reception, emits: :visit_booked, creates: true do
+            command :book_visit, "Book a visit", by: :reception, emits: :visit_booked, creates: true do
               field :slot, :timestamp
             end
 
-            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
+            command :cancel, "Cancellation", by: :reception, emits: :cancelled
 
-            event :visit_booked, "Zarezerwowano" do
+            event :visit_booked, "Reserved" do
               field :slot, :timestamp
             end
 
-            event :cancelled, "Odwołano"
+            event :cancelled, "Cancelled"
           end
         """)
 
@@ -356,10 +360,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a field that is missing, optional, an identity or not an entity's is refused" do
       message =
         refuse_contract("ReadsWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :book_visit, "Umów wizytę",
+            command :book_visit, "Book a visit",
               by: :reception,
               emits: :visit_booked,
               reads: [service: :service_id, room: :room_id, card: :card_id, visit: :visit_id,
@@ -369,7 +373,7 @@ defmodule EhOsContract.ContractUnitsTest do
               field :code, :id
             end
 
-            event :visit_booked, "Umówiono"
+            event :visit_booked, "Booked"
           end
         """)
 
@@ -397,23 +401,23 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a command that reads, issued by a policy or a process manager, is refused" do
       message =
         refuse_contract("ReadsByReaction", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :book_visit, "Umów wizytę",
+            command :book_visit, "Book a visit",
               by: :reception,
               emits: :visit_booked,
               reads: [service: :service_id] do
               field :service_id, {:id, :service}
             end
 
-            event :visit_booked, "Umówiono"
+            event :visit_booked, "Booked"
           end
 
-          policy :rebook, "Umów ponownie", handles: :visit_booked, issues: :book_visit,
+          policy :rebook, "Book again", handles: :visit_booked, issues: :book_visit,
             delivery: :in_transaction
 
-          process_manager :follow_up, "Wizyta kontrolna" do
+          process_manager :follow_up, "Follow-up visit" do
             correlate :visit_id
             starts_on :visit_booked, issues: :book_visit
           end
@@ -428,23 +432,23 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a process manager's timer issuing a command that reads is refused as well" do
       message =
         refuse_contract("ReadsByTimer", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :book_visit, "Umów wizytę",
+            command :book_visit, "Book a visit",
               by: :reception,
               emits: :visit_booked,
               reads: [service: :service_id] do
               field :service_id, {:id, :service}
             end
 
-            event :visit_booked, "Umówiono"
+            event :visit_booked, "Booked"
           end
 
-          process_manager :follow_up, "Wizyta kontrolna" do
+          process_manager :follow_up, "Follow-up visit" do
             correlate :visit_id
             starts_on :visit_booked, sets: :again
-            timer :again, "Za miesiąc", wait: {1, :month}, issues: :book_visit
+            timer :again, "In a month", wait: {1, :month}, issues: :book_visit
           end
         """)
 
@@ -455,20 +459,20 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: a required field typed {:id, entity} compiles, and the model keeps it" do
       model =
         compile_contract("ReadsRight", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :book_visit, "Umów wizytę",
+            command :book_visit, "Book a visit",
               by: :reception,
               emits: :visit_booked,
               reads: [service: :service_id] do
               field :service_id, {:id, :service}
             end
 
-            command :cancel_visit, "Odwołaj", by: :reception, emits: :visit_cancelled
+            command :cancel_visit, "Cancel", by: :reception, emits: :visit_cancelled
 
-            event :visit_booked, "Umówiono"
-            event :visit_cancelled, "Odwołano"
+            event :visit_booked, "Booked"
+            event :visit_cancelled, "Cancelled"
           end
         """)
 
@@ -483,7 +487,7 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a field outside the state, of another type or personal; an invariant outside rejects:; a creating or by-less command; twice" do
       message =
         refuse_contract("ActorIsWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             state do
@@ -492,7 +496,7 @@ defmodule EhOsContract.ContractUnitsTest do
               field :patient_id, :id, personal: :patient, subject: :patient, optional: true
             end
 
-            invariant :own_visit, "Tylko własna wizyta"
+            invariant :own_visit, "Own visit only"
 
             command :close_a, "A", by: :reception, emits: :closed, rejects: :own_visit do
               actor_is :nurse_id, or_rejects: :own_visit
@@ -519,10 +523,10 @@ defmodule EhOsContract.ContractUnitsTest do
               actor_is :visit_id, or_rejects: :own_visit
             end
 
-            event :closed, "Zamknięto"
+            event :closed, "Closed"
           end
 
-          policy :close_on_close, "Zamknij", handles: :closed, issues: :close_e,
+          policy :close_on_close, "Close", handles: :closed, issues: :close_e,
             delivery: :in_transaction
         """)
 
@@ -555,21 +559,21 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a command that creates its aggregate names nobody yet" do
       message =
         refuse_contract("ActorIsCreates", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id, generated: :uuid
 
             state do
               field :specialist_id, :id, optional: true
             end
 
-            invariant :own_visit, "Tylko własna wizyta"
+            invariant :own_visit, "Own visit only"
 
-            command :open_visit, "Otwórz", by: :reception, emits: :opened, creates: true,
+            command :open_visit, "Open", by: :reception, emits: :opened, creates: true,
               rejects: :own_visit do
               actor_is :specialist_id, or_rejects: :own_visit
             end
 
-            event :opened, "Otwarto"
+            event :opened, "Opened"
           end
         """)
 
@@ -581,26 +585,26 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: a field of the state or the identity compiles, and the model keeps it" do
       model =
         compile_contract("ActorIsRight", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
             state do
               field :specialist_id, {:id, :specialist}, optional: true
             end
 
-            invariant :own_visit, "Tylko własna wizyta"
+            invariant :own_visit, "Own visit only"
 
-            command :close_visit, "Zamknij", by: :reception, emits: :closed, rejects: :own_visit do
+            command :close_visit, "Close", by: :reception, emits: :closed, rejects: :own_visit do
               actor_is :specialist_id, or_rejects: :own_visit
             end
 
-            command :reopen_visit, "Otwórz ponownie", by: :reception, emits: :reopened
+            command :reopen_visit, "Reopen", by: :reception, emits: :reopened
 
-            event :closed, "Zamknięto"
-            event :reopened, "Otwarto ponownie"
+            event :closed, "Closed"
+            event :reopened, "Reopened"
           end
 
-          scenario "zamyka ktoś inny" do
+          scenario "someone else closes" do
             actor :reception
             as "specialist-ola"
             command :close_visit
@@ -618,10 +622,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "a command without by:, which no reaction issues, is refused" do
       message =
         refuse_contract("Unreachable", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing the visit", emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -633,10 +637,10 @@ defmodule EhOsContract.ContractUnitsTest do
     test "an empty by: is no one either" do
       message =
         refuse_contract("EmptyBy", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: [], emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing the visit", by: [], emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -648,15 +652,15 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: a command only a policy issues compiles" do
       assert %{commands: [_, %{name: :issue_invoice, by: []}]} =
                compile_contract("IssuedByPolicy", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   command :issue_invoice, "Wystawienie faktury", emits: :invoice_issued
-                   event :visit_closed, "Wizyta zamknięta"
-                   event :invoice_issued, "Wystawiono fakturę"
+                   command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+                   command :issue_invoice, "Issuing the invoice", emits: :invoice_issued
+                   event :visit_closed, "Visit closed"
+                   event :invoice_issued, "Invoice issued"
                  end
 
-                 policy :invoice_on_close, "Faktura po zamknięciu",
+                 policy :invoice_on_close, "Invoice after closing",
                    handles: :visit_closed,
                    issues: :issue_invoice
                """)
@@ -667,22 +671,22 @@ defmodule EhOsContract.ContractUnitsTest do
   # fields; `type` is what the visit's event declares its period as.
   defp consulting_visit_marked(type) do
     """
-      aggregate :visit, "Wizyta" do
+      aggregate :visit, "Visit" do
         identity :visit_id
-        command :mark_visit, "Oznaczenie wizyty", by: :manager, emits: :visit_marked do
+        command :mark_visit, "Marking the visit", by: :manager, emits: :visit_marked do
           field :payer_id, :id
           field :period_id, #{type}
         end
-        event :visit_marked, "Oznaczono wizytę" do
+        event :visit_marked, "Visit marked" do
           field :payer_id, :id
           field :period_id, #{type}
         end
       end
-      dcb :payer_period, "Okres płatnika" do
+      dcb :payer_period, "Payer's period" do
         identity [:payer_id, :period_id]
         consults :visit_marked, match: [:payer_id, :period_id]
-        command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-        event :period_closed, "Zamknięto okres"
+        command :close_period, "Closing the period", by: :manager, emits: :period_closed
+        event :period_closed, "Period closed"
       end
     """
   end

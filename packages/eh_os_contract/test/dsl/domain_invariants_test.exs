@@ -28,8 +28,8 @@ defmodule EhOsContract.DomainInvariantsTest do
     do: assert_refused(domain(name, body), "#{Macro.underscore(name)}.ex", "D9")
 
   @money """
-    value :money, :integer, unit: :grosze do
-      invariant :not_negative, "Kwota nie jest ujemna", violated_by: [-1], satisfied_by: [0, 15_000]
+    value :money, :integer, unit: :cents do
+      invariant :not_negative, "The amount is not negative", violated_by: [-1], satisfied_by: [0, 15_000]
     end
   """
 
@@ -41,12 +41,12 @@ defmodule EhOsContract.DomainInvariantsTest do
             field :from, :date
             field :to, :date
 
-            invariant :in_order, "Okres kończy się nie wcześniej, niż się zaczyna",
+            invariant :in_order, "A period ends no earlier than it starts",
               violated_by: [%{from: "2026-02-01", to: "2026-01-31"}],
               satisfied_by: [%{from: "2026-01-01", to: "2026-01-01"}],
-              source: "W2 00:14:10"
+              source: "M2 00:14:10"
 
-            invariant :within_a_year, "Okres trwa najwyżej rok",
+            invariant :within_a_year, "A period lasts at most a year",
               violated_by: [%{from: "2026-01-01", to: "2027-01-02"}],
               satisfied_by: [%{from: "2026-01-01", to: "2026-12-31"}]
           end
@@ -57,17 +57,17 @@ defmodule EhOsContract.DomainInvariantsTest do
       assert [
                %{
                  name: :in_order,
-                 label: "Okres kończy się nie wcześniej, niż się zaczyna",
+                 label: "A period ends no earlier than it starts",
                  violated_by: [%{from: "2026-02-01", to: "2026-01-31"}],
                  satisfied_by: [%{from: "2026-01-01", to: "2026-01-01"}],
-                 source: "W2 00:14:10"
+                 source: "M2 00:14:10"
                },
                %{name: :within_a_year}
              ] = period.invariants
     end
 
     test "a value without invariants hashes as it did before values had them" do
-      domain = compile_domain("Unmoved", "  value :money, :integer, unit: :grosze\n")
+      domain = compile_domain("Unmoved", "  value :money, :integer, unit: :cents\n")
       model = Model.fetch(domain)
       [money] = model.values
 
@@ -85,7 +85,7 @@ defmodule EhOsContract.DomainInvariantsTest do
           value :note do
             field :description, :string
 
-            invariant :not_blank, "Opis nie jest pusty",
+            invariant :not_blank, "The description is not empty",
               violated_by: [%{description: ""}],
               satisfied_by: [%{description: "#{description}"}]
           end
@@ -93,8 +93,8 @@ defmodule EhOsContract.DomainInvariantsTest do
         |> Model.fetch()
       end
 
-      a = example.("ExampleA", "Ból głowy")
-      b = example.("ExampleB", "Gorączka")
+      a = example.("ExampleA", "Headache")
+      b = example.("ExampleB", "Fever")
 
       refute a.version == b.version
       assert a.text_digest == b.text_digest
@@ -144,7 +144,7 @@ defmodule EhOsContract.DomainInvariantsTest do
     test "an invariant gives both kinds of example, each at least once" do
       refuse("NoViolation", """
         value :money, :integer do
-          invariant :not_negative, "Kwota nie jest ujemna", violated_by: [], satisfied_by: [0]
+          invariant :not_negative, "The amount is not negative", violated_by: [], satisfied_by: [0]
         end
       """) =~ "gives no violated_by: example; give at least one, since each is a test"
 
@@ -152,7 +152,7 @@ defmodule EhOsContract.DomainInvariantsTest do
         assert_refused(
           domain("NoSatisfaction", """
             value :money, :integer do
-              invariant :not_negative, "Kwota nie jest ujemna", violated_by: [-1]
+              invariant :not_negative, "The amount is not negative", violated_by: [-1]
             end
           """),
           "no_satisfaction.ex",
@@ -166,7 +166,7 @@ defmodule EhOsContract.DomainInvariantsTest do
       message =
         refuse("Unfit", """
           value :money, :integer do
-            invariant :not_negative, "Kwota nie jest ujemna",
+            invariant :not_negative, "The amount is not negative",
               violated_by: ["-1", nil],
               satisfied_by: [0]
           end
@@ -175,7 +175,7 @@ defmodule EhOsContract.DomainInvariantsTest do
             field :from, :date
             field :to, :date
 
-            invariant :in_order, "W kolejności",
+            invariant :in_order, "In order",
               violated_by: [%{from: ~D[2026-02-01], to: "2026-01-31"}],
               satisfied_by: [%{from: "2026-01-01"}]
           end
@@ -193,7 +193,7 @@ defmodule EhOsContract.DomainInvariantsTest do
     test "no example both breaks an invariant and keeps it" do
       assert refuse("Both", """
                value :money, :integer do
-                 invariant :not_negative, "Kwota nie jest ujemna",
+                 invariant :not_negative, "The amount is not negative",
                    violated_by: [-1, 0],
                    satisfied_by: [0]
                end
@@ -204,17 +204,17 @@ defmodule EhOsContract.DomainInvariantsTest do
       message =
         refuse("Contradicted", """
           value :amount, :integer do
-            invariant :not_negative, "Nieujemna", violated_by: [-1], satisfied_by: [0]
-            invariant :non_zero, "Niezerowa", violated_by: [0], satisfied_by: [1]
+            invariant :not_negative, "Non-negative", violated_by: [-1], satisfied_by: [0]
+            invariant :non_zero, "Non-zero", violated_by: [0], satisfied_by: [1]
           end
 
           value :fee, :amount do
-            invariant :capped, "Najwyżej tysiąc", violated_by: [1001], satisfied_by: [-1, 1000]
+            invariant :capped, "At most a thousand", violated_by: [1001], satisfied_by: [-1, 1000]
           end
 
           value :line do
             field :amount, :amount
-            invariant :filled, "Wypełniona", violated_by: [%{amount: 1001}], satisfied_by: [%{amount: -1}]
+            invariant :filled, "Filled in", violated_by: [%{amount: 1001}], satisfied_by: [%{amount: -1}]
           end
         """)
 
@@ -235,7 +235,7 @@ defmodule EhOsContract.DomainInvariantsTest do
       message =
         refuse("Twice", """
           value :money, :integer do
-            invariant :not_negative, "Kwota nie jest ujemna",
+            invariant :not_negative, "The amount is not negative",
               violated_by: [-1, -1],
               satisfied_by: [0, 5, 0]
           end
@@ -297,8 +297,8 @@ defmodule EhOsContract.DomainInvariantsTest do
 
     @percent """
       value :percent, :integer do
-        invariant :not_negative, "Nieujemny", violated_by: [-1], satisfied_by: [0, 100]
-        invariant :at_most_whole, "Najwyżej całość", violated_by: [101], satisfied_by: [100]
+        invariant :not_negative, "Not negative", violated_by: [-1], satisfied_by: [0, 100]
+        invariant :at_most_whole, "At most the whole", violated_by: [101], satisfied_by: [100]
       end
     """
 

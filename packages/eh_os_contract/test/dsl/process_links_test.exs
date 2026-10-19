@@ -19,11 +19,11 @@ defmodule EhOsContract.ProcessLinksTest do
       defmodule #{inspect(@domain)} do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
-        context :scheduling, "Umawianie wizyt", subdomain: :core
-        context :documentation, "Dokumentacja", subdomain: :core
-        actor :reception, :human, "Recepcja", context: :scheduling
-        actor :doctor, :human, "Lekarz", context: :documentation
-        subject :patient, "Pacjent"
+        context :scheduling, "Scheduling visits", subdomain: :core
+        context :documentation, "Documentation", subdomain: :core
+        actor :reception, :human, "Reception", context: :scheduling
+        actor :doctor, :human, "Doctor", context: :documentation
+        subject :patient, "Patient"
 
         value :visit_code, :id
         value :other_code, :id
@@ -39,8 +39,8 @@ defmodule EhOsContract.ProcessLinksTest do
       defmodule #{inspect(@other)} do
         use EhOsContract.Domain, name: :other, language: :pl
 
-        context :scheduling, "Umawianie wizyt", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :scheduling, "Scheduling visits", subdomain: :core
+        actor :reception, :human, "Reception"
 
         subdomain :core, "Core", type: :core
       end
@@ -66,12 +66,12 @@ defmodule EhOsContract.ProcessLinksTest do
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(domain)}, context: :scheduling, id: "#{namespace}.#{contract_name(name)}"
 
-      aggregate :booking, "Rezerwacja" do
+      aggregate :booking, "Booking" do
         identity :booking_id
 
-        command :complete_visit, "Zakończenie wizyty", by: :reception, emits: :visit_completed
+        command :complete_visit, "Completing the visit", by: :reception, emits: :visit_completed
 
-        event :visit_completed, "Wizyta zakończona" do
+        event :visit_completed, "Visit completed" do
     #{fields}
         end
       end
@@ -278,7 +278,7 @@ defmodule EhOsContract.ProcessLinksTest do
       relay_source =
         relay
         |> unit_contract(@visit_fields, extra: extra)
-        |> String.replace(":visit_completed, \"Wizyta zakończona\"", ":visit_noted, \"Wizyta\"")
+        |> String.replace(":visit_completed, \"Visit completed\"", ":visit_noted, \"Visit\"")
         |> String.replace("emits: :visit_completed", "emits: :visit_noted")
 
       violations =

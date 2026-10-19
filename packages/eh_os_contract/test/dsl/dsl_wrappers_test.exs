@@ -9,7 +9,7 @@ defmodule EhOsContract.DslWrappersTest do
   2. the formatter keeps the four-argument form without parentheses.
 
   If either fails, D13's fallback is options inside the block, and the question goes
-  back to the user. `sandbox/test/rehmed_domain_test.exs` pins the second in a
+  back to the user. `sandbox/test/lending_domain_test.exs` pins the second in a
   consumer, through `import_deps`.
   """
 
@@ -43,23 +43,23 @@ defmodule EhOsContract.DslWrappersTest do
     test "compiles to the same model as the options written inside the block" do
       beside =
         compiled("Beside", """
-          context :settlement, "Rozliczenia", subdomain: :supporting, source: "CTX-05" do
+          context :settlement, "Settlement", subdomain: :supporting, source: "CTX-12" do
             term "Wizyta", definition: "Spotkanie pacjenta ze specjalistą" do
               translation :en, "Visit", definition: "A patient's appointment with a specialist"
               avoid "Seans"
             end
           end
 
-          value :address, label: "Adres", context: :settlement do
+          value :address, label: "Address", context: :settlement do
             field :street, :string
           end
         """)
 
       inside =
         compiled("Inside", """
-          context :settlement, "Rozliczenia" do
+          context :settlement, "Settlement" do
             subdomain :supporting
-            source "CTX-05"
+            source "CTX-12"
 
             term "Wizyta" do
               definition "Spotkanie pacjenta ze specjalistą"
@@ -69,7 +69,7 @@ defmodule EhOsContract.DslWrappersTest do
           end
 
           value :address do
-            label "Adres"
+            label "Address"
             context :settlement
             field :street, :string
           end
@@ -77,14 +77,14 @@ defmodule EhOsContract.DslWrappersTest do
 
       assert beside.version == inside.version
       assert beside.digests == inside.digests
-      assert [%{label: "Adres", type: nil, context: :settlement}] = beside.values
+      assert [%{label: "Address", type: nil, context: :settlement}] = beside.values
     end
 
     test "leaves the forms Spark already had as they were" do
       model =
         compiled("Unwrapped", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          value :money, :integer, unit: :grosze, label: "Kwota"
+          context :settlement, "Settlement", subdomain: :supporting
+          value :money, :integer, unit: :cents, label: "Amount"
           value :note, :string
 
           value :address do
@@ -93,7 +93,7 @@ defmodule EhOsContract.DslWrappersTest do
         """)
 
       assert [
-               %{name: :money, type: :integer, unit: :grosze, label: "Kwota"},
+               %{name: :money, type: :integer, unit: :cents, label: "Amount"},
                %{name: :note, type: :string, label: nil},
                %{name: :address, type: nil, fields: [%{name: :street}]}
              ] = model.values
@@ -107,8 +107,8 @@ defmodule EhOsContract.DslWrappersTest do
     test "an unknown option beside a context's block" do
       {context, context_at} =
         refused("UnknownContextOption", """
-          context :settlement, "Rozliczenia", subdomian: :supporting do
-            term "Wizyta", definition: "Spotkanie"
+          context :settlement, "Settlement", subdomian: :supporting do
+            term "Visit", definition: "Meeting"
           end
         """)
 
@@ -121,7 +121,7 @@ defmodule EhOsContract.DslWrappersTest do
     test "an unknown option beside a nested term's block" do
       {term, term_at} =
         refused("UnknownTermOption", """
-          context :settlement, "Rozliczenia", subdomain: :supporting do
+          context :settlement, "Settlement", subdomain: :supporting do
             term "Wizyta", defintion: "Spotkanie" do
               translation :en, "Visit", definition: "A patient's appointment with a specialist"
             end
@@ -138,7 +138,7 @@ defmodule EhOsContract.DslWrappersTest do
     test "an unknown option beside a value's block" do
       {value, value_at} =
         refused("UnknownValueOption", """
-          value :address, lable: "Adres" do
+          value :address, lable: "Address" do
             field :street, :string
           end
         """)
@@ -151,8 +151,8 @@ defmodule EhOsContract.DslWrappersTest do
     test "a domain rule broken inside and beside wrapped declarations names each line" do
       {message, at} =
         refused("RuleInWrapped", """
-          context :settlement, "Rozliczenia", subdomain: :supporting
-          context :settlement, "Rozliczenia", subdomain: :supporting do
+          context :settlement, "Settlement", subdomain: :supporting
+          context :settlement, "Settlement", subdomain: :supporting do
             term "Wizyta", definition: "Spotkanie"
             term "Wizyta", definition: "Spotkanie" do
               translation :pl, "Wizyta", definition: "Umówione spotkanie pacjenta ze specjalistą"
@@ -176,8 +176,8 @@ defmodule EhOsContract.DslWrappersTest do
           compile(
             domain("NotLiteral", """
               @options [subdomain: :supporting]
-              context :settlement, "Rozliczenia", @options do
-                term "Wizyta", definition: "Spotkanie"
+              context :settlement, "Settlement", @options do
+                term "Visit", definition: "Meeting"
               end
             """),
             "not_literal.ex"
@@ -241,13 +241,13 @@ defmodule EhOsContract.DslWrappersTest do
     # `locals_without_parens` says. What the export still decides is the calls
     # without a block, inside and outside it, and those are Spark's own arities.
     @source """
-    context :settlement, "Rozliczenia", subdomain: :supporting do
+    context :settlement, "Settlement", subdomain: :supporting do
       term "Wizyta", definition: "Spotkanie" do
         translation :en, "Visit", definition: "A patient's appointment with a specialist"
       end
     end
 
-    value :address, label: "Adres" do
+    value :address, label: "Address" do
       field :street, :string
     end
     """
@@ -260,9 +260,9 @@ defmodule EhOsContract.DslWrappersTest do
     test "control: with nothing exported, only the calls without a block gain parentheses" do
       rewritten = format(@source, [])
 
-      assert rewritten =~ ~s|context :settlement, "Rozliczenia", subdomain: :supporting do|
+      assert rewritten =~ ~s|context :settlement, "Settlement", subdomain: :supporting do|
       assert rewritten =~ ~s|term "Wizyta", definition: "Spotkanie" do|
-      assert rewritten =~ ~s|value :address, label: "Adres" do|
+      assert rewritten =~ ~s|value :address, label: "Address" do|
 
       assert rewritten =~
                ~s|translation(:en, "Visit", definition: "A patient's appointment with a specialist")|

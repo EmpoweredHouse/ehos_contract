@@ -11,10 +11,10 @@ defmodule EhOsContract.ContractProcessTest do
   use EhOsContract.DslCase, async: false
 
   @bare_unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta"
+      command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+      event :visit_closed, "Visit closed"
     end
   """
 
@@ -34,7 +34,7 @@ defmodule EhOsContract.ContractProcessTest do
       log =
         refused_by_compiler("ProcessGone", """
         #{@bare_unit}
-          process :visit, "Wizyta" do
+          process :visit, "Visit" do
             correlate :visit_id
           end
         """)
@@ -45,12 +45,12 @@ defmodule EhOsContract.ContractProcessTest do
     test "nor is a stage group in a unit" do
       log =
         refused_by_compiler("StageGone", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
 
             stage :closing do
-              event :visit_closed, "Wizyta zamknięta"
+              event :visit_closed, "Visit closed"
             end
           end
         """)
@@ -61,10 +61,10 @@ defmodule EhOsContract.ContractProcessTest do
     test "and `terminal:` is not an option of an event" do
       message =
         refuse_contract("TerminalGone", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta", terminal: true
+            command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed", terminal: true
           end
         """)
 
@@ -84,15 +84,15 @@ defmodule EhOsContract.ContractProcessTest do
     test "a boundary cannot take it in" do
       message =
         refuse_contract("ReceivedInLog", """
-          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "scheduling.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity :visit_id
             consults :visit_closed_elsewhere, match: :visit_id
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         """)
 
@@ -107,13 +107,13 @@ defmodule EhOsContract.ContractProcessTest do
     test "a negative count is refused" do
       message =
         refuse_contract("NoProcessTimer", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing the visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             starts_on :visit_closed, sets: :reminder
             timer :reminder, "Reminder", wait: {-1, :hour}
             ends_on :visit_closed
@@ -128,7 +128,7 @@ defmodule EhOsContract.ContractProcessTest do
       model =
         compile_contract("CalendarWait", """
         #{@bare_unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             starts_on :visit_closed, sets: :reminder
             timer :reminder, "Reminder", wait: {1, :month}
             ends_on :visit_closed
@@ -142,7 +142,7 @@ defmodule EhOsContract.ContractProcessTest do
       message =
         refuse_contract("CenturyWait", """
         #{@bare_unit}
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             starts_on :visit_closed, sets: :reminder
             timer :reminder, "Reminder", wait: {1201, :month}
             ends_on :visit_closed
@@ -162,7 +162,7 @@ defmodule EhOsContract.ContractProcessTest do
         model =
           compile_contract(name, """
           #{@bare_unit}
-            process_manager :chase, "Pogoń", correlate: :visit_id do
+            process_manager :chase, "Chase", correlate: :visit_id do
               starts_on :visit_closed, sets: :reminder
               timer :reminder, "Reminder", wait: #{wait}
               ends_on :visit_closed
@@ -223,7 +223,7 @@ defmodule EhOsContract.ContractProcessTest do
           consumes Clinic.Contracts.Scheduling, :visit_completed, as: [visit_completed: :patient_left]
 
         #{@bare_unit}
-          policy :follow_up, "Kontrola", handles: :patient_left, issues: :close_visit
+          policy :follow_up, "Check-up", handles: :patient_left, issues: :close_visit
         """)
 
       assert [%{kind: :contract, from: Clinic.Contracts.Scheduling, renames: renames}] =
