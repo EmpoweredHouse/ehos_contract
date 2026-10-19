@@ -108,27 +108,55 @@ defmodule Billing.MonthTest do
     assert closed("sub-1") == ["2026-08", "2026-09", "2026-10"]
   end
 
-  test "an older period closed by hand moves the date neither back nor on" do
-    subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
+  test "a period closed by hand ahead of the run is skipped, and moves nothing else" do
+    # The run is due to close June on 1 July, and has not run. July is closed by hand.
+    subscribe("sub-1", ~U[2026-06-15 10:00:00Z])
 
     send!(
       %CloseBillingPeriod{subscription_id: "sub-1", period_id: "2026-07"},
       ~U[2026-08-20 10:00:00Z]
     )
 
-    drain(~U[2026-08-31 23:00:00Z])
-    assert closed("sub-1") == ["2026-07"]
-
     drain(~U[2026-09-01 01:00:00Z])
-    assert closed("sub-1") == ["2026-07", "2026-08"]
+
+    assert closed("sub-1") == ["2026-07", "2026-06", "2026-08"]
   end
 
-  test "a cancelled subscription is closed no more" do
+  test "a month still running, or one before the subscription, is not closed by hand" do
+    subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
+
+    for period <- ["2026-09", "2026-07"] do
+      assert {:error,
+              %EhOsContract.Rejection{
+                invariant: :only_an_ended_period_of_the_subscription_is_closed
+              }} =
+               Clock.at(~U[2026-09-15 10:00:00Z], fn ->
+                 EhOsContract.dispatch(
+                   Subscriptions,
+                   %CloseBillingPeriod{subscription_id: "sub-1", period_id: period},
+                   actor: @manager
+                 )
+               end)
+    end
+
+    assert closed("sub-1") == []
+  end
+
+  test "a cancelled subscription's next close is cancelled, not refused" do
     subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
     send!(%CancelSubscription{subscription_id: "sub-1"}, ~U[2026-08-20 10:00:00Z])
 
     drain(~U[2026-10-02 08:00:00Z])
     assert closed("sub-1") == []
+
+    # Had the timer stayed set, its close would have been decided, and refused as a
+    # close of a subscription no longer billed.
+    assert Repo.all(
+             from(c in "eh_os_contract_commands",
+               where: c.invariant == "only_an_active_subscription_is_billed",
+               select: c.id
+             )
+           ) == []
   end
 
   test "the invoice's lines and the invoice are appended in the close's transaction" do
@@ -143,7 +171,7 @@ defmodule Billing.MonthTest do
     # and the payment, asked for after the transaction, is not yet.
     send!(
       %CloseBillingPeriod{subscription_id: "sub-1", period_id: "2026-08"},
-      ~U[2026-08-31 12:00:00Z]
+      ~U[2026-09-01 00:30:00Z]
     )
 
     assert Enum.drop(log("sub-1"), 2) == [

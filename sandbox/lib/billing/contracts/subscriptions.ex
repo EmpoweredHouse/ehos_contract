@@ -10,7 +10,10 @@ defmodule Billing.Contracts.Subscriptions do
     after the subscription started, and each close of the period the date is for moves
     it a month on from itself, not from when the close ran. So a run that comes late
     catches up the months it missed, one after another, and no more. A close of any
-    other period, a retry by the account manager, leaves the date as it is. Cancelling
+    other period, by the account manager, leaves the date as it is, and the run skips that
+    period when its date comes, so a period closed by hand is not closed twice. A close
+    bills the usage recorded since the close before it, so after a late run the first
+    month caught up carries all of it. Cancelling
     the subscription cancels the next close, and the run is left with nothing to do: it
     has no `ends_on`, which `mix eh_os_contract.check` warns of.
   - **An invoice** is drafted in the transaction that closes the period: a policy adds
@@ -31,6 +34,7 @@ defmodule Billing.Contracts.Subscriptions do
       field :cancelled, :boolean, default: false
       field :monthly_fee, :money, default: 0
       field :unit_price, :money, default: 0
+      field :first_period, :billing_period, optional: true
       field :closed, {:list, :billing_period}, default: []
       field :unbilled, {:list, :usage_record}, default: []
       field :recorded, {:list, :id}, default: []
@@ -39,6 +43,12 @@ defmodule Billing.Contracts.Subscriptions do
     invariant :started_once, "A subscription is started once"
     invariant :only_an_active_subscription_is_billed, "Only an active subscription is billed"
     invariant :period_closed_once, "A billing period is closed once"
+
+    # A month still running would be billed without the usage still to come, and one
+    # before the subscription began would be billed a fee nobody owes.
+    invariant :only_an_ended_period_of_the_subscription_is_closed,
+              "Only a month that has ended, since the subscription started, is closed"
+
     invariant :usage_recorded_once, "A usage record is recorded once"
 
     command :start_subscription, "Start a subscription",
@@ -61,7 +71,11 @@ defmodule Billing.Contracts.Subscriptions do
     command :close_billing_period, "Close a billing period",
       by: :account_manager,
       emits: :billing_period_closed,
-      rejects: [:only_an_active_subscription_is_billed, :period_closed_once] do
+      rejects: [
+        :only_an_active_subscription_is_billed,
+        :period_closed_once,
+        :only_an_ended_period_of_the_subscription_is_closed
+      ] do
       field :period_id, :billing_period
     end
 
@@ -131,6 +145,7 @@ defmodule Billing.Contracts.Subscriptions do
 
     state do
       field :close_at, :timestamp, optional: true
+      field :closed, {:list, :billing_period}, default: []
     end
 
     starts_on :subscribed, sets: :period_end
@@ -183,17 +198,20 @@ defmodule Billing.Contracts.Subscriptions do
   end
 
   scenario "a period closes with the usage recorded since the last close" do
-    given :subscribed, @started
-    given :usage_recorded, %{usage: %{usage_id: "usage-1", units: 40}}
+    given :subscribed, @started, at: "2026-01-01T09:00:00Z"
+    given :usage_recorded, %{usage: %{usage_id: "usage-1", units: 40}}, at: "2026-01-20T09:00:00Z"
 
-    given :billing_period_closed, %{
-      period_id: "2026-01",
-      monthly_fee: 2_000,
-      unit_price: 5,
-      usage: [%{usage_id: "usage-1", units: 40}]
-    }
+    given :billing_period_closed,
+          %{
+            period_id: "2026-01",
+            monthly_fee: 2_000,
+            unit_price: 5,
+            usage: [%{usage_id: "usage-1", units: 40}]
+          },
+          at: "2026-02-01T00:00:00Z"
 
-    given :usage_recorded, %{usage: %{usage_id: "usage-2", units: 10}}
+    given :usage_recorded, %{usage: %{usage_id: "usage-2", units: 10}}, at: "2026-03-01T08:00:00Z"
+
     command :close_billing_period, %{period_id: "2026-02"}
 
     expect :billing_period_closed, %{
@@ -216,6 +234,21 @@ defmodule Billing.Contracts.Subscriptions do
 
     command :close_billing_period, %{period_id: "2026-01"}
     rejected :period_closed_once
+  end
+
+  scenario "a month still running is not closed" do
+    given :subscribed, @started
+    command :close_billing_period, %{period_id: "2026-01"}
+    rejected :only_an_ended_period_of_the_subscription_is_closed
+  end
+
+  scenario "a month before the subscription started is not closed" do
+    given :subscribed, @started, at: "2026-01-01T09:00:00Z"
+
+    given :usage_recorded, %{usage: %{usage_id: "usage-1", units: 40}}, at: "2026-03-01T08:00:00Z"
+
+    command :close_billing_period, %{period_id: "2025-12"}
+    rejected :only_an_ended_period_of_the_subscription_is_closed
   end
 
   scenario "a cancelled subscription is billed no more" do
@@ -333,6 +366,29 @@ defmodule Billing.Contracts.Subscriptions do
     state %{close_at: "2026-02-01T00:00:00Z"}
   end
 
+  scenario "a period closed by hand ahead of the run is skipped when its date comes" do
+    target :monthly_billing
+    given :subscribed, @started
+
+    given :billing_period_closed, %{
+      subscription_id: "sub-1",
+      period_id: "2026-02",
+      monthly_fee: 2_000,
+      unit_price: 5,
+      usage: []
+    }
+
+    on :billing_period_closed, %{
+      subscription_id: "sub-1",
+      period_id: "2026-01",
+      monthly_fee: 2_000,
+      unit_price: 5,
+      usage: []
+    }
+
+    state %{close_at: "2026-04-01T00:00:00Z"}
+  end
+
   scenario "a cancelled subscription is closed no more" do
     target :monthly_billing
     given :subscribed, @started
@@ -354,8 +410,8 @@ defmodule Billing.Contracts.Subscriptions do
     }
 
     issues :add_invoice_line, %{line_id: "fee", amount: 2_000}
-    issues :add_invoice_line, %{line_id: "usage-1", amount: 200}
-    issues :add_invoice_line, %{line_id: "usage-2", amount: 50}
+    issues :add_invoice_line, %{line_id: "usage:usage-1", amount: 200}
+    issues :add_invoice_line, %{line_id: "usage:usage-2", amount: 50}
     issues :issue_invoice, %{subscription_id: "sub-1", period_id: "2026-01"}
   end
 end

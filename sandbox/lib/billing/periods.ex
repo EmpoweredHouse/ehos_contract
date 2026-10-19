@@ -24,6 +24,18 @@ defmodule Billing.Periods do
     moment |> DateTime.to_date() |> Date.beginning_of_month() |> Date.shift(month: 1) |> start()
   end
 
+  @doc "The name of the month `moment` falls in."
+  @spec name_of(DateTime.t()) :: String.t()
+  def name_of(%DateTime{} = moment), do: moment |> DateTime.to_date() |> name()
+
+  @doc "Whether the month named `name` had ended by `moment`."
+  @spec ended_by?(String.t(), DateTime.t()) :: boolean()
+  def ended_by?(name, %DateTime{} = moment) do
+    [year, month] = name |> String.split("-") |> Enum.map(&String.to_integer/1)
+    ends = Date.new!(year, month, 1) |> Date.shift(month: 1) |> start()
+    DateTime.compare(ends, moment) != :gt
+  end
+
   @doc "The name of the month that ended just before `moment`."
   @spec ended_before(DateTime.t()) :: String.t()
   def ended_before(%DateTime{} = moment) do
