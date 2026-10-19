@@ -113,7 +113,7 @@ end
 | --- | --- |
 | `GET /api/conformance?contract=…&since=…&until=…` | the conformance report, `eh_os_contract.conformance.v3` |
 | `GET /api/model`, `/api/model/lending.circulation` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
-| `GET /api/asyncapi`, `/api/asyncapi/billing.payments` | what a contract publishes, as AsyncAPI |
+| `GET /api/asyncapi`, `/api/asyncapi/billing.subscriptions` | what a contract publishes, as AsyncAPI |
 | `GET /api/openapi`, `/api/openapi/lending.circulation` | its commands and queries, as OpenAPI |
 | `GET /api/graph` | every contract, process module and domain with its version and graph digest |
 | `GET /api/graph/lending.circulation` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |

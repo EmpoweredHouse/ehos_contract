@@ -28,7 +28,7 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **D11**, the part that needs the domain: a publication carries no field of a
   #   type that holds personal data; a copy on a broker cannot be erased.
   # - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
-  #   scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
+  #   scope dimension, `actor :lead, :human, "…", scope: [:warehouse_id]`, since a
   #   grant to that actor carries the values the answer is narrowed to. The same for a
   #   scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   # - **F8**, the part that needs the domain: a field a run or a process manager's

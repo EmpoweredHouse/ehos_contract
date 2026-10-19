@@ -95,7 +95,7 @@ tells their runs apart.
 
     mix eh_os_contract.glossary                        # every term, in its context's language
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
-    mix eh_os_contract.glossary --context settlement   # one context
+    mix eh_os_contract.glossary --context circulation  # one context
     mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
 The domain is found among the modules of `config :eh_os_contract, applications:`.
@@ -341,8 +341,8 @@ each its contracts, their units, consumers and queries; then its process modules
 each with its stages in order and the events each includes, by contract.
 
     mix eh_os_contract.view                                   # the whole domain
-    mix eh_os_contract.view settlement                        # one context, without the processes
-    mix eh_os_contract.view settlement/visit_settlement       # one unit, consumer or query
+    mix eh_os_contract.view circulation                       # one context, without the processes
+    mix eh_os_contract.view circulation/loan                  # one unit, consumer or query
     mix eh_os_contract.view --details                         # with what each row declares
     mix eh_os_contract.view --domain lending                  # when there is more than one domain
 

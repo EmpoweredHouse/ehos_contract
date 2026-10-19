@@ -8,8 +8,8 @@ defmodule EhOsContract.Implementation do
         use Lending.Contracts.Circulation, aggregate: :loan
 
         @impl true
-        def pay_late_fee(%PayLateFee{loan_id: id, amount: a}, _state),
-          do: emit(%LateFeePaid{loan_id: id, amount: a})
+        def pay_late_fee(%PayLateFee{loan_id: id, method: m}, _state),
+          do: emit(%LateFeePaid{loan_id: id, method: m})
       end
 
   `use C, aggregate: :name` — or `dcb:`, `policy:`, `effect:`, `process_manager:`,
@@ -44,8 +44,8 @@ defmodule EhOsContract.Implementation do
   | value, of a domain | one per invariant, `(value) :: boolean` |
 
   `reads` holds each entity the command reads under the name its `reads:` gives it,
-  as the host's `EhOsContract.Entities` returned it: `%{service: %{service_id: "s-1",
-  p1_reported: true}}`.
+  as the host's `EhOsContract.Entities` returned it: `%{card: %{card_id: "card-1",
+  suspended: false}}`.
 
   A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a

@@ -55,7 +55,7 @@ defmodule EhOsContract.Domain.Rules do
   # `violated_by:`.
   #
   # **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
-  # `subdomain :lending, "Lending", type: :core`; the kind is the subdomain's.
+  # `subdomain :core, "Lending", type: :core`; the kind is the subdomain's.
   #
   # **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   # identified by its `identity`, a snake_case name the library injects as a required,

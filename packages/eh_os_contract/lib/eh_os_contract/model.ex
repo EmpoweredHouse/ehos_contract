@@ -10,8 +10,8 @@ defmodule EhOsContract.Model do
 
   ## The data
 
-      %{format: 1, kind: :contract, module: MyApp.Contracts.Month,
-        domain: MyApp.Domain, context: :settlement,
+      %{format: 1, kind: :contract, module: MyApp.Contracts.Circulation,
+        domain: MyApp.Domain, context: :circulation,
         events: [...], commands: [...], units: [...], policies: [...],
         scenarios: [...], ...,
         version: "3f9c…", digests: %{"event:month_opened" => "…"},
@@ -99,7 +99,7 @@ defmodule EhOsContract.Model do
   the transport delivers by the grant. Nothing in this engine asks for it.
 
       %{"billing.invoice.issued.subscribe" =>
-          %{kind: :subscribe, name: :visit_closed, roles: [], scope: nil}}
+          %{kind: :subscribe, name: :invoice_issued, roles: [], scope: nil}}
 
   Derived from the declarations, never written down. The domain's name is read from
   the compiled domain at the call, since a contract records no compile dependency on

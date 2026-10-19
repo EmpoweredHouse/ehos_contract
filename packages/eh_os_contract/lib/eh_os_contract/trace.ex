@@ -16,15 +16,15 @@ defmodule EhOsContract.Trace do
 
   A promise reads like this:
 
-      promise :month_opens_or_is_blocked do
-        from :data_completeness_confirmed
-        eventually :accounting_month_opened
-        within {2, :day}
-        or_else :registry_discrepancy_detected
+      promise :dispatched_within_a_day_of_payment do
+        from :payment_confirmed
+        eventually :dispatched
+        within {24, :hour}
+        or_else :cancelled
       end
 
-  *"After the data set is confirmed complete, within two days the month either
-  opens or a registry discrepancy is detected."*
+  *"After the payment is confirmed, within a day the parcel is either dispatched or
+  the order is cancelled."*
 
   ## Four verdicts
 

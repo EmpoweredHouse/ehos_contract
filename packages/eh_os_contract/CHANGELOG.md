@@ -70,9 +70,9 @@ and the `ehos-dev:release` skill makes one.
 ### Added
 
 - **Moves a verdict:** **A promise names the systems it waits on through an earlier step** (plan DD, stage OW1,
-  #355): `waits_on [:registries]` in a process module's `promise`. An outage of one of them inside the window,
+  #355): `waits_on [:metering]` in a process module's `promise`. An outage of one of them inside the window,
   observed by any contract the process includes, suspends the promise as an outage of what its `eventually` or
-  `or_else` depends on does: an accounting month neither opened nor blocked while the registries were down is
+  `or_else` depends on does: an invoice neither issued nor disputed while the metering system was down is
   suspended, not broken. Each name is an external of the domain, and not one `eventually` or `or_else` already
   depends on, and one a contract the process includes uses (X4); a scenario's `outage` may name it. The
   process's page, `mix eh_os_contract.view` and its `graph.v1` document show it, the last as a `waits_on`
@@ -573,10 +573,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   transition from several statuses needs a scenario from each, and one on an event no command of the unit
   emits (recorded only), or from a status no such command's `from:` admits, is left out. A new warning only: no verdict moves, but a host running
   `check --warnings-as-errors` with such a transition turns red until it adds the scenario.
-- **T1: a field the host gives, not the caller.** `field :p1_reported, :boolean, supplied_by: :host`, on a
+- **T1: a field the host gives, not the caller.** `field :late_fee, :money, supplied_by: :host`, on a
   command's field or a recorded event's (**F10** refuses it anywhere else, and on a command's `scope` field).
   Through `EhOsContract.call/3` — and `EhOsContract.Plug` — a request that sends it at all, even as `null`, is
-  refused by name, `{:invalid, [p1_reported: :supplied]}` (422 `{"invalid": {"p1_reported": "supplied"}}`). Once
+  refused by name, `{:invalid, [late_fee: :supplied]}` (422 `{"invalid": {"late_fee": "supplied"}}`). Once
   the caller is authorized and what it sent — its fields, its idempotency key — is found sound, the new behaviour
   `EhOsContract.Supplier` gives the value, one call per command with the fields the request gave, its answer held
   to exactly the fields asked for, their types and invariants. Its `{:error, reason}` refuses the request with
@@ -1566,8 +1566,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **Breaking:** **EL2b: N2 refuses a callback named after a function every module defines** at its arity: an event
   `:module_info` (its handler would define `module_info/1`) fails the compile, as a domain service's function
   of that name already did.
-- **Breaking:** **EL2: a subdomain is named, and a context names it.** `subdomain :lending, "Lending", type: :core` in the
-  domain, then `context :circulation, …, subdomain: :lending`; `subdomain:` on a context no longer takes the kind,
+- **Breaking:** **EL2: a subdomain is named, and a context names it.** `subdomain :core, "Lending", type: :core` in the
+  domain, then `context :circulation, …, subdomain: :core`; `subdomain:` on a context no longer takes the kind,
   and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
   `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
 - **Breaking:** **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;

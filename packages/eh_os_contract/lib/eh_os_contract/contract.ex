@@ -13,11 +13,11 @@ defmodule EhOsContract.Contract do
 
           command :pay_late_fee, "Take payment of a late fee",
             by: :librarian, emits: :late_fee_paid do
-            field :amount, :money
+            field :method, {:enum, [:cash, :card]}
           end
 
           event :late_fee_paid, "Late fee paid" do
-            field :amount, :money
+            field :method, {:enum, [:cash, :card]}
           end
         end
       end

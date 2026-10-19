@@ -301,7 +301,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
       else: [
         {"#{where}: #{inspect(name)} is not a versioned name: the application's namespace, " <>
            "which may hold a dash but not at either end, then dotted snake_case segments, ending " <>
-           "in .v<n>, like \"my-shop.visit.closed.v1\"", declaration}
+           "in .v<n>, like \"my-shop.order.placed.v1\"", declaration}
       ]
   end
 

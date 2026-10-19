@@ -191,8 +191,8 @@ what a `:system` actor may read.
 
 - **`{:ok, row}`**, a map or a struct with atom keys, an Ecto schema included. The
   engine keeps the fields the domain declares for the entity, its identity among
-  them, and drops the rest; the decision gets `%{service: %{service_id: "s-1",
-  p1_reported: true}}`. A declared field missing from the row, or of the wrong type,
+  them, and drops the rest; the decision gets `%{card: %{card_id: "card-1",
+  suspended: false}}`. A declared field missing from the row, or of the wrong type,
   raises `EhOsContract.Entities.UnfitRowError`, naming the field and never its value:
   the host's code and the domain disagree.
 - **`:not_found`** refuses the command as a field naming nothing:
@@ -341,9 +341,9 @@ Where the values of the fields a contract declares `supplied_by: :host` come fro
 
     config :eh_os_contract, supplier: MyApp.Supplier
 
-Some of what a decision depends on is not the caller's to say. Whether a visit's
-report to the state register went out is a fact of the host's systems; a request
-that carried `p1_reported: true` would decide on what the caller claims. A field
+Some of what a decision depends on is not the caller's to say. What a late return
+costs, by the desk's tariff, is a fact of the host's systems; a request that
+carried `late_fee: 0` would decide on what the caller claims. A field
 declared `supplied_by: :host` is therefore refused from a request through
 `EhOsContract.call/3` — sent at all, even as `null`, it is `{field, :supplied}`
 — and its value is asked of the configured implementation instead, once the
@@ -353,14 +353,14 @@ credential is authorized and before the fields are checked:
       @behaviour EhOsContract.Supplier
 
       @impl true
-      def supply(_actor, %{name: :close_visit_clinically, given: %{visit_id: id}}),
-        do: {:ok, %{p1_reported: MyApp.Register.reported?(id)}}
+      def supply(_actor, %{name: :return_copy, given: %{loan_id: id}}),
+        do: {:ok, %{late_fee: MyApp.Tariff.late_fee(id)}}
     end
 
 One call per command or recording, for every supplied field of it, with the fields
 already decoded as `given`. The answer holds exactly the fields asked for, each of
 its type; anything else is the host's defect and raises, naming the field and never
-its value. `{:error, reason}` — the register did not answer — refuses the request
+its value. `{:error, reason}` — the tariff did not answer — refuses the request
 with `{:not_supplied, reason}`, and nothing is written.
 
 The host is asked after the caller is authorized and after what the caller sent is

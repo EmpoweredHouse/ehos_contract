@@ -188,16 +188,16 @@ A promise is what the process owner agreed happens in a run: after one event, an
   a correct ending, just not the one wanted. `within` binds it as well, so a run that ends the other way
   three months late is not kept.
 - `waits_on` names the external systems the promise waits on through an earlier step, when neither
-  `eventually` nor `or_else` calls them itself. An accounting firm's month opens, or is blocked, only after
-  the company is checked against the public registries; opening the month does not call them:
+  `eventually` nor `or_else` calls them itself. A subscription's invoice is issued, or the period is
+  disputed, only after its usage is collected from the metering system; issuing the invoice does not call it:
 
   ```elixir
-  promise :month_opens_or_is_blocked do
-    from :data_completeness_confirmed
-    eventually :accounting_month_opened
+  promise :invoiced_within_two_days do
+    from :period_closed
+    eventually :invoice_issued
     within {2, :day}
-    or_else :registry_discrepancy_detected
-    waits_on [:registries]
+    or_else :period_disputed
+    waits_on [:metering]
   end
   ```
 
@@ -273,7 +273,7 @@ the number of runs in the period, and the runs measured against a confirmed dead
 overdue.
 
 The report also counts the runs that entered a later stage before an earlier one, and names the pairs of
-stages: a visit reported before it was closed. A stage is entered by its first event, and the order is
+stages: a parcel booked with the carrier before it was picked. A stage is entered by its first event, and the order is
 the log's, not the clock's: a process includes only contracts of its own application, so all its stages
 are in one log. Only stages a run reached are compared, so a skipped stage, or one whose reaction still
 waits in a queue, is no finding. A run belongs to the period by its first event, as its duration is measured, and is

@@ -6,15 +6,15 @@ defmodule EhOsContract.Pages do
   #     index.md                                    the domain, with its tree
   #     values/money.md                             a value: its type, invariants, examples
   #     entities/<name>.md                          an entity
-  #     settlement/index.md                         a context: glossary, relations, contracts
-  #     settlement/visit_settlement/index.md        a contract: its declarations
-  #     settlement/visit_settlement/commands/record_payment.md
-  #     settlement/visit_settlement/events/payment_recorded.md
-  #     settlement/visit_settlement/aggregates/visit_settlement.md
+  #     circulation/index.md                        a context: glossary, relations, contracts
+  #     circulation/circulation/index.md            a contract: its declarations
+  #     circulation/circulation/commands/pay_late_fee.md
+  #     circulation/circulation/events/late_fee_paid.md
+  #     circulation/circulation/aggregates/loan.md
   #     …/dcbs, policies, effects, process_managers, read_models, queries, domain_services
-  #     processes/clinical_visit.md                 a process module, by its id after the
+  #     processes/order.md                          a process module, by its id after the
   #                                                 domain's name, a dot a directory
-  #     graph/lending.circulation.json  a contract's graph.v1 document, by its id
+  #     graph/lending.circulation.json              a contract's graph.v1 document, by its id
   #     graph/process/fulfilment.order.json         a process module's, by its id
   #
   # A process module's document has a directory of its own, as its API path has

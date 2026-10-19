@@ -7,20 +7,20 @@ defmodule EhOsContract.Process.Build do
   #
   #     %{format: 1, kind: :process, module: Fulfilment.Processes.Order,
   #       id: "fulfilment.order", label: "…", domain: Fulfilment.Domain,
-  #       accountable: :manager, source: nil, correlate: [:visit_id],
-  #       stages: [%{name: :departure, label: nil,
+  #       accountable: :dispatcher, source: nil, correlate: [:order_id],
+  #       stages: [%{name: :ordering, label: nil,
   #                  includes: [%{contract: Fulfilment.Contracts.Orders, event: :placed}]}],
-  #       ends_on: [:p1_report_sent], promises: [%{name: …, within: %{amount: 2, unit: :day}}],
-  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:departure" => "…"},
-  #       text_digest: "…", text_digests: %{"process" => "…", "stage:departure" => "…"}}
+  #       ends_on: [:delivered, :cancelled], promises: [%{name: …, within: %{amount: 24, unit: :hour}}],
+  #       deadline: nil, version: "…", digests: %{"process" => "…", "stage:ordering" => "…"},
+  #       text_digest: "…", text_digests: %{"process" => "…", "stage:ordering" => "…"}}
   #
-  # Durations are `%{amount: 2, unit: :day}`, and the deadline also says whether it is
+  # Durations are `%{amount: 24, unit: :hour}`, and the deadline also says whether it is
   # `unverified`. A module with scenarios (plan DD, S2, #251) also has
   #
   #     scenarios: [%{description: "…", verdict: :satisfied, via: :eventually,
-  #                   given: [%{event: :visit_completed, data: %{…}, at: "…"}],
-  #                   outages: [%{external: :p1, at: "…"}],
-  #                   promise: %{name: :medical_event_reported_within_statutory_window, at: "…"}}]
+  #                   given: [%{event: :payment_confirmed, data: %{…}, at: "…"}],
+  #                   outages: [%{external: :carrier, at: "…"}],
+  #                   promise: %{name: :dispatched_within_a_day_of_payment, at: "…"}}]
   #
   # where a given keeps `at` only when it sets it, and the key, and its part of the
   # digest, only where there are scenarios, so that adding the word moved no version.

@@ -4,7 +4,7 @@ defmodule EhOsContract.Dispatcher do
   `EhOsContract.dispatch/3` is how a host calls it.
 
       EhOsContract.dispatch(Lending.Contracts.Circulation,
-        %RecordPayment{visit_id: "w-1", method: :card, amount: 20_000},
+        %PayLateFee{loan_id: "loan-1", method: :card},
         actor: actor, idempotency_key: "req-81")
 
   **In order**, and each step refuses before the next one runs:

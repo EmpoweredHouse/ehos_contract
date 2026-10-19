@@ -8,6 +8,10 @@ record an event. This page explains how the pieces fit, and what is built today.
 **The contract says what can be done and which role may do it; EHOS decides which people get which
 roles; the application checks it on every call, locally, without asking EHOS.**
 
+The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
+pickers and each is granted one warehouse: the sandbox's `Fulfilment.Contracts.Warehouse`, with a query
+and a recorded event added for this page.
+
 Three places, each answering its own question:
 
 | Where | Question | Example |
@@ -136,7 +140,7 @@ One callback:
 ```
 
 The request names the kind (`:command` or `:query`), the capability, the contract and its version, and
-for a scoped query the dimension and the value asked for (`{"warehouse_id", "7"}`).
+for a scoped command or query the dimension and the value asked for (`{"warehouse_id", "7"}`).
 
 **The decision is `EhOsContract.Authorizer.check/2`**, and it reads nothing but the actor and the
 request:
@@ -186,6 +190,10 @@ query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
   param :warehouse_id, :id
 end
 ```
+
+A command may be scoped the same way, by one of its fields: `assign_pick_list` is `scope:
+:warehouse_id`, so a lead granted warehouse 7 cannot assign a pick list of warehouse 12, and its
+credential needs the values for it as for the query.
 
 EHOS binds the role with values, and the credential carries them:
 

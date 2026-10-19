@@ -41,7 +41,7 @@ defmodule EhOsContract.ScenarioCase do
   the trigger's data as its parameters, and compares what it answers with
   `answers`: **exactly as many rows, each matching a different row on the fields it
   names**, in any order. Unlike events, extra rows fail: an answer is wholly
-  determined by the givens, and "the other clinic's visit is not in it" is often
+  determined by the givens, and "the other warehouse's pick list is not in it" is often
   what the scenario is about. The projection writes the host's tables, so this runs
   in a transaction of `config :eh_os_contract, :repo` that is rolled back, and a
   test module with a query's scenario checks out an Ecto sandbox connection when the
