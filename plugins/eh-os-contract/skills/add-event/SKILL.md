@@ -55,8 +55,8 @@ process includes it from the contract that declares it (`X5`).
 
 ## The name, and the label
 
-- **From the material, never invented.** `CLAUDE.md` names TaxVision's source, the workshop's
-  event-storming output; cite yours in
+- **From the material, never invented.** Name the event from the workshop's event-storming output,
+  and cite it in
   `source:` ("03 §4.2", "AG:694"), as the sandbox contracts do — an identifier of the material,
   never a person's name, since it goes into the exported model and the pages. With no material behind it, go back
   to `contract-distillation` rather than keep a plausible `snake_case`.
@@ -77,7 +77,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 
 - Built-in: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`.
   Anything else is a `value` of the domain (`X3`), and a thing the business recognises — money, a
-  period, a NIP — is one: `value :money, :integer, unit: :grosze`, with invariants that dispatch
+  period, a tax number — is one: `value :money, :integer, unit: :cents`, with invariants that dispatch
   holds every value to. Some sandbox fields end in `_minor` instead; a new field uses a value.
 - **`:string` is text a person typed.** A code, a number or a choice has a type of its own; a
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
@@ -87,7 +87,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   unit's identity counts), required, not `personal:`, and the same kind of identifier as in the
   module's other events.
 - **Every required, non-personal `:id` field becomes a tag** a boundary can `match:` on — also one
-  typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a PESEL, a patient's number at a payer — is never an `:id`.
+  typed by a domain value whose base type is `:id`. So an `:id` is an opaque identifier; a natural one — a national id number, a patient's number at a payer — is never an `:id`.
 - **Personal data** is `personal: :patient_id`, naming a required, non-personal `:id` field of the
   same event that declares `subject: :patient`, a subject of the domain (`F5`). It is sealed with
   that subject's key and reads back as `%EhOsContract.Erased{}` after erasure.
@@ -119,7 +119,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   either way.
 - **Leaving the application** is a separate declaration, `publish :name, as: "<domain>.<name>.v1",
   from: :event, fields: [...]` — a versioned name with the fields that cross, and no personal ones
-  (`D11`), as `Taxvision.Contracts.AccountingMonth` publishes the opened month. Not every event.
+  (`D11`), as `Billing.Contracts.Subscriptions` publishes the issued invoice. Not every event.
 
 ## Procedure
 

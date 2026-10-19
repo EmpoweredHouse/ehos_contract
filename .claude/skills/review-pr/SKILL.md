@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/taxvision/ or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
 ---
 
 # Reviewing a pull request
@@ -15,7 +15,7 @@ this form.
 `write-reaction` are for whoever writes. `ehos-dev:pre-pr-review`, with this repository's part in
 `.claude/review.md`, is the author reviewing their own change
 before the pull request. This skill is for the person who receives it and has to approve it or send
-it back — the gate `CLAUDE.md` names ("Człowiek jest bramą"). When the change edits a contract that
+it back — the gate `CLAUDE.md` names ("A person is the gate, so readability is a requirement"). When the change edits a contract that
 may have history, it does not re-derive the risk: it opens `change-contract`'s table and holds the
 change to it, row by row.
 
@@ -103,7 +103,7 @@ that was broken.
 ### The language boundary
 
 Code is English, without exceptions, in everything under `packages/` and `sandbox/` and in `docs/`.
-Polish is allowed only inside the strings `CLAUDE.md` lists ("Po polsku jest wyłącznie…"): labels
+Polish is allowed only inside the strings `CLAUDE.md` lists ("Language"): labels
 and `source:` in a domain and a contract, a term's text, its definition, `avoid` and translation,
 `where` prose at `consults`, scenario descriptions, task names, a notification subject. Everywhere
 else — identifiers, moduledocs, `@doc`, comments, test names, error messages — it is a defect.
@@ -113,7 +113,7 @@ else — identifiers, moduledocs, `@doc`, comments, test names, error messages �
 ### Dated corrections, not silent rewrites
 
 A change to what `docs/adr/` assumes or `PLAN.md` decided comes as a dated note, never a quiet edit
-that erases what was believed before (`CLAUDE.md`, "Zanim cokolwiek zmienisz"). For a change to
+that erases what was believed before (`CLAUDE.md`, "Before you change anything"). For a change to
 contract semantics or to a check's meaning, look for the note in the same pull request.
 
 ### A changelog line that is missing, says too little, or misses a marker

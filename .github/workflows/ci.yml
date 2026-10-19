@@ -89,7 +89,7 @@ jobs:
           path: packages/eh_os_contract/deps
           key: eh-os-contract-core-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
 
-      # The dashboard foundation (PLAN.md, dopisek 23 sierpnia), same shape
+      # The dashboard package, same shape
       # as the engine above: a path dependency whose own gate runs as a
       # fully separate Mix project via package_test_web/1 in sandbox/mix.exs.
       - name: Cache dashboard foundation deps

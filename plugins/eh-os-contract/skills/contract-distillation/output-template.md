@@ -41,13 +41,13 @@ reference) or an explicit `unverified`.
 
 | Subject | Identified by | Evidence |
 |---|---|---|
-| [patient / employee / …] | [which identifier — never a natural one such as a PESEL as the key] | [source] |
+| [patient / employee / …] | [which identifier — never a natural one such as a national id number as the key] | [source] |
 
 ### Values
 
 | Value | Shape and unit | What makes one invalid | A valid example | An invalid example | Evidence |
 |---|---|---|---|---|---|
-| [money / period / tax number] | [integer, grosze / "YYYY-MM" / …] | [...] | [...] | [...] | [source] |
+| [money / period / tax number] | [integer, cents / "YYYY-MM" / …] | [...] | [...] | [...] | [source] |
 
 ### External systems
 

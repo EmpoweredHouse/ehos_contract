@@ -48,7 +48,7 @@ config :eh_os_contract_host, Oban,
   repo: EhOsContractHost.Repo,
   queues: [events: 10]
 
-# The real host (PLAN.md, dopisek 23 sierpnia (8)) — `server:`/`http:` differ
+# The real host — `server:`/`http:` differ
 # per env (config/dev.exs, config/test.exs) so `mix test` never binds a port.
 config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,

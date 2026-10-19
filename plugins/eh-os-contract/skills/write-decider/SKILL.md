@@ -30,22 +30,25 @@ to the contract, and `change-contract` comes first if the unit already has histo
 
 ## What binds, and what the compiler already checks
 
-An excerpt of `Rehmed.Settlement.VisitSettlement` — the module has a callback for every command of
-the unit:
+An excerpt of `Lending.Circulation.Loan`, in the sandbox's invented lending case — the module has a
+callback for every command of the unit:
 
 ```elixir
-defmodule Rehmed.Settlement.VisitSettlement do
-  use Rehmed.Contracts.Settlement, aggregate: :visit_settlement
+defmodule Lending.Circulation.Loan do
+  use Lending.Contracts.Circulation, aggregate: :loan
 
   @impl true
-  def record_payment(_command, %State{closed_on: %Date{}}),
-    do: reject(:closed_settlement_changes_only_by_correction)
+  def return_copy(_command, %State{returned: true}), do: reject(:only_a_copy_out_comes_back)
 
-  def record_payment(%RecordPayment{visit_id: id, method: m, amount: a}, _state),
-    do: emit(%PaymentRecorded{visit_id: id, method: m, amount: a})
+  def return_copy(%ReturnCopy{loan_id: id, late_fee: 0}, _state),
+    do: emit(%CopyReturned{loan_id: id})
+
+  def return_copy(%ReturnCopy{loan_id: id, late_fee: fee}, _state),
+    do: emit([%CopyReturned{loan_id: id}, %LateFeeCharged{loan_id: id, fee: fee}])
 
   @impl true
-  def evolve(state, %PaymentRecorded{amount: a}), do: %{state | payments: [a | state.payments]}
+  def evolve(state, %CopyReturned{}), do: %{state | returned: true}
+  def evolve(state, %LateFeeCharged{}), do: %{state | fee_owed: true}
   def evolve(state, _changes_nothing), do: state
 end
 ```
@@ -167,10 +170,10 @@ every event it `consults`, folded in the log's order. Two things differ:
 5. Put `use EhOsContract.ScenarioCase, contract: <Contract>` in a test module, if the contract has
    none, and run it. Every scenario of the unit is a test of this module.
 6. Give the module its place in `boundary`: under the context module that owns it, as its siblings
-   are (`sandbox/lib/rehmed/settlement.ex`), and never reaching another context's tables.
+   are (`sandbox/lib/lending/circulation.ex`), and never reaching another context's tables.
 7. Run the gate from `sandbox/` (`CLAUDE.md`, "Brama") and read any new `emits-never-produced` line.
 8. If a clause encodes an assumption nobody stated — a partial payment refused rather than modelled
-   — say so in the moduledoc, as `Rehmed.Settlement.VisitSettlement` does. That clause is where the
+   — say so in the moduledoc. That clause is where the
    reviewer's attention goes. A rule the contract names is not restated there: the contract says it,
    and the generated docs carry it to the callback. Restated, it drifts from the contract.
 

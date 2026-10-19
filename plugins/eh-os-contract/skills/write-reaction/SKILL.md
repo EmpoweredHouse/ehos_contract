@@ -27,10 +27,10 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 
 | It… | Kind | Callback | Example |
 | --- | --- | --- | --- |
-| issues a command of this contract whenever an event happens | `policy` | per handled event, `(event) :: issued` | `Rehmed.StatutoryReporting.ReportOnClinicalClose` |
-| acts outside the log: calls a system, sends a message | `effect` | per handled event, `(event) :: :ok \| {:error, term}` | `Rehmed.StatutoryReporting.SendP1Report` |
-| steers one run over time: remembers, waits, gives up | `process_manager` | per reaction or timer that issues, `(event, state)` / `(state)`; `evolve/2` with a state | `Rehmed.ClinicalDocumentation.DocumentationChase` |
-| keeps rows for someone to read | `read_model` + `query` | per projected event, `(event) :: :ok`; the query `(params, ctx) :: rows` | `Rehmed.Settlement.DailyTotals`, `…DailyTotalsFor` |
+| issues a command of this contract whenever an event happens | `policy` | per handled event, `(event) :: issued` | `Fulfilment.Warehouse.OpenPickListWhenPaid` |
+| acts outside the log: calls a system, sends a message | `effect` | per handled event, `(event) :: :ok \| {:error, term}` | `Billing.Payments.CollectPayment` |
+| steers one run over time: remembers, waits, gives up | `process_manager` | per reaction or timer that issues, `(event, state)` / `(state)`; `evolve/2` with a state | `Lending.Circulation.OverdueChase` |
+| keeps rows for someone to read | `read_model` + `query` | per projected event, `(event) :: :ok`; the query `(params, ctx) :: rows` | `Lending.Membership.Directory`, `…MemberContact` |
 
 - A policy is stateless: it sees one event and nothing else. When it needs to remember something
   between events, or to act when something does *not* happen in time, it is a process manager.
@@ -161,8 +161,8 @@ it. What was published before is asked of its owner (`eh-os` D-03).
   over, and nothing refuses it at compile time for a local event (`F4` only refuses them optional
   or personal; `X6` checks a sibling's): check each event it names carries them.
   Its state holds no personal data (`F7`): it lives outside the log, where erasure cannot reach.
-- A timer's label is required and names what the timer is for, "Termin dokumentacji", never how
-  long it waits, "Doba na dokumentację": `wait:` or `at:` says when, the pages print it beside the
+- A timer's label is required and names what the timer is for, "Documentation due", never how
+  long it waits, "A day for the documentation": `wait:` or `at:` says when, the pages print it beside the
   label, and a label that says it drifts the day someone changes `wait:` (plan N3).
 - A timer fires `wait:` after the event that set it, or `at:` a `:timestamp` of its state. The
   firing is an event in the log, so a timer fired twice dispatches once, and a replay recomputes the
