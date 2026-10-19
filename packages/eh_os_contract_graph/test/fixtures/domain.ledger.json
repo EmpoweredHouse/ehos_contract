@@ -49,6 +49,12 @@
     "process": [],
     "publication": [
       {
+        "id": "publication:Ledger.Domain:billing.invoice.issued.v1",
+        "label": null,
+        "name": "billing.invoice.issued.v1",
+        "source": null
+      },
+      {
         "id": "publication:Ledger.Domain:ledger.month.booked.v1",
         "label": null,
         "name": "ledger.month.booked.v1",
@@ -58,12 +64,6 @@
         "id": "publication:Ledger.Domain:payroll.run.closed.v1",
         "label": null,
         "name": "payroll.run.closed.v1",
-        "source": null
-      },
-      {
-        "id": "publication:Ledger.Domain:taxvision.accounting_month.opened.v1",
-        "label": null,
-        "name": "taxvision.accounting_month.opened.v1",
         "source": null
       }
     ],
@@ -103,10 +103,10 @@
     "shared_kernel": [],
     "subscribed_by": [
       {
-        "as": "month_opened",
-        "capability": "ledger.subscribe.month_opened",
-        "from": "publication:Ledger.Domain:taxvision.accounting_month.opened.v1",
-        "id": "subscribed_by:publication:Ledger.Domain:taxvision.accounting_month.opened.v1:contract:ledger.bookkeeping",
+        "as": "invoice_issued",
+        "capability": "ledger.subscribe.invoice_issued",
+        "from": "publication:Ledger.Domain:billing.invoice.issued.v1",
+        "id": "subscribed_by:publication:Ledger.Domain:billing.invoice.issued.v1:contract:ledger.bookkeeping",
         "to": "contract:ledger.bookkeeping"
       },
       {
@@ -119,6 +119,6 @@
     ]
   },
   "schema": "eh_os_contract.graph.v1",
-  "time_zone": "Europe/Warsaw",
+  "time_zone": "Etc/UTC",
   "version": "1ed9e0000001"
 }
