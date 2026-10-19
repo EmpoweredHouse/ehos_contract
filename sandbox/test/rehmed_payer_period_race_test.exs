@@ -7,7 +7,7 @@ defmodule Rehmed.PayerPeriodRaceTest do
   The invariant is `Rehmed.Contracts.ExternalPayers`' — a period is invoiced only
   when every visit charged to the payer in it is marked settled with the payer or
   excluded. The race is reception closing and marking visits at the desk while the
-  manager invoices. Everything here commits, on `Taxvision.CommitRepo`, with
+  manager invoices. Everything here commits, on `EhOsContractHost.CommitRepo`, with
   the engine's `:repo` pointed at it for the test: the sandbox's own repo gives each
   test one connection, which serialises every dispatch.
   """
@@ -17,7 +17,7 @@ defmodule Rehmed.PayerPeriodRaceTest do
   import Ecto.Query
 
   alias EhOsContract.{Actor, Event, Rejection, Store}
-  alias Taxvision.CommitRepo, as: Repo
+  alias EhOsContractHost.CommitRepo, as: Repo
   alias Rehmed.Contracts.{ExternalPayers, Settlement}
   alias Rehmed.Contracts.ExternalPayers.Commands.{IssuePayerInvoice, MarkSettledWithPayer}
   alias Rehmed.Contracts.Settlement.Commands.CloseSettlement
@@ -199,7 +199,7 @@ defmodule Rehmed.PayerPeriodRaceTest do
 
     :telemetry.attach(
       handler,
-      [:taxvision, :commit_repo, :query],
+      [:eh_os_contract_host, :commit_repo, :query],
       fn _event, _measurements, %{query: sql, params: params}, _ ->
         if sql =~ "SELECT TRUE" and sql =~ ~s("position" > $1),
           do: send(parent, {:check, sql, params})

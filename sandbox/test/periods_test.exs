@@ -13,7 +13,7 @@ defmodule Taxvision.PeriodsTest do
   back with E9c-2's tasks, if they are still worth measuring.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   @period "2026-07"
 
@@ -44,6 +44,11 @@ defmodule Taxvision.PeriodsTest do
   end
 
   describe "the row" do
+    setup do
+      Taxvision.Periods.ensure!(@period)
+      :ok
+    end
+
     test "the date range is derived from the name once, in one place" do
       period = Taxvision.Periods.fetch!(@period)
 

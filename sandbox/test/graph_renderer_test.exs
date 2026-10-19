@@ -6,7 +6,7 @@ defmodule EhOsContract.GraphRendererTest do
   follow these trees as they change; this does, and holds the fixtures to today's schema.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   import Phoenix.LiveViewTest
 

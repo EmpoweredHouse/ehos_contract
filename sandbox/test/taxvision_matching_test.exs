@@ -5,7 +5,7 @@ defmodule Taxvision.MatchingTest do
   the policy issues one match per turnover (P6), and the pairing decides each (P7).
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.{Actor, CommandRecord, Event, Testing}
   alias Taxvision.Contracts.{AccountingMonth, DocumentIntake}

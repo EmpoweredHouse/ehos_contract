@@ -1,4 +1,4 @@
-defmodule Taxvision.Repo.Migrations.UpgradeEhOsContractToV3 do
+defmodule EhOsContractHost.Repo.Migrations.UpgradeEhOsContractToV3 do
   use Ecto.Migration
 
   @moduledoc """

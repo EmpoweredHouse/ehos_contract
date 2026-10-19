@@ -1,4 +1,4 @@
-defmodule Taxvision.Repo.Migrations.CreatePeriods do
+defmodule EhOsContractHost.Repo.Migrations.CreatePeriods do
   use Ecto.Migration
 
   @moduledoc """

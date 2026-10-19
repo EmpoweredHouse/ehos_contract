@@ -4,7 +4,7 @@ defmodule EhOsContract.GraphOverlayTest do
   trees holds to the schema the engine ships and joins the document it names.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.Graph.{Document, Overlay}
   alias EhOsContract.Registry
