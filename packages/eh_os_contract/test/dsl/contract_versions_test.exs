@@ -10,10 +10,10 @@ defmodule EhOsContract.ContractVersionsTest do
   # A demand for a computer, whose reason was renamed and whose priority is new.
   defp demand(event) do
     """
-      aggregate :demand, "Zapotrzebowanie" do
+      aggregate :demand, "Request" do
         identity :demand_id
 
-        command :open_demand, "Otwórz zapotrzebowanie", by: :employee, emits: :demand_opened
+        command :open_demand, "Open a request", by: :employee, emits: :demand_opened
 
     #{event}
       end
@@ -26,7 +26,7 @@ defmodule EhOsContract.ContractVersionsTest do
         compile_contract(
           "VersionsRight",
           demand("""
-              event :demand_opened, "Zapotrzebowanie otwarte", schema_version: 3 do
+              event :demand_opened, "Request opened", schema_version: 3 do
                 field :patient_id, :id, subject: :patient
                 field :note, :string, personal: :patient_id, optional: true
                 field :demand_reason, :string
@@ -49,7 +49,7 @@ defmodule EhOsContract.ContractVersionsTest do
 
     test "an event at its first version has no steps, and keeps none in its model" do
       model =
-        compile_contract("VersionsNone", demand(~s(    event :demand_opened, "Otwarte")))
+        compile_contract("VersionsNone", demand(~s(    event :demand_opened, "Open")))
 
       refute Map.has_key?(hd(model.events), :upcasts)
     end
@@ -59,7 +59,7 @@ defmodule EhOsContract.ContractVersionsTest do
         compile_contract(
           "VersionsEmpty",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 upcast from: 1
               end
           """)
@@ -75,7 +75,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsMissing",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 3 do
+              event :demand_opened, "Open", schema_version: 3 do
                 upcast from: 2
               end
           """)
@@ -91,7 +91,7 @@ defmodule EhOsContract.ContractVersionsTest do
       message =
         refuse_contract(
           "VersionsNoStep",
-          demand(~s(    event :demand_opened, "Otwarte", schema_version: 2))
+          demand(~s(    event :demand_opened, "Open", schema_version: 2))
         )
 
       assert message =~
@@ -103,7 +103,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsTwice",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 upcast from: 1
                 upcast from: 1
                 upcast from: 2
@@ -122,7 +122,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsUnknown",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :demand_reason, :string
 
                 upcast from: 1, rename: [reason: :demand_reasn], default: [priority: "normal"]
@@ -141,7 +141,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsChain",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 3 do
+            event :demand_opened, "Open", schema_version: 3 do
               field :demand_reason, :string
 
               upcast from: 1, rename: [reason: :why]
@@ -156,7 +156,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsBadRename",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :demand_reason, :string
 
                 upcast from: 1,
@@ -177,11 +177,11 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsIdentity",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :patient_id, :id, subject: :patient
                 field :note, :string, personal: :patient_id
 
-                upcast from: 1, rename: [id: :demand_id], default: [demand_id: "x", note: "brak"]
+                upcast from: 1, rename: [id: :demand_id], default: [demand_id: "x", note: "none"]
               end
           """)
         )
@@ -198,7 +198,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsPersonal",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 2 do
+            event :demand_opened, "Open", schema_version: 2 do
               field :patient_id, :id, subject: :patient
               field :note, :string, personal: :patient_id
 
@@ -215,7 +215,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsTwiceOld",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :demand_reason, :string
                 field :why, :string
 
@@ -232,7 +232,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsTagged",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :company_id, :id
                 field :opened_on, :date
 
@@ -250,7 +250,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsUntagged",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 2 do
+            event :demand_opened, "Open", schema_version: 2 do
               field :company_id, :id, optional: true
 
               upcast from: 1, rename: [company_ref: :company_id]
@@ -264,7 +264,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsLaterPersonal",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 3 do
+              event :demand_opened, "Open", schema_version: 3 do
                 field :patient_id, :id, subject: :patient
                 field :note, :string, personal: :patient_id, optional: true
 
@@ -284,7 +284,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsDefaultTwice",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :priority, :string
 
                 upcast from: 1, default: [priority: "normal", priority: "high"]
@@ -297,7 +297,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsNilOptional",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 2 do
+            event :demand_opened, "Open", schema_version: 2 do
               field :note, :string, optional: true
 
               upcast from: 1, default: [note: nil]
@@ -311,7 +311,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsBadDefault",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :priority, :string
                 field :count, :integer
                 field :plan, {:enum, [:basic, :full]}
@@ -330,7 +330,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsGoodDefault",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 2 do
+            event :demand_opened, "Open", schema_version: 2 do
               field :priority, :string
               field :count, :integer
               field :plan, {:enum, [:basic, :full]}
@@ -349,7 +349,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsFunctionAndRename",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :demand_reason, :string
 
                 upcast from: 1, function: :from_one, rename: [reason: :demand_reason]
@@ -367,7 +367,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsFunctionCommand",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 upcast from: 1, function: :open_demand
               end
           """)
@@ -383,7 +383,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsFunctionEmit",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 upcast from: 1, function: :emit
               end
           """)
@@ -397,7 +397,7 @@ defmodule EhOsContract.ContractVersionsTest do
         refuse_contract(
           "VersionsBeforeFunctionTagged",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 3 do
+              event :demand_opened, "Open", schema_version: 3 do
                 field :company_id, :id
 
                 upcast from: 1, rename: [company_ref: :company_id]
@@ -414,7 +414,7 @@ defmodule EhOsContract.ContractVersionsTest do
       compile_contract(
         "VersionsBeforeFunction",
         demand("""
-            event :demand_opened, "Otwarte", schema_version: 3 do
+            event :demand_opened, "Open", schema_version: 3 do
               field :demand_reason, :string
 
               upcast from: 1, rename: [reason: :why]
@@ -429,7 +429,7 @@ defmodule EhOsContract.ContractVersionsTest do
         compile_contract(
           "VersionsFunction",
           demand("""
-              event :demand_opened, "Otwarte", schema_version: 2 do
+              event :demand_opened, "Open", schema_version: 2 do
                 field :amount, :decimal
 
                 upcast from: 1, function: :amount_from_minor

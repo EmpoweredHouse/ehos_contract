@@ -8,27 +8,27 @@ defmodule EhOsContract.ContractScenariosTest do
 
   # Line 4 of the file is the first line of `@unit`.
   @unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :integer
       end
 
-      command :close, "Zamknięcie", by: [:reception, :manager], emits: :closed, rejects: :paid_in_full
-      command :remind, "Przypomnienie", by: :manager, emits: :reminded
+      command :close, "Closing", by: [:reception, :manager], emits: :closed, rejects: :paid_in_full
+      command :remind, "Reminder", by: :manager, emits: :reminded
 
-      event :payment_recorded, "Zapłacono" do
+      event :payment_recorded, "Paid" do
         field :amount, :integer
         field :paid_at, :timestamp, optional: true
       end
 
-      event :closed, "Zamknięto"
-      event :reminded, "Przypomniano"
+      event :closed, "Closed"
+      event :reminded, "Reminded"
     end
 
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 100}
       command :close
       rejected :paid_in_full
@@ -40,32 +40,32 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("TriggerWrong", """
         #{@unit}
-          scenario "bez wyzwalacza" do
+          scenario "without a trigger" do
             expect :closed
           end
 
-          scenario "dwa wyzwalacze" do
+          scenario "two triggers" do
             command :close
             command :remind
             expect :closed
           end
 
-          scenario "nieznana komenda" do
+          scenario "an unknown command" do
             command :cancel
             expect :closed
           end
         """)
 
       assert message =~
-               ~s|S1: scenario "bez wyzwalacza" has no trigger; give it one command, on or query | <>
+               ~s|S1: scenario "without a trigger" has no trigger; give it one command, on or query | <>
                  "(trigger_wrong.ex:30)"
 
       assert message =~
-               ~s|S1: scenario "dwa wyzwalacze" has 2 triggers; a scenario has exactly one | <>
+               ~s|S1: scenario "two triggers" has 2 triggers; a scenario has exactly one | <>
                  "(trigger_wrong.ex:34)"
 
       assert message =~
-               ~s|S1: scenario "nieznana komenda": :cancel is not a command of this contract | <>
+               ~s|S1: scenario "an unknown command": :cancel is not a command of this contract | <>
                  "(trigger_wrong.ex:41)"
     end
 
@@ -73,14 +73,14 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("DescribedTwice", """
         #{@unit}
-          scenario "zapłacono za mało — zamknięcie odrzucone" do
+          scenario "paid too little — closing rejected" do
             command :remind
             expect :reminded
           end
         """)
 
       assert message =~
-               ~s|S1: two scenarios are described "zapłacono za mało — zamknięcie odrzucone"; | <>
+               ~s|S1: two scenarios are described "paid too little — closing rejected"; | <>
                  "each case needs its own words (described_twice.ex:30)"
     end
 
@@ -88,15 +88,15 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("TargetWrong", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
-          policy :remind_again, "Przypomnij znowu", handles: :closed, issues: :remind
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
+          policy :remind_again, "Remind again", handles: :closed, issues: :remind
 
-          scenario "zamknięcie — przypomnienie" do
+          scenario "closing — reminder" do
             on :closed
             issues :remind
           end
 
-          scenario "zamknięcie — obca polityka" do
+          scenario "closing — a foreign policy" do
             target :visit
             on :closed
             issues :remind
@@ -104,11 +104,11 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S1: scenario "zamknięcie — przypomnienie": :closed is handled by policy | <>
+               ~s|S1: scenario "closing — reminder": :closed is handled by policy | <>
                  ":remind_on_close, policy :remind_again; name one with target (target_wrong.ex:34)"
 
       assert message =~
-               ~s|S1: scenario "zamknięcie — obca polityka": target :visit does not answer :closed | <>
+               ~s|S1: scenario "closing — a foreign policy": target :visit does not answer :closed | <>
                  "(target_wrong.ex:38)"
     end
 
@@ -116,10 +116,10 @@ defmodule EhOsContract.ContractScenariosTest do
       model =
         compile_contract("TargetRight", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
-          policy :remind_again, "Przypomnij znowu", handles: :closed, issues: :remind
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
+          policy :remind_again, "Remind again", handles: :closed, issues: :remind
 
-          scenario "zamknięcie — przypomnienie" do
+          scenario "closing — reminder" do
             target :remind_again
             on :closed
             issues :remind
@@ -142,23 +142,23 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("DataWrong", """
         #{@unit}
-          scenario "zapłacono" do
+          scenario "paid" do
             given :reminded, %{note: "x"}
             given :payment_recorded, %{}
             command :record_payment, %{amount: 100, currency: :pln}
             expect :payment_recorded, %{amount: 100}
           end
 
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
 
-          scenario "polityka ze stanem" do
+          scenario "a policy with state" do
             given :closed
             on :closed
             issues :remind
           end
         """)
 
-      where = ~s|scenario "zapłacono" (aggregate :visit)|
+      where = ~s|scenario "paid" (aggregate :visit)|
 
       assert message =~ "S3: #{where}: event :reminded has no field :note (data_wrong.ex:31)"
       assert message =~ "S3: #{where}: event :payment_recorded needs :amount (data_wrong.ex:32)"
@@ -167,7 +167,7 @@ defmodule EhOsContract.ContractScenariosTest do
                "S3: #{where}: command :record_payment has no field :currency (data_wrong.ex:33)"
 
       assert message =~
-               ~s|S2: scenario "polityka ze stanem" (policy :remind_on_close): a policy keeps no | <>
+               ~s|S2: scenario "a policy with state" (policy :remind_on_close): a policy keeps no | <>
                  "state, so it takes no given (data_wrong.ex:40)"
     end
 
@@ -175,33 +175,33 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("GivenDataWrong", """
         #{@unit}
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :visit_id
             starts_on :payment_recorded, issues: :remind
             ends_on :closed
           end
 
-          scenario "zamknięto — pogoń się kończy" do
+          scenario "closed — the chase ends" do
             given :payment_recorded, %{amont: 100}
             on :closed
             ended true
           end
 
-          dcb :slot, "Termin" do
+          dcb :slot, "Slot" do
             identity :visit_id
-            command :hold, "Wstrzymanie", by: :reception, emits: :held
-            event :held, "Wstrzymano"
+            command :hold, "Holding", by: :reception, emits: :held
+            event :held, "Held"
             consults :payment_recorded, match: :visit_id
           end
 
-          scenario "wstrzymano po płatności" do
-            given :payment_recorded, %{amount: "sto"}
+          scenario "held after a payment" do
+            given :payment_recorded, %{amount: "a hundred"}
             command :hold
             expect :held
           end
         """)
 
-      manager = ~s|scenario "zamknięto — pogoń się kończy" (process manager :chase)|
+      manager = ~s|scenario "closed — the chase ends" (process manager :chase)|
 
       assert message =~
                "S3: #{manager}: event :payment_recorded has no field :amont (given_data_wrong.ex:37)"
@@ -210,15 +210,15 @@ defmodule EhOsContract.ContractScenariosTest do
                "S3: #{manager}: event :payment_recorded needs :amount (given_data_wrong.ex:37)"
 
       assert message =~
-               ~s|S3: scenario "wstrzymano po płatności" (dcb :slot): event :payment_recorded, | <>
-                 ~s|field :amount: "sto" is not an :integer (given_data_wrong.ex:50)|
+               ~s|S3: scenario "held after a payment" (dcb :slot): event :payment_recorded, | <>
+                 ~s|field :amount: "a hundred" is not an :integer (given_data_wrong.ex:50)|
     end
 
     test "a given the unit does not keep is refused" do
       message =
         refuse_contract("GivenWrong", """
         #{@unit}
-          scenario "przypomniano" do
+          scenario "reminded" do
             given :visit_booked
             command :remind
             expect :reminded
@@ -226,7 +226,7 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S2: scenario "przypomniano" (aggregate :visit): given :visit_booked is neither | <>
+               ~s|S2: scenario "reminded" (aggregate :visit): given :visit_booked is neither | <>
                  "an event of the unit nor one it consults (given_wrong.ex:31)"
     end
 
@@ -234,10 +234,10 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("TimeWrong", """
         #{@unit}
-          scenario "zapłacono wczoraj" do
+          scenario "paid yesterday" do
             given :payment_recorded, %{amount: 100, paid_at: ~U[2026-09-01 09:00:00Z]}
-            given :payment_recorded, %{amount: 100, paid_at: "wczoraj"}
-            given :payment_recorded, %{amount: "sto"}
+            given :payment_recorded, %{amount: 100, paid_at: "yesterday"}
+            given :payment_recorded, %{amount: "a hundred"}
             command :remind
             expect :reminded
           end
@@ -248,10 +248,10 @@ defmodule EhOsContract.ContractScenariosTest do
                  ~s|"2026-09-01T09:00:00Z", since the model is plain data (time_wrong.ex:31)|
 
       assert message =~
-               ~s|field :paid_at: "wczoraj" is not an ISO 8601 timestamp with an offset| <>
+               ~s|field :paid_at: "yesterday" is not an ISO 8601 timestamp with an offset| <>
                  ~s|, "2026-09-01T09:00:00Z" (time_wrong.ex:32)|
 
-      assert message =~ ~s|field :amount: "sto" is not an :integer (time_wrong.ex:33)|
+      assert message =~ ~s|field :amount: "a hundred" is not an :integer (time_wrong.ex:33)|
     end
 
     test "an empty identifier is refused here, as dispatch refuses it" do
@@ -260,7 +260,7 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("EmptyId", """
         #{@unit}
-          scenario "zapłacono bez wizyty" do
+          scenario "paid without a visit" do
             given :payment_recorded, %{visit_id: "", amount: 100}
             command :remind
             expect :reminded
@@ -274,7 +274,7 @@ defmodule EhOsContract.ContractScenariosTest do
       assert [_, %{given: [%{data: %{paid_at: "2026-09-01T09:00:00Z"}}, _]}] =
                compile_contract("DataRight", """
                #{@unit}
-                 scenario "zapłacono dwa razy" do
+                 scenario "paid twice" do
                    given :payment_recorded, %{amount: 100, paid_at: "2026-09-01T09:00:00Z"}
                    given :payment_recorded, %{visit_id: "w-1", amount: 50}
                    command :close, %{visit_id: "w-1"}
@@ -289,23 +289,23 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("OutcomeWrong", """
         #{@unit}
-          scenario "przypomnienie odrzucone" do
+          scenario "reminder rejected" do
             command :remind
             rejected :paid_in_full
           end
 
-          scenario "przypomnienie zamyka" do
+          scenario "the reminder closes" do
             command :remind
             expect :closed
           end
         """)
 
       assert message =~
-               ~s|S4: scenario "przypomnienie odrzucone" (aggregate :visit): rejected | <>
+               ~s|S4: scenario "reminder rejected" (aggregate :visit): rejected | <>
                  ":paid_in_full is not among what command :remind rejects, [] (outcome_wrong.ex:30)"
 
       assert message =~
-               ~s|S5: scenario "przypomnienie zamyka" (aggregate :visit): expects :closed, which | <>
+               ~s|S5: scenario "the reminder closes" (aggregate :visit): expects :closed, which | <>
                  "command :remind does not emit (outcome_wrong.ex:37)"
     end
   end
@@ -315,17 +315,17 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("CommandOutcome", """
         #{@unit}
-          scenario "zamknięcie bez wyniku" do
+          scenario "closing without an outcome" do
             command :close
           end
 
-          scenario "zamknięcie na dwa sposoby" do
+          scenario "closing two ways" do
             command :close
             expect :closed
             rejected :paid_in_full
           end
 
-          scenario "zamknięcie wydaje komendę" do
+          scenario "closing issues a command" do
             command :close
             expect :closed
             issues :remind
@@ -333,15 +333,15 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S6: scenario "zamknięcie bez wyniku" (aggregate :visit): after a command, | <>
+               ~s|S6: scenario "closing without an outcome" (aggregate :visit): after a command, | <>
                  "expect the events or say it is rejected (command_outcome.ex:30)"
 
       assert message =~
-               ~s|S6: scenario "zamknięcie na dwa sposoby" (aggregate :visit): a command either | <>
+               ~s|S6: scenario "closing two ways" (aggregate :visit): a command either | <>
                  "emits or is rejected; not both (command_outcome.ex:34)"
 
       assert message =~
-               ~s|S6: scenario "zamknięcie wydaje komendę" (aggregate :visit): issues belongs to | <>
+               ~s|S6: scenario "closing issues a command" (aggregate :visit): issues belongs to | <>
                  "a reaction's scenario, not to a command to a unit (command_outcome.ex:43)"
     end
 
@@ -349,33 +349,33 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("ReactionOutcome", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
-          effect :notify, "Powiadom", handles: :reminded, idempotency: [key: :event_id, owner: :downstream]
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
+          effect :notify, "Notify", handles: :reminded, idempotency: [key: :event_id, owner: :downstream]
 
-          scenario "zamknięcie — nic" do
+          scenario "closing — nothing" do
             on :closed
           end
 
-          scenario "zamknięcie — zamknięcie" do
+          scenario "closing — closing" do
             on :closed
             issues :close
           end
 
-          scenario "przypomniano — powiadomienie" do
+          scenario "reminded — notification" do
             on :reminded
           end
         """)
 
       assert message =~
-               ~s|S6: scenario "zamknięcie — nic" (policy :remind_on_close): after an event, a | <>
+               ~s|S6: scenario "closing — nothing" (policy :remind_on_close): after an event, a | <>
                  "policy issues something; say what (reaction_outcome.ex:33)"
 
       assert message =~
-               ~s|S6: scenario "zamknięcie — zamknięcie" (policy :remind_on_close): issues :close, | <>
+               ~s|S6: scenario "closing — closing" (policy :remind_on_close): issues :close, | <>
                  "which it does not issue (reaction_outcome.ex:39)"
 
       assert message =~
-               ~s|S6: scenario "przypomniano — powiadomienie": effect :notify cannot be a | <>
+               ~s|S6: scenario "reminded — notification": effect :notify cannot be a | <>
                  "scenario's target: an effect's outcome is outside the log (reaction_outcome.ex:42)"
     end
 
@@ -383,7 +383,7 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("ManagerOutcome", """
         #{@unit}
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :visit_id
             starts_on :payment_recorded, sets: :later
             on :reminded, cancels: :later
@@ -391,14 +391,14 @@ defmodule EhOsContract.ContractScenariosTest do
             ends_on :closed
           end
 
-          scenario "zapłacono — pogoń" do
+          scenario "paid — chase" do
             on :payment_recorded, %{amount: 100}
             sets :never
             ended true
           end
         """)
 
-      where = ~s|scenario "zapłacono — pogoń" (process manager :chase)|
+      where = ~s|scenario "paid — chase" (process manager :chase)|
 
       assert message =~
                "S6: #{where}: :payment_recorded does not set timer :never (manager_outcome.ex:40)"
@@ -411,7 +411,7 @@ defmodule EhOsContract.ContractScenariosTest do
       assert [_, %{target: %{kind: :process_manager}, sets: [:later]}, %{ended: true}] =
                compile_contract("ManagerScenarios", """
                #{@unit}
-                 process_manager :chase, "Pogoń" do
+                 process_manager :chase, "Chase" do
                    correlate :visit_id
                    starts_on :payment_recorded, sets: :later
                    on :reminded, cancels: :later
@@ -419,12 +419,12 @@ defmodule EhOsContract.ContractScenariosTest do
                    ends_on :closed
                  end
 
-                 scenario "zapłacono — pogoń się zaczyna" do
+                 scenario "paid — the chase starts" do
                    on :payment_recorded, %{amount: 100}
                    sets :later
                  end
 
-                 scenario "zamknięto — pogoń się kończy" do
+                 scenario "closed — the chase ends" do
                    given :payment_recorded, %{amount: 100}
                    on :closed
                    ended true
@@ -435,16 +435,16 @@ defmodule EhOsContract.ContractScenariosTest do
 
   describe "S6: a query's scenario answers (ESDM's read model scenario)" do
     @read """
-      read_model :payments, "Płatności", projects: [:payment_recorded] do
+      read_model :payments, "Payments", projects: [:payment_recorded] do
         field :visit_id, :id
         field :amount, :integer
       end
 
-      query :payments_of_visit, "Płatności wizyty", reads: :payments, by: :reception do
+      query :payments_of_visit, "A visit's payments", reads: :payments, by: :reception do
         param :visit_id, :id
       end
 
-      query :last_payment, "Ostatnia płatność", reads: :payments, by: :reception, returns: :one do
+      query :last_payment, "Last payment", reads: :payments, by: :reception, returns: :one do
         param :visit_id, :id
       end
     """
@@ -454,22 +454,22 @@ defmodule EhOsContract.ContractScenariosTest do
         refuse_contract("QueryOutcome", """
         #{@unit}
         #{@read}
-          scenario "płatności — bez odpowiedzi" do
+          scenario "payments — no answer" do
             query :payments_of_visit, %{visit_id: "w-1"}
           end
 
-          scenario "płatności — dwie odpowiedzi" do
+          scenario "payments — two answers" do
             query :payments_of_visit, %{visit_id: "w-1"}
             answers []
             answers []
           end
 
-          scenario "ostatnia płatność — lista" do
+          scenario "last payment — a list" do
             query :last_payment, %{visit_id: "w-1"}
             answers [%{amount: 100}]
           end
 
-          scenario "płatności — pole spoza wiersza" do
+          scenario "payments — a field outside the row" do
             given :closed
             query :payments_of_visit, %{visit_id: "w-1"}
             answers [%{amount: 100, method: :card}]
@@ -477,23 +477,23 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S6: scenario "płatności — bez odpowiedzi" (query :payments_of_visit): after a | <>
+               ~s|S6: scenario "payments — no answer" (query :payments_of_visit): after a | <>
                  "query, say what it answers (query_outcome.ex:43)"
 
       assert message =~
-               ~s|S6: scenario "płatności — dwie odpowiedzi" (query :payments_of_visit): a query | <>
+               ~s|S6: scenario "payments — two answers" (query :payments_of_visit): a query | <>
                  "answers once (query_outcome.ex:50)"
 
       assert message =~
-               ~s|S6: scenario "ostatnia płatność — lista" (query :last_payment): answers one | <>
+               ~s|S6: scenario "last payment — a list" (query :last_payment): answers one | <>
                  "row, a map, or nil, as the query returns one (query_outcome.ex:55)"
 
       assert message =~
-               ~s|S3: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): a row | <>
+               ~s|S3: scenario "payments — a field outside the row" (query :payments_of_visit): a row | <>
                  "of read model :payments has no field :method (query_outcome.ex:61)"
 
       assert message =~
-               ~s|S2: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): given | <>
+               ~s|S2: scenario "payments — a field outside the row" (query :payments_of_visit): given | <>
                  ":closed is not an event read model :payments projects (query_outcome.ex:59)"
     end
 
@@ -501,7 +501,7 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("AnswersElsewhere", """
         #{@unit}
-          scenario "zamknięcie z odpowiedzią" do
+          scenario "closing with an answer" do
             command :close
             expect :closed
             answers []
@@ -509,7 +509,7 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S6: scenario "zamknięcie z odpowiedzią" (aggregate :visit): answers belongs to | <>
+               ~s|S6: scenario "closing with an answer" (aggregate :visit): answers belongs to | <>
                  "a query's scenario, not to a command to a unit (answers_elsewhere.ex:33)"
     end
 
@@ -518,19 +518,19 @@ defmodule EhOsContract.ContractScenariosTest do
                compile_contract("QueryScenarios", """
                #{@unit}
                #{@read}
-                 scenario "płatności wizyty" do
+                 scenario "a visit's payments" do
                    given :payment_recorded, %{visit_id: "w-1", amount: 100}
                    query :payments_of_visit, %{visit_id: "w-1"}
                    answers [%{visit_id: "w-1", amount: 100}]
                  end
 
-                 scenario "ostatnia płatność" do
+                 scenario "last payment" do
                    given :payment_recorded, %{visit_id: "w-1", amount: 100}
                    query :last_payment, %{visit_id: "w-1"}
                    answers %{amount: 100}
                  end
 
-                 scenario "brak płatności" do
+                 scenario "no payment" do
                    query :last_payment, %{visit_id: "w-1"}
                    answers nil
                  end
@@ -553,15 +553,15 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("ActorWrong", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
 
-          scenario "menedżer płaci" do
+          scenario "the manager pays" do
             actor :manager
             command :record_payment, %{amount: 100}
             expect :payment_recorded
           end
 
-          scenario "recepcja przypomina" do
+          scenario "reception reminds" do
             actor :reception
             on :closed
             issues :remind
@@ -569,11 +569,11 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S7: scenario "menedżer płaci" (aggregate :visit): actor :manager is not among | <>
+               ~s|S7: scenario "the manager pays" (aggregate :visit): actor :manager is not among | <>
                  "who may issue :record_payment, [:reception] (actor_wrong.ex:32)"
 
       assert message =~
-               ~s|S7: scenario "recepcja przypomina" (policy :remind_on_close): only a command's | <>
+               ~s|S7: scenario "reception reminds" (policy :remind_on_close): only a command's | <>
                  "scenario names an actor (actor_wrong.ex:38)"
     end
 
@@ -581,15 +581,15 @@ defmodule EhOsContract.ContractScenariosTest do
       message =
         refuse_contract("PersonWrong", """
         #{@unit}
-          policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
+          policy :remind_on_close, "Remind", handles: :closed, issues: :remind
 
-          scenario "ktoś zamyka" do
+          scenario "someone closes" do
             as "reception-ola"
             command :close
             expect :closed
           end
 
-          scenario "przypomnienie" do
+          scenario "reminder" do
             as "reception-ola"
             on :closed
             issues :remind
@@ -597,11 +597,11 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S7: scenario "ktoś zamyka" (aggregate :visit): as: names a person only beside | <>
+               ~s|S7: scenario "someone closes" (aggregate :visit): as: names a person only beside | <>
                  "an actor:"
 
       assert message =~
-               ~s|S7: scenario "przypomnienie" (policy :remind_on_close): only a command's | <>
+               ~s|S7: scenario "reminder" (policy :remind_on_close): only a command's | <>
                  "scenario names a person with as:"
     end
 
@@ -609,7 +609,7 @@ defmodule EhOsContract.ContractScenariosTest do
       assert [_, %{actor: :manager}] =
                compile_contract("ActorRight", """
                #{@unit}
-                 scenario "menedżer zamyka" do
+                 scenario "the manager closes" do
                    actor :manager
                    command :close
                    expect :closed

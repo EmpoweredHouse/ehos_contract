@@ -8,17 +8,17 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
   use EhOsContract.DslCase, async: false
 
   @unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      command :book_visit, "Umów", by: :reception, emits: :visit_booked, reads: [service: :service_id] do
+      command :book_visit, "Book", by: :reception, emits: :visit_booked, reads: [service: :service_id] do
         field :service_id, {:id, :service}
       end
 
-      command :cancel_visit, "Odwołaj", by: :reception, emits: :visit_cancelled
+      command :cancel_visit, "Cancel", by: :reception, emits: :visit_cancelled
 
-      event :visit_booked, "Umówiono"
-      event :visit_cancelled, "Odwołano"
+      event :visit_booked, "Booked"
+      event :visit_cancelled, "Cancelled"
     end
   """
 
@@ -29,13 +29,13 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
         @unit <>
           """
 
-            scenario "umówienie bez usługi" do
+            scenario "booking without a service" do
               given_entity :room, %{room_id: "r-1"}
               command :book_visit, %{service_id: "s-1"}
               expect :visit_booked
             end
 
-            scenario "odwołanie" do
+            scenario "cancellation" do
               given_entity :service, %{service_id: "s-1"}
               command :cancel_visit, %{}
               expect :visit_cancelled
@@ -44,15 +44,15 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
       )
 
     assert message =~
-             ~s|S12: scenario "umówienie bez usługi": given_entity :room is not an entity | <>
+             ~s|S12: scenario "booking without a service": given_entity :room is not an entity | <>
                "command :book_visit reads ([:service])"
 
     assert message =~
-             ~s|S12: scenario "umówienie bez usługi": command :book_visit reads :service, and | <>
+             ~s|S12: scenario "booking without a service": command :book_visit reads :service, and | <>
                "the scenario gives no given_entity :service"
 
     assert message =~
-             ~s|S12: scenario "odwołanie": given_entity gives a row only to a command that | <>
+             ~s|S12: scenario "cancellation": given_entity gives a row only to a command that | <>
                "reads: entities"
   end
 
@@ -63,21 +63,21 @@ defmodule EhOsContract.ContractScenarioEntitiesTest do
         @unit <>
           """
 
-            scenario "umówienie" do
+            scenario "booking" do
               given_entity :service, %{service_id: "s-1", p1_reported: true}
               command :book_visit, %{service_id: "s-1"}
               expect :visit_booked
             end
 
-            scenario "odwołanie" do
+            scenario "cancellation" do
               command :cancel_visit, %{}
               expect :visit_cancelled
             end
           """
       )
 
-    booked = Enum.find(model.scenarios, &(&1.description == "umówienie"))
-    cancelled = Enum.find(model.scenarios, &(&1.description == "odwołanie"))
+    booked = Enum.find(model.scenarios, &(&1.description == "booking"))
+    cancelled = Enum.find(model.scenarios, &(&1.description == "cancellation"))
 
     assert booked.given_entities == [
              %{entity: :service, data: %{service_id: "s-1", p1_reported: true}}
