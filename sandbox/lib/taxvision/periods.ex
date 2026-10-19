@@ -47,7 +47,7 @@ defmodule Taxvision.Periods do
   because which runs are silent is a question about one company.
   """
 
-  use Boundary, deps: [EhOsContractHost.Repo, Taxvision.Domain], exports: []
+  use Boundary, deps: [Taxvision.Domain], exports: []
 
   import Ecto.Query
 
@@ -74,13 +74,17 @@ defmodule Taxvision.Periods do
 
   @spec one(Ecto.Query.dynamic_expr()) :: t() | nil
   defp one(condition) do
-    EhOsContractHost.Repo.one(
+    repo().one(
       from(p in Period,
         where: ^condition,
         select: %{id: p.id, name: p.name, starts_on: p.starts_on, ends_on: p.ends_on}
       )
     )
   end
+
+  # The host's repo, read as the engine reads it: from configuration, so the project
+  # names no module of the host's and the host can change without it.
+  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
 
   @doc """
   Creates the period if it is not there yet, and returns it either way.
@@ -91,7 +95,7 @@ defmodule Taxvision.Periods do
   @spec ensure!(name()) :: t()
   def ensure!(name) do
     with {:ok, starts_on} <- month_start(name) do
-      EhOsContractHost.Repo.insert_all(
+      repo().insert_all(
         Period,
         [
           %{

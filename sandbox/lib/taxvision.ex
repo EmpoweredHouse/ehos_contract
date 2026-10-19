@@ -12,5 +12,5 @@ defmodule Taxvision do
   to be a boundary.
   """
 
-  use Boundary, deps: [EhOsContract, EhOsContractHost.Repo], exports: []
+  use Boundary, deps: [EhOsContract], exports: []
 end
