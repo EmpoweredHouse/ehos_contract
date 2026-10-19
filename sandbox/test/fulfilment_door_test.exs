@@ -168,4 +168,27 @@ defmodule Fulfilment.DoorTest do
     assert delivered.status in [403, 404]
     assert Repo.all(from(e in Event, where: e.type == "fulfilment.shipping.delivered")) == []
   end
+
+  # The door verifies a credential and keeps nothing of it: no table of the host's
+  # database, the engine's, the credential verifier's and Oban's, has a column that could.
+  test "the engine holds no credentials" do
+    tables =
+      Repo.query!(
+        "select table_name from information_schema.tables where table_schema = 'public'"
+      ).rows
+      |> List.flatten()
+
+    assert "eh_os_contract_events" in tables
+
+    for table <- tables,
+        column <-
+          Repo.query!(
+            "select column_name from information_schema.columns where table_name = $1",
+            [table]
+          ).rows
+          |> List.flatten() do
+      refute column in ~w(password password_hash hashed_password encrypted_password secret credential),
+             "table #{table} has a #{column} column — the engine holds credentials"
+    end
+  end
 end
