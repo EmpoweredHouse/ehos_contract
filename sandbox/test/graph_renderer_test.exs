@@ -1,8 +1,8 @@
 defmodule EhOsContract.GraphRendererTest do
   @moduledoc """
   Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
-  the client trees as the engine gives it today, with the overlay the engine reads from
-  the log over it. The renderer's own suite runs on fixtures taken once, which do not
+  the sandbox, the client trees and the invented case studies, as the engine gives it
+  today, with the overlay the engine reads from the log over it. The renderer's own suite runs on fixtures taken once, which do not
   follow these trees as they change; this does, and holds the fixtures to today's schema.
   """
 
@@ -128,13 +128,14 @@ defmodule EhOsContract.GraphRendererTest do
     end
   end
 
-  test "the renderer's fixtures taken from the client trees still hold to the schema" do
-    # edge_cases.json and messaging.json are made by hand for what no client wrote, and are not
+  test "the renderer's fixtures taken from the sandbox still hold to the schema" do
+    # edge_cases.json and messaging.json are made by hand for what no domain wrote, and are not
     # whole documents. domain.ledger.json is made by hand too, for joining applications, but is
-    # whole, so it holds to the schema as the taken ones do.
+    # whole, so it holds to the schema as the taken ones do. Ten of the taken ones come from
+    # the invented case studies (publication programme, PB2, #369), beside the clients'.
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
     taken = names -- ["edge_cases.json", "messaging.json"]
-    assert length(taken) == 9
+    assert length(taken) == 19
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()

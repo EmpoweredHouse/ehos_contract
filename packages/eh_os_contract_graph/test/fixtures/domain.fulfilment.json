@@ -1,0 +1,434 @@
+{
+  "code_language": "en",
+  "digest": "4c306614d53d",
+  "domain": "Fulfilment.Domain",
+  "kind": "domain",
+  "language": "en",
+  "name": "fulfilment",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "capabilities": [
+          {
+            "capability": "fulfilment.cancel_order",
+            "contract": "contract:fulfilment.orders",
+            "declaration": "command:fulfilment.orders:cancel_order",
+            "kind": "command"
+          },
+          {
+            "capability": "fulfilment.confirm_payment",
+            "contract": "contract:fulfilment.orders",
+            "declaration": "command:fulfilment.orders:confirm_payment",
+            "kind": "command"
+          },
+          {
+            "capability": "fulfilment.place_order",
+            "contract": "contract:fulfilment.orders",
+            "declaration": "command:fulfilment.orders:place_order",
+            "kind": "command"
+          }
+        ],
+        "id": "actor:Fulfilment.Domain:order_desk",
+        "label": "Order desk",
+        "name": "order_desk",
+        "responsibilities": [],
+        "role": "fulfilment.order_desk",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "capabilities": [
+          {
+            "capability": "fulfilment.assign_pick_list",
+            "contract": "contract:fulfilment.warehouse",
+            "declaration": "command:fulfilment.warehouse:assign_pick_list",
+            "kind": "command"
+          }
+        ],
+        "id": "actor:Fulfilment.Domain:lead",
+        "label": "Warehouse lead",
+        "name": "lead",
+        "responsibilities": [],
+        "role": "fulfilment.lead",
+        "scope": [
+          "warehouse_id"
+        ],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "capabilities": [
+          {
+            "capability": "fulfilment.confirm_pick",
+            "contract": "contract:fulfilment.warehouse",
+            "declaration": "command:fulfilment.warehouse:confirm_pick",
+            "kind": "command"
+          },
+          {
+            "capability": "fulfilment.pack_parcel",
+            "contract": "contract:fulfilment.warehouse",
+            "declaration": "command:fulfilment.warehouse:pack_parcel",
+            "kind": "command"
+          }
+        ],
+        "id": "actor:Fulfilment.Domain:picker",
+        "label": "Picker",
+        "name": "picker",
+        "responsibilities": [],
+        "role": "fulfilment.picker",
+        "scope": [
+          "warehouse_id"
+        ],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "capabilities": [
+          {
+            "capability": "fulfilment.dispatch_parcel",
+            "contract": "contract:fulfilment.shipping",
+            "declaration": "command:fulfilment.shipping:dispatch_parcel",
+            "kind": "command"
+          }
+        ],
+        "id": "actor:Fulfilment.Domain:dispatcher",
+        "label": "Dispatcher",
+        "name": "dispatcher",
+        "responsibilities": [],
+        "role": "fulfilment.dispatcher",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "system",
+        "capabilities": [],
+        "context": "context:Fulfilment.Domain:shipping",
+        "id": "actor:Fulfilment.Domain:carrier_integration",
+        "label": "Carrier integration",
+        "name": "carrier_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Fulfilment.Domain:orders",
+        "label": "Orders",
+        "name": "orders",
+        "source": null,
+        "subdomain": "subdomain:Fulfilment.Domain:core",
+        "terms": [
+          {
+            "avoid": [],
+            "code": "Order",
+            "definition": "What a customer bought, from one warehouse",
+            "source": null,
+            "text": "Order",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Payment",
+            "definition": "The customer's payment for an order, as the desk confirms it",
+            "source": null,
+            "text": "Payment",
+            "translations": []
+          }
+        ]
+      },
+      {
+        "id": "context:Fulfilment.Domain:warehouse",
+        "label": "Warehouse",
+        "name": "warehouse",
+        "source": null,
+        "subdomain": "subdomain:Fulfilment.Domain:supporting",
+        "terms": [
+          {
+            "avoid": [],
+            "code": "Order",
+            "definition": "What a pick list is opened for, once it is paid",
+            "source": null,
+            "text": "Order",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Pick list",
+            "definition": "The items of one order to take off the shelves",
+            "source": null,
+            "text": "Pick list",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Picker",
+            "definition": "Who takes a pick list's items off the shelves, as the lead assigns",
+            "source": null,
+            "text": "Picker",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Parcel",
+            "definition": "A picked order, packed and weighed",
+            "source": null,
+            "text": "Parcel",
+            "translations": []
+          }
+        ]
+      },
+      {
+        "id": "context:Fulfilment.Domain:shipping",
+        "label": "Shipping",
+        "name": "shipping",
+        "source": null,
+        "subdomain": "subdomain:Fulfilment.Domain:supporting",
+        "terms": [
+          {
+            "avoid": [],
+            "code": "Order",
+            "definition": "Whose parcel a shipment carries",
+            "source": null,
+            "text": "Order",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Shipment",
+            "definition": "A parcel booked with a carrier, until it is delivered",
+            "source": null,
+            "text": "Shipment",
+            "translations": []
+          },
+          {
+            "avoid": [],
+            "code": "Parcel",
+            "definition": "What a shipment carries, by its weight",
+            "source": null,
+            "text": "Parcel",
+            "translations": []
+          }
+        ]
+      }
+    ],
+    "contract": [
+      {
+        "context": "context:Fulfilment.Domain:orders",
+        "id": "contract:fulfilment.orders",
+        "label": null,
+        "module": "Fulfilment.Contracts.Orders",
+        "name": "fulfilment.orders",
+        "source": null
+      },
+      {
+        "context": "context:Fulfilment.Domain:shipping",
+        "id": "contract:fulfilment.shipping",
+        "label": null,
+        "module": "Fulfilment.Contracts.Shipping",
+        "name": "fulfilment.shipping",
+        "source": null
+      },
+      {
+        "context": "context:Fulfilment.Domain:warehouse",
+        "id": "contract:fulfilment.warehouse",
+        "label": null,
+        "module": "Fulfilment.Contracts.Warehouse",
+        "name": "fulfilment.warehouse",
+        "source": null
+      }
+    ],
+    "entity": [],
+    "event": [
+      {
+        "contract": "contract:fulfilment.warehouse",
+        "id": "event:fulfilment.warehouse:parcel_packed",
+        "label": "Parcel packed",
+        "name": "parcel_packed",
+        "source": null
+      },
+      {
+        "contract": "contract:fulfilment.orders",
+        "id": "event:fulfilment.orders:payment_confirmed",
+        "label": "Payment confirmed",
+        "name": "payment_confirmed",
+        "source": null
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Fulfilment.Domain:carrier",
+        "label": "Carrier",
+        "name": "carrier",
+        "operations": [],
+        "source": null,
+        "unavailable_looks_like": "the carrier's tracking does not answer"
+      }
+    ],
+    "process": [
+      {
+        "correlate": [
+          "order_id"
+        ],
+        "id": "process:fulfilment.order",
+        "label": "An order, from its placing to its delivery",
+        "module": "Fulfilment.Processes.Order",
+        "name": "fulfilment.order",
+        "source": null
+      }
+    ],
+    "publication": [],
+    "subdomain": [
+      {
+        "id": "subdomain:Fulfilment.Domain:core",
+        "label": "Fulfilment",
+        "name": "core",
+        "source": null,
+        "type": "core"
+      },
+      {
+        "id": "subdomain:Fulfilment.Domain:supporting",
+        "label": "Logistics",
+        "name": "supporting",
+        "source": null,
+        "type": "supporting"
+      }
+    ],
+    "subject": [],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Fulfilment.Domain:service",
+        "invariants": [],
+        "label": "Carrier service",
+        "name": "service",
+        "source": null,
+        "type": {
+          "enum": [
+            {
+              "label": "Parcel",
+              "value": "parcel"
+            },
+            {
+              "label": "Freight",
+              "value": "freight"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Fulfilment.Domain:dispatcher",
+        "id": "accountable_for:actor:Fulfilment.Domain:dispatcher:process:fulfilment.order",
+        "to": "process:fulfilment.order"
+      }
+    ],
+    "anticorruption_layer": [],
+    "backed_by": [
+      {
+        "from": "actor:Fulfilment.Domain:carrier_integration",
+        "id": "backed_by:actor:Fulfilment.Domain:carrier_integration:external:Fulfilment.Domain:carrier",
+        "to": "external:Fulfilment.Domain:carrier"
+      }
+    ],
+    "conformist": [
+      {
+        "from": "external:Fulfilment.Domain:carrier",
+        "id": "conformist:external:Fulfilment.Domain:carrier:context:Fulfilment.Domain:shipping",
+        "to": "context:Fulfilment.Domain:shipping"
+      }
+    ],
+    "consumed_by": [
+      {
+        "events": [
+          {
+            "as": "payment_confirmed",
+            "event": "event:fulfilment.orders:payment_confirmed"
+          }
+        ],
+        "from": "contract:fulfilment.orders",
+        "id": "consumed_by:contract:fulfilment.orders:contract:fulfilment.warehouse",
+        "to": "contract:fulfilment.warehouse"
+      },
+      {
+        "events": [
+          {
+            "as": "parcel_packed",
+            "event": "event:fulfilment.warehouse:parcel_packed"
+          }
+        ],
+        "from": "contract:fulfilment.warehouse",
+        "id": "consumed_by:contract:fulfilment.warehouse:contract:fulfilment.shipping",
+        "to": "contract:fulfilment.shipping"
+      }
+    ],
+    "customer_supplier": [
+      {
+        "from": "context:Fulfilment.Domain:orders",
+        "id": "customer_supplier:context:Fulfilment.Domain:orders:context:Fulfilment.Domain:warehouse",
+        "to": "context:Fulfilment.Domain:warehouse"
+      },
+      {
+        "from": "context:Fulfilment.Domain:orders",
+        "id": "customer_supplier:context:Fulfilment.Domain:orders:context:Fulfilment.Domain:shipping",
+        "to": "context:Fulfilment.Domain:shipping"
+      },
+      {
+        "from": "context:Fulfilment.Domain:warehouse",
+        "id": "customer_supplier:context:Fulfilment.Domain:warehouse:context:Fulfilment.Domain:shipping",
+        "to": "context:Fulfilment.Domain:shipping"
+      }
+    ],
+    "includes": [
+      {
+        "from": "process:fulfilment.order",
+        "id": "includes:process:fulfilment.order:contract:fulfilment.orders",
+        "to": "contract:fulfilment.orders"
+      },
+      {
+        "from": "process:fulfilment.order",
+        "id": "includes:process:fulfilment.order:contract:fulfilment.warehouse",
+        "to": "contract:fulfilment.warehouse"
+      },
+      {
+        "from": "process:fulfilment.order",
+        "id": "includes:process:fulfilment.order:contract:fulfilment.shipping",
+        "to": "contract:fulfilment.shipping"
+      }
+    ],
+    "open_host_service": [],
+    "partnership": [],
+    "published_language": [],
+    "publishes": [],
+    "refers_to": [
+      {
+        "from": "contract:fulfilment.shipping",
+        "id": "refers_to:contract:fulfilment.shipping:contract:fulfilment.orders",
+        "to": "contract:fulfilment.orders",
+        "units": [
+          "order"
+        ]
+      },
+      {
+        "from": "contract:fulfilment.warehouse",
+        "id": "refers_to:contract:fulfilment.warehouse:contract:fulfilment.orders",
+        "to": "contract:fulfilment.orders",
+        "units": [
+          "order"
+        ]
+      }
+    ],
+    "separate_ways": [],
+    "shared_kernel": [],
+    "subscribed_by": []
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "time_zone": "Etc/UTC",
+  "version": "80b714804726"
+}

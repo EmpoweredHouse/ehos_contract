@@ -1,0 +1,579 @@
+{
+  "context": "context:Lending.Domain:membership",
+  "contract": "lending.membership",
+  "digest": "dde044a346a7",
+  "domain": "Lending.Domain",
+  "kind": "contract",
+  "module": "Lending.Contracts.Membership",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Lending.Domain:librarian",
+        "label": "Librarian",
+        "name": "librarian",
+        "responsibilities": [],
+        "role": "lending.librarian",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "capability": "lending.register_member",
+        "fields": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "subject": "subject:Lending.Domain:member",
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "name",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "label": null,
+            "name": "email",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "command:lending.membership:register_member",
+        "label": "Register a member",
+        "name": "register_member",
+        "source": null,
+        "unit": "unit:lending.membership:membership"
+      },
+      {
+        "capability": "lending.change_email",
+        "fields": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "subject": "subject:Lending.Domain:member",
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "email",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "command:lending.membership:change_email",
+        "label": "Change a member's e-mail",
+        "name": "change_email",
+        "source": null,
+        "unit": "unit:lending.membership:membership"
+      }
+    ],
+    "constraint": [],
+    "context": [
+      {
+        "id": "context:Lending.Domain:membership",
+        "label": "Membership",
+        "name": "membership",
+        "source": null
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "kept": "log_clear",
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "subject": "subject:Lending.Domain:member",
+            "type": "id"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "name",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "email",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "event:lending.membership:member_registered",
+        "label": "Member registered",
+        "name": "member_registered",
+        "schema_version": 1,
+        "source": null,
+        "type": "lending.membership.member_registered",
+        "unit": "unit:lending.membership:membership"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "kept": "log_clear",
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "subject": "subject:Lending.Domain:member",
+            "type": "id"
+          },
+          {
+            "kept": "log_sealed",
+            "label": null,
+            "name": "email",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "event:lending.membership:email_changed",
+        "label": "E-mail changed",
+        "name": "email_changed",
+        "schema_version": 1,
+        "source": null,
+        "type": "lending.membership.email_changed",
+        "unit": "unit:lending.membership:membership"
+      }
+    ],
+    "external": [],
+    "invariant": [
+      {
+        "id": "invariant:lending.membership:unit:membership:registered_once",
+        "label": "A membership is registered once",
+        "name": "registered_once",
+        "of": "unit:lending.membership:membership",
+        "source": null
+      },
+      {
+        "id": "invariant:lending.membership:unit:membership:only_a_registered_member_changes",
+        "label": "Only the member a membership was registered for changes its details",
+        "name": "only_a_registered_member_changes",
+        "of": "unit:lending.membership:membership",
+        "source": null
+      }
+    ],
+    "policy": [],
+    "process_manager": [],
+    "publication": [],
+    "query": [
+      {
+        "capability": "lending.member_contact",
+        "id": "query:lending.membership:member_contact",
+        "label": "How to reach a member",
+        "name": "member_contact",
+        "params": [
+          {
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "returns": "many",
+        "source": null
+      }
+    ],
+    "read_model": [
+      {
+        "delivery": "in_transaction",
+        "fields": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "member_id",
+            "required": true,
+            "subject": "subject:Lending.Domain:member",
+            "type": "id"
+          },
+          {
+            "kept": "rows_forgotten",
+            "label": null,
+            "name": "name",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "kept": "rows_forgotten",
+            "label": null,
+            "name": "email",
+            "personal_of": "member_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "read_model:lending.membership:member_directory",
+        "label": "Member directory",
+        "name": "member_directory",
+        "source": null
+      }
+    ],
+    "status": [],
+    "subject": [
+      {
+        "id": "subject:Lending.Domain:member",
+        "label": "Member",
+        "name": "member",
+        "source": null
+      }
+    ],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:lending.membership:membership",
+        "identity": [
+          "membership_id"
+        ],
+        "label": "Membership",
+        "name": "membership",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "membership_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "registered",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "label": null,
+            "name": "member_id",
+            "required": false,
+            "type": "id"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": []
+  },
+  "relations": {
+    "allowed_in": [],
+    "backed_by": [],
+    "builds": [
+      {
+        "from": "event:lending.membership:member_registered",
+        "id": "builds:event:lending.membership:member_registered:unit:lending.membership:membership",
+        "to": "unit:lending.membership:membership"
+      },
+      {
+        "from": "event:lending.membership:email_changed",
+        "id": "builds:event:lending.membership:email_changed:unit:lending.membership:membership",
+        "to": "unit:lending.membership:membership"
+      }
+    ],
+    "calls": [],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [],
+    "emits": [
+      {
+        "from": "command:lending.membership:register_member",
+        "id": "emits:command:lending.membership:register_member:event:lending.membership:member_registered",
+        "to": "event:lending.membership:member_registered"
+      },
+      {
+        "from": "command:lending.membership:change_email",
+        "id": "emits:command:lending.membership:change_email:event:lending.membership:email_changed",
+        "to": "event:lending.membership:email_changed"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "handled_by": [],
+    "issues": [],
+    "may_ask": [
+      {
+        "from": "actor:Lending.Domain:librarian",
+        "id": "may_ask:actor:Lending.Domain:librarian:query:lending.membership:member_contact",
+        "to": "query:lending.membership:member_contact"
+      }
+    ],
+    "may_issue": [
+      {
+        "from": "actor:Lending.Domain:librarian",
+        "id": "may_issue:actor:Lending.Domain:librarian:command:lending.membership:register_member",
+        "to": "command:lending.membership:register_member"
+      },
+      {
+        "from": "actor:Lending.Domain:librarian",
+        "id": "may_issue:actor:Lending.Domain:librarian:command:lending.membership:change_email",
+        "to": "command:lending.membership:change_email"
+      }
+    ],
+    "may_record": [],
+    "projected_into": [
+      {
+        "from": "event:lending.membership:member_registered",
+        "id": "projected_into:event:lending.membership:member_registered:read_model:lending.membership:member_directory",
+        "to": "read_model:lending.membership:member_directory"
+      },
+      {
+        "from": "event:lending.membership:email_changed",
+        "id": "projected_into:event:lending.membership:email_changed:read_model:lending.membership:member_directory",
+        "to": "read_model:lending.membership:member_directory"
+      }
+    ],
+    "published_as": [],
+    "reads": [
+      {
+        "from": "query:lending.membership:member_contact",
+        "id": "reads:query:lending.membership:member_contact:read_model:lending.membership:member_directory",
+        "to": "read_model:lending.membership:member_directory"
+      }
+    ],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:lending.membership:register_member",
+        "id": "refused_on:command:lending.membership:register_member:invariant:lending.membership:unit:membership:registered_once",
+        "to": "invariant:lending.membership:unit:membership:registered_once"
+      },
+      {
+        "from": "command:lending.membership:change_email",
+        "id": "refused_on:command:lending.membership:change_email:invariant:lending.membership:unit:membership:only_a_registered_member_changes",
+        "to": "invariant:lending.membership:unit:membership:only_a_registered_member_changes"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [],
+    "process_manager": [],
+    "query": [
+      {
+        "answers": [
+          {
+            "email": null,
+            "member_id": "member-ada"
+          }
+        ],
+        "covers": [
+          "reads:query:lending.membership:member_contact:read_model:lending.membership:member_directory",
+          "projected_into:event:lending.membership:member_registered:read_model:lending.membership:member_directory",
+          "projected_into:event:lending.membership:email_changed:read_model:lending.membership:member_directory"
+        ],
+        "description": "the desk finds a member's latest e-mail",
+        "given": [
+          {
+            "data": {
+              "email": null,
+              "member_id": "member-ada",
+              "membership_id": "membership-ada",
+              "name": null
+            },
+            "event": "event:lending.membership:member_registered"
+          },
+          {
+            "data": {
+              "email": null,
+              "member_id": "member-ada",
+              "membership_id": "membership-ada"
+            },
+            "event": "event:lending.membership:email_changed"
+          }
+        ],
+        "id": "scenario:lending.membership:the desk finds a member's latest e-mail",
+        "illustrates": [],
+        "params": {
+          "member_id": "member-ada"
+        },
+        "target": "query:lending.membership:member_contact"
+      }
+    ],
+    "unit": [
+      {
+        "command": {
+          "command": "command:lending.membership:register_member",
+          "data": {
+            "email": null,
+            "member_id": "member-ada",
+            "membership_id": "membership-ada",
+            "name": null
+          }
+        },
+        "covers": [
+          "emits:command:lending.membership:register_member:event:lending.membership:member_registered"
+        ],
+        "description": "a member is registered",
+        "expect": [
+          {
+            "data": {
+              "member_id": "member-ada"
+            },
+            "event": "event:lending.membership:member_registered"
+          }
+        ],
+        "given": [],
+        "id": "scenario:lending.membership:a member is registered",
+        "target": "unit:lending.membership:membership"
+      },
+      {
+        "command": {
+          "command": "command:lending.membership:register_member",
+          "data": {
+            "email": null,
+            "member_id": "member-ada",
+            "name": null
+          }
+        },
+        "covers": [
+          "refused_on:command:lending.membership:register_member:invariant:lending.membership:unit:membership:registered_once"
+        ],
+        "description": "a membership is not registered twice",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "email": null,
+              "member_id": "member-ada",
+              "membership_id": "membership-ada",
+              "name": null
+            },
+            "event": "event:lending.membership:member_registered"
+          }
+        ],
+        "id": "scenario:lending.membership:a membership is not registered twice",
+        "rejected": "invariant:lending.membership:unit:membership:registered_once",
+        "target": "unit:lending.membership:membership"
+      },
+      {
+        "command": {
+          "command": "command:lending.membership:change_email",
+          "data": {
+            "email": null,
+            "member_id": "member-ada"
+          }
+        },
+        "covers": [
+          "emits:command:lending.membership:change_email:event:lending.membership:email_changed"
+        ],
+        "description": "a registered member changes e-mail",
+        "expect": [
+          {
+            "data": {
+              "member_id": "member-ada"
+            },
+            "event": "event:lending.membership:email_changed"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "email": null,
+              "member_id": "member-ada",
+              "membership_id": "membership-ada",
+              "name": null
+            },
+            "event": "event:lending.membership:member_registered"
+          }
+        ],
+        "id": "scenario:lending.membership:a registered member changes e-mail",
+        "target": "unit:lending.membership:membership"
+      },
+      {
+        "command": {
+          "command": "command:lending.membership:change_email",
+          "data": {
+            "email": null,
+            "member_id": "member-ada",
+            "membership_id": "membership-ada"
+          }
+        },
+        "covers": [
+          "refused_on:command:lending.membership:change_email:invariant:lending.membership:unit:membership:only_a_registered_member_changes"
+        ],
+        "description": "nobody registered — no e-mail to change",
+        "expect": [],
+        "given": [],
+        "id": "scenario:lending.membership:nobody registered — no e-mail to change",
+        "rejected": "invariant:lending.membership:unit:membership:only_a_registered_member_changes",
+        "target": "unit:lending.membership:membership"
+      },
+      {
+        "command": {
+          "command": "command:lending.membership:change_email",
+          "data": {
+            "email": null,
+            "member_id": "member-bob"
+          }
+        },
+        "covers": [
+          "refused_on:command:lending.membership:change_email:invariant:lending.membership:unit:membership:only_a_registered_member_changes"
+        ],
+        "description": "another member's e-mail is not put on a membership",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "email": null,
+              "member_id": "member-ada",
+              "membership_id": "membership-ada",
+              "name": null
+            },
+            "event": "event:lending.membership:member_registered"
+          }
+        ],
+        "id": "scenario:lending.membership:another member's e-mail is not put on a membership",
+        "rejected": "invariant:lending.membership:unit:membership:only_a_registered_member_changes",
+        "target": "unit:lending.membership:membership"
+      }
+    ]
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "a519fbabd7f6"
+}
