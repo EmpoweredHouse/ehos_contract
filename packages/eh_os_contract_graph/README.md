@@ -49,8 +49,8 @@ leads: a contract or a process of the map, a unit of a contract, an event's unit
 
 The host gives it a loader, `EhOsContract.GraphRenderer.Loader`: `document/2` and `overlay/2` of a domain, a
 contract or a process module, which the explorer calls in the background the first time the reader enters a
-picture. An application reads its engine; a host with only its JSON API reads `GET <mount>/graph/…`; the EHOS
-Console reads the documents each application submitted with its deployment (eh-os D-123).
+picture. An application reads its engine; a host with only the application's JSON API reads
+`GET <mount>/graph/…`.
 
 ## Drawing a document
 
