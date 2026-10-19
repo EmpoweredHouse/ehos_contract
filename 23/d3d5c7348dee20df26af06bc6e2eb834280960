@@ -1,0 +1,1 @@
+Documentation only (PLAN.md: PB3 marked done, the handoff names PB4 next and #379); git diff --stat origin/main..HEAD shows PLAN.md alone, so the two reviews are skipped as pre-pr-review allows. Gate on main (59e4c8a0, all seven PB3 PRs merged) plus this commit: mix check in sandbox EXIT=0, counts as before PB3.
