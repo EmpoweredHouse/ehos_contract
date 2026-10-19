@@ -16,7 +16,9 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   specification, the manifest's versions from `EhOsContract.Auth.Manifest.schemas/0`. The two
   interfaces with no version on the wire, `eh_os_contract.api` (the routes `EhOsContract.Plug`
   serves) and `ehos.credential` (what `EhOsContract.Auth.verify/2` reads), are named here, and
-  raised here when one breaks.
+  raised here when one breaks. `eh_os_contract.graph`, the `graph.v1` document
+  `mix eh_os_contract.graph` writes, names its version in its own `schema`, and EHOS takes a
+  domain's with a deployment (`eh-os` D-123); its version here follows that `schema`.
 
   ## Options
 
@@ -35,6 +37,10 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   # version on the wire (`eh-os` D-91).
   @api "eh_os_contract.api/v1"
   @credential "ehos.credential/v1"
+
+  # The graph document names its own version, `eh_os_contract.graph.v1`
+  # (`EhOsContract.Graph.Document`), which the release names in D-91's form.
+  @graph "eh_os_contract.graph/v1"
 
   @impl Mix.Task
   def run(args) do
@@ -62,7 +68,7 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
       "component" => "eh_os_contract",
       "version" => packages["eh_os_contract"],
       "commit" => commit,
-      "produces" => EhOsContract.Auth.Manifest.schemas() ++ [@api],
+      "produces" => EhOsContract.Auth.Manifest.schemas() ++ [@api, @graph],
       "accepts" => [@credential],
       "requires" => %{},
       "packages" => packages

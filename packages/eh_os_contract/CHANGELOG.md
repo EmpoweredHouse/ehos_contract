@@ -48,6 +48,19 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
+  using `boundary` could not call it, since the engine's boundary did not export it, and no page said how
+  to record an outage. It is exported now, and [processes](docs/concepts/process.md) says how to record one.
+
+### Changed
+
+- **Moves a verdict:** **an outage is stamped with the engine's clock** (#369).
+  `EhOsContract.Dependency.observe/3` and `unavailable!/4` take the moment from `EhOsContract.Clock.now/0`
+  instead of the wall clock. Outside `EhOsContract.Clock.at/2` nothing changes; inside it, as in a host's
+  tests, an outage now lands where the clock says, and can suspend the run whose window it falls in.
+
 ## [0.7.0] - 2026-10-17
 
 ### Added

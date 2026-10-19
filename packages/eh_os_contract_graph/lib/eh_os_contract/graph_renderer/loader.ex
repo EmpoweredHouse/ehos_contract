@@ -20,7 +20,7 @@ defmodule EhOsContract.GraphRenderer.Loader do
           do: {:ok, EhOsContract.Graph.Overlay.contract(EhOsContract.Registry.contract(id))}
       end
 
-  A host that has only the application's JSON API, as the EHOS Console does, reads
+  A host that has only the application's JSON API reads
   `GET <mount>/graph/domain/<name>`, `…/graph/<contract>` and `…/graph/process/<id>`,
   each with `/overlay`, and decodes them; `opts` is what it passed beside the module,
   `loader={{MyLoader, app: "rehmed"}}`, so one loader serves several applications.

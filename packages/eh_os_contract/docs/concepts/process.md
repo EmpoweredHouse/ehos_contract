@@ -219,6 +219,22 @@ an outage of what `eventually` or `or_else` depends on, or of what the promise `
 what `from` depended on was working, since `from` happened. An outage of a system the promise waits on
 counts when any contract the process includes observed it.
 
+**Recording an outage.** The adapter that calls the external system says when it was unavailable. Wrap its
+call in `EhOsContract.Dependency.observe/3`, naming the contract and the external: an answer of
+`{:error, :unavailable}` is recorded as an observation and handed back, and any other answer passes through
+unrecorded, since an outage removes a finding from the report and nothing should be counted as one by guess.
+
+```elixir
+EhOsContract.Dependency.observe(MyApp.Contracts.Payments, :payment_gateway, fn ->
+  MyApp.Gateway.charge(customer, amount)
+end)
+```
+
+The observation is a moment, stamped with `EhOsContract.Clock.now/0`, so a test that moves the clock with
+`EhOsContract.Clock.at/2` sees its outage where it happened. `EhOsContract.Dependency.unavailable!/4` records
+one directly. The external has to be one the contract uses, through an event that `depends_on:` it or an
+effect that `calls:` it.
+
 When the unit of `from`'s event is finer than the run (a run of a loan in which each of several items is
 lent), the promise is kept per item: each item's window opens at its own first `from`, an `eventually` or
 `or_else` resolves the item its own identity fields name, and the run is broken if any item is.

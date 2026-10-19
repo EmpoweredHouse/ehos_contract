@@ -368,6 +368,32 @@ domain in its box, hundreds of cards with no arrow once the Console sees a dozen
 
 Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297#issuecomment-6202758132).
 
+## Amendment, 19 October 2026: the Console takes the documents with a deployment
+
+The first amendment of 15 October says the Console reads each application's documents from its JSON API and
+fetches them. EHOS decided instead that it takes the documents with each deployment and never from a running
+application ([D-123](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/adr/0123-ehos-takes-each-application-s-domain-graph-documents-with-its-deployment-and-joins-them-into-a-landscape-when-someone-reads-it.md), accepted by the user on 19 October). An application's pipeline writes each domain's graph document (`graph.v1`) from the commit it builds
+(`mix eh_os_contract.graph --domain <name>`) and submits them with the deployment, beside the image and the
+manifest. EHOS keeps them with that deployment and, when someone reads an environment's landscape, joins the
+documents of each application's latest active deployment there with `Landscape.join/1`, keeping nothing joined.
+EHOS calls no application's JSON API for them: an application's `GET <mount>/graph/…`, where it mounts the JSON
+API, serves whoever its resolver lets in, and its own dashboard reads the engine directly.
+
+What follows on this side:
+
+- `graph.v1` still changes only by addition, since EHOS keeps what it knows of a document and drops the rest.
+- A document's `schema` keeps the form `eh_os_contract.graph.v<n>`: EHOS skips, rather than refuses, one that
+  names another version, so a newer engine does not stop a deployment by its version alone, and refuses one of
+  any other form.
+- The rule that only the domain named as the application publishes, under names that begin with the
+  application's name and a dot, stays as the engine holds it: the prefix when the contracts compile, the
+  publishing domain when the application starts (`EhOsContract.Auth`). EHOS holds each document to the same
+  rule as it arrives, and refuses the deployment otherwise.
+- A release's `release.json` names the document's version among what the engine produces,
+  `eh_os_contract.graph/v1`, as EHOS's `releases.md` names the interface.
+
+Recorded on [#344](https://github.com/EmpoweredHouse/eh-os-contract/issues/344).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with

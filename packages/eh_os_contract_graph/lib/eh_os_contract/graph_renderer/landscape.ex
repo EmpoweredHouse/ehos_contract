@@ -1,7 +1,8 @@
 defmodule EhOsContract.GraphRenderer.Landscape do
   # Plan DD, stage G1 (#297): the joining function of the user's decision of 15 October,
   # and the shape of the decision recorded on #297 the same evening — by domain document,
-  # by the publication's name on the wire, only what is on the wire.
+  # by the publication's name on the wire, only what is on the wire. The EHOS Console takes
+  # the domain documents with each deployment, not from the JSON API (eh-os D-123).
   @moduledoc """
   Several applications' domains as one picture, joined where one publishes what another
   subscribes to.
@@ -12,8 +13,8 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   puts several of them together and matches the two sides by that name, so a publication
   becomes one card with an arrow from every contract that publishes it and to every
   contract that subscribes to it, whichever application each is in. It is how a host that
-  sees several applications, as the EHOS Console does, draws them together from the
-  documents it already reads, `GET <mount>/graph/domain/<name>` of each:
+  sees several applications draws them together from the domain documents it holds; the
+  EHOS Console holds those each application submitted with its deployment:
 
       landscape =
         Landscape.join([{"taxvision", taxvision_domain}, {"ledger", ledger_domain}])

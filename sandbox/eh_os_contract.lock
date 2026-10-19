@@ -129,6 +129,68 @@
       starts_on: [type: :date, optional: true]
     ]
   },
+  "billing.payments.collected" => %{
+    1 => [
+      amount: [type: :integer],
+      period_id: [type: :id],
+      subscription_id: [type: :id]
+    ]
+  },
+  "billing.payments.requested" => %{
+    1 => [
+      amount: [type: :integer],
+      period_id: [type: :id],
+      subscription_id: [type: :id]
+    ]
+  },
+  "billing.payments.written_off" => %{
+    1 => [
+      period_id: [type: :id],
+      subscription_id: [type: :id]
+    ]
+  },
+  "billing.subscriptions.billing_period_closed" => %{
+    1 => [
+      monthly_fee: [type: :integer],
+      period_id: [type: :id],
+      subscription_id: [type: :id],
+      unit_price: [type: :integer],
+      usage: [type: {:list, {:fields, [units: [type: :integer], usage_id: [type: :id]]}}]
+    ]
+  },
+  "billing.subscriptions.cancelled" => %{
+    1 => [
+      subscription_id: [type: :id]
+    ]
+  },
+  "billing.subscriptions.issued" => %{
+    1 => [
+      period_id: [type: :id],
+      subscription_id: [type: :id],
+      total: [type: :integer]
+    ]
+  },
+  "billing.subscriptions.line_added" => %{
+    1 => [
+      amount: [type: :integer],
+      line_id: [type: :id],
+      period_id: [type: :id],
+      subscription_id: [type: :id]
+    ]
+  },
+  "billing.subscriptions.subscribed" => %{
+    1 => [
+      monthly_fee: [type: :integer],
+      subscription_id: [type: :id],
+      unit_price: [type: :integer]
+    ]
+  },
+  "billing.subscriptions.usage_recorded" => %{
+    1 => [
+      subscription_id: [type: :id],
+      usage: [type: {:fields, [units: [type: :integer], usage_id: [type: :id]]}]
+    ]
+  },
   "fulfilment.orders.cancelled" => %{
     1 => [
       order_id: [type: :id]
