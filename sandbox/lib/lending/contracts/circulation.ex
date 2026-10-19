@@ -56,7 +56,7 @@ defmodule Lending.Contracts.Circulation do
 
     invariant :lent_once, "A loan is lent once"
     invariant :suspended_card_borrows_nothing, "A suspended card borrows nothing"
-    invariant :returned_once, "A lent copy comes back once"
+    invariant :only_a_copy_out_comes_back, "Only a copy still out comes back"
     invariant :only_a_copy_out_is_chased, "Only a copy still out is chased"
     invariant :only_an_owed_fee_is_settled, "Only a fee still owed is paid or waived"
 
@@ -74,7 +74,7 @@ defmodule Lending.Contracts.Circulation do
     command :return_copy, "Take a copy back",
       by: :librarian,
       emits: [:copy_returned, :late_fee_charged],
-      rejects: :returned_once do
+      rejects: :only_a_copy_out_comes_back do
       field :late_fee, :money, supplied_by: :host
     end
 
@@ -226,6 +226,11 @@ defmodule Lending.Contracts.Circulation do
     expect :late_fee_charged, %{fee: 150}
   end
 
+  scenario "a loan never lent takes nothing back" do
+    command :return_copy, %{loan_id: "loan-1", late_fee: 0}
+    rejected :only_a_copy_out_comes_back
+  end
+
   scenario "a copy comes back once" do
     given :copy_lent, %{
       loan_id: "loan-1",
@@ -237,7 +242,7 @@ defmodule Lending.Contracts.Circulation do
 
     given :copy_returned
     command :return_copy, %{late_fee: 0}
-    rejected :returned_once
+    rejected :only_a_copy_out_comes_back
   end
 
   scenario "a copy still out is chased" do

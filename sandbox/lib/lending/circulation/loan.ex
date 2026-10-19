@@ -24,8 +24,8 @@ defmodule Lending.Circulation.Loan do
   end
 
   @impl true
-  def return_copy(_command, %State{lent: false}), do: reject(:returned_once)
-  def return_copy(_command, %State{returned: true}), do: reject(:returned_once)
+  def return_copy(_command, %State{lent: false}), do: reject(:only_a_copy_out_comes_back)
+  def return_copy(_command, %State{returned: true}), do: reject(:only_a_copy_out_comes_back)
 
   def return_copy(%ReturnCopy{loan_id: id, late_fee: 0}, _state),
     do: emit(%CopyReturned{loan_id: id})
@@ -65,7 +65,7 @@ defmodule Lending.Circulation.Loan do
   is owed only on a copy back.
   """
   @spec holds?(atom(), State.t()) :: boolean()
-  def holds?(:returned_once, state), do: not state.returned or state.lent
+  def holds?(:only_a_copy_out_comes_back, state), do: not state.returned or state.lent
   def holds?(:only_an_owed_fee_is_settled, state), do: not state.fee_owed or state.returned
 
   # Each of these refuses a request on what the state already says, and leaves no state
