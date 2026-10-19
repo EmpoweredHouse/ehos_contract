@@ -3,7 +3,7 @@ defmodule EhOsContract.PromisePerItemTest do
   **A promise made per item inside a run, and how it is counted** — on a v2
   contract (plan E11a), where `trace_granularity_test.exs` pinned it for v1.
 
-  Found while distilling Rehmed's monthly payer settlement: a run is one payer in one
+  Found while distilling a clinic's monthly payer settlement: a run is one payer in one
   month, and the promise is about each delivered visit in it. Since 21 August 2026 a
   run's one verdict requires every item in it to be resolved, and a hit counts only
   for the item it concerns (`EhOsContract.Trace`'s moduledoc has the mechanism).

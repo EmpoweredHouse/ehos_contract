@@ -3,7 +3,7 @@ defmodule UpcastRig.Fees do
   # THIS IMPLEMENTATION IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
   The fee unit of `UpcastRig.Demands`: version 1 of `:fee_charged` held its amount in
-  grosze, `amount_minor`. A row's `"do"` says which of the things a function may not do
+  cents, `amount_minor`. A row's `"do"` says which of the things a function may not do
   this one does instead, so that a test can watch the read refuse it.
   """
 

@@ -5,8 +5,8 @@ defmodule ProcessShapes do
   somebody would read them as knowledge about a domain. There is not a single claim
   about anybody's process here.
 
-  Its own boundary rather than hanging off `Taxvision`: process shapes are meant
-  to be checked **without** access to anything belonging to the client, otherwise
+  Its own boundary rather than hanging off a client's tree: process shapes are meant
+  to be checked **without** access to anything belonging to a client, otherwise
   the proof would be worth as much as one carried out inside the first domain.
 
   The repo comes **from configuration**, not from a reference to a client module —

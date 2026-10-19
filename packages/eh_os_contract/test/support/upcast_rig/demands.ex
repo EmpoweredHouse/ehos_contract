@@ -26,7 +26,7 @@ defmodule UpcastRig.Demands do
     end
   end
 
-  # Plan DD, V2 (#338): a fee whose amount was stored in grosze at version 1, read through
+  # Plan DD, V2 (#338): a fee whose amount was stored in cents at version 1, read through
   # a function of the unit's code. The rig's function also does, on purpose, what a
   # function may not, so that the reading can be seen to refuse it.
   aggregate :fee, "Fee" do

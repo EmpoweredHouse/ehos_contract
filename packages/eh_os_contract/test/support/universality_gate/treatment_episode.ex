@@ -7,7 +7,7 @@ defmodule UniversalityGate.TreatmentEpisode do
   rather than smoothed over. The v1 contract went with v1's tests (v2 plan, E11a),
   once each had a v2 test that took its behaviour over.
 
-  The gate's shapes, the ones TaxVision does not have, all survive:
+  The gate's shapes, the ones the first client's domain does not have, all survive:
 
   | Shape | Here |
   | --- | --- |

@@ -49,7 +49,7 @@ end
 defmodule ValueRig.Splitting do
   @moduledoc """
   **Invented.** The implementation of `ValueRig.Till`'s domain service `:splitting`.
-  One grosz halves into nothing, which it answers as `nil`, since an amount of
+  One cent halves into nothing, which it answers as `nil`, since an amount of
   nothing is no amount. A test can make the next call answer 0,
   `Process.put(:value_rig_half_of_nothing, true)`, which breaks the invariant of the
   value it returns.
