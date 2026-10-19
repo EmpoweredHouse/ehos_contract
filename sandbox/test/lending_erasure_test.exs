@@ -11,6 +11,7 @@ defmodule Lending.ErasureTest do
   alias EhOsContract.{Actor, Consumer, Erased, Event}
   alias Lending.Contracts.Membership
   alias Lending.Contracts.Membership.Commands.{ChangeEmail, RegisterMember}
+  alias Lending.Contracts.Membership.Events.MemberRegistered
   alias Lending.Contracts.Membership.Queries.MemberContact
 
   @librarian Actor.credential("librarian-una", [
@@ -72,6 +73,21 @@ defmodule Lending.ErasureTest do
     assert [%{name: ^ada, email: ^ada}] =
              Repo.all(from(e in Event, where: e.type == "lending.membership.member_registered"))
              |> Enum.map(&Consumer.decode!/1)
+  end
+
+  test "a registration replayed after the erasure, as a rebuild replays it, writes no row" do
+    {:ok, :erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    ada = %Erased{subject: :member, id: "member-ada"}
+
+    :ok =
+      Lending.Membership.Directory.member_registered(%MemberRegistered{
+        membership_id: "membership-ada",
+        member_id: "member-ada",
+        name: ada,
+        email: ada
+      })
+
+    assert {:ok, []} = contact()
   end
 
   test "an erased member's data is not written again" do
