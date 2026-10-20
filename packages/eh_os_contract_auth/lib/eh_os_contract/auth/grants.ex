@@ -69,7 +69,8 @@ defmodule EhOsContract.Auth.Grants do
       people whose role may give one;
     * `:signed_out`, `:renewal_busy`: the session's, as `EhOsContract.Auth.Session.actor/2`
       answers them. `:renewal_busy` also when the person's credential has too few seconds
-      left for EHOS to exchange it while another request renews it; ask again;
+      left to be exchanged and used while another request renews it, or for the five seconds
+      after EHOS could not renew it; ask again;
     * `:unavailable`: EHOS cannot be reached, fails, or answers what it never answers,
       which is logged.
 
@@ -97,11 +98,13 @@ defmodule EhOsContract.Auth.Grants do
   # EHOS exchanges a credential with at least 5 seconds left (`Ehos.SignIn.PersonExchange`); one
   # with less, which Renewal hands out while another request renews, is not sent to be refused as
   # though the person may not grant.
-  @least_remaining_seconds 10
+  # The floor is past the exchange's deadline, since the credential EHOS issues ends with it.
+  @least_remaining_seconds 20
   # EHOS's ids are UUIDs: anything else is no one's, and is not sent.
   @id ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   # A role is `<application>.<name>`, its name as EHOS's manifest takes it: anything else is no
-  # role's, and is not put in a path, where `.` or `..` would name another route.
+  # role, as EHOS would answer, and is not put in a path, where `.` or `..` would name another
+  # route.
   @role ~r/\A[^\/.\s]+\.[a-z][a-z0-9_]*\z/
   # The refusals of the grant routes `docs/grants-api.md` names, each answered as itself.
   @refusals Map.new(
@@ -162,7 +165,8 @@ defmodule EhOsContract.Auth.Grants do
   Takes `role` back from the person `person_id` names, the id a grant answered, for the
   person signed in in `session`, under their role's rule, whoever bound it. Answers the
   binding's id and role; `{:error, :not_found}` without one, an id that is no one's
-  or a role that is not `<application>.<name>` included, which are not sent.
+  included, and `{:error, :unknown_role}` for a role that is not `<application>.<name>`.
+  Neither of those two is sent.
   """
   @spec revoke(Plug.Conn.t() | map(), String.t(), String.t(), [option()]) ::
           {:ok, %{role_binding_id: String.t(), role: String.t()}} | {:error, reason()}
@@ -172,7 +176,8 @@ defmodule EhOsContract.Auth.Grants do
       when is_binary(person_id) and is_binary(role) and role != "" do
     person_id = String.downcase(person_id)
 
-    with true <- (person_id =~ @id and role =~ @role) || {:error, :not_found},
+    with true <- person_id =~ @id || {:error, :not_found},
+         true <- (String.valid?(role) and role =~ @role) || {:error, :unknown_role},
          path = Enum.join([@grants, person_id, URI.encode(role, &URI.char_unreserved?/1)], "/"),
          {:ok, answer} <- call(session, opts, :delete, path, nil) do
       case answer do

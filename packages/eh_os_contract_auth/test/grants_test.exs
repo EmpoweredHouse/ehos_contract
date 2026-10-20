@@ -237,7 +237,7 @@ defmodule EhOsContract.Auth.GrantsTest do
       assert exchanges(context) == []
     end
 
-    test "a role that is not <application>.<name> is not sent", context do
+    test "a role that is not <application>.<name> is no role, and is not sent", context do
       id = Ecto.UUID.generate()
 
       for role <- [
@@ -247,10 +247,11 @@ defmodule EhOsContract.Auth.GrantsTest do
             "clinic./x",
             "clinic/../x.client",
             "clinic.Client",
-            "clinic.a b"
+            "clinic.a b",
+            "clin" <> <<0xFF>> <> ".client"
           ] do
         assert Grants.revoke(conn(context), id, role, sign_in: context.name) ==
-                 {:error, :not_found},
+                 {:error, :unknown_role},
                inspect(role)
       end
 
