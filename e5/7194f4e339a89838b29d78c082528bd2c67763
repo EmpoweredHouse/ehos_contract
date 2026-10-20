@@ -1,0 +1,1 @@
+CodeRabbit on #392: a map domain's system rule was dropped, and cycles went to EHOS; both now raise (this commit). Reviewed by its own tests and a mutation that drops the cycle check; mix check in eh_os_contract_auth passes (345 tests).
