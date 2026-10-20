@@ -386,11 +386,29 @@ defmodule EhOsContract.Auth.Manifest do
     |> Enum.sort_by(& &1["name"])
   end
 
-  # D-112: each role's rule, as the roles of the actors its actor's `may_grant:` names. The DSL
-  # holds those to other person actors of the domain (D4); one that holds no capability is no
-  # role, and a rule naming it would be refused by EHOS as naming a role it does not declare.
+  # D-112: each role's rule, as the roles of the actors its actor's `may_grant:` names. D4 holds a
+  # compiled domain's rules to other person actors, each once; a domain given as a map has not
+  # been through it, so what EHOS would refuse is refused here too, with what to change. A person
+  # who holds no capability is no role: a rule naming one would name a role the manifest does not
+  # declare, and a rule of one would go nowhere. Rules that lead back to a role are D4's and EHOS's.
   defp grant_rules(roles, application, domain) do
     held = MapSet.new(roles, fn {actor, _role} -> actor.name end)
+    people = for %{kind: :human, name: name} <- domain.actors, into: MapSet.new(), do: name
+
+    ruled_without_role =
+      for %{kind: :human, name: name} = actor <- domain.actors,
+          Map.get(actor, :may_grant, []) != [],
+          not MapSet.member?(held, name),
+          do: name
+
+    if ruled_without_role != [] do
+      grant_error!(
+        domain,
+        ruled_without_role,
+        "has may_grant but holds no capability, so is no role and grants nothing; give it a " <>
+          "capability, or take may_grant out"
+      )
+    end
 
     for {actor, role} <- roles do
       case Map.get(actor, :may_grant, []) do
@@ -398,17 +416,55 @@ defmodule EhOsContract.Auth.Manifest do
           role
 
         granted ->
-          missing = Enum.reject(granted, &MapSet.member?(held, &1))
-
-          if missing != [] do
-            raise ArgumentError,
-                  "#{inspect(domain.module)}: actor #{inspect(actor.name)} may grant " <>
-                    "#{Enum.map_join(missing, ", ", &inspect/1)}, which holds no capability and " <>
-                    "so is no role; give it a capability, or take it out of may_grant"
-          end
-
-          Map.put(role, "may_grant", granted |> Enum.map(&"#{application}.#{&1}") |> Enum.sort())
+          Map.put(role, "may_grant", granted!(granted, actor, held, people, domain, application))
       end
     end
+  end
+
+  defp granted!(granted, actor, held, people, domain, application) when is_list(granted) do
+    where = "actor #{inspect(actor.name)}'s may_grant"
+
+    reasons =
+      [
+        if(actor.name in granted, do: "names the actor itself"),
+        case for({name, count} <- Enum.frequencies(granted), count > 1, do: name) do
+          [] -> nil
+          twice -> "names #{Enum.map_join(twice, ", ", &inspect/1)} twice"
+        end,
+        case Enum.reject(granted, &(&1 == actor.name or MapSet.member?(people, &1))) do
+          [] ->
+            nil
+
+          others ->
+            "names #{Enum.map_join(others, ", ", &inspect/1)}, no person actor of this domain"
+        end,
+        case Enum.filter(granted, &(MapSet.member?(people, &1) and not MapSet.member?(held, &1))) do
+          [] ->
+            nil
+
+          roleless ->
+            "names #{Enum.map_join(roleless, ", ", &inspect/1)}, which holds no capability and so " <>
+              "is no role; give it a capability, or take it out of may_grant"
+        end
+      ]
+      |> Enum.reject(&is_nil/1)
+
+    if reasons != [], do: grant_error!(domain, [actor.name], Enum.join(reasons, "; "), where)
+
+    granted |> Enum.map(&"#{application}.#{&1}") |> Enum.sort()
+  end
+
+  defp granted!(granted, actor, _held, _people, domain, _application),
+    do:
+      grant_error!(
+        domain,
+        [actor.name],
+        "is #{inspect(granted)}, not a list of person actors",
+        "actor #{inspect(actor.name)}'s may_grant"
+      )
+
+  defp grant_error!(domain, names, reason, where \\ nil) do
+    where = where || "actor #{Enum.map_join(names, ", ", &inspect/1)}"
+    raise ArgumentError, "#{inspect(domain.module)}: #{where} #{reason}"
   end
 end

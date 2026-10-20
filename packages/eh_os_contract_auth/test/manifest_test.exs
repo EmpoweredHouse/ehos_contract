@@ -451,10 +451,37 @@ defmodule EhOsContract.Auth.ManifestTest do
 
     test "is refused when it names an actor that holds no capability, and so is no role" do
       assert_raise ArgumentError,
-                   ~r/actor :office_employee may grant :visitor, which holds no capability and so is no role/,
+                   ~r/actor :office_employee's may_grant names :visitor, which holds no capability and so is no role/,
                    fn ->
                      Manifest.build(@file_v1, [RoleLessGrantDomain], [RoleLessGrantWork])
                    end
+    end
+
+    # A domain given as a map has not been through D4: what EHOS refuses, the generator refuses.
+    test "a domain given as a map is held to what EHOS takes" do
+      with_rule = fn actor, rule ->
+        domain = Model.fetch(GrantDomain)
+
+        actors =
+          Enum.map(domain.actors, fn
+            %{name: ^actor} = a -> Map.put(a, :may_grant, rule)
+            a -> a
+          end)
+
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      for {actor, rule, reason} <- [
+            {:office_employee, [:office_employee], "names the actor itself"},
+            {:office_employee, [:client, :client], "names :client twice"},
+            {:office_employee, [:robot, :"ehos.admin"],
+             ~s|names :robot, :"ehos.admin", no person actor of this domain|},
+            {:office_employee, nil, "is nil, not a list of person actors"},
+            {:visitor, [:client], "actor :visitor has may_grant but holds no capability"}
+          ] do
+        error = assert_raise ArgumentError, with_rule.(actor, rule)
+        assert error.message =~ reason, inspect(rule)
+      end
     end
   end
 

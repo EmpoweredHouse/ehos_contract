@@ -58,8 +58,8 @@ actor :client, :human, "Client"
 The rule goes into the manifest beside the role, and EHOS shows it to whoever approves a deployment: adding one
 widens what the application asks for (eh-os D-112). Only a person grants and is granted; a rule never names the
 actor itself, and rules never lead back to an actor, since `a` granting `b` while `b` grants `a` lets a holder
-of `a` grant `a` through another ([`D4`](../contract.md#refusals-d)). An actor named in a rule has to hold a
-capability, or it is no role in the manifest; the manifest's generator says so.
+of `a` grant `a` through another ([`D4`](../contract.md#refusals-d)). An actor named in a rule, and one that has a
+rule, has to hold a capability, or it is no role in the manifest; the manifest's generator says so.
 
 ## Subjects and personal data
 
