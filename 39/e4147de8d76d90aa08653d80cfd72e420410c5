@@ -1,0 +1,5 @@
+Two reviews (correctness; security and performance), two rounds.
+Round 1, fixed: an empty may_grant moved every domain's version (700d0fb8); the generator wrote, for a map domain, rules EHOS refuses (self, twice, no person actor, non-list) and dropped a rule on a roleless actor silently (39e4147d).
+Round 1, no change needed: cycles are left to D4 and EHOS in the generator; a 2000-actor ring's refusal is long but linear and compile-time only.
+Round 2: no defect; low points skipped (a map-given system actor's rule dropped, 'twice' for three, unknown-name message wording) since D4 rules them out for a compiled domain; a domain shared by applications cannot happen (D11).
+Checks: mix check in each package passes (engine 1800 tests, auth 344, graph 188, web 79); three tests that build a JSV schema at compile time do not compile under the local OTP 25, identically on main.
