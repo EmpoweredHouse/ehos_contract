@@ -1,0 +1,1 @@
+Fix-up from CodeRabbit on #390, reviewed by hand (three lines, no new logic): the test-database guard matches "test" as a name segment, tried on eh_os_contract_host_test, _test_commits_42 (refused) and _dev_latest (passes the guard); the README and moduledoc recipes set MIX_ENV=dev. Gate EXIT=0.
