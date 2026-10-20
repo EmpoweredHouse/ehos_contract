@@ -119,6 +119,58 @@ defmodule EhOsContract.Auth.ManifestTest do
     query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
   end
 
+  # eh-os D-112: an office employee may grant a client; a visitor holds nothing, so is no role.
+  defmodule GrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule GrantWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: GrantDomain, context: :work, id: "grant-rig.grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
+  end
+
+  defmodule RoleLessGrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client, :visitor])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule RoleLessGrantWork do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: RoleLessGrantDomain,
+      context: :work,
+      id: "grant-rig.role_less_grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
+  end
+
   defmodule MachineDomain do
     @moduledoc false
     use EhOsContract.Domain, name: :"machine-rig", language: :en
@@ -365,13 +417,56 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "a role that may grant another, eh-os D-112" do
+    test "makes an ehos.manifest/v5 whose role carries the roles its actor may grant" do
+      manifest = Manifest.build(@file_v1, [GrantDomain], [GrantWork])
+
+      assert manifest["schema"] == "ehos.manifest/v5"
+      assert manifest["ehos_yaml"] == "ehos.yaml/v1"
+
+      assert manifest["offers"]["roles"] == [
+               %{
+                 "name" => "grant-rig.client",
+                 "label" => "Client",
+                 "capabilities" => ["grant-rig.comment_case"]
+               },
+               %{
+                 "name" => "grant-rig.office_employee",
+                 "label" => "Office employee",
+                 "capabilities" => ["grant-rig.open_case"],
+                 "may_grant" => ["grant-rig.client"]
+               }
+             ]
+    end
+
+    # EHOS's v5 takes every ehos.yaml v4 does.
+    test "is v5 whatever the version of ehos.yaml" do
+      for version <- EhosYaml.versions() do
+        file = %{"schema" => version, "health" => @health}
+
+        assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v5",
+               version
+      end
+    end
+
+    test "is refused when it names an actor that holds no capability, and so is no role" do
+      assert_raise ArgumentError,
+                   ~r/actor :office_employee may grant :visitor, which holds no capability and so is no role/,
+                   fn ->
+                     Manifest.build(@file_v1, [RoleLessGrantDomain], [RoleLessGrantWork])
+                   end
+    end
+  end
+
   # schemas/0 is what a release says the package produces: exactly what build/3 writes from
-  # every ehos.yaml it can read, no more.
+  # every ehos.yaml it can read, no more, with a rule and without.
   test "schemas/0 lists exactly the versions build/3 writes" do
     written =
-      for version <- EhosYaml.versions(), uniq: true do
+      for version <- EhosYaml.versions(),
+          {domain, contract} <- [{Ledger, Entries}, {GrantDomain, GrantWork}],
+          uniq: true do
         file = %{"schema" => version, "health" => @health}
-        Manifest.build(file, [Ledger], [Entries])["schema"]
+        Manifest.build(file, [domain], [contract])["schema"]
       end
 
     # Oldest first, by the number: as text, "ehos.manifest/v10" would sort before "/v2".

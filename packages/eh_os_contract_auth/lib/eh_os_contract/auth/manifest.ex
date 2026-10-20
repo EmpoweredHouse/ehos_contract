@@ -1,14 +1,16 @@
 defmodule EhOsContract.Auth.Manifest do
   # In `eh-os`: the manifest is D-52; `sign_in` D-69; `needs.people` and `ehos.manifest/v3`
-  # D-81; `needs.database.seed`, `needs.secrets` and `ehos.manifest/v4` D-98 and D-99; a
+  # D-81; `needs.database.seed`, `needs.secrets` and `ehos.manifest/v4` D-98 and D-99; a role's
+  # `may_grant` and `ehos.manifest/v5` D-112 (eh-os issue #729); a
   # capability naming its declaration's kind D-73; scope values on a binding D-40; `contracts`
   # left out for the authority digest, issue #92.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and
-  `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is
-  v3 whose `ehos_yaml` may be `ehos.yaml/v4`, and EHOS refuses a manifest that names a file
-  newer than its own version.
+  `ehos.manifest/v5` when a role may grant another, and otherwise `ehos.manifest/v4` for an
+  `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and `ehos.manifest/v2` for an older
+  one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is v3 whose `ehos_yaml` may be
+  `ehos.yaml/v4`, v5 is v4 whose roles may carry `may_grant`, and EHOS refuses a manifest that
+  names a file newer than its own version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
@@ -24,7 +26,8 @@ defmodule EhOsContract.Auth.Manifest do
       several says which one the image is in `ehos.yaml`'s `application`, which must
       be one of their names, in EHOS's spelling.
     * `offers`, the capabilities of the commands, queries and recordings a human actor
-      may make, and, as roles, the human actors that hold at least one of them. A
+      may make, and, as roles, the human actors that hold at least one of them, each with
+      `may_grant`, the roles of the actors its actor's `may_grant:` names, when it names any. A
       capability names its declaration as `command`, `query` or `record`, which only
       an EHOS recent enough to know these kinds accepts; an earlier EHOS refuses a
       manifest that offers a query or a recording. Scopes and publications are absent:
@@ -51,7 +54,7 @@ defmodule EhOsContract.Auth.Manifest do
   @max_application 63
 
   @doc """
-  Builds an `ehos.manifest/v2`, `v3` or `v4` document from an `ehos.yaml` already read by
+  Builds an `ehos.manifest/v2`, `v3`, `v4` or `v5` document from an `ehos.yaml` already read by
   `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the registered
   contracts.
 
@@ -61,7 +64,8 @@ defmodule EhOsContract.Auth.Manifest do
   what to change, when the map is not a read `ehos.yaml`, when no domain or more than
   one fits, when the domain's name is not one EHOS takes for an application, when a
   command, query, recording or role's actor is past 63 characters or has an empty label,
-  or when no human holds any capability.
+  when no human holds any capability, or when an actor's `may_grant:` names an actor that holds
+  none and so is no role.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
@@ -75,12 +79,14 @@ defmodule EhOsContract.Auth.Manifest do
     models = Enum.filter(contracts, &(&1.domain == domain.module))
     if models == [], do: raise(ArgumentError, "#{inspect(domain.module)} has no contracts")
 
+    offers = offers(application, domain, models)
+
     file
     |> Map.merge(%{
-      "schema" => manifest_schema(ehos_yaml),
+      "schema" => manifest_schema(ehos_yaml, offers),
       "ehos_yaml" => ehos_yaml,
       "application" => application,
-      "offers" => offers(application, domain, models),
+      "offers" => offers,
       "engine" => %{"name" => "eh_os_contract", "version" => EhOsContract.version()}
     })
   end
@@ -95,17 +101,26 @@ defmodule EhOsContract.Auth.Manifest do
   produces, and what an EHOS has to accept for every manifest it writes to be deployed.
 
       iex> EhOsContract.Auth.Manifest.schemas()
-      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4"]
+      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5"]
 
-  `build/3` writes `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an
+  `build/3` writes `ehos.manifest/v5` when a role may grant another, whatever the version of
+  `ehos.yaml`, and otherwise `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an
   `ehos.yaml/v3` and `ehos.manifest/v2` for an older one.
   """
   @spec schemas() :: [String.t()]
-  def schemas, do: ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4"]
+  def schemas,
+    do: ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5"]
 
   # `eh-os` D-81: a manifest keeps the meaning it had when EHOS accepted it, so the version that
   # can carry `needs.people` is a new one, and so is the one that can carry a seed or secrets
-  # (D-98, D-99); an older file keeps its older manifest.
+  # (D-98, D-99), and the one whose roles may grant others (D-112), which takes every
+  # `ehos.yaml` v4 does; an older file, and a domain without a rule, keep their older manifest.
+  defp manifest_schema(ehos_yaml, %{"roles" => roles}) do
+    if Enum.any?(roles, &Map.has_key?(&1, "may_grant")),
+      do: "ehos.manifest/v5",
+      else: manifest_schema(ehos_yaml)
+  end
+
   defp manifest_schema("ehos.yaml/v4"), do: "ehos.manifest/v4"
   defp manifest_schema("ehos.yaml/v3"), do: "ehos.manifest/v3"
   defp manifest_schema(_older), do: "ehos.manifest/v2"
@@ -360,12 +375,40 @@ defmodule EhOsContract.Auth.Manifest do
         name = "#{application}.#{actor.name}",
         capabilities = Map.get(capabilities_by_role, name, []),
         capabilities != [] do
-      %{
-        "name" => name,
-        "label" => actor.label,
-        "capabilities" => Enum.sort(capabilities)
-      }
+      {actor,
+       %{
+         "name" => name,
+         "label" => actor.label,
+         "capabilities" => Enum.sort(capabilities)
+       }}
     end
+    |> grant_rules(application, domain)
     |> Enum.sort_by(& &1["name"])
+  end
+
+  # D-112: each role's rule, as the roles of the actors its actor's `may_grant:` names. The DSL
+  # holds those to other person actors of the domain (D4); one that holds no capability is no
+  # role, and a rule naming it would be refused by EHOS as naming a role it does not declare.
+  defp grant_rules(roles, application, domain) do
+    held = MapSet.new(roles, fn {actor, _role} -> actor.name end)
+
+    for {actor, role} <- roles do
+      case Map.get(actor, :may_grant, []) do
+        [] ->
+          role
+
+        granted ->
+          missing = Enum.reject(granted, &MapSet.member?(held, &1))
+
+          if missing != [] do
+            raise ArgumentError,
+                  "#{inspect(domain.module)}: actor #{inspect(actor.name)} may grant " <>
+                    "#{Enum.map_join(missing, ", ", &inspect/1)}, which holds no capability and " <>
+                    "so is no role; give it a capability, or take it out of may_grant"
+          end
+
+          Map.put(role, "may_grant", granted |> Enum.map(&"#{application}.#{&1}") |> Enum.sort())
+      end
+    end
   end
 end

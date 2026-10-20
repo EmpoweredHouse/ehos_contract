@@ -24,6 +24,14 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The manifest carries a role's grant rule** (eh-os D-112, EmpoweredHouse/eh-os#729). A role whose actor has
+  `may_grant:` carries `may_grant`, the roles it may grant, and the manifest is then `ehos.manifest/v5`,
+  which an EHOS from the release after 0.12.0 accepts. A domain without a rule keeps the version and the
+  digests it had. A rule naming an actor that holds no capability, and so is no role, is refused with what to
+  change. `EhOsContract.Auth.Manifest.schemas/0` lists `ehos.manifest/v5`.
+
 ### Changed
 
 - **The documentation's examples name no client** (the publication programme, PB3, #375). The module docs,

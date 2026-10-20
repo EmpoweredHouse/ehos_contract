@@ -166,6 +166,12 @@ other. Without `version`, the newest value, and setting a new one rolls the work
 version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
 `database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
 
+**A role that may grant another** (eh-os D-112): an actor's `may_grant:` in the domain,
+`actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
+roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
+whatever the version of `ehos.yaml`. A domain without a rule keeps its manifest's version and digests. An
+actor a rule names has to hold a capability, or it is no role and the task says so.
+
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
 with any edit, so a new label would ask for `ehos.application.register` at every deploy. yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
 neither.
