@@ -1,7 +1,13 @@
 import Config
 
 config :eh_os_contract_host, EhOsContractHost.Repo,
-  database: "eh_os_contract_host_dev",
+  # Every checkout on the machine shares the default, and `mix ecto.reset` empties it for
+  # all of them: `EH_OS_CONTRACT_DEV_DB` names one of your own (`mix sandbox.traffic`).
+  database:
+    (case System.get_env("EH_OS_CONTRACT_DEV_DB") do
+       name when name in [nil, ""] -> "eh_os_contract_host_dev"
+       name -> name
+     end),
   show_sensitive_data_on_connection_error: true
 
 # No `server: true`: `mix phx.server` serves the endpoint anyway, and with it every
