@@ -107,6 +107,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ☑ #370, #372, #373, #374 |
 | PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ☑ #376, #378, #380, #381, #382, #383, #384 |
 | PB4 | The client trees, their tests, migrations and documents move to a private repository | #386 | ◐ |
+| PB4b | The sandbox fills its development log with drift on the invented case studies, in place of GraphLab's task | #389 | ◐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |

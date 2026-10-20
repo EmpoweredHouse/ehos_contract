@@ -18,5 +18,5 @@ defmodule Lending do
   - a promise that a late fee is paid, kept the other way when it is waived.
   """
 
-  use Boundary, deps: [EhOsContract], exports: [Supplier, Entities]
+  use Boundary, deps: [EhOsContract], exports: [Supplier, Entities, Traffic]
 end

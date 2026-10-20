@@ -9,7 +9,9 @@ defmodule Lending.Entities do
 
   @cards %{
     "card-ada" => %{card_id: "card-ada", suspended: false},
-    "card-bob" => %{card_id: "card-bob", suspended: true}
+    "card-bob" => %{card_id: "card-bob", suspended: true},
+    "card-cy" => %{card_id: "card-cy", suspended: false},
+    "card-dora" => %{card_id: "card-dora", suspended: false}
   }
 
   @impl true

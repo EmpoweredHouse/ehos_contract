@@ -19,5 +19,5 @@ defmodule Fulfilment do
   - a promise counted from an event in the middle of the run, across three contexts.
   """
 
-  use Boundary, deps: [EhOsContract], exports: []
+  use Boundary, deps: [EhOsContract], exports: [Traffic]
 end

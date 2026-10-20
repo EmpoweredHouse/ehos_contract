@@ -184,6 +184,16 @@ engine gives, with a panel for whatever is clicked.
 cd sandbox && mix phx.server
 ```
 
+An empty log gives empty screens. `mix sandbox.traffic` fills one with about six weeks of the case studies'
+runs, drift included: broken and suspended promises, a deadline passed, stages out of order, a move the
+lifecycle does not allow, a step that fails. Run it on a database of your own, since the default development
+database is shared by every checkout on the machine:
+
+```bash
+cd sandbox && export EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
+mix ecto.reset && mix sandbox.traffic && mix phx.server
+```
+
 The same answers, and each contract's and domain's graph as a `graph.v1` document with what the log says
 over it, are JSON for any other client — a CI job, a tool — under the host's `/api` mount: the routes are in
 [the web package's README](packages/eh_os_contract_web/README.md#the-api), and `mix eh_os_contract.graph`

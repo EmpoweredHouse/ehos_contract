@@ -21,5 +21,5 @@ defmodule Billing do
     verifier's audience are tested on.
   """
 
-  use Boundary, deps: [EhOsContract], exports: []
+  use Boundary, deps: [EhOsContract], exports: [Traffic, Traffic.Gateway]
 end

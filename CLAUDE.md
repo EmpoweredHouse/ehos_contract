@@ -34,7 +34,9 @@ invented, and each says so in its first line: each has a domain, contracts and i
 react, so that dispatch and the report have something to check on material anyone may read. What writing a
 contract teaches goes into the library's work, and a contract that cannot be written is a **better** result than
 one written beside the material. `Billing` is the sandbox's one publishing application, which the credential
-verifier's audience and `ehos.yaml` name. Another invented domain, `UniversalityGate`, lives in
+verifier's audience and `ehos.yaml` name. `mix sandbox.traffic` fills a development log with weeks of their runs,
+drift included, so the dashboard has something to show (its moduledoc says what, and on which database). Another
+invented domain, `UniversalityGate`, lives in
 `packages/eh_os_contract/test/support/` and says so in its first line.
 
 The clients' material the library was first developed against, and a test set copied from it for drawing the
