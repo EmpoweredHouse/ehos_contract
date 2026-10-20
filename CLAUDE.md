@@ -40,8 +40,8 @@ invented domain, `UniversalityGate`, lives in
 `packages/eh_os_contract/test/support/` and says so in its first line.
 
 The clients' material the library was first developed against, and a test set copied from it for drawing the
-graph, left for a private repository of the maintainers in the publication programme's PB4 (#386). It runs there as a host of its
-own on these packages, fetched from git; nothing of it comes back here.
+graph, left for a private repository of the maintainers in the publication programme's PB4 (#386). It runs
+there as a host of its own on these packages, fetched from git; nothing of it comes back here.
 
 Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
 the code has the new name; the old one remains only in `docs/adr/` and in the archived working plan, where `PNS.X`

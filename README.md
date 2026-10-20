@@ -321,7 +321,8 @@ each changed), and applications install the packages from git; publishing on Hex
 ([`ROADMAP.md`](ROADMAP.md)). Until 1.0 a minor version may break, and its changelog says how to upgrade.
 
 The full test suite runs in CI on every pull request that changes code once it is ready for review — a draft
-waits until it is marked ready (see the badge above); one that changes only documentation skips it.
+waits until it is marked ready (see the badge above); one that changes only `README.md`, `CLAUDE.md`,
+`ROADMAP.md` or `docs/` (except the one page a test compiles) skips it.
 
 - **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md), and the [code of conduct](CODE_OF_CONDUCT.md).
 - **A security problem:** report it privately, as [`SECURITY.md`](SECURITY.md) says, not in an issue.

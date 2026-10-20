@@ -13,8 +13,8 @@ covered by the note. Then
 (`-f` replaces a note already on that commit). Notes stay local: `refs/notes/review` is not pushed.
 
 On a maintainer's machine, a Claude Code hook (in `.claude/settings.team.json`, copied into
-`.claude/settings.local.json`; `CONTRIBUTING.md`, "Working with Claude Code") refuses `gh pr create` (and its alias `gh pr new`)
-until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a new commit,
+`.claude/settings.local.json`; `CONTRIBUTING.md`, "Working with Claude Code") refuses `gh pr create`
+(and its alias `gh pr new`) until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a new commit,
 amend or rebase leaves the new `HEAD` without one. The hook is a reminder for this workflow, not
 access control. It reads the `HEAD` of the directory the command runs in — the one a leading
 `cd <dir> &&` names, else the session's working directory, so a worktree is checked as itself and
@@ -54,8 +54,8 @@ indexes.
 ## The checks
 
 `docker compose up -d && cd sandbox && mix ecto.setup`, then `mix check` in `sandbox/`, with its own
-exit code. Compare the `eh_os_contract.check` counts with the ones pinned in
-`sandbox/test/e10_outputs_test.exs` and explain every new line.
+exit code. Compare the `eh_os_contract.check` counts with the sandbox's pinned in
+`sandbox/test/e10_outputs_test.exs` and the engine's on `main`, and explain every new line.
 
 ## Verifying for real
 

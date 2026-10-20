@@ -33,12 +33,13 @@ stage was carried out stays in its issue.
 1. **The stage's paragraph in `ROADMAP.md`** says, in a few lines, what it changes and what it depends on. A stage
    not yet started may be rewritten; one already done is not.
 2. **An issue** from the "Programme stage" template, with the programme's label and, where there are waves,
-   the wave's: `dd` and `wave-0` … `wave-5` for the DD programme ("domain-driven design checked by code").
+   the wave's: `publication` for the publication programme, `dd` and `wave-0` … `wave-6` for the DD
+   programme ("domain-driven design checked by code") before it.
    The template applies none, so that a stage of another programme, which gets a label of its own and the same
    waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
-3. **A branch** named after the issue: `dd/165-contract-id`.
+3. **A branch** named after the programme and the issue: `pb/393-community`, `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
 5. **Decisions go on the issue as comments when they are made**, with the options that lost and why. One that
@@ -107,7 +108,7 @@ follows the same procedure in this repository and EHOS's others. In this reposit
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
   nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
   this repository's `main` through git, that is the next patch's `-dev`, not the next minor's: an application
-  requires `~> 0.4.0` of the engine and `~> 0.2.0` of the verifier, and `0.5.0-dev` or `0.3.0-dev` on `main`
+  requires `~> 0.7.0` of the engine and `~> 0.4.0` of the verifier, and `0.8.0-dev` or `0.5.0-dev` on `main`
   would refuse its next `mix deps.update`.
 - **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
   `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
@@ -128,15 +129,18 @@ Claude Code session opened here, and nothing the repository configures asks for 
 
 The maintainers add two things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
-- the `ehos-dev` plugin, from the EmpoweredHouse/ehos-tools marketplace, which carries the procedures shared
+- the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
   with EHOS's other repositories: `pre-pr-review`, `stage-issue` and `release`;
 - a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
 
-Both are in `.claude/settings.team.json`; a maintainer copies it:
+Both are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
+one who has one merges its keys in by hand, since Claude Code keeps its "always allow" rules in that file:
 
 ```bash
-cp .claude/settings.team.json .claude/settings.local.json
+cp -n .claude/settings.team.json .claude/settings.local.json
 ```
+
+Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
 
 ehos-tools is private, so the plugin needs a GitHub credential that can read it. On a machine without an SSH key,
 set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugin is

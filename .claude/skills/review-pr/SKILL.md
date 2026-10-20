@@ -52,10 +52,11 @@ Given a green gate, three things are closed:
 
 ### New `check` lines
 
-`mix eh_os_contract.check` prints warnings and notices on every run, and **the gate does not fail on
-them**: the sandbox runs it without `--warnings-as-errors`, and its counts are pinned in
-`sandbox/test/e10_outputs_test.exs`, with what each comes from. Compare the pull request's counts with
-those. Every new line needs a sentence from its author —
+`mix eh_os_contract.check` prints warnings and notices on every run, and the task itself does not fail on
+them: the sandbox runs it without `--warnings-as-errors`. The sandbox's counts are pinned in
+`sandbox/test/e10_outputs_test.exs`, with what each comes from, so a new sandbox line fails that test and
+its pull request re-pins it; the engine's counts are pinned nowhere, so compare them with `main`'s (the
+gate prints both). Every new line needs a sentence from its author —
 "expected, because…" or a fix. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
 hide a mistake:
 
@@ -169,7 +170,7 @@ not reviewed, only stamped.
 ## Procedure
 
 1. Get the gate's exit code. Not green → stop.
-2. Compare the `check` counts with the ones `e10_outputs_test` pins; for each new line, find the
+2. Compare the `check` counts with the ones `e10_outputs_test` pins and, for the engine, with `main`'s; for each new line, find the
    author's sentence or ask for one.
 3. Read the deciders' clauses, the reactions' `delivery`, the scenarios' data.
 4. For each edited declaration, find its row in `change-contract`'s table and the author's row count.
