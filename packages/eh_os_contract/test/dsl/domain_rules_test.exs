@@ -618,6 +618,65 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D4's grant rule and the domain's version, eh-os D-112" do
+    test "an actor without a rule hashes as it did before actors could have one" do
+      compiles("NoGrantRule", """
+        actor :office_employee, :human, "Office employee"
+      """)
+
+      model = Module.concat(__MODULE__, NoGrantRule).__eh_os_contract_model__()
+
+      # The domain hashed as before the option, its actors without the key.
+      before =
+        EhOsContract.Digest.hash_groups(
+          [domain: [%{name: model.name, language: model.language}]] ++
+            for key <- [
+                  :subdomains,
+                  :contexts,
+                  :actors,
+                  :subjects,
+                  :values,
+                  :externals,
+                  :relations
+                ] do
+              {key,
+               model
+               |> Map.fetch!(key)
+               |> Enum.map(&Map.delete(&1, :may_grant))
+               |> Enum.map(&digest_form/1)
+               |> Enum.map(&EhOsContract.Digest.agreement/1)}
+            end
+        )
+
+      assert model.version == before
+    end
+
+    test "a rule is a set: its order moves no version, its names do" do
+      compiles("GrantsAB", """
+        actor :owner, :human, "Owner", may_grant: [:client, :auditor]
+        actor :client, :human, "Client"
+        actor :auditor, :human, "Auditor"
+      """)
+
+      compiles("GrantsBA", """
+        actor :owner, :human, "Owner", may_grant: [:auditor, :client]
+        actor :client, :human, "Client"
+        actor :auditor, :human, "Auditor"
+      """)
+
+      compiles("GrantsA", """
+        actor :owner, :human, "Owner", may_grant: [:auditor]
+        actor :client, :human, "Client"
+        actor :auditor, :human, "Auditor"
+      """)
+
+      version = &Module.concat(__MODULE__, &1).__eh_os_contract_model__().version
+
+      assert version.(GrantsAB) == version.(GrantsBA)
+      refute version.(GrantsAB) == version.(GrantsA)
+    end
+  end
+
   describe "D5 and D1, since plan EL2: a directed relation may end at an external system" do
     test "control: settlement conforms to an external, as ESDM allows" do
       compiles("ConformsToRegistry", """
@@ -1120,6 +1179,10 @@ defmodule EhOsContract.DomainRulesTest do
   defp digest_form(%{responsibilities: []} = actor),
     do: actor |> Map.delete(:responsibilities) |> digest_form()
 
+  # eh-os D-112: an actor without a grant rule, as before it could have one.
+  defp digest_form(%{may_grant: []} = actor),
+    do: actor |> Map.delete(:may_grant) |> digest_form()
+
   defp digest_form(declaration) when is_map(declaration) do
     Map.new(declaration, fn
       {key, list}
@@ -1129,6 +1192,9 @@ defmodule EhOsContract.DomainRulesTest do
 
       {:between, list} ->
         {:between, Enum.sort(list)}
+
+      {:may_grant, list} ->
+        {:may_grant, Enum.sort(list)}
 
       other ->
         other
