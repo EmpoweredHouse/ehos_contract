@@ -1,0 +1,20 @@
+Two reviews, two rounds, of origin/main..HEAD (correctness by hand, since /code-review runs only in its own working directory; security and performance against .claude/review.md).
+
+Round 1, fixed in 5342b8af, each with a test that fails on the old code:
+- security: a role "." or ".." went into revoke's path (a normalizing proxy would reach another route) - fixed, a role not <application>.<name> is not sent.
+- security: a non-UTF-8 email or name raised Jason.EncodeError with its bytes, after an exchange was spent - fixed, ArgumentError before any request, without the value.
+- security: transport errors logged with inspect could print a raised exception's headers, the bearer token - fixed, describe/1 logs the reason atom or the module only.
+- security: refused exchanges spend the client's 60 token requests a minute, shared with People - skipped, EHOS-side, filed as EmpoweredHouse/eh-os#777; the doc tells a host to offer the grant only to people whose role may give one.
+- correctness: a credential with under 5 s left, handed out while another request renews, was refused and answered :not_permitted - fixed, :renewal_busy without sending.
+- correctness: a person disabled since the exchange was :not_permitted at the door and :forbidden under the lock - fixed, both :not_permitted.
+- correctness: the fake checked neither the assertion's aud/exp/jti nor EHOS's 5-second floor - fixed.
+- correctness: the :refused branch from Renewal cannot run for the own address - no change needed, kept so the type holds, with a comment.
+
+Round 2, of the fixes, fixed in ab93e58e:
+- correctness: a malformed role answered :not_found where EHOS answers unknown_role - fixed, :unknown_role, a non-UTF-8 role included (security's note too).
+- correctness: the 10 s floor equalled the exchange's deadline - fixed, 20 s.
+- correctness and security: :renewal_busy also comes for the 5 s pause after a failed renewal - documented.
+- correctness: 403 forbidden from refused_outright folds into :not_permitted - no change needed: it needs an exchange EHOS issued without act, which the routes never see from this client.
+
+Checks: mix check in packages/eh_os_contract_auth, rc 0, 370 tests. sandbox mix check: eh_os_contract.check 0 errors, 3 warnings, 7 notices (the sandbox is untouched); its tests stop at test/graph_overlay_test.exs under OTP 25 (JSV schema in a module attribute), as on a clean main; CI runs OTP 27.
+Verifying for real: against EHOS itself is the step's second pull request, in eh-os, once EmpoweredHouse/eh-os#754 merges (ledger in test/cluster/browser_sign_in_test.exs).
