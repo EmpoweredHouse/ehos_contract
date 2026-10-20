@@ -15,8 +15,8 @@ trusting it.
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
 at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
-`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
-`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `CLAUDE.md`, `docs/` and `sandbox/`
+are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
 a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
 from `sandbox/`, run the application's `mix precommit`.
 
@@ -153,7 +153,7 @@ it, say so in the pull request.
 Another application's history does not come over the bus at all: an inbox's consumer gets what is
 published once the transport delivers to it — between nodes, from EHOS's grant of `<name>.subscribe`
 on — and the engine starts every inbox before any relay, so in one node nothing is published past
-it. What was published before is asked of its owner (`eh-os` D-03).
+it. What was published before is asked of its owner, the application that published it.
 
 ## A process manager, in particular
 
