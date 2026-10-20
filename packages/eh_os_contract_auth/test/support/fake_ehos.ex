@@ -6,13 +6,13 @@ defmodule EhOsContract.Auth.FakeEhos do
   redirect — runs as it does against EHOS, as `EhOsContract.Auth.KeyCase` does for the
   key set.
 
-  The discovery document is the one `Ehos.SignIn.discovery/0` serves on `eh-os`'s
+  The discovery document is the one `Ehos.SignIn.discovery/0` serves on EHOS's
   `main` of 2 October 2026. A test can change it, take EHOS down (`down/2`, `true`
   for everything or `:keys` for the key set only), or have it answer what no EHOS
   does (`answer/2`): `:redirect` to plain http, or `:huge`, a body past the limit.
-  The client's key file is written in the shape `eh-os` D-68 fixes.
+  The client's key file is written in the shape EHOS gives it.
 
-  Its token endpoint answers a code exchange as `Ehos.SignIn.Token` does on `eh-os`'s
+  Its token endpoint answers a code exchange as `Ehos.SignIn.Token` does on EHOS's
   `main` of 2 October 2026: a credential in EHOS's form for the client's own
   application, carrying `client_id`, an ID token whose `aud` is the `client_id`, and a
   refresh token. A code is one `grant/3` made, and each token request is kept with
@@ -165,7 +165,7 @@ defmodule EhOsContract.Auth.FakeEhos do
   end
 
   @doc """
-  Writes a client key file in `dir`, as D-68 says the operator writes it, and returns
+  Writes a client key file in `dir`, as EHOS's operator writes it, and returns
   its path and the key. `members` replace or add members, and `drop:` removes some.
   """
   def client_key_file(dir, members \\ %{}, opts \\ []) do

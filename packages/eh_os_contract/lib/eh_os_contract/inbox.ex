@@ -1,7 +1,7 @@
 defmodule EhOsContract.Inbox do
-  # The same fact published again under a new id is EHOS's failure modes FM-04 and
-  # FM-08; rows are kept for good by #64; the grant to publish and the
-  # `<name>.subscribe` capability are `eh-os` D-41.
+  # The same fact published again under a new id is a failure EHOS's design names, and the
+  # inbox takes it once; rows are kept for good by #64; the grant to publish and the
+  # `<name>.subscribe` capability are EHOS's.
   @moduledoc """
   Where another application's published event arrives: one durable consumer on
   `EhOsContract.Bus` per `subscribe "<name>"` that a policy handles. The event never

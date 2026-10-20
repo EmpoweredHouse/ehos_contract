@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.People do
-  # `eh-os` D-81: the application reads the company's people as itself, with OAuth's client
-  # credentials grant and `private_key_jwt`, while a people manager agrees; the people API is
-  # `eh-os` `docs/people-api.md` (D-80); the client key's form D-68. Issue #252.
+  # As agreed with EHOS: the application reads the company's people as itself, with OAuth's
+  # client credentials grant and `private_key_jwt`, while a people manager agrees. The people API
+  # and the client key's form are EHOS's. Issue #252.
   @moduledoc """
   The company's people, as EHOS holds them, read by the application itself: for a form
   that offers an employee instead of a text field.
@@ -95,7 +95,7 @@ defmodule EhOsContract.Auth.People do
   @failure_kept_ms 5_000
   # EHOS keeps an assertion's `jti` until it expires: a minute is enough for one request.
   @assertion_lifetime_seconds 60
-  # EHOS's bound on `q`, in bytes (`eh-os` `docs/people-api.md`).
+  # EHOS's bound on `q`, in bytes, as its people API documents it.
   @max_q_bytes 2048
   # EHOS lists the invited and the joined to an application; the disabled only to a manager.
   @states ~w(invited joined)a
@@ -454,7 +454,7 @@ defmodule EhOsContract.Auth.People do
     %{state | taking: nil, waiting: []}
   end
 
-  # RFC 6749 §4.4 with RFC 7523's assertion, as `eh-os` D-81 accepts it: no scope, no resource.
+  # RFC 6749 §4.4 with RFC 7523's assertion, as EHOS accepts it: no scope, no resource.
   defp take(config) do
     form =
       URI.encode_query(%{

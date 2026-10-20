@@ -142,7 +142,7 @@ domain's name the task finds.
 of `ehos.yaml` as written, a `migrate` or `seed` argument too; what the workload needs at run time
 comes from its environment, below.
 
-**Secrets and a seed, from `ehos.yaml/v4`** (eh-os D-98, D-99), which makes an `ehos.manifest/v4`:
+**Secrets and a seed, from `ehos.yaml/v4`**, which makes an `ehos.manifest/v4`:
 
 ```yaml
 schema: ehos.yaml/v4
@@ -166,7 +166,7 @@ other. Without `version`, the newest value, and setting a new one rolls the work
 version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
 `database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
 
-**A role that may grant another** (eh-os D-112): an actor's `may_grant:` in the domain,
+**A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
 roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
 whatever the version of `ehos.yaml`. A domain without a rule keeps its manifest's version and digests. An
@@ -214,7 +214,7 @@ config :eh_os_contract_auth,
     address: "https://" <> System.fetch_env!("PHX_HOST"),
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
     applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
-    # How long a session lasts from the sign-in at EHOS, the installation's (eh-os D-113).
+    # How long a session lasts from the sign-in at EHOS, the installation's.
     absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
   ]
 
@@ -234,8 +234,8 @@ The child checks this at boot and refuses to start otherwise:
 - `absolute_limit`, when given, is whole seconds from a minute to 366 days.
 
 `absolute_limit` is how long a session lasts from the person's sign-in at EHOS, renewed or not:
-twelve hours when not given or nil (eh-os D-66). EHOS gives the workload its installation's as
-`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints. Sign-in asks EHOS
+twelve hours when not given or nil. EHOS gives the workload its installation's as
+`EHOS_SIGN_IN_ABSOLUTE` and enforces the same at its own endpoints. Sign-in asks EHOS
 for no older sign-in than `absolute_limit` (`max_age`), so an application that keeps a shorter
 limit than its installation asks for the password sooner, never round and round EHOS. Its idle
 limit, `EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and
@@ -366,7 +366,7 @@ email, which can change and later be given to someone else.
 ## Reading the company's people
 
 A form that offers an employee, instead of a text field someone types a name into, reads EHOS's
-people as the application itself (`eh-os` D-81). The application asks for it in its
+people as the application itself. The application asks for it in its
 `ehos.yaml/v3`; EHOS then gives its workload `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, whether
 or not it signs people in, and answers only once someone who manages people agrees, for that
 environment.
@@ -615,17 +615,18 @@ is measured by `EhOsContract.Clock`, so a test moves time with `EhOsContract.Clo
 
 <!-- Decisions behind this page:
 contract v2 §16, D14 (docs/adr/contract-v2.md): the contract declares who may act; a separate package, this one, verifies who is acting.
-eh-os D-33: the credential, a ten-minute Ed25519 JWT with the key's thumbprint as kid; manual key rotation.
-eh-os D-34: keys kept in the application's own table; every decision recorded, a refusal as carefully as an acceptance.
-eh-os D-40: the claims cap and scp, scope values carried in the credential.
-eh-os D-51: ehos.yaml is EHOS's format, versioned by JSON Schema (docs/ehos-yaml.md in eh-os).
-eh-os D-52: ehos.manifest/v2, ehos.yaml extended with what the contracts offer.
-eh-os D-56: EHOS hands the workload its settings in the environment.
-eh-os D-64: signing a person in through EHOS with OpenID Connect; the callback address.
-eh-os D-68: the client key as a JWK, addresses as exact strings, an application's address as resource.
-eh-os D-69: sign_in in ehos.yaml/v2, and applications naming only the others.
-eh-os D-73: a capability names its declaration's kind, command, query or record.
-eh-os issue #92: contracts left out of the manifest, so an edit does not ask for registration.
+EHOS's decisions this package follows:
+- the credential, a ten-minute Ed25519 JWT with the key's thumbprint as kid; manual key rotation;
+- keys kept in the application's own table; every decision recorded, a refusal as carefully as an acceptance;
+- the claims cap and scp, scope values carried in the credential;
+- ehos.yaml is EHOS's format, versioned by JSON Schema;
+- ehos.manifest/v2, ehos.yaml extended with what the contracts offer;
+- EHOS hands the workload its settings in the environment;
+- signing a person in through EHOS with OpenID Connect; the callback address;
+- the client key as a JWK, addresses as exact strings, an application's address as resource;
+- sign_in in ehos.yaml/v2, and applications naming only the others;
+- a capability names its declaration's kind, command, query or record;
+- contracts left out of the manifest, so an edit does not ask for registration.
 S2 (docs/adr/browser-session.md): the browser holds a random token, the row its SHA-256; the cookie session encrypted.
 S3 (docs/adr/browser-session.md): EHOS's tokens encrypted, each bound to its row and column.
 #89: the issuer and every address read alike by every parser.

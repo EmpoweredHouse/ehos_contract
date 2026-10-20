@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.EhosYaml.Reader do
   @moduledoc false
-  # `eh-os` D-51: `ehos.yaml` is read into JSON's data model before its schema sees it, and
+  # As EHOS defines its format, `ehos.yaml` is read into JSON's data model before its schema sees it, and
   # whatever JSON cannot say is refused, as EHOS's own reader refuses it: an anchor or an alias, a
   # tag, a directive, a key given twice, a key that is not a string, a second document, and a
   # number JSON cannot hold. Plain values are resolved by YAML 1.2's core schema, so `yes` is a
@@ -10,8 +10,7 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   # yamerl reads twice, as in EHOS: its parser's tokens show anchors, aliases, tags and
   # directives, which its tree no longer does, and its detailed tree keeps every key of a mapping
   # with its line. The rules and their words follow EHOS's reader,
-  # `lib/ehos/applications/ehos_yaml/yaml.ex` in `eh-os` at `f7b2330`; a change there is a change
-  # to carry here.
+  # as it stood on 1 October 2026; a change there is a change to carry here.
   #
   # EHOS's bounds are kept but its budgets: at most 64 KiB, at most 256 of `[` and `{` anywhere in
   # the text, quoted strings included, nesting at most 16 levels, and no list of more than 256

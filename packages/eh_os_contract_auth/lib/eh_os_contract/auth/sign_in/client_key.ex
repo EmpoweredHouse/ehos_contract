@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.SignIn.ClientKey do
   @moduledoc false
 
-  # The client's private key, as EHOS gives it (`eh-os` D-68): the file at
+  # The client's private key, as EHOS gives it: the file at
   # `EHOS_CLIENT_KEY_FILE` holds one Ed25519 JWK with exactly these members, and EHOS
   # checks every client assertion against the public half the deployment's status
   # names, by its `kid`. `oidcc` copies the key's `kid` into each assertion and signs
@@ -26,14 +26,14 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     if String.starts_with?(String.trim_leading(contents), "-----BEGIN") do
       refuse!(
         path,
-        "is a PEM; EHOS gives the client key as a JWK (eh-os D-68), and a PEM is not read"
+        "is a PEM; EHOS gives the client key as a JWK, and a PEM is not read"
       )
     end
 
     map =
       case Jason.decode(contents) do
         {:ok, map} when is_map(map) -> map
-        _other -> refuse!(path, "is not a JSON object, the one JWK eh-os D-68 says it holds")
+        _other -> refuse!(path, "is not a JSON object, the one JWK EHOS says it holds")
       end
 
     case map |> Map.keys() |> Enum.sort() do
@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
       members ->
         refuse!(
           path,
-          "must have exactly the members #{Enum.join(@members, ", ")} (eh-os D-68), " <>
+          "must have exactly the members #{Enum.join(@members, ", ")} EHOS gives, " <>
             "and has #{Enum.join(members, ", ")}"
         )
     end
@@ -51,7 +51,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     for {member, value} <- @fixed, map[member] != value do
       refuse!(
         path,
-        "has #{member} #{inspect(map[member])}, and eh-os D-68 says #{inspect(value)}"
+        "has #{member} #{inspect(map[member])}, and EHOS gives #{inspect(value)}"
       )
     end
 
@@ -69,7 +69,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     if map["kid"] != JOSE.JWK.thumbprint(jwk) do
       refuse!(
         path,
-        "has a kid that is not the RFC 7638 thumbprint of its public half (eh-os D-68)"
+        "has a kid that is not the RFC 7638 thumbprint of its public half, as EHOS gives it"
       )
     end
 

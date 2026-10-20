@@ -1,7 +1,7 @@
 defmodule EhOsContract.Graph.Overlay do
-  # Plan E13a, batch 5. Only the report's numbers is the user's decision 2 before
-  # batch 4; the shape, decisions 3 to 5; where a step's numbers sit, the user's
-  # decisions of 6 and 7 October (`PLAN.md`, "E13a").
+  # Plan E13a, batch 5. That the overlay carries only the report's numbers, its shape, and
+  # where a step's numbers sit were the maintainer's decisions in E13a (#217), the last of them
+  # on 6 and 7 October 2026.
   @moduledoc """
   What the log says over a `graph.v1` document: a document of its own, joined onto
   the graph of facts by id and never copied into it, so the facts keep their digest

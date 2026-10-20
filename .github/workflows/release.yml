@@ -1,6 +1,6 @@
 name: Release
 
-# eh-os D-91 (its docs/releases.md): a tag `vX.Y.Z` on main publishes a GitHub release of this
+# The maintainers' release procedure, shared with EHOS's other repositories: a tag `vX.Y.Z` on main publishes a GitHub release of this
 # repository. The tag follows the engine's version; every package keeps its own, and is released
 # at this tag when its version has no `-dev`. The notes are each released package's section of
 # its CHANGELOG.md, under `## <package> <version>`: the release's description when they fit in

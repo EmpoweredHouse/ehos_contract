@@ -1,9 +1,9 @@
 defmodule EhOsContract.Auth.Manifest do
-  # In `eh-os`: the manifest is D-52; `sign_in` D-69; `needs.people` and `ehos.manifest/v3`
-  # D-81; `needs.database.seed`, `needs.secrets` and `ehos.manifest/v4` D-98 and D-99; a role's
-  # `may_grant` and `ehos.manifest/v5` D-112 (eh-os issue #729); a
-  # capability naming its declaration's kind D-73; scope values on a binding D-40; `contracts`
-  # left out for the authority digest, issue #92.
+  # The manifest's format is EHOS's, and so is each thing it added over time: `sign_in`;
+  # `needs.people` with `ehos.manifest/v3`; `needs.database.seed` and `needs.secrets` with
+  # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; a capability naming its
+  # declaration's kind; scope values on a binding; and `contracts` left out, so that an edit to a
+  # contract does not change EHOS's authority digest.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
   `ehos.manifest/v5` when a role may grant another, and otherwise `ehos.manifest/v4` for an
@@ -47,7 +47,7 @@ defmodule EhOsContract.Auth.Manifest do
 
   # What the generator writes. `ehos.yaml` holds none of these but `schema`, which becomes
   # `ehos_yaml`, and `application`, which the generator checks and keeps; a later version that
-  # held another would be refused rather than overwritten (`eh-os` issue #93).
+  # held another would be refused rather than overwritten, as agreed with EHOS.
   @generated ~w(ehos_yaml engine contracts offers)
   # EHOS's rule for an application's name, in v1 and v2: a DNS label that starts with a letter.
   @application ~r/\A[a-z]([-a-z0-9]*[a-z0-9])?\z/u
@@ -111,9 +111,9 @@ defmodule EhOsContract.Auth.Manifest do
   def schemas,
     do: ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5"]
 
-  # `eh-os` D-81: a manifest keeps the meaning it had when EHOS accepted it, so the version that
-  # can carry `needs.people` is a new one, and so is the one that can carry a seed or secrets
-  # (D-98, D-99), and the one whose roles may grant others (D-112), which takes every
+  # EHOS's rule: a manifest keeps the meaning it had when EHOS accepted it, so the version that
+  # can carry `needs.people` is a new one, and so is the one that can carry a seed or secrets,
+  # and the one whose roles may grant others, which takes every
   # `ehos.yaml` v4 does; an older file, and a domain without a rule, keep their older manifest.
   defp manifest_schema(ehos_yaml, %{"roles" => roles}) do
     if Enum.any?(roles, &Map.has_key?(&1, "may_grant")),
@@ -208,7 +208,7 @@ defmodule EhOsContract.Auth.Manifest do
     end
   end
 
-  # `eh-os` D-66, D-69: the list names the other applications; its own it always signs in to. The
+  # EHOS's rule for `sign_in`: the list names the other applications; its own it always signs in to. The
   # reader checks it against an `application` the file names, and this against the one found.
   defp not_its_own!(%{"sign_in" => %{"applications" => applications}}, application) do
     if application in applications do
@@ -261,7 +261,7 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   # EHOS's limits on what a manifest offers, which the engine's own names do not keep: a
-  # declaration and the part of a role after the dot at most 63 characters (D-48). A label a
+  # declaration and the part of a role after the dot at most 63 characters. A label a
   # person reads before binding a role is never empty either; the DSLs refuse a blank one (N1,
   # D1), and this still does for a model handed over as a map. Each is named here, not at deploy.
   defp ensure_ehos_takes!(domain, declared, roles) do
@@ -291,7 +291,7 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   # A command, a query and a recording a human actor may make, each named by its declaration's
-  # kind (D-73). A capability no human holds is not offered: no role would hold it.
+  # kind, as EHOS names it. A capability no human holds is not offered: no role would hold it.
   defp declared_capabilities(application, domain, models) do
     actors = Map.new(domain.actors, &{&1.name, &1})
 
@@ -386,7 +386,7 @@ defmodule EhOsContract.Auth.Manifest do
     |> Enum.sort_by(& &1["name"])
   end
 
-  # D-112: each role's rule, as the roles of the actors its actor's `may_grant:` names. D4 holds a
+  # Each role's grant rule, as the roles of the actors its actor's `may_grant:` names. D4 holds a
   # compiled domain's rules to other person actors, each once; a domain given as a map has not
   # been through it, so what EHOS would refuse is refused here too, with what to change. A person
   # who holds no capability is no role: a rule naming one would name a role the manifest does not

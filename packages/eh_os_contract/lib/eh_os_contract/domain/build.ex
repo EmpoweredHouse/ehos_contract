@@ -263,7 +263,7 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{responsibilities: []} = actor),
     do: actor |> Map.delete(:responsibilities) |> digest_form()
 
-  # eh-os D-112 (EmpoweredHouse/eh-os#729): and one without a grant rule, as before it could have
+  # And one without a grant rule (`may_grant:`), as before it could have
   # one, so the option moves no domain's version until an actor declares a rule.
   defp digest_form(%{may_grant: []} = actor),
     do: actor |> Map.delete(:may_grant) |> digest_form()

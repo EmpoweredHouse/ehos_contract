@@ -74,7 +74,7 @@ defmodule EhOsContract.Model do
   end
 
   # The capability names (v2 §16, D14, with D6 for recordings and D10 for scopes), and the
-  # subscribe grant (eh-os D-41).
+  # subscribe grant, as EHOS grants it.
   @doc """
   The capabilities a contract declares, under the names EHOS grants them by:
   `<domain>.<command>` for each command, `<domain>.<query>` for each query and

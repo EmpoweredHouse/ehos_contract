@@ -14,14 +14,13 @@ are not. A pull request with no such line says why on a line of its description,
 otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
 `**Breaking:**`, under the subsection it belongs to.
 
-This package keeps its own version; the repository's tag, `vX.Y.Z`, follows the engine's, and
+This package keeps its own version; the repository's tag, `vX.Y.Z`, is the engine's, and one tag
 releases every package at its own version. Between releases the version in `mix.exs` ends in `-dev`;
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
-eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
-and the `ehos-dev:release` skill makes one.
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
@@ -126,7 +125,7 @@ and the `ehos-dev:release` skill makes one.
   `until` is `400`. Moves no verdict.
 
 - **`<mount>/conformance?process=<id>` serves a process module's report** (plan DD, P2w, eh-os-contract#259, agreed
-  with EHOS in EmpoweredHouse/eh-os#297). The report keeps the schema `eh_os_contract.conformance.v3` and has
+  with EHOS). The report keeps the schema `eh_os_contract.conformance.v3` and has
   `"process"` where a contract's has `"contract"`. An unknown process is 400, and so is naming a contract and a
   process at once. A request with neither, or with `contract=`, answers as before.
 
@@ -186,7 +185,7 @@ and the `ehos-dev:release` skill makes one.
   the shape).
 
 - **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
-  eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a
+  EHOS's design system) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a
   `:dev` dependency of the asset build only; the built stylesheet and fonts are unchanged, byte for byte,
   and a host fetches nothing new.
 

@@ -1,6 +1,8 @@
 defmodule EhOsContract.Auth do
-  # The design: v2 §16 and D14 in docs/adr/; the credential's form is `eh-os` D-33, the keys and
-  # the decision rows D-34 (with FM-21), the claims `cap` and `scp` D-40.
+  # The design: v2 §16 and D14 in docs/adr/. The rest is EHOS's: the credential's form (a
+  # ten-minute Ed25519 JWT, the key's thumbprint as `kid`), the keys kept in the application's own
+  # table with a row for every decision, a refusal recorded as carefully as an acceptance, and the
+  # claims `cap` and `scp`.
   @moduledoc """
   Verifies the credentials EHOS issues, against keys this application keeps in its
   own database.
@@ -151,7 +153,7 @@ defmodule EhOsContract.Auth do
     end
 
     # Compared with each credential's `iss` as a string, so one EHOS would never start with is
-    # refused here, rather than every credential at `verify/2` (#89, eh-os#118).
+    # refused here, rather than every credential at `verify/2` (#89, EHOS's own rule for its issuer).
     if Address.check(config[:issuer], plain_on_loopback: true, path: false) == :error do
       raise ArgumentError,
             "config :eh_os_contract_auth, issuer: is #{Address.shown(config[:issuer])}, which " <>
@@ -182,7 +184,7 @@ defmodule EhOsContract.Auth do
 
   @doc false
   # #180: the namespace an application publishes under is its domain's `name:` (D11), and EHOS
-  # binds the application to the name it registered it under (eh-os#201). Checked whenever the
+  # binds the application to the name it registered it under. Checked whenever the
   # child starts, which needs an audience, so a mismatch shows before the bus refuses the first
   # publish. Only domains with contracts count, as in the manifest: the `name:` of one of them must
   # equal the application's exactly, since a domain whose name EHOS would not take (`:my_shop`)
@@ -348,7 +350,7 @@ defmodule EhOsContract.Auth do
     if Regex.match?(~r/\A[a-z][a-z0-9_]*\z/, name), do: ":#{name}", else: ":#{inspect(name)}"
   end
 
-  # For the host's health check, as `eh-os` D-34 asks of an application.
+  # For the host's health check, which EHOS asks of an application.
   @doc """
   Whether this application holds at least one key to verify with, for the host's
   health check.
@@ -459,7 +461,7 @@ defmodule EhOsContract.Auth do
 
   defp unexpired?(_exp), do: false
 
-  # EHOS issues credentials for ten minutes (`eh-os` D-33); this allows five more for
+  # EHOS issues credentials for ten minutes ; this allows five more for
   # clocks that disagree. One that claims to live longer is not in EHOS's form,
   # whoever signed it: a key that leaked must not mint credentials for a year.
   defp within_lifetime?(exp),

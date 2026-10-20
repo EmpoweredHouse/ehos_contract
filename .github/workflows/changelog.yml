@@ -1,6 +1,6 @@
 name: Changelog
 
-# eh-os D-91: a change a user of a package can see gets a line under `## [Unreleased]` in that
+# The release procedure EHOS's repositories share: a change a user of a package can see gets a line under `## [Unreleased]` in that
 # package's CHANGELOG.md, in its own pull request, or the description says why not, on a line
 # `No changelog: <why>` (CONTRIBUTING.md, "Changelogs and releases"). A user is a host
 # application's developer, and a package's code is what a host gets of it, read from the `files:`

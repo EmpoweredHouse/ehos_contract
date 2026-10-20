@@ -1,7 +1,7 @@
 defmodule EhOsContract.Web.DesignSystemTest do
   @moduledoc """
   The dashboard is styled from the EmpoweredHouse design system, whose tokens and fonts
-  `mix assets.build` takes from the `ehos_design` package (eh-os D-72), and loads nothing from
+  `mix assets.build` takes from the `ehos_design` package, and loads nothing from
   another origin (docs/adr/dashboard-design-system.md). The package is a dependency of the
   build only, so these checks read what the build committed, not the package.
   """

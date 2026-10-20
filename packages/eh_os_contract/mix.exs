@@ -13,8 +13,8 @@ defmodule EhOsContract.MixProject do
 
   Until then `boundary` enforced the seam and `README.md` claimed that moving a
   client tree out was `git mv`. Nobody had tried, so the claim was untested —
-  extracting this is what tests it, and what the extraction costs is recorded in
-  `PLAN.md` rather than smoothed over.
+  extracting this is what tests it, and what the extraction costs is recorded
+  rather than smoothed over.
   """
 
   def project do

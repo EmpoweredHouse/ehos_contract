@@ -2,7 +2,7 @@ defmodule EhOsContract.Auth.Address do
   @moduledoc false
 
   # Whether an address, EHOS's or an application's, is one every parser reads alike (#89):
-  # EHOS's own rule for its issuer (`Ehos.Credentials.check_issuer/1`, eh-os#118).
+  # EHOS's own rule for its issuer (its `Ehos.Credentials.check_issuer/1`).
   # `URI.parse/1` reads `http://evil.example\@localhost` as `localhost`, where a browser or
   # Node's `URL` reads `evil.example`; so the address must read back as it was written, its
   # scheme's own port aside, with no user, query or fragment, and a host that is a lowercase DNS

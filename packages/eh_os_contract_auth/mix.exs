@@ -11,7 +11,7 @@ defmodule EhOsContract.Auth.MixProject do
 
   The engine asks an `EhOsContract.Authorizer` whether a credential's actor may
   act, and verifies nothing itself. This package is the implementation for the
-  credentials EHOS issues (`eh-os` D-33, D-34): it verifies them against keys it
+  credentials EHOS issues: it verifies them against keys it
   keeps in the application's own database, and it owns that table. The engine
   does not depend on it, and it builds and tests standing alone, as the other two
   packages do.
@@ -128,11 +128,11 @@ defmodule EhOsContract.Auth.MixProject do
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},
       {:jason, "~> 1.4"},
-      # The cryptography: JOSE through Joken, never our own (`eh-os` D-33, D-34).
+      # The cryptography: JOSE through Joken, never our own, as EHOS decided.
       # Not `joken_jwks`, which refreshes only on an unknown key and keeps its keys
-      # only in memory — D-34 has both reasons.
+      # only in memory, both of which EHOS's design rules out.
       {:joken, "~> 2.7"},
-      # The key set is fetched over HTTP, by the small fetcher D-34 chose.
+      # The key set is fetched over HTTP, by the small fetcher EHOS's design chose.
       {:req, "~> 0.7"},
       {:boundary, "~> 0.10", runtime: false},
       # `mix docs`, which `mix check` runs to hold the references in the docs.
@@ -143,13 +143,13 @@ defmodule EhOsContract.Auth.MixProject do
       # The session's tokens are encrypted with `Plug.Crypto.MessageEncryptor` (S3), which is
       # XChaCha20-Poly1305 from 2.0; `plug` alone would also take 1.x, which is AES-GCM.
       {:plug_crypto, "~> 2.0"},
-      # Signing a browser in through EHOS (`eh-os` D-64; S1 in docs/adr/browser-session.md).
+      # Signing a browser in through EHOS with OpenID Connect (S1 in docs/adr/browser-session.md).
       # `oidcc` is pinned here because `oidcc_plug` accepts `~> 3.7`, and only 3.9.0 fixes
       # CVE-2026-75759; `oidcc_plug` 0.5.1 fixes CVE-2026-66883 and CVE-2026-66884. `oidcc`
       # needs OTP 27.
       {:oidcc, "~> 3.9"},
       {:oidcc_plug, "~> 0.5.1"},
-      # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
+      # `ehos.yaml` is read and validated as EHOS reads it: yamerl with YAML
       # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
       # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started
       # with the host or carried into its release. yamerl is held to 0.10.x because the reader

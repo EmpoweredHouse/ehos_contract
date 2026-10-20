@@ -13,20 +13,19 @@ are not. A pull request with no such line says why on a line of its description,
 otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts with
 `**Breaking:**`, under the subsection it belongs to.
 
-This package keeps its own version; the repository's tag, `vX.Y.Z`, follows the engine's, and
+This package keeps its own version; the repository's tag, `vX.Y.Z`, is the engine's, and one tag
 releases every package at its own version. Between releases the version in `mix.exs` ends in `-dev`;
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
-eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
-and the `ehos-dev:release` skill makes one.
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
 ### Added
 
-- **The manifest carries a role's grant rule** (eh-os D-112, EmpoweredHouse/eh-os#729). A role whose actor has
+- **The manifest carries a role's grant rule**, as agreed with EHOS. A role whose actor has
   `may_grant:` carries `may_grant`, the roles it may grant, and the manifest is then `ehos.manifest/v5`,
   which an EHOS from the release after 0.12.0 accepts. A domain without a rule keeps the version and the
   digests it had. A rule naming an actor that holds no capability, and so is no role, or a rule on such an
@@ -44,14 +43,14 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
-- **`sign_in: absolute_limit`** (eh-os D-113): how long a session lasts from the person's sign-in at EHOS, in
-  seconds, from a minute to 366 days; twelve hours when not given, as before (eh-os D-66). A host maps it from
+- **`sign_in: absolute_limit`**: how long a session lasts from the person's sign-in at EHOS, in
+  seconds, from a minute to 366 days; twelve hours when not given, as before. A host maps it from
   `EHOS_SIGN_IN_ABSOLUTE`, which EHOS gives every workload with its installation's limit, so the session ends
   when EHOS's does; nil is not given, and a value out of range stops the host at boot.
 
 ### Fixed
 
-- **Signing in asks EHOS for `max_age` of the session's absolute limit** (eh-os D-113), and refuses a sign-in older
+- **Signing in asks EHOS for `max_age` of the session's absolute limit**, as EHOS asks, and refuses a sign-in older
   than it. With an installation's limit longer than the application's, EHOS gave a code for a sign-in the new
   session refused at once, and the browser went between the page and EHOS without end. An application must run
   this version before its installation raises its limits.
@@ -60,7 +59,7 @@ and the `ehos-dev:release` skill makes one.
 
 ### Added
 
-- **`ehos.yaml/v4` and `ehos.manifest/v4`** (eh-os D-98, D-99, #306). `mix eh_os_contract.manifest` reads an
+- **`ehos.yaml/v4` and `ehos.manifest/v4`** (#306). `mix eh_os_contract.manifest` reads an
   `ehos.yaml/v4`, EHOS's file copied byte for byte, and writes an `ehos.manifest/v4` for it, so an application
   can name `needs.database.seed`, the command EHOS runs to seed an ephemeral environment, and `needs.secrets`,
   the secrets its workload is given as environment variables. Both are carried as written. A v1 to v3 file
@@ -73,7 +72,7 @@ and the `ehos-dev:release` skill makes one.
 
 - **Breaking:** `mix eh_os_contract.manifest` no longer writes `process` on a capability of `offers.capabilities`,
   because a contract can no longer declare a process (engine, plan DD, stage P2h, eh-os-contract#221). EHOS keeps
-  the field optional and reads it nowhere (EmpoweredHouse/eh-os#203); a consumer that compared a manifest field by
+  the field optional and reads it nowhere; a consumer that compared a manifest field by
   field finds it gone.
 
 ## [0.1.0] - 2026-10-11
@@ -81,27 +80,27 @@ and the `ehos-dev:release` skill makes one.
 ### Added
 
 - **`EhOsContract.Auth.Manifest.schemas/0` lists the versions of EHOS's manifest the package writes**
-  (eh-os D-91, eh-os-contract#275): `["ehos.manifest/v2", "ehos.manifest/v3"]`, what a release of this
+  (EHOS's release procedure, eh-os-contract#275): `["ehos.manifest/v2", "ehos.manifest/v3"]`, what a release of this
   repository says it produces, and what an EHOS has to accept for every manifest `build/3` writes.
 
-- **eh-os-contract#252 (eh-os D-81): the application reads EHOS's people as itself.** `EhOsContract.Auth.People`,
+- **eh-os-contract#252: the application reads EHOS's people as itself.** `EhOsContract.Auth.People`,
   a child configured with `config :eh_os_contract_auth, people: [client_id:, client_key_file:]`, takes a
   credential with OAuth's client credentials grant and the client key EHOS gives, renews it, and answers `list/1`
   and `get/2` with `EhOsContract.Auth.People.Person`s, or `:not_agreed`, `:not_found`, `:not_asked`,
   `:rate_limited` or `:unavailable`. The README says a person's key is the `sub` sign-in gives, which is their
   `id` here.
 
-- **eh-os-contract#252 (eh-os D-81): `ehos.yaml/v3` and `ehos.manifest/v3`.** The generator reads `ehos.yaml/v3`,
+- **eh-os-contract#252: `ehos.yaml/v3` and `ehos.manifest/v3`.** The generator reads `ehos.yaml/v3`,
   EHOS's schema copied unchanged, whose `needs.people: read` asks to read the company's people, and writes an
   `ehos.manifest/v3` for it. A v1 or v2 file still gives an `ehos.manifest/v2`.
   - **Action:** none for an application that does not read the people. One that does writes `schema: ehos.yaml/v3`
-    and `needs.people: read`, and needs an EHOS that accepts `ehos.manifest/v3` (eh-os Stage 11).
+    and `needs.people: read`, and needs an EHOS that accepts `ehos.manifest/v3`.
 
 - **eh-os-contract#133: the manifest offers queries and recordings.** `mix eh_os_contract.manifest` writes a
   capability for every command, query and recording a human actor may make, each naming its declaration as
-  `command`, `query` or `record` (`eh-os` D-73), and the roles hold them all. Until now a deployed application's
+  `command`, `query` or `record`, as EHOS names them, and the roles hold them all. Until now a deployed application's
   people were refused every query their pages asked (`missing_capability`) and could record nothing.
-  - **Breaking:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
+  - **Breaking:** an EHOS that does not name capabilities by kind refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
     deploy EHOS first.
 
 - **EB3b (#78): other applications' credentials.** `Session.credential/3` takes the session (a connection or a
@@ -151,7 +150,7 @@ and the `ehos-dev:release` skill makes one.
     - `GET /callback` checks EHOS's `iss`, exchanges the code with `private_key_jwt` only, writes a new session
       and returns to a local `return_to`;
     - `POST /sign-out`, behind CSRF protection, ends the session and redirects to EHOS's end session with
-      `id_token_hint` and exactly `address <> "/"` (`eh-os` D-68).
+      `id_token_hint` and exactly `address <> "/"`, as EHOS compares it.
   - **`EhOsContract.Auth.Session`**, a plug, lets a signed-in person through with
     `conn.assigns.eh_os_contract_session`. Without a session, or with an expired credential, it redirects a
     browser's navigation to sign in and answers 401 otherwise; any other refusal is 401. With
@@ -174,7 +173,7 @@ and the `ehos-dev:release` skill makes one.
     child holds and the client's key.
   - **The client secret** is now random, made at each start, and never inspected (S6).
 
-- **#83: `ehos.yaml/v2` is read, and its `sign_in` goes into the manifest** (`eh-os` D-69).
+- **#83: `ehos.yaml/v2` is read, and its `sign_in` goes into the manifest**.
   - `EhOsContract.Auth.EhosYaml.read/1` takes v1 and v2, each against EHOS's own schema, copied unchanged.
   - **Beside the schema,** as EHOS checks it, `sign_in` is refused without an entry `web` with `public: true`,
     and when its `applications` name the file's own `application`.
@@ -183,11 +182,11 @@ and the `ehos-dev:release` skill makes one.
   - A file whose `schema` is neither version is refused with both named.
 
 - **EB1 (#78): `EhOsContract.Auth.SignIn`, the application's client for signing people in through EHOS**
-  (`eh-os` D-64, D-68).
+  (EHOS's sign-in, with OpenID Connect).
   - **Configuration:** a child for the supervision tree, configured by `config :eh_os_contract_auth, sign_in:`
     with `client_id`, `client_key_file`, `address`, `secret_key_base` and `applications`.
   - **What it refuses at boot,** with no secret in the message:
-    - a key file that is not exactly D-68's private Ed25519 JWK, a PEM included;
+    - a key file that is not exactly the private Ed25519 JWK EHOS gives, a PEM included;
     - an address that is not `https://<host>`;
     - an issuer that is not https;
     - a `secret_key_base` shorter than 64 bytes.
@@ -200,7 +199,7 @@ and the `ehos-dev:release` skill makes one.
   - **New dependencies:** `oidcc ~> 3.9` and `oidcc_plug ~> 0.5.1`. **The package now needs OTP 27.**
   - **Sign-in itself comes later:** the routes, the session and renewal are EB2 and EB3.
 
-- **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
+- **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it**, for the
   manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
   tag, a directive, a key given twice, a key that is not a string, a second document, `.inf`, an escape past Unicode's
   last code point — and resolves plain
@@ -211,7 +210,7 @@ and the `ehos-dev:release` skill makes one.
   host or goes into its release. yamerl is held to 0.10.x, whose tokens and nodes the reader matches.
 
 - **EH2: a file that reads is validated against EHOS's own JSON Schema of its version**, copied unchanged into
-  `priv/schemas/ehos.yaml/v1.json` (from `eh-os` `eeb732a`) and carried in the package. A file without `schema`,
+  `priv/schemas/ehos.yaml/v1.json` (EHOS's file, as of 1 October 2026) and carried in the package. A file without `schema`,
   or with a version the package has no copy of, is refused before any schema reads it; `EhosYaml.versions/0`
   lists those it has. No default is filled in. The rules EHOS checks beside its schema, such as unique names and
   ports in `serves`, are left to EHOS.
@@ -223,7 +222,7 @@ and the `ehos-dev:release` skill makes one.
   two registered modules expose the same public domain name, `--domain` refuses the ambiguity and names both
   modules instead of silently taking the first scan result.
 
-- **The package** (contract v2 §16, D14; `eh-os` D-33, D-34). `EhOsContract.Auth.verify/1,2`
+- **The package** (contract v2 §16, D14; the credential's form and the key store as EHOS decided them). `EhOsContract.Auth.verify/1,2`
   turns an EHOS credential — a JWT signed with Ed25519 — into an `EhOsContract.Actor`, or refuses
   it with `:expired`, `:unknown_key`, `:bad_signature`, `:wrong_audience`, `:wrong_issuer` or
   `:no_keys`. `EhOsContract.Auth` is a child for the application's supervision tree that keeps
@@ -254,7 +253,7 @@ and the `ehos-dev:release` skill makes one.
   `audience` (`"clinic/prod"`, the part before the `/`) with the `name:` of the domains that have contracts in
   `config :eh_os_contract, applications:`. One of them must equal it exactly, and every other one must declare no
   `publish` in any of its contracts. Every name the application publishes begins with its domain's name, and EHOS
-  lets an application publish only under the name it registered (eh-os#201); a domain that publishes nothing sends
+  lets an application publish only under the name it registered; a domain that publishes nothing sends
   no name to anyone. A domain named `:my_shop` does not match `"my-shop/prod"`: EHOS never names an application
   with `_`, the manifest generator refuses such a domain, and the message advises renaming it to `:"my-shop"`. The
   check runs whenever the child starts, which already requires an `audience`. An `audience` that is not
@@ -280,14 +279,14 @@ and the `ehos-dev:release` skill makes one.
   or one counted from the start, let fetches follow one another, each asked for by an unknown `kid`. The defaults
   are unchanged.
 
-- **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (`eh-os` D-52; EHOS deploys only
+- **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (EHOS deploys only
   v2). The task reads the project's `ehos.yaml` (`--ehos-yaml` names another), refuses it with every reason as EHOS
   would, and writes it extended with `application`, `offers` and `engine`: every key but `schema` unchanged, `schema`
   as `ehos_yaml`, no default filled in. `offers` holds v1's capabilities and roles. `contracts` is not written while
-  EHOS counts it in the authority digest (`eh-os` issue #92). **`--domain` is removed:** a project with more than one
+  EHOS counts it in the authority digest. **`--domain` is removed:** a project with more than one
   domain names the image's in `ehos.yaml`, as `application: <name>`. A domain whose `name:` EHOS does not take for an
   application — with `_`, longer than 63 characters, or `ehos` — is refused, with the name to use. A key of
-  `ehos.yaml` the generator writes is refused rather than overwritten (`eh-os` issue #93).
+  `ehos.yaml` the generator writes is refused rather than overwritten, as agreed with EHOS.
   A command or a role's actor past 63 characters, or with an empty label, is refused, each named: the engine takes
   them, EHOS does not. Only domains with contracts are counted when `ehos.yaml` names none.
   `EhOsContract.Auth.Manifest.build/3` takes the read `ehos.yaml`, the domains and the contracts; `build/2` is gone.
@@ -315,8 +314,8 @@ and the `ehos-dev:release` skill makes one.
 
 - **eh-os-contract#186 (plan DD, P1b): a capability names a process only when its contract has one.** The
   manifest generator stopped with an error on a contract without a process; it now leaves `"process"` out of that
-  contract's capabilities. EHOS keeps the field optional and reads it nowhere (eh-os#203).
-  - **Note:** until EHOS takes `process` out of its authority digest (eh-os#92), the first deploy in which a
+  contract's capabilities. EHOS keeps the field optional and reads it nowhere.
+  - **Note:** until EHOS takes `process` out of its authority digest, the first deploy in which a
     capability loses its `"process"` counts as an authority change and needs `ehos.application.register`. Nothing
     in this release removes one; a contract that later drops its process does.
 
@@ -342,7 +341,7 @@ and the `ehos-dev:release` skill makes one.
   `CREATE SCHEMA` queued ahead of them left the version to be read in `public`, and with `search_path:
   "ledger, public"` nothing was created in `ledger`.
 
-- **The tables work in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
+- **The tables work in a schema other than `public`** (issue #51; EHOS gives each application a schema of its own).
   `EhOsContract.Auth.Migrations` read and wrote its version on `public.eh_os_contract_auth_keys` by name, and
   in a schema of the application's own failed or, where `public` had the tables, created nothing. It now
   reads it in `current_schema()`, where the tables are created, as the key store and the decisions table
@@ -369,7 +368,7 @@ and the `ehos-dev:release` skill makes one.
     `{:error, {:endpoints_refused, names}}` in place of `{:not_https, names}`.
 
 - **Breaking:** **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
-  (`Ehos.Credentials.check_issuer/1`, eh-os#118): the address reads back as written (`URI.new/1`, then
+  (`Ehos.Credentials.check_issuer/1`): the address reads back as written (`URI.new/1`, then
   `URI.to_string/1`), with a lowercase DNS name, an IPv4 address in its dotted form or `::1` as the host, a port
   from 1 to 65535, and no user, query or fragment. It holds for:
   - **the key set's address**, with a path; plain http on `localhost`, `127.0.0.1` and `::1`;

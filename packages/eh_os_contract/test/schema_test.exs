@@ -1,6 +1,6 @@
 defmodule EhOsContract.SchemaTest.Host do
   @moduledoc """
-  A host's migration in a schema of its own, as the ehos-tools template writes it:
+  A host's migration in a schema of its own, as EHOS's application template writes it:
   Oban's tables there by its `prefix:`, without creating the schema it is given, and
   the engine's through the search path, with nothing to say.
   """
@@ -49,7 +49,7 @@ end
 defmodule EhOsContract.SchemaTest do
   @moduledoc """
   Issue #51: **the engine's storage in a schema other than `public`**, as EHOS gives
-  an application one (`eh-os` D-54, D-56). The schema belongs to an owner role that
+  an application one. The schema belongs to an owner role that
   runs the migrations and has no `CREATE` on `public`. The application runs as a
   second role with `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the schema's tables
   and `USAGE` on its sequences, by default privileges, and nothing else. Both reach
@@ -99,7 +99,7 @@ defmodule EhOsContract.SchemaTest do
     admin!("CREATE ROLE #{owner} LOGIN PASSWORD '#{password}'")
     admin!("CREATE ROLE #{app} LOGIN PASSWORD '#{password}'")
 
-    # What EHOS's operator and its grants Job do (D-54), and the same for the schema
+    # What EHOS's operator and its grants Job do, and the same for the schema
     # `HostWithObanApart` puts Oban in, which EHOS does not give.
     for granted <- [schema, schema <> "_jobs"] do
       admin!("CREATE SCHEMA #{granted} AUTHORIZATION #{owner}")

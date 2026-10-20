@@ -549,7 +549,7 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
-  describe "D4, since eh-os D-112: a person actor may grant another person actor's role" do
+  describe "D4: a person actor may grant another person actor's role" do
     test "the control: a person may grant other persons, along a chain" do
       compiles("Grants", """
         actor :owner, :human, "Owner", may_grant: [:office_employee]
@@ -618,7 +618,7 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
-  describe "D4's grant rule and the domain's version, eh-os D-112" do
+  describe "D4's grant rule and the domain's version" do
     test "an actor without a rule hashes as it did before actors could have one" do
       compiles("NoGrantRule", """
         actor :office_employee, :human, "Office employee"
@@ -1179,7 +1179,7 @@ defmodule EhOsContract.DomainRulesTest do
   defp digest_form(%{responsibilities: []} = actor),
     do: actor |> Map.delete(:responsibilities) |> digest_form()
 
-  # eh-os D-112: an actor without a grant rule, as before it could have one.
+  # An actor without a grant rule, as before it could have one.
   defp digest_form(%{may_grant: []} = actor),
     do: actor |> Map.delete(:may_grant) |> digest_form()
 

@@ -114,8 +114,8 @@ defmodule EhOsContract.Conformance do
   @spec report(module(), keyword()) :: map()
   def report(module, opts \\ []), do: module |> Model.fetch() |> from_model(opts)
 
-  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS in
-  # EmpoweredHouse/eh-os#297; until then it stayed off by the decision on #213.
+  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS;
+  # until then it stayed off by the decision on #213.
   @doc """
   The same report, projected onto values that survive JSON.
 
@@ -232,7 +232,7 @@ defmodule EhOsContract.Conformance do
         end,
       duration: duration(model, opts),
       promises: promise_verdicts(model, opts),
-      # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
+      # Plan DD, O1 (#260): under its own key, as EHOS asked.
       out_of_order: EhOsContract.StageOrder.evaluate(model, opts)
     }
   end

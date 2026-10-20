@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.SignIn.Router do
-  # Sign-in through EHOS is `eh-os` D-64, and these routes S7 in docs/adr/browser-session.md.
+  # Sign-in through EHOS, with OpenID Connect, is EHOS's design, and these routes S7 in docs/adr/browser-session.md.
   # The encrypted cookie session is S2, the callback's checks and what the document must say S6,
-  # the exact post-logout address `eh-os` D-68.
+  # the exact post-logout address EHOS's.
   @moduledoc """
   The routes that sign a browser in to the application's pages through EHOS, and
   out. Forward to it at `/auth/ehos`, behind the host's session, since EHOS returns to
@@ -84,7 +84,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
           | params: Map.put(conn.params, "state", local_path(conn.params["return_to"]))
         }
 
-        # eh-os D-113: EHOS's limit may be longer than this application's. `max_age` makes EHOS
+        # EHOS's limit may be longer than this application's. `max_age` makes EHOS
         # ask for the password past this one's, so it never returns a sign-in the session would
         # refuse at once, sending the browser round and round EHOS.
         opts =

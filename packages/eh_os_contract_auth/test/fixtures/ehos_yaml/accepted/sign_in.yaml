@@ -1,5 +1,5 @@
 # A workload that signs people in through EHOS, to its own application and to two others whose
-# pages it calls (eh-os D-69).
+# pages it calls (ehos.yaml/v2).
 schema: ehos.yaml/v2
 serves:
   - name: web

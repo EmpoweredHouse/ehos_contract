@@ -2,7 +2,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   @moduledoc false
 
   # A credential for the session a browser's token names, renewed when it is stale (S4, S5 and
-  # S10 in docs/adr/browser-session.md, `eh-os` D-64).
+  # S10 in docs/adr/browser-session.md).
   #
   # 1. **The fast path.** A credential good for more than 30 seconds by `EhOsContract.Clock` is
   #    used, and nothing is written.
@@ -169,7 +169,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   end
 
   # Step 4. For the client's own application the request names no `resource`; for another, its
-  # address (D-64, D-68).
+  # address, as EHOS takes it.
   defp renew(session, holder, at) do
     config = SignIn.config(at.name)
 
@@ -252,7 +252,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
        when status in [400, 401],
        do: ended(renewal.session, :invalid_grant)
 
-  # D-64: not for this application. EHOS consumed nothing, so the refresh token stays, and the
+  # EHOS's answer that the credential is not for this application. EHOS consumed nothing, so the refresh token stays, and the
   # session lives on for every other application. A lease lost meanwhile is a session ended. For
   # the client's own application, which names no `resource`, EHOS never answers it; one that did
   # is any other error response, so the own application is never remembered as refused.

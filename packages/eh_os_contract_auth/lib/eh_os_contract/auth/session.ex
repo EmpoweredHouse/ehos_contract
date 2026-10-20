@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.Session do
   # The design is docs/adr/browser-session.md: this module is S7; the actor verified as a bearer
   # credential is S8; one renewal per session S4, its timing S10; the browser kept from EHOS's
-  # tokens S2. Another application's credential, with its address as `resource`: `eh-os` D-64, D-68.
+  # tokens S2. Another application's credential, with its address as `resource`, as EHOS takes it.
   @moduledoc """
   A person signed in through EHOS (`EhOsContract.Auth.SignIn.Router`), for the pages
   that need one: a plug, `actor/2` for a controller or a LiveView, and `credential/3`

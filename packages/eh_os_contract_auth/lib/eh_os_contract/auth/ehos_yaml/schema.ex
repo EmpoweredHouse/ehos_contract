@@ -1,12 +1,11 @@
 defmodule EhOsContract.Auth.EhosYaml.Schema do
   @moduledoc false
-  # `eh-os` D-51: a version of `ehos.yaml` is its JSON Schema, and EHOS alone writes it. The copy in
-  # `priv/schemas/` is EHOS's file byte for byte, a quotation with its source, not a second
-  # definition: `ehos.yaml/v1` from `eh-os` `eeb732a`, read at `f7b2330` (1 October 2026), the
-  # same bytes the `ehos-tools` template puts in an application's `.ehos/`, and `ehos.yaml/v2`
-  # from `eh-os` `99e036b` (D-69), read at `2cd95cb` (2 October 2026), and `ehos.yaml/v3` from
-  # `eh-os` `d758c33` (D-81), read at `8ae669f` (8 October 2026), and `ehos.yaml/v4` from `eh-os`
-  # `de370ed9` (D-98, D-99), read at `eadd7112` (17 October 2026). A test pins each SHA-256;
+  # A version of `ehos.yaml` is its JSON Schema, and EHOS alone writes it. The copy in
+  # `priv/schemas/` is EHOS's file byte for byte, a quotation, not a second definition:
+  # `ehos.yaml/v1` as read on 1 October 2026, the same bytes EHOS's application template puts in
+  # an application's `.ehos/`, `ehos.yaml/v2` (sign-in) as read on 2 October, `ehos.yaml/v3` (the
+  # company's people) on 8 October, and `ehos.yaml/v4` (a seed and secrets) on 17 October 2026.
+  # A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #

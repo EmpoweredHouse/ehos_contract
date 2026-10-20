@@ -1,5 +1,5 @@
 defmodule EhOsContract.LogMetadata do
-  # The correlation identifier (P-8) of the work the engine is doing, as the Logger's process
+  # The correlation identifier, one across every application it passes through, of the work the engine is doing, as the Logger's process
   # metadata `correlation_id`, so every line an application logs while the engine runs a command,
   # records an event or reacts to one carries it (#298); `docs/` tells a host the key. It is set
   # for as long as the work runs and what was there before is put back: a process that handles one

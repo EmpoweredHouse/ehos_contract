@@ -1,10 +1,11 @@
 defmodule EhOsContract.Auth.SignIn do
-  # Sign-in through EHOS is `eh-os` D-64; what this package decides beside it is
-  # docs/adr/browser-session.md, S1-S11. In the moduledoc: the addresses' form and the
-  # post-logout address are D-68, the redirect URI D-64, `applications` naming only the others
-  # D-69, the issuer's and the document's endpoints' form #89, starting while EHOS is down FM-19,
-  # the limits on every call to EHOS S6, `absolute_limit` D-66 and D-113. In the typedoc of `t`: the
-  # cipher key S3, the random client secret S6.
+  # Sign-in through EHOS, with OpenID Connect, is EHOS's design; what this package decides beside
+  # it is docs/adr/browser-session.md, S1-S11. In the moduledoc: the addresses' form, the
+  # post-logout address, the redirect URI, `applications` naming only the others and
+  # `absolute_limit` are EHOS's rules; the issuer's and the document's endpoints' form is #89,
+  # starting while EHOS is down is one of the failures EHOS's design names, and the limits on
+  # every call to EHOS are S6. In the typedoc of `t`: the cipher key S3, the random client
+  # secret S6.
   @moduledoc """
   Signing a person in to the application's pages through EHOS, with OpenID Connect:
   the application's client, and the process that keeps EHOS's discovery document and
@@ -88,8 +89,8 @@ defmodule EhOsContract.Auth.SignIn do
     :applications,
     :absolute_limit
   ]
-  # eh-os D-66: twelve hours unless the installation sets another, which EHOS gives the workload
-  # as EHOS_SIGN_IN_ABSOLUTE (D-113); a minute to 366 days, as EHOS takes it.
+  # EHOS's rule: twelve hours unless the installation sets another, which EHOS gives the workload
+  # as EHOS_SIGN_IN_ABSOLUTE; a minute to 366 days, as EHOS takes it.
   @default_absolute_limit 12 * 60 * 60
   @absolute_limit_range 60..(366 * 24 * 60 * 60)
   # The endpoints of the document `oidcc` calls or sends the browser to; a PAR endpoint is posted
@@ -467,7 +468,7 @@ defmodule EhOsContract.Auth.SignIn do
         nil ->
           raise ArgumentError,
                 "config :eh_os_contract_auth, sign_in: [...] is missing; it names the " <>
-                  "application's client at EHOS (eh-os D-64)"
+                  "application's client at EHOS"
 
         sign_in when is_list(sign_in) ->
           if Keyword.keyword?(sign_in), do: sign_in, else: not_a_keyword_list!()
@@ -511,7 +512,7 @@ defmodule EhOsContract.Auth.SignIn do
   defp absolute_limit!(_other) do
     raise ArgumentError,
           "sign_in: absolute_limit must be whole seconds from #{@absolute_limit_range.first} to " <>
-            "#{@absolute_limit_range.last}, EHOS_SIGN_IN_ABSOLUTE as an integer (eh-os D-113)"
+            "#{@absolute_limit_range.last}, EHOS_SIGN_IN_ABSOLUTE as an integer"
   end
 
   defp random_secret, do: 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
@@ -544,7 +545,7 @@ defmodule EhOsContract.Auth.SignIn do
             "#{@min_secret} bytes; the session's tokens are encrypted with a key derived from it"
   end
 
-  # eh-os D-69: the other applications, never this one. Under this application's own address,
+  # EHOS's rule: the other applications, never this one. Under this application's own address,
   # `Session.credential/3` would hand out its own credential as another's.
   defp applications!(applications, own) when is_map(applications) do
     Map.new(applications, fn
@@ -578,7 +579,7 @@ defmodule EhOsContract.Auth.SignIn do
   defp kind(_value), do: "neither a map nor a list"
 
   # `https://<host>`, exactly: an application's address for `resource` and the base of
-  # this one's callback and post-logout addresses (eh-os D-68), which EHOS compares as
+  # this one's callback and post-logout addresses, which EHOS compares as
   # strings, so no port and no upper case either.
   # Read alike by every parser too (#89), so a browser goes where the comparison says.
   defp origin!(what, value) when is_binary(value) do
@@ -596,7 +597,7 @@ defmodule EhOsContract.Auth.SignIn do
   defp origin_refused!(what, value) do
     raise ArgumentError,
           "sign_in: #{what} must be https://<host>, in lower case, with no port, no path, " <>
-            "no trailing slash and no query (eh-os D-68), as every parser reads it, and is " <>
+            "no trailing slash and no query, as EHOS compares it and every parser reads it, and is " <>
             Address.shown(value)
   end
 

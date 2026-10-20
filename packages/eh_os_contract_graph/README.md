@@ -130,7 +130,7 @@ landscape = EhOsContract.GraphRenderer.Landscape.join([{"billing", billing}, {"l
 A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
 boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
 subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
-the applications it sees together, from the domain documents each submitted with its deployment (eh-os D-123).
+the applications it sees together, from the domain documents each submitted with its deployment.
 
 ## Using it
 

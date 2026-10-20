@@ -2,7 +2,7 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   # Plan DD, stage G1 (#297): the joining function of the user's decision of 15 October,
   # and the shape of the decision recorded on #297 the same evening — by domain document,
   # by the publication's name on the wire, only what is on the wire. The EHOS Console takes
-  # the domain documents with each deployment, not from the JSON API (eh-os D-123).
+  # the domain documents with each deployment, not from the JSON API.
   @moduledoc """
   Several applications' domains as one picture, joined where one publishes what another
   subscribes to.

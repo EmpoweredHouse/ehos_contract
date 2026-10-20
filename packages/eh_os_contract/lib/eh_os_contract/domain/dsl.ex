@@ -251,7 +251,7 @@ defmodule EhOsContract.Domain.Dsl do
         default: [],
         doc:
           "The other person actors of this domain whose role a person in this one may grant " <>
-            "through the application (eh-os D-112)."
+            "through the application."
       ],
       source: [type: :string, doc: "Where the actor comes from in the material."]
     ]

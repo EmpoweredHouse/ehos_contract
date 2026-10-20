@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.PeopleTest do
   @moduledoc """
-  #252 (`eh-os` D-81): the application reads EHOS's people as itself. The fake EHOS here
-  answers as `eh-os`'s `Ehos.SignIn.Token` and `EhosWeb.PeopleController` do on its
+  #252: the application reads EHOS's people as itself. The fake EHOS here answers as
+  EHOS's `Ehos.SignIn.Token` and `EhosWeb.PeopleController` do on its
   `main` of 8 October 2026: a ten-minute credential for `client_credentials` with a
   `private_key_jwt` assertion signed by the client key, `unauthorized_client` for a
   deployment that does not ask, and the people API, 403 while no people manager agrees,

@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.EhosYaml do
-  # The format and its versions as JSON Schemas: `eh-os` D-51. The rules of `sign_in`: D-69.
+  # The format is EHOS's, each version a JSON Schema it publishes; so are the rules of `sign_in`.
   @moduledoc """
   Reads an application's `ehos.yaml` as EHOS reads it.
 
@@ -81,8 +81,9 @@ defmodule EhOsContract.Auth.EhosYaml do
     end
   end
 
-  # `eh-os` D-69, as `Ehos.Applications.EhosYaml.V2` checks it beside the schema: sign-in returns
-  # to the host of the public entry `web` (D-68), and the list names the other applications only.
+  # EHOS's rules for `sign_in`, as `Ehos.Applications.EhosYaml.V2` checks them beside the schema:
+  # sign-in returns to the host of the public entry `web`, and the list names the other
+  # applications only.
   # `public` is false when it is not written, as the schema's default says.
   defp sign_in(%{"sign_in" => sign_in} = data, lines) do
     public_web =

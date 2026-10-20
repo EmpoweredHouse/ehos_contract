@@ -1,6 +1,6 @@
 # What this application needs from EHOS in order to run, and nothing about how EHOS provides
 # it. EHOS defines this format: the schema beside it, in .ehos/, is a copy of the one it
-# publishes, and https://github.com/empoweredhouse/eh-os/blob/main/docs/ehos-yaml.md explains
+# publishes, and EHOS's documentation of ehos.yaml explains
 # every field. The application's name is its contract domain's, so it is not written here.
 # yaml-language-server: $schema=.ehos/ehos.yaml.v1.json
 schema: ehos.yaml/v1

@@ -118,7 +118,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   @doc false
   # The session the browser's token names, decrypted. `{:error, :signed_out}` when there is none,
-  # when the token is not one this package made, when it is past the absolute limit (D-66, D-113), the
+  # when the token is not one this package made, when it is past the absolute limit, the
   # next sign-in deleting its row, or when a value does not decrypt under the child's key, a
   # rotated `SECRET_KEY_BASE` for one, or for the row's plain columns; that row is deleted.
   @spec fetch(atom(), term()) :: {:ok, t()} | {:error, :signed_out}
@@ -422,7 +422,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
     "id_token " <> Jason.encode!([subject, sid, seconds])
   end
 
-  # D-66, D-113: a sign-in lives at most the child's absolute limit from `auth_time`, renewed or
+  # EHOS's rule: a sign-in lives at most the child's absolute limit from `auth_time`, renewed or
   # not, twelve hours unless the installation sets another.
   defp limit(absolute_limit), do: DateTime.add(EhOsContract.Clock.now(), -absolute_limit)
 

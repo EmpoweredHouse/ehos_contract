@@ -27,7 +27,7 @@ A line for a change that can move a verdict starts with `**Moves a verdict:**`, 
 subsection it belongs to. CI's Changelog check holds that a pull request changing the package's
 code has a line or says why not; whether the change can move a verdict, it cannot tell.
 
-The rule beside it is every package's in this repository, and EHOS's other repositories' too:
+The rule beside it holds for every package of this repository:
 
 **Every change a user of this package can see gets a line under `## [Unreleased]`, in its own pull
 request.** A user is a host application's developer: what they see is the package's public API, its
@@ -37,14 +37,13 @@ its description, `No changelog: <why>`, and CI's Changelog check (`.github/workf
 fails it otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts
 with `**Breaking:**`, under the subsection it belongs to.
 
-The repository's tag, `vX.Y.Z`, is this package's version, and releases every package of the
+The repository's tag, `vX.Y.Z`, is this package's version, and one tag releases every package of the
 repository at its own version. Between releases the version in `mix.exs` ends in `-dev`; at a
 release, a package with lines under `## [Unreleased]` moves to its next version. Every release moves
 the engine, whose version the tag is: a release of other packages alone moves it by a patch from its
 last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). How a release is made is written in
-eh-os's [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md),
-and the `ehos-dev:release` skill makes one.
+eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
@@ -53,7 +52,7 @@ and the `ehos-dev:release` skill makes one.
 - **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
   using `boundary` could not call it, since the engine's boundary did not export it, and no page said how
   to record an outage. It is exported now, and [processes](docs/concepts/process.md) says how to record one.
-- **An actor says which roles a person in it may grant** (eh-os D-112, EmpoweredHouse/eh-os#729).
+- **An actor says which roles a person in it may grant**, as agreed with EHOS.
   `actor :office_employee, :human, "Office employee", may_grant: [:client]` lets a person holding the
   office employee's role grant the client's role through the application, once EHOS grants under the rule.
   `D4` refuses the rule on a system actor, naming the actor itself, a system, an undeclared actor or one twice,
@@ -397,7 +396,7 @@ and the `ehos-dev:release` skill makes one.
 
 ## [0.3.0] - 2026-10-11
 
-The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
+The move to the second contract DSL (`docs/adr/contract-v2.md`), from E1 to the cut, E11.
 **The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
 no longer compiles, and nothing of it is migrated — there was no consumer to migrate. What 0.3.0 is, and
 how to write a domain and a contract for it, is in `README.md` and `docs/contract.md`; every key of both
@@ -457,15 +456,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   fixes or narrows a field. The module compiles only where StreamData is, `{:stream_data, "~> 1.1"}`, an optional
   dependency of the package. Moves no verdict.
 - **The report counts the runs whose stages happened out of order — can move a verdict** (plan DD, stage O1,
-  #260, agreed with EHOS in EmpoweredHouse/eh-os#297). Each process section of
+  #260, agreed with EHOS). Each process section of
   `EhOsContract.Conformance.report/2` has `out_of_order: %{runs: n, pairs: [%{earlier:, later:, runs:,
   earlier_label:, later_label:}]}` (`EhOsContract.StageOrder`): the runs that entered a later stage before an
   earlier one they also entered, by position in the log, a stage entered by its first event, a run in the
   period by its first event and judged on all of them. On the wire it is a new key of v3, and the text report
   prints "Stages out of order in n runs" with a line per pair, only when there is one. It never names a run. The
   dashboard does not show it yet.
-- **A process module's report is on the conformance wire** (plan DD, stage P2w, #259, agreed with EHOS in
-  EmpoweredHouse/eh-os#297). `EhOsContract.Conformance.as_data/2` no longer refuses a process module: its report
+- **A process module's report is on the conformance wire** (plan DD, stage P2w, #259, agreed with
+  EHOS). `EhOsContract.Conformance.as_data/2` no longer refuses a process module: its report
   keeps the schema `eh_os_contract.conformance.v3` and has `"process"`, its id, where a contract's has
   `"contract"`; a report has exactly one of the two. `EhOsContract.Conformance.Wire` states the rule every reader may
   rely on: an unknown key is ignored, and a key an older reader must not ignore comes with a new schema name. Moves
@@ -700,7 +699,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   commands carry the message's correlation and name the inbox row as their cause; it is acknowledged after
   the commit. A row exists per message key, so a redelivery, or the same fact published again under a new
   id, reacts once: the relay gives a message the SHA-256 of its name and its `idempotent_on:` values, each
-  framed by its length, as its key, or its id when the publication declares none (`eh-os` FM-04, FM-08). A message that does not fit what
+  framed by its length, as its key, or its id when the publication declares none. A message that does not fit what
   the contract consumes, or whose policy raises, is not acknowledged and comes again. With no `bus:`
   configured the boot logs a warning for each inbox. `Model.capabilities/1` has one more capability per
   consumed name a policy handles, `<name>.subscribe`, without the name's version, of kind `:subscribe` and
@@ -1165,7 +1164,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
   report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
   `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
-  A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
+  A reader of v2 moves to v3; EHOS is told in an issue. The dashboard's screen heads each contract with
   its id.
 - **Breaking:** **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
   `GET <mount>/conformance?contract=lending.circulation`, `<mount>/model/lending.circulation`, `<mount>/openapi/…` and
@@ -1301,7 +1300,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
   "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
 - **Breaking:** **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
-  `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
+  `<domain>.<name>` (D14), and since EHOS names a capability by its declaration's kind the manifest offers both. L3's D14 already refused the pair when
   the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
   the two into one capability.
 
@@ -1554,7 +1553,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`,
   and answers a recording for a unit no command created (`{:error, :not_created}`) with 404 `{"error":
   "not_created"}`.
-  A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, `eh-os` D-34) maps the
+  A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, which EHOS asks of an application) maps the
   recordings too; D14 now also refuses a recorded event named like another declaration's capability.
 - **Breaking:** **E9a: only what a person may do is a capability.** `EhOsContract.Model.capabilities/1` gives a command, a
   query or a recorded event a capability only when its `by:` or `recorded_by:` names a `:human` actor, and its
@@ -1667,7 +1666,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 - **An append waits only for appends to the same log.** The append lock had one fixed key, and an advisory
   lock belongs to the whole database: where applications share one, each in a schema of its own, as EHOS
-  keeps them (`eh-os` D-54), every application's appends waited for every other's. V01's lock now has two
+  keeps them, each in a schema of its own, every application's appends waited for every other's. V01's lock now has two
   integers, the engine's and one derived from the schema's name, written into `eh_os_contract_append_lock()`
   and the log's trigger at migration, so neither resolves anything through the `search_path` at run time.
   V01 is changed in place, as before 0.3.0 is first released: a database migrated earlier keeps the old key
@@ -1678,7 +1677,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   queues one — left `current_schema()` empty, or with `search_path: "ledger, public"` read `public`'s version
   and key. The schema should still exist before the migrations run: Ecto places its own `schema_migrations`
   through the path before any of them does.
-- **The storage works in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
+- **The storage works in a schema other than `public`** (issue #51; EHOS gives each application a schema of its own).
   `EhOsContract.Migrations` read and wrote its version on `public.eh_os_contract_events` by name, while the
   tables were created unqualified, in the connection's `search_path`. In a schema of the application's own,
   `up/0` failed on a `public.eh_os_contract_events` that did not exist, or, where `public` already had the
@@ -1727,7 +1726,7 @@ The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — 
   kinds of principal may take it. `EhOsContract.Command.permits?/3` derives the capability,
   which answers level 2 only — whether *this* caller may act for *this* subject
   stays a `rule` with a decision function. There is no `emits:` key, deliberately
-  and against `D-15` as written: both readings of "what this command emits" are
+  and against EHOS's architecture as it was then written: both readings of "what this command emits" are
   already held elsewhere and neither can be checked for completeness by a gate.
   `principals:` is a closed set and, unlike the payload types, a proposal rather
   than something read out of any corpus.

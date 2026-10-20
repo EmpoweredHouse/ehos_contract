@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.Migrations.V01 do
   @moduledoc false
 
-  # The last key set this application fetched from EHOS (`eh-os` D-34). Public
+  # The last key set this application fetched from EHOS. Public
   # keys, so the table is a freshness concern and not a secrecy one; it exists so a
   # restart while EHOS is down still verifies credentials.
 
