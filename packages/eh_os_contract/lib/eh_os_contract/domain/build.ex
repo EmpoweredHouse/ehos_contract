@@ -263,6 +263,11 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{responsibilities: []} = actor),
     do: actor |> Map.delete(:responsibilities) |> digest_form()
 
+  # eh-os D-112 (EmpoweredHouse/eh-os#729): and one without a grant rule, as before it could have
+  # one, so the option moves no domain's version until an actor declares a rule.
+  defp digest_form(%{may_grant: []} = actor),
+    do: actor |> Map.delete(:may_grant) |> digest_form()
+
   # A symmetric relation's ends are a set, so its pairs are read in the sorted ends'
   # order: `between: [b, a]` with `{"y", "x"}` is `between: [a, b]` with `{"x", "y"}`.
   defp digest_form(%{between: [a, b], terms: [_ | _] = terms} = relation) when a > b,
@@ -289,6 +294,10 @@ defmodule EhOsContract.Domain.Build do
 
       {:between, list} ->
         {:between, Enum.sort(list)}
+
+      # A grant rule names a set of actors.
+      {:may_grant, list} ->
+        {:may_grant, Enum.sort(list)}
 
       other ->
         other

@@ -68,7 +68,8 @@ sequenceDiagram
 
 1. **Deployment.** The application sends EHOS a manifest with its capabilities and roles, derived from
    its contracts, beside what its `ehos.yaml` says it needs: `ehos.manifest/v2`, `v3` or `v4`, by
-   the version of its `ehos.yaml`, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
+   the version of its `ehos.yaml`, or `v5` when an actor's `may_grant:` says which roles a person in it
+   may grant, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
    `eh_os_contract_auth` writes.
 2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
    optionally with scope values ("warehouse 7").

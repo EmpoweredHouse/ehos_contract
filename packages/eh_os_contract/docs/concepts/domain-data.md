@@ -42,6 +42,25 @@ values is refused too, since empty is not "all". Every actor in a scoped declara
 dimension ([`D10`](../contract.md#refusals-d)). What the checks do, before and after a query runs, is in
 [authorization](../authorization.md).
 
+<a id="who-may-let-whom-in"></a>
+
+### Who may let whom in
+
+Some people come to an application by its own work, not by a decision of the company: an accountant adds a
+client company and its representative, who then signs in to see that company. `may_grant:` says which other
+person actors' roles a person in this one may grant through the application:
+
+```elixir
+actor :office_employee, :human, "Office employee", may_grant: [:client]
+actor :client, :human, "Client"
+```
+
+The rule goes into the manifest beside the role, and EHOS shows it to whoever approves a deployment: adding one
+widens what the application asks for (eh-os D-112). Only a person grants and is granted; a rule never names the
+actor itself, and rules never lead back to an actor, since `a` granting `b` while `b` grants `a` lets a holder
+of `a` grant `a` through another ([`D4`](../contract.md#refusals-d)). An actor named in a rule, and one that has a
+rule, has to hold a capability, or it is no role in the manifest; the manifest's generator says so.
+
 ## Subjects and personal data
 
 A subject is a kind of person whose personal data the application keeps and may have to erase: a customer, a
@@ -295,7 +314,8 @@ The full table is in [Writing a domain and a contract](../contract.md). For what
 - **[`D3`](../contract.md#refusals-d)**: a value with both or neither of a type and fields, a `unit` on a value that is not numeric, an
   undeclared `context:`, values in a cycle.
 - **[`D4`](../contract.md#refusals-d)**: an actor's name not snake_case, a human actor with `backed_by`, `backed_by` naming no external,
-  an undeclared `context:`.
+  an undeclared `context:`; a `may_grant:` on a system actor, or naming the actor itself, a system, an undeclared
+  actor or one twice, and rules that lead back to an actor.
 - **[`D6`](../contract.md#refusals-d)**: `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, or a field
   that is personal or holds personal data.
 - **[`D8`](../contract.md#refusals-d)**: `issued_by:` naming what is not an external of the domain.

@@ -119,6 +119,58 @@ defmodule EhOsContract.Auth.ManifestTest do
     query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
   end
 
+  # eh-os D-112: an office employee may grant a client; a visitor holds nothing, so is no role.
+  defmodule GrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule GrantWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: GrantDomain, context: :work, id: "grant-rig.grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
+  end
+
+  defmodule RoleLessGrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client, :visitor])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule RoleLessGrantWork do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: RoleLessGrantDomain,
+      context: :work,
+      id: "grant-rig.role_less_grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
+  end
+
   defmodule MachineDomain do
     @moduledoc false
     use EhOsContract.Domain, name: :"machine-rig", language: :en
@@ -365,13 +417,108 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "a role that may grant another, eh-os D-112" do
+    test "makes an ehos.manifest/v5 whose role carries the roles its actor may grant" do
+      manifest = Manifest.build(@file_v1, [GrantDomain], [GrantWork])
+
+      assert manifest["schema"] == "ehos.manifest/v5"
+      assert manifest["ehos_yaml"] == "ehos.yaml/v1"
+
+      assert manifest["offers"]["roles"] == [
+               %{
+                 "name" => "grant-rig.client",
+                 "label" => "Client",
+                 "capabilities" => ["grant-rig.comment_case"]
+               },
+               %{
+                 "name" => "grant-rig.office_employee",
+                 "label" => "Office employee",
+                 "capabilities" => ["grant-rig.open_case"],
+                 "may_grant" => ["grant-rig.client"]
+               }
+             ]
+    end
+
+    # EHOS's v5 takes every ehos.yaml v4 does.
+    test "is v5 whatever the version of ehos.yaml" do
+      for version <- EhosYaml.versions() do
+        file = %{"schema" => version, "health" => @health}
+
+        assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v5",
+               version
+      end
+    end
+
+    test "is refused when it names an actor that holds no capability, and so is no role" do
+      assert_raise ArgumentError,
+                   ~r/actor :office_employee's may_grant names :visitor, which holds no capability and so is no role/,
+                   fn ->
+                     Manifest.build(@file_v1, [RoleLessGrantDomain], [RoleLessGrantWork])
+                   end
+    end
+
+    # A domain given as a map has not been through D4: what EHOS refuses, the generator refuses.
+    test "a domain given as a map is held to what EHOS takes" do
+      with_rule = fn actor, rule ->
+        domain = Model.fetch(GrantDomain)
+
+        actors =
+          Enum.map(domain.actors, fn
+            %{name: ^actor} = a -> Map.put(a, :may_grant, rule)
+            a -> a
+          end)
+
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      for {actor, rule, reason} <- [
+            {:office_employee, [:office_employee], "names the actor itself"},
+            {:office_employee, [:client, :client], "names :client twice"},
+            {:office_employee, [:robot, :"ehos.admin"],
+             ~s|names :robot, :"ehos.admin", no person actor of this domain|},
+            {:office_employee, nil, "is nil, not a list of person actors"},
+            {:visitor, [:client], "actor :visitor has may_grant but holds no capability"}
+          ] do
+        error = assert_raise ArgumentError, with_rule.(actor, rule)
+        assert error.message =~ reason, inspect(rule)
+      end
+    end
+
+    test "a domain given as a map has no system with a rule, nor rules that lead back" do
+      domain = Model.fetch(GrantDomain)
+
+      rule = fn rules ->
+        actors = Enum.map(domain.actors, &Map.put(&1, :may_grant, Map.get(rules, &1.name, [])))
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      system = %{name: :sync, kind: :system, label: "Sync", may_grant: [:client]}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [%{domain | actors: domain.actors ++ [system]}], [GrantWork])
+        end
+
+      assert error.message =~ "actor :sync is a system and cannot have may_grant"
+
+      error =
+        assert_raise ArgumentError,
+                     rule.(%{office_employee: [:client], client: [:office_employee]})
+
+      assert error.message =~
+               "actor :client, :office_employee have may_grant rules that lead back to them"
+    end
+  end
+
   # schemas/0 is what a release says the package produces: exactly what build/3 writes from
-  # every ehos.yaml it can read, no more.
+  # every ehos.yaml it can read, no more, with a rule and without.
   test "schemas/0 lists exactly the versions build/3 writes" do
     written =
-      for version <- EhosYaml.versions(), uniq: true do
+      for version <- EhosYaml.versions(),
+          {domain, contract} <- [{Ledger, Entries}, {GrantDomain, GrantWork}],
+          uniq: true do
         file = %{"schema" => version, "health" => @health}
-        Manifest.build(file, [Ledger], [Entries])["schema"]
+        Manifest.build(file, [domain], [contract])["schema"]
       end
 
     # Oldest first, by the number: as text, "ehos.manifest/v10" would sort before "/v2".
