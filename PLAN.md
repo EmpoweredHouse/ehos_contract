@@ -41,8 +41,9 @@ new project's first lock; AppUnite's equipment application (PN2, EmpoweredHouse/
 
 **Next: the publication programme** (18 October, below): making the repository public. The sandbox host owns its repo since PB1 (#366, in #367).
 Invented case studies test what only client material tested (PB2, #369, done); the packages, their tests, the
-skills and the design record are in English and name no client (PB3, #375, done); next is moving the client trees
-out (PB4). Whether the history is kept waits for the two clients' consent. Before `docs/adr/` is published, the user
+skills and the design record are in English and name no client (PB3, #375, done); the client trees live in the
+private `eh-os-contract-cases` (PB4, #386, done), and `mix sandbox.traffic` fills a development log from the case
+studies (PB4b, #389, done). Next is the repository for outsiders (PB5). Whether the history is kept waits for the two clients' consent. Before `docs/adr/` is published, the user
 decides what becomes of the people it names and its links into private repositories (#379).
 
 **Open, the user's:**
@@ -106,8 +107,8 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
 | PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ☑ #370, #372, #373, #374 |
 | PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ☑ #376, #378, #380, #381, #382, #383, #384 |
-| PB4 | The client trees, their tests, migrations and documents move to a private repository | #386 | ◐ |
-| PB4b | The sandbox fills its development log with drift on the invented case studies, in place of GraphLab's task | #389 | ◐ |
+| PB4 | The client trees, their tests, migrations and documents move to a private repository | #386 | ☑ #387, #388 |
+| PB4b | The sandbox fills its development log with drift on the invented case studies, in place of GraphLab's task | #389 | ☑ #390 |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
