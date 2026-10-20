@@ -21,8 +21,12 @@ credential verifier (`eh_os_contract_auth`) and the graph renderer (`eh_os_contr
 - personal data readable after its subject was erased, or written in the clear where it should be encrypted;
 - a dashboard or API route that shows more than its host's resolver allows.
 
-`sandbox/` is development and test material, never deployed. Its configuration holds keys made for it alone,
-on purpose; those are not a finding.
+The `eh-os-contract` Claude Code plugin under `plugins/` is in scope too: applications enable it, and its
+skills steer their assistant. So are the workflows under `.github/workflows/`.
+
+Not a finding: the keys, salts and `secret_key_base` values in `sandbox/config/` and in each package's
+`config/` and tests. They were made for development and tests alone, on purpose, and no package ships them
+(each package's `mix.exs` lists the files it publishes).
 
 ## Supported versions
 

@@ -1,5 +1,5 @@
 EhOsContract.Web
-Copyright 2026 Empowered House
+Copyright 2026 Empowered House PSA
 
 This product includes software developed by third parties.
 
@@ -22,7 +22,8 @@ internet access.
 `priv/static/assets/app.js` bundles the client scripts of Phoenix 1.8.12,
 Phoenix.HTML 4.3.0 and Phoenix LiveView 1.2.10, which the dashboard's screens run
 on, from those packages' `priv/static/`. LiveView's script includes morphdom
-(https://github.com/patrick-steele-idem/morphdom). All are used under the MIT
+(https://github.com/patrick-steele-idem/morphdom), as the fork LiveView builds
+with (https://github.com/SteffenDE/morphdom). All are used under the MIT
 Licence; Phoenix, Phoenix.HTML and Phoenix LiveView are Copyright (c) 2014, 2014
 and 2018 Chris McCord, and morphdom is Copyright (c) Patrick Steele-Idem:
 

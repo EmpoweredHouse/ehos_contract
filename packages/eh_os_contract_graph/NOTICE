@@ -1,5 +1,5 @@
 EhOsContract.GraphRenderer
-Copyright 2026 Empowered House
+Copyright 2026 Empowered House PSA
 
 This product includes software developed by third parties. `priv/static/eh_os_contract_graph.esm.js` is
 built by esbuild from this package's own `assets/js/` and the two files under `assets/vendor/`, so it
