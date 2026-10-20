@@ -156,7 +156,8 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @doc """
   Has `ehos` answer the grant routes with `{:status, code, json}`, `:reset` (no response),
-  `:not_json`, or `nil` for what it decides itself.
+  `:not_json`, `:raise` (an exception naming the request's headers), or `nil` for what it
+  decides itself.
   """
   def grants_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | grants_answer: answer})
 
@@ -481,9 +482,21 @@ defmodule EhOsContract.Auth.FakeEhos do
          "client_assertion_type" => "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
          "client_assertion" => assertion
        }) do
+    now = System.os_time(:second)
+
     case JOSE.JWT.peek_payload(assertion).fields do
-      %{"iss" => client, "sub" => client} -> client
-      _other -> nil
+      %{
+        "iss" => client,
+        "sub" => client,
+        "aud" => @issuer <> "/oauth/token",
+        "exp" => exp,
+        "jti" => jti
+      }
+      when is_integer(exp) and exp > now and is_binary(jti) ->
+        client
+
+      _other ->
+        nil
     end
   rescue
     _not_a_jwt -> nil
@@ -496,8 +509,9 @@ defmodule EhOsContract.Auth.FakeEhos do
     public = JOSE.JWK.to_public(state.signer)
 
     case JOSE.JWT.verify_strict(public, ["Ed25519", "EdDSA"], token) do
+      # `Ehos.SignIn.PersonExchange`: at least 5 seconds left.
       {true, %JOSE.JWT{fields: %{"exp" => exp} = claims}, _jws} ->
-        if exp > System.os_time(:second) + state.offset, do: claims
+        if exp - (System.os_time(:second) + state.offset) >= 5, do: claims
 
       _refused ->
         nil
@@ -533,6 +547,10 @@ defmodule EhOsContract.Auth.FakeEhos do
 
       {:not_json, _exchanged} ->
         Plug.Conn.send_resp(conn, 200, "<html></html>")
+
+      # An exception inside the request that carries its headers, the bearer token among them.
+      {:raise, _exchanged} ->
+        raise ArgumentError, "refused #{inspect(conn.req_headers)}"
 
       {{:status, status, json}, _exchanged} ->
         conn |> Plug.Conn.put_status(status) |> Req.Test.json(json)

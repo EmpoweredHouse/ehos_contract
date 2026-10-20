@@ -50,7 +50,8 @@ defmodule EhOsContract.Auth.Grants do
     * `:beyond_rule`: none of the person's roles here may grant that role;
     * `:not_permitted`: EHOS refused to exchange the person's credential, and says no
       more, by design: no role of theirs here carries a rule, they are disabled, or the
-      credential is not this client's. Also a person disabled since the exchange;
+      credential is not this client's. Also a person disabled since the exchange, whichever
+      of EHOS's checks finds it;
     * `:unknown_role`: no role of this application in this environment;
     * `:mail_required`: the installation sends no mail, so someone who manages people
       invites them in the console instead;
@@ -62,10 +63,13 @@ defmodule EhOsContract.Auth.Grants do
     * `:not_mailed`: the role is granted but the mail failed; granting it again sends a
       new link;
     * `:not_found`: `revoke/4` of a binding that is not there, or an environment removed;
-    * `:forbidden`: EHOS refused the credential on the route;
-    * `:rate_limited`: EHOS's limit on its token endpoint or its grant routes;
+    * `:rate_limited`: EHOS's limit on its token endpoint or its grant routes. Each call
+      exchanges once, and EHOS takes at most 60 token requests a minute from the
+      application's client, `EhOsContract.Auth.People`'s included: offer the grant only to
+      people whose role may give one;
     * `:signed_out`, `:renewal_busy`: the session's, as `EhOsContract.Auth.Session.actor/2`
-      answers them;
+      answers them. `:renewal_busy` also when the person's credential has too few seconds
+      left for EHOS to exchange it while another request renews it; ask again;
     * `:unavailable`: EHOS cannot be reached, fails, or answers what it never answers,
       which is logged.
 
@@ -90,12 +94,19 @@ defmodule EhOsContract.Auth.Grants do
   @grants "/api/v1/role-bindings/grants"
   @verify_opts [:keys, :audience, :issuer]
   @deadline 10_000
+  # EHOS exchanges a credential with at least 5 seconds left (`Ehos.SignIn.PersonExchange`); one
+  # with less, which Renewal hands out while another request renews, is not sent to be refused as
+  # though the person may not grant.
+  @least_remaining_seconds 10
   # EHOS's ids are UUIDs: anything else is no one's, and is not sent.
   @id ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
+  # A role is `<application>.<name>`, its name as EHOS's manifest takes it: anything else is no
+  # role's, and is not put in a path, where `.` or `..` would name another route.
+  @role ~r/\A[^\/.\s]+\.[a-z][a-z0-9_]*\z/
   # The refusals of the grant routes `docs/grants-api.md` names, each answered as itself.
   @refusals Map.new(
               ~w(beyond_rule unknown_role mail_required person_disabled invalid_email invalid_name
-                 already_bound too_many_invitations not_mailed not_found forbidden)a,
+                 already_bound too_many_invitations not_mailed not_found)a,
               &{Atom.to_string(&1), &1}
             )
 
@@ -112,7 +123,6 @@ defmodule EhOsContract.Auth.Grants do
           | :too_many_invitations
           | :not_mailed
           | :not_found
-          | :forbidden
           | :rate_limited
           | :signed_out
           | :renewal_busy
@@ -152,7 +162,7 @@ defmodule EhOsContract.Auth.Grants do
   Takes `role` back from the person `person_id` names, the id a grant answered, for the
   person signed in in `session`, under their role's rule, whoever bound it. Answers the
   binding's id and role; `{:error, :not_found}` without one, an id that is no one's
-  included.
+  or a role that is not `<application>.<name>` included, which are not sent.
   """
   @spec revoke(Plug.Conn.t() | map(), String.t(), String.t(), [option()]) ::
           {:ok, %{role_binding_id: String.t(), role: String.t()}} | {:error, reason()}
@@ -162,7 +172,7 @@ defmodule EhOsContract.Auth.Grants do
       when is_binary(person_id) and is_binary(role) and role != "" do
     person_id = String.downcase(person_id)
 
-    with true <- person_id =~ @id || {:error, :not_found},
+    with true <- (person_id =~ @id and role =~ @role) || {:error, :not_found},
          path = Enum.join([@grants, person_id, URI.encode(role, &URI.char_unreserved?/1)], "/"),
          {:ok, answer} <- call(session, opts, :delete, path, nil) do
       case answer do
@@ -188,8 +198,8 @@ defmodule EhOsContract.Auth.Grants do
     role = grant[:role]
     name = grant[:name]
 
-    unless is_binary(email) and email != "" and is_binary(role) and role != "" and
-             (is_nil(name) or is_binary(name)) do
+    unless text?(email) and email != "" and text?(role) and role != "" and
+             (is_nil(name) or text?(name)) do
       bad!()
     end
 
@@ -198,11 +208,16 @@ defmodule EhOsContract.Auth.Grants do
       else: %{"email" => email, "role" => role, "name" => name}
   end
 
+  # Valid UTF-8, so the body is encoded before EHOS is asked, and a value no JSON can carry fails
+  # here, without the value in what is raised.
+  defp text?(value), do: is_binary(value) and String.valid?(value)
+
   defp bad!,
     do:
       raise(
         ArgumentError,
-        "grant/3 takes email: and role:, each a non-empty string, and name:, a string or nil"
+        "grant/3 takes email: and role:, each a non-empty UTF-8 string, and name:, a UTF-8 " <>
+          "string or nil"
       )
 
   ## The calls
@@ -231,11 +246,27 @@ defmodule EhOsContract.Auth.Grants do
       end
 
     case Renewal.credential(name, browser_token, config.address, verify_opts) do
-      {:ok, token} -> {:ok, token}
+      {:ok, token} -> lasting(token)
       {:error, :ehos_unavailable} -> {:error, :unavailable}
+      # Renewal refuses only another application's address; this one is the client's own.
       {:error, :refused} -> {:error, :not_permitted}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # Measured on `EhOsContract.Clock`, as Renewal judges a credential fresh.
+  defp lasting(token) do
+    exp =
+      try do
+        JOSE.JWT.peek_payload(token).fields["exp"]
+      rescue
+        _not_a_jwt -> nil
+      end
+
+    if is_integer(exp) and
+         exp - DateTime.to_unix(EhOsContract.Clock.now()) >= @least_remaining_seconds,
+       do: {:ok, token},
+       else: {:error, :renewal_busy}
   end
 
   # What sign-in's transport is configured with: the plug of a test, or EHOS's authority.
@@ -280,7 +311,7 @@ defmodule EhOsContract.Auth.Grants do
         exchange_refusal(status, body)
 
       {:error, reason} ->
-        Logger.warning("EHOS's token endpoint could not be reached: #{inspect(reason)}")
+        Logger.warning("EHOS's token endpoint could not be reached: #{describe(reason)}")
         {:error, :unavailable}
     end
   end
@@ -320,7 +351,7 @@ defmodule EhOsContract.Auth.Grants do
         refusal(status, error(body))
 
       {:error, reason} ->
-        Logger.warning("EHOS's grant routes could not be reached: #{inspect(reason)}")
+        Logger.warning("EHOS's grant routes could not be reached: #{describe(reason)}")
         {:error, :unavailable}
     end
   end
@@ -328,8 +359,10 @@ defmodule EhOsContract.Auth.Grants do
   defp refusal(_status, error) when is_map_key(@refusals, error),
     do: {:error, Map.fetch!(@refusals, error)}
 
-  # A person disabled since the exchange, at the route's own check.
+  # A person disabled since the exchange: at the route's door (`disabled`), or under the lock the
+  # grant is decided under (`forbidden`). One cause, one answer.
   defp refusal(401, "disabled"), do: {:error, :not_permitted}
+  defp refusal(403, "forbidden"), do: {:error, :not_permitted}
   defp refusal(429, _error), do: {:error, :rate_limited}
   defp refusal(status, error), do: unexpected("status #{status} #{inspect(error)}")
 
@@ -339,6 +372,13 @@ defmodule EhOsContract.Auth.Grants do
       _other -> nil
     end
   end
+
+  # What failed, never the request: a transport's own reason, or an exception's module alone, since
+  # an exception raised inside the request may carry its headers, the bearer token among them.
+  defp describe(%{__exception__: true, reason: reason}) when is_atom(reason), do: inspect(reason)
+  defp describe(%{__exception__: true, __struct__: module}), do: inspect(module)
+  defp describe(reason) when is_atom(reason), do: inspect(reason)
+  defp describe(_reason), do: "an error in the request"
 
   defp unexpected(what) do
     Logger.warning("EHOS's grant routes answered #{what}")

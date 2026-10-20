@@ -158,8 +158,7 @@ defmodule EhOsContract.Auth.GrantsTest do
             {409, "already_bound"},
             {429, "too_many_invitations"},
             {502, "not_mailed"},
-            {404, "not_found"},
-            {403, "forbidden"}
+            {404, "not_found"}
           ] do
         FakeEhos.grants_answer(
           context.ehos,
@@ -171,10 +170,13 @@ defmodule EhOsContract.Auth.GrantsTest do
       end
     end
 
-    test "a person disabled since the exchange is not permitted", context do
-      FakeEhos.grants_answer(context.ehos, {:status, 401, %{"error" => "disabled"}})
+    test "a person disabled since the exchange is not permitted, whichever check finds it",
+         context do
+      for {status, code} <- [{401, "disabled"}, {403, "forbidden"}] do
+        FakeEhos.grants_answer(context.ehos, {:status, status, %{"error" => code}})
 
-      assert grant(context, email: "bea@example.com", role: @role) == {:error, :not_permitted}
+        assert grant(context, email: "bea@example.com", role: @role) == {:error, :not_permitted}
+      end
     end
 
     test "the API's limit is a rate limit", context do
@@ -190,7 +192,9 @@ defmodule EhOsContract.Auth.GrantsTest do
             [email: "", role: @role],
             [email: "bea@example.com", role: @role, name: 7],
             [email: "bea@example.com", role: @role, scope: "x"],
-            %{email: "bea@example.com", role: @role}
+            %{email: "bea@example.com", role: @role},
+            [email: "bea@example.com" <> <<0xFF>>, role: @role],
+            [email: "bea@example.com", role: @role, name: "Bea" <> <<0xC3>>]
           ] do
         assert_raise ArgumentError, fn -> grant(context, args) end
       end
@@ -233,12 +237,32 @@ defmodule EhOsContract.Auth.GrantsTest do
       assert exchanges(context) == []
     end
 
-    test "a role with characters a path does not take is sent encoded", context do
+    test "a role that is not <application>.<name> is not sent", context do
       id = Ecto.UUID.generate()
-      Grants.revoke(conn(context), id, "clinic.a/b c", sign_in: context.name)
+
+      for role <- [
+            "..",
+            ".",
+            "clinic",
+            "clinic./x",
+            "clinic/../x.client",
+            "clinic.Client",
+            "clinic.a b"
+          ] do
+        assert Grants.revoke(conn(context), id, role, sign_in: context.name) ==
+                 {:error, :not_found},
+               inspect(role)
+      end
+
+      assert exchanges(context) == []
+    end
+
+    test "an application's name with characters a path does not take is sent encoded", context do
+      id = Ecto.UUID.generate()
+      Grants.revoke(conn(context), id, "clin%ic.client", sign_in: context.name)
 
       assert [%{path: path}] = FakeEhos.grant_calls(context.ehos)
-      assert path == "/api/v1/role-bindings/grants/#{id}/clinic.a%2Fb%20c"
+      assert path == "/api/v1/role-bindings/grants/#{id}/clin%25ic.client"
     end
   end
 
@@ -274,6 +298,18 @@ defmodule EhOsContract.Auth.GrantsTest do
       capture_log(fn ->
         assert grant(context, email: "bea@example.com", role: @role) == {:error, :unavailable}
       end)
+    end
+
+    test "a credential with seconds left while another request renews is not sent", context do
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert {:taken, nil} = Sessions.take_lease(session, "another-request", 30_000)
+      almost = DateTime.add(session.credentials[@address].expires_at, -3)
+
+      assert EhOsContract.Clock.at(almost, fn ->
+               grant(context, email: "bea@example.com", role: @role)
+             end) == {:error, :renewal_busy}
+
+      assert exchanges(context) == []
     end
 
     test "a stale credential is renewed first, and the renewed one exchanged", context do
@@ -346,6 +382,20 @@ defmodule EhOsContract.Auth.GrantsTest do
         end)
 
       refute log =~ "eyJ"
+    end
+
+    test "an exception inside the request is logged without the request", context do
+      FakeEhos.grants_answer(context.ehos, :raise)
+
+      log =
+        capture_log(fn ->
+          assert grant(context, email: "bea@example.com", role: @role) == {:error, :unavailable}
+        end)
+
+      assert [%{bearer: bearer}] = FakeEhos.grant_calls(context.ehos)
+      assert log =~ "could not be reached"
+      refute log =~ bearer
+      refute log =~ "authorization"
     end
 
     test "an answer EHOS never gives is EHOS unavailable", context do
