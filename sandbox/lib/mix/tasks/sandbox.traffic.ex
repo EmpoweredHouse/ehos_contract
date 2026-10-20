@@ -41,9 +41,9 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   promise still pending breaks once its window passes. So run it right before looking,
   on a database that holds nothing else:
 
-      $ EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix ecto.reset
-      $ EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix sandbox.traffic
-      $ EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
+      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix ecto.reset
+      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix sandbox.traffic
+      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
 
   **The default development database is shared by every checkout of this repository on
   the machine**, and `mix ecto.reset` empties it for all of them; `EH_OS_CONTRACT_DEV_DB`
@@ -97,7 +97,7 @@ defmodule Mix.Tasks.Sandbox.Traffic do
     # Before the application starts, since its boot already writes the deployment rows:
     # a test database's log is empty between runs, so the refusals below would let it
     # through, and rows committed there break every checkout's tests.
-    if repo[:database] =~ "test" do
+    if repo[:database] =~ ~r/(^|_)test(_|$)/ do
       Mix.raise("mix sandbox.traffic will not write #{repo[:database]}, a test database")
     end
 

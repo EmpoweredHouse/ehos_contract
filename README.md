@@ -190,7 +190,7 @@ lifecycle does not allow, a step that fails. Run it on a database of your own, s
 database is shared by every checkout on the machine:
 
 ```bash
-cd sandbox && export EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
+cd sandbox && export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
 mix ecto.reset && mix sandbox.traffic && mix phx.server
 ```
 
