@@ -12,7 +12,8 @@ Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContra
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
 front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
 `EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
-company's people, and `EhOsContract.Auth.Testing` for a host's tests.
+company's people, `EhOsContract.Auth.Grants` for a person granting a role their rule lets them give,
+and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -416,6 +417,35 @@ A call that answers no people says why, for the page to say it in words:
 
 The list is never copied into the application: while EHOS cannot answer, the call fails and the
 page says so, and the rest of the application goes on.
+
+## A person granting a role
+
+An accountant names a client's representative on the application's page, and the representative is
+invited with the client role and nothing else (`eh-os` D-112). The rule is the contract's:
+`may_grant: [:client]` on the accountant's actor, which the manifest carries to EHOS. EHOS checks it
+against a role the accountant holds there, invites by mail and records the accountant and the
+application. The application decides nothing: it passes on the person's own credential.
+
+```elixir
+# a controller of a signed-in page, after the application's own command is recorded
+alias EhOsContract.Auth.Grants.Grant
+
+case EhOsContract.Auth.Grants.grant(conn, email: email, name: name, role: "clinic.client") do
+  {:ok, %Grant{person_id: id, delivery: :mailed}} -> # keep the id, to revoke later; "invited"
+  {:ok, %Grant{bound: :before}} -> # they had the role already
+  {:error, :beyond_rule} -> # "your role may not give that role"
+  {:error, :unavailable} -> # "they were not invited; try again"
+  {:error, reason} -> # the module's doc lists each
+end
+
+{:ok, %{role_binding_id: _id}} = EhOsContract.Auth.Grants.revoke(conn, id, "clinic.client")
+```
+
+Each call exchanges the person's credential for this application, from their session, for a minute's
+credential to EHOS (RFC 8693), authenticated as the sign-in's client: nothing more is configured than
+signing in needs. It is made in the person's request, keeps no credential and retries nothing; when it
+fails the page says so and the person asks again, which is safe. `docs/grants-api.md` in eh-os is the
+API it calls.
 
 ## Deciding, and recording every decision
 
