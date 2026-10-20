@@ -31,6 +31,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   digests it had. A rule naming an actor that holds no capability, and so is no role, or a rule on such an
   actor, is refused with what to change, and so is, for a domain given as a map, what the domain's `D4` would
   refuse. `EhOsContract.Auth.Manifest.schemas/0` lists `ehos.manifest/v5`.
+- **A signed-in person grants and revokes a role their rule lets them give** (eh-os D-112,
+  EmpoweredHouse/eh-os#773). `EhOsContract.Auth.Grants.grant/3` and `revoke/4`, from the person's request,
+  exchange their credential for one to EHOS as the sign-in's client and call EHOS's grant routes, which an
+  EHOS from the release after 0.13.0 serves. A grant answers an `EhOsContract.Auth.Grants.Grant`: the person's
+  id, whether they were invited or have joined, whether the role was bound now or before, and whether a link was
+  mailed; a refusal answers EHOS's code. Nothing is configured beyond sign-in, no credential is kept, and nothing
+  is retried.
 
 ### Changed
 

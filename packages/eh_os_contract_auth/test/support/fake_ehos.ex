@@ -20,6 +20,16 @@ defmodule EhOsContract.Auth.FakeEhos do
   a `resource` gets a credential for that application, if the grant has it in
   `"applications"`, and `invalid_target` otherwise, consuming nothing, as
   `Ehos.SignIn.Token` refuses a `resource` outside the sign-in's granted set.
+
+  It also exchanges a person's credential and serves the grant routes, as `eh-os`'s
+  `docs/grants-api.md` describes them on its pull request EmpoweredHouse/eh-os#754 of
+  20 October 2026 (D-112). The exchange takes a credential it signed, unexpired, whose
+  `client_id` is the assertion's client, and issues one for the audience `ehos` with
+  `act`, for a minute; the routes take only such a credential. A grant registers a new
+  email as invited and mails them, and answers `"bound": "before"` for a role bound
+  already; a revocation unbinds, or answers `not_found`. A test can have either answer
+  otherwise (`exchange_answer/2`, `grants_answer/2`), and reads what the routes were sent
+  (`grant_calls/1`).
   """
 
   @issuer "https://ehos.test"
@@ -46,7 +56,15 @@ defmodule EhOsContract.Auth.FakeEhos do
           revoked: MapSet.new(),
           offset: 0,
           on_refresh: nil,
-          refresh_answer: nil
+          refresh_answer: nil,
+          exchange_answer: nil,
+          # an exchanged credential => the person it names
+          exchanged: %{},
+          grants_answer: nil,
+          grant_calls: [],
+          # email => {person id, "invited" | "joined"}; {person id, role} => binding id
+          people: %{},
+          bindings: %{}
         }
       end)
 
@@ -128,6 +146,33 @@ defmodule EhOsContract.Auth.FakeEhos do
   200s, which do, as EHOS would before answering.
   """
   def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
+
+  @doc """
+  Has `ehos` answer token exchanges with what it would not, or `nil`: `:invalid_grant`,
+  `:reset` (no response), `{:status, code}` or `{:status, code, json}`, or `:no_token`, a 200
+  without a credential.
+  """
+  def exchange_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | exchange_answer: answer})
+
+  @doc """
+  Has `ehos` answer the grant routes with `{:status, code, json}`, `:reset` (no response),
+  `:not_json`, `:raise` (an exception naming the request's headers), or `nil` for what it
+  decides itself.
+  """
+  def grants_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | grants_answer: answer})
+
+  @doc "Makes `email` a person of `ehos`, `\"invited\"` or `\"joined\"`, and returns their id."
+  def person(ehos, email, person_state) do
+    id = Ecto.UUID.generate()
+    Agent.update(ehos, &put_in(&1, [:people, email], {id, person_state}))
+    id
+  end
+
+  @doc "What the grant routes were sent, oldest first: method, path, bearer token and body."
+  def grant_calls(ehos), do: Agent.get(ehos, &Enum.reverse(&1.grant_calls))
+
+  @doc "The credentials `ehos` issued by exchange, each with the person it names."
+  def exchanged(ehos), do: Agent.get(ehos, & &1.exchanged)
 
   @doc "Has `ehos` sign with `signer`, a private Ed25519 JWK, from now on, as after a key rotation."
   def rotate_signer(ehos, signer), do: Agent.update(ehos, &%{&1 | signer: signer})
@@ -215,6 +260,9 @@ defmodule EhOsContract.Auth.FakeEhos do
       {_down, _answer, "/oauth/token"} ->
         token(ehos, state, conn)
 
+      {_down, _answer, "/api/v1/role-bindings/grants" <> _rest} ->
+        grants(ehos, state, conn)
+
       {_down, _answer, _path} ->
         Plug.Conn.send_resp(conn, 404, "")
     end
@@ -232,6 +280,9 @@ defmodule EhOsContract.Auth.FakeEhos do
       {"refresh_token", _grant} ->
         if state.on_refresh, do: state.on_refresh.()
         refreshed(ehos, Agent.get(ehos, & &1), conn, form["refresh_token"], form["resource"])
+
+      {"urn:ietf:params:oauth:grant-type:token-exchange", _grant} ->
+        exchange(ehos, state, conn, form)
 
       _other ->
         invalid_grant(conn)
@@ -365,6 +416,204 @@ defmodule EhOsContract.Auth.FakeEhos do
         family = Integer.to_string(System.unique_integer([:positive]))
         Req.Test.json(conn, issue(ehos, state, grant, family, renewal: false))
     end
+  end
+
+  # `docs/grants-api.md`, "The exchange": the person's credential the client's sign-in got, for
+  # one EHOS takes on its grant routes, a minute at most. The assertion is checked for its shape
+  # and its client, not its signature: `eh-os` holds the client's public key, this fake does not.
+  defp exchange(ehos, state, conn, form) do
+    client = assertion_client(form)
+    subject = subject(state, form["subject_token"])
+
+    cond do
+      state.exchange_answer == :reset ->
+        Req.Test.transport_error(conn, :closed)
+
+      match?({:status, _}, state.exchange_answer) ->
+        {:status, status} = state.exchange_answer
+        Plug.Conn.send_resp(conn, status, "")
+
+      match?({:status, _, _}, state.exchange_answer) ->
+        {:status, status, json} = state.exchange_answer
+        conn |> Plug.Conn.put_status(status) |> Req.Test.json(json)
+
+      is_nil(client) or form["audience"] != "ehos" or
+        form["subject_token_type"] != "urn:ietf:params:oauth:token-type:access_token" or
+          Enum.any?(~w(scope resource actor_token), &Map.has_key?(form, &1)) ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_request"}))
+
+      state.exchange_answer == :invalid_grant or is_nil(subject) or
+          subject["client_id"] != client ->
+        invalid_grant(conn)
+
+      state.exchange_answer == :no_token ->
+        Req.Test.json(conn, %{"token_type" => "Bearer", "expires_in" => 60})
+
+      true ->
+        now = System.os_time(:second) + state.offset
+
+        credential =
+          sign(state.signer, %{
+            "iss" => @issuer,
+            "sub" => subject["sub"],
+            "aud" => "ehos",
+            "act" => %{"sub" => "workload-" <> client},
+            "client_id" => client,
+            "cap" => [],
+            "iat" => now,
+            "exp" => min(now + 60, subject["exp"]),
+            "jti" => Ecto.UUID.generate()
+          })
+
+        Agent.update(ehos, &put_in(&1, [:exchanged, credential], subject["sub"]))
+
+        Req.Test.json(conn, %{
+          "access_token" => credential,
+          "issued_token_type" => "urn:ietf:params:oauth:token-type:access_token",
+          "token_type" => "Bearer",
+          "expires_in" => 60
+        })
+    end
+  end
+
+  defp assertion_client(%{
+         "client_assertion_type" => "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+         "client_assertion" => assertion
+       }) do
+    now = System.os_time(:second)
+
+    case JOSE.JWT.peek_payload(assertion).fields do
+      %{
+        "iss" => client,
+        "sub" => client,
+        "aud" => @issuer <> "/oauth/token",
+        "exp" => exp,
+        "jti" => jti
+      }
+      when is_integer(exp) and exp > now and is_binary(jti) ->
+        client
+
+      _other ->
+        nil
+    end
+  rescue
+    _not_a_jwt -> nil
+  end
+
+  defp assertion_client(_form), do: nil
+
+  # A credential this EHOS signed and that has not expired, or nil.
+  defp subject(state, token) when is_binary(token) do
+    public = JOSE.JWK.to_public(state.signer)
+
+    case JOSE.JWT.verify_strict(public, ["Ed25519", "EdDSA"], token) do
+      # `Ehos.SignIn.PersonExchange`: at least 5 seconds left.
+      {true, %JOSE.JWT{fields: %{"exp" => exp} = claims}, _jws} ->
+        if exp - (System.os_time(:second) + state.offset) >= 5, do: claims
+
+      _refused ->
+        nil
+    end
+  rescue
+    _not_a_jwt -> nil
+  end
+
+  defp subject(_state, _token), do: nil
+
+  # `docs/grants-api.md`, "Granting a role" and "Revoking a role", for a credential it exchanged.
+  defp grants(ehos, state, conn) do
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+    bearer =
+      case Plug.Conn.get_req_header(conn, "authorization") do
+        ["Bearer " <> token] -> token
+        _other -> nil
+      end
+
+    call = %{
+      method: conn.method,
+      path: conn.request_path,
+      bearer: bearer,
+      body: if(body == "", do: nil, else: Jason.decode!(body))
+    }
+
+    Agent.update(ehos, &%{&1 | grant_calls: [call | &1.grant_calls]})
+
+    case {state.grants_answer, Map.has_key?(state.exchanged, bearer)} do
+      {:reset, _exchanged} ->
+        Req.Test.transport_error(conn, :closed)
+
+      {:not_json, _exchanged} ->
+        Plug.Conn.send_resp(conn, 200, "<html></html>")
+
+      # An exception inside the request that carries its headers, the bearer token among them.
+      {:raise, _exchanged} ->
+        raise ArgumentError, "refused #{inspect(conn.req_headers)}"
+
+      {{:status, status, json}, _exchanged} ->
+        conn |> Plug.Conn.put_status(status) |> Req.Test.json(json)
+
+      {nil, false} ->
+        refused(conn, 401, "wrong_audience")
+
+      {nil, true} ->
+        decide(ehos, conn, call)
+    end
+  end
+
+  defp decide(ehos, conn, %{method: "POST", body: %{"email" => email, "role" => role}}) do
+    {status, json} =
+      Agent.get_and_update(ehos, fn state ->
+        {id, person_state, state} =
+          case Map.fetch(state.people, email) do
+            {:ok, {id, person_state}} ->
+              {id, person_state, state}
+
+            :error ->
+              id = Ecto.UUID.generate()
+              {id, "invited", put_in(state, [:people, email], {id, "invited"})}
+          end
+
+        {bound, binding, state} =
+          case Map.fetch(state.bindings, {id, role}) do
+            {:ok, binding} ->
+              {"before", binding, state}
+
+            :error ->
+              binding = Ecto.UUID.generate()
+              {"now", binding, put_in(state, [:bindings, {id, role}], binding)}
+          end
+
+        json = %{
+          "person" => %{"id" => id, "email" => email, "state" => person_state},
+          "role_binding" => %{"id" => binding, "role" => role, "bound" => bound},
+          "delivery" => if(person_state == "invited", do: "mailed", else: "none")
+        }
+
+        {{if(bound == "now", do: 201, else: 200), json}, state}
+      end)
+
+    conn |> Plug.Conn.put_status(status) |> Req.Test.json(json)
+  end
+
+  defp decide(ehos, conn, %{method: "DELETE", path: path}) do
+    ["", "api", "v1", "role-bindings", "grants", person, role] = String.split(path, "/")
+    role = URI.decode(role)
+
+    case Agent.get_and_update(ehos, &(Map.pop(&1.bindings, {person, role}) |> keep(&1))) do
+      nil -> refused(conn, 404, "not_found")
+      binding -> Req.Test.json(conn, %{"role_binding" => %{"id" => binding, "role" => role}})
+    end
+  end
+
+  defp keep({binding, bindings}, state), do: {binding, %{state | bindings: bindings}}
+
+  defp refused(conn, status, error) do
+    conn
+    |> Plug.Conn.put_status(status)
+    |> Req.Test.json(%{"error" => error, "message" => "Refused."})
   end
 
   defp invalid_grant(conn) do
