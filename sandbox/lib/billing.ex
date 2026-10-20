@@ -5,7 +5,7 @@ defmodule Billing do
   library's mechanisms are tested on material anyone may read (the publication
   programme, PB2, #369).
 
-  Like the client trees beside it, this one is contracts and the code they need to
+  Like the other case studies beside it, this one is contracts and the code they need to
   run: a domain, two contracts, a process module, the decisions and reactions, and a
   fake payment gateway. No screen and no real integration.
 

@@ -2,15 +2,15 @@ defmodule EhOsContractHost.Supplier do
   @moduledoc """
   The host's `EhOsContract.Supplier`. A host configures one, and the sandbox holds
   several domains, so each request goes to the stand-in of the domain whose contract
-  asks: the library's tariff, the clinic's systems. A domain with none here is not this
+  asks: today only the library's tariff. A domain with none here is not this
   host's to answer.
   """
 
-  use Boundary, top_level?: true, deps: [EhOsContract, Lending, Rehmed], exports: []
+  use Boundary, top_level?: true, deps: [EhOsContract, Lending], exports: []
 
   @behaviour EhOsContract.Supplier
 
-  @suppliers %{Lending.Domain => Lending.Supplier, Rehmed.Domain => Rehmed.Supplier}
+  @suppliers %{Lending.Domain => Lending.Supplier}
 
   @impl true
   def supply(actor, %{contract: contract} = request) do

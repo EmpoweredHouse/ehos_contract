@@ -2,14 +2,14 @@ defmodule EhOsContractHost.Entities do
   @moduledoc """
   The host's `EhOsContract.Entities`. A host configures one, and the sandbox holds
   several domains, so each read goes to the stand-in of the domain that declares the
-  entity: the library's card system, the clinic's service catalogue.
+  entity: today only the library's card system.
   """
 
-  use Boundary, top_level?: true, deps: [EhOsContract, Lending, Rehmed], exports: []
+  use Boundary, top_level?: true, deps: [EhOsContract, Lending], exports: []
 
   @behaviour EhOsContract.Entities
 
-  @sources %{Lending.Domain => Lending.Entities, Rehmed.Domain => Rehmed.Entities}
+  @sources %{Lending.Domain => Lending.Entities}
 
   @impl true
   def fetch(actor, domain, entity, id) do

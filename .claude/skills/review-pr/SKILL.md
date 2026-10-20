@@ -103,10 +103,12 @@ that was broken.
 ### The language boundary
 
 Code is English, without exceptions, in everything under `packages/` and `sandbox/` and in `docs/`.
-Polish is allowed only inside the strings `CLAUDE.md` lists ("Language"): labels
-and `source:` in a domain and a contract, a term's text, its definition, `avoid` and translation,
-`where` prose at `consults`, scenario descriptions, task names, a notification subject. Everywhere
-else — identifiers, moduledocs, `@doc`, comments, test names, error messages — it is a defect.
+The sandbox's case studies are English throughout. Another language is allowed only in a test of the
+packages that needs a second language or non-ASCII text, and there only inside the strings `CLAUDE.md`
+lists ("Language"): labels and `source:` in a domain and a contract, a term's text, its definition,
+`avoid` and translation, `where` prose at `consults`, scenario descriptions, task names, a
+notification subject. Everywhere else — identifiers, moduledocs, `@doc`, comments, test names, error
+messages — it is a defect.
 **Grepping for `[ąćęłńóśźż]` is not enough**: much of Polish has no diacritics, and a word such as
 `rejestry` once survived a full file-by-file rewrite that way. Read the strings.
 

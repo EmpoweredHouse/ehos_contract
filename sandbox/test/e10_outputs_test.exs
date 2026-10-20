@@ -18,51 +18,18 @@ defmodule EhOsContractHost.E10OutputsTest do
              "WARN  in-transaction-policy-fan-out: policy :invoice_the_period of " <>
                "Billing.Contracts.Subscriptions"
 
-    # Plan DD, S4: four of them are AppUnite's transitions no scenario takes. P1d (#195):
-    # Rehmed's three invented processes went with their missing `accountable`, and five
-    # events only a `terminal:` or an `include` read, and a relation of the context map
-    # only that `include` crossed, came out. P2f (#222): three of Rehmed's events a
-    # process module now includes have a reader, and statutory reporting no longer
-    # consumes scheduling's event across an undeclared relation; two of TaxVision's
-    # matching events had no reader until the process module included them.
-    # Plan DD, A2 (#249): scheduling's visit_booked has a reader now, the boundary of
-    # the visit's documentation, which consults it for the P1 flag.
-    # Plan DD, L1 (#269): a notice per context naming its words no term covers.
-    # Plan DD, L2 (#272): three core commands that reject nothing — booking a visit,
-    # coding a diagnosis, ingesting a bank statement.
-    # Plan DD, L3 (#286): a field that identifies a unit is a reference into its context.
-    # Three cross a relation neither context map declares — Rehmed's external payers and
-    # statutory reporting keep scheduling's visit, TaxVision's KSeF inbox the client
-    # company — and settlement's visit now crosses the relation to scheduling.
-    # Plan DD, L4 (#326): a stage or a value with no label, which the owner's view would
-    # show by its name in the code — twelve stages of Rehmed's, AppUnite's and TaxVision's
-    # processes, and Rehmed's payment method.
-    # The test set for drawing the graph (`GraphLab`) adds 16 warnings and 12 notices. The
-    # warnings: six event names that repeat their unit's, four events nobody reads, two
-    # references to the visit across a relation the context map does not declare, a context
-    # with no contract, a relation nothing crosses, the documentation chase reacting to
-    # nothing during its run, and the core unit that only records, which the set holds on
-    # purpose. The notices: its contexts' words no term covers, three core commands that
-    # refuse nothing, one free-text field, and two values with no label.
-    # Publication programme, PB2 (#369): the library (`Lending`) adds two notices, its
-    # contexts' words no term covers. The invented billing (`Billing`) adds three warnings
-    # and two notices. The warnings: its fan-out above, its monthly billing that never
-    # ends, which it holds on purpose, and the usage it records, which only its own
-    # decisions read. The notices: its contexts' words no term covers. The invented
-    # fulfilment (`Fulfilment`) adds three notices of the same kind, and no warning.
-    assert output =~ "eh_os_contract.check: 0 errors, 50 warnings, 54 notices"
+    # The library (`Lending`) gives two notices, its contexts' words no term covers. The
+    # billing (`Billing`) gives three warnings and two notices. The warnings: its fan-out
+    # above, its monthly billing that never ends, which it holds on purpose, and the usage
+    # it records, which only its own decisions read. The notices: its contexts' words no
+    # term covers. The fulfilment (`Fulfilment`) gives three notices of the same kind, and
+    # no warning. The clients' trees, which gave the rest, left for a private repository in
+    # the publication programme's PB4 (#386).
+    assert output =~ "eh_os_contract.check: 0 errors, 3 warnings, 7 notices"
   end
 
-  # The personal values the scenarios give: the library's member, and the clinic's patient
-  # while the clinic's tree is still registered here (publication programme, PB4, #386).
-  @personal [
-    "Ada Lovelace",
-    "ada@example.org",
-    "ada@example.net",
-    "85010112345",
-    "M54.5",
-    "93.39"
-  ]
+  # The personal values the scenarios give: the library's member, and another's e-mail.
+  @personal ["Ada Lovelace", "ada@example.org", "ada@example.net", "bob@example.org"]
 
   # The library's membership gives a member's name and e-mail to its query's scenario.
   test "no exported model carries a personal scenario value" do
@@ -128,10 +95,10 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert operation["x-eh-os-contract-roles"] == ["fulfilment.picker"]
   end
 
-  # The sandbox's `ehos.yaml` names the invented `Billing`, the one domain that publishes,
-  # since the clients' domains are registered beside it (publication programme, PB2,
-  # #369). The capabilities are the commands a person issues; what only the monthly
-  # billing and the policies issue has none.
+  # The sandbox's `ehos.yaml` names the invented `Billing`, the one domain that publishes
+  # among the case studies registered beside it (publication programme, PB2, #369). The
+  # capabilities are the commands a person issues; what only the monthly billing and the
+  # policies issue has none.
   @tag :tmp_dir
   test "the manifest task extends ehos.yaml with billing's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "billing.json")
