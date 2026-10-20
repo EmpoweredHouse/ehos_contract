@@ -483,6 +483,31 @@ defmodule EhOsContract.Auth.ManifestTest do
         assert error.message =~ reason, inspect(rule)
       end
     end
+
+    test "a domain given as a map has no system with a rule, nor rules that lead back" do
+      domain = Model.fetch(GrantDomain)
+
+      rule = fn rules ->
+        actors = Enum.map(domain.actors, &Map.put(&1, :may_grant, Map.get(rules, &1.name, [])))
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      system = %{name: :sync, kind: :system, label: "Sync", may_grant: [:client]}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [%{domain | actors: domain.actors ++ [system]}], [GrantWork])
+        end
+
+      assert error.message =~ "actor :sync is a system and cannot have may_grant"
+
+      error =
+        assert_raise ArgumentError,
+                     rule.(%{office_employee: [:client], client: [:office_employee]})
+
+      assert error.message =~
+               "actor :client, :office_employee have may_grant rules that lead back to them"
+    end
   end
 
   # schemas/0 is what a release says the package produces: exactly what build/3 writes from

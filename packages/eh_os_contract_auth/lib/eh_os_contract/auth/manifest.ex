@@ -390,10 +390,25 @@ defmodule EhOsContract.Auth.Manifest do
   # compiled domain's rules to other person actors, each once; a domain given as a map has not
   # been through it, so what EHOS would refuse is refused here too, with what to change. A person
   # who holds no capability is no role: a rule naming one would name a role the manifest does not
-  # declare, and a rule of one would go nowhere. Rules that lead back to a role are D4's and EHOS's.
+  # declare, and a rule of one would go nowhere. A system grants nothing, and rules that lead back to
+  # a role are refused here as D4 and EHOS refuse them.
   defp grant_rules(roles, application, domain) do
     held = MapSet.new(roles, fn {actor, _role} -> actor.name end)
     people = for %{kind: :human, name: name} <- domain.actors, into: MapSet.new(), do: name
+
+    ruled_systems =
+      for %{kind: kind, name: name} = actor <- domain.actors,
+          kind != :human,
+          Map.get(actor, :may_grant, []) != [],
+          do: name
+
+    if ruled_systems != [] do
+      grant_error!(
+        domain,
+        ruled_systems,
+        "is a system and cannot have may_grant; only a person brings people in"
+      )
+    end
 
     ruled_without_role =
       for %{kind: :human, name: name} = actor <- domain.actors,
@@ -410,14 +425,63 @@ defmodule EhOsContract.Auth.Manifest do
       )
     end
 
-    for {actor, role} <- roles do
-      case Map.get(actor, :may_grant, []) do
-        [] ->
-          role
+    ruled =
+      for {actor, role} <- roles do
+        case Map.get(actor, :may_grant, []) do
+          [] ->
+            role
 
-        granted ->
-          Map.put(role, "may_grant", granted!(granted, actor, held, people, domain, application))
+          granted ->
+            Map.put(
+              role,
+              "may_grant",
+              granted!(granted, actor, held, people, domain, application)
+            )
+        end
       end
+
+    refuse_cycles!(roles, domain)
+    ruled
+  end
+
+  # Every rule is valid by now: other roles, each once. A cycle among them is what is left.
+  defp refuse_cycles!(roles, domain) do
+    edges =
+      for {actor, _role} <- roles,
+          to <- Map.get(actor, :may_grant, []),
+          uniq: true,
+          do: {actor.name, to}
+
+    graph = :digraph.new()
+
+    cyclic =
+      try do
+        for {from, to} <- edges do
+          :digraph.add_vertex(graph, from)
+          :digraph.add_vertex(graph, to)
+          :digraph.add_edge(graph, from, to)
+        end
+
+        :digraph_utils.cyclic_strong_components(graph)
+      after
+        :digraph.delete(graph)
+      end
+
+    case cyclic |> List.flatten() |> Enum.sort() do
+      [] ->
+        :ok
+
+      on_cycles ->
+        {named, rest} = Enum.split(on_cycles, 3)
+        more = if rest == [], do: "", else: "and #{length(rest)} more "
+
+        grant_error!(
+          domain,
+          named,
+          more <>
+            "have may_grant rules that lead back to them: a holder would grant their own role " <>
+            "through another; take one rule of each cycle out"
+        )
     end
   end
 
