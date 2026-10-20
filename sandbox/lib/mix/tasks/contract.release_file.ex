@@ -2,9 +2,9 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   @shortdoc "Writes a release's release.json: the packages' versions and the interfaces they meet at"
 
   @moduledoc """
-  Writes `release.json` for a release of this repository, in the form EHOS's release procedure gives it:
-  the engine's version, which the tag `vX.Y.Z` follows, the commit, each package's own version,
-  and the interfaces the packages produce and accept.
+  Writes `release.json` for a release of this repository, in the form EHOS's release procedure
+  gives it: the engine's version, which the tag `vX.Y.Z` follows, the commit, each package's own
+  version, and the interfaces the packages produce and accept.
 
       $ mix contract.release_file --commit <40 hex> --output _build/release.json
 

@@ -1,11 +1,11 @@
 defmodule EhOsContract.Auth.EhosYaml.Reader do
   @moduledoc false
-  # As EHOS defines its format, `ehos.yaml` is read into JSON's data model before its schema sees it, and
-  # whatever JSON cannot say is refused, as EHOS's own reader refuses it: an anchor or an alias, a
-  # tag, a directive, a key given twice, a key that is not a string, a second document, and a
-  # number JSON cannot hold. Plain values are resolved by YAML 1.2's core schema, so `yes` is a
-  # string. A reader that took the last of two keys, or expanded an alias, would write a manifest
-  # from a file EHOS's checking page refuses.
+  # As EHOS defines its format, `ehos.yaml` is read into JSON's data model before its schema sees
+  # it, and whatever JSON cannot say is refused, as EHOS's own reader refuses it: an anchor or an
+  # alias, a tag, a directive, a key given twice, a key that is not a string, a second document,
+  # and a number JSON cannot hold. Plain values are resolved by YAML 1.2's core schema, so `yes`
+  # is a string. A reader that took the last of two keys, or expanded an alias, would write a
+  # manifest from a file EHOS's checking page refuses.
   #
   # yamerl reads twice, as in EHOS: its parser's tokens show anchors, aliases, tags and
   # directives, which its tree no longer does, and its detailed tree keeps every key of a mapping

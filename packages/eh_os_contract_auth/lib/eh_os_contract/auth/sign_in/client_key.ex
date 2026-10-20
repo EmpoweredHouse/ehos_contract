@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
       members ->
         refuse!(
           path,
-          "must have exactly the members #{Enum.join(@members, ", ")} EHOS gives, " <>
+          "must have exactly the members EHOS gives (#{Enum.join(@members, ", ")}), " <>
             "and has #{Enum.join(members, ", ")}"
         )
     end

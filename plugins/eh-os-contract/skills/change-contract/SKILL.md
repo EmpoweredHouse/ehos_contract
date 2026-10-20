@@ -129,14 +129,13 @@ docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "sel
 Zero rows of the type means the change is still additive in fact, and `--forget TYPE` is what
 records it in the lock. Anything else is a decision for the
 user, with the count: a new event instead of a changed one, an optional field instead of a required
-one, or data work written down in the stage's issue before the change.
+one, or data work written down in the pull request before the change.
 
 **In an application, the development database proves nothing.** The log that matters is that of
 every environment the application is deployed to, production's first. Count the rows there, through
 whoever may read it, for the affected types alone (`where type in (...)`, which the log's index on
 `type` serves) rather than the whole log; until that count is known, treat the change as one that
-meets old rows, and write the decision and the data work into the pull request, not only
-into the stage's issue.
+meets old rows, and write the decision and the data work into the pull request.
 
 ## Non-negotiables
 

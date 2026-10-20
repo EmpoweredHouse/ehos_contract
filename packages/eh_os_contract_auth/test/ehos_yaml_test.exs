@@ -5,7 +5,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
 
   The corpus is one file per refusal, in `test/fixtures/ehos_yaml/refused/`. The
   accepted files are the example of EHOS's documentation of `ehos.yaml` and the
-  `ehos.yaml` of a real application, a ledger, both as they stood on 1 October 2026
+  `ehos.yaml` of a real application, a ledger, both as they stood when copied
   (the ledger's with its comment's link removed), and a made-up `ehos.yaml/v2` with
   `sign_in`, a made-up `ehos.yaml/v3` that reads the company's people, and a made-up
   `ehos.yaml/v4` that seeds its database and is given secrets.

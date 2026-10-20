@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.SignIn.Router do
-  # Sign-in through EHOS, with OpenID Connect, is EHOS's design, and these routes S7 in docs/adr/browser-session.md.
-  # The encrypted cookie session is S2, the callback's checks and what the document must say S6,
-  # the exact post-logout address EHOS's.
+  # Sign-in through EHOS, with OpenID Connect, is EHOS's design, and these routes are S7 in
+  # docs/adr/browser-session.md. The encrypted cookie session is S2, the callback's checks and
+  # what the document must say S6; the exact post-logout address is EHOS's rule.
   @moduledoc """
   The routes that sign a browser in to the application's pages through EHOS, and
   out. Forward to it at `/auth/ehos`, behind the host's session, since EHOS returns to

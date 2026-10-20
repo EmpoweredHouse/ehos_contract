@@ -50,7 +50,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
-- **Signing in asks EHOS for `max_age` of the session's absolute limit**, as EHOS asks, and refuses a sign-in older
+- **Signing in asks EHOS for `max_age` of the session's absolute limit**, so EHOS never returns a sign-in older than the session would accept, and refuses a sign-in older
   than it. With an installation's limit longer than the application's, EHOS gave a code for a sign-in the new
   session refused at once, and the browser went between the page and EHOS without end. An application must run
   this version before its installation raises its limits.

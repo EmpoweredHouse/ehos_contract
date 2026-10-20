@@ -597,8 +597,8 @@ defmodule EhOsContract.Auth.SignIn do
   defp origin_refused!(what, value) do
     raise ArgumentError,
           "sign_in: #{what} must be https://<host>, in lower case, with no port, no path, " <>
-            "no trailing slash and no query, as EHOS compares it and every parser reads it, and is " <>
-            Address.shown(value)
+            "no trailing slash and no query, as EHOS compares it and every parser reads it, " <>
+            "and is " <> Address.shown(value)
   end
 
   # Discovery and the token endpoint are what a sign-in trusts, and `oidcc` refuses an

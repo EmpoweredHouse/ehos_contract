@@ -153,7 +153,8 @@ defmodule EhOsContract.Auth do
     end
 
     # Compared with each credential's `iss` as a string, so one EHOS would never start with is
-    # refused here, rather than every credential at `verify/2` (#89, EHOS's own rule for its issuer).
+    # refused here, rather than every credential at `verify/2` (#89, EHOS's own rule for its
+    # issuer).
     if Address.check(config[:issuer], plain_on_loopback: true, path: false) == :error do
       raise ArgumentError,
             "config :eh_os_contract_auth, issuer: is #{Address.shown(config[:issuer])}, which " <>
@@ -461,7 +462,7 @@ defmodule EhOsContract.Auth do
 
   defp unexpired?(_exp), do: false
 
-  # EHOS issues credentials for ten minutes ; this allows five more for
+  # EHOS issues credentials for ten minutes; this allows five more for
   # clocks that disagree. One that claims to live longer is not in EHOS's form,
   # whoever signed it: a key that leaked must not mint credentials for a year.
   defp within_lifetime?(exp),

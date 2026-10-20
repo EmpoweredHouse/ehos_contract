@@ -252,10 +252,11 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
        when status in [400, 401],
        do: ended(renewal.session, :invalid_grant)
 
-  # EHOS's answer that the credential is not for this application. EHOS consumed nothing, so the refresh token stays, and the
-  # session lives on for every other application. A lease lost meanwhile is a session ended. For
-  # the client's own application, which names no `resource`, EHOS never answers it; one that did
-  # is any other error response, so the own application is never remembered as refused.
+  # EHOS refuses a credential for that application (`invalid_target`). EHOS consumed nothing, so
+  # the refresh token stays, and the session lives on for every other application. A lease lost
+  # meanwhile is a session ended. For the client's own application, which names no `resource`,
+  # EHOS never answers it; one that did is any other error response, so the own application is
+  # never remembered as refused.
   defp outcome(
          {:error, {:http_error, 400, %{"error" => "invalid_target"}}},
          %{at: %{resource: resource}, config: %{address: address}} = renewal

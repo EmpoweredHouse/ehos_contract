@@ -2,12 +2,13 @@
 
 These files are the library's design record: the assumptions it was built on, and the decisions taken
 while it was built. **The record is historical and dated.** Each file states what was believed when it was
-written; where the code later proved an assumption wrong, a dated amendment was added beside it, and the
-original text was never rewritten. Read it to learn why a mechanism exists, not what the code does today:
-for that, the packages' own docs (`packages/eh_os_contract/docs/`) and the code are the source.
+written; where the code later proved an assumption wrong, a dated amendment was added beside it, or a
+dated correction in place where a file says so, and the original text was never silently rewritten. Read
+it to learn why a mechanism exists, not what the code does today: for that, the packages' own docs
+(`packages/eh_os_contract/docs/`) and the code are the source.
 
-Most of it was written while the library was still called `pns` (`PNS.*`), and in it `PNS.X` means today's
-`EhOsContract.X`. Part of it was written while the library was tested on client material that has since
+Four of the eight files predate the library's rename from `pns` (`PNS.*`); in them `PNS.X` means today's
+`EhOsContract.X`. Part of the record was written while the library was tested on client material that has since
 been removed from the repository; the clients are described rather than named, and their examples are kept
 only where they illustrate a decision.
 

@@ -3,10 +3,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   EH3: an application's `ehos.yaml` extended with what its contracts offer, into
   EHOS's `ehos.manifest/v2`, without fields the receiver would reject.
 
-  `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of a real
-  application, a ledger, unchanged: a fixture of EHOS's own tests, as it stood on
-  1 October 2026. EHOS deployed the ledger with it until this generator wrote it. Its capabilities name the process the ledger's
-  contract declared; a contract declares none since plan DD, P2h (#221), so the test
+  `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of a real application,
+  a ledger, unchanged: a fixture of EHOS's own tests, as it stood on 1 October 2026. EHOS deploys
+  the ledger with it until this generator writes it. Its capabilities name the process the
+  ledger's contract declared; a contract declares none since plan DD, P2h (#221), so the test
   reads that copy without them, a field EHOS keeps optional.
 
   `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand

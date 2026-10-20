@@ -208,8 +208,9 @@ defmodule EhOsContract.Auth.Manifest do
     end
   end
 
-  # EHOS's rule for `sign_in`: the list names the other applications; its own it always signs in to. The
-  # reader checks it against an `application` the file names, and this against the one found.
+  # EHOS's rule for `sign_in`: the list names the other applications; its own it always signs in
+  # to. The reader checks it against an `application` the file names, and this against the one
+  # found.
   defp not_its_own!(%{"sign_in" => %{"applications" => applications}}, application) do
     if application in applications do
       raise ArgumentError,

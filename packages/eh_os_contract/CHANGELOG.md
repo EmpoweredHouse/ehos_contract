@@ -1300,7 +1300,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
   "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
 - **Breaking:** **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
-  `<domain>.<name>` (D14), and since EHOS names a capability by its declaration's kind the manifest offers both. L3's D14 already refused the pair when
+  `<domain>.<name>` (D14), and since EHOS's manifest offers queries and recorded events as capabilities too, it offers both. L3's D14 already refused the pair when
   the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
   the two into one capability.
 
@@ -1666,7 +1666,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 - **An append waits only for appends to the same log.** The append lock had one fixed key, and an advisory
   lock belongs to the whole database: where applications share one, each in a schema of its own, as EHOS
-  keeps them, each in a schema of its own, every application's appends waited for every other's. V01's lock now has two
+  keeps them, every application's appends waited for every other's. V01's lock now has two
   integers, the engine's and one derived from the schema's name, written into `eh_os_contract_append_lock()`
   and the log's trigger at migration, so neither resolves anything through the `search_path` at run time.
   V01 is changed in place, as before 0.3.0 is first released: a database migrated earlier keeps the old key

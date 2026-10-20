@@ -64,8 +64,8 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:cacertfile] == "/etc/ca.pem"
     end
 
-    # #89: the issuer is compared with each credential's iss as a string, so one EHOS could
-    # never publish fails the boot, whichever address the keys come from (EHOS's rule for its issuer).
+    # #89: the issuer is compared with each credential's iss as a string, so one EHOS could never
+    # publish fails the boot, whichever address the keys come from (EHOS's rule for its issuer).
     test "fails the boot on an issuer EHOS would not start with, a jwks_url beside it or not" do
       Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
 

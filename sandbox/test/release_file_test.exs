@@ -60,7 +60,8 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
   end
 
   # The graph document names its version in its own `schema`; the release names that version in
-  # its own form, `<name>/v<n>`, so a v2 of the document cannot ship with the release still saying v1.
+  # its own form, `<name>/v<n>`, so a v2 of the document cannot ship with the release still saying
+  # v1.
   test "produces the graph document's version, as its JSON Schema names it" do
     [named] =
       EhOsContract.Graph.Document.schema_path()

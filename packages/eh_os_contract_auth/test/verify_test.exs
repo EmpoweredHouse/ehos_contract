@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.VerifyTest do
   @moduledoc """
-  EA: what `EhOsContract.Auth.verify/2` accepts, and each reason it refuses with. Every refusal has a control beside it that differs in the
-  one thing refused.
+  EA: what `EhOsContract.Auth.verify/2` accepts, and each reason it refuses with. Every refusal
+  has a control beside it that differs in the one thing refused.
   """
 
   use EhOsContract.Auth.KeyCase, async: false
