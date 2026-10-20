@@ -39,7 +39,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Actor do
     @moduledoc false
-    defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: []] ++
+    defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: [], may_grant: []] ++
                 [responsibilities: [], __spark_metadata__: nil]
   end
 
@@ -245,6 +245,13 @@ defmodule EhOsContract.Domain.Dsl do
         type: {:wrap_list, :atom},
         default: [],
         doc: "The fields a grant to this actor narrows query answers by."
+      ],
+      may_grant: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "The other person actors of this domain whose role a person in this one may grant " <>
+            "through the application (eh-os D-112)."
       ],
       source: [type: :string, doc: "Where the actor comes from in the material."]
     ]
