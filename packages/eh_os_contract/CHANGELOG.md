@@ -53,6 +53,12 @@ and the `ehos-dev:release` skill makes one.
 - **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
   using `boundary` could not call it, since the engine's boundary did not export it, and no page said how
   to record an outage. It is exported now, and [processes](docs/concepts/process.md) says how to record one.
+- **An actor says which roles a person in it may grant** (eh-os D-112, EmpoweredHouse/eh-os#729).
+  `actor :office_employee, :human, "Office employee", may_grant: [:client]` lets a person holding the
+  office employee's role grant the client's role through the application, once EHOS grants under the rule.
+  `D4` refuses the rule on a system actor, naming the actor itself, a system, an undeclared actor or one twice,
+  and rules that lead back to an actor. [Actors](docs/concepts/domain-data.md#who-may-let-whom-in) says
+  more.
 
 ### Changed
 
