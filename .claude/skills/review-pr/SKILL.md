@@ -53,9 +53,9 @@ Given a green gate, three things are closed:
 ### New `check` lines
 
 `mix eh_os_contract.check` prints warnings and notices on every run, and **the gate does not fail on
-them**: the sandbox runs it without `--warnings-as-errors`, and the counts are recorded in
-`PLAN.md`'s handoff (30 September: sandbox 0 errors, 29 warnings, 9 notices; engine 0 / 66 / 5).
-Compare the pull request's counts with those. Every new line needs a sentence from its author —
+them**: the sandbox runs it without `--warnings-as-errors`, and its counts are pinned in
+`sandbox/test/e10_outputs_test.exs`, with what each comes from. Compare the pull request's counts with
+those. Every new line needs a sentence from its author —
 "expected, because…" or a fix. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
 hide a mistake:
 
@@ -114,7 +114,7 @@ messages — it is a defect.
 
 ### Dated corrections, not silent rewrites
 
-A change to what `docs/adr/` assumes or `PLAN.md` decided comes as a dated note, never a quiet edit
+A change to what `docs/adr/` assumes or a stage's issue decided comes as a dated note, never a quiet edit
 that erases what was believed before (`CLAUDE.md`, "Before you change anything"). For a change to
 contract semantics or to a check's meaning, look for the note in the same pull request.
 
@@ -162,14 +162,14 @@ not reviewed, only stamped.
 
 ## Non-negotiables
 
-- **Never approve a rewritten dated correction** in `docs/adr/` or `PLAN.md` in place of a new one.
+- **Never approve a rewritten dated correction** in `docs/adr/` in place of a new one.
 - **Never approve on a gate that is not verifiably green**, and never on a `tail`-piped log.
 - **Never let Polish outside the allowed strings through** on the strength of a diacritics grep.
 
 ## Procedure
 
 1. Get the gate's exit code. Not green → stop.
-2. Compare the `check` counts with `PLAN.md`'s last recorded ones; for each new line, find the
+2. Compare the `check` counts with the ones `e10_outputs_test` pins; for each new line, find the
    author's sentence or ask for one.
 3. Read the deciders' clauses, the reactions' `delivery`, the scenarios' data.
 4. For each edited declaration, find its row in `change-contract`'s table and the author's row count.

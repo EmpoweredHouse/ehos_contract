@@ -12,7 +12,7 @@ pages it holds. Not yet run on a change: read what it says against those before 
 ## Who reads it, and where
 
 A doc in `lib/` is published twice: on hexdocs, beside the code, and in a page of `docs/` that a generator
-writes from it. Whoever reads it is building an application on the library, has not read `PLAN.md`, and
+writes from it. Whoever reads it is building an application on the library, has not read the stages' issues, and
 may never see this repository.
 
 | You write | It appears in | Regenerate with |
@@ -85,7 +85,7 @@ fails on a reference to a hidden module or function).
 
 ## The design record's codes stay out of the docs
 
-`PLAN.md`'s stages (`E7c`, `plan T1`), the sections of `docs/adr/` (`v2 §16`, `notes §2`) and the layer
+The stages of a programme (`E7c`, `plan T1`), the sections of `docs/adr/` (`v2 §16`, `notes §2`) and the layer
 names (`L3`) mean nothing on hexdocs. `CLAUDE.md` already says a code never stands alone in prose; in a
 doc a host reads, it does not stand at all:
 

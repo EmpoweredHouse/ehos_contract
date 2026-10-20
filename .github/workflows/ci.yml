@@ -28,7 +28,7 @@ on:
     # not excluded.
     paths:
       - "**"
-      - "!PLAN.md"
+      - "!ROADMAP.md"
       - "!CLAUDE.md"
       - "!README.md"
       - "!docs/**"
