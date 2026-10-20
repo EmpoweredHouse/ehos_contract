@@ -1,0 +1,1 @@
+Merge of main (#397) into pb/393-private-links: one conflict in people.ex, resolved by keeping main removing the unused assertion lifetime and this branch keeping its comment without the private link. Then the private references #397 brought rewritten in seven files of the auth package, comments, docs and a test moduledoc only; reviewed by hand. Gate EXIT=0 (auth 370 tests).
