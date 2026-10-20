@@ -421,7 +421,7 @@ page says so, and the rest of the application goes on.
 ## A person granting a role
 
 An accountant names a client's representative on the application's page, and the representative is
-invited with the client role and nothing else (`eh-os` D-112). The rule is the contract's:
+invited with the client role and nothing else. The rule is the contract's:
 `may_grant: [:client]` on the accountant's actor, which the manifest carries to EHOS. EHOS checks it
 against a role the accountant holds there, invites by mail and records the accountant and the
 application. The application decides nothing: it passes on the person's own credential.

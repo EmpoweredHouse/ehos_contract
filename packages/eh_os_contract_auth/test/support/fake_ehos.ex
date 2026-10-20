@@ -21,9 +21,8 @@ defmodule EhOsContract.Auth.FakeEhos do
   `"applications"`, and `invalid_target` otherwise, consuming nothing, as
   `Ehos.SignIn.Token` refuses a `resource` outside the sign-in's granted set.
 
-  It also exchanges a person's credential and serves the grant routes, as `eh-os`'s
-  `docs/grants-api.md` describes them on its pull request EmpoweredHouse/eh-os#754 of
-  20 October 2026 (D-112). The exchange takes a credential it signed, unexpired, whose
+  It also exchanges a person's credential and serves the grant routes, as EHOS's grants API
+  described them on 20 October 2026. The exchange takes a credential it signed, unexpired, whose
   `client_id` is the assertion's client, and issues one for the audience `ehos` with
   `act`, for a minute; the routes take only such a credential. A grant registers a new
   email as invited and mails them, and answers `"bound": "before"` for a role bound

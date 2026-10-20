@@ -77,9 +77,9 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
   end
 
   @doc false
-  # RFC 7523's client assertion, as EHOS takes it at its token endpoint (`eh-os` D-81, D-112): the
-  # client as `iss` and `sub`, the endpoint as `aud`, and a minute to live, since EHOS keeps its
-  # `jti` until it expires and one request needs no more.
+  # RFC 7523's client assertion, as EHOS takes it at its token endpoint, for a sign-in and a
+  # grant: the client as `iss` and `sub`, the endpoint as `aud`, and a minute to live, since EHOS
+  # keeps its `jti` until it expires and one request needs no more.
   @spec assertion(JOSE.JWK.t(), String.t(), String.t()) :: String.t()
   def assertion(key, client_id, token_endpoint) do
     issued_at = System.os_time(:second)
