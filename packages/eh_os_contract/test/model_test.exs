@@ -177,7 +177,7 @@ defmodule EhOsContract.ModelTest do
     assert name["personal"] == "member_id"
   end
 
-  test "to_data redacts a consumed sibling event by the sibling's personal fields" do
+  test "to_data and the graph document redact a consumed sibling event by its personal fields" do
     document = Model.to_data(PersonalConsumer)
     encoded = Jason.encode!(document)
 
@@ -189,6 +189,15 @@ defmodule EhOsContract.ModelTest do
     assert scenario["trigger"]["data"]["name"] == nil
     assert hd(scenario["trigger"]["data"]["contacts"])["phone"] == nil
     assert hd(scenario["issues"])["data"]["name"] == nil
+
+    # The graph document of the same contract, which a renderer is given, the same way.
+    graph = EhOsContract.Graph.Document.contract(PersonalConsumer)
+    refute Jason.encode!(graph) =~ "Ada Example"
+    refute Jason.encode!(graph) =~ "+48-555-0100"
+
+    assert [%{"event" => %{"data" => data}}] = graph["scenarios"]["policy"]
+    assert data["member_id"] == "member-1"
+    assert Map.has_key?(data, "name") and data["name"] == nil
   end
 
   # What the compiler refuses in a contract it checks (X5, X9, S1, S3) can still reach

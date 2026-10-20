@@ -9,21 +9,14 @@ defmodule EhOsContractHost.E10OutputsTest do
 
   import ExUnit.CaptureIO
 
-  test "check reports the proven in-transaction fan-out, and not a recorded-only contract" do
+  test "check reports the proven in-transaction fan-out" do
     Mix.Task.reenable("eh_os_contract.check")
 
     output = capture_io(fn -> Mix.Tasks.EhOsContract.Check.run([]) end)
 
     assert output =~
-             "WARN  in-transaction-policy-fan-out: policy :match_each_turnover of " <>
-               "Taxvision.Contracts.AccountingMonth"
-
-    assert output =~
              "WARN  in-transaction-policy-fan-out: policy :invoice_the_period of " <>
                "Billing.Contracts.Subscriptions"
-
-    refute output =~
-             "contract-without-implementation: Taxvision.Contracts.DocumentIntake"
 
     # Plan DD, S4: four of them are AppUnite's transitions no scenario takes. P1d (#195):
     # Rehmed's three invented processes went with their missing `accountable`, and five
@@ -60,23 +53,25 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert output =~ "eh_os_contract.check: 0 errors, 50 warnings, 54 notices"
   end
 
-  # The personal values the scenarios give: the clinic's patient, and the library's member.
+  # The personal values the scenarios give: the library's member, and the clinic's patient
+  # while the clinic's tree is still registered here (publication programme, PB4, #386).
   @personal [
-    "85010112345",
-    "M54.5",
-    "93.39",
     "Ada Lovelace",
     "ada@example.org",
-    "ada@example.net"
+    "ada@example.net",
+    "85010112345",
+    "M54.5",
+    "93.39"
   ]
 
-  # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
-  # a sibling's event: its personal fields are declared there, not in the consumer. The
-  # library's membership gives a member's name and e-mail to its query's scenario.
+  # The library's membership gives a member's name and e-mail to its query's scenario.
   test "no exported model carries a personal scenario value" do
     contracts = EhOsContract.Registry.contracts()
-    assert Rehmed.Contracts.StatutoryReporting in contracts
     assert Lending.Contracts.Membership in contracts
+
+    # The check is not empty: the contract does hold the value its export must not carry.
+    assert inspect(EhOsContract.Model.fetch(Lending.Contracts.Membership), limit: :infinity) =~
+             "Ada Lovelace"
 
     for contract <- contracts do
       encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()
@@ -91,7 +86,7 @@ defmodule EhOsContractHost.E10OutputsTest do
   # (P2e, #220), so its model is held to the same, as what an export will be made from.
   test "no process module's model carries a personal scenario value" do
     processes = EhOsContract.Registry.processes()
-    assert Rehmed.Processes.ClinicalVisit in processes
+    assert Lending.Processes.LateFee in processes
 
     for process <- processes do
       model = process |> EhOsContract.Model.fetch() |> inspect(limit: :infinity)
@@ -131,18 +126,6 @@ defmodule EhOsContractHost.E10OutputsTest do
     operation = document["paths"]["/commands/fulfilment.confirm_pick"]["post"]
     assert operation["x-eh-os-contract-scope"] == "warehouse_id"
     assert operation["x-eh-os-contract-roles"] == ["fulfilment.picker"]
-  end
-
-  test "TaxVision's OpenAPI surface contains human commands but not policy commands" do
-    document = EhOsContract.OpenAPI.document(Taxvision.Contracts.AccountingMonth)
-
-    assert Map.has_key?(document["paths"], "/commands/taxvision.open_month")
-    assert Map.has_key?(document["paths"], "/commands/taxvision.ingest_bank_statement")
-    refute Map.has_key?(document["paths"], "/commands/taxvision.run_matching")
-
-    operation = document["paths"]["/commands/taxvision.open_month"]["post"]
-    assert operation["x-eh-os-contract-scope"] == "company_id"
-    assert operation["x-eh-os-contract-roles"] == ["taxvision.accountant"]
   end
 
   # The sandbox's `ehos.yaml` names the invented `Billing`, the one domain that publishes,

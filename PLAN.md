@@ -106,7 +106,7 @@ stays, whether `eh_os_contract_auth` is published under the library's name.
 | PB1 | The sandbox host owns its repo, commit repo and data case instead of TaxVision | #366 | ☑ #367 |
 | PB2 | Invented case studies (library loans, subscription billing, order fulfilment) cover what only client material tests today; graph fixtures and the lock from them | #369 | ☑ #370, #372, #373, #374 |
 | PB3 | English in the packages: the engine's tests, moduledoc examples, skills; no client names in published docs | #375 | ☑ #376, #378, #380, #381, #382, #383, #384 |
-| PB4 | The client trees, their tests, migrations and documents move to a private repository | — | ☐ |
+| PB4 | The client trees, their tests, migrations and documents move to a private repository | #386 | ◐ |
 | PB5 | The repository for outsiders: README, CONTRIBUTING, SECURITY, `.claude/settings.json` opt-in, NOTICE, private links | — | ☐ |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
@@ -123,6 +123,12 @@ and `ehos.yaml` from TaxVision. Four pull requests from `main`: lending, billing
 clients' deleted), the packages' docs and changelogs, the plugin's skills and the examples of `docs/adr/` lose their
 Polish and the clients' names; a few strings that test a second language or non-ASCII text stay. Six pull requests
 from `main` on disjoint files; the issue keeps what each holds and what was kept on purpose.
+
+**The clients leave (PB4).** `EmpoweredHouse/eh-os-contract-cases` (private) becomes a host of its own on the packages
+through `git: … sparse:`, with TaxVision's, Rehmed's and, depending on two decisions of the user's, AppUnite's and
+GraphLab's trees, their tests, migrations and documents, and its own gate. First the sandbox's mixed tests stop
+reading client material; then the trees are deleted here, with the lock, the `check` counts, `CLAUDE.md` and
+`README.md`. The history is untouched.
 
 ## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
 
