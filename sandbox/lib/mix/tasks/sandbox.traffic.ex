@@ -34,6 +34,8 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   between, so a timer fires on time. Six weeks, because the longest promise it breaks is
   thirty days, and billing closes its periods on the first of the month: the window always
   holds a first of the month at least four days old, so its invoices' three days are over.
+  Run in the first four days of a month, it holds that month's first too, and billing
+  closes a second period at it.
 
   From then on the data ages: a dashboard left running fires the timers that wait, and a
   promise still pending breaks once its window passes. So run it right before looking,
@@ -45,11 +47,14 @@ defmodule Mix.Tasks.Sandbox.Traffic do
 
   **The default development database is shared by every checkout of this repository on
   the machine**, and `mix ecto.reset` empties it for all of them; `EH_OS_CONTRACT_DEV_DB`
-  names another (`config/dev.exs`). The task refuses a log that holds anything at all,
+  names another (`config/dev.exs`). Mind its spelling: misspelled, the variable is not
+  read, and `mix ecto.reset` empties the shared default. The task refuses a test
+  database by its name, before anything is written. The task refuses a log that holds anything at all,
   since its hourly drains would push every other run's reactions through at the weeks'
   times; and it refuses while anything else is connected to the database, a dev server
   above all, since that server's subscriptions and Oban would react to the task's events
-  as they arrive, stamped with today's time.
+  as they arrive, stamped with today's time. Those two refusals come after the
+  application's boot, which records the deployed versions as any dev server's boot does.
 
   Events carry the time of their step; two things carry the time the task ran: every
   command's record, accepted or refused, which the database stamps, and the process
@@ -88,6 +93,14 @@ defmodule Mix.Tasks.Sandbox.Traffic do
 
     Mix.Task.run("app.config")
     repo = Application.fetch_env!(:eh_os_contract_host, EhOsContractHost.Repo)
+
+    # Before the application starts, since its boot already writes the deployment rows:
+    # a test database's log is empty between runs, so the refusals below would let it
+    # through, and rows committed there break every checkout's tests.
+    if repo[:database] =~ "test" do
+      Mix.raise("mix sandbox.traffic will not write #{repo[:database]}, a test database")
+    end
+
     parameters = Keyword.put(repo[:parameters] || [], :application_name, @connection)
 
     Application.put_env(
@@ -120,12 +133,12 @@ defmodule Mix.Tasks.Sandbox.Traffic do
         Clock.at(at, fn -> Enum.each(operations.(), &run_operation/1) end)
       end
 
-      Clock.at(at, fn -> Testing.drain() end)
+      Clock.at(at, fn -> drain() end)
     end
 
     # Once more at the real time, so the timers still waiting are scheduled against it
     # rather than against the last hour.
-    Testing.drain()
+    drain()
 
     database = Application.fetch_env!(:eh_os_contract_host, EhOsContractHost.Repo)[:database]
 
@@ -137,6 +150,18 @@ defmodule Mix.Tasks.Sandbox.Traffic do
 
     then http://localhost:4010/dashboard
     """)
+  end
+
+  # The effects the gateway refuses fail on purpose, as Oban's; a subscription that fails
+  # is a policy or a read model broken, and the log after it would be partial.
+  defp drain do
+    case Testing.drain() do
+      %{failing: []} ->
+        :ok
+
+      %{failing: failing} ->
+        Mix.raise("subscriptions failing at #{Clock.now()}: #{inspect(failing)}")
+    end
   end
 
   defp run_operation({:ok, contract, command, actor}) do

@@ -5,16 +5,17 @@ defmodule Fulfilment.Traffic do
   function giving the operations to run then, which the task runs and checks
   (`Mix.Tasks.Sandbox.Traffic`).
 
-  - order-1 goes the whole way, handed over the evening of its payment and delivered.
+  - order-1 goes the whole way, handed over nine hours after its payment and delivered.
   - order-2 is handed over two days after its payment: broken. A picker it is not
     assigned to tries to confirm its pick list first, and is refused.
   - order-3 is placed and left, never paid and never cancelled, past the run's two weeks.
   - order-4 is cancelled before it is paid.
   - order-5 is booked with the carrier, never handed over, and reported delivered: a move
-    its shipment's lifecycle does not declare.
+    its shipment's lifecycle does not declare, and its day after the payment broken.
   - order-6 is reported delivered before it is paid, so before its pick list opens: the
     shipping stage entered before the picking stage, a stage counting from its first
-    event.
+    event, and a delivery of a shipment that never started. Its parcel is never handed
+    over either: broken.
   - order-7 is not handed over while the carrier is down: suspended, not broken.
   - order-8 was paid two hours ago, its day still running.
   """

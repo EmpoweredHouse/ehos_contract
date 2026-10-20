@@ -17,7 +17,8 @@ defmodule Billing.Traffic do
 
   sub-d is cancelled before the first, so nothing is billed, and usage recorded on it
   afterwards is refused. Every active subscription's next period end waits. Nobody
-  closes a period by hand.
+  closes a period by hand. Run in the first four days of a month, the window also holds
+  that month's first, and the three are billed again then, sub-b and sub-c refused again.
   """
 
   alias Billing.Contracts.{Payments, Subscriptions}
