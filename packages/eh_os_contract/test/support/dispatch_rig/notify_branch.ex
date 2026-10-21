@@ -7,6 +7,8 @@ defmodule DispatchRig.NotifyBranch do
 
   use DispatchRig.Ledger, effect: :notify_branch
 
+  require Logger
+
   @impl true
   def account_flagged(%AccountFlagged{account_id: "a-down"}), do: {:error, :branch_unreachable}
 
@@ -17,6 +19,7 @@ defmodule DispatchRig.NotifyBranch do
       on_conflict: :nothing
     )
 
-    :ok
+    # A line, so a test can see what the engine puts in the Logger's metadata (#298).
+    Logger.debug("notified the branch")
   end
 end

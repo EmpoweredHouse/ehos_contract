@@ -1,8 +1,8 @@
 defmodule EhOsContract.GraphDocumentTest do
   @moduledoc """
-  Plan E13a: the `graph.v1` document of every contract and every domain of the client
-  trees — TaxVision, Rehmed, AppUnite's equipment — holds to the schema the engine
-  ships, every id in it resolves, and none carries a personal value of Rehmed's. The
+  Plan E13a: the `graph.v1` document of every contract and every domain of the sandbox's
+  case studies holds to the schema the engine ships, every id in it resolves, and none
+  carries a personal value a scenario gives. The
   engine's own suite checks its fixtures; these are the documents a renderer will
   actually be given.
   """
@@ -16,15 +16,17 @@ defmodule EhOsContract.GraphDocumentTest do
 
   defp documents do
     contracts = Registry.contracts()
+    modules = contracts ++ Registry.processes()
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
-      for d <- Registry.domains(), do: {d, Document.domain(d, contracts)}
+      for(p <- Registry.processes(), do: {p, Document.process(p)}) ++
+      for d <- Registry.domains(), do: {d, Document.domain(d, modules)}
   end
 
   test "every contract and every domain gives a document, all of them" do
     names = documents() |> Enum.map(&elem(&1, 0)) |> Enum.map(&inspect/1)
 
-    for prefix <- ~w(Taxvision. Rehmed. AppuniteEquipment.) do
+    for prefix <- ~w(Lending. Billing. Fulfilment.) do
       assert Enum.count(names, &String.starts_with?(&1, prefix)) >= 2, prefix
     end
   end
@@ -92,30 +94,114 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
-  # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing, a
-  # sibling's event, whose personal fields are declared there: the same values the
-  # exported model is held to (`E10OutputsTest`), in every graph document.
-  test "no document carries Rehmed's personal scenario values" do
+  # The values the exported model is held to (`E10OutputsTest`), in every graph document:
+  # the library's member's name and e-mail.
+  test "no document carries a personal scenario value" do
     for {module, document} <- documents() do
       encoded = Jason.encode!(document)
 
-      for personal <- ["85010112345", "M54.5", "93.39"] do
+      for personal <- ["Ada Lovelace", "ada@example.org", "ada@example.net", "bob@example.org"] do
         refute encoded =~ personal, "#{inspect(module)} carries #{personal}"
       end
     end
 
-    # And the check is not empty: the scenarios are there, with what is not personal.
-    reporting = Document.contract(Rehmed.Contracts.StatutoryReporting)
-    assert [%{"event" => %{"data" => data}} | _] = reporting["scenarios"]["policy"]
-    assert Map.has_key?(data, "pesel") and data["pesel"] == nil
+    # And the check is not empty: the library's member, given to a query's scenario, keeps
+    # the name's key and not its value, and so does the row the query answers.
+    membership = Document.contract(Lending.Contracts.Membership)
+
+    assert [%{"given" => [%{"data" => registered} | _], "answers" => [row]}] =
+             membership["scenarios"]["query"]
+
+    assert Map.has_key?(registered, "name") and registered["name"] == nil
+    assert Map.has_key?(row, "email") and row["email"] == nil
   end
 
   test "a domain's document does not depend on the order its contracts are given in" do
-    contracts = Registry.contracts()
+    modules = Registry.contracts() ++ Registry.processes()
 
     for domain <- Registry.domains() do
-      assert Document.domain(domain, Enum.reverse(contracts)) ==
-               Document.domain(domain, contracts)
+      assert Document.domain(domain, Enum.reverse(modules)) ==
+               Document.domain(domain, modules)
     end
+  end
+
+  # Plan DD, OW1 (#355): what a promise waits on through an earlier step.
+  test "the order's promise waits on the carrier, and the billing month's on nothing" do
+    d = Document.process(Fulfilment.Processes.Order)
+    promise = "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+    carrier = Document.id([:external, Fulfilment.Domain, :carrier])
+
+    assert [%{"from" => ^promise, "to" => ^carrier}] = d["relations"]["waits_on"]
+    assert carrier in Enum.map(d["nodes"]["external"], & &1["id"])
+
+    assert Document.process(Billing.Processes.Month)["relations"]["waits_on"] == []
+  end
+
+  # Plan DD, P2e (#220): an order, from three contexts' events.
+  test "the order's document has its stages, the events from three contracts and its promise" do
+    d = Document.process(Fulfilment.Processes.Order)
+    stage = &Document.id([:stage, "fulfilment.order", &1])
+
+    assert %{"kind" => "process", "process" => "fulfilment.order"} = d
+
+    assert Enum.map(d["nodes"]["stage"], & &1["id"]) ==
+             [stage.(:ordering), stage.(:picking), stage.(:shipping)]
+
+    assert Enum.map(d["nodes"]["contract"], & &1["name"]) ==
+             ~w(fulfilment.orders fulfilment.warehouse fulfilment.shipping)
+
+    events = Map.new(d["nodes"]["event"], &{&1["id"], &1})
+
+    # Each event under the id it has in its contract's document.
+    for contract <- [
+          Fulfilment.Contracts.Orders,
+          Fulfilment.Contracts.Warehouse,
+          Fulfilment.Contracts.Shipping
+        ],
+        own = Document.contract(contract)["nodes"]["event"],
+        e <- own,
+        Map.has_key?(events, e["id"]) do
+      assert events[e["id"]]["label"] == e["label"]
+    end
+
+    assert %{"stage" => ordering} = events["event:fulfilment.orders:payment_confirmed"]
+    assert ordering == stage.(:ordering)
+
+    terminal = for {id, %{"terminal" => true}} <- events, do: id
+
+    assert Enum.sort(terminal) == [
+             "event:fulfilment.orders:cancelled",
+             "event:fulfilment.shipping:delivered"
+           ]
+
+    promise = "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+
+    assert [%{"id" => ^promise}] = d["nodes"]["promise"]
+
+    for {type, event} <- [
+          {"opens", "event:fulfilment.orders:payment_confirmed"},
+          {"fulfils", "event:fulfilment.shipping:dispatched"}
+        ] do
+      assert [%{"from" => ^event, "to" => ^promise}] = d["relations"][type], type
+    end
+
+    assert d["relations"]["or_else"] == []
+
+    dispatcher = Document.id([:actor, Fulfilment.Domain, :dispatcher])
+    assert [%{"from" => ^dispatcher}] = d["relations"]["accountable_for"]
+
+    # Fulfilment's system has its process module, with an arrow to each contract it includes.
+    domain =
+      Document.domain(Fulfilment.Domain, Registry.contracts() ++ Registry.processes())
+
+    assert Enum.map(domain["nodes"]["process"], & &1["name"]) == ~w(fulfilment.order)
+
+    included =
+      for r <- domain["relations"]["includes"],
+          r["from"] == "process:fulfilment.order",
+          do: r["to"]
+
+    assert Enum.sort(included) ==
+             Enum.sort(Enum.map(d["nodes"]["contract"], & &1["id"]))
   end
 end

@@ -16,10 +16,10 @@ defmodule EhOsContract.ContractIdTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        actor :reception, :human, "Reception"
 
         subdomain :core, "Core", type: :core
       end
@@ -31,22 +31,18 @@ defmodule EhOsContract.ContractIdTest do
   end
 
   # A contract whose `use` is at line 2, naming `id` when given.
-  defp source(name, id, process \\ nil) do
+  defp source(name, id, unit \\ nil) do
     id = if id, do: ", id: #{inspect(id)}", else: ""
-    process = process || Macro.underscore(name) |> String.to_atom()
+    unit = unit || Macro.underscore(name) |> String.to_atom()
 
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement#{id}
 
-      aggregate #{inspect(process)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Unit" do
         identity :case_id
-        command #{inspect(:"open_#{process}")}, "Otwórz", by: :reception, emits: #{inspect(:"#{process}_opened")}
-        event #{inspect(:"#{process}_opened")}, "Otwarto"
-      end
-
-      process #{inspect(process)}, "Proces" do
-        correlate :case_id
+        command #{inspect(:"open_#{unit}")}, "Open", by: :reception, emits: #{inspect(:"#{unit}_opened")}
+        event #{inspect(:"#{unit}_opened")}, "Opened"
       end
     end
     """

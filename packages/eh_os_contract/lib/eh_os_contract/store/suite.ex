@@ -80,16 +80,14 @@ defmodule EhOsContract.Store.Suite do
           end
         end
 
-        test "writes an event's runs with it: the home run, and each run it is included in once" do
+        test "writes an event's runs with it, each run once" do
           type = suite_name("runs")
 
           assert {:ok, [with_runs, without]} =
                    suite_append(
                      [
                        suite_entry(type, %{
-                         process: "home",
-                         instance_id: "home|1",
-                         runs: [{"other", "other|7"}, {"other", "other|7"}]
+                         runs: [{"other", "other|7"}, {"one", "one|1"}, {"other", "other|7"}]
                        }),
                        suite_entry(type)
                      ],
@@ -106,7 +104,7 @@ defmodule EhOsContract.Store.Suite do
             )
           end
 
-          assert runs.(with_runs) == [{"home", "home|1"}, {"other", "other|7"}]
+          assert runs.(with_runs) == [{"one", "one|1"}, {"other", "other|7"}]
           assert runs.(without) == []
         end
 

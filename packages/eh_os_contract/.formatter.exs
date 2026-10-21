@@ -8,7 +8,6 @@
 # rewrites this list, and the package's `mix check` runs it with `--check`, so it cannot
 # fall behind the DSLs.
 spark_locals_without_parens = [
-  accountable: 1,
   actor: 1,
   actor: 3,
   actor: 4,
@@ -83,6 +82,7 @@ spark_locals_without_parens = [
   fields: 1,
   final: 1,
   from: 1,
+  function: 1,
   function: 2,
   function: 3,
   generated: 1,
@@ -98,7 +98,6 @@ spark_locals_without_parens = [
   identity: 1,
   illustrates: 1,
   include: 1,
-  include: 2,
   initial: 1,
   initial: 2,
   invariant: 2,
@@ -112,6 +111,7 @@ spark_locals_without_parens = [
   lifecycle: 0,
   lifecycle: 1,
   match: 1,
+  may_grant: 1,
   on: 1,
   on: 2,
   on: 3,
@@ -127,8 +127,6 @@ spark_locals_without_parens = [
   personal: 1,
   policy: 2,
   policy: 3,
-  process: 2,
-  process: 3,
   process_manager: 2,
   process_manager: 3,
   projects: 1,
@@ -148,6 +146,7 @@ spark_locals_without_parens = [
   rejects: 1,
   relation: 1,
   relation: 2,
+  rename: 1,
   responsibility: 2,
   responsibility: 3,
   returns: 1,
@@ -184,7 +183,6 @@ spark_locals_without_parens = [
   target: 1,
   term: 1,
   term: 2,
-  terminal: 1,
   terms: 1,
   timer: 2,
   timer: 3,
@@ -196,6 +194,8 @@ spark_locals_without_parens = [
   unavailable_looks_like: 1,
   unit: 1,
   unverified: 1,
+  upcast: 0,
+  upcast: 1,
   upstream: 1,
   value: 1,
   value: 2,
@@ -204,6 +204,7 @@ spark_locals_without_parens = [
   via: 1,
   violated_by: 1,
   wait: 1,
+  waits_on: 1,
   where: 1,
   within: 1
 ]

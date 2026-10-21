@@ -320,9 +320,10 @@ defmodule EhOsContract.Subscription do
   defp relay(consumer, events) do
     # Plan W1: a message carries the payload as stored, so an event written with
     # fields newer than this code declares would leave with the old meaning.
+    # An older one goes out in the declared shape, as consumers read it (plan DD, V1, #333).
     model = Model.fetch(consumer.contract)
     Enum.each(events, &Consumer.current!(model, &1))
-    Bus.publish(Enum.map(events, &Relay.message(consumer, &1)))
+    Bus.publish(Enum.map(events, &Relay.message(consumer, Consumer.upcast(model, &1))))
   rescue
     newer in EhOsContract.NewerSchemaError -> {:waiting, newer.position}
     exception -> {:raised, exception}

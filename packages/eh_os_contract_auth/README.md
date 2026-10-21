@@ -12,7 +12,8 @@ Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContra
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
 front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
 `EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
-company's people, and `EhOsContract.Auth.Testing` for a host's tests.
+company's people, `EhOsContract.Auth.Grants` for a person granting a role their rule lets them give,
+and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -41,7 +42,7 @@ config :eh_os_contract, authorizer: EhOsContract.Auth
 
 config :eh_os_contract_auth,
   issuer: "https://ehos.example.com",
-  audience: "rehmed/production"
+  audience: "clinic/production"
   # jwks_url: defaults to the issuer's "/.well-known/jwks.json"
 
 # the application's supervision tree, after the repo
@@ -66,8 +67,8 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-EHOS deploys an image with its `ehos.manifest/v2`, or `v3` for an `ehos.yaml/v3`: the
-application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
+EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, or `v4` for an
+`ehos.yaml/v4` (which may name a seed and secrets): the application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
 offer. In CI, beside the image:
 
 ```bash
@@ -81,8 +82,9 @@ EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's read
 refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
 is written. The
 rules EHOS checks beside its schema (names and ports unique in `serves`, the health port not among
-them) are not repeated: EHOS refuses those when the manifest is deployed. The 2 rules for `sign_in`
-(below) are checked here, once the schema has passed, because adding `sign_in` alone breaks them.
+them, each name once in `needs.secrets`) are not repeated: EHOS refuses those when the manifest is
+deployed. The 2 rules for `sign_in` (below) are checked here, once the schema has passed, because adding
+`sign_in` alone breaks them.
 
 ```yaml
 schema: ehos.yaml/v1
@@ -138,8 +140,38 @@ other applications, each once, never this one: neither the `application` the fil
 domain's name the task finds.
 
 **`ehos.yaml` must hold no secret.** EHOS keeps every manifest it is given, for good, with every key
-of `ehos.yaml` as written, a `migrate` argument too; what the workload needs at run time comes from
-its environment, below.
+of `ehos.yaml` as written, a `migrate` or `seed` argument too; what the workload needs at run time
+comes from its environment, below.
+
+**Secrets and a seed, from `ehos.yaml/v4`** (eh-os D-98, D-99), which makes an `ehos.manifest/v4`:
+
+```yaml
+schema: ehos.yaml/v4
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+    # Run after the migration in an ephemeral environment only, never in production; idempotent.
+    seed: ["/app/bin/seed"]
+  secrets:
+    - name: smtp_password
+    - name: gus_api_key
+      version: 2
+```
+
+`needs.secrets` names secrets and holds no value: people set each value in EHOS, per environment or
+as a template's default for its ephemeral environments, and EHOS refuses a deployment while one it
+names has none there. The workload is given each as an environment variable named after it in
+upper case (`smtp_password` becomes `SMTP_PASSWORD`), which `config/runtime.exs` reads like any
+other. Without `version`, the newest value, and setting a new one rolls the workload; with it, that
+version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
+`database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
+
+**A role that may grant another** (eh-os D-112): an actor's `may_grant:` in the domain,
+`actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
+roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
+whatever the version of `ehos.yaml`. A domain without a rule keeps its manifest's version and digests. An
+actor a rule names, and one that has a rule, has to hold a capability, or it is no role and the task says so.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
 with any edit, so a new label would ask for `ehos.application.register` at every deploy. yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
@@ -165,8 +197,9 @@ auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
 children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 ```
 
-`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` are for
-signing people in to the application in a browser, through EHOS: "Signing people in" below.
+`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, `EHOS_SIGN_IN_APPLICATIONS` and
+`EHOS_SIGN_IN_ABSOLUTE` are for signing people in to the application in a browser, through EHOS:
+"Signing people in" below.
 
 ## Signing people in
 
@@ -181,7 +214,9 @@ config :eh_os_contract_auth,
     client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
     address: "https://" <> System.fetch_env!("PHX_HOST"),
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
+    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
+    # How long a session lasts from the sign-in at EHOS, the installation's (eh-os D-113).
+    absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
   ]
 
 # the supervision tree, after EhOsContract.Auth; cacertfile: as for it
@@ -196,7 +231,22 @@ The child checks this at boot and refuses to start otherwise:
   trailing slash;
 - no address in `applications` is `address`: they are the other applications;
 - the issuer is `https://<host>[:port]` alone, as every parser reads it;
-- `secret_key_base` has at least 64 bytes.
+- `secret_key_base` has at least 64 bytes;
+- `absolute_limit`, when given, is whole seconds from a minute to 366 days.
+
+`absolute_limit` is how long a session lasts from the person's sign-in at EHOS, renewed or not:
+twelve hours when not given or nil (eh-os D-66). EHOS gives the workload its installation's as
+`EHOS_SIGN_IN_ABSOLUTE` (eh-os D-113) and enforces the same at its own endpoints. Sign-in asks EHOS
+for no older sign-in than `absolute_limit` (`max_age`), so an application that keeps a shorter
+limit than its installation asks for the password sooner, never round and round EHOS. Its idle
+limit, `EHOS_SIGN_IN_IDLE`, EHOS enforces alone: a refresh token unused that long is refused, and
+the session ends at the next renewal.
+
+The browser keeps the session's token in the host's `Plug.Session` cookie. Without `max_age`
+there, the cookie ends when the browser closes, and the person signs in again then, however long
+`absolute_limit` is: a host that wants the session to outlast the browser gives the cookie a
+`max_age` at least as long, such as EHOS's ceiling of 366 days, since the session's row, not the
+cookie, decides when it ends.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
@@ -369,6 +419,35 @@ A call that returns no people says why, so the page can explain it in words:
 The list is never copied into the application. While EHOS cannot answer, the call fails, the
 page says so, and the rest of the application keeps working.
 
+## A person granting a role
+
+An accountant names a client's representative on the application's page, and the representative is
+invited with the client role and nothing else (`eh-os` D-112). The rule is the contract's:
+`may_grant: [:client]` on the accountant's actor, which the manifest carries to EHOS. EHOS checks it
+against a role the accountant holds there, invites by mail and records the accountant and the
+application. The application decides nothing: it passes on the person's own credential.
+
+```elixir
+# a controller of a signed-in page, after the application's own command is recorded
+alias EhOsContract.Auth.Grants.Grant
+
+case EhOsContract.Auth.Grants.grant(conn, email: email, name: name, role: "clinic.client") do
+  {:ok, %Grant{person_id: id, delivery: :mailed}} -> # keep the id, to revoke later; "invited"
+  {:ok, %Grant{bound: :before}} -> # they had the role already
+  {:error, :beyond_rule} -> # "your role may not give that role"
+  {:error, :unavailable} -> # "they were not invited; try again"
+  {:error, reason} -> # the module's doc lists each
+end
+
+{:ok, %{role_binding_id: _id}} = EhOsContract.Auth.Grants.revoke(conn, id, "clinic.client")
+```
+
+Each call exchanges the person's credential for this application, from their session, for a minute's
+credential to EHOS (RFC 8693), authenticated as the sign-in's client: nothing more is configured than
+signing in needs. It is made in the person's request, keeps no credential and retries nothing; when it
+fails the page says so and the person asks again, which is safe. `docs/grants-api.md` in eh-os is the
+API it calls.
+
 ## Deciding, and recording every decision
 
 `EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
@@ -410,7 +489,7 @@ end
 
 scope "/api" do
   pipe_through :commands
-  forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+  forward "/", EhOsContract.Plug, contracts: [Clinic.Contracts.VisitSettlement]
 end
 ```
 
@@ -426,13 +505,13 @@ names nobody; the rows are the decisions about actors that did verify.
 use EhOsContract.Auth.Testing
 
 test "every entry point refuses a credential without the capability" do
-  assert_every_entry_refuses([Rehmed.Contracts.VisitSettlement], %{
-    "rehmed.record_payment" => fn token -> post_command(token, "rehmed.record_payment", ...) end,
+  assert_every_entry_refuses([Clinic.Contracts.VisitSettlement], %{
+    "clinic.record_payment" => fn token -> post_command(token, "clinic.record_payment", ...) end,
     # ... one entry per capability the contracts declare
   })
 end
 
-token = credential("u-anna", ["rehmed.record_payment"])
+token = credential("u-anna", ["clinic.record_payment"])
 ```
 
 The engine cannot call a host's entry points itself, so the host maps every capability its contracts declare to a
@@ -555,8 +634,8 @@ A JWT, `alg: "Ed25519"` and nothing else, with `iss`, `sub`, `aud` (one string),
 `jti`, `cap` (the capabilities, sorted), and `scp` when a capability is scoped:
 
 ```json
-{"sub": "u-81", "aud": "rehmed/production", "cap": ["rehmed.open_visits_for_clinic"],
- "scp": {"rehmed.open_visits_for_clinic": {"clinic_id": ["7"]}}}
+{"sub": "u-81", "aud": "clinic/production", "cap": ["clinic.open_visits_for_clinic"],
+ "scp": {"clinic.open_visits_for_clinic": {"clinic_id": ["7"]}}}
 ```
 
 The grants travel in the credential. The application stores none and asks EHOS about none. A

@@ -11,7 +11,8 @@ defmodule EhOsContract.MigrationsTest do
   @moduledoc """
   v2 plan, E11c: **the engine's storage is V01, in its final shape** — created from
   nothing, dropped to nothing, and created again — and since plan DD, T2a (#240), a
-  second version, V02, which a host runs as a migration of its own.
+  second version, V02, which a host runs as a migration of its own; since plan DD, P2h
+  (#221), a third, V03, the first that removes columns.
 
   Runs against `EhOsContract.CommitRepo`, because migrations commit and the sandbox
   would roll them back. Rolling back the package's first migration rolls back every
@@ -81,10 +82,24 @@ defmodule EhOsContract.MigrationsTest do
     )
   end
 
-  test "V01 creates the whole store, and V02 adds what a decision read" do
+  test "V01 creates the whole store, V02 adds what a decision read, V03 drops a contract's run, V04 adds the words' digest" do
     assert EhOsContract.Migrations.initial_version() == 1
-    assert EhOsContract.Migrations.current_version() == 2
-    assert version() == "2"
+    assert EhOsContract.Migrations.current_version() == 4
+    assert version() == "4"
+
+    # Plan DD, V5 (#322): a deployment records its words beside its version, and a change
+    # of the words alone is a row of its own.
+    assert words_columns() == ["text_digest", "text_digests"]
+    assert versions_index() =~ "(contract, contract_version, wiring_version, text_digest)"
+
+    # Plan DD, P2h (#221): a contract no longer declares a process, so no event and no
+    # command has a run of its own; an event's runs are the rows of the index of runs.
+    assert runs_columns() == %{events: [], commands: []}
+
+    assert column("""
+           SELECT column_name FROM information_schema.columns
+           WHERE table_name = 'eh_os_contract_event_runs'
+           """) == ["instance_id", "position", "process"]
 
     # Plan DD, T2a (#240).
     assert one("""
@@ -146,13 +161,54 @@ defmodule EhOsContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "2"
+    assert version() == "4"
     assert tables() == @tables
     assert functions() == @functions
   end
 
-  # The host's second migration, `up(version: 2)` (plan DD, T2a, #240).
+  # The host's second migration, `up(version: 2)` (plan DD, T2a, #240), and its third,
+  # `up(version: 3)` (plan DD, P2h, #221).
   @upgrade_to_v2 20_261_007_120_000
+  @upgrade_to_v3 20_261_013_120_000
+  @upgrade_to_v4 20_261_016_120_000
+
+  defp words_columns do
+    column("""
+    SELECT column_name FROM information_schema.columns
+    WHERE table_name = 'eh_os_contract_deployments' AND column_name LIKE 'text\\_%'
+    """)
+  end
+
+  defp versions_index do
+    one("""
+    SELECT pg_get_indexdef('eh_os_contract_deployments_versions_index'::regclass)
+    """)
+  end
+
+  defp deployment!(text_digest, at) do
+    Repo.query!(
+      """
+      INSERT INTO eh_os_contract_deployments
+        (id, contract, contract_version, wiring_version, events, edges, text_digest, first_seen_at)
+      VALUES (gen_random_uuid(), 'MigrationsTest', 'v', 'w', '{}', '{}', $1, $2)
+      """,
+      [text_digest, at]
+    )
+  end
+
+  # The columns that filed an event and a command under a contract's process, by table.
+  defp runs_columns do
+    for table <- [:events, :commands], into: %{} do
+      {table,
+       column(
+         """
+         SELECT column_name || ' ' || is_nullable FROM information_schema.columns
+         WHERE table_name = $1 AND column_name IN ('process', 'instance_id')
+         """,
+         ["eh_os_contract_#{table}"]
+       )}
+    end
+  end
 
   defp inputs? do
     one("""
@@ -161,7 +217,42 @@ defmodule EhOsContract.MigrationsTest do
     """) == 1
   end
 
-  test "a host's upgrade to V02 rolls back to V01 alone, and runs again" do
+  test "a host's upgrades roll back one at a time, and run again" do
+    # Two deployments that differ only in their words: the index of three columns that
+    # V04 gives back holds one, the first, which says since when the version ran.
+    deployment!("t1", ~U[2026-10-01 00:00:00.000000Z])
+    deployment!("t2", ~U[2026-10-02 00:00:00.000000Z])
+
+    on_exit(fn ->
+      Repo.query!("DELETE FROM eh_os_contract_deployments WHERE contract = 'MigrationsTest'")
+    end)
+
+    migrate(:down, to: @upgrade_to_v4)
+
+    assert version() == "3"
+    assert words_columns() == []
+    assert versions_index() =~ "(contract, contract_version, wiring_version)"
+
+    assert one("""
+           SELECT min(first_seen_at)::text FROM eh_os_contract_deployments
+           WHERE contract = 'MigrationsTest'
+           """) =~ "2026-10-01"
+
+    assert one(
+             "SELECT count(*) FROM eh_os_contract_deployments WHERE contract = 'MigrationsTest'"
+           ) == 1
+
+    migrate(:down, to: @upgrade_to_v3)
+
+    # V03 gives the columns back, empty and nullable as they always were.
+    assert version() == "2"
+    assert inputs?()
+
+    assert runs_columns() == %{
+             events: ["instance_id YES", "process YES"],
+             commands: ["instance_id YES", "process YES"]
+           }
+
     migrate(:down, to: @upgrade_to_v2)
 
     assert version() == "1"
@@ -170,8 +261,10 @@ defmodule EhOsContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "2"
+    assert version() == "4"
     assert inputs?()
+    assert runs_columns() == %{events: [], commands: []}
+    assert words_columns() == ["text_digest", "text_digests"]
   end
 
   # A version no migration file in the test database has, so running it touches
@@ -209,9 +302,20 @@ defmodule EhOsContract.MigrationsTest do
     assert version() == "5"
   end
 
+  test "a database migrated before 0.3.0 is refused by its column, whatever it records" do
+    Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
+    on_exit(fn -> Repo.query!("ALTER TABLE eh_os_contract_events DROP COLUMN instance_id") end)
+
+    assert_raise ArgumentError, ~r/records version 4, and it was migrated before 0\.3\.0/, fn ->
+      Ecto.Migrator.up(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
+    end
+
+    assert version() == "4"
+  end
+
   test "a version this release does not have is refused as a target" do
-    assert_raise ArgumentError, ~r/and 3 is not one of them/, fn ->
-      EhOsContract.Migrations.up(version: 3)
+    assert_raise ArgumentError, ~r/and 5 is not one of them/, fn ->
+      EhOsContract.Migrations.up(version: 5)
     end
 
     assert_raise ArgumentError, ~r/and 0 is not one of them/, fn ->

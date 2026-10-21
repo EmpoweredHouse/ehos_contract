@@ -16,12 +16,12 @@ defmodule EhOsContract.Auth.VerifyTest do
   end
 
   test "a credential EHOS signed becomes the actor it describes", %{pair: pair, keys: keys} do
-    scp = %{"rehmed.open_visits_for_clinic" => %{"clinic_id" => ["krakow"]}}
+    scp = %{"clinic.open_visits_for_clinic" => %{"clinic_id" => ["north"]}}
 
     token =
       credential(pair, %{
         "sub" => "u-anna",
-        "cap" => ["rehmed.open_visits_for_clinic", "rehmed.record_payment"],
+        "cap" => ["clinic.open_visits_for_clinic", "clinic.record_payment"],
         "scp" => scp
       })
 
@@ -29,7 +29,7 @@ defmodule EhOsContract.Auth.VerifyTest do
     assert actor.subject == "u-anna"
 
     assert actor.capabilities ==
-             MapSet.new(["rehmed.open_visits_for_clinic", "rehmed.record_payment"])
+             MapSet.new(["clinic.open_visits_for_clinic", "clinic.record_payment"])
 
     assert actor.scopes == scp
   end
@@ -81,7 +81,7 @@ defmodule EhOsContract.Auth.VerifyTest do
       [header, _payload, signature] = String.split(credential(pair), ".")
 
       widened =
-        credential(pair, %{"cap" => ["rehmed.record_payment", "rehmed.close_visit"]})
+        credential(pair, %{"cap" => ["clinic.record_payment", "clinic.close_visit"]})
         |> String.split(".")
         |> Enum.at(1)
 
@@ -103,19 +103,19 @@ defmodule EhOsContract.Auth.VerifyTest do
 
     test "another audience is refused, and so is the right one in a list",
          %{pair: pair, keys: keys} do
-      assert Auth.verify(credential(pair, %{"aud" => "rehmed/production"}), keys: keys) ==
+      assert Auth.verify(credential(pair, %{"aud" => "clinic/production"}), keys: keys) ==
                {:error, :wrong_audience}
 
-      assert Auth.verify(credential(pair, %{"aud" => ["rehmed/test"]}), keys: keys) ==
+      assert Auth.verify(credential(pair, %{"aud" => ["clinic/test"]}), keys: keys) ==
                {:error, :wrong_audience}
 
       assert Auth.verify(credential(pair, %{"aud" => "ehos"}), keys: keys) ==
                {:error, :wrong_audience}
 
       assert {:ok, _} =
-               Auth.verify(credential(pair, %{"aud" => "rehmed/production"}),
+               Auth.verify(credential(pair, %{"aud" => "clinic/production"}),
                  keys: keys,
-                 audience: "rehmed/production"
+                 audience: "clinic/production"
                )
     end
 
@@ -163,7 +163,7 @@ defmodule EhOsContract.Auth.VerifyTest do
       assert Auth.verify(credential(pair, %{"cap" => "all"}), keys: keys) ==
                {:error, :bad_signature}
 
-      assert Auth.verify(credential(pair, %{"scp" => %{"rehmed.x" => "krakow"}}), keys: keys) ==
+      assert Auth.verify(credential(pair, %{"scp" => %{"clinic.x" => "north"}}), keys: keys) ==
                {:error, :bad_signature}
     end
   end
@@ -175,7 +175,7 @@ defmodule EhOsContract.Auth.VerifyTest do
     # docs/adr/browser-session.md).
     test "an ID token presented as a bearer credential is refused", %{pair: pair, keys: keys} do
       claims = %{
-        "aud" => "rehmed/test",
+        "aud" => "clinic/test",
         "auth_time" => DateTime.to_unix(DateTime.utc_now()) - 60,
         "sid" => "s-81",
         "nonce" => "n-81"
@@ -192,10 +192,10 @@ defmodule EhOsContract.Auth.VerifyTest do
     # RFC 9068 §2.2: a credential issued through sign-in names the client it was
     # issued to. The verifier ignores the claim; recording it is G-3's, later.
     test "a credential that names its client_id is accepted as it is", %{pair: pair, keys: keys} do
-      token = credential(pair, %{"client_id" => "rehmed-pages/test"})
+      token = credential(pair, %{"client_id" => "clinic-pages/test"})
 
       assert {:ok, %Actor{subject: "u-anna"} = actor} = Auth.verify(token, keys: keys)
-      assert actor.capabilities == MapSet.new(["rehmed.record_payment"])
+      assert actor.capabilities == MapSet.new(["clinic.record_payment"])
     end
   end
 

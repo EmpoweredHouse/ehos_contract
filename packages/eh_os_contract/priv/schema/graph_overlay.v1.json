@@ -8,6 +8,9 @@
       "$ref": "#/$defs/contract_overlay"
     },
     {
+      "$ref": "#/$defs/process_overlay"
+    },
+    {
       "$ref": "#/$defs/domain_overlay"
     }
   ],
@@ -172,11 +175,14 @@
         },
         "nodes": {
           "type": "object",
-          "description": "Numbers by the id of a node of the document.",
+          "description": "Numbers by the id of a node of the document: each process module's runs, and each contract's drift.",
           "additionalProperties": {
             "oneOf": [
               {
                 "$ref": "#/$defs/runs"
+              },
+              {
+                "$ref": "#/$defs/contract_drift"
               }
             ]
           }
@@ -242,9 +248,167 @@
       ],
       "format": "date-time"
     },
+    "process_overlay": {
+      "type": "object",
+      "description": "A process module's overlay.",
+      "required": [
+        "schema",
+        "kind",
+        "process",
+        "module",
+        "version",
+        "document_digest",
+        "since",
+        "until",
+        "nodes",
+        "relations",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "eh_os_contract.graph_overlay.v1"
+        },
+        "kind": {
+          "const": "process"
+        },
+        "process": {
+          "type": "string",
+          "description": "The id: of the process module it is of."
+        },
+        "module": {
+          "type": "string",
+          "description": "The process module, for a reader in the code."
+        },
+        "version": {
+          "type": "string",
+          "description": "The process module's version the log was read against."
+        },
+        "document_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "description": "The digest of the graph.v1 document this overlay joins onto: a reader joins it only onto that one."
+        },
+        "since": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's start, inclusive; null when unbounded."
+        },
+        "until": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's end, inclusive; null when unbounded."
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Numbers by the id of a node of the document: the process's runs, an event's occurrences, a promise's verdicts. Every event the process includes has an entry, 0 when it did not happen in the period; a promise the owner has yet to confirm has none.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/runs"
+              },
+              {
+                "$ref": "#/$defs/event_numbers"
+              },
+              {
+                "$ref": "#/$defs/promise_numbers"
+              }
+            ]
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "None: a process's numbers are on its nodes.",
+          "maxProperties": 0
+        },
+        "observed": {
+          "type": "object",
+          "description": "Relations the log shows that the document does not declare: for a process, the pairs of stages runs entered the wrong way round.",
+          "required": [
+            "relations"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "relations": {
+              "type": "object",
+              "description": "By type.",
+              "required": [
+                "undeclared"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "undeclared": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/undeclared"
+                  },
+                  "maxItems": 0
+                },
+                "out_of_order": {
+                  "type": "array",
+                  "description": "Each pair of stages a run entered the later one of before the earlier, as the conformance report counts them (EhOsContract.StageOrder): a stage is entered by its first event, in the log's order, and only stages a run reached are compared. Optional: a reader that does not know it ignores it.",
+                  "items": {
+                    "$ref": "#/$defs/out_of_order"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "promise_numbers": {
+      "type": "object",
+      "description": "A promise: its verdicts over the runs it opened in the period, as the conformance report judges them under the promise's current declaration.",
+      "required": [
+        "satisfied",
+        "satisfied_via_eventually",
+        "satisfied_via_or_else",
+        "violated",
+        "pending",
+        "suspended",
+        "instances"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "satisfied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept: what it promised happened in time, one way or the other."
+        },
+        "satisfied_via_eventually": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it promised."
+        },
+        "satisfied_via_or_else": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it accepts otherwise."
+        },
+        "violated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken: the window passed and neither came."
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Its window is still open."
+        },
+        "suspended": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken while an external it depends on was down: not counted as broken."
+        },
+        "instances": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The runs it was judged on."
+        }
+      }
+    },
     "runs": {
       "type": "object",
-      "description": "A process, or a domain's contract with one: its runs in the period.",
+      "description": "A process: its runs in the period.",
       "required": [
         "runs"
       ],
@@ -481,6 +645,53 @@
         "aggregates": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "contract_drift": {
+      "type": "object",
+      "description": "A contract's drift on the domain's map, as many as the lines the conformance report lists for it under its paths and its lifecycles: where it is worth going in.",
+      "required": [
+        "untraversed",
+        "undeclared"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "untraversed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Its declared steps and its lifecycles' transitions never taken in the period, each counted once."
+        },
+        "undeclared": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The distinct moves its lifecycles do not allow that happened in the period, however often each did."
+        }
+      }
+    },
+    "out_of_order": {
+      "type": "object",
+      "description": "Runs that entered a stage before an earlier one: from the later stage's node to the earlier one's, and how many runs, in the period.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "runs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     }

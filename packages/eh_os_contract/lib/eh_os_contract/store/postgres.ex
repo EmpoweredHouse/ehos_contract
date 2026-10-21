@@ -32,7 +32,7 @@ defmodule EhOsContract.Store.Postgres do
   alias EhOsContract.{Event, EventRun}
 
   @writable ~w(id type schema_version contract contract_version stream_id stream_version tags
-               process instance_id command_id correlation_id causation_id actor occurred_at
+               command_id correlation_id causation_id actor occurred_at
                payload metadata runs)a
 
   @impl true
@@ -77,13 +77,13 @@ defmodule EhOsContract.Store.Postgres do
     end
   end
 
-  # The home run and the included ones, one row each, paired by id since `RETURNING`
-  # promises no order. A process named twice is one run.
+  # The runs, one row each, paired by id since `RETURNING` promises no order. A process
+  # named twice is one run.
   @spec insert_runs(module(), [Event.t()], %{String.t() => [{String.t(), String.t()}]}) :: :ok
   defp insert_runs(repo, events, included) do
     rows =
       for event <- events,
-          {process, instance_id} <- home(event) ++ Map.fetch!(included, event.id) do
+          {process, instance_id} <- Map.fetch!(included, event.id) do
         %{position: event.position, process: process, instance_id: instance_id}
       end
 
@@ -96,11 +96,6 @@ defmodule EhOsContract.Store.Postgres do
         :ok
     end
   end
-
-  defp home(%Event{process: process, instance_id: id}) when is_binary(process) and is_binary(id),
-    do: [{process, id}]
-
-  defp home(_event), do: []
 
   @impl true
   @spec read_stream(module(), String.t(), non_neg_integer()) :: [Event.t()]

@@ -10,19 +10,39 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 | `packages/eh_os_contract_web/` | the mountable dashboard |
 | `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
 | `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
-| `sandbox/` | the development host `:eh_os_contract_host` and the test material: TaxVision, Rehmed, AppUnite equipment |
-| `docs/` | the design record (`docs/adr/`), distillations and workshop material |
+| `sandbox/` | the development host `:eh_os_contract_host` and the test material: three invented case studies, lending, billing and fulfilment |
+| `docs/` | the design record (`docs/adr/`) |
+| `plugins/eh-os-contract/`, `.claude-plugin/` | the `eh-os-contract` Claude Code plugin and the marketplace that publishes it: the skills for writing contracts that applications use |
 
 Each of the five is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
 is a property we keep: `sandbox/` is the library's first consumer, not part of it.
 
-**`sandbox/` is not a product.** The library is. TaxVision (`sandbox/lib/taxvision/`), Rehmed
-(`sandbox/lib/rehmed/`) and AppUnite's equipment (`sandbox/lib/appunite_equipment/`) are **test material**: each
-has a domain, contracts and implementations that decide and react, so that dispatch and the report have
-something to check. What writing a contract teaches goes into the library's work, not into notes about a
-client, and a contract that cannot be written is a **better** result than one written beside the material. An
-invented medical domain, `UniversalityGate`, lives in `packages/eh_os_contract/test/support/` and says so in its
-first line.
+**This repository also maintains the skills applications write contracts with.** It is a Claude Code
+marketplace, and its plugin `eh-os-contract` (`plugins/eh-os-contract/`) carries the skills an application built on
+EHOS uses: `module-boundary-check`, `contract-distillation`, `add-event`, `change-contract`, `write-decider` and
+`write-reaction`, linked from `.claude/skills/` for work here. Applications enable it at the tag of its release,
+and `ehos_app`'s template is to do that for every project it generates, so keeping these skills true to the
+engine is this repository's job, as its docs are: a change to the engine that changes how a contract is
+written, decided or changed updates the skill that says so, in the same pull request. A skill there is read in
+an application, so it names no path of this repository its "In an application" paragraph does not map, and a
+change to one raises the plugin's version (`CONTRIBUTING.md`, "Changelogs and releases"). `review-pr` and
+`write-docs` are this repository's alone, in `.claude/skills/`.
+
+**`sandbox/` is not a product.** The library is. Its three case studies, `Lending` (`sandbox/lib/lending/`),
+`Billing` (`sandbox/lib/billing/`) and `Fulfilment` (`sandbox/lib/fulfilment/`), are **test material**,
+invented, and each says so in its first line: each has a domain, contracts and implementations that decide and
+react, so that dispatch and the report have something to check on material anyone may read. What writing a
+contract teaches goes into the library's work, and a contract that cannot be written is a **better** result than
+one written beside the material. `Billing` is the sandbox's one publishing application, which the credential
+verifier's audience and `ehos.yaml` name. `mix sandbox.traffic` fills a development log with weeks of their runs,
+drift included, so the dashboard has something to show (its moduledoc says what, and on which database). Another
+invented domain, `UniversalityGate`, lives in
+`packages/eh_os_contract/test/support/` and says so in its first line.
+
+The clients' material the library was first developed against, and a test set copied from it for drawing the
+graph, left for the private repository
+`EmpoweredHouse/eh-os-contract-cases` in the publication programme's PB4 (#386). It runs there as a host of its
+own on these packages, fetched from git; nothing of it comes back here.
 
 Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
 the code has the new name; the old one remains only in `docs/adr/` and in `PLAN.md`'s history, where `PNS.X`
@@ -97,7 +117,8 @@ and a message (`docs/contract.md`). Everything the library does reads those modu
   which transitions were not declared, which promises are broken, and which version of the contract is
   deployed and since when.
 - **Tasks:** `check` (the rules a compiler cannot hold: errors, warnings and notices), `report`, `graph`, `pages`, `glossary`,
-  `view`, `subscriptions`, `rewrap`.
+  `view`, `subscriptions`, `rewrap`, `schema` (every event's fields by version in the host's `eh_os_contract.lock`,
+  and a recorded version whose fields changed refused).
 
 **`packages/eh_os_contract_web`** is a dashboard a host mounts: each contract's conformance and its graph, and a
 JSON API with the model, the conformance and the OpenAPI and AsyncAPI documents. The host decides who may see it
@@ -120,7 +141,8 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
 `mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
-`eh_os_contract.check` and the sandbox's tests, then `mix check` of each package in its own invocation:
+`eh_os_contract.check`, `eh_os_contract.schema --check` (against `sandbox/eh_os_contract.lock`) and the sandbox's
+tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
 generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
 generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal
@@ -169,13 +191,14 @@ project will be international.
 
 The one exception is **text the client reads in sentences, inside strings**: the `label` and `source` of
 declarations in a domain and a contract, a term, its `definition`, `avoid` and `translation`, the `where` prose
-of `consults`, scenario descriptions, task names, a notification's subject. The test material's clients are
-Polish, so those strings are Polish there; nowhere else is a Polish string correct, and never in a comment, a
-doc or a name. The engine writes its own sentences in English; a client's labels appear in its output as the
+of `consults`, scenario descriptions, task names, a notification's subject. An application writes those in
+its client's language; this repository's case studies are English, and the few non-English strings left in
+the packages' tests are there on purpose, to test a second language and non-ASCII text. Never a non-English
+comment, doc or name. The engine writes its own sentences in English; a client's labels appear in its output as the
 client wrote them.
 
-History is not rewritten: `PLAN.md` before 6 October 2026, the first twelve commit messages and the workshop
-material in `docs/warsztat-*.md` stay in Polish.
+History is not rewritten: `PLAN.md` before 6 October 2026 and the first twelve commit messages stay in
+Polish.
 
 Polish text in strings has its own pitfalls, each of which has already cost a broken build or a false "done":
 
@@ -228,10 +251,6 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   expansions: `for x in $LIST` runs once with the whole list as one argument. Once that handed `git cherry-pick`
   seven SHAs as one argument, and the `git commit --amend` after it rewrote the wrong commit. Loop over SHAs
   explicitly or through arrays.
-- **TaxVision's event names come from the workshop**, not from imagination: the event storming in
-  `workshop_output/02-event-storming.md` of the
-  [`appunite/taxvision-process-native`](https://github.com/appunite/taxvision-process-native) repository (private;
-  ask the user for access). Rehmed's and AppUnite's sources are the distillations in `docs/`.
 
 ## A person is the gate, so readability is a requirement
 

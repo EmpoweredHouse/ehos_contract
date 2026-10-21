@@ -3,21 +3,21 @@ defmodule EhOsContract.StageOrder do
   @moduledoc """
   Which runs of a process reached a later stage before an earlier one.
 
-  A process's stages are in an order: a clinic's visit goes from the patient leaving,
-  through the specialist's close, to the report to the register. A run whose report
-  went out before the visit was closed did something the process does not say. This
-  counts such runs, and names the pairs of stages that were out of order:
+  A process's stages are in an order: a shop's order goes from its placing, through
+  picking in the warehouse, to shipping. A run whose parcel was booked with the carrier
+  before it was picked did something the process does not say. This counts such runs,
+  and names the pairs of stages that were out of order:
 
       %{runs: 3,
-        pairs: [%{earlier: :closing, later: :reporting, runs: 3,
-                  earlier_label: "Zamknięcie", later_label: "Zgłoszenie"}]}
+        pairs: [%{earlier: :picking, later: :shipping, runs: 3,
+                  earlier_label: "Picking", later_label: "Shipping"}]}
 
   A stage's label is its name where it declares none.
 
   The rules, each a choice made on purpose:
 
-  - **A stage is entered by its first event.** A run that closed, reported and closed
-    again counts its close by the first one, so a reopened visit does not show here.
+  - **A stage is entered by its first event.** A run that was picked, booked and picked
+    again counts its picking by the first one, so a repacked order does not show here.
   - **Order is the log's, not the clock's.** The first event of each stage is the one
     at the smallest position in the log, so clocks that disagree never decide it. A
     process includes only contracts of its own application, so all its stages are in
@@ -27,7 +27,7 @@ defmodule EhOsContract.StageOrder do
     run has not done anything out of order, it has not done that yet.
   - **The period does not cut a run.** A run belongs to the period by its first event,
     as a run is measured against its deadline: by the first event of any type the
-    process includes, staged or not. It is judged on all its events, including those
+    process includes. It is judged on all its events, including those
     after `until`.
 
   - **The stages are today's.** After a deploy that reorders stages, a run is judged by
@@ -54,8 +54,8 @@ defmodule EhOsContract.StageOrder do
   @type t :: %{runs: non_neg_integer(), pairs: [pair()]}
 
   @doc """
-  The runs of the process of `model` (a contract's, or a process module's) that reached
-  a later stage before an earlier one, in the period `since:` and `until:` name.
+  The runs of the process module `model` that reached a later stage before an earlier
+  one, in the period `since:` and `until:` name.
 
   Pairs are listed in the stages' order, the earlier stage first.
   """
@@ -75,7 +75,6 @@ defmodule EhOsContract.StageOrder do
 
     out_of_order =
       process.name
-      |> to_string()
       |> firsts(comparable(stage_of), Enum.map(events, & &1.type), opts)
       |> Enum.group_by(&elem(&1, 0), &Tuple.delete_at(&1, 0))
       |> Enum.map(fn {_run, rows} -> pairs(rows, stage_of, order) end)

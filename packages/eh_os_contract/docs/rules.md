@@ -53,14 +53,20 @@ Any `eventually` after its `from` keeps it, and a run with none stays pending fo
 promise has no failing case. That is an honest thing to say when nobody agreed a number; the
 notice makes sure it is not read as a promise being kept.
 
-## `deadline-without-terminal-event`
+## `owner-view-without-label`
 
 **notice**
 
-A process has a `deadline` and no event of it is `terminal: true`.
+A stage, a value or a member of a value's enum has no label.
 
-No run can be seen to end, so its duration cannot be measured and the deadline is never kept
-or broken. Mark the event that ends a run `terminal: true`.
+A business owner reads the model in the business's words: each declaration by its label.
+Most declarations need one to compile, and a field without one is not for the owner. A
+stage of a process module, a value of the domain and a member of its enum written as a
+bare atom may go without, and then the owner would read the name in the code,
+`departure`, where the business says "Departure of the patient". A promise has no label
+at all: it is read by its rule, the events it waits for, in their labels. The owner's
+pages (`mix eh_os_contract.pages --audience owner`) and the owner's view of the graph
+(its switch "Owner") both read the model this way.
 
 ## `contract-without-implementation`
 
@@ -176,9 +182,9 @@ a unit whose events are all `recorded_by:` has no command on purpose.
 Nothing reacts to or reads an event.
 
 No policy, effect or process manager takes it, no read model projects it, no boundary consults
-it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, one
-marked `terminal: true`, one a unit's lifecycle starts on or moves on, or one a process module
-includes, has a reader: the conformance report. The unit's own `evolve` does not count, as ESDM's aggregate does not.
+it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a unit's lifecycle
+starts on or moves on, or one a process module includes, has a reader: the conformance report.
+The unit's own `evolve` does not count, as ESDM's aggregate does not.
 
 ## `read-model-without-query`
 
@@ -301,12 +307,12 @@ context is not core. Its page says "Records only" wherever it is.
 
 **warning** · ESDM: `esdm/modeling/orphan-actor`
 
-An actor of the domain is named by no contract.
+An actor of the domain is named by no contract and no process module.
 
-No command's or query's `by:`, no event's `recorded_by:` and no process's `accountable` names
-it, so no contract gives it anything to do. A scenario's `actor` does not count: it has to be
-in the command's `by:` already (S7). Either the actor is left over, or the contract that gives
-it work is not written yet.
+No command's or query's `by:`, no event's `recorded_by:` and no process module's `accountable`
+names it, so no contract or process gives it anything to do. A scenario's `actor` does not
+count: it has to be in the command's `by:` already (S7). Either the actor is left over, or the
+contract that gives it work is not written yet.
 
 ## `orphan-external-system`
 
@@ -354,24 +360,10 @@ should name it with `subdomain:`, or it is left over.
 
 A relation between two contexts is crossed by no reference.
 
-No contract of one context consumes a contract of the other, and none names an entity the other
-owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
+No contract of one context consumes a contract of the other, names an entity or a unit the
+other owns (`{:id, name}`) or uses a value it declares (`context:`), in either direction; for a relation to an external system, no contract
 of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
 a dependency the contracts do not have.
-
-## `relation-against-references`
-
-**warning**
-
-A reference between two contexts runs against the relation declared between them.
-
-A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
-`open_host_service`, `published_language` — says the downstream context depends on the upstream
-one, and a contract of the upstream context consumes a contract of the downstream one or names
-an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
-other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
-contexts only: which way a call to an external system runs says nothing about who depends on
-whom.
 
 ## `label-with-avoided-term`
 
@@ -431,16 +423,19 @@ and to fetch alike.
 
 A contract reaches into another context that no relation connects to its own.
 
-It consumes a contract of another context, or names an entity another context owns, and the
-domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
-who conforms, who translates — is then written nowhere. One finding per reference.
+It consumes a contract of another context, names an entity or a unit another context owns, or
+uses a value another context declares, and the domain declares no `relation` between the two.
+Which way the dependency runs — who is upstream, who conforms, who translates — is then written
+nowhere. One finding per reference. A reference against a relation that is declared does not
+compile (X11–X13).
 
 ## `backward-edge`
 
 **warning**
 
-A reaction in a later stage publishes into an earlier one.
+A reaction in a later stage of a process publishes into an earlier one.
 
-A policy or a process manager reacting to an event of one stage issues a command whose events
-sit in an earlier one. The process goes back on itself, which the stage order says it does not.
-Either the stages are in the wrong order or the reaction is a loop the process has not declared.
+A policy or a process manager reacting to an event that one stage of a process module includes
+issues a command whose events sit in an earlier stage of that module. The process goes back on
+itself, which the stage order says it does not. Either the stages are in the wrong order or
+the reaction is a loop the process has not declared.

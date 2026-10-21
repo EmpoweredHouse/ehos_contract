@@ -94,66 +94,85 @@ defmodule EhOsContract.PromiseEdgesTest do
       handles: :closed,
       calls: :notifier,
       idempotency: [key: :event_id, owner: :self]
+  end
 
-    process :edge, "Edge" do
-      correlate :case_id
+  defmodule Edge do
+    @moduledoc "# INVENTED. NOT A DOMAIN. The run of `Edges`'s case, and its promises."
 
-      promise :closes_within_a_day do
-        from :opened
-        eventually :closed
-        within {1, :day}
-      end
+    use EhOsContract.Process,
+      id: "promise_edges.edge",
+      domain: EhOsContract.PromiseEdgesTest.Domain,
+      label: "Edge"
 
-      # A window of length zero. It compiles, which is one of the things under test.
-      promise :closes_instantly do
-        from :opened
-        eventually :closed
-        within {0, :day}
-      end
+    correlate :case_id
 
-      # The consequent reaches outside; there is no fallback. For the outage edges.
-      promise :inspected_within_a_day do
-        from :opened
-        eventually :inspected
-        within {1, :day}
-      end
+    stage :case,
+      include: [{EhOsContract.PromiseEdgesTest.Edges, [:opened, :closed, :inspected, :chased]}]
 
-      # The dependency is on the **fallback** only. The wanted route depends on nothing.
-      promise :closed_or_chased do
-        from :opened
-        eventually :closed
-        within {1, :day}
-        or_else :chased
-      end
+    promise :closes_within_a_day do
+      from :opened
+      eventually :closed
+      within {1, :day}
+    end
 
-      # Three self-referential shapes. Two of them cannot fail.
-      promise :from_is_also_eventually do
-        from :opened
-        eventually :opened
-        within {1, :day}
-      end
+    # A window of length zero. It compiles, which is one of the things under test.
+    promise :closes_instantly do
+      from :opened
+      eventually :closed
+      within {0, :day}
+    end
 
-      promise :from_is_also_or_else do
-        from :opened
-        eventually :closed
-        within {1, :day}
-        or_else :opened
-      end
+    # The consequent reaches outside; there is no fallback. For the outage edges.
+    promise :inspected_within_a_day do
+      from :opened
+      eventually :inspected
+      within {1, :day}
+    end
 
-      promise :eventually_is_also_or_else do
-        from :opened
-        eventually :closed
-        within {1, :day}
-        or_else :closed
-      end
+    # Waits on the inspector through an earlier step: closing does not call it
+    # (plan DD, OW1 (#355)).
+    promise :closes_after_inspection do
+      from :opened
+      eventually :closed
+      within {1, :day}
+      waits_on [:inspector]
+    end
 
-      # Not confirmed by anybody, so the report leaves it out; it is still evaluated.
-      promise :guessed do
-        unverified true
-        from :opened
-        eventually :closed
-        within {1, :day}
-      end
+    # The dependency is on the **fallback** only. The wanted route depends on nothing.
+    promise :closed_or_chased do
+      from :opened
+      eventually :closed
+      within {1, :day}
+      or_else :chased
+    end
+
+    # Three self-referential shapes. Two of them cannot fail.
+    promise :from_is_also_eventually do
+      from :opened
+      eventually :opened
+      within {1, :day}
+    end
+
+    promise :from_is_also_or_else do
+      from :opened
+      eventually :closed
+      within {1, :day}
+      or_else :opened
+    end
+
+    promise :eventually_is_also_or_else do
+      from :opened
+      eventually :closed
+      within {1, :day}
+      or_else :closed
+    end
+
+    # Not confirmed by anybody, so the report leaves it out; it is still evaluated.
+    promise :guessed do
+      unverified true
+      from :opened
+      eventually :closed
+      within {1, :day}
     end
   end
 
@@ -173,8 +192,7 @@ defmodule EhOsContract.PromiseEdgesTest do
       type: "promise_edges.edges.#{name}",
       contract: EhOsContract.Model.fetch(Edges).id,
       contract_version: EhOsContract.Model.fetch(Edges).version,
-      process: "edge",
-      instance_id: "edge|#{case_id}",
+      runs: [{"promise_edges.edge", "promise_edges.edge|#{case_id}"}],
       correlation_id: Ecto.UUID.generate(),
       actor: EhOsContract.Event.system_actor(),
       payload: %{"case_id" => case_id},
@@ -188,7 +206,7 @@ defmodule EhOsContract.PromiseEdgesTest do
   end
 
   defp verdict(promise, now \\ @long_after) do
-    assert [verdict] = Trace.evaluate(Edges, promise, now: now)
+    assert [verdict] = Trace.evaluate(Edge, promise, now: now)
     verdict
   end
 
@@ -256,7 +274,7 @@ defmodule EhOsContract.PromiseEdgesTest do
       insert(:opened, @opened)
       insert(:opened, @opened)
 
-      assert [one] = Trace.evaluate(Edges, :closes_within_a_day, now: @long_after)
+      assert [one] = Trace.evaluate(Edge, :closes_within_a_day, now: @long_after)
       assert one.from_at == @opened
       assert one.deadline_at == @deadline
     end
@@ -273,10 +291,10 @@ defmodule EhOsContract.PromiseEdgesTest do
   describe "a window of length zero" do
     test "`within {0, :day}` compiles, deliberately" do
       # Zero reads as "in the same instant" — a real, if rare, promise. A negative count
-      # is what R6 refuses (`contract_process_test.exs`).
+      # is what R6 refuses (`process_module_test.exs`).
       promise =
         Enum.find(
-          EhOsContract.Model.fetch(Edges).process.promises,
+          EhOsContract.Model.fetch(Edge).promises,
           &(&1.name == :closes_instantly)
         )
 
@@ -297,7 +315,10 @@ defmodule EhOsContract.PromiseEdgesTest do
       insert(:closed, @one_microsecond_late, "c-2")
 
       assert [verdict] =
-               Trace.evaluate(Edges, :closes_instantly, now: @opened, instance: "edge|c-2")
+               Trace.evaluate(Edge, :closes_instantly,
+                 now: @opened,
+                 instance: "promise_edges.edge|c-2"
+               )
 
       assert verdict.verdict == :violated
     end
@@ -338,6 +359,28 @@ defmodule EhOsContract.PromiseEdgesTest do
       Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 15:00:00.000000Z])
 
       assert verdict(:inspected_within_a_day).verdict == :violated
+    end
+  end
+
+  describe "a promise that waits on a system through an earlier step" do
+    setup do
+      insert(:opened, @opened)
+      :ok
+    end
+
+    test "an outage of what it waits on, inside the window, suspends it" do
+      Dependency.unavailable!(Edges, :inspector, "test", ~U[2026-07-01 12:00:00.000000Z])
+
+      assert verdict(:closes_after_inspection).verdict == :suspended
+      # The control: the same run, the same outage, a promise that does not wait on it.
+      assert verdict(:closes_within_a_day).verdict == :violated
+    end
+
+    test "an outage after the window, or of a system it does not wait on, excuses nothing" do
+      Dependency.unavailable!(Edges, :inspector, "test", @one_microsecond_late)
+      Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 12:00:00.000000Z])
+
+      assert verdict(:closes_after_inspection).verdict == :violated
     end
   end
 
@@ -417,6 +460,20 @@ defmodule EhOsContract.PromiseEdgesTest do
       assert %{"inspector" => [_one]} = Dependency.observations_by_external(Edges)
     end
 
+    test "an outage observed under the engine's clock is stamped with the clock's time" do
+      # A host's test that moves the clock (`EhOsContract.Clock.at/2`) and has its adapter
+      # report an outage inside the window gets a suspended run, as it would in
+      # production; stamped with the wall clock, the outage fell outside the window.
+      insert(:opened, @opened)
+
+      EhOsContract.Clock.at(DateTime.add(@opened, 3600), fn ->
+        assert Dependency.observe(Edges, :inspector, fn -> {:error, :unavailable} end) ==
+                 {:error, :unavailable}
+      end)
+
+      assert verdict(:inspected_within_a_day).verdict == :suspended
+    end
+
     test "an adapter's `{:ok, _}` passes through, and records nothing" do
       # The common case, and the one that must cost nothing: a row per successful call
       # would make the table of outages the busiest table of the application.
@@ -451,7 +508,7 @@ defmodule EhOsContract.PromiseEdgesTest do
 
       assert %{verdict: :satisfied, via: :eventually} = verdict(:eventually_is_also_or_else)
 
-      assert Trace.evaluate(Edges, :eventually_is_also_or_else, now: @long_after)
+      assert Trace.evaluate(Edge, :eventually_is_also_or_else, now: @long_after)
              |> Trace.summary()
              |> Map.fetch!(:satisfied_via_or_else) == 0
     end
@@ -460,9 +517,9 @@ defmodule EhOsContract.PromiseEdgesTest do
       insert(:opened, @opened, "c-3")
 
       assert [verdict] =
-               Trace.evaluate(Edges, :eventually_is_also_or_else,
+               Trace.evaluate(Edge, :eventually_is_also_or_else,
                  now: @long_after,
-                 instance: "edge|c-3"
+                 instance: "promise_edges.edge|c-3"
                )
 
       assert verdict.verdict == :violated
@@ -472,7 +529,7 @@ defmodule EhOsContract.PromiseEdgesTest do
   describe "an unverified promise" do
     test "is left out of the report, beside one that is confirmed" do
       # Nobody confirmed it, so a client never reads a percentage of it.
-      [process] = EhOsContract.Conformance.report(Edges).processes
+      [process] = EhOsContract.Conformance.report(Edge).processes
       names = Enum.map(process.promises, & &1.promise)
 
       assert :closes_within_a_day in names
@@ -482,7 +539,7 @@ defmodule EhOsContract.PromiseEdgesTest do
     test "is still evaluated, so confirming it later has its history" do
       insert(:opened, @opened)
 
-      assert [%{verdict: :pending}] = Trace.evaluate(Edges, :guessed, now: @opened)
+      assert [%{verdict: :pending}] = Trace.evaluate(Edge, :guessed, now: @opened)
     end
   end
 end

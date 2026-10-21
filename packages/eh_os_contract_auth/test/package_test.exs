@@ -148,7 +148,7 @@ defmodule EhOsContract.Auth.PackageTest do
       Application.delete_env(:eh_os_contract_auth, :audience)
       assert_raise ArgumentError, ~r/audience:/, fn -> EhOsContract.Auth.child_spec([]) end
 
-      Application.put_env(:eh_os_contract_auth, :audience, "rehmed/test")
+      Application.put_env(:eh_os_contract_auth, :audience, "clinic/test")
       Application.delete_env(:eh_os_contract_auth, :issuer)
       Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
       assert_raise ArgumentError, ~r/issuer:/, fn -> EhOsContract.Auth.child_spec([]) end

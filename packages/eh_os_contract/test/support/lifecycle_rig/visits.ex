@@ -64,8 +64,11 @@ defmodule LifecycleRig.Visits do
     event :booked, "Visit booked"
     event :patient_arrived, "Patient arrived", recorded_by: :front_desk
     # Plan W1: a second version of its fields, so the log shows the version it was
-    # written with.
-    event :note_added, "Note added", schema_version: 2
+    # written with; its fields did not change, so its step does nothing (plan DD, V1, #333).
+    event :note_added, "Note added", schema_version: 2 do
+      upcast from: 1
+    end
+
     event :cancelled, "Visit cancelled"
 
     event :closed, "Visit closed" do

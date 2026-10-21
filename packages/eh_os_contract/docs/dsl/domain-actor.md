@@ -27,6 +27,7 @@ Who issues commands: a kind of person, or a system.
 | `backed_by` | `atom` |  |  | The external system a system actor stands for. |
 | `context` | `atom` |  |  | The context the actor belongs to. |
 | `scope` | `atom \| list(atom)` |  | `[]` | The fields a grant to this actor narrows query answers by. |
+| `may_grant` | `atom \| list(atom)` |  | `[]` | The other person actors of this domain whose role a person in this one may grant through the application (eh-os D-112). |
 | `source` | `String.t` |  |  | Where the actor comes from in the material. |
 
 Inside it: [`responsibility`](#domain-actor-responsibility).

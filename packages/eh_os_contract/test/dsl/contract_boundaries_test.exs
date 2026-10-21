@@ -8,11 +8,11 @@ defmodule EhOsContract.ContractBoundariesTest do
   use EhOsContract.DslCase, async: false
 
   @unit """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+      command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-      event :visit_closed, "Wizyta zamknięta" do
+      event :visit_closed, "Visit closed" do
         field :clinic_id, :id
         field :closed_at, :timestamp
         field :patient_id, :id, subject: :patient
@@ -20,7 +20,7 @@ defmodule EhOsContract.ContractBoundariesTest do
       end
     end
 
-    read_model :open_visits, "Wizyty do rozliczenia", projects: :visit_closed do
+    read_model :open_visits, "Visits to settle", projects: :visit_closed do
       field :clinic_id, :id
       field :total, :money
     end
@@ -30,20 +30,20 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "no by:, a scope that is not one of its fields, and an optional one" do
       message =
         refuse_contract("CommandScopeWrong", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :close_visit, "Zamknięcie", emits: :visit_closed, scope: :visit_id
+            command :close_visit, "Closing", emits: :visit_closed, scope: :visit_id
 
-            command :bill_visit, "Rozliczenie", by: :reception, emits: :visit_closed,
+            command :bill_visit, "Billing", by: :reception, emits: :visit_closed,
               scope: :clinic_id
 
-            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_closed,
+            command :move_visit, "Moving", by: :reception, emits: :visit_closed,
               scope: :clinic_id do
               field :clinic_id, :id, optional: true
             end
 
-            event :visit_closed, "Wizyta zamknięta"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -63,25 +63,25 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "a scope is one value, and not an identity the library generates" do
       message =
         refuse_contract("CommandScopeShape", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id, generated: :uuid
 
-            command :book_visit, "Rezerwacja", by: :reception, emits: :visit_booked,
+            command :book_visit, "Booking", by: :reception, emits: :visit_booked,
               creates: true, scope: :visit_id
 
-            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_booked,
+            command :move_visit, "Moving", by: :reception, emits: :visit_booked,
               scope: :clinic_ids do
               field :clinic_ids, {:list, :id}
             end
 
-            event :visit_booked, "Wizyta zarezerwowana"
+            event :visit_booked, "Visit booked"
           end
 
-          read_model :visits, "Wizyty", projects: :visit_booked do
+          read_model :visits, "Visits", projects: :visit_booked do
             field :clinic_ids, {:list, :id}
           end
 
-          query :by_clinics, "Według przychodni", reads: :visits, by: :reception do
+          query :by_clinics, "By clinic", reads: :visits, by: :reception do
             param :clinic_ids, {:list, :id}
             scope :clinic_ids
           end
@@ -101,16 +101,16 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "F7: a command's scope field is not personal" do
       message =
         refuse_contract("CommandScopePersonal", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed,
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed,
               scope: :patient_name do
               field :patient_id, :id, subject: :patient
               field :patient_name, :string, personal: :patient_id
             end
 
-            event :visit_closed, "Wizyta zamknięta"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -122,18 +122,18 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "control: scoped by its identity, and by a declared field" do
       model =
         compile_contract("CommandScopeRight", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
 
-            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed,
+            command :close_visit, "Closing", by: :reception, emits: :visit_closed,
               scope: :visit_id
 
-            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_closed,
+            command :move_visit, "Moving", by: :reception, emits: :visit_closed,
               scope: :clinic_id do
               field :clinic_id, :id
             end
 
-            event :visit_closed, "Wizyta zamknięta"
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -147,18 +147,18 @@ defmodule EhOsContract.ContractBoundariesTest do
       message =
         refuse_contract("QueryWrong", """
         #{@unit}
-          query :nobody_asks, "Nikt", reads: :open_visits
+          query :nobody_asks, "Nobody", reads: :open_visits
 
-          query :by_room, "Według gabinetu", reads: :open_visits, by: :reception do
+          query :by_room, "By room", reads: :open_visits, by: :reception do
             param :room_id, :id
             scope :room_id
           end
 
-          query :unparametrised, "Bez parametru", reads: :open_visits, by: :reception do
+          query :unparametrised, "Without a parameter", reads: :open_visits, by: :reception do
             scope :clinic_id
           end
 
-          query :mistyped, "Zły typ", reads: :open_visits, by: :reception do
+          query :mistyped, "Wrong type", reads: :open_visits, by: :reception do
             param :clinic_id, :string
             scope :clinic_id
           end
@@ -184,7 +184,7 @@ defmodule EhOsContract.ContractBoundariesTest do
       model =
         compile_contract("QueryRight", """
         #{@unit}
-          query :open_visits_for_clinic, "Otwarte wizyty w przychodni",
+          query :open_visits_for_clinic, "Open visits in a clinic",
             reads: :open_visits, by: [:reception], returns: :many do
             param :clinic_id, :id
             scope :clinic_id
@@ -201,15 +201,15 @@ defmodule EhOsContract.ContractBoundariesTest do
       message =
         refuse_contract("PublishWrong", """
         #{@unit}
-          publish :visit_lost, as: "rehmed.visit.lost.v1", from: :visit_lost, fields: [:visit_id]
+          publish :visit_lost, as: "clinic.visit.lost.v1", from: :visit_lost, fields: [:visit_id]
 
           publish :visit_closed,
-            as: "rehmed.visit.closed.v1",
+            as: "clinic.visit.closed.v1",
             from: :visit_closed,
             fields: [:visit_id, :total, :patient_name],
             idempotent_on: [:clinic_id]
 
-          publish :visit_closed_again, as: "rehmed.visit.closed.v1", from: :visit_closed, fields: []
+          publish :visit_closed_again, as: "clinic.visit.closed.v1", from: :visit_closed, fields: []
         """)
 
       assert message =~
@@ -231,7 +231,7 @@ defmodule EhOsContract.ContractBoundariesTest do
                "D11: publication :visit_closed_again carries no fields (publish_wrong.ex:29)"
 
       assert message =~
-               ~s|D11: publication :visit_closed_again is named "rehmed.visit.closed.v1", like an | <>
+               ~s|D11: publication :visit_closed_again is named "clinic.visit.closed.v1", like an | <>
                  "earlier one"
     end
 
@@ -239,11 +239,11 @@ defmodule EhOsContract.ContractBoundariesTest do
       message =
         refuse_contract("PublishUnversioned", """
         #{@unit}
-          publish :visit_closed, as: "Rehmed/VisitClosed", from: :visit_closed, fields: [:visit_id]
+          publish :visit_closed, as: "Clinic/VisitClosed", from: :visit_closed, fields: [:visit_id]
         """)
 
       assert message =~
-               ~s|D11: publication :visit_closed: "Rehmed/VisitClosed" is not a versioned name: | <>
+               ~s|D11: publication :visit_closed: "Clinic/VisitClosed" is not a versioned name: | <>
                  "the application's namespace, which may hold a dash but not at either end, then " <>
                  "dotted snake_case segments, ending in .v<n>"
     end
@@ -252,11 +252,11 @@ defmodule EhOsContract.ContractBoundariesTest do
       message =
         refuse_contract("PublishNewline", """
         #{@unit}
-          publish :visit_closed, as: "rehmed.visit.closed.v1\\n", from: :visit_closed, fields: [:visit_id]
+          publish :visit_closed, as: "clinic.visit.closed.v1\\n", from: :visit_closed, fields: [:visit_id]
         """)
 
       assert message =~
-               ~s|D11: publication :visit_closed: "rehmed.visit.closed.v1\\n" is not a versioned name|
+               ~s|D11: publication :visit_closed: "clinic.visit.closed.v1\\n" is not a versioned name|
     end
 
     test "a dash only inside the namespace, the first segment" do
@@ -291,7 +291,7 @@ defmodule EhOsContract.ContractBoundariesTest do
       assert %{publishes: [publish], digests: %{"publish:visit_closed" => _}} =
                compile_contract("PublishRight", """
                #{@unit}
-                 publish :visit_closed, as: "rehmed.visit.closed.v1",
+                 publish :visit_closed, as: "clinic.visit.closed.v1",
                    from: :visit_closed,
                    fields: [:visit_id, :closed_at],
                    idempotent_on: [:visit_id]
@@ -299,7 +299,7 @@ defmodule EhOsContract.ContractBoundariesTest do
 
       assert publish == %{
                name: :visit_closed,
-               as: "rehmed.visit.closed.v1",
+               as: "clinic.visit.closed.v1",
                from: :visit_closed,
                fields: [:visit_id, :closed_at],
                idempotent_on: [:visit_id]
@@ -311,22 +311,22 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "without a local name, without fields, or with a bare name" do
       message =
         refuse_contract("ConsumesByNameWrong", """
-          subscribe "rehmed.visit.closed.v1" do
+          subscribe "clinic.visit.closed.v1" do
             field :visit_id, :id
           end
 
-          subscribe "rehmed.visit.opened.v1", as: :visit_opened
+          subscribe "clinic.visit.opened.v1", as: :visit_opened
           subscribe "visit_moved", as: :visit_moved
 
         #{@unit}
         """)
 
       assert message =~
-               ~s|D11: subscribe "rehmed.visit.closed.v1" needs as: the name the event has in this | <>
+               ~s|D11: subscribe "clinic.visit.closed.v1" needs as: the name the event has in this | <>
                  "contract (consumes_by_name_wrong.ex:4)"
 
       assert message =~
-               ~s|D11: subscribe "rehmed.visit.opened.v1" lists no fields; declare the ones this | <>
+               ~s|D11: subscribe "clinic.visit.opened.v1" lists no fields; declare the ones this | <>
                  "contract reads (consumes_by_name_wrong.ex:8)"
 
       assert message =~ ~s|D11: subscribe "visit_moved": "visit_moved" is not a versioned name|
@@ -336,7 +336,7 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "consumes takes a sibling contract, not a published name" do
       message =
         refuse_contract("ConsumesAName", """
-          consumes "rehmed.visit.closed.v1", as: :visit_closed do
+          consumes "clinic.visit.closed.v1", as: :visit_closed do
             field :visit_id, :id
           end
 
@@ -344,8 +344,8 @@ defmodule EhOsContract.ContractBoundariesTest do
         """)
 
       assert message =~
-               ~s|K1: consumes "rehmed.visit.closed.v1" names another application's published | <>
-                 ~s|event, which is subscribed to: subscribe "rehmed.visit.closed.v1", as: | <>
+               ~s|K1: consumes "clinic.visit.closed.v1" names another application's published | <>
+                 ~s|event, which is subscribed to: subscribe "clinic.visit.closed.v1", as: | <>
                  ":name_here, with the fields it reads (consumes_a_name.ex:4)"
 
       # The old form is refused once, here, not again by D11 as a subscription.
@@ -382,19 +382,19 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "control: v2 §16's subscriber, with a policy on the consumed event" do
       model =
         compile_contract("ConsumesByNameRight", """
-          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "clinic.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
             field :closed_at, :timestamp
           end
 
         #{@unit}
-          policy :close_on_remote_close, "Zamknij po zamknięciu gdzie indziej",
+          policy :close_on_remote_close, "Close after a close elsewhere",
             handles: :visit_closed_elsewhere,
             issues: :close_visit
         """)
 
       assert [
-               %{kind: :published, from: "rehmed.visit.closed.v1", as: :visit_closed_elsewhere} =
+               %{kind: :published, from: "clinic.visit.closed.v1", as: :visit_closed_elsewhere} =
                  c
              ] =
                model.consumes
@@ -408,19 +408,19 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "a read model, an effect or a process manager taking one" do
       message =
         refuse_contract("ReceivedTakenWrong", """
-          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "clinic.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
         #{@unit}
-          read_model :remote_closings, "Zamknięcia gdzie indziej",
+          read_model :remote_closings, "Closings elsewhere",
             projects: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
-          effect :notify_remote, "Powiadom", handles: :visit_closed_elsewhere
+          effect :notify_remote, "Notify", handles: :visit_closed_elsewhere
 
-          process_manager :follow_up, "Dalszy ciąg", correlate: [:visit_id] do
+          process_manager :follow_up, "Follow-up", correlate: [:visit_id] do
             starts_on :visit_closed
             ends_on :visit_closed_elsewhere
           end
@@ -441,9 +441,9 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "an actor carries the scope dimensions a grant narrows by" do
       compile("""
       defmodule EhOsContract.ContractBoundariesTest.Domain do
-        use EhOsContract.Domain, name: :clinic, language: :pl
-        actor :reception, :human, "Recepcja", scope: [:clinic_id]
-        actor :manager, :human, "Menedżer"
+        use EhOsContract.Domain, name: :clinic, language: :en
+        actor :reception, :human, "Reception", scope: [:clinic_id]
+        actor :manager, :human, "Manager"
       end
       """)
 

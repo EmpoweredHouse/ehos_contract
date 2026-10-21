@@ -19,8 +19,8 @@ defmodule EhOsContract.Auth.AuthorizeTest do
     %Authorizer.Request{
       kind: Keyword.get(opts, :kind, :command),
       capability: capability,
-      contract: Rehmed.Contracts.VisitSettlement,
-      contract_id: "rehmed.visit_settlement",
+      contract: Clinic.Contracts.VisitSettlement,
+      contract_id: "clinic.visit_settlement",
       version: "3f2a",
       scope: Keyword.get(opts, :scope)
     }
@@ -35,15 +35,15 @@ defmodule EhOsContract.Auth.AuthorizeTest do
   end
 
   test "an allowed command has its row" do
-    actor = Actor.credential("u-anna", ["rehmed.record_payment"])
-    assert Auth.authorize(actor, request("rehmed.record_payment")) == :ok
+    actor = Actor.credential("u-anna", ["clinic.record_payment"])
+    assert Auth.authorize(actor, request("clinic.record_payment")) == :ok
 
     assert rows() == [
              [
                "u-anna",
                "command",
-               "rehmed.record_payment",
-               "rehmed.visit_settlement",
+               "clinic.record_payment",
+               "clinic.visit_settlement",
                "3f2a",
                nil,
                nil,
@@ -54,45 +54,45 @@ defmodule EhOsContract.Auth.AuthorizeTest do
   end
 
   test "a refused command has its row, with the reason" do
-    actor = Actor.credential("u-anna", ["rehmed.hand_over_visit"])
+    actor = Actor.credential("u-anna", ["clinic.hand_over_visit"])
 
-    assert Auth.authorize(actor, request("rehmed.record_payment")) ==
+    assert Auth.authorize(actor, request("clinic.record_payment")) ==
              {:error, :missing_capability}
 
-    assert [["u-anna", "command", "rehmed.record_payment", _, _, nil, nil, "refused", reason]] =
+    assert [["u-anna", "command", "clinic.record_payment", _, _, nil, nil, "refused", reason]] =
              rows()
 
     assert reason == "missing_capability"
   end
 
   test "a scoped query's row carries the dimension and the value asked for" do
-    capability = "rehmed.open_visits_for_clinic"
-    scopes = %{capability => %{"clinic_id" => ["krakow"]}}
+    capability = "clinic.open_visits_for_clinic"
+    scopes = %{capability => %{"clinic_id" => ["north"]}}
     actor = Actor.credential("u-anna", [capability], scopes)
     unscoped = Actor.credential("u-basia", [capability])
 
     assert Auth.authorize(
              actor,
-             request(capability, kind: :query, scope: {"clinic_id", "krakow"})
+             request(capability, kind: :query, scope: {"clinic_id", "north"})
            ) ==
              :ok
 
     assert Auth.authorize(
              actor,
-             request(capability, kind: :query, scope: {"clinic_id", "gdansk"})
+             request(capability, kind: :query, scope: {"clinic_id", "south"})
            ) ==
              {:error, :outside_scope}
 
     assert Auth.authorize(
              unscoped,
-             request(capability, kind: :query, scope: {"clinic_id", "krakow"})
+             request(capability, kind: :query, scope: {"clinic_id", "north"})
            ) ==
              {:error, :unscoped_grant}
 
     assert Enum.map(rows(), &Enum.take(&1, -4)) == [
-             ["clinic_id", "krakow", "allowed", nil],
-             ["clinic_id", "gdansk", "refused", "outside_scope"],
-             ["clinic_id", "krakow", "refused", "unscoped_grant"]
+             ["clinic_id", "north", "allowed", nil],
+             ["clinic_id", "south", "refused", "outside_scope"],
+             ["clinic_id", "north", "refused", "unscoped_grant"]
            ]
   end
 
@@ -100,14 +100,14 @@ defmodule EhOsContract.Auth.AuthorizeTest do
   # string or a NUL from JSON's "\u0000", made the insert fail and the request answer 500
   # instead of a refusal. Its SHA-256 is recorded instead, and the decision stands.
   test "a scope value a text column cannot hold, or past 256 bytes, is recorded as its digest" do
-    capability = "rehmed.open_visits_for_clinic"
+    capability = "clinic.open_visits_for_clinic"
 
     actor =
-      Actor.credential("u-anna", [capability], %{capability => %{"clinic_id" => ["krakow"]}})
+      Actor.credential("u-anna", [capability], %{capability => %{"clinic_id" => ["north"]}})
 
     # A value that reads as a digest is digested too, so a recorded `sha256:` is always one.
     planted = "sha256:" <> String.duplicate("0", 64)
-    values = [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257), planted]
+    values = [<<0xFF>>, "north" <> <<0>>, String.duplicate("k", 257), planted]
 
     for value <- values do
       assert Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value})) ==
@@ -131,9 +131,9 @@ defmodule EhOsContract.Auth.AuthorizeTest do
 
   test "it never widens what check/2 answers" do
     for {capabilities, capability} <- [
-          {["rehmed.record_payment"], "rehmed.record_payment"},
-          {[], "rehmed.record_payment"},
-          {["rehmed.close_settlement"], "rehmed.record_payment"}
+          {["clinic.record_payment"], "clinic.record_payment"},
+          {[], "clinic.record_payment"},
+          {["clinic.close_settlement"], "clinic.record_payment"}
         ] do
       actor = Actor.credential("u-anna", capabilities)
 

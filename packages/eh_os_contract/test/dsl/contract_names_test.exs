@@ -8,10 +8,10 @@ defmodule EhOsContract.ContractNamesTest do
   use EhOsContract.DslCase, async: false
 
   @valid """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-      event :visit_closed, "Wizyta zamknięta"
+      command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+      event :visit_closed, "Visit closed"
     end
   """
 
@@ -23,10 +23,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "a name that is not is refused, whatever it names" do
       message =
         refuse_contract("NotSnakeCase", """
-          aggregate :Visit, "Wizyta" do
+          aggregate :Visit, "Visit" do
             identity :visit_id
-            command :closeVisit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :closeVisit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -37,10 +37,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "a name ending in a newline is refused, since it becomes a capability" do
       message =
         refuse_contract("NewlineName", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :"close\n", "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :"close\n", "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -54,8 +54,8 @@ defmodule EhOsContract.ContractNamesTest do
         refuse_contract("BlankLabels", """
           aggregate :visit, "" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "   ", terminal: true do
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "   " do
               field :note, :string, label: ""
             end
 
@@ -66,14 +66,10 @@ defmodule EhOsContract.ContractNamesTest do
             end
           end
 
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "\u200B\u00A0", correlate: :visit_id do
             starts_on :visit_closed, sets: :nudge
             timer :nudge, " ", wait: {1, :day}
             ends_on :visit_closed
-          end
-
-          process :visit, "\u200B\u00A0" do
-            correlate :visit_id
           end
         """)
 
@@ -87,7 +83,7 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: status :closed has a blank label"
       assert message =~ "N1: timer :nudge has a blank label"
       # A zero-width space and a no-break space print as nothing, as a space does.
-      assert message =~ "N1: process :visit has a blank label"
+      assert message =~ "N1: process manager :chase has a blank label"
       # So do direction marks, left-to-right and right-to-left (Unicode Cf).
       assert message =~ "N1: status :open has a blank label"
     end
@@ -100,7 +96,7 @@ defmodule EhOsContract.ContractNamesTest do
     test "control: a struct in data is not a declaration, whatever its label" do
       invariant = %EhOsContract.Domain.Dsl.ValueInvariant{
         name: :named,
-        label: "Etykieta nie jest pusta",
+        label: "The label is not blank",
         violated_by: [%Row{name: :row, label: ""}]
       }
 
@@ -113,11 +109,11 @@ defmodule EhOsContract.ContractNamesTest do
     test "control: an optional label left out passes, and so does one in Polish" do
       assert %{version: _} =
                compile_contract("LabelsGiven", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+                   command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
 
-                   event :visit_closed, "Wizyta zamknięta" do
+                   event :visit_closed, "Visit closed" do
                      field :note, :string
                      field :reason, :string, label: "Przyczyna zakończenia"
                    end
@@ -130,13 +126,13 @@ defmodule EhOsContract.ContractNamesTest do
     test "two units of one name, an aggregate and a dcb" do
       message =
         refuse_contract("TwoUnits", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          dcb :visit, "Wizyta 2" do
+          dcb :visit, "Visit 2" do
             identity :visit_id
           end
         """)
@@ -149,14 +145,14 @@ defmodule EhOsContract.ContractNamesTest do
         refuse_contract("SharedNamespace", """
           consumes Clinic.Contracts.Booking, :visit_booked, as: [visit_booked: :close_visit]
 
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
-            event :close_visit, "Wizyta zamknięta 2"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
+            event :close_visit, "Visit closed 2"
           end
 
-          process_manager :chase, "Pogoń", correlate: :visit_id do
+          process_manager :chase, "Chase", correlate: :visit_id do
             starts_on :visit_closed, sets: :visit_closed
             timer :visit_closed, "Visit closed", wait: {1, :day}
           end
@@ -172,62 +168,64 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "(shared_namespace.ex:4)"
     end
 
-    test "invariants and stage groups within a unit, stages and promises within the process" do
+    # Plan DD, C1 (#304): a process manager tells an event it takes from its own timer
+    # by name alone — the callback, what it may issue, whether a firing — so the two
+    # never share one. Above, a local event it starts on; here, a consumed one it takes
+    # during the run.
+    test "a manager's timer named like a consumed event it takes is refused" do
       message =
-        refuse_contract("Nested", """
-          aggregate :visit, "Wizyta" do
+        refuse_contract("TimerLikeConsumed", """
+          consumes Clinic.Contracts.Booking, :visit_booked
+
+          aggregate :visit, "Visit" do
             identity :visit_id
-            invariant :paid, "Zapłacono"
-            invariant :paid, "Zapłacono 2"
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-
-            stage :closing do
-              event :visit_closed, "Wizyta zamknięta", terminal: true
-            end
-
-            stage :closing do
-            end
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          process :visit, "Wizyta" do
-            correlate :visit_id
-            stage :closing
-            stage :closing
+          process_manager :chase, "Chase", correlate: :visit_id do
+            starts_on :visit_closed
+            on :visit_booked, issues: :close_visit
+            timer :visit_booked, "Visit booked", wait: {1, :day}
+          end
+        """)
 
-            promise :closed do
-              from :visit_closed
-              eventually :visit_closed
-            end
+      assert message =~
+               "N1: consumed event :visit_booked has the name of a timer; commands, events, " <>
+                 "timers and consumed events share one namespace (timer_like_consumed.ex:4)"
+    end
 
-            promise :closed do
-              from :visit_closed
-              eventually :visit_closed
-            end
+    test "invariants within a unit" do
+      message =
+        refuse_contract("Nested", """
+          aggregate :visit, "Visit" do
+            identity :visit_id
+            invariant :paid, "Paid"
+            invariant :paid, "Paid 2"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
       assert message =~ "N1: aggregate :visit has two invariants named :paid (nested.ex:7)"
-      assert message =~ "N1: aggregate :visit groups stage :closing twice (nested.ex:14)"
-      assert message =~ "N1: process :visit has two stages named :closing (nested.ex:21)"
-      assert message =~ "N1: process :visit has two promises named :closed (nested.ex:28)"
     end
 
     test "two names that camelize alike, where the name is a module or an alias" do
       message =
         refuse_contract("CamelizeAlike", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: [:visit_closed, :visit_closed_]
-            command :close_visit_2, "Zamknięcie 2", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
-            event :visit_closed_, "Wizyta zamknięta 2"
+            command :close_visit, "Closing a visit", by: :reception, emits: [:visit_closed, :visit_closed_]
+            command :close_visit_2, "Closing 2", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
+            event :visit_closed_, "Visit closed 2"
           end
 
-          read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
+          read_model :closed_visits, "Closed visits", projects: :visit_closed do
             field :closed_on, :date
           end
 
-          read_model :closed__visits, "Zamknięte wizyty 2", projects: :visit_closed do
+          read_model :closed__visits, "Closed visits 2", projects: :visit_closed do
             field :closed_on, :date
           end
         """)
@@ -247,18 +245,18 @@ defmodule EhOsContract.ContractNamesTest do
     test "across a command and an event, and two queries with a digit" do
       message =
         refuse_contract("CamelizeAcross", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :close_visit_
-            event :close_visit_, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :close_visit_
+            event :close_visit_, "Visit closed"
           end
 
-          read_model :closed_visits, "Zamknięte wizyty", projects: :close_visit_ do
+          read_model :closed_visits, "Closed visits", projects: :close_visit_ do
             field :closed_on, :date
           end
 
-          query :visits2, "Wizyty", reads: :closed_visits, by: :reception
-          query :visits_2, "Wizyty 2", reads: :closed_visits, by: :reception
+          query :visits2, "Visits", reads: :closed_visits, by: :reception
+          query :visits_2, "Visits 2", reads: :closed_visits, by: :reception
         """)
 
       assert message =~
@@ -274,17 +272,17 @@ defmodule EhOsContract.ContractNamesTest do
     test "control: names that camelize differently, and an aggregate and a dcb alike, compile" do
       assert %{version: _} =
                compile_contract("CamelizeApart", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-                   command :close_visit2, "Zamknięcie 2", by: :reception, emits: :visit_closed
-                   event :visit_closed, "Wizyta zamknięta"
+                   command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+                   command :close_visit2, "Closing 2", by: :reception, emits: :visit_closed
+                   event :visit_closed, "Visit closed"
                  end
 
-                 dcb :visit_, "Wizyta 2" do
+                 dcb :visit_, "Visit 2" do
                    identity :visit_id
-                   command :hold_visit, "Wstrzymanie", by: :reception, emits: :visit_held
-                   event :visit_held, "Wizyta wstrzymana"
+                   command :hold_visit, "Holding", by: :reception, emits: :visit_held
+                   event :visit_held, "Visit held"
                    consults :visit_closed, match: :visit_id
                  end
                """)
@@ -293,17 +291,17 @@ defmodule EhOsContract.ContractNamesTest do
     test "a query with a command's name, since both are capabilities <domain>.<name> (D14)" do
       message =
         refuse_contract("QueryLikeCommand", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
+          read_model :closed_visits, "Closed visits", projects: :visit_closed do
             field :closed_on, :date
           end
 
-          query :close_visit, "Zamykane wizyty", reads: :closed_visits, by: :reception
+          query :close_visit, "Visits being closed", reads: :closed_visits, by: :reception
         """)
 
       assert message =~
@@ -314,16 +312,16 @@ defmodule EhOsContract.ContractNamesTest do
     test "a query with the name of an event an actor records, since both are capabilities (D14)" do
       message =
         refuse_contract("QueryLikeRecording", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            event :visit_noted, "Wizyta odnotowana", recorded_by: :reception
+            event :visit_noted, "Visit noted", recorded_by: :reception
           end
 
-          read_model :noted_visits, "Odnotowane wizyty", projects: :visit_noted do
+          read_model :noted_visits, "Noted visits", projects: :visit_noted do
             field :visit_id, :id
           end
 
-          query :visit_noted, "Odnotowane wizyty", reads: :noted_visits, by: :reception
+          query :visit_noted, "Noted visits", reads: :noted_visits, by: :reception
         """)
 
       assert message =~
@@ -334,14 +332,14 @@ defmodule EhOsContract.ContractNamesTest do
     test "each other kind of declaration" do
       message =
         refuse_contract("Kinds", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
 
-          effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
-          effect :notify, "Powiadom 2", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
+          effect :notify, "Notify", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
+          effect :notify, "Notify 2", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
         """)
 
       assert message =~ "N1: two effects are named :notify (kinds.ex:11)"
@@ -352,11 +350,11 @@ defmodule EhOsContract.ContractNamesTest do
     test "two commands of one name" do
       message =
         refuse_contract("TwoCommands", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
-            command :close_visit, "Zamknięcie wizyty 2", by: :reception, emits: :visit_closed
-            event :visit_closed, "Wizyta zamknięta"
+            command :close_visit, "Closing a visit", by: :reception, emits: :visit_closed
+            command :close_visit, "Closing a visit 2", by: :reception, emits: :visit_closed
+            event :visit_closed, "Visit closed"
           end
         """)
 
@@ -370,11 +368,11 @@ defmodule EhOsContract.ContractNamesTest do
     test "a reserved word, a Kernel function and evolve are refused" do
       message =
         refuse_contract("Clashes", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :send, "Wysłanie", by: :reception, emits: :end
-            command :evolve, "Rozwój", by: :reception, emits: :end
-            event :end, "Koniec"
+            command :send, "Sending", by: :reception, emits: :end
+            command :evolve, "Evolution", by: :reception, emits: :end
+            event :end, "End"
           end
         """)
 
@@ -390,10 +388,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "an event is checked at the arities a handler can give it" do
       message =
         refuse_contract("EventClash", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :spawn
-            event :spawn, "Coś"
+            command :close_visit, "Closing a visit", by: :reception, emits: :spawn
+            event :spawn, "Something"
           end
         """)
 
@@ -405,10 +403,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "an event is not named after a function every module defines" do
       message =
         refuse_contract("EventModuleInfo", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :module_info
-            event :module_info, "Coś"
+            command :close_visit, "Closing a visit", by: :reception, emits: :module_info
+            event :module_info, "Something"
           end
         """)
 
@@ -420,10 +418,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "state and row, which an implementation aliases as State and Row" do
       message =
         refuse_contract("Aliased", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :state, "Stan", by: :reception, emits: :row
-            event :row, "Wiersz"
+            command :state, "State", by: :reception, emits: :row
+            event :row, "Row"
           end
         """)
 
@@ -439,10 +437,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "state_ and row_, which camelize as state and row do" do
       message =
         refuse_contract("AliasedAlike", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :state_, "Stan", by: :reception, emits: :row_
-            event :row_, "Wiersz"
+            command :state_, "State", by: :reception, emits: :row_
+            event :row_, "Row"
           end
         """)
 
@@ -456,10 +454,10 @@ defmodule EhOsContract.ContractNamesTest do
     test "control: a name that only begins like a Kernel function compiles" do
       assert %{} =
                compile_contract("NoClash", """
-                 aggregate :visit, "Wizyta" do
+                 aggregate :visit, "Visit" do
                    identity :visit_id
-                   command :send_reminder, "Przypomnienie", by: :reception, emits: :reminder_sent
-                   event :reminder_sent, "Wysłano przypomnienie"
+                   command :send_reminder, "Reminder", by: :reception, emits: :reminder_sent
+                   event :reminder_sent, "Reminder sent"
                  end
                """)
     end

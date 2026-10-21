@@ -20,7 +20,7 @@ defmodule EhOsContract.ContractGenerateTest do
       field :note, :string, optional: true
     end
 
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
       state do
@@ -28,18 +28,18 @@ defmodule EhOsContract.ContractGenerateTest do
         field :payments, {:list, :money}, default: []
       end
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :money
         field :note, :string, optional: true
       end
 
-      event :payment_recorded, "Zapłacono" do
+      event :payment_recorded, "Paid" do
         field :amount, :money
-        field :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+        field :method, {:enum, [card: "Card", cash: "Cash"]}
       end
     end
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
 
       state do
@@ -52,18 +52,18 @@ defmodule EhOsContract.ContractGenerateTest do
       ends_on :rebooked
     end
 
-    read_model :payments, "Płatności", projects: :payment_recorded do
+    read_model :payments, "Payments", projects: :payment_recorded do
       field :visit_id, :id
       field :amount, :money
     end
 
-    query :payments_of, "Płatności wizyty", reads: :payments, by: :reception do
+    query :payments_of, "A visit's payments", reads: :payments, by: :reception do
       param :visit_id, :id
       param :since, :date, optional: true
     end
 
-    policy :remind, "Przypomnij", handles: [:rebooked, :visit_closed], issues: :record_payment
-    effect :notify, "Powiadom", handles: :payment_recorded, idempotency: [key: :event_id, owner: :downstream]
+    policy :remind, "Remind", handles: [:rebooked, :visit_closed], issues: :record_payment
+    effect :notify, "Notify", handles: :payment_recorded, idempotency: [key: :event_id, owner: :downstream]
   """
 
   setup_all do
@@ -139,19 +139,19 @@ defmodule EhOsContract.ContractGenerateTest do
     binaries =
       "Periods"
       |> contract("""
-        aggregate :month, "Miesiąc" do
+        aggregate :month, "Month" do
           identity :company_id
 
-          command :open_month, "Otwarcie", by: :accountant, emits: :month_opened do
+          command :open_month, "Opening", by: :accountant, emits: :month_opened do
             field :period, :period
           end
 
-          event :month_opened, "Otwarto" do
+          event :month_opened, "Opened" do
             field :period, :period
           end
         end
 
-        process_manager :reminders, "Przypomnienia" do
+        process_manager :reminders, "Reminders" do
           correlate [:company_id, :period]
           starts_on :month_opened
           ends_on :month_opened

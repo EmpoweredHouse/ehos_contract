@@ -17,15 +17,49 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   document's `digest` is of another version and is not drawn, as its schema says. `id`
   is the root element's DOM id, so it is unique on the page.
 
+  **`audience`** is who reads the picture: `:engineering`, the default, or `:owner`, the
+  business owner, who reads the model in the client's words. For the owner, the cards
+  and the panel say each declaration by its label, a field by its label alone, and
+  leave out what only the code reads: names and modules in code, the stored type,
+  delivery, idempotency and the keys runs are told by, the grants EHOS gives, roles and
+  scopes, identities, fields with no label, a scenario's data, and the wire between
+  applications. A contract is read by its context's label and a promise by its rule. The
+  numbers from the log stay. A declaration with no label is still shown by its name, and
+  `mix eh_os_contract.check` notes each (`owner-view-without-label`). It is a way of
+  reading, not a permission: the page still holds the ids, which name the code, and the
+  document whole. Who may see what is the host's to decide. A landscape read by the owner
+  has no wire between its domains to draw.
+
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
-  `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `:declared`,
-  `{:unit, id}`, `{:lifecycle, id}`, `:context_map`, `:system`, or `:all`, every node
+  `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
+  `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, `:landscape`, or `:all`, every node
   and relation, which it draws when `view` is left out. Each node is a card, each
   group a box with its title, and each relation a label, all rendered here in HEEx;
   the hook (`EhOsContractGraph`, in `priv/static/eh_os_contract_graph.esm.js`) reads
   them from the page, lays them out in the view's direction and draws the arrows, each
   with the line and the head its label names. The overlay's marks are a count on the
-  card or the label and a class per state, which the hook copies onto the arrow.
+  card or the label and a class per state, which the hook copies onto the arrow; on a
+  process's promise, the runs that kept it, broke it or wait, or that it is unconfirmed,
+  which no run is judged against.
+
+  **A bar over the canvas** holds what the reader moves through the picture with:
+
+  - a search, which dims the cards it does not find as the reader types — by label, name in
+    code, kind or footer, ignoring case — and on Enter selects the first one it finds and
+    moves the view to it;
+  - with an overlay of this version of the document, a switch between the declaration
+    alone and the declaration with what the log says;
+  - "Focus on the selection", which draws only the selected card or group and what its
+    relations reach, laid out again (`EhOsContract.GraphRenderer.View.around/2`), until
+    "Show the whole picture" or the panel closes;
+  - the zoom's buttons, which the hook answers alone: closer, farther, "Readable" and
+    "Whole picture".
+
+  **A picture starts readable.** It is never drawn larger than its own size, nor smaller
+  than a scale its words can be read at: one that does not fit at that scale starts at the
+  edge it overflows from, its left or its top, and the reader pans to the rest or asks
+  for the whole picture, however small. A wheel with Ctrl or ⌘, or a pinch,
+  zooms; a drag pans.
 
   **A click** on a card, a group's title, a label or an arrow selects it: the card, the
   title and the label are buttons with `phx-click`, the arrow is pushed by the hook,
@@ -63,81 +97,200 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   use Phoenix.LiveComponent
 
-  alias EhOsContract.GraphRenderer.{Lookup, Marks, Panel, View}
+  alias EhOsContract.GraphRenderer.{Audience, Icons, Lookup, Marks, Panel, Places, View}
 
   @impl true
-  def mount(socket), do: {:ok, assign(socket, selected: nil)}
+  def mount(socket),
+    do: {:ok, assign(socket, selected: nil, query: "", focus: nil, log: true, reveal: 0)}
 
   # What an update leaves out stays as it was: a `send_update/2` with only an overlay keeps
   # the document and the view, and one without an overlay keeps the overlay. `:given` is
-  # the overlay as the host passed it, `:overlay` the one drawn.
+  # the overlay as the host passed it, `:overlay` the one drawn; `:source` the document as
+  # the host passed it, `:document` the one its audience reads.
   @impl true
   def update(assigns, socket) do
-    socket = assign(socket, Map.take(assigns, [:id, :document]))
-    document = Map.fetch!(socket.assigns, :document)
+    socket = assign(socket, Map.take(assigns, [:id]))
+    socket = assign(socket, :opener, Map.get(assigns, :open, socket.assigns[:opener]))
+    source = Map.get_lazy(assigns, :document, fn -> Map.fetch!(socket.assigns, :source) end)
+
+    audience =
+      assigns |> Map.get(:audience, socket.assigns[:audience] || :engineering) |> Audience.cast()
+
     spec = Map.get(assigns, :view, socket.assigns[:spec] || :all)
     given = Map.get(assigns, :overlay, socket.assigns[:given])
-    overlay = if given && given["document_digest"] == document["digest"], do: given
-    view = View.build(document, spec, overlay)
-    selected = socket.assigns.selected
 
-    # The panel's joins, made once a document: reused only for the same digest, so a
-    # document without one — a host may build one by hand — gets its own each time.
-    digest = document["digest"]
+    # The panel's joins, made once a document and audience: reused only for the same
+    # digest, so a document without one — a host may build one by hand — gets its own each
+    # time.
+    of = {source["digest"], audience}
+
+    document = Audience.read(source, audience)
 
     lookup =
-      if digest != nil and socket.assigns[:lookup] != nil and
-           socket.assigns[:lookup_of] == digest,
-         do: socket.assigns.lookup,
-         else: Lookup.new(document)
+      if source["digest"] != nil and socket.assigns[:lookup_of] == of,
+        do: socket.assigns.lookup,
+        else: Lookup.new(document)
 
     {:ok,
-     assign(socket,
-       lookup: lookup,
-       lookup_of: document["digest"],
-       spec: spec,
-       given: given,
-       view: view,
-       overlay: overlay,
-       stale_overlay?: given != nil and overlay == nil,
-       selected: if(selected && picked(view, document, selected), do: selected)
-     )}
+     socket
+     |> assign(source: source, document: document, audience: audience)
+     |> assign(lookup: lookup, lookup_of: of, spec: spec, given: given)
+     |> build()
+     |> refresh()}
   end
+
+  # The view and what the log says over it: the overlay the host gave, when it is of this
+  # version of the document and the reader has the log on.
+  defp build(socket) do
+    %{document: document, spec: spec, given: given, log: log, audience: audience} = socket.assigns
+    current = given && given["document_digest"] == document["digest"]
+    overlay = if current && log, do: given
+    view = View.build(document, spec, overlay, audience)
+
+    assign(socket,
+      view: view,
+      overlay: overlay,
+      # What the overlay says of each card and arrow, read once per view and overlay
+      # rather than at every render a selection makes.
+      node_marks: Map.new(view.nodes, &{&1.id, Marks.node(overlay, &1.id)}),
+      relation_marks: Map.new(view.relations, &{&1.id, marks(overlay, &1)}),
+      stale_overlay?: given != nil and not current,
+      logged?: current == true
+    )
+  end
+
+  # After any change: a selection or a focus the view no longer has is forgotten; then what
+  # is drawn, what the search finds in it, and what the selection lights.
+  defp refresh(socket) do
+    %{view: view, document: document, selected: selected, focus: focus} = socket.assigns
+
+    socket
+    |> assign(
+      selected: if(selected && picked(view, document, selected), do: selected),
+      focus: if(focus && focusable?(view, focus), do: focus)
+    )
+    |> show()
+  end
+
+  # What is drawn: the view, or the neighbourhood of what the reader focuses on.
+  defp show(socket) do
+    %{view: view, focus: focus} = socket.assigns
+    socket |> assign(shown: if(focus, do: View.around(view, focus), else: view)) |> search()
+  end
+
+  # Which of the drawn cards the search finds.
+  defp search(socket) do
+    %{shown: shown, query: query} = socket.assigns
+    socket |> assign(matches: View.matches(shown, query)) |> light()
+  end
+
+  # What the selection lights and opens, worked out here rather than in `render/1`, so that
+  # a render whose selection has not changed sends none of it again.
+  defp light(socket) do
+    %{shown: shown, view: view, document: document, selected: selected} = socket.assigns
+
+    assign(socket,
+      near: near(shown, selected),
+      # A node the picture does not draw is shown in the panel and fades nothing.
+      lit: selected && element(shown, selected) && selected,
+      focusable?: selected != nil and focusable?(view, selected),
+      picked: selected && picked(view, document, selected)
+    )
+    |> opens()
+  end
+
+  # Where the selected card leads, when an explorer gave the canvas a way to open it
+  # (`EhOsContract.GraphRenderer.Explorer`): `%{target: component, here: place}`, and no
+  # way back to where the reader already is.
+  defp opens(%{assigns: %{opener: nil}} = socket), do: assign(socket, opens: nil)
+
+  defp opens(socket) do
+    %{opener: opener, document: document, picked: picked, selected: selected} = socket.assigns
+
+    opens =
+      with {type, %{kind: kind, facts: facts}} when type in [:node, :group] <- picked,
+           {place, label} when place != opener.here <- Places.destination(document, kind, facts),
+           do: %{id: selected, label: label, target: opener.target},
+           else: (_ -> nil)
+
+    assign(socket, opens: opens)
+  end
+
+  # Focus is on a card or a group: an arrow has no neighbourhood of its own to draw.
+  defp focusable?(view, id), do: match?({kind, _} when kind in [:node, :group], element(view, id))
 
   @impl true
   def handle_event("select", %{"id" => id}, socket) do
-    selected =
-      cond do
-        id == socket.assigns.selected -> nil
-        picked(socket.assigns.view, socket.assigns.document, id) -> id
-        true -> socket.assigns.selected
-      end
+    cond do
+      # The selected card clicked again closes the panel, and focus with it.
+      id == socket.assigns.selected ->
+        {:noreply, socket |> assign(selected: nil, focus: nil) |> refresh()}
 
-    {:noreply, assign(socket, selected: selected)}
+      picked(socket.assigns.view, socket.assigns.document, id) ->
+        {:noreply, socket |> assign(selected: id) |> light()}
+
+      true ->
+        {:noreply, socket}
+    end
   end
 
   # A name in the panel shows its node, and never closes the panel, even when it names what
   # the panel is of.
   def handle_event("show", %{"id" => id}, socket) do
     if picked(socket.assigns.view, socket.assigns.document, id),
-      do: {:noreply, assign(socket, selected: id)},
+      do: {:noreply, socket |> assign(selected: id) |> light()},
       else: {:noreply, socket}
   end
 
-  def handle_event("deselect", _params, socket), do: {:noreply, assign(socket, selected: nil)}
+  # The panel's close button or Escape: the selection goes, and focus with it.
+  def handle_event("deselect", _params, socket),
+    do: {:noreply, socket |> assign(selected: nil, focus: nil) |> refresh()}
+
+  # Another canvas of the page opened its panel: this one's closes, and its picture stays as
+  # the reader left it, focus included.
+  def handle_event("closed", _params, socket),
+    do: {:noreply, socket |> assign(selected: nil) |> light()}
+
+  # The search dims what it does not find as the reader types; Enter selects the first card
+  # it finds and moves the view to it.
+  def handle_event("search", %{"q" => query}, socket),
+    do: {:noreply, socket |> assign(query: query) |> search()}
+
+  def handle_event("find", %{"q" => query}, socket) do
+    socket = socket |> assign(query: query) |> search()
+
+    case Enum.find(
+           socket.assigns.shown.nodes,
+           &(socket.assigns.matches && MapSet.member?(socket.assigns.matches, &1.id))
+         ) do
+      nil ->
+        {:noreply, socket}
+
+      node ->
+        {:noreply,
+         socket |> assign(selected: node.id, reveal: socket.assigns.reveal + 1) |> light()}
+    end
+  end
+
+  # Focus keeps the selection and what touches it, laid out again; the whole picture comes
+  # back with the button, a new selection's Escape, or the close of the panel.
+  def handle_event("focus", _params, socket) do
+    selected = socket.assigns.selected
+
+    if selected && focusable?(socket.assigns.view, selected),
+      do: {:noreply, socket |> assign(focus: selected) |> show()},
+      else: {:noreply, socket}
+  end
+
+  def handle_event("unfocus", _params, socket),
+    do: {:noreply, socket |> assign(focus: nil) |> show()}
+
+  # The declaration alone, or with what the log says over it.
+  def handle_event("log", _params, socket),
+    do: {:noreply, socket |> assign(log: not socket.assigns.log) |> build() |> refresh()}
 
   @impl true
   def render(assigns) do
-    picked = assigns.selected && picked(assigns.view, assigns.document, assigns.selected)
-
-    assigns =
-      assign(assigns,
-        near: near(assigns.view, assigns.selected),
-        # A node the view does not draw is shown in the panel and fades nothing.
-        focus: assigns.selected && element(assigns.view, assigns.selected) && assigns.selected,
-        picked: picked
-      )
-
     ~H"""
     <div
       id={@id}
@@ -145,12 +298,49 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       phx-hook="EhOsContractGraph"
       data-direction={@view.direction}
       data-selected={@selected}
+      data-reveal={@reveal}
     >
+      <div class="ehg-bar">
+        <form id={"#{@id}-search"} class="ehg-search" role="search" phx-change="search" phx-submit="find" phx-target={@myself}>
+          <input
+            type="search"
+            name="q"
+            value={@query}
+            placeholder="Search this picture"
+            aria-label="Search this picture"
+            autocomplete="off"
+            phx-debounce="150"
+          />
+          <span :if={@matches} class="ehg-found" aria-live="polite">{found(@matches)}</span>
+        </form>
+        <label :if={@logged?} class="ehg-switch">
+          <input type="checkbox" checked={@log} phx-click="log" phx-target={@myself} />
+          What the log says
+        </label>
+        <button :if={@focus} type="button" class="ehg-tool" phx-click="unfocus" phx-target={@myself}>
+          Show the whole picture
+        </button>
+        <button
+          :if={!@focus and @focusable?}
+          type="button"
+          class="ehg-tool"
+          phx-click="focus"
+          phx-target={@myself}
+        >
+          Focus on the selection
+        </button>
+        <span class="ehg-zoom" role="group" aria-label="Zoom">
+          <button type="button" class="ehg-tool" data-ehg-zoom="out" aria-label="Zoom out">−</button>
+          <button type="button" class="ehg-tool" data-ehg-zoom="in" aria-label="Zoom in">+</button>
+          <button type="button" class="ehg-tool" data-ehg-zoom="read">Readable</button>
+          <button type="button" class="ehg-tool" data-ehg-zoom="all">Whole picture</button>
+        </span>
+      </div>
       <div class="ehg-canvas">
         <div class="ehg-viewport">
           <div
-            :for={group <- @view.groups}
-            class={["ehg-group" | classes(group.id, @focus, @near, nil)]}
+            :for={group <- @shown.groups}
+            class={["ehg-group" | classes(group.id, @lit, @near, nil)]}
             data-ehg-group={group.id}
             data-kind={group.kind}
           >
@@ -167,9 +357,14 @@ defmodule EhOsContract.GraphRenderer.Canvas do
           </div>
           <svg id={"#{@id}-arrows"} class="ehg-arrows" phx-update="ignore" aria-hidden="true"></svg>
           <button
-            :for={node <- @view.nodes}
+            :for={node <- @shown.nodes}
             type="button"
-            class={["ehg-card" | classes(node.id, @focus, @near, Marks.node(@overlay, node.id))]}
+            class={[
+              "ehg-card",
+              @matches && node.kind != "start" && not MapSet.member?(@matches, node.id) &&
+                "is-unmatched"
+              | classes(node.id, @lit, @near, @node_marks[node.id])
+            ]}
             data-ehg-node={node.id}
             data-kind={node.kind}
             data-variant={node.variant}
@@ -179,37 +374,53 @@ defmodule EhOsContract.GraphRenderer.Canvas do
             phx-value-id={node.id}
             phx-target={@myself}
           >
-            <span :if={node.tag} class="ehg-kind">{node.tag}</span>
+            <span
+              :if={node.tag || @node_marks[node.id].count || @node_marks[node.id][:drift]}
+              class="ehg-top"
+            >
+              <span :if={node.tag} class="ehg-kind"><Icons.icon kind={node.kind} />{node.tag}</span>
+              <.count marks={@node_marks[node.id]} />
+            </span>
             <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
-            <span :if={node.label && node.name} class="ehg-name">{node.name}</span>
+            <span :if={node.label && node.name} class="ehg-name"><.breakable text={node.name} /></span>
             <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <.count marks={Marks.node(@overlay, node.id)} />
+            <span :if={node.foot} class="ehg-foot"><.breakable text={node.foot} /></span>
           </button>
           <button
-            :for={relation <- @view.relations}
+            :for={relation <- @shown.relations}
             type="button"
             class={[
               "ehg-relation",
-              blank?(relation, Marks.relation(@overlay, relation.id)) && "ehg-blank"
-              | classes(relation.id, @focus, @near, Marks.relation(@overlay, relation.id))
+              blank?(relation, @relation_marks[relation.id]) && "ehg-blank"
+              | classes(relation.id, @lit, @near, @relation_marks[relation.id])
             ]}
             data-ehg-relation={relation.id}
             data-from={relation.from}
             data-to={relation.to}
             data-line={relation.line}
             data-head={if relation.head, do: "arrow", else: "none"}
+            data-observed={View.observed?(relation) && "true"}
             phx-click="select"
             phx-value-id={relation.id}
             phx-target={@myself}
           >
-            {relation.words}<.count marks={Marks.relation(@overlay, relation.id)} />
+            {relation.words}<.count marks={@relation_marks[relation.id]} />
           </button>
         </div>
       </div>
+      <.legend legend={View.legend(@shown)} />
       <p :if={@stale_overlay?} class="ehg-note">
         The numbers from the log are of another version of this document and are not shown.
       </p>
-      <Panel.panel :if={@picked} picked={@picked} lookup={@lookup} overlay={@overlay} target={@myself} />
+      <Panel.panel
+        :if={@picked}
+        picked={@picked}
+        lookup={@lookup}
+        overlay={@overlay}
+        target={@myself}
+        open={@opens}
+        audience={@audience}
+      />
     </div>
     """
   end
@@ -218,9 +429,79 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   defp count(assigns) do
     ~H"""
-    <span :if={@marks.count} class="ehg-count">×{@marks.count}</span>
+    <span :if={@marks.count} class="ehg-count">×{@marks.count}</span><span
+      :if={@marks[:verdict]}
+      class="ehg-count"
+    >· {@marks[:verdict]}</span><span :if={@marks[:drift]} class="ehg-count ehg-drift">{@marks[:drift]}</span>
     """
   end
+
+  defp found(matches) do
+    case MapSet.size(matches) do
+      0 -> "nothing found"
+      1 -> "1 found"
+      n -> "#{n} found"
+    end
+  end
+
+  attr :legend, :map, required: true
+
+  # What a swatch of each look shows, said for a reader who cannot see it.
+  @looks %{
+    "solid" => "a solid arrow",
+    "dotted" => "a dotted arrow",
+    "thick" => "a heavy arrow",
+    "headless" => "a line with no head",
+    "observed" => "an arrow in the error colour"
+  }
+
+  # What the cards' colours and icons and the arrows' looks mean, for what this view draws.
+  defp legend(assigns) do
+    assigns = assign(assigns, :looks, @looks)
+
+    ~H"""
+    <ul :if={@legend.kinds != [] or @legend.lines != []} class="ehg-legend" aria-label="Legend">
+      <li :for={{kind, words} <- @legend.kinds} class="ehg-legend-kind" data-kind={kind}>
+        <Icons.icon kind={kind} />{words}
+      </li>
+      <li :for={{variant, words} <- @legend.variants} class="ehg-legend-variant" data-variant={variant}>
+        <span class="ehg-legend-swatch" aria-hidden="true"></span>{words}
+      </li>
+      <li :for={{look, words} <- @legend.lines} class="ehg-legend-line" data-look={look}>
+        <svg viewBox="0 0 24 8" aria-hidden="true" focusable="false"><path d="M1 4h19" /><path
+            :if={look != "headless"}
+            class="ehg-legend-head"
+            d="M18 1l5 3-5 3z"
+          /></svg><span class="ehg-hidden">{@looks[look]}: </span>{words}
+      </li>
+    </ul>
+    """
+  end
+
+  attr :text, :string, required: true
+
+  # A name in code that may break after a dot, an underscore or a colon, and inside a word
+  # only where one word alone is wider than the card.
+  defp breakable(assigns) do
+    assigns = assign(assigns, :parts, Regex.split(~r/(?<=[._:])/u, assigns.text))
+
+    ~H"""
+    <%= for {part, i} <- Enum.with_index(@parts) do %><wbr :if={i > 0} />{part}<% end %>
+    """
+  end
+
+  # Both arrows of a promise are the promise's, which the overlay keeps the verdicts of, as
+  # their panel says: each takes its state — a broken promise in the error colour — and
+  # the heavy one alone says the verdicts in words, so they are read once. Any other
+  # relation, its own numbers.
+  defp marks(overlay, %{type: "promise"} = relation), do: Marks.promise(overlay, relation.facts)
+
+  defp marks(overlay, %{type: "or_else", facts: %{"process" => _} = promise}),
+    do: overlay |> Marks.promise(promise) |> Map.delete(:verdict)
+
+  defp marks(_overlay, %{type: "out_of_order", facts: entry}), do: Marks.out_of_order(entry)
+
+  defp marks(overlay, relation), do: Marks.relation(overlay, relation.id)
 
   # The element `id` names, a node, a group or a relation of the view; nil when it has
   # none of them.
@@ -279,5 +560,6 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # A label with nothing to say is there for the hook, which reads the relation from it,
   # and takes no room: the arrow alone is drawn, and takes the click.
-  defp blank?(relation, marks), do: relation.words in [nil, ""] and marks.count == nil
+  defp blank?(relation, marks),
+    do: relation.words in [nil, ""] and marks.count == nil and marks[:verdict] == nil
 end

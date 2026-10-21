@@ -51,8 +51,12 @@ defmodule EhOsContract.Relay do
   - **It publishes the fields as stored.** Rule D11 refuses a `personal:` field in a
     `publish`, and that holds for today's declaration: a field that was `personal:` in
     an earlier version of the contract is still sealed in the events written then, and
-    goes out sealed. The key never leaves, so it is not readable, but it is not the
-    value either.
+    goes out sealed. So does a field an `upcast` renamed a personal field onto: an older
+    row is published in the event's current shape, its seals as they are. The key never leaves, so it is not readable, but it is not the
+    value either. The schema lock keeps both out: `mix eh_os_contract.schema --check`
+    refuses a field that stops being personal, and one a personal field is renamed onto,
+    even with a step. An application without the lock, or one that ran `--forget` on a
+    version its log holds rows of, can still publish a seal.
   - **Identities go out in the clear**, as they are stored: a unit's identity or an
     `{:id, subject}` field in `fields` names its subject, also after the subject is
     erased, when a reset publishes the log again.

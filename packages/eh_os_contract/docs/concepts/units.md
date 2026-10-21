@@ -3,7 +3,7 @@
 This page covers the declarations that decide (an aggregate over one stream, a dynamic consistency
 boundary over a query of the log, the domain services both may call) and the module each one needs.
 
-<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
+<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service, contract.aggregate.event.upcast; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
 
 A **unit** is what a command is sent to. It holds the rules that must stay true, reads what it has
 decided before, and answers each command with events or a refusal. The engine knows 2 kinds:
@@ -168,7 +168,8 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
   from the stream and puts it into the state; a command's `from:` names the statuses it is issued in,
   and dispatch refuses it in any other, on its `or_rejects:` invariant, before the decision runs. The
   rules of the graph are in [the guide](../contract.md).
-- **Its stages**, when the contract's process has stages, group its events by stage.
+- **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
+  [process module](process.md)'s to say.
 
 ## A dynamic consistency boundary
 
@@ -282,6 +283,126 @@ The engine finds implementations in the running binary of the applications it is
 and each declaration takes at most one ([`X8`](../contract.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
 state is only its identity needs no module.
 
+## An event that already has rows
+
+The log keeps every event as it was written, and the engine reads each one again with today's
+declaration: to fold a unit's state, to feed a reaction, to publish it. So an event that has rows
+changes only with a new version of its fields, `schema_version`, and a step, `upcast`, that says how
+a row of the version before reads in the new one. The rows themselves never change.
+
+```elixir
+event :demand_opened, "Demand opened", schema_version: 2 do
+  field :demand_reason, :demand_reason
+  field :priority, :string
+
+  upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]
+end
+```
+
+A row written at version 1 is read with `reason` under its new name, `demand_reason`, and with
+`priority` as `"normal"`; a row of version 2 is read as it is. Version 3 adds `upcast from: 2`, and a
+row of version 1 goes through both steps in turn.
+
+- **`rename:`** moves a field of the older version to its name in the next. A personal field may be
+  renamed: the engine opens its sealed value under the name it was sealed with.
+- **`default:`** gives a value to a field the older version did not have, written as the log stores
+  one (an enum's member as its name, a date as text). A row that holds the field keeps its own.
+  A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
+- **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
+- **`function:`** names a function of the unit's implementation, for a change a rename and a default
+  cannot say: amounts stored in cents read as a decimal, one field split in two. It is a step on its
+  own.
+
+```elixir
+event :fee_charged, "Fee charged", schema_version: 2 do
+  field :amount, :decimal
+
+  upcast from: 1, function: :amount_from_minor
+end
+```
+
+```elixir
+@impl true
+def amount_from_minor(%{"amount_minor" => minor} = data),
+  do: data |> Map.delete("amount_minor") |> Map.put("amount", Decimal.div(minor, 100))
+```
+
+The function takes the row's payload at that version as the log stores it, with string keys, and
+gives the next version's; what it gives is read as the log stores a value, so a decimal, a date or an
+atom key reads as an old row's own would. The implementation does not compile without it
+([`I2`](../contract.md#refusals-i)), and it is pure: it reads nothing but the row. The engine cannot
+see what it did, so it refuses the row, naming the step and never a value, when the function:
+
+- moved a sealed personal value, made one, or reordered a list holding one: a seal opens only under
+  the field it was sealed in, so a personal field is renamed with `rename:`, and its value, which the
+  function sees sealed, cannot be converted at all;
+- left a field the log tags rows with other than the row was written with, a new required `:id`
+  among them: that change is a new event;
+- raised, threw, exited, or gave no map.
+
+A step covers what it can say in words. What the log keeps beside a row's payload by a field's name
+cannot be carried across: the unit's identity, and every field the log tags each row with — a
+required, non-personal `:id`, date or timestamp, by which a boundary, a process and the report find
+rows. A change to one of those is a new event. The compiler refuses a version without its step, a step
+to a field the event will not have, a step that renames onto or defaults a field the log keeps, a
+default for personal data, and a default that is not a value of its field
+([`U1`](../contract.md#refusals-u)–[`U4`](../contract.md#refusals-u)).
+
+A compile sees only today's declaration, so it cannot tell a field added to version 1 from version 1
+as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
+`mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
+them. A change old rows still read is recorded in place: a field added as optional, a field removed, a
+required field made optional, an enum given members, an `:integer` made a `:decimal`, an `:id` made a
+`:string`, and the same inside a list or a domain value. A field removed stays in the file, marked
+`removed: true`, since old rows still hold it and rows written since do not: a field declared again
+under its name is held to what both hold. `--check` fails when a recorded version changed otherwise,
+when the steps from a recorded version to the declared one do not cover what changed, when the file
+records a version newer than the declared one or an event no contract declares any more, or when the
+file is behind the contracts:
+
+```
+** (Mix) eh_os_contract.lock and the contracts disagree:
+
+  * shop.orders.order_placed at schema_version 1: courier was added, [type: :string], and is
+    required: give it a `default:`, or make it optional. A row written at version 1 holds the fields
+    the lock records, and would not read: raise its schema_version with a step `upcast from: 1` that
+    covers the change, or, if no log holds rows of it, run
+    `mix eh_os_contract.schema --forget shop.orders.order_placed`
+```
+
+Run it beside `mix eh_os_contract.check`, and commit the file: a new version shows in a pull request
+as the fields it records. A field's type there is what the log stores, so a domain value given another
+field changes every event that holds it, while renaming the value, relabelling a field or reordering
+the fields changes nothing.
+
+A raised version's steps are held to what changed from every earlier version the file records, each
+read as the declared one through the steps between them, as the engine reads an old row: `rename:`
+carries a field to its new name, `default:` gives a new required field its value where an old row
+lacks it, and a step by a function covers every change a step could carry. A field renamed without
+`rename:`, a required field added without a default, a field that was optional made required (old rows
+hold an explicit `nil`, which a default does not fill), or a type changed otherwise than above, with no
+step a function, is refused, naming the field and the steps. Some changes are refused even with a
+step, since rows already written keep what they were written with:
+
+- a field that becomes personal, stops being, or is sealed by another identifier;
+- a personal field whose type changes, or a value holding personal data whose shape changes, since a
+  sealed value cannot be converted or its seal moved;
+- a required personal field old rows may lack, added, made required, or inside a value added or
+  reshaped, since a default would be clear text and a function makes no seal;
+- an identifier that seals a field given another `subject:`;
+- a field the log tags rows with that the version before did not tag under that name.
+
+Each is a new event. `--forget TYPE` drops the event's versions from the declared one up, or every
+version of an event no contract declares, and records what is declared: it is for versions no log
+holds rows of, as one added on a branch never deployed.
+
+Refusing a field that stops being personal also keeps a seal out of what the application publishes. A
+`publish` cannot name a personal field ([`D11`](../contract.md#refusals-d)), but rows written while a field was personal hold its
+value sealed, and the relay publishes a row in the event's current shape, its values as stored. A field
+that stops being personal, or one a personal field is renamed onto, would send those seals to every
+subscriber. The lock refuses both; without it, or after `--forget` of a version the log holds rows of,
+the relay publishes them (`EhOsContract.Relay`).
+
 ## What the compiler refuses
 
 The full table is in [the guide](../contract.md). The refusals a unit meets most:
@@ -294,6 +415,7 @@ The full table is in [the guide](../contract.md). The refusals a unit meets most
 - an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
   ask the process owner for;
 - a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t) to [`T4`](../contract.md#refusals-t));
+- an event above version 1 without a step from each version below it ([`U1`](../contract.md#refusals-u));
 - in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
   kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
   of a rule it does not reject on ([`I5`](../contract.md#refusals-i)).

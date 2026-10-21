@@ -38,6 +38,14 @@ defmodule EhOsContract.Deployment do
   decides and the declarations do not say — a contract renamed under the same module
   moves it.
 
+  ## The agreement and its words
+
+  The contract version hashes what the contract allows, not what it calls things:
+  correcting a label or a `source:` leaves it, and every event stamped with it, where
+  it was. The words have their own digest, recorded beside the version, so such a
+  deploy is a row of its own, and `report/2` says that only the words changed rather
+  than that the agreement did.
+
   Both hashes are taken over one canonical form of the declarations, so neither
   depends on term encoding, module load order or OTP release: the same agreement
   hashes the same way on every machine, and an OTP upgrade does not reclassify the
@@ -65,6 +73,11 @@ defmodule EhOsContract.Deployment do
     # column existed does not know what its contract declared, and `%{}` would claim
     # it declared nothing.
     field(:declaration_digests, :map)
+    # The digest of the words, and one per declaration (`text_digest` and
+    # `text_digests` in the model; plan DD, V5, #322). A change of the words alone is a
+    # row of its own under the same versions. Nullable for the same reason as above.
+    field(:text_digest, :string)
+    field(:text_digests, :map)
     field(:first_seen_at, :utc_datetime_usec)
   end
 
@@ -79,7 +92,9 @@ defmodule EhOsContract.Deployment do
           events_removed: [String.t()],
           paths_added: [String.t()],
           paths_removed: [String.t()],
-          declarations: declaration_change() | :not_recorded
+          agreement_changed: boolean(),
+          declarations: declaration_change() | :not_recorded,
+          words: [String.t()] | :not_recorded
         }
 
   @doc """
@@ -96,19 +111,19 @@ defmodule EhOsContract.Deployment do
       for(contract <- EhOsContract.Registry.contracts(), do: row(contract, now)) ++
         for process <- EhOsContract.Registry.processes(), do: process_row(process, now)
 
-    # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
-    # once: the first boot after the column exists meets a row recorded before it,
-    # and `:nothing` would leave that row's digests null forever — blind for the
-    # version that is actually deployed, which is the one anybody asks about.
+    # `{:replace, ...}` rather than `:nothing`: it backfilled the digests of a row
+    # recorded before their column existed. Since storage version 4 a row recorded
+    # before it has a `NULL` `text_digest`, which never conflicts, so the first boot
+    # after it writes a row of its own; every version moved with it anyway.
     #
     # Replacing is sound because the value is a function of the conflict target.
-    # `contract_version` is a hash of the same declarations, so a row carrying
-    # today's version *has* today's declarations. `first_seen_at` is untouched, so
-    # no history is rewritten. Were that functional dependency ever to stop
-    # holding, this would become falsification of history rather than a backfill.
+    # `contract_version` is a hash of the same declarations, and `text_digest` of the
+    # same words, so a row carrying today's pair *has* today's digests. `first_seen_at`
+    # is untouched, so no history is rewritten. Were that functional dependency ever to
+    # stop holding, this would become falsification of history rather than a backfill.
     repo().insert_all(__MODULE__, rows,
-      on_conflict: {:replace, [:declaration_digests]},
-      conflict_target: [:contract, :contract_version, :wiring_version]
+      on_conflict: {:replace, [:declaration_digests, :text_digests]},
+      conflict_target: [:contract, :contract_version, :wiring_version, :text_digest]
     )
 
     :ok
@@ -118,9 +133,7 @@ defmodule EhOsContract.Deployment do
   # contract itself, so they move its version. What only the code says is which
   # module implements each declaration — the contract's own, and the checks of its
   # domain's values, which decide what dispatch accepts (plan EL2b) — and that, with
-  # the steps, is its wiring. A
-  # promise gets a digest of its own here, so a changed promise has a boundary
-  # (`declaration_boundaries/1`) where the model only digests the whole process.
+  # the steps, is its wiring.
   #
   # The edges and bindings are sorted, so the list order carries no meaning by the
   # time they are hashed — the one case where `EhOsContract.Digest` needs the
@@ -139,8 +152,6 @@ defmodule EhOsContract.Deployment do
           module <- modules,
           do: "#{kind}:#{name}=#{inspect(module)}"
 
-    promises = promise_digests(Model.process(model))
-
     %{
       id: Ecto.UUID.generate(),
       contract: model.id,
@@ -148,12 +159,16 @@ defmodule EhOsContract.Deployment do
       wiring_version: EhOsContract.Digest.hash(edges ++ Enum.sort(bindings)),
       events: model.events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
       edges: edges,
-      declaration_digests: Map.merge(model.digests, promises),
+      declaration_digests: model.digests,
+      text_digest: model.text_digest,
+      text_digests: model.text_digests,
       first_seen_at: now
     }
   end
 
-  # A process module's row; see the moduledoc.
+  # A process module's row; see the moduledoc. A promise gets a digest of its own here,
+  # so a changed promise has a boundary (`declaration_boundaries/1`) where the model
+  # only digests the whole process.
   @spec process_row(module(), DateTime.t()) :: map()
   defp process_row(module, now) do
     model = Model.fetch(module)
@@ -167,12 +182,14 @@ defmodule EhOsContract.Deployment do
       events: events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
       edges: [],
       declaration_digests: Map.merge(model.digests, promise_digests(Model.process(model))),
+      text_digest: model.text_digest,
+      text_digests: model.text_digests,
       first_seen_at: now
     }
   end
 
   defp promise_digests(process) do
-    for promise <- (process && process.promises) || [],
+    for promise <- process.promises,
         into: %{},
         do: {"promise:#{promise.name}", promise_digest(promise)}
   end
@@ -183,13 +200,17 @@ defmodule EhOsContract.Deployment do
   defp key(%{id: id}), do: id
 
   # A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
-  # `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
+  # `or_else`, and `waits_on` where it is declared, so that a promise without it keeps
+  # its digest (plan DD, OW1 (#355)) — and nothing else. Confirming it (`unverified`) or citing a new `source`
   # changes no run's verdict, so it must not draw a boundary that stops judging the
   # runs before it. Public for its test.
   @doc false
   @spec promise_digest(map()) :: String.t()
   def promise_digest(promise),
-    do: promise |> Map.take([:from, :eventually, :within, :or_else]) |> EhOsContract.Digest.hash()
+    do:
+      promise
+      |> Map.take([:from, :eventually, :within, :or_else, :waits_on])
+      |> EhOsContract.Digest.hash()
 
   # A v2 contract's declared steps as the labels a deployment records:
   # `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
@@ -229,6 +250,11 @@ defmodule EhOsContract.Deployment do
   # until this key existed the diff reported a change to the agreement as four
   # empty lists.
   #
+  # `agreement_changed` says whether the version moved at all, and `words` names the
+  # declarations whose words did (plan DD, V5, #322): a deployment that changed only
+  # its words has the same version, so it is no new agreement, and the log holds no
+  # new version for it.
+  #
   # It is `:not_recorded` when either side predates the column. "Compared, nothing
   # moved" and "could not be compared" are different statements, and collapsing
   # them would put a false negative exactly where the mechanism is meant to speak.
@@ -241,9 +267,19 @@ defmodule EhOsContract.Deployment do
       events_removed: old.events -- new.events,
       paths_added: new.edges -- old.edges,
       paths_removed: old.edges -- new.edges,
-      declarations: declaration_diff(old.declaration_digests, new.declaration_digests)
+      agreement_changed: old.contract_version != new.contract_version,
+      declarations: declaration_diff(old.declaration_digests, new.declaration_digests),
+      words: words_diff(old.text_digests, new.text_digests)
     }
   end
+
+  # A declaration added or removed is the agreement's change, so only one both sides
+  # hold can have changed its words.
+  @spec words_diff(map() | nil, map() | nil) :: [String.t()] | :not_recorded
+  defp words_diff(nil, _new), do: :not_recorded
+  defp words_diff(_old, nil), do: :not_recorded
+
+  defp words_diff(old, new), do: changed(old, new)
 
   @spec declaration_diff(map() | nil, map() | nil) :: declaration_change() | :not_recorded
   defp declaration_diff(nil, _new), do: :not_recorded
@@ -253,12 +289,16 @@ defmodule EhOsContract.Deployment do
     %{
       added: new |> Map.keys() |> Kernel.--(Map.keys(old)) |> Enum.sort(),
       removed: old |> Map.keys() |> Kernel.--(Map.keys(new)) |> Enum.sort(),
-      changed:
-        new
-        |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
-        |> Enum.map(&elem(&1, 0))
-        |> Enum.sort()
+      changed: changed(old, new)
     }
+  end
+
+  # The keys both sides hold under different digests.
+  defp changed(old, new) do
+    new
+    |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.sort()
   end
 
   # When each declaration last changed, for one contract or process module.
@@ -337,12 +377,12 @@ defmodule EhOsContract.Deployment do
     recorded |> Enum.filter(&(&1.contract_version == version)) |> List.last()
   end
 
-  # A process module's last change of version. A new wiring under the same version —
-  # a contract it includes moved its events' types — changes no declaration of the
-  # module, so it is no change of version to report.
+  # A process module's last change of version or of its words. A new wiring under the
+  # same version and words — a contract it includes moved its events' types — changes
+  # no declaration of the module, so it is no change to report.
   defp version_change(recorded) do
     case Enum.take(recorded, -2) do
-      [%{contract_version: same}, %{contract_version: same}] -> nil
+      [%{contract_version: v, text_digest: t}, %{contract_version: v, text_digest: t}] -> nil
       _other -> last_change(recorded)
     end
   end

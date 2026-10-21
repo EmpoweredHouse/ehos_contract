@@ -1,0 +1,241 @@
+defmodule EhOsContract.GraphRenderer.LandscapeTest do
+  # Joining applications by the names on the wire: plan DD, stage G1 (#297). The billing
+  # domain publishes its issued invoice; domain.ledger.json, hand-made, subscribes to it and to
+  # a name nobody in the set publishes.
+  use ExUnit.Case, async: true
+
+  import Phoenix.LiveViewTest
+
+  alias EhOsContract.GraphRenderer.{Canvas, Fixtures, Landscape, Lookup, Panel, View}
+
+  @issued "publication:billing.invoice.issued.v1"
+  @subscriptions "0/contract:billing.subscriptions"
+  @bookkeeping "1/contract:ledger.bookkeeping"
+
+  defp landscape,
+    do:
+      Landscape.join([
+        {"billing", Fixtures.document("domain.billing")},
+        {"ledger", Fixtures.document("domain.ledger")}
+      ])
+
+  defp ids(list), do: list |> Enum.map(& &1.id) |> Enum.sort()
+
+  test "joins a publication and its subscriber across applications into one card with an arrow on each side" do
+    view = View.build(landscape(), :landscape)
+
+    assert [publishes] = Enum.filter(view.relations, &(&1.to == @issued))
+    assert publishes.from == @subscriptions
+    assert publishes.words == "publishes issued"
+
+    assert [subscribed] = Enum.filter(view.relations, &(&1.from == @issued))
+    assert subscribed.to == @bookkeeping
+    assert subscribed.words == "as invoice_issued"
+
+    assert [_one] = Enum.filter(view.nodes, &(&1.id == @issued))
+  end
+
+  test "draws a box per domain with only the contracts on the wire, and says how many it leaves out" do
+    view = View.build(landscape(), :landscape)
+
+    assert ids(view.nodes) ==
+             Enum.sort([
+               @subscriptions,
+               @bookkeeping,
+               @issued,
+               "publication:ledger.month.booked.v1",
+               "publication:payroll.run.closed.v1"
+             ])
+
+    titles = Map.new(view.groups, &{&1.id, &1.title})
+
+    assert titles["0/domain:Billing.Domain"] == "billing · billing · 1 more contract"
+    assert titles["1/domain:Ledger.Domain"] == "ledger · ledger · 1 more contract"
+
+    subscriptions = Enum.find(view.nodes, &(&1.id == @subscriptions))
+
+    assert {subscriptions.group, subscriptions.label} ==
+             {"0/domain:Billing.Domain", "Subscriptions"}
+  end
+
+  test "says a name nobody in the set publishes comes from outside it, and no other" do
+    tags = Map.new(View.build(landscape(), :landscape).nodes, &{&1.id, &1.tag})
+
+    assert tags["publication:payroll.run.closed.v1"] == "publication · from outside the set"
+    assert tags[@issued] == "publication"
+    assert tags["publication:ledger.month.booked.v1"] == "publication"
+  end
+
+  test "joins two domains of one application as it joins two applications" do
+    joined =
+      Landscape.join([
+        {"one", Fixtures.document("domain.billing")},
+        {"one", Fixtures.document("domain.ledger")}
+      ])
+
+    view = View.build(joined, :landscape)
+
+    assert [%{from: "0/contract:billing.subscriptions"}] =
+             Enum.filter(view.relations, &(&1.to == @issued))
+
+    assert length(view.groups) == 2
+  end
+
+  test "keeps contracts of the same id in two applications apart" do
+    billing = Fixtures.document("domain.billing")
+    view = View.build(Landscape.join([{"a", billing}, {"b", billing}]), :landscape)
+
+    assert "0/contract:billing.subscriptions" in ids(view.nodes)
+    assert "1/contract:billing.subscriptions" in ids(view.nodes)
+    assert length(Enum.filter(view.relations, &(&1.to == @issued))) == 2
+  end
+
+  test "a domain on its own is a landscape too, its publication with nobody to take it" do
+    view =
+      View.build(
+        Landscape.join([{"billing", Fixtures.document("domain.billing")}]),
+        :landscape
+      )
+
+    assert ids(view.nodes) == Enum.sort([@subscriptions, @issued])
+    assert [%{type: "publishes"}] = view.relations
+  end
+
+  test "keeps the same document given twice apart, every id once" do
+    billing = Fixtures.document("domain.billing")
+    view = View.build(Landscape.join([{"a", billing}, {"a", billing}]), :landscape)
+    ids = Enum.map(view.nodes ++ view.groups ++ view.relations, & &1.id)
+
+    assert ids == Enum.uniq(ids)
+    assert length(view.groups) == 2
+  end
+
+  test "takes a publication's words from the document that publishes it, not from a subscriber" do
+    ledger =
+      update_in(Fixtures.document("domain.ledger"), ["nodes", "publication"], fn ps ->
+        for p <- ps, do: %{p | "label" => "Spoofed", "source" => "spoofed"}
+      end)
+
+    billing =
+      update_in(Fixtures.document("domain.billing"), ["nodes", "publication"], fn ps ->
+        for p <- ps, do: %{p | "label" => "Invoice issued"}
+      end)
+
+    joined = Landscape.join([{"ledger", ledger}, {"billing", billing}])
+    issued = Enum.find(joined["nodes"]["publication"], &(&1["id"] == @issued))
+
+    assert issued["label"] == "Invoice issued"
+    assert issued["source"] == nil
+  end
+
+  test "leaves out what a document holds in a shape graph.v1 does not give it, and draws the rest" do
+    broken = %{
+      "kind" => "domain",
+      "name" => %{"not" => "text"},
+      "domain" => "Broken.Domain",
+      "nodes" => %{
+        "contract" => [
+          nil,
+          7,
+          %{"name" => "no id"},
+          %{"id" => "contract:broken.c", "name" => "broken.c", "module" => %{"x" => 1}}
+        ],
+        "publication" => [
+          %{"id" => "publication:Broken.Domain:", "name" => ""},
+          %{"id" => "publication:Broken.Domain:x", "name" => %{}},
+          %{
+            "id" => "publication:Broken.Domain:ok",
+            "name" => "billing.invoice.issued.v1"
+          }
+        ],
+        "event" => "not a list"
+      },
+      "relations" => %{
+        "publishes" => [nil, %{"id" => "p", "from" => nil, "to" => "publication:Broken.Domain:x"}],
+        "subscribed_by" => [
+          %{
+            "id" => "s",
+            "from" => "publication:Broken.Domain:ok",
+            "to" => "contract:broken.c",
+            "as" => %{"x" => 1}
+          }
+        ]
+      }
+    }
+
+    joined =
+      Landscape.join([{"billing", Fixtures.document("domain.billing")}, {"broken", broken}])
+
+    view = View.build(joined, :landscape)
+
+    assert "1/contract:broken.c" in ids(view.nodes)
+    assert Enum.map(joined["nodes"]["publication"], & &1["id"]) == [@issued]
+    assert [%{to: "1/contract:broken.c"}] = Enum.filter(view.relations, &(&1.from == @issued))
+
+    assert render_component(Canvas, id: "landscape", document: joined, view: :landscape) =~
+             "broken.c"
+
+    assert Landscape.join([{"broken", %{"kind" => "domain", "nodes" => [], "relations" => "x"}}])[
+             "nodes"
+           ]["contract"] == []
+  end
+
+  test "has a digest that names the documents it is of" do
+    assert landscape()["digest"] == landscape()["digest"]
+
+    refute Landscape.join([{"billing", Fixtures.document("domain.billing")}])["digest"] ==
+             landscape()["digest"]
+  end
+
+  test "refuses an application named by anything but a string, saying so" do
+    assert_raise ArgumentError, ~r/names each application by a string, got :billing/, fn ->
+      Landscape.join([{:billing, Fixtures.document("domain.billing")}])
+    end
+  end
+
+  test "refuses a document that is not a domain's" do
+    assert_raise ArgumentError,
+                 ~r/joins \{application, domain document\} pairs, got "contract"/,
+                 fn ->
+                   Landscape.join([{"billing", Fixtures.document("billing.payments")}])
+                 end
+  end
+
+  test "is the one view of a landscape, which no other view draws" do
+    assert View.views(landscape()) == [{:landscape, "Landscape"}]
+    assert View.build(Fixtures.document("domain.billing"), :landscape).nodes == []
+  end
+
+  test "every element has a panel, naming only what the landscape holds, the events it names among them" do
+    document = landscape()
+    lookup = Lookup.new(document)
+    view = View.build(document, :landscape)
+
+    events =
+      for e <- document["nodes"]["event"],
+          do: {:node, View.all(document).nodes |> Enum.find(&(&1.id == e["id"]))}
+
+    for picked <-
+          Enum.map(view.nodes, &{:node, &1}) ++
+            Enum.map(view.groups, &{:group, &1}) ++
+            Enum.map(view.relations, &{:relation, &1}) ++ events do
+      html =
+        render_component(&Panel.panel/1, picked: picked, lookup: lookup, target: "#graph")
+        |> LazyHTML.from_fragment()
+
+      where = elem(picked, 1).id
+      assert Enum.count(LazyHTML.query(html, "aside.ehg-panel")) == 1, where
+      assert html |> LazyHTML.query("span.ehg-ref") |> Enum.to_list() == [], where
+    end
+  end
+
+  test "the canvas draws it, the publication's card between the two boxes" do
+    html =
+      render_component(Canvas, id: "landscape", document: landscape(), view: :landscape)
+      |> LazyHTML.from_fragment()
+
+    assert Enum.count(LazyHTML.query(html, ~s([data-ehg-node="#{@issued}"]))) == 1
+    assert Enum.count(LazyHTML.query(html, "[data-ehg-group]")) == 2
+    assert Enum.count(LazyHTML.query(html, "[style]")) == 0
+  end
+end

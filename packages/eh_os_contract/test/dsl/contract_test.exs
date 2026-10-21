@@ -20,7 +20,7 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    aggregate :visit, "Wizyta", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
       state do
@@ -28,32 +28,25 @@ defmodule EhOsContract.ContractTest do
         field :payments, {:list, :money}, default: []
       end
 
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :money
       end
 
-      command :close, "Zamknięcie",
+      command :close, "Closing",
         by: [:reception, :manager],
         emits: :closed,
         rejects: :paid_in_full
 
-      stage :payment do
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money
-        end
-
-        event :closed, "Zamknięto", terminal: true
+      event :payment_recorded, "Paid" do
+        field :amount, :money
       end
+
+      event :closed, "Closed"
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
-    end
-
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 100}
       command :close
       rejected :paid_in_full
@@ -67,32 +60,25 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
-    end
-
-    aggregate :visit, "Wizyta", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
-      stage :payment do
-        event :closed, "Zamknięto", terminal: true
+      event :closed, "Closed"
 
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money
-        end
+      event :payment_recorded, "Paid" do
+        field :amount, :money
       end
 
-      command :close, "Zamknięcie",
+      command :close, "Closing",
         by: [:manager, :reception],
         emits: :closed,
         rejects: :paid_in_full
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :money
       end
 
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
       state do
         field :payments, {:list, :money}, default: []
@@ -100,7 +86,7 @@ defmodule EhOsContract.ContractTest do
       end
     end
 
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 100}
       command :close
       rejected :paid_in_full
@@ -114,7 +100,7 @@ defmodule EhOsContract.ContractTest do
       context: :settlement,
       id: "clinic.golden"
 
-    aggregate :visit, "Wizyta", source: "AGG-03" do
+    aggregate :visit, "Visit", source: "AGG-11" do
       identity :visit_id
 
       state do
@@ -122,33 +108,26 @@ defmodule EhOsContract.ContractTest do
         field :payments, {:list, :money}, default: []
       end
 
-      invariant :paid_in_full, "Zapłacono całość"
+      invariant :paid_in_full, "Paid in full"
 
-      command :record_payment, "Przyjęcie płatności", by: :reception, emits: :payment_recorded do
+      command :record_payment, "Recording a payment", by: :reception, emits: :payment_recorded do
         field :amount, :money
       end
 
-      command :close, "Zamknięcie",
+      command :close, "Closing",
         by: [:reception, :manager],
         emits: :closed,
         rejects: :paid_in_full
 
-      stage :payment do
-        # The only difference from `Golden`: the amount is optional.
-        event :payment_recorded, "Zapłacono" do
-          field :amount, :money, optional: true
-        end
-
-        event :closed, "Zamknięto", terminal: true
+      # The only difference from `Golden`: the amount is optional.
+      event :payment_recorded, "Paid" do
+        field :amount, :money, optional: true
       end
+
+      event :closed, "Closed"
     end
 
-    process :visit, "Wizyta" do
-      correlate :visit_id
-      stage :payment
-    end
-
-    scenario "zapłacono za mało — zamknięcie odrzucone" do
+    scenario "paid too little — closing rejected" do
       given :payment_recorded, %{amount: 100}
       command :close
       rejected :paid_in_full
@@ -160,32 +139,23 @@ defmodule EhOsContract.ContractTest do
 
   defp no_default(map), do: Map.put(map, :default, nil)
 
+  @digests [:version, :digests, :text_digest, :text_digests]
+
   describe "the model" do
     test "is the golden one" do
-      assert Map.drop(Model.fetch(Golden), [:version, :digests]) == %{
+      assert Map.drop(Model.fetch(Golden), @digests) == %{
                format: 1,
                kind: :contract,
                module: Golden,
                domain: EhOsContract.ContractTest.Clinic,
                context: :settlement,
                id: "clinic.golden",
-               process: %{
-                 name: :visit,
-                 label: "Wizyta",
-                 correlate: [:visit_id],
-                 accountable: nil,
-                 stages: [%{name: :payment, label: nil}],
-                 includes: [],
-                 deadline: nil,
-                 promises: [],
-                 source: nil
-               },
                units: [
                  %{
                    name: :visit,
                    kind: :aggregate,
-                   label: "Wizyta",
-                   source: "AGG-03",
+                   label: "Visit",
+                   source: "AGG-11",
                    identity: [:visit_id],
                    consults: [],
                    state: %{
@@ -196,14 +166,14 @@ defmodule EhOsContract.ContractTest do
                        |> Map.put(:default, [])
                      ]
                    },
-                   invariants: [%{name: :paid_in_full, label: "Zapłacono całość", source: nil}]
+                   invariants: [%{name: :paid_in_full, label: "Paid in full", source: nil}]
                  }
                ],
                commands: [
                  %{
                    name: :record_payment,
                    unit: :visit,
-                   label: "Przyjęcie płatności",
+                   label: "Recording a payment",
                    source: nil,
                    by: [:reception],
                    emits: [:payment_recorded],
@@ -213,7 +183,7 @@ defmodule EhOsContract.ContractTest do
                  %{
                    name: :close,
                    unit: :visit,
-                   label: "Zamknięcie",
+                   label: "Closing",
                    source: nil,
                    by: [:reception, :manager],
                    emits: [:closed],
@@ -226,9 +196,7 @@ defmodule EhOsContract.ContractTest do
                    name: :payment_recorded,
                    unit: :visit,
                    type: "clinic.golden.payment_recorded",
-                   stage: :payment,
-                   label: "Zapłacono",
-                   terminal: false,
+                   label: "Paid",
                    recorded_by: [],
                    depends_on: nil,
                    schema_version: 1,
@@ -239,9 +207,7 @@ defmodule EhOsContract.ContractTest do
                    name: :closed,
                    unit: :visit,
                    type: "clinic.golden.closed",
-                   stage: :payment,
-                   label: "Zamknięto",
-                   terminal: true,
+                   label: "Closed",
                    recorded_by: [],
                    depends_on: nil,
                    schema_version: 1,
@@ -259,7 +225,7 @@ defmodule EhOsContract.ContractTest do
                publishes: [],
                scenarios: [
                  %{
-                   description: "zapłacono za mało — zamknięcie odrzucone",
+                   description: "paid too little — closing rejected",
                    target: %{kind: :aggregate, name: :visit},
                    actor: nil,
                    given: [%{event: :payment_recorded, data: %{amount: 100}}],
@@ -286,10 +252,12 @@ defmodule EhOsContract.ContractTest do
                "contract",
                "event:closed",
                "event:payment_recorded",
-               "process:visit",
                "scenario:*",
                "unit:visit"
              ]
+
+      assert Model.fetch(Golden).text_digests |> Map.keys() |> Enum.sort() ==
+               Model.fetch(Golden).digests |> Map.keys() |> Enum.sort()
     end
 
     test "each digest is twelve hex characters, so it can be read out of a report" do
@@ -310,9 +278,9 @@ defmodule EhOsContract.ContractTest do
       defmodule EhOsContract.ContractTest.ClinicDomain do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
-        actor :reception, :human, "Recepcja"
-        actor :manager, :human, "Menedżer"
-        actor :registry, :system, "Rejestr"
+        actor :reception, :human, "Reception"
+        actor :manager, :human, "Manager"
+        actor :registry, :system, "Registry"
       end
 
       defmodule EhOsContract.ContractTest.Named do
@@ -320,33 +288,33 @@ defmodule EhOsContract.ContractTest do
           domain: EhOsContract.ContractTest.ClinicDomain,
           context: :settlement, id: "clinic.named"
 
-        subscribe "rehmed.visit.closed.v1", as: :closed_elsewhere do
+        subscribe "scheduling.visit.closed.v1", as: :closed_elsewhere do
           field :visit_id, :id
         end
 
-        subscribe "rehmed.visit.opened.v1", as: :opened_elsewhere do
+        subscribe "scheduling.visit.opened.v1", as: :opened_elsewhere do
           field :visit_id, :id
         end
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          command :close, "Zamknięcie", by: [:reception, :manager, :registry], emits: :closed
-          command :remind, "Przypomnienie", emits: :reminded
-          event :closed, "Zamknięto"
-          event :reminded, "Przypomniano"
-          event :arrived, "Przyszedł", recorded_by: :reception
-          event :reported, "Zgłoszono", recorded_by: :registry
+          command :close, "Closing", by: [:reception, :manager, :registry], emits: :closed
+          command :remind, "Reminder", emits: :reminded
+          event :closed, "Closed"
+          event :reminded, "Reminded"
+          event :arrived, "Arrived", recorded_by: :reception
+          event :reported, "Reported", recorded_by: :registry
         end
 
-        policy :remind_on_close, "Przypomnienie po zamknięciu",
+        policy :remind_on_close, "Reminder after closing",
           handles: [:closed, :closed_elsewhere],
           issues: :remind
 
-        read_model :open_visits, "Otwarte wizyty", projects: :closed do
+        read_model :open_visits, "Open visits", projects: :closed do
           field :clinic_id, :id
         end
 
-        query :open_for_clinic, "Otwarte w przychodni", reads: :open_visits, by: :reception do
+        query :open_for_clinic, "Open in the clinic", reads: :open_visits, by: :reception do
           param :clinic_id, :id
           scope :clinic_id
         end
@@ -359,7 +327,7 @@ defmodule EhOsContract.ContractTest do
       # `<name>.subscribe`, without its version, for an event a policy handles, and none
       # for :opened_elsewhere, which nothing handles and no inbox would take (E12c).
       assert Model.capabilities(EhOsContract.ContractTest.Named) == %{
-               "rehmed.visit.closed.subscribe" => %{
+               "scheduling.visit.closed.subscribe" => %{
                  kind: :subscribe,
                  name: :closed_elsewhere,
                  roles: [],
@@ -407,6 +375,8 @@ defmodule EhOsContract.ContractTest do
     test "does not move when declarations are written in another order, nested ones included" do
       assert Model.fetch(Golden).version == Model.fetch(Reordered).version
       assert Model.fetch(Golden).digests == Model.fetch(Reordered).digests
+      assert Model.fetch(Golden).text_digest == Model.fetch(Reordered).text_digest
+      assert Model.fetch(Golden).text_digests == Model.fetch(Reordered).text_digests
     end
 
     test "moves when one declaration changes, and only that declaration's digest moves" do
@@ -426,11 +396,11 @@ defmodule EhOsContract.ContractTest do
         defmodule EhOsContract.ContractTest.#{name} do
           use EhOsContract.Contract, domain: Clinic, context: :billing, id: "clinic.compared"
 
-          dcb :payer_period, "Okres płatnika" do
+          dcb :payer_period, "Payer's period" do
             identity #{inspect(identity)}
             consults :period_closed, match: :payer_id
-            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
-            event :period_closed, "Zamknięto okres"
+            command :close_period, "Closing the period", by: :manager, emits: :period_closed
+            event :period_closed, "Period closed"
           end
         end
         """)
@@ -441,38 +411,119 @@ defmodule EhOsContract.ContractTest do
       assert version.([:payer_id, :period_id]) != version.([:period_id, :payer_id])
     end
 
-    test "moves when a command's source changes, which the model carries" do
-      # `source:` is where the owner can check a declaration against the material it
-      # came from. Pointing a command at another place in the material is a change to
-      # the agreement, and a digest blind to it would let the deployment table say
-      # nothing had changed.
-      model = fn source ->
-        name = "Source#{System.unique_integer([:positive])}"
+    # Plan DD, V5 (#322): the version is what the contract allows, and its words have a
+    # digest of their own. A clinic's visit, relabelled for the manager who reads it.
+    defp visit(name, words, field \\ "") do
+      compile("""
+      defmodule EhOsContract.ContractTest.#{name} do
+        use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
+
+        aggregate :visit, "#{words.unit}" do
+          identity :visit_id
+          command :complete_visit, "#{words.command}", by: :reception, emits: :visit_completed
+          event :visit_completed, "#{words.event}", source: "#{words.source}" do
+            field :room, :string
+            #{field}
+          end
+        end
+
+        scenario "#{words.scenario}" do
+          command :complete_visit, %{visit_id: "v-1"}
+          expect :visit_completed, %{visit_id: "v-1", room: "#{words.room}"}
+        end
+      end
+      """)
+
+      Model.fetch(Module.concat(__MODULE__, name))
+    end
+
+    @words %{
+      unit: "Visit",
+      command: "Complete the visit",
+      event: "Visit completed",
+      source: "M1 00:12:40",
+      scenario: "reception completes the visit",
+      room: "room 2"
+    }
+
+    test "does not move when only the words change, and the words' digest does" do
+      before = visit("WordsBefore", @words)
+
+      after_ =
+        visit("WordsAfter", %{
+          @words
+          | unit: "A patient's visit",
+            command: "The patient leaves",
+            event: "The patient left the room",
+            source: "M1 00:13:05",
+            scenario: "the patient leaves the room"
+        })
+
+      assert before.version == after_.version
+      assert before.digests == after_.digests
+      refute before.text_digest == after_.text_digest
+
+      moved =
+        for {key, digest} <- before.text_digests, after_.text_digests[key] != digest, do: key
+
+      assert Enum.sort(moved) ==
+               ["command:complete_visit", "event:visit_completed", "scenario:*", "unit:visit"]
+    end
+
+    test "does not see the order of scenarios, in the version or the words" do
+      scenarios = fn name, order ->
+        [one, two] =
+          Enum.map(["room 1", "room 2"], fn room ->
+            """
+              scenario "visit in: #{room}" do
+                command :complete_visit, %{visit_id: "v-1"}
+                expect :visit_completed, %{visit_id: "v-1", room: "#{room}"}
+              end
+            """
+          end)
 
         compile("""
         defmodule EhOsContract.ContractTest.#{name} do
           use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.compared"
 
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed#{source}
-            event :visit_closed, "Wizyta zamknięta"
+            command :complete_visit, "Complete the visit", by: :reception, emits: :visit_completed
+            event :visit_completed, "Visit completed" do
+              field :room, :string
+            end
           end
+
+        #{if order == :forward, do: one <> two, else: two <> one}
         end
         """)
 
         Model.fetch(Module.concat(__MODULE__, name))
       end
 
-      without = model.("")
-      sourced = model.(~s(, source: "CMD-07"))
+      forward = scenarios.("ScenariosForward", :forward)
+      backward = scenarios.("ScenariosBackward", :backward)
 
-      assert [%{source: nil}] = without.commands
-      assert [%{source: "CMD-07"}] = sourced.commands
+      assert forward.digests == backward.digests
+      assert forward.text_digests == backward.text_digests
+    end
 
-      moved = for {key, digest} <- without.digests, sourced.digests[key] != digest, do: key
-      assert moved == ["command:close_visit"]
-      assert without.version != sourced.version
+    test "moves when a field is added, and the words' digest does not" do
+      before = visit("FieldBefore", @words)
+      after_ = visit("FieldAfter", @words, "field :doctor, :string, optional: true")
+
+      refute before.version == after_.version
+      moved = for {key, digest} <- before.digests, after_.digests[key] != digest, do: key
+      assert moved == ["event:visit_completed"]
+      assert before.text_digest == after_.text_digest
+    end
+
+    test "moves when a scenario's data changes, a field's value not being a word" do
+      before = visit("DataBefore", @words)
+      after_ = visit("DataAfter", %{@words | room: "room 3"})
+
+      refute before.version == after_.version
+      assert before.text_digest == after_.text_digest
     end
   end
 
@@ -491,10 +542,10 @@ defmodule EhOsContract.ContractTest do
           defmodule EhOsContract.ContractTest.UnknownOption do
             use EhOsContract.Contract, domain: Clinic, context: :settlement, id: "clinic.unknown_option"
 
-            aggregate :visit, "Wizyta" do
+            aggregate :visit, "Visit" do
               identity :visit_id
 
-              command :close, "Zamknięcie", by: :reception, emit: :closed do
+              command :close, "Closing", by: :reception, emit: :closed do
                 field :note, :string
               end
             end

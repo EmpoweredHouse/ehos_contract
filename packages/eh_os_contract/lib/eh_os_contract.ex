@@ -36,6 +36,7 @@ defmodule EhOsContract do
       DomainService,
       Conformance.Wire,
       Deployment,
+      Dependency,
       Domain,
       {Domain.Dsl, []},
       Duration,
@@ -179,8 +180,8 @@ defmodule EhOsContract do
 
   A credential's actor is asked of the `EhOsContract.Authorizer` for the event's
   capability, `<domain>.<event>` (`EhOsContract.Model.capabilities/1`), as a
-  command's is — a person who saw something, reception marking the patient's
-  arrival. An event only `:system` actors record has no capability, and a
+  command's is — a person who saw something, a picker reporting a shelf found
+  empty. An event only `:system` actors record has no capability, and a
   credential is refused `:missing_capability`. A `:system` actor records it when the
   event's `recorded_by:` names it: an integration writing down what a system
   answered. Otherwise it goes as a command
@@ -203,8 +204,8 @@ defmodule EhOsContract do
   a person's credential, is another.
 
       EhOsContract.call(
-        {:command, "rehmed.record_payment"},
-        %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
+        {:command, "lending.pay_late_fee"},
+        %{"loan_id" => "loan-1", "method" => "card"},
         actor: actor, idempotency_key: "req-81"
       )
 
@@ -254,7 +255,7 @@ defmodule EhOsContract do
   **Every row is checked again**: for a credential's actor, a row whose scope field
   is not among the values the credential grants raises
   `EhOsContract.Authorizer.OutsideScopeError`, so a wrong `where` cannot hand one
-  clinic another's rows. So do rows that are not the read model's.
+  warehouse another's rows. So do rows that are not the read model's.
 
   **Read your writes**: `min_position:` — the `position` of a dispatch's
   receipt — waits until the read model the query reads has taken that position,

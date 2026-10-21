@@ -3,8 +3,8 @@ defmodule EhOsContract.Auth.SignIn do
   # docs/adr/browser-session.md, S1-S11. In the moduledoc: the addresses' form and the
   # post-logout address are D-68, the redirect URI D-64, `applications` naming only the others
   # D-69, the issuer's and the document's endpoints' form #89, starting while EHOS is down FM-19,
-  # the limits on every call to EHOS S6. In the typedoc of `t`: the cipher key S3, the random
-  # client secret S6.
+  # the limits on every call to EHOS S6, `absolute_limit` D-66 and D-113. In the typedoc of `t`: the
+  # cipher key S3, the random client secret S6.
   @moduledoc """
   Signing a person in to the application's pages through EHOS, with OpenID Connect:
   the application's client, and the process that keeps EHOS's discovery document and
@@ -19,7 +19,8 @@ defmodule EhOsContract.Auth.SignIn do
           client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
           address: "https://" <> System.fetch_env!("PHX_HOST"),
           secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-          applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
+          applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
+          absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
         ]
 
       # the supervision tree, after EhOsContract.Auth
@@ -42,6 +43,9 @@ defmodule EhOsContract.Auth.SignIn do
     * an address in `applications` is `address` itself: they are the other
       applications;
     * `secret_key_base` is shorter than 64 bytes, Phoenix's own minimum;
+    * `absolute_limit`, when given and not nil, is not whole seconds from a minute to 366 days. It is how
+      long a session lasts from the person's sign-in at EHOS, renewed or not: the installation's,
+      `EHOS_SIGN_IN_ABSOLUTE`, twelve hours when not given;
     * the file at `client_key_file` is not one private Ed25519 JWK with exactly
       `kty`, `crv`, `x`, `d`, `use: "sig"`, `alg: "Ed25519"` and a `kid` that is the
       RFC 7638 thumbprint of its public half. A PEM is refused.
@@ -76,7 +80,18 @@ defmodule EhOsContract.Auth.SignIn do
   @retry_min 1_000
   @retry_max 30_000
   @min_secret 64
-  @sign_in_keys [:client_id, :client_key_file, :address, :secret_key_base, :applications]
+  @sign_in_keys [
+    :client_id,
+    :client_key_file,
+    :address,
+    :secret_key_base,
+    :applications,
+    :absolute_limit
+  ]
+  # eh-os D-66: twelve hours unless the installation sets another, which EHOS gives the workload
+  # as EHOS_SIGN_IN_ABSOLUTE (D-113); a minute to 366 days, as EHOS takes it.
+  @default_absolute_limit 12 * 60 * 60
+  @absolute_limit_range 60..(366 * 24 * 60 * 60)
   # The endpoints of the document `oidcc` calls or sends the browser to; a PAR endpoint is posted
   # the client's assertion whenever the document names one. `mtls_endpoint_aliases` would replace
   # the token and PAR endpoints only for `tls_client_auth`, which needs `ssl:` in `request_opts`,
@@ -102,7 +117,8 @@ defmodule EhOsContract.Auth.SignIn do
     :applications,
     :secret_key_base,
     :cipher_key,
-    :request_opts
+    :request_opts,
+    :absolute_limit
   ]
   defstruct [:client_secret | @enforce_keys]
 
@@ -128,7 +144,8 @@ defmodule EhOsContract.Auth.SignIn do
           secret_key_base: String.t(),
           cipher_key: binary(),
           client_secret: String.t() | nil,
-          request_opts: map()
+          request_opts: map(),
+          absolute_limit: pos_integer()
         }
 
   # What the document must say: S6 in docs/adr/browser-session.md.
@@ -482,8 +499,19 @@ defmodule EhOsContract.Auth.SignIn do
       applications: applications!(Keyword.get(sign_in, :applications, %{}), address),
       secret_key_base: secret_key_base,
       cipher_key: Cipher.key(secret_key_base),
-      request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}}
+      request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}},
+      # nil, as `System.get_env/1` gives it unset, is not given.
+      absolute_limit: absolute_limit!(sign_in[:absolute_limit] || @default_absolute_limit)
     }
+  end
+
+  defp absolute_limit!(seconds) when is_integer(seconds) and seconds in @absolute_limit_range,
+    do: seconds
+
+  defp absolute_limit!(_other) do
+    raise ArgumentError,
+          "sign_in: absolute_limit must be whole seconds from #{@absolute_limit_range.first} to " <>
+            "#{@absolute_limit_range.last}, EHOS_SIGN_IN_ABSOLUTE as an integer (eh-os D-113)"
   end
 
   defp random_secret, do: 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)

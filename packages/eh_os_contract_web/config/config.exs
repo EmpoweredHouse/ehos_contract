@@ -4,7 +4,7 @@ import Config
 # configuration is never loaded by the application that pulls it in, the
 # same property packages/eh_os_contract/config/config.exs relies on.
 
-# The contract status screen (PLAN.md, dopisek 23 sierpnia (2)) calls straight
+# The contract status screen calls straight
 # into EhOsContract.Registry/EhOsContract.Conformance, the same functions `mix eh_os_contract.report`
 # already calls — so this package needs the same two keys any consumer of
 # `:eh_os_contract` needs: which application holds the contracts (its own test fixture,
@@ -42,7 +42,7 @@ config :eh_os_contract_web, EhOsContract.Web.TestHost.Endpoint,
 
 config :logger, level: :warning
 
-# `mix assets.build` — the JS pipeline (PLAN.md, dopisek 23 sierpnia (4)).
+# `mix assets.build` — the JS pipeline.
 # NODE_PATH points at deps/ so `import {Socket} from "phoenix"` resolves
 # against the hex packages already in this build, the same trick every
 # `mix phx.new` app uses — no npm, no node_modules, esbuild is a downloaded

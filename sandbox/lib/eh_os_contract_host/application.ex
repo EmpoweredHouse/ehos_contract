@@ -5,12 +5,12 @@ defmodule EhOsContractHost.Application do
 
   use Boundary,
     top_level?: true,
-    deps: [EhOsContract, EhOsContract.Auth, Taxvision, EhOsContractHostWeb]
+    deps: [EhOsContract, EhOsContract.Auth, EhOsContractHost.Repo, EhOsContractHostWeb]
 
   @impl true
   def start(_type, _args) do
     children = [
-      Taxvision.Repo,
+      EhOsContractHost.Repo,
       {Oban, Application.fetch_env!(:eh_os_contract_host, Oban)},
       # After the repo, which it writes the deployment row to, and before the
       # endpoint, whose dashboard reads the registry it loads.

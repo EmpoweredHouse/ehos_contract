@@ -1,5 +1,10 @@
 # Technology notes
 
+> **19 October 2026:** the client's name in this file was replaced by a description, "the first client" (an
+> accounting firm), and its examples translated into English, with module names, identifiers and the national
+> registry they name renamed to match ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What
+> happened and what each example illustrates did not change.
+
 **How it is built and what it looks like.** Code shapes, schemas, tables, library choices,
 implementation traps. Reference material, not a document to read end to end — see
 [§16](#16-where-to-look-for-what) for which section shows which decision's shape.
@@ -20,18 +25,18 @@ always means a business process; where an OTP process is meant, the text says *B
 The contract is a module built from a DSL:
 
 ```elixir
-defmodule Taxvision.Contract.Invoicing do
+defmodule Bookkeeping.Contract.Invoicing do
   use PNS.Contract
 
   event :invoice_issued,
-    label: "Faktura wystawiona",             # "Invoice issued"
-    owner: Taxvision.Invoicing,
+    label: "Invoice issued",
+    owner: Bookkeeping.Invoicing,
     payload: %{invoice_id: :id, amount: :integer, client_id: :id}
 
   event :filing_rejected_by_authority,
-    label: "Urząd odrzucił zgłoszenie",      # "The authority rejected the filing"
-    owner: Taxvision.Filing,
-    depends_on: :ksef,
+    label: "The authority rejected the filing",
+    owner: Bookkeeping.Filing,
+    depends_on: :e_invoicing,
     payload: %{filing_id: :id, closing_id: :id, reason: :string},
     retain: %{reason: :hash},
     identity: [:filing_id, :reason],
@@ -39,15 +44,15 @@ defmodule Taxvision.Contract.Invoicing do
     stage: :filing
 
   event :invoice_filed,
-    label: "Zgłoszenie wysłane",             # "Filing sent"
-    owner: Taxvision.Filing,
+    label: "Filing sent",
+    owner: Bookkeeping.Filing,
     payload: %{filing_id: :id, closing_id: :id},
     process: :month_end_closing,
     stage: :filing,
     terminal: true
 
   process :month_end_closing,
-    label: "Zamknięcie miesiąca",            # "Month-end closing"
+    label: "Month-end closing",
     stages: [:collection, :calculation, :filing],
     instance: [:closing_id],
     cadence: {1, :month},
@@ -60,22 +65,22 @@ defmodule Taxvision.Contract.Invoicing do
     or_else :closing_abandoned
   end
 
-  # KSeF: Poland's mandatory e-invoicing platform (Krajowy System e-Faktur) — a real
-  # government system, not a stand-in.
-  external :ksef, label: "KSeF", expected_latency: {2, :hour}
+  # The tax authority's mandatory e-invoicing registry — a real government system,
+  # not a stand-in.
+  external :e_invoicing, label: "E-invoicing registry", expected_latency: {2, :hour}
 
   rule :filing_requires_complete_month,
-    label: "Nie wysyłamy zgłoszenia z niekompletnego miesiąca",  # "We do not file for an incomplete month"
-    function: {Taxvision.Filing, :prepare, 1},
-    source: "Warsztat 07-07, WF 01:50:54"
+    label: "We do not file for an incomplete month",
+    function: {Bookkeeping.Filing, :prepare, 1},
+    source: "Workshop 07-07, WF 01:50:54"
 
-  example "komplet dokumentów — zgłoszenie idzie",   # "complete documents — the filing goes through"
+  example "complete documents — the filing goes through",
     rule: :filing_requires_complete_month,
     given: %{documents_collected: true, bank_statement: :present},
     command: {:prepare_filing, %{closing_id: "4712"}},
-    then: [:jpk_generated, :invoice_filed]
+    then: [:audit_file_generated, :invoice_filed]
 
-  example "brak wyciągu — komenda odrzucona",         # "no bank statement — command rejected"
+  example "no bank statement — command rejected",
     rule: :filing_requires_complete_month,
     given: %{documents_collected: true, bank_statement: nil},
     command: {:prepare_filing, %{closing_id: "4712"}},
@@ -92,11 +97,15 @@ decide (`aggregate`, `dcb`) with their commands, events and invariants, consumer
 way round. `retain:` became `personal:` with crypto-shredding (E8). Every key is in the reference generated
 from the extensions, `packages/eh_os_contract/docs/dsl/`.
 
-The Polish is not a placeholder — `label`, `source`, and the two `example` titles above are read
-by a real accountant, in the language the workshop was run in, and the engine passes them
-through untouched (see `docs/contract.md`'s note on `event`'s `label`). The English comments
-beside them exist only for a reader of this document who doesn't speak Polish; they are glosses,
-not a translation the contract itself would ever carry.
+*Corrected 13 October 2026, plan DD, P2h* ([contract v2](contract-v2.md) §4.2, [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)).
+**A contract has no `process` any more.** The run, its stages, `ends_on`, promises and deadline are a third
+module, `use EhOsContract.Process`, which includes events from the contracts that declare them; a contract's
+units have no stage groups and its events no `terminal:`.
+
+The labels are not placeholders. In the first client's contract `label`, `source` and the two `example` titles
+were read by a real accountant in Polish, the language the workshop was run in, and the engine passes them through
+untouched (see `docs/contract.md`'s note on `event`'s `label`). They are shown above in English, as the note at
+the top of this file says; the contract itself carries its client's words, never a translation.
 
 `use PNS.Contract` accumulates the declarations in module attributes and generates the query
 functions at `@before_compile`: `event?/1`, `event/1`, `events/0`, `process/1`, `traces/0`,
@@ -204,6 +213,13 @@ evidence changed, and the log should record which policy each event was written 
 
 It also generates `version/0`: a hash of all declarations computed at compile time. That is the
 `contract_version` stamped on every event (§3), so it cannot be forgotten or hand-maintained.
+
+*Amended 16 October 2026 (plan DD, V5):* not of all declarations, of what they allow. A label, a `source:`, a
+scenario's description and a domain's glossary are the agreement's words, and correcting one moved the version,
+stamped every later event differently and marked every read model stale, with nothing agreed changed. The words
+now have a digest of their own, `text_digest`, recorded beside the version on each deployment, so the report
+can say that only the words changed. [#322](https://github.com/EmpoweredHouse/eh-os-contract/issues/322)
+
 **The serialisation has to be canonical across runtime versions.** This value separates legitimate history
 from drift (§9), so a hash derived from `:erlang.term_to_binary` can shift on an OTP upgrade and reclassify
 every past event as historical — with no contract change at all.
@@ -232,10 +248,10 @@ dependency on their contract, so a single global one means every event added rec
 handler. The context wraps it, following the `use MyAppWeb, :controller` pattern:
 
 ```elixir
-defmodule Taxvision.Invoicing.Handler do
+defmodule Bookkeeping.Invoicing.Handler do
   defmacro __using__(opts) do
     quote do
-      use PNS.Handler, unquote([{:contract, Taxvision.Contract.Invoicing} | opts])
+      use PNS.Handler, unquote([{:contract, Bookkeeping.Contract.Invoicing} | opts])
     end
   end
 end
@@ -255,7 +271,7 @@ The unit of splitting is the **process**, which is already first-class, is the d
 navigation unit, and is what a workshop produces:
 
 ```
-sandbox/lib/taxvision/contracts/
+sandbox/lib/<client>/contracts/
   month_end_closing.ex
   invoice_correction.ex
   client_onboarding.ex
@@ -322,7 +338,7 @@ explicit rules, explicit output, no environment.
 ## 2. Compile-time enforcement
 
 ```elixir
-defmodule Taxvision.Invoicing.OnOrderApproved do
+defmodule Bookkeeping.Invoicing.OnOrderApproved do
   use PNS.Handler, event: :order_approved, publishes: [:invoice_issued]
 
   @impl PNS.Handler
@@ -367,7 +383,7 @@ cannot arrange. Instead the macro injects `__pns_handler__/0` into each handler,
 scans once at boot:
 
 ```elixir
-{:ok, mods} = :application.get_key(:taxvision, :modules)
+{:ok, mods} = :application.get_key(:bookkeeping, :modules)
 
 mods
 |> Enum.filter(&(Code.ensure_loaded?(&1) and function_exported?(&1, :__pns_handler__, 0)))
@@ -440,6 +456,12 @@ may quote a value. `correlation_id` and `causation_id` are still set by the fram
 command the cause of its events, and the event a policy reacted to the cause of the policy's command. The
 payload is written by `EhOsContract.Codec` in the log's JSON form and read back into the contract's structs.
 Retention: E8.
+
+*Corrected 13 October 2026, plan DD, P2h* ([contract v2](contract-v2.md) §10.3, [#221](https://github.com/EmpoweredHouse/eh-os-contract/issues/221)).
+Neither table has `process` or `instance_id` since storage version 3 (V03): an event's runs are rows of
+`eh_os_contract_event_runs`, one per process module that includes it, and a command row names no run. The
+engine refuses to start on storage newer than its own version, since a node of an older release would write the
+removed columns.
 
 ## 4. Delivery
 
@@ -879,6 +901,10 @@ Store the last computed state per process rather than recomputing on page load.
   navigation unit. *Unimplemented as of 5 August, and it took a second contract to notice:* the graph module
   has no narrowing to a process or a contract, because it was written while only one contract existed and the
   assumption "there is only one" was invisible. A gap against this line, not a preference against it.
+  *Amended 15 October 2026:* navigation is global, and readability is kept another way. One canvas moves
+  between the context map, a contract, a unit and a process, and shows one of them at a time; structure and
+  processes are two viewpoints of it, linked both ways (`docs/adr/graph-renderer.md`, the amendment of that
+  day; [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297)).
   > **28 September 2026, plan EG2 and after:** the graph screen now also draws two pictures per *domain* —
   > its context map and its system, contracts and what flows between them — above the per-process panels.
   > They stay readable because their nodes are contexts and contracts, not events: a domain has a handful of
@@ -911,15 +937,15 @@ produce three or zero — so a Sankey of the whole system misleads.
 
 ## 10. External adapters
 
-KSeF as the worked example. *Caveat: session mechanics and schema version need checking against
-current documentation; none of this was verified against live docs.*
+The tax authority's e-invoicing registry as the worked example. *Caveat: session mechanics and schema version
+need checking against current documentation; none of this was verified against live docs.*
 
 **Adapter state.** Submission reference, poll schedule, session token and expiry, rate-limit
 budget, service windows. A state machine with its own table. Oban retries a job; it does not know
 a session expired.
 
-**Three states, three events.** *Submitted*, *accepted*, *UPO held*. The UPO is evidence, not an
-acknowledgement. One event with a status field loses the distinction that matters in an audit.
+**Three states, three events.** *Submitted*, *accepted*, *receipt held*. The official receipt is evidence, not
+an acknowledgement. One event with a status field loses the distinction that matters in an audit.
 
 | Test level | Runs against | When |
 | --- | --- | --- |
@@ -928,8 +954,8 @@ acknowledgement. One event with a status field loses the distinction that matter
 | Adapter contract | Real external test environment | Scheduled, not per commit |
 
 The third earns its keep: it is how you learn the authority changed its API before the client
-does. KSeF has a test environment, which makes it a good first integration. Comarch reportedly has
-none.
+does. The e-invoicing registry has a test environment, which makes it a good first integration. One
+accounting package reportedly has none.
 
 Recorded responses (`exvcr`) help determinism but age badly. They supplement the scheduled live
 test, not replace it.

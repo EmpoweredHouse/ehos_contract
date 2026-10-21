@@ -9,16 +9,20 @@ defmodule EhOsContract.Contract.Rules.Fields do
   #   (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
   #   a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
   #   edge it named. A unit's `identity` is held to the same, named once, since it is
-  #   a field of the unit's state, commands and events.
+  #   a field of the unit's state, commands and events. An identity field typed
+  #   (plan DD, L3 (#286)) is an `:id` or `{:id, name}`, another unit's or an
+  #   entity's, and a generated identity, which is new, is no other's number.
   # - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
   #   `{:enum, members}` with no member twice, the name of a domain value, or
-  #   `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
-  #   exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+  #   `{:id, name}`, the identifier of a domain entity or, since plan DD, L3 (#286), of a
+  #   unit of one of the domain's contracts. Whether that value, entity or unit exists is
+  #   the domain's and its contracts' to say, and a Mix compiler checks it (L3, X3).
   # - **F3.** Only a state gives a field a `default:`.
-  # - **F4.** A field that tells which run an event belongs to — named in the
-  #   process's `correlate`, or in the `correlate` of a process manager handling the
-  #   event — is neither `optional:` nor `personal:`. Identity fields are injected
-  #   required and not personal, so they satisfy this by construction.
+  # - **F4.** A field that tells which run of a process manager an event belongs to —
+  #   named in the `correlate` of a process manager handling the event — is neither
+  #   `optional:` nor `personal:`. Identity fields are injected required and not
+  #   personal, so they satisfy this by construction. What a process module correlates
+  #   on is held to the same between modules (X6).
   # - **F5.** `personal: f` names `f`, a required, non-personal `:id` field of the
   #   same struct that declares `subject:`. Whether the subject exists is X3's.
   # - **F6.** A unit's identity is injected into its state, commands and events;
@@ -29,14 +33,14 @@ defmodule EhOsContract.Contract.Rules.Fields do
   #   `scope` field, whose value goes into every authorization decision. A parameter
   #   takes no `personal:` at all, so here F7 refuses only a manager's state; a
   #   domain value holding personal data in either place is the domain's to see (L3).
-  # - **F8** (issue #96). A field a run or a process manager's record is told by — an
+  # - **F8** (issue #96). A field a process manager's record is told by — an
   #   event's field F4 names, and a process manager's state field its `correlate` names —
   #   is an `:id`, `{:id, entity}` or a domain value resting on `:id`. Its value goes into
-  #   an index (`eh_os_contract_event_runs`, the process managers' primary key), and only
+  #   an index (the process managers' primary key), and only
   #   an `:id` has a length bound, 255 bytes. Here a built-in type or a list is refused;
   #   a domain value is checked between modules, where the domain is known (L3).
-  # - **F9** (issue #96). A unit's identity, a process's `correlate` and a process
-  #   manager's `correlate` each have at most `EhOsContract.Key.max_fields/0` fields: the
+  # - **F9** (issue #96). A unit's identity and a process manager's `correlate` each
+  #   have at most `EhOsContract.Key.max_fields/0` fields: the
   #   key they make is one btree entry, and seven `:id` fields at their bound overflow it.
   # - **F10** (plan T1). `supplied_by: :host` is taken only by a field a request would
   #   otherwise fill: a command's, or an event's that an actor records (`recorded_by:`).
@@ -82,9 +86,8 @@ defmodule EhOsContract.Contract.Rules.Fields do
   end
 
   @doc """
-  Every field a run or a process manager's record is told by, as `{where, field}`: an
-  event's field that the process's `correlate`, or the `correlate` of a process manager
-  handling the event, names; a process manager's state field its own `correlate` names;
+  Every field a process manager's record is told by, as `{where, field}`: an event's
+  field that the `correlate` of a process manager handling the event names; a process manager's state field its own `correlate` names;
   and, for one the state does not declare, the first local event's field it takes its
   type from. Each field once, though several declarations name it. F8 holds each to
   `:id`, here and, for a domain value, between modules (L3).
@@ -95,7 +98,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
     events =
       for u <- d.units,
-          e <- Rules.events(u),
+          e <- u.events,
           f <- e.fields,
           {name, by} <- Map.get(correlated, e.name, []),
           f.name == name do
@@ -131,9 +134,9 @@ defmodule EhOsContract.Contract.Rules.Fields do
   defp first_carrying(d, name) do
     Enum.find_value(d.units, [], fn unit ->
       if name in unit.identity do
-        if Rules.events(unit) != [], do: []
+        if unit.events != [], do: []
       else
-        Enum.find_value(Rules.events(unit), fn e ->
+        Enum.find_value(unit.events, fn e ->
           case Enum.find(e.fields, &(&1.name == name)) do
             nil -> nil
             f -> [{e, f}]
@@ -154,7 +157,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
   end
 
   defp supplied(d) do
-    recorded = for u <- d.units, e <- Rules.events(u), e.recorded_by != [], do: e.name
+    recorded = for u <- d.units, e <- u.events, e.recorded_by != [], do: e.name
 
     misplaced =
       for {where, fields, _injected, kind} <- structs(d),
@@ -186,7 +189,6 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
     keyed =
       for(u <- d.units, do: {"#{u.kind} #{inspect(u.name)}: identity", u.identity, u}) ++
-        for(p <- d.processes, do: {"process #{inspect(p.name)}: correlate", p.correlate, p}) ++
         for pm <- d.process_managers,
             do: {"process manager #{inspect(pm.name)}: correlate", pm.correlate, pm}
 
@@ -224,8 +226,34 @@ defmodule EhOsContract.Contract.Rules.Fields do
       for name <- DslRules.duplicates(unit.identity, & &1),
           do: {"#{where} names #{inspect(name)} twice", unit}
 
-    Enum.reject(form, &is_nil/1) ++ twice
+    Enum.reject(form, &is_nil/1) ++ twice ++ identity_types(unit, where)
   end
+
+  defp identity_types(unit, where) do
+    typed =
+      for {name, type} <- unit.identity_types, not identity_type?(type) do
+        {"#{where} #{inspect(name)} is #{inspect(type)}; an identity field is an :id, or " <>
+           "{:id, name} for another unit's or an entity's number#{generated_hint(name)}", unit}
+      end
+
+    generated =
+      for {name, {:id, _}} <- unit.identity_types, unit.generated != nil do
+        {"#{where} #{inspect(name)} is #{inspect(unit.identity_types[name])}, and the library " <>
+           "generates the identity: a new one is no other unit's or entity's number", unit}
+      end
+
+    typed ++ generated
+  end
+
+  defp identity_type?(:id), do: true
+  defp identity_type?({:id, name}) when is_atom(name) and name not in [nil, true, false], do: true
+  defp identity_type?(_type), do: false
+
+  # `identity visit_id: {:id, :visit}, generated: :uuid` is one keyword list to Elixir.
+  defp generated_hint(:generated),
+    do: "; to have the library generate it, write `identity :name, generated: :uuid`"
+
+  defp generated_hint(_name), do: ""
 
   @doc """
   Every function of a domain service, as `{where, function}`, for the type it
@@ -300,7 +328,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
       ),
       for(
         u <- d.units,
-        e <- Rules.events(u),
+        e <- u.events,
         do: {"event #{inspect(e.name)}", e.fields, u.identity, {:event, e.name}}
       ),
       for(
@@ -325,22 +353,19 @@ defmodule EhOsContract.Contract.Rules.Fields do
     ])
   end
 
-  # For each local event, the correlation fields that apply to it and who names them.
+  # For each local event, the correlation fields of the process managers handling it,
+  # each once: a field named twice is P4's to report, and an event a manager both
+  # starts and ends on is one event (plan DD, C1, #304).
   defp correlated(d) do
-    process =
-      for p <- d.processes, name <- p.correlate, e <- Rules.local_events(d), into: [] do
-        {e.name, name, "process #{inspect(p.name)}"}
-      end
-
     managers =
       for pm <- d.process_managers,
           event <- handled(pm),
           name <- pm.correlate,
-          into: [] do
+          uniq: true do
         {event, name, "process manager #{inspect(pm.name)}"}
       end
 
-    Enum.group_by(process ++ managers, &elem(&1, 0), &Tuple.delete_at(&1, 0))
+    Enum.group_by(managers, &elem(&1, 0), &Tuple.delete_at(&1, 0))
   end
 
   defp handled(pm) do

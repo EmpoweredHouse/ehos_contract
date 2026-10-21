@@ -23,7 +23,7 @@ defmodule EhOsContract.Auth.RenewalTest do
 
   @moduletag :tmp_dir
 
-  @address "https://rehmed.test"
+  @address "https://clinic.test"
   # Two applications in the sign-in's granted set, and one the person holds no role in.
   @ledger "https://ledger.test"
   @archive "https://archive.test"
@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.RenewalTest do
     {key_file, _key} = FakeEhos.client_key_file(dir)
 
     Application.put_env(:eh_os_contract_auth, :sign_in,
-      client_id: "rehmed/test",
+      client_id: "clinic/test",
       client_key_file: key_file,
       address: @address,
       secret_key_base: String.duplicate("s", 64),
@@ -574,7 +574,7 @@ defmodule EhOsContract.Auth.RenewalTest do
   defp signed_in!(ehos, name) do
     config = SignIn.config(name)
 
-    FakeEhos.grant(ehos, "code-1", "rehmed/test", %{
+    FakeEhos.grant(ehos, "code-1", "clinic/test", %{
       "nonce" => "n-1",
       "applications" => %{@ledger => "ledger/test", @archive => "archive/test"}
     })

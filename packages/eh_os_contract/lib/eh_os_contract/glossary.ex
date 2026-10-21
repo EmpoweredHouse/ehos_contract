@@ -12,6 +12,11 @@ defmodule EhOsContract.Glossary do
   # Given the contracts, each term also says its word in code and the declarations of
   # its context's contracts named with it (plan DD, L1 (#269)): the names
   # `EhOsContract.CodeWords` reads, which the check's two rules about words read too.
+  # Given the process modules as well (plan DD, P2e (#220)), it lists after them each
+  # process module that includes events of the context's contracts and whose names say
+  # the term: its id, its stages, its promises and the fields that tell its runs apart.
+  # A process crosses contexts, so it is listed under the term of each context it takes
+  # events from. The check's rules do not read a process module's names.
   #
   # Contexts and terms come in the order the domain declares them, as every reader of
   # the model prints (v2 §9).
@@ -20,7 +25,8 @@ defmodule EhOsContract.Glossary do
   @doc """
   The glossary of `domain`, a domain module or its model. `language:` asks for the
   terms in that language; `context:` keeps one context; `contracts:`, contract
-  modules, adds each term's word in code and the declarations named with it.
+  modules, adds each term's word in code and the declarations named with it;
+  `processes:`, process modules, adds with them the process modules named with it.
   """
   @spec render(module() | map(), keyword()) :: String.t()
   def render(domain, opts \\ []) do
@@ -39,7 +45,24 @@ defmodule EhOsContract.Glossary do
           domain == model.module,
           do: {c.model.context, c.module, EhOsContract.CodeWords.names(c)}
 
-    code = if Keyword.has_key?(opts, :contracts), do: names, else: nil
+    processes =
+      for module <- Keyword.get(opts, :processes, []),
+          %{kind: :process, domain: domain} = process <- [EhOsContract.Model.fetch(module)],
+          domain == model.module do
+        contexts =
+          process
+          |> EhOsContract.Model.process_events()
+          |> Enum.map(&EhOsContract.Model.fetch(&1.contract).context)
+          |> Enum.uniq()
+
+        {contexts, process.id, process_names(process)}
+      end
+
+    code =
+      if Keyword.has_key?(opts, :contracts),
+        do: %{contracts: names, processes: processes},
+        else: nil
+
     sections = Enum.map(contexts, &context(&1, model, wanted, code))
     Enum.join(["# Glossary of `#{model.name}`\n" | sections], "\n")
   end
@@ -121,11 +144,21 @@ defmodule EhOsContract.Glossary do
         word = Enum.join(sequence, "_")
 
         named =
-          for {^context, module, names} <- code,
+          for {^context, module, names} <- code.contracts,
               names = Enum.filter(names, &EhOsContract.CodeWords.contains?(&1.words, sequence)),
               names != [] do
             "- `#{inspect(module)}`: " <> declarations(names)
           end
+
+        named =
+          named ++
+            for {contexts, id, names} <- code.processes,
+                context in contexts,
+                names = Enum.filter(names, &EhOsContract.CodeWords.contains?(&1.words, sequence)),
+                names != [] do
+              "- process `#{id}`: " <>
+                (names |> Enum.map(& &1.what) |> Enum.uniq() |> Enum.join(", "))
+            end
 
         case named do
           [] -> ["_In code: `#{word}`, in no declaration._"]
@@ -133,6 +166,21 @@ defmodule EhOsContract.Glossary do
         end
     end
   end
+
+  # A process module's names: each segment of its id after the domain's name, its
+  # stages, its promises and the fields that tell its runs apart. A segment is a name of
+  # its own: a term's words do not run across the dot.
+  defp process_names(process) do
+    [_namespace | rest] = String.split(process.id, ".")
+
+    for(segment <- rest, do: %{what: "its id", words: EhOsContract.CodeWords.words(segment)}) ++
+      for(s <- process.stages, do: name("stage", s.name)) ++
+      for(p <- process.promises, do: name("promise", p.name)) ++
+      for(f <- process.correlate, do: name("field", f))
+  end
+
+  defp name(kind, name),
+    do: %{what: "#{kind} `#{inspect(name)}`", words: EhOsContract.CodeWords.words(name)}
 
   defp kind(%{kind: :unit, what: what}), do: what |> String.split(" ") |> hd()
   defp kind(%{kind: :read_model}), do: "read model"

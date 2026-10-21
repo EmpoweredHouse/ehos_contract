@@ -52,11 +52,11 @@ defmodule EhOsContract.Auth.KeyCase do
         %{
           "iss" => "https://ehos.test",
           "sub" => "u-anna",
-          "aud" => "rehmed/test",
+          "aud" => "clinic/test",
           "iat" => DateTime.to_unix(DateTime.utc_now()),
           "exp" => DateTime.to_unix(DateTime.utc_now()) + 600,
           "jti" => Ecto.UUID.generate(),
-          "cap" => ["rehmed.record_payment"]
+          "cap" => ["clinic.record_payment"]
         },
         Map.new(claims)
       )

@@ -4,12 +4,12 @@ defmodule EhOsContract.Contract.Dsl do
 
   One top-level section, so every entity is written straight into the module body:
   the units that decide (aggregates and dynamic consistency boundaries) with their
-  state, invariants, commands, events and stage groups; what reacts to events
-  (policies, effects, process managers); what is read (read models, queries); what
-  enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
-  application) and what leaves the application (`publish`);
-  the process, when it describes one; and scenarios. The vocabulary is closed: a contract cannot add
-  extensions.
+  state, invariants, commands and events; what reacts to events (policies, effects,
+  process managers); what is read (read models, queries); what enters from elsewhere
+  (`consumes` from a sibling contract, `subscribe` from another application) and what
+  leaves the application (`publish`); and scenarios. A process, its runs, stages and
+  promises, is a module of its own (`EhOsContract.Process`). The vocabulary is closed:
+  a contract cannot add extensions.
 
   Options may stand beside a `do` block, as in `command :record_payment, "…", by:
   :reception do … end`.
@@ -77,20 +77,22 @@ defmodule EhOsContract.Contract.Dsl do
             line: __CALLER__.line,
             description:
               "identity takes one option beside its fields, `generated: :uuid`, and got " <>
-                Macro.to_string(opts)
+                Macro.to_string(opts) <>
+                "; a field of it typed as another unit's or an entity's number is written " <>
+                "`identity visit_id: {:id, :visit}`"
       end
     end
   end
 
   defmodule Event do
     @moduledoc false
-    defstruct [:name, :label, :depends_on, :source, terminal: false, recorded_by: []] ++
-                [schema_version: 1, fields: [], __spark_metadata__: nil]
+    defstruct [:name, :label, :depends_on, :source, recorded_by: []] ++
+                [schema_version: 1, fields: [], upcasts: [], __spark_metadata__: nil]
   end
 
-  defmodule Stage do
+  defmodule Upcast do
     @moduledoc false
-    defstruct [:name, events: [], __spark_metadata__: nil]
+    defstruct [:from, :function, rename: [], default: [], __spark_metadata__: nil]
   end
 
   defmodule Consults do
@@ -121,8 +123,24 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Unit do
     @moduledoc false
     defstruct [:kind, :name, :label, :source, :generated, identity: [], consults: [], state: []] ++
-                [invariants: [], commands: [], events: [], stages: [], lifecycle: []] ++
-                [__spark_metadata__: nil]
+                [invariants: [], commands: [], events: [], lifecycle: []] ++
+                [identity_types: %{}, __spark_metadata__: nil]
+
+    # `identity [:period_id, company_id: {:id, :client}]` (plan DD, L3 (#286)): an identity
+    # field may be typed, as another unit's or an entity's number. The names stay a list
+    # in `identity`, which everything reads, and the types go to `identity_types`, which
+    # only the build and the rules about types read.
+    @doc false
+    @spec split_identity(%__MODULE__{}) :: {:ok, %__MODULE__{}}
+    def split_identity(%__MODULE__{identity: identity} = unit) do
+      {names, types} =
+        Enum.map_reduce(identity, %{}, fn
+          {name, type}, types -> {name, Map.put(types, name, type)}
+          name, types -> {name, types}
+        end)
+
+      {:ok, %{unit | identity: names, identity_types: types}}
+    end
   end
 
   defmodule Policy do
@@ -214,31 +232,10 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:name, :as, :from, fields: [], idempotent_on: [], __spark_metadata__: nil]
   end
 
-  defmodule Include do
-    @moduledoc false
-    defstruct [:event, terminal: false, __spark_metadata__: nil]
-  end
-
-  defmodule ProcessStage do
-    @moduledoc false
-    defstruct [:name, :label, includes: [], __spark_metadata__: nil]
-  end
-
-  defmodule Deadline do
-    @moduledoc false
-    defstruct [:within, unverified: false, __spark_metadata__: nil]
-  end
-
   defmodule Promise do
     @moduledoc false
     defstruct [:name, :from, :eventually, :within, :or_else, :source, unverified: false] ++
-                [__spark_metadata__: nil]
-  end
-
-  defmodule ProcessDeclaration do
-    @moduledoc false
-    defstruct [:name, :label, :accountable, :source, correlate: [], stages: [], includes: []] ++
-                [deadline: [], promises: [], __spark_metadata__: nil]
+                [waits_on: [], __spark_metadata__: nil]
   end
 
   defmodule Given do
@@ -484,16 +481,53 @@ defmodule EhOsContract.Contract.Dsl do
           ]
   }
 
+  # Plan DD, V1 (#333): how a row written with an older version of the event's fields
+  # reads in the current one, a step per version, so that the log is never rewritten.
+  @upcast %Spark.Dsl.Entity{
+    name: :upcast,
+    describe: """
+    How a row written with an older version of the event's fields reads in the next
+    version: fields renamed, and fields that version did not have given a value. One per
+    version below `schema_version`; a row is read through each from its own version up.
+    """,
+    examples: [
+      "upcast from: 1, rename: [reason: :demand_reason], default: [priority: \"normal\"]",
+      "upcast from: 1, function: :amount_from_minor"
+    ],
+    target: Upcast,
+    schema: [
+      from: [type: :pos_integer, required: true, doc: "The version this step reads."],
+      rename: [
+        type: :keyword_list,
+        default: [],
+        doc: "Each field of that version under its name in the next, as `old: :new`."
+      ],
+      default: [
+        type: :keyword_list,
+        default: [],
+        doc:
+          "A value for each field the next version has and that one did not; a row that " <>
+            "holds the field keeps its own."
+      ],
+      function: [
+        type: :atom,
+        doc:
+          "A function of the unit's implementation that takes a row of that version, as " <>
+            "the log stores it, and gives the next version's, for a change a rename and a " <>
+            "default cannot say; a step on its own, without `rename:` or `default:`."
+      ]
+    ]
+  }
+
   @event %Spark.Dsl.Entity{
     name: :event,
     describe: "A fact the unit records.",
     target: Event,
     args: [:name, :label],
-    entities: [fields: [@field]],
+    entities: [fields: [@field], upcasts: [@upcast]],
     schema: [
       name: [type: :atom, required: true, doc: "The event's name."],
       label: [type: :string, required: true, doc: "The fact, as the business states it."],
-      terminal: [type: :boolean, default: false, doc: "Whether it ends a run of the process."],
       depends_on: [type: :atom, doc: "The external system the fact depends on."],
       recorded_by: [
         type: {:wrap_list, :atom},
@@ -504,20 +538,12 @@ defmodule EhOsContract.Contract.Dsl do
         type: :pos_integer,
         default: 1,
         doc:
-          "The version of its fields, raised with an upcaster when history exists; written " <>
-            "into each row, and a row of a newer version than the code declares is not read."
+          "The version of its fields, raised with an `upcast` from each version below it " <>
+            "when history exists; written into each row, and a row of a newer version than " <>
+            "the code declares is not read."
       ],
       source: [type: :string, doc: "Where the event comes from in the material."]
     ]
-  }
-
-  @stage %Spark.Dsl.Entity{
-    name: :stage,
-    describe: "Groups the unit's events into one stage of the process.",
-    target: Stage,
-    args: [:name],
-    entities: [events: [@event]],
-    schema: [name: [type: :atom, required: true, doc: "A stage the process declares."]]
   }
 
   @consults %Spark.Dsl.Entity{
@@ -595,8 +621,7 @@ defmodule EhOsContract.Contract.Dsl do
     state: [@state],
     invariants: [@invariant],
     commands: [@command],
-    events: [@event],
-    stages: [@stage]
+    events: [@event]
   ]
 
   @aggregate %Spark.Dsl.Entity{
@@ -605,6 +630,7 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :aggregate],
+    transform: {Unit, :split_identity, []},
     entities:
       Keyword.put(@unit_entities, :commands, [@aggregate_command]) ++ [lifecycle: [@lifecycle]],
     imports: [Generated],
@@ -612,10 +638,12 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The aggregate's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       identity: [
-        type: {:wrap_list, :atom},
+        type: {:wrap_list, {:or, [:atom, {:tuple, [:atom, :any]}]}},
         required: true,
         doc:
-          "The fields that identify one aggregate; injected into its state, commands and events."
+          "The fields that identify one aggregate; injected into its state, commands and events. " <>
+            "Each is an `:id`, or another unit's or an entity's when typed: " <>
+            "`identity visit_id: {:id, :visit}`."
       ],
       generated: [
         type: {:one_of, [:uuid]},
@@ -633,15 +661,18 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :dcb],
+    transform: {Unit, :split_identity, []},
     entities: [consults: [@consults]] ++ @unit_entities,
     schema: [
       name: [type: :atom, required: true, doc: "The boundary's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       identity: [
-        type: {:wrap_list, :atom},
+        type: {:wrap_list, {:or, [:atom, {:tuple, [:atom, :any]}]}},
         required: true,
         doc:
-          "The fields that identify one boundary; injected into its state, commands and events."
+          "The fields that identify one boundary; injected into its state, commands and events. " <>
+            "Each is an `:id`, or another unit's or an entity's when typed: " <>
+            "`identity [:period_id, company_id: {:id, :client}]`."
       ],
       source: [type: :string, doc: "Where the boundary comes from in the material."]
     ]
@@ -993,41 +1024,7 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
-  # --- the process ---------------------------------------------------------------
-
-  @include %Spark.Dsl.Entity{
-    name: :include,
-    describe: "Places a consumed event in the process.",
-    target: Include,
-    args: [:event],
-    schema: [
-      event: [type: :atom, required: true, doc: "The consumed event."],
-      terminal: [type: :boolean, default: false, doc: "Whether it ends a run."]
-    ]
-  }
-
-  @process_stage %Spark.Dsl.Entity{
-    name: :stage,
-    describe: "One stage of the process, in order; consumed events are placed with `include`.",
-    target: ProcessStage,
-    args: [:name, {:optional, :label}],
-    entities: [includes: [@include]],
-    schema: [
-      name: [type: :atom, required: true, doc: "The stage's name."],
-      label: [type: :string, doc: "What the business calls it."]
-    ]
-  }
-
-  @deadline %Spark.Dsl.Entity{
-    name: :deadline,
-    describe: "How long a run may take, from its first event to a terminal one.",
-    target: Deadline,
-    args: [:within],
-    schema: [
-      within: [type: :any, required: true, doc: "`{n, unit}`, in a fixed unit."],
-      unverified: [type: :boolean, default: false, doc: "Not confirmed by the process owner."]
-    ]
-  }
+  # --- the promise, which a process module declares -------------------------------
 
   @promise %Spark.Dsl.Entity{
     name: :promise,
@@ -1040,6 +1037,13 @@ defmodule EhOsContract.Contract.Dsl do
       eventually: [type: :atom, required: true, doc: "The event that keeps it."],
       within: [type: :any, doc: "`{n, unit}`, in a fixed unit."],
       or_else: [type: :atom, doc: "An event that keeps it the other way."],
+      waits_on: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "External systems of the domain it waits on through an earlier step: an outage " <>
+            "of one inside its window excuses it."
+      ],
       unverified: [type: :boolean, default: false, doc: "Not confirmed by the process owner."],
       source: [type: :string, doc: "Where the promise comes from."]
     ]
@@ -1050,35 +1054,6 @@ defmodule EhOsContract.Contract.Dsl do
   # both places, so a promise moved out of a contract is written as it was.
   @spec promise() :: Spark.Dsl.Entity.t()
   def promise, do: @promise
-
-  @process %Spark.Dsl.Entity{
-    name: :process,
-    describe:
-      "The process the contract describes, if any, at most one: its runs, stages and promises.",
-    target: ProcessDeclaration,
-    args: [:name, :label],
-    entities: [
-      stages: [@process_stage],
-      includes: [@include],
-      deadline: [@deadline],
-      promises: [@promise]
-    ],
-    schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "The process's name, which keys its runs."
-      ],
-      label: [type: :string, required: true, doc: "What the business calls it."],
-      correlate: [
-        type: {:wrap_list, :atom},
-        required: true,
-        doc: "The fields that tell which run an event belongs to."
-      ],
-      accountable: [type: :atom, doc: "The actor a finding about the process is addressed to."],
-      source: [type: :string, doc: "Where the process comes from in the material."]
-    ]
-  }
 
   # --- scenarios -----------------------------------------------------------------
 
@@ -1261,7 +1236,7 @@ defmodule EhOsContract.Contract.Dsl do
               %Spark.Dsl.Section{
                 name: :contract,
                 top_level?: true,
-                describe: "At most one process, and everything born in the contract.",
+                describe: "Everything born in the contract.",
                 entities: [
                   @aggregate,
                   @dcb,
@@ -1274,7 +1249,6 @@ defmodule EhOsContract.Contract.Dsl do
                   @consumes,
                   @subscribe,
                   @publish,
-                  @process,
                   @scenario
                 ]
               },

@@ -16,10 +16,10 @@ defmodule EhOsContract.CheckCompilerTest do
     # A contract naming a domain nobody compiled: X1.
     compile(
       contract("CheckCompilerBroken", """
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          command :book, "Umów", by: :reception, emits: :booked
-          event :booked, "Umówiono"
+          command :book, "Book", by: :reception, emits: :booked
+          event :booked, "Booked"
         end
       """),
       "check_compiler_broken.ex"

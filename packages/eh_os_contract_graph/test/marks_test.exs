@@ -27,6 +27,24 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
     assert Marks.relation(%{"relations" => %{}}, "r") == %{count: nil, states: []}
   end
 
+  test "a contract's drift is said in words, and nothing where there is none" do
+    drift = fn u, d ->
+      Marks.node(%{"nodes" => %{"c" => %{"untraversed" => u, "undeclared" => d}}}, "c")
+    end
+
+    assert drift.(2, 1) == %{
+             count: nil,
+             states: [:untraversed, :undeclared],
+             drift: "2 never taken, 1 move not allowed"
+           }
+
+    assert drift.(0, 3) == %{count: nil, states: [:undeclared], drift: "3 moves not allowed"}
+    assert drift.(0, 0) == %{count: nil, states: []}
+
+    # A number that is not a count says nothing, in words or in a state.
+    assert drift.(nil, 2) == %{count: nil, states: [:undeclared], drift: "2 moves not allowed"}
+  end
+
   test "a node's count is its occurrences, runs or aggregates" do
     for {key, n} <- [{"occurrences", 4}, {"runs", 2}, {"aggregates", 7}] do
       assert Marks.node(%{"nodes" => %{"n" => %{key => n}}}, "n") == %{count: n, states: []}
@@ -70,5 +88,38 @@ defmodule EhOsContract.GraphRenderer.MarksTest do
   test "a relation several steps end at is left to the views" do
     assert relation(%{"by_trigger" => %{"a" => step(%{}), "b" => step(%{"untraversed" => true})}}) ==
              %{count: nil, states: []}
+  end
+
+  # Plan DD, P2e (#220).
+  test "a promise's verdicts in words, broken in the error state, and none for one unconfirmed" do
+    promise = fn entry -> Marks.promise(%{"nodes" => %{"p" => entry}}, %{"id" => "p"}) end
+
+    zero = %{
+      "instances" => 0,
+      "satisfied" => 0,
+      "violated" => 0,
+      "pending" => 0,
+      "suspended" => 0
+    }
+
+    assert promise.(zero) == %{count: nil, states: [], verdict: "none opened"}
+
+    assert promise.(%{
+             zero
+             | "instances" => 5,
+               "satisfied" => 2,
+               "violated" => 1,
+               "suspended" => 2
+           }) ==
+             %{count: nil, states: [:failing], verdict: "2 kept, 1 broken, 2 suspended"}
+
+    # Unconfirmed is the document's word, overlay or not; a promise the overlay merely does
+    # not list — of a stale overlay, say — is claimed to be nothing.
+    unverified = %{"id" => "p", "unverified" => true}
+    unconfirmed = %{count: nil, states: [], verdict: "unconfirmed"}
+    assert Marks.promise(%{"nodes" => %{}}, unverified) == unconfirmed
+    assert Marks.promise(nil, unverified) == unconfirmed
+    assert Marks.promise(%{"nodes" => %{}}, %{"id" => "p"}) == %{count: nil, states: []}
+    assert Marks.promise(nil, %{"id" => "p"}) == %{count: nil, states: []}
   end
 end

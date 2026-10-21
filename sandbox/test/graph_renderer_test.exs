@@ -1,12 +1,13 @@
 defmodule EhOsContract.GraphRendererTest do
   @moduledoc """
   Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
-  the client trees as the engine gives it today, with the overlay the engine reads from
-  the log over it. The renderer's own suite runs on fixtures taken once, which do not
-  follow these trees as they change; this does, and holds the fixtures to today's schema.
+  the sandbox's case studies, as the engine gives it today, with the overlay the engine
+  reads from the log over it. The renderer's own suite runs on fixtures taken once, which
+  do not follow these trees as they change; this does, and holds the fixtures to today's
+  schema.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   import Phoenix.LiveViewTest
 
@@ -17,19 +18,26 @@ defmodule EhOsContract.GraphRendererTest do
   @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
   @fixtures Path.expand("../../packages/eh_os_contract_graph/test/fixtures", __DIR__)
 
+  # Every contract's, every process module's (plan DD, P2e, #220) and every domain's, with
+  # its process modules, as the dashboard draws them.
   defp documents do
     contracts = Registry.contracts()
+    processes = Registry.processes()
 
     for(c <- contracts, do: {inspect(c), Document.contract(c)}) ++
-      for d <- Registry.domains(), do: {inspect(d), Document.domain(d, contracts)}
+      for(p <- processes, do: {inspect(p), Document.process(p)}) ++
+      for d <- Registry.domains(), do: {inspect(d), Document.domain(d, contracts ++ processes)}
   end
 
   defp overlays do
     contracts = Registry.contracts()
+    processes = Registry.processes()
+    modules = contracts ++ processes
 
     for(c <- contracts, do: {inspect(c), Document.contract(c), Overlay.contract(c)}) ++
+      for(p <- processes, do: {inspect(p), Document.process(p), Overlay.process(p)}) ++
       for d <- Registry.domains(),
-          do: {inspect(d), Document.domain(d, contracts), Overlay.domain(d, contracts)}
+          do: {inspect(d), Document.domain(d, modules), Overlay.domain(d, modules)}
   end
 
   defp draw(document, overlay \\ nil),
@@ -89,8 +97,8 @@ defmodule EhOsContract.GraphRendererTest do
     assert Enum.sum(numbered) > 0
   end
 
-  # Plan E13b, batch 4: the panels read the document by joins alone, so a shape a client
-  # wrote and no fixture has shows here first.
+  # Plan E13b, batch 4: the panels read the document by joins alone, so a shape a case
+  # study has and no fixture has shows here first.
   test "every element of every view has a panel, with the log, naming only what can be selected" do
     for {name, document, overlay} <- overlays(),
         lookup = Lookup.new(document),
@@ -121,12 +129,14 @@ defmodule EhOsContract.GraphRendererTest do
     end
   end
 
-  test "the renderer's fixtures taken from the client trees still hold to the schema" do
-    # edge_cases.json and messaging.json are made by hand for what no client wrote, and are not
-    # whole documents.
+  test "the renderer's fixtures taken from the sandbox still hold to the schema" do
+    # edge_cases.json and messaging.json are made by hand for what no domain wrote, and are not
+    # whole documents. domain.ledger.json is made by hand too, for joining applications, but is
+    # whole, so it holds to the schema as the taken ones do. The other ten are taken from the
+    # invented case studies (publication programme, PB2, #369); the clients' left in PB3 (#375).
     names = @fixtures |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".json"))
     taken = names -- ["edge_cases.json", "messaging.json"]
-    assert length(taken) == 6
+    assert length(taken) == 11
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()

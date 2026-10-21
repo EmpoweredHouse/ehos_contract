@@ -43,6 +43,10 @@ defmodule BoundaryRig.Waitlist do
 
     # The timetable's note that the student was told where they stand.
     event :waitlist_reminded, "Reminded of their place on the list", recorded_by: :timetable
+
+    # The registrar's note that the student confirmed their place by phone: a person's
+    # recording, which the door serves, unlike the timetable's.
+    event :place_confirmed, "Confirmed their place by phone", recorded_by: :registrar
   end
 
   scenario "a student who left cannot leave again" do

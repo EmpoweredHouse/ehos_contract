@@ -76,6 +76,33 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     jwk
   end
 
+  @doc false
+  # RFC 7523's client assertion, as EHOS takes it at its token endpoint (`eh-os` D-81, D-112): the
+  # client as `iss` and `sub`, the endpoint as `aud`, and a minute to live, since EHOS keeps its
+  # `jti` until it expires and one request needs no more.
+  @spec assertion(JOSE.JWK.t(), String.t(), String.t()) :: String.t()
+  def assertion(key, client_id, token_endpoint) do
+    issued_at = System.os_time(:second)
+
+    claims = %{
+      "iss" => client_id,
+      "sub" => client_id,
+      "aud" => token_endpoint,
+      "jti" => Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false),
+      "iat" => issued_at,
+      "exp" => issued_at + 60
+    }
+
+    %{"kid" => kid} = key.fields
+
+    {_modules, token} =
+      key
+      |> JOSE.JWT.sign(%{"alg" => "Ed25519", "kid" => kid}, claims)
+      |> JOSE.JWS.compact()
+
+    token
+  end
+
   defp decode(value) when is_binary(value), do: Base.url_decode64(value, padding: false)
   defp decode(_value), do: :error
 

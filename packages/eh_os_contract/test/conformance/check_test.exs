@@ -34,6 +34,34 @@ defmodule EhOsContract.CheckTest do
   defp process_findings(module),
     do: for(f <- Check.process_module_findings([module]), do: {f.level, f.rule, f.message})
 
+  # Plan DD, L4 (#326): the owner's view names a stage by its label. Control:
+  # `ProcessShapes.Timing`, whose stages have labels, below.
+  test "a stage without a label is noted, one finding a stage" do
+    assert [
+             "stage :intake of process \"process_shapes.handling\" has no label" <> _,
+             "stage :decision" <> _,
+             "stage :closing" <> _
+           ] =
+             for(
+               {:info, "owner-view-without-label", message} <-
+                 process_findings(ProcessShapes.Handling),
+               do: message
+             )
+
+    # At the stage, not at the module's `use`.
+    assert [{"handling.ex", 20} | _] =
+             for(
+               %{rule: "owner-view-without-label"} = finding <-
+                 Check.process_module_findings([ProcessShapes.Handling]),
+               do: place(finding)
+             )
+  end
+
+  defp place(finding) do
+    {file, line} = EhOsContract.Check.Finding.place(finding)
+    {Path.basename(file), line}
+  end
+
   test "a process with no addressee, and a deadline its owner has not confirmed" do
     assert {:warn, "process-without-accountable",
             ~s(process "process_shapes.handling" names no `accountable` role) <> _} =
@@ -50,32 +78,6 @@ defmodule EhOsContract.CheckTest do
            )
   end
 
-  # Only a contract's process can declare a deadline without an event that ends a run; a
-  # process module refuses it at compile time (R6). Until #221 removes the contract's
-  # process, its rule is checked on one written here, since no rig declares one any more.
-  test "a deadline no run can be seen to end" do
-    Code.compile_string("""
-    defmodule EhOsContract.CheckTest.Unended do
-      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.unended"
-
-      aggregate :stack, "Stack" do
-        identity :stack_id
-        event :stack_started, "Stack started", recorded_by: :batch_operator
-      end
-
-      process :stacking, "Stacking" do
-        correlate :stack_id
-        accountable :batch_operator
-        deadline {1, :day}
-      end
-    end
-    """)
-
-    assert {:info, "deadline-without-terminal-event",
-            "process :stacking declares `deadline` = {1, :day} and no event of it is" <> _} =
-             List.keyfind(findings(EhOsContract.CheckTest.Unended), :info, 0)
-  end
-
   test "control: a confirmed, addressed, implemented process has nothing to say" do
     assert findings(ProcessShapes.Timed) == []
     assert process_findings(ProcessShapes.Timing) == []
@@ -90,6 +92,32 @@ defmodule EhOsContract.CheckTest do
     assert message =~ "query notes_of"
   end
 
+  # Plan DD, V2 (#338): reading an older row of a unit that records only can still call its
+  # code, so such a unit is one dispatch looks an implementation up for.
+  test "a unit that records only, with a step by a function, is looked up; control: implemented" do
+    Code.compile_string("""
+    defmodule EhOsContract.CheckTest.Upcasting do
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching, id: "process_shapes.upcasting"
+
+      aggregate :tally, "Tally" do
+        identity :tally_id
+
+        event :counted, "Counted", recorded_by: :batch_operator, schema_version: 2 do
+          upcast from: 1, function: :from_one
+        end
+      end
+    end
+    """)
+
+    assert [{:info, "contract-without-implementation", _}] =
+             findings(EhOsContract.CheckTest.Upcasting)
+             |> Enum.filter(&(elem(&1, 1) =~ "implementation"))
+
+    # `UpcastRig.Fees` implements the fee, whose event has a step by a function.
+    assert [] =
+             findings(UpcastRig.Demands) |> Enum.filter(&(elem(&1, 1) =~ "implementation"))
+  end
+
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
     defmodule EhOsContract.CheckTest.Unimplemented do
@@ -100,15 +128,21 @@ defmodule EhOsContract.CheckTest do
         command :stack, "Stack", by: :batch_operator, emits: :stacked
         event :stacked, "Stacked"
       end
+    end
 
-      process :piling, "Piling" do
-        correlate :pile_id
-        accountable :batch_operator
+    defmodule EhOsContract.CheckTest.Piling do
+      use EhOsContract.Process,
+        id: "process_shapes.piling",
+        domain: ProcessShapes.Domain,
+        label: "Piling",
+        accountable: :batch_operator
 
-        promise :stays_stacked do
-          from :stacked
-          eventually :stacked
-        end
+      correlate :pile_id
+      stage :piling, "Piling", include: [{EhOsContract.CheckTest.Unimplemented, [:stacked]}]
+
+      promise :stays_stacked do
+        from :stacked
+        eventually :stacked
       end
     end
     """)
@@ -116,12 +150,15 @@ defmodule EhOsContract.CheckTest do
     module = EhOsContract.CheckTest.Unimplemented
 
     assert [
-             {:info, "promise-without-within",
-              "promise :stays_stacked has no `within`, so it has no failing case" <> _},
              {:info, "contract-without-implementation",
               "EhOsContract.CheckTest.Unimplemented has no implementation, which a contract may" <>
                 _}
            ] = findings(module)
+
+    assert [
+             {:info, "promise-without-within",
+              "promise :stays_stacked has no `within`, so it has no failing case" <> _}
+           ] = process_findings(EhOsContract.CheckTest.Piling)
   end
 
   test "a contract made only of recorded events needs no implementation" do

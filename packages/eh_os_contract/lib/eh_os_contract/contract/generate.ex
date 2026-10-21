@@ -6,12 +6,12 @@ defmodule EhOsContract.Contract.Generate do
   #
   # | Module | From |
   # | --- | --- |
-  # | `C.Commands.RecordPayment` | a command |
-  # | `C.Events.PaymentRecorded` | an event of a unit |
-  # | `C.Received.VisitClosed` | `subscribe "<name>", as: :visit_closed`, with the fields declared there |
-  # | `C.Aggregates.VisitSettlement.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
-  # | `C.ReadModels.DailyTotals.Row` | a read model's fields |
-  # | `C.Queries.DailyTotalsFor` | a query's parameters |
+  # | `C.Commands.PayLateFee` | a command |
+  # | `C.Events.LateFeePaid` | an event of a unit |
+  # | `C.Received.InvoiceIssued` | `subscribe "<name>", as: :invoice_issued`, with the fields declared there |
+  # | `C.Aggregates.Loan.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
+  # | `C.ReadModels.MemberDirectory.Row` | a read model's fields |
+  # | `C.Queries.MemberContact` | a query's parameters |
   #
   # A unit's identity comes first in its state, commands and events, as the model
   # injects it. A command, an event and a received event enforce their required

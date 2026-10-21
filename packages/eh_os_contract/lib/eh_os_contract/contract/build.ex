@@ -9,8 +9,8 @@ defmodule EhOsContract.Contract.Build do
   #
   # **Collections keep declaration order**, because readers print in it (E1's
   # correction to v2 §9). A unit's commands and events are lifted to the top level,
-  # each naming its `unit`, so a reader asking for an event does not walk units; an
-  # event declared in a stage group carries that `stage`. `grants` says, per actor,
+  # each naming its `unit`, so a reader asking for an event does not walk units.
+  # `grants` says, per actor,
   # which commands it may issue, queries it may ask and events it may record.
   #
   # **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
@@ -21,9 +21,13 @@ defmodule EhOsContract.Contract.Build do
   # **The digest does not see declaration order.** Every collection of declarations
   # is a set to it, nested ones included, and so is every value with set meaning
   # (`by`, `emits`, `handles`, …). What keeps its order is what has one: `identity`
-  # and `correlate`, the process's stages, and a scenario's givens and expectations.
+  # and `correlate`, and a scenario's givens and expectations.
   # Each declaration also has its own digest, keyed `"<kind>:<name>"`; scenarios share
-  # one, `"scenario:*"`, since nothing names them.
+  # one, `"scenario:*"`, since nothing names them, over the scenarios as a set.
+  #
+  # **The digest does not see the words.** `version` and `digests` hash what the
+  # contract allows; its labels, `source:` and scenarios' descriptions have their own,
+  # `text_digest` and `text_digests`, under the same keys.
   @moduledoc false
 
   use Spark.Dsl.Transformer
@@ -55,7 +59,6 @@ defmodule EhOsContract.Contract.Build do
       persisted = Transformer.get_persisted(dsl, :eh_os_contract_contract)
 
     entities = Transformer.get_entities(dsl, [:contract])
-    process = Enum.find(entities, &match?(%Dsl.ProcessDeclaration{}, &1))
     # Plan DD, ID3 (#173): an event's type is its contract's id and its name, whatever
     # process it belongs to; D11 refuses a contract without an id before this runs.
     prefix = Map.get(persisted, :id)
@@ -63,7 +66,7 @@ defmodule EhOsContract.Contract.Build do
     units = of(entities, Dsl.Unit)
     declarations = Rules.declarations(dsl)
 
-    events = for u <- units, {stage, e} <- events(u), do: event(u, stage, e, prefix)
+    events = for u <- units, e <- u.events, do: event(u, e, prefix)
 
     collections = %{
       units: Enum.map(units, &unit/1),
@@ -83,7 +86,7 @@ defmodule EhOsContract.Contract.Build do
     }
 
     own = %{domain: domain, context: context}
-    process = process && process(process)
+    grouped = groups(own, collections)
 
     collections
     |> Map.merge(%{
@@ -92,10 +95,11 @@ defmodule EhOsContract.Contract.Build do
       module: Transformer.get_persisted(dsl, :module),
       domain: domain,
       context: context,
-      process: process,
       grants: grants(collections),
-      version: version(own, process, collections),
-      digests: digests(own, process, collections)
+      version: Digest.version(grouped),
+      text_digest: Digest.text_digest(grouped),
+      digests: digests(own, collections, &Digest.agreement/2),
+      text_digests: digests(own, collections, &Digest.words/2)
     })
     |> with_id(Map.get(persisted, :id))
   end
@@ -219,24 +223,48 @@ defmodule EhOsContract.Contract.Build do
     |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
 
-  # A unit's events, each with the stage group it sits in: `nil` outside one.
-  defp events(unit) do
-    for(e <- unit.events, do: {nil, e}) ++
-      for stage <- unit.stages, e <- stage.events, do: {stage.name, e}
-  end
-
-  defp event(unit, stage, event, prefix) do
+  defp event(unit, event, prefix) do
     event
     |> plain()
     |> Map.merge(%{
       unit: unit.name,
       type: "#{prefix}.#{event.name}",
-      stage: stage,
       fields: identity_fields(unit) ++ plain(event.fields)
     })
+    # Plan DD, V1 (#333): kept only where the event has steps, so a contract without them
+    # keeps its version; each step's renames and defaults as maps, in the order of `from`,
+    # a default as the log stores a value (through JSON: an atom as its name, a date as
+    # its ISO 8601 text), so it reads as an old row's own value would.
+    |> then(fn built ->
+      case Enum.sort_by(event.upcasts, & &1.from) do
+        [] -> Map.delete(built, :upcasts)
+        steps -> %{built | upcasts: Enum.map(steps, &step/1)}
+      end
+    end)
   end
 
-  defp identity_fields(unit), do: id_fields(unit.identity)
+  # A step by a function names it alone (plan DD, V2, #338); a declared one its renames and
+  # defaults.
+  defp step(%{function: fun} = u) when fun != nil, do: %{from: u.from, function: fun}
+
+  defp step(u) do
+    %{
+      from: u.from,
+      rename: Map.new(u.rename),
+      default: Map.new(u.default, fn {f, v} -> {f, v |> Jason.encode!() |> Jason.decode!()} end)
+    }
+  end
+
+  # An identity field typed as another unit's or an entity's number refers to it, as a
+  # declared field does (plan DD, L3 (#286)).
+  defp identity_fields(unit) do
+    for field <- id_fields(unit.identity) do
+      case Map.get(unit.identity_types, field.name) do
+        nil -> field
+        type -> EhOsContract.Domain.Build.reference(%{field | type: type})
+      end
+    end
+  end
 
   defp id_fields(names) do
     for name <- names do
@@ -312,34 +340,6 @@ defmodule EhOsContract.Contract.Build do
       fields: []
     }
   end
-
-  defp process(process) do
-    includes =
-      for(i <- process.includes, do: Map.put(plain(i), :stage, nil)) ++
-        for stage <- process.stages,
-            i <- stage.includes,
-            do: Map.put(plain(i), :stage, stage.name)
-
-    %{
-      name: process.name,
-      label: process.label,
-      correlate: process.correlate,
-      accountable: process.accountable,
-      stages: for(s <- process.stages, do: %{name: s.name, label: s.label}),
-      includes: includes,
-      deadline: timed(process.deadline, :within),
-      promises: for(p <- process.promises, do: p |> plain() |> Map.update!(:within, &duration/1)),
-      source: process.source
-    }
-  end
-
-  defp timed([], _key), do: nil
-
-  defp timed([declaration | _], key),
-    do: declaration |> Map.fetch!(key) |> duration() |> put_unverified(declaration.unverified)
-
-  defp put_unverified(%{} = duration, unverified), do: Map.put(duration, :unverified, unverified)
-  defp put_unverified(other, _unverified), do: other
 
   # One trigger, which S1 has made sure of, and the declaration it resolves to. A
   # query's scenario also has `answers`, its rows as a list; the key is left out of
@@ -438,70 +438,43 @@ defmodule EhOsContract.Contract.Build do
     domain_services: :domain_service
   ]
 
-  # Kinds that came after the first contracts were digested: a contract that declares
-  # none of one hashes as it did before the kind existed, so adding a kind to the
-  # library moves no contract's version.
-  @later [:domain_services]
-
-  # Kinds that took `source:` after the first contracts were digested (plan EP1), the
-  # process and a process manager's timers among them: a `nil` one is left out of the
-  # digest, so no declaration written without it moves. The model keeps the key, `nil`
-  # or not, as it does for every other kind, so a reader needs no second shape.
-  @sourced_later [:policies, :effects, :process_managers, :read_models, :queries]
-
-  defp digested(key, declaration) when key in @sourced_later, do: unsourced(declaration)
-  defp digested(_key, declaration), do: declaration
-
-  defp unsourced(%{timers: timers} = manager),
-    do: %{without_nil_source(manager) | timers: Enum.map(timers, &without_nil_source/1)}
-
-  defp unsourced(declaration), do: without_nil_source(declaration)
-
-  # Plan DD, P1d (#195): a process digests as it did before `cadence` was removed, with
-  # the `nil` every process that never declared one carried, so such a contract keeps
-  # its version. The model has no `cadence` key, so a reader never sees it.
-  defp digested_process(process), do: process |> unsourced() |> Map.put(:cadence, nil)
-
-  defp without_nil_source(%{source: nil} = declaration), do: Map.delete(declaration, :source)
-  defp without_nil_source(declaration), do: declaration
-
-  defp version(own, process, collections) do
-    Digest.hash_groups(
-      [contract: [own], process: List.wrap(process && digest_form(digested_process(process)))] ++
-        for(
-          {key, _} <- @collections,
-          key not in @later or collections[key] != [],
-          do: {key, Enum.map(collections[key], &digest_form(digested(key, &1)))}
-        ) ++
-        [
-          consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
-          scenarios: Enum.map(collections.scenarios, &digest_form/1)
-        ]
-    )
+  # Plan DD, V5 (#322): `version` hashes what the contract allows, `text_digest` its
+  # words, each over the same groups (`EhOsContract.Digest.agreement/2`, `words/2`).
+  defp groups(own, collections) do
+    [contract: [own]] ++
+      for({key, _} <- @collections, do: {key, Enum.map(collections[key], &digest_form/1)}) ++
+      [
+        consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
+        scenarios: Enum.map(collections.scenarios, &digest_form/1)
+      ]
   end
 
-  defp digests(own, process, collections) do
+  # One digest of each kind per declaration, keyed `"<kind>:<name>"`: `digests` of
+  # what it allows, `text_digests` of its words.
+  defp digests(own, collections, of) do
     declarations =
       for {key, kind} <- @collections, declaration <- collections[key] do
-        {"#{kind}:#{declaration.name}", Digest.hash(digest_form(digested(key, declaration)))}
+        {"#{kind}:#{declaration.name}", Digest.hash(of.(key, digest_form(declaration)))}
       end
 
     consumed =
       for declaration <- consumed(collections.consumes) do
-        {"consumes:#{declaration.as}", Digest.hash(digest_form(declaration))}
+        {"consumes:#{declaration.as}", Digest.hash(of.(:consumes, digest_form(declaration)))}
       end
-
-    process =
-      if process,
-        do: [{"process:#{process.name}", Digest.hash(digest_form(digested_process(process)))}]
 
     scenarios =
       if collections.scenarios != [],
-        do: [{"scenario:*", Digest.hash(Enum.map(collections.scenarios, &digest_form/1))}]
+        do: [
+          {"scenario:*",
+           collections.scenarios
+           |> Enum.map(&of.(:scenarios, digest_form(&1)))
+           |> Enum.sort_by(&Digest.canonical/1)
+           |> Digest.hash()}
+        ]
 
     Map.new(
-      [{"contract", Digest.hash(own)}] ++
-        declarations ++ consumed ++ List.wrap(process) ++ List.wrap(scenarios)
+      [{"contract", Digest.hash(of.(:contract, own))}] ++
+        declarations ++ consumed ++ List.wrap(scenarios)
     )
   end
 
@@ -520,8 +493,8 @@ defmodule EhOsContract.Contract.Build do
   end
 
   # Lists of declarations and values with set meaning are sorted; `identity`,
-  # `correlate`, stages, givens and expectations keep their order.
-  @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
+  # `correlate`, givens and expectations keep their order.
+  @sets ~w(fields params invariants consults starts_on on timers ends_on
            by emits rejects handles issues calls projects recorded_by match sets cancels events
            idempotent_on answers functions rules constraints illustrates operations statuses from
            initial transitions reads)a

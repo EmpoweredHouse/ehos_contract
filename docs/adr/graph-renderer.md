@@ -1,5 +1,8 @@
 # The graph renderer — what draws a `graph.v1` document
 
+> **19 October 2026:** the client's name in this file was replaced by a description, "the equipment client"
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What was measured did not change.
+
 > **Status: accepted**, 7 October 2026: C, as recommended under "Decision". Proposed the same day; the options
 > and their costs come first, then the decision. Stage: E13b, step 1 (`PLAN.md`, "E13b — renderer i ekran"),
 > pull request [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
@@ -66,8 +69,8 @@ puts the nodes in the same places. In the prototype A and C produced identical l
 the first visit to the screen: the download, then the parse. After that the file is cached until the next
 release of the package. The sandbox serves static files with `gzip: false`, so unless a proxy compresses
 them, the minified size is what travels, not the gzipped size.
-- **Readability of a large contract is a matter of views, not of the library.** AppUnite `computers` (62
-nodes, 111 relations) was equally unreadable fitted to the screen in A and in C. A large contract needs
+- **Readability of a large contract is a matter of views, not of the library.** The equipment client's `computers`
+(62 nodes, 111 relations) was equally unreadable fitted to the screen in A and in C. A large contract needs
 filtering, grouping and focus. That belongs to the specification of the views, which is not settled.
 
 
@@ -144,8 +147,8 @@ moved to our CSS, removed it.
 - **Routing around cards costs time, and the routes need care.** The router runs after the layout, so dagre
 leaves room for labels where the arrows no longer go, and some labels land on cards. Many arrows share one
 orthogonal trunk, which makes it hard to follow one of them. Mounting took 0.3 to 0.4 s for a typical
-contract and 1.2 to 2 s for AppUnite `computers` (111 relations), depending on the router's step, against
-under 35 ms in A and C. Each of these is tunable, but it is tuning.
+contract and 1.2 to 2 s for the equipment client's `computers` (111 relations), depending on the router's
+step, against under 35 ms in A and C. Each of these is tunable, but it is tuning.
 - **The largest bundle of the three**, since dagre comes again through the layout package (below).
 
 
@@ -302,15 +305,15 @@ the cards, not the package.
 "Positions in a constructed stylesheet" (above) held for what the layout sets once, and was wrong for what
 changes on every frame. The zoom was a rule written to a constructed stylesheet on every frame of a pan or a
 zoom, and so, later, was the panel's width while its edge was dragged. Chrome restyles only what a changed rule
-can match; WebKit styles the whole page again whenever a stylesheet changes, so on AppUnite's `computers` (nine
-canvases, about 1,250 elements) Safari stuttered on every pan, zoom and drag while Chrome ran smoothly. A Web
-Animation (`element.animate(…, {duration: 0, fill: "forwards"})`, its keyframes set again on each frame) holds
-the value instead: the policy allows it, being neither an attribute nor a stylesheet, LiveView's patches keep
-it, being no attribute, and a change restyles the one element. So the rule the package carries is now:
-**positions and sizes in a constructed stylesheet, written when the layout changes; what changes on every frame
-in a Web Animation; never a `style` attribute.** The user confirmed the difference in Safari. A custom property
-on `:root`, written on every frame, cost Chrome too — every element inherits it — and was replaced the same day
-by a rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
+can match; WebKit styles the whole page again whenever a stylesheet changes, so on the equipment client's
+`computers` (nine canvases, about 1,250 elements) Safari stuttered on every pan, zoom and drag while Chrome ran
+smoothly. A Web Animation (`element.animate(…, {duration: 0, fill: "forwards"})`, its keyframes set again on each
+frame) holds the value instead: the policy allows it, being neither an attribute nor a stylesheet, LiveView's
+patches keep it, being no attribute, and a change restyles the one element. So the rule the package carries is now:
+**positions and sizes in a constructed stylesheet, written when the layout changes; what changes on every frame in
+a Web Animation; never a `style` attribute.** The user confirmed the difference in Safari. A custom property on
+`:root`, written on every frame, cost Chrome too — every element inherits it — and was replaced the same day by a
+rule on the one element. Recorded in `PLAN.md`, "E13b, batch 4 — the panels (8 October)";
 [#219](https://github.com/EmpoweredHouse/eh-os-contract/pull/219).
 
 ## Amendment, 9 October 2026: the dependencies' licences
@@ -322,6 +325,77 @@ was built. The dashboard's `NOTICE` has carried them since 9 October: its `app.j
 and it had named only the fonts. Neither fact moves the choice, since all three licences are permissive.
 Recorded in `PLAN.md`, "E13 — pushed, `main` merged again, and an audit against `main`'s conventions (9 October)";
 [#217](https://github.com/EmpoweredHouse/eh-os-contract/pull/217).
+
+## Amendment, 15 October 2026: one canvas, two viewpoints, and the Console draws with the same package
+
+The decision drew one picture at a time, chosen from a list, and left open where a reader moves between them.
+Three things were decided for stage G1, the user's decisions of 15 October.
+
+**Two viewpoints.** The canvas shows either the **structure**, the context map, then a contract, then a unit
+(with an aggregate's lifecycle as a switch on it), or the **processes**, a list, then one process laid out by
+its stages. A path, the search and the legend are common to both, and the two are linked both ways: an event's
+card in a process leads to its contract, and a contract to the processes its events take part in. The two
+answer different questions and need different layouts. The structure says who owns what, what is sent and who
+listens, does not change over time, and is grouped by owner. A process says what happens, in order, in one case
+(a visit, a month), and runs across several contracts at once. An event has one home in the structure and may
+stand in a stage of several processes. EventCatalog separates the same two: a flow has a page and a diagram of
+its own, whose steps point at services and messages documented elsewhere. *Rejected:* processes drawn as lines
+across the structure's map (the plan on #302), since one picture cannot have both layouts and several processes
+become crossing lines; a page per element as EventCatalog has, since we keep one canvas with navigation.
+
+**The renderer holds the navigation.** The canvas, its path, its viewpoints and the links between them are a
+component of this package, not of the dashboard's Graph screen, and draw only what the `graph.v1` documents and
+their overlays say. An application shows its own contracts in its dashboard; the EHOS Console reads the same
+documents from each application's JSON API and draws them with the same component, so the two never differ.
+*Rejected:* navigation on the dashboard's screen, which the Console would have to write again.
+
+**The Console joins applications; the package says how.** One application is one domain, and a domain knows of
+others only what it publishes and what it subscribes to. A function of this package joins several applications'
+domain documents by publication name into one landscape the same canvas draws; the Console fetches the documents
+and owns the screen. A process across applications does not exist in the model: between applications there is
+only publication and subscription. Since the Console reads documents from applications on different versions of
+the library, `graph.v1` changes only by addition.
+
+Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297).
+
+## Amendment, 15 October 2026 (evening): the landscape joins domains, not applications
+
+The amendment above said one application is one domain. It is not: the sandbox is one application to EHOS with
+four domains, and nothing in the engine stops an application from having several. A publication's name on the
+wire is the same fact whether the two domains that share it are in one application or two, so the joining
+function (`EhOsContract.GraphRenderer.Landscape.join/1`) takes each application's name with one of its domain
+documents, a box per domain document, and joins every pair by the name on the wire. A box holds only the contracts
+that publish or subscribe, and says how many others its domain has. *Rejected:* joining only documents of
+different applications, which would hide a publication between two domains of one; every contract of every
+domain in its box, hundreds of cards with no arrow once the Console sees a dozen applications.
+
+Recorded on [#297](https://github.com/EmpoweredHouse/eh-os-contract/issues/297#issuecomment-6202758132).
+
+## Amendment, 19 October 2026: the Console takes the documents with a deployment
+
+The first amendment of 15 October says the Console reads each application's documents from its JSON API and
+fetches them. EHOS decided instead that it takes the documents with each deployment and never from a running
+application ([D-123](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/adr/0123-ehos-takes-each-application-s-domain-graph-documents-with-its-deployment-and-joins-them-into-a-landscape-when-someone-reads-it.md), accepted by the user on 19 October). An application's pipeline writes each domain's graph document (`graph.v1`) from the commit it builds
+(`mix eh_os_contract.graph --domain <name>`) and submits them with the deployment, beside the image and the
+manifest. EHOS keeps them with that deployment and, when someone reads an environment's landscape, joins the
+documents of each application's latest active deployment there with `Landscape.join/1`, keeping nothing joined.
+EHOS calls no application's JSON API for them: an application's `GET <mount>/graph/…`, where it mounts the JSON
+API, serves whoever its resolver lets in, and its own dashboard reads the engine directly.
+
+What follows on this side:
+
+- `graph.v1` still changes only by addition, since EHOS keeps what it knows of a document and drops the rest.
+- A document's `schema` keeps the form `eh_os_contract.graph.v<n>`: EHOS skips, rather than refuses, one that
+  names another version, so a newer engine does not stop a deployment by its version alone, and refuses one of
+  any other form.
+- The rule that only the domain named as the application publishes, under names that begin with the
+  application's name and a dot, stays as the engine holds it: the prefix when the contracts compile, the
+  publishing domain when the application starts (`EhOsContract.Auth`). EHOS holds each document to the same
+  rule as it arrives, and refuses the deployment otherwise.
+- A release's `release.json` names the document's version among what the engine produces,
+  `eh_os_contract.graph/v1`, as EHOS's `releases.md` names the interface.
+
+Recorded on [#344](https://github.com/EmpoweredHouse/eh-os-contract/issues/344).
 
 ## Sources
 

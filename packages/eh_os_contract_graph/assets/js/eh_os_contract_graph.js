@@ -22,6 +22,11 @@ import { select, zoom, zoomIdentity } from "../vendor/d3-zoom.esm.js"
 
 const SVG = "http://www.w3.org/2000/svg"
 
+// The smallest scale a picture starts at: below it a card's words cannot be read. A picture larger than the canvas
+// at that scale starts at the edge it overflows from, its left or its top, and the reader pans to the rest; "Whole
+// picture" fits it all, smaller.
+const READABLE = 0.75
+
 // Room between cards, in pixels: across a rank, between ranks, between arrows, around the graph.
 const SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 }
 
@@ -138,6 +143,23 @@ const loop = (card, label) => {
   )
 }
 
+// An arrow from start to end bowed to one side, so it does not lie on a straight one between the same two boxes,
+// the longer the further. Its label sits near where it starts, just out of the box it leaves: one that spans
+// several boxes crosses those between, and a label in its middle would lie on their cards.
+const bow = (id, start, end) => {
+  const [dx, dy] = [end.x - start.x, end.y - start.y]
+  const length = Math.hypot(dx, dy) || 1
+  const reach = Math.max(48, length * 0.2)
+  const [nx, ny] = [-dy / length, dx / length]
+  const control = { x: (start.x + end.x) / 2 + nx * 2 * reach, y: (start.y + end.y) / 2 + ny * 2 * reach }
+  const t = 0.15
+  const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b
+  const at = { x: along(start.x, control.x, end.x), y: along(start.y, control.y, end.y) }
+  // The bow's furthest point, half way to its control point: what it adds to the picture's size.
+  const apex = { x: (start.x + end.x) / 4 + control.x / 2, y: (start.y + end.y) / 4 + control.y / 2 }
+  return { id, d: `M${start.x},${start.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at.x, y: at.y, apex }
+}
+
 // Where the line from a box's centre towards a point leaves the box.
 const border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y]
@@ -198,7 +220,7 @@ export const EhOsContractGraph = {
     this.closeOthers = ({ detail }) => {
       if (detail === this.el || this.el.dataset.selected === undefined) return
       this.el.querySelector(".ehg-panel")?.setAttribute("hidden", "")
-      this.pushEventTo(this.el, "deselect", {})
+      this.pushEventTo(this.el, "closed", {})
     }
     window.addEventListener("eh_os_contract_graph:opened", this.closeOthers)
     this.escape = (event) => {
@@ -206,6 +228,12 @@ export const EhOsContractGraph = {
     }
     document.addEventListener("keydown", this.escape)
     this.announce()
+
+    // The zoom's buttons are the reader's view alone, so the hook answers them, not the server.
+    this.el.querySelector(".ehg-bar")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-ehg-zoom]")
+      if (button) this.zoomTo(button.dataset.ehgZoom)
+    })
 
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
       const arrow = event.target.closest("[data-ehg-arrow]")
@@ -227,6 +255,7 @@ export const EhOsContractGraph = {
     })
     this.resized.observe(this.canvas)
 
+    this.revealed = this.el.dataset.reveal
     this.drawn = Promise.resolve()
     this.draw()
   },
@@ -329,6 +358,7 @@ export const EhOsContractGraph = {
       id: el.dataset.ehgRelation,
       from: el.dataset.from,
       to: el.dataset.to,
+      observed: el.dataset.observed === "true",
       width: el.offsetWidth,
       height: el.offsetHeight,
     }))
@@ -348,6 +378,12 @@ export const EhOsContractGraph = {
       this.touched = false
     }
     if (!this.fitted) this.fit()
+
+    // A card the search selected is brought into view, at the scale the reader has.
+    if (this.el.dataset.reveal !== this.revealed) {
+      this.revealed = this.el.dataset.reveal
+      this.reveal(this.el.dataset.selected)
+    }
   },
 
   lay(direction, groups, cards, labels) {
@@ -358,6 +394,7 @@ export const EhOsContractGraph = {
       this.tall = null
       this.el.querySelector(".ehg-arrows").replaceChildren()
       this.arrows = new Map()
+      this.places = new Map()
       this.size = null
       return
     }
@@ -376,10 +413,12 @@ export const EhOsContractGraph = {
     cards.forEach(({ id, group }) => members.get(group)?.push(id))
     const boxed = ({ from, to }) => members.has(from) || members.has(to)
     let held = 0
+    // What the log shows between two boxes — stages entered the wrong way round — holds nothing: the picture is
+    // the declaration's, and an arrow against it would turn the boxes around.
     labels.forEach((label) => {
       const { id, from, to, width, height } = label
       if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id }, { width, height, labelpos: "c" })
-      if (from === to) return
+      if (from === to || label.observed) return
       for (const v of members.get(from) ?? [from])
         for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {})
     })
@@ -390,6 +429,7 @@ export const EhOsContractGraph = {
       if (boxed(label)) {
         const [a, b] = [graph.node(from), graph.node(to)]
         const [start, end] = [border(a, b), border(b, a)]
+        if (label.observed) return bow(id, start, end)
         return { id, d: `M${start.x},${start.y}L${end.x},${end.y}`, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
       }
       const edge = graph.edge({ v: from, w: to, name: id })
@@ -399,7 +439,16 @@ export const EhOsContractGraph = {
       return { id, d, x: at.x, y: at.y, width, height }
     })
 
-    const { width, height } = graph.graph()
+    // dagre sized the picture without the bowed arrows, which lay nothing out: a bow, or its label, reaching
+    // past an edge widens the picture to hold it.
+    const bounds = graph.graph()
+    let [width, height] = [bounds.width, bounds.height]
+    labels.forEach(({ width: w, height: h }, i) => {
+      const { apex, x, y } = geometry[i]
+      if (!apex) return
+      width = Math.max(width, apex.x + 8, x + w / 2 + 8)
+      height = Math.max(height, apex.y + 8, y + h / 2 + 8)
+    })
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)
@@ -408,8 +457,10 @@ export const EhOsContractGraph = {
           `{ left: ${x - width / 2}px; top: ${y - height / 2}px; width: ${width}px; height: ${height}px }`,
       )
     })
+    this.places = new Map()
     cards.forEach(({ id, width, height }) => {
       const { x, y } = graph.node(id)
+      this.places.set(id, { x, y })
       rules.push(`${this.scope} [data-ehg-node=${quoted(id)}] { left: ${x - width / 2}px; top: ${y - height / 2}px }`)
     })
     labels.forEach(({ id, width, height }, i) => {
@@ -471,24 +522,65 @@ export const EhOsContractGraph = {
     })
   },
 
-  // The whole graph in view, never larger than its own size, centred, in a canvas as tall as the graph fitted to
-  // its width, so a small picture takes little room; the stylesheet's max-height holds a tall one, which is fitted
-  // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
-  // ResizeObserver tries again when it has one.
+  // The picture at a readable scale, never larger than its own size: whole and centred when it fits, otherwise from
+  // where reading starts. The canvas is as tall as the picture at that scale, so a small picture takes little room;
+  // the stylesheet's max-height holds a tall one and its min-height a tiny one. Not while the canvas has no width:
+  // the ResizeObserver tries again when it has one.
   fit() {
     const wide = this.canvas.getBoundingClientRect().width
     if (!this.size || !wide) return
     const { width, height } = this.size
-    const tall = Math.ceil(height * Math.min(1, (wide - 32) / width) + 32)
+    const across = Math.max(READABLE, Math.min(1, (wide - 32) / width))
+    const tall = Math.ceil(height * across + 32)
     if (tall !== this.tall) {
       this.tall = tall
       this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`)
     }
     const box = this.canvas.getBoundingClientRect()
-    const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
-    const at = zoomIdentity.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k)
+    const k = Math.max(READABLE, Math.min(1, (box.width - 32) / width, (box.height - 32) / height))
+    const start = (room, size) => (size * k <= room - 32 ? (room - size * k) / 2 : 16)
+    const at = zoomIdentity.translate(start(box.width, width), start(box.height, height)).scale(k)
     select(this.canvas).call(this.zoom.transform, at)
     this.fitted = true
+  },
+
+  // The zoom's buttons: closer, farther, the readable start, or the whole picture however small.
+  zoomTo(how) {
+    const canvas = select(this.canvas)
+    if (how === "read") {
+      this.touched = false
+      this.fit()
+      return
+    }
+    if (how === "in") canvas.call(this.zoom.scaleBy, 1.25)
+    else if (how === "out") canvas.call(this.zoom.scaleBy, 0.8)
+    else if (how === "all" && this.size) {
+      const box = this.canvas.getBoundingClientRect()
+      // A canvas with no room inside its margins has no scale to fit to; the view stays as it is.
+      if (box.width <= 32 || box.height <= 32) return
+      const { width, height } = this.size
+      const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height)
+      // However small the whole picture is, the zoom goes on from there rather than jumping to its least scale.
+      this.zoom.scaleExtent([Math.min(0.1, k), 2])
+      canvas.call(
+        this.zoom.transform,
+        zoomIdentity.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k),
+      )
+    } else return
+    this.touched = true
+  },
+
+  // Card `id` in the middle of the canvas, at the scale the reader has, or a readable one.
+  reveal(id) {
+    const place = id !== undefined && this.places?.get(id)
+    if (!place) return
+    const box = this.canvas.getBoundingClientRect()
+    const k = Math.max(READABLE, this.at?.k ?? 1)
+    select(this.canvas).call(
+      this.zoom.transform,
+      zoomIdentity.translate(box.width / 2 - place.x * k, box.height / 2 - place.y * k).scale(k),
+    )
+    this.touched = true
   },
 
   zoomed(at) {

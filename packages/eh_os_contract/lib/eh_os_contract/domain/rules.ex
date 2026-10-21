@@ -34,6 +34,12 @@ defmodule EhOsContract.Domain.Rules do
   # EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
   # system's is named in `by:` as a person's is.
   #
+  # **D4**, since eh-os D-112 (EmpoweredHouse/eh-os#729): an actor's `may_grant:` names the
+  # other person actors of the domain whose role a person in it may grant through the
+  # application, so only a person grants and is granted, never the actor itself, each once, and
+  # never through rules that lead back to it: `a` granting `b` while `b` grants `a` lets a
+  # holder of `a` grant `a` through another. EHOS refuses the same in the manifest.
+  #
   # **D1**, since the review of #139: a label given and blank, empty or only
   # whitespace, is refused on every declaration of the domain that has one, a field's
   # included (`EhOsContract.DslRules.blank_labels/2`), and **D3** refuses an enum
@@ -55,7 +61,7 @@ defmodule EhOsContract.Domain.Rules do
   # `violated_by:`.
   #
   # **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
-  # `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
+  # `subdomain :core, "Lending", type: :core`; the kind is the subdomain's.
   #
   # **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   # identified by its `identity`, a snake_case name the library injects as a required,
@@ -733,9 +739,100 @@ defmodule EhOsContract.Domain.Rules do
     externals = MapSet.new(for %External{name: name} <- entities, do: name)
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
 
-    for %Actor{} = actor <- entities,
-        violation <- actor_violations(actor, externals, contexts, domain) do
+    actors = for %Actor{} = actor <- entities, do: actor
+    kinds = Map.new(actors, &{&1.name, &1.kind})
+    cycles = grant_cycles(actors, kinds)
+
+    for actor <- actors,
+        violation <-
+          actor_violations(actor, externals, contexts, domain) ++
+            grant_violations(actor, kinds, cycles) do
       violation
+    end
+  end
+
+  # How many others on a cycle of grant rules a refusal names.
+  @named 3
+
+  defp grant_violations(%Actor{may_grant: []}, _kinds, _cycles), do: []
+
+  defp grant_violations(%Actor{kind: kind} = actor, _kinds, _cycles) when kind != :human,
+    do: [
+      {"D4: actor #{inspect(actor.name)} is a system and cannot have may_grant; only a person " <>
+         "brings people in", actor}
+    ]
+
+  defp grant_violations(actor, kinds, cycles) do
+    where = "D4: actor #{inspect(actor.name)}'s may_grant"
+
+    twice =
+      for {name, count} <- Enum.frequencies(actor.may_grant),
+          count > 1,
+          do: {"#{where} names #{inspect(name)} twice", actor}
+
+    named =
+      for name <- Enum.uniq(actor.may_grant),
+          reason = granted_refusal(name, actor.name, kinds),
+          do: {"#{where} #{reason}", actor}
+
+    cycle =
+      case Map.get(cycles, actor.name) do
+        nil ->
+          []
+
+        {first, count} ->
+          [{"#{where} puts it on a cycle of grant rules with #{others(first, count)}", actor}]
+      end
+
+    twice ++ named ++ cycle
+  end
+
+  defp granted_refusal(name, name, _kinds), do: "names the actor itself"
+
+  defp granted_refusal(name, _actor, kinds) do
+    case Map.fetch(kinds, name) do
+      {:ok, :human} -> nil
+      {:ok, _system} -> "names #{inspect(name)}, a system; only a person is granted a role"
+      :error -> "names #{inspect(name)}, which this domain does not declare as an actor"
+    end
+  end
+
+  defp others(first, count) when count > length(first),
+    do: "#{Enum.map_join(first, ", ", &inspect/1)} and #{count - length(first)} more"
+
+  defp others(first, _count), do: Enum.map_join(first, ", ", &inspect/1)
+
+  # Each person actor on a cycle of grant rules, with the first few others on it by name and
+  # how many there are, so a ring of many actors costs as much as reading it.
+  defp grant_cycles(actors, kinds) do
+    edges =
+      for %Actor{kind: :human, name: from, may_grant: granted} <- actors,
+          to <- granted,
+          to != from and Map.get(kinds, to) == :human,
+          uniq: true,
+          do: {from, to}
+
+    if edges == [], do: %{}, else: cyclic(edges)
+  end
+
+  defp cyclic(edges) do
+    graph = :digraph.new()
+
+    try do
+      for {from, to} <- edges do
+        :digraph.add_vertex(graph, from)
+        :digraph.add_vertex(graph, to)
+        :digraph.add_edge(graph, from, to)
+      end
+
+      for component <- :digraph_utils.cyclic_strong_components(graph),
+          first = component |> Enum.sort() |> Enum.take(@named + 1),
+          others = length(component) - 1,
+          actor <- component,
+          into: %{},
+          do: {actor, {first |> List.delete(actor) |> Enum.take(@named), others}}
+    after
+      :digraph.delete(graph)
     end
   end
 
@@ -832,7 +929,7 @@ defmodule EhOsContract.Domain.Rules do
     ends = Enum.reject([relation.upstream, relation.downstream | relation.between], &is_nil/1)
 
     # Plan EL2: an end of a directed relation may be an external system, as in ESDM
-    # (`conformist` to KSeF); the other end is then a context, since a relation between
+    # (`conformist` to a tax authority's e-invoicing registry); the other end is then a context, since a relation between
     # two systems outside is not this domain's. A symmetric relation joins contexts.
     known = if directed?, do: MapSet.union(contexts, externals), else: contexts
 

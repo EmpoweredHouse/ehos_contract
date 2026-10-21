@@ -1,5 +1,10 @@
 # PNS architecture — the starting assumptions
 
+> **19 October 2026:** the clients' names in this file were replaced by descriptions — "the first client" (an
+> accounting firm) and "the clinic" — and a Polish label is given by what it says
+> ([#375](https://github.com/EmpoweredHouse/eh-os-contract/issues/375)). What happened, what was decided and what
+> each example illustrates did not change.
+
 **This is what the engine was built to be, stated before it was built.** It is the premise this repository
 validates, not a record awaiting anyone's acceptance: whether each assumption survives contact with code is
 the question, and the answer accumulates in [`PLAN.md`](../../PLAN.md).
@@ -371,8 +376,8 @@ client renders" (2), but "engine renders, in one language it does not negotiate.
 above — *"a package cannot know its reader's language"* — by dropping the requirement it was protecting
 rather than by solving it: the report no longer promises to be readable by a non-English-speaking accountant
 on its own scaffolding. Contract labels (`label`, `from_label`, `to_label`) are unaffected and still print in
-whatever language the client declared them in, so a TaxVision report today reads as English sentences around
-Polish business terms. The open-source/commercial split two paragraphs up still needs revisiting with this
+whatever language the client declared them in, so the first client's report today reads as English sentences
+around Polish business terms. The open-source/commercial split two paragraphs up still needs revisiting with this
 in mind: the evidence report is now fully engine-owned code, which was the commercial line under (2).
 
 **23 August: a second, separate decision — a graphical web dashboard, not this section's report.** Everything
@@ -496,7 +501,7 @@ Stated because each of these has been read into a version of this proposal at so
 
 | Decided 3 August | |
 | --- | --- |
-| Pilot | TaxVision first, Rehmed in parallel afterwards |
+| Pilot | The first client (an accounting firm) first, the clinic in parallel afterwards |
 | Retention | Persist by default; volume handled by a purge job |
 | Log location | With the client; we read it |
 | Screens | Engine headless behind an API; frontends separate, possibly someone else's |
@@ -506,7 +511,7 @@ Stated because each of these has been read into a version of this proposal at so
 | Cross-module confinement | Deferred on evidence, with a trigger |
 | Event shape change | Narrowed to the evidence report |
 
-**Tested in code on 4 August**, on one bounded TaxVision process. Confirmed:
+**Tested in code on 4 August**, on one bounded process of the first client's. Confirmed:
 contract as an Elixir module, the failure semantics of the transaction-boundary split, three separable IAM
 levels without buying a provider, `contract_version` separating history from drift, and the Ecto hook that
 makes the §5–6 deferral safe. Corrected in the record as a result: where idempotency is declared (§9–10 was
@@ -537,9 +542,9 @@ narrowed a sixth:
 One question turned out not to need the record's attention, and it is worth saying why so it does not come
 back. A trace assertion is the only declaration with an identifier and no client-facing label, which reads
 like a gap against the consequence that "the contract is client-facing, so it needs business labels alongside
-technical event names". It is not one. An event's label carries a fact nothing else expresses — no engine
-derives *"Otwarto miesiąc księgowy"* ("The accounting month was opened") from `accounting_month_opened`,
-so there is nothing for it to drift from.
+technical event names". It is not one. An event's label carries a fact nothing else expresses — the client's
+label, written in Polish and meaning *"The accounting month was opened"*, is not something an engine derives
+from `accounting_month_opened`, so there is nothing for it to drift from.
 A label on an assertion would **restate** what `from`, `eventually`, `within` and `or_else` already say in
 full, which is a second editable representation of one thing: change the window and the prose still claims the
 old one, with nothing to catch it. That is the argument §2 makes against a documentation format as the source,
@@ -606,6 +611,11 @@ what would falsify them, which is why this section exists.
   does not fire for `insert/update/delete` on a changeset — those name another module's schema, which
   `boundary` catches at compile time — and it does not see raw SQL, which is the one genuinely invisible
   entrance and the case this deferral rests on models generating idiomatic Ecto.
+  *Amended, 19 October 2026, when the sandbox host took its own repo (PB1):* the skeleton that showed this, a
+  `prepare_query/3` in the client's repo collecting the tables under a process flag nothing set, went with that
+  repo. The finding stands, and one trap of the hook it would be is worth keeping: a join's source is `{nil, SchemaModule}`,
+  so the table has to come from `SchemaModule.__schema__(:source)`, or a join reads as `nil` and the check falls
+  silent exactly where it should refuse. ([#366](https://github.com/EmpoweredHouse/eh-os-contract/issues/366))
 
 ## What would falsify this
 

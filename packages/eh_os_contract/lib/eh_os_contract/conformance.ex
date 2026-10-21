@@ -9,9 +9,9 @@ defmodule EhOsContract.Conformance do
 
   ## Where lying is easy
 
-  A step counts its **occurrences**: a step is the contract's, and a contract may have
-  no process to count runs of. A process's promises and durations are judged per
-  **run**. And the report has to avoid lying in the three situations where lying is
+  A step counts its **occurrences**: a step is the contract's, and a contract has no
+  runs to count; a run is a process module's. A process's promises and durations are
+  judged per **run**. And the report has to avoid lying in the three situations where lying is
   easy:
 
   **Nothing happening is no basis for a verdict, not three untraversed paths.** A
@@ -61,15 +61,16 @@ defmodule EhOsContract.Conformance do
   rolled back and delivered again by the transport, so a path that always fails there
   reads as untraversed.
 
-  The assertions are the process's `promises`. Beside them, `out_of_order` counts the
-  runs that entered a later stage before an earlier one, with the pairs of stages
+  The assertions are a process module's `promises`. Beside them, `out_of_order` counts
+  the runs that entered a later stage before an earlier one, with the pairs of stages
   (`EhOsContract.StageOrder`): a claim about the process, kept apart from a contract's
   undeclared transitions. An aggregate that declares its
   lifecycle adds the first two questions for its transitions, under `lifecycles`.
   `as_data/2` names the shape `eh_os_contract.conformance.v3`: the steps are the
   contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
-  it. A process module's report has `process`, its `id:`, in the place of `contract`,
-  and only its process; a report has exactly one of the two. v2 is not served.
+  it; a contract's `processes` is always empty. A process module's report has
+  `process`, its `id:`, in the place of `contract`, and only its process under
+  `processes`; a report has exactly one of the two. v2 is not served.
 
   ## The boundary
 
@@ -93,7 +94,7 @@ defmodule EhOsContract.Conformance do
 
   ## `unverified` declarations are omitted, not marked
 
-  A process declaration or a promise the process owner has not confirmed **does
+  A process module's `deadline` or promise the process owner has not confirmed **does
   not appear**.
   `mix eh_os_contract.check` warns about it on every run, which is right for a developer
   check, but an evidence report is a different artifact with a different reader:
@@ -104,8 +105,8 @@ defmodule EhOsContract.Conformance do
 
   ## A process module
 
-  A process module (`use EhOsContract.Process`) gets the process section of a contract's
-  report, and only that, under `processes`: its runs, its confirmed declarations, its
+  A process module (`use EhOsContract.Process`) gets a report of its own, under
+  `processes`: its runs, its confirmed declarations, its
   duration against its `deadline` and its promises' verdicts, and its deployment. It has
   no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
   keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
@@ -144,11 +145,10 @@ defmodule EhOsContract.Conformance do
   The report of the contract `model` (`EhOsContract.Model.fetch/1`), as `report/2`
   gives it. The four questions: a path is a step — from, via, to, each
   `%{kind, name, label}` — with how often it was taken and each source of waiting and
-  failing apart (see "The shape" above), and the steps are the contract's whether or
-  not it has a process; the assertions are a process's promises, judged by
-  `EhOsContract.Trace`; the deployed version is `EhOsContract.Deployment`'s. What is
-  left out: a declaration or a promise the owner has not confirmed, and every untaken
-  step when nothing happened in the contract.
+  failing apart (see "The shape" above); `processes` is empty, since the runs, their
+  promises and durations are a process module's report; the deployed version is
+  `EhOsContract.Deployment`'s. What is left out: every untaken step when nothing
+  happened in the contract.
 
   The model of a process module gives its own report; see `report/2`.
   """
@@ -183,7 +183,8 @@ defmodule EhOsContract.Conformance do
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
       activity: activity,
       paths: paths(model, activity, opts),
-      processes: List.wrap(Model.process(model) && process(model, opts)),
+      # A contract declares no process; the key stays for the readers of the shape.
+      processes: [],
       lifecycles: lifecycles(model, opts),
       scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift(model, opts)
@@ -206,28 +207,31 @@ defmodule EhOsContract.Conformance do
   end
 
   @doc """
-  The report of `model`'s process: its runs, confirmed declarations, durations and
-  promises. Its steps are the contract's, in `from_model/2`'s `paths`. `model` has a
-  process; for one without, there is no process to report and this raises. A process
-  module is one, and its runs are filed under its `id:`.
+  The report of a process module's process, `model`: its runs, what tells them apart
+  (`correlate`, the fields in order), confirmed declarations, durations and promises,
+  judged by `EhOsContract.Trace`. Its runs are filed under its `id:`. A contract has no
+  process to report, and this raises for one.
   """
   @spec process(map(), keyword()) :: map()
   def process(model, opts \\ []) do
     %{} = process = Model.process(model)
 
-    runs = EhOsContract.Paths.runs_of(model, to_string(process.name), opts)
+    runs = EhOsContract.Paths.runs_of(model, process.name, opts)
 
     %{
       process: process.name,
       label: process.label,
       accountable: actor_label(model, process.accountable),
+      # What one run is, so a reader says it without loading the module (plan DD, P2e
+      # (#220), review).
+      correlate: process.correlate,
       runs: runs,
       declarations:
         for %{unverified: false} = value <- [process.deadline] do
           %{key: :deadline, value: {value.amount, value.unit}}
         end,
       duration: duration(model, opts),
-      promises: promises(model, opts),
+      promises: promise_verdicts(model, opts),
       # Plan DD, O1 (#260): under its own key, as EHOS asked in EmpoweredHouse/eh-os#297.
       out_of_order: EhOsContract.StageOrder.evaluate(model, opts)
     }
@@ -326,7 +330,29 @@ defmodule EhOsContract.Conformance do
     end
   end
 
-  defp promises(model, opts) do
+  @doc """
+  The verdicts of each promise of a process module, given its model
+  (`EhOsContract.Model.fetch/1`), over the runs it opened
+  in the period `opts` names, as the report gives them under `promises`: the promise's
+  name and its events' labels, its window, and how many runs kept it (`satisfied`, of
+  them `satisfied_via_eventually` and `satisfied_via_or_else`), broke it (`violated`),
+  still wait (`pending`) or broke it while an external it depends on was down
+  (`suspended`), out of `instances`, judged under its current declaration — runs judged
+  under an earlier one are counted in `under_earlier_declaration` alone. A promise the
+  owner has yet to confirm (`unverified`) is left out. `opts` takes `:since`, `:until`
+  and `:now`, as `report/2` does. Raises `ArgumentError` for a contract's model, which
+  has no process, before it reads anything.
+
+      EhOsContract.Conformance.promise_verdicts(Model.fetch(MyApp.Processes.Loan), since: since)
+      #=> [%{promise: :back_within_a_month, satisfied: 38, violated: 2, pending: 1, ...}]
+  """
+  @spec promise_verdicts(map(), keyword()) :: [map()]
+  def promise_verdicts(model, opts \\ []) do
+    process =
+      Model.process(model) ||
+        raise ArgumentError,
+              "#{inspect(model.module)} is not a process module: it has no promises"
+
     label = fn name ->
       case name && Model.declaring(model, name) do
         {_contract, event} -> event.label
@@ -336,7 +362,7 @@ defmodule EhOsContract.Conformance do
 
     boundaries = Deployment.declaration_boundaries(model.module)
 
-    for promise <- Model.process(model).promises, not promise.unverified do
+    for promise <- process.promises, not promise.unverified do
       verdicts = Trace.evaluate(model.module, promise.name, opts)
       boundary = Map.get(boundaries, "promise:#{promise.name}")
       {current, earlier} = split_by_declaration(verdicts, boundary)

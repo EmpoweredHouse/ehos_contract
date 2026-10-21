@@ -7,11 +7,11 @@ if Code.ensure_loaded?(Plug.Conn) do
     EHOS grants them by:
 
         # in the host's router, after whatever verifies the credential
-        forward "/api", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+        forward "/api", EhOsContract.Plug, contracts: [Fulfilment.Contracts.Warehouse]
 
-        POST /api/commands/rehmed.record_payment   {"visit_id": "w-1", "method": "card", "amount": 20000}
-        POST /api/records/rehmed.patient_arrived   {"visit_id": "w-1"}
-        GET  /api/queries/rehmed.open_visits_for_clinic?clinic_id=7
+        POST /api/commands/fulfilment.assign_pick_list   {"warehouse_id": "7", "order_id": "order-1", "picker_id": "u-82"}
+        POST /api/records/fulfilment.shelf_found_empty   {"warehouse_id": "7", "shelf": "B-12"}
+        GET  /api/queries/fulfilment.open_pick_lists_for_warehouse?warehouse_id=7
 
     **It authenticates nobody.** The actor is `conn.assigns.eh_os_contract_actor`,
     an `EhOsContract.Actor` that the plug in front of this one built from a

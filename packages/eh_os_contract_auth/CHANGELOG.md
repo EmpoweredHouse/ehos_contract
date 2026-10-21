@@ -24,6 +24,65 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+### Added
+
+- **The manifest carries a role's grant rule** (eh-os D-112, EmpoweredHouse/eh-os#729). A role whose actor has
+  `may_grant:` carries `may_grant`, the roles it may grant, and the manifest is then `ehos.manifest/v5`,
+  which an EHOS from the release after 0.12.0 accepts. A domain without a rule keeps the version and the
+  digests it had. A rule naming an actor that holds no capability, and so is no role, or a rule on such an
+  actor, is refused with what to change, and so is, for a domain given as a map, what the domain's `D4` would
+  refuse. `EhOsContract.Auth.Manifest.schemas/0` lists `ehos.manifest/v5`.
+- **A signed-in person grants and revokes a role their rule lets them give** (eh-os D-112,
+  EmpoweredHouse/eh-os#773). `EhOsContract.Auth.Grants.grant/3` and `revoke/4`, from the person's request,
+  exchange their credential for one to EHOS as the sign-in's client and call EHOS's grant routes, which an
+  EHOS from the release after 0.13.0 serves. A grant answers an `EhOsContract.Auth.Grants.Grant`: the person's
+  id, whether they were invited or have joined, whether the role was bound now or before, and whether a link was
+  mailed; a refusal answers EHOS's code. Nothing is configured beyond sign-in, no credential is kept, and nothing
+  is retried.
+
+### Changed
+
+- **The documentation's examples name no client** (the publication programme, PB3, #375). The module docs,
+  the README and the older entries of this changelog took their audience, contract and capabilities from a real
+  clinic; they now use an invented one (`clinic/production`, `Clinic.Contracts.VisitSettlement`). Nothing a host
+  calls changed.
+
+## [0.4.0] - 2026-10-17
+
+### Added
+
+- **`sign_in: absolute_limit`** (eh-os D-113): how long a session lasts from the person's sign-in at EHOS, in
+  seconds, from a minute to 366 days; twelve hours when not given, as before (eh-os D-66). A host maps it from
+  `EHOS_SIGN_IN_ABSOLUTE`, which EHOS gives every workload with its installation's limit, so the session ends
+  when EHOS's does; nil is not given, and a value out of range stops the host at boot.
+
+### Fixed
+
+- **Signing in asks EHOS for `max_age` of the session's absolute limit** (eh-os D-113), and refuses a sign-in older
+  than it. With an installation's limit longer than the application's, EHOS gave a code for a sign-in the new
+  session refused at once, and the browser went between the page and EHOS without end. An application must run
+  this version before its installation raises its limits.
+
+## [0.3.0] - 2026-10-17
+
+### Added
+
+- **`ehos.yaml/v4` and `ehos.manifest/v4`** (eh-os D-98, D-99, #306). `mix eh_os_contract.manifest` reads an
+  `ehos.yaml/v4`, EHOS's file copied byte for byte, and writes an `ehos.manifest/v4` for it, so an application
+  can name `needs.database.seed`, the command EHOS runs to seed an ephemeral environment, and `needs.secrets`,
+  the secrets its workload is given as environment variables. Both are carried as written. A v1 to v3 file
+  still makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release
+  produces, now ends with `ehos.manifest/v4`, which only an EHOS that accepts it (0.9 and later) deploys.
+
+## [0.2.0] - 2026-10-16
+
+### Removed
+
+- **Breaking:** `mix eh_os_contract.manifest` no longer writes `process` on a capability of `offers.capabilities`,
+  because a contract can no longer declare a process (engine, plan DD, stage P2h, eh-os-contract#221). EHOS keeps
+  the field optional and reads it nowhere (EmpoweredHouse/eh-os#203); a consumer that compared a manifest field by
+  field finds it gone.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added
@@ -214,7 +273,7 @@ and the `ehos-dev:release` skill makes one.
     that domain's contracts to an application of its own, or removes its `publish`.
 
 - **Breaking:** **#178 (plan DD, ID4): a decision names the contract by its `id:`.** `eh_os_contract_auth_decisions.contract`
-  holds `"rehmed.visit_settlement"` where it held `"Rehmed.Contracts.VisitSettlement"`, as every row of the engine
+  holds `"clinic.visit_settlement"` where it held `"Clinic.Contracts.VisitSettlement"`, as every row of the engine
   does from ID4, so moving a contract's module no longer splits its authorization history. It comes from
   `EhOsContract.Authorizer.Request.contract_id`, new and set by the engine on every request, so this package needs
   an `eh_os_contract` from #178 on: against an older one every `authorize/2` raises.

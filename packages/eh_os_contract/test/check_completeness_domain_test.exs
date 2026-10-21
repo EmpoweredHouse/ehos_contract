@@ -24,22 +24,22 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        context :scheduling, "Terminarz", subdomain: :supporting
-        context :reporting, "Raporty", subdomain: :generic
-        context :archive, "Archiwum", subdomain: :generic
+        context :settlement, "Settlement", subdomain: :core
+        context :scheduling, "Scheduling", subdomain: :supporting
+        context :reporting, "Reports", subdomain: :generic
+        context :archive, "Archive", subdomain: :generic
 
-        actor :reception, :human, "Recepcja"
-        actor :gateway, :system, "Bramka", backed_by: :payer_registry
-        actor :auditor, :human, "Audytor"
+        actor :reception, :human, "Front desk"
+        actor :gateway, :system, "Gateway", backed_by: :payer_registry
+        actor :auditor, :human, "Auditor"
 
-        external :payer_registry, "Rejestr płatnika", direction: :outbound
-        external :sms, "Bramka SMS", direction: :outbound
-        external :ledger, "Księga", direction: :outbound
+        external :payer_registry, "Payer registry", direction: :outbound
+        external :sms, "SMS gateway", direction: :outbound
+        external :ledger, "Ledger", direction: :outbound
 
-        entity :clinic, "Przychodnia", context: :scheduling, identity: :clinic_id do
+        entity :clinic, "Clinic", context: :scheduling, identity: :clinic_id do
         end
 
         relation :customer_supplier, upstream: :scheduling, downstream: :settlement
@@ -48,7 +48,11 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         subdomain :core, "Core", type: :core
         subdomain :supporting, "Supporting", type: :supporting
         subdomain :generic, "Generic", type: :generic
-        subdomain :legacy, "Dawne", type: :generic
+        subdomain :legacy, "Legacy", type: :generic
+
+        value :money, :integer, unit: :cents, label: "Amount"
+        value :room_code, :string
+        value :room_kind, {:enum, [:surgery, treatment: "Treatment room"]}, label: "Room kind"
       end
       """,
       "clinic.ex"
@@ -59,28 +63,28 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       defmodule #{inspect(@settlement)} do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(@settlement)}"
 
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
 
-          command :record_payment, "Płatność", by: [:reception, :gateway], emits: :payment_recorded do
+          command :record_payment, "Payment", by: [:reception, :gateway], emits: :payment_recorded do
             field :clinic_id, {:id, :clinic}
           end
 
-          event :payment_recorded, "Zapłacono" do
+          event :payment_recorded, "Paid" do
             field :clinic_id, {:id, :clinic}
           end
         end
 
-        effect :notify, "Powiadom", handles: :payment_recorded, calls: :sms, idempotency: [key: :visit_id, owner: :self]
+        effect :notify, "Notify", handles: :payment_recorded, calls: :sms, idempotency: [key: :visit_id, owner: :self]
       end
 
       defmodule #{inspect(@scheduling)} do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling, id: "clinic.#{contract_name(@scheduling)}"
 
-        aggregate :slot, "Termin" do
+        aggregate :slot, "Slot" do
           identity :slot_id
-          command :book, "Rezerwacja", by: :reception, emits: :booked
-          event :booked, "Zarezerwowano"
+          command :book, "Booking", by: :reception, emits: :booked
+          event :booked, "Booked"
         end
       end
 
@@ -89,7 +93,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
         consumes #{inspect(@settlement)}, :payment_recorded
 
-        read_model :payments, "Płatności", projects: :payment_recorded do
+        read_model :payments, "Payments", projects: :payment_recorded do
           field :visit_id, :id
         end
       end
@@ -106,20 +110,71 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         do: {f.message, Finding.place(f)}
   end
 
+  # Plan DD, L4 (#326).
+  test "a value or an enum member without a label, at the value; control: labelled ones" do
+    assert [{code, {"clinic.ex", 29}}, {kind, {"clinic.ex", 30}}] =
+             Enum.sort_by(findings("owner-view-without-label"), &elem(&1, 1))
+
+    assert code =~ "value :room_code of #{inspect(@domain)}: the value has no label"
+    assert kind =~ "value :room_kind of #{inspect(@domain)}: member :surgery has no label"
+  end
+
   test "an actor no contract names, at its declaration; control: one only a system stands for" do
     assert [{message, {"clinic.ex", 11}}] = findings("orphan-actor")
     assert message =~ "actor :auditor of #{inspect(@domain)} is in no command's or query's `by:`"
+  end
+
+  # Plan DD, P2h (#221): a process module's `accountable` gives an actor something to do,
+  # as a contract's process did; one of another domain gives this one's nothing.
+  test "an actor a process module of the domain holds accountable is named" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.Audit do
+        use EhOsContract.Process,
+          id: "clinic.audit",
+          domain: #{inspect(@domain)},
+          label: "Audit",
+          accountable: :auditor
+
+        correlate :visit_id
+        stage :payment, include: [{#{inspect(@settlement)}, :payment_recorded}]
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ElsewhereAudit do
+        use EhOsContract.Process,
+          id: "elsewhere.audit",
+          domain: EhOsContract.CheckCompletenessDomainTest.Elsewhere,
+          label: "Audit",
+          accountable: :auditor
+
+        correlate :visit_id
+        stage :payment, include: [{#{inspect(@settlement)}, :payment_recorded}]
+      end
+      """,
+      "audit.ex"
+    )
+
+    orphans = fn processes ->
+      for %Finding{rule: "orphan-actor"} = f <-
+            Completeness.findings([@settlement, @scheduling, @reporting], processes),
+          do: f.message
+    end
+
+    assert orphans.([EhOsContract.CheckCompletenessDomainTest.Audit]) == []
+
+    assert [message] = orphans.([EhOsContract.CheckCompletenessDomainTest.ElsewhereAudit])
+    assert message =~ "actor :auditor of #{inspect(@domain)}"
   end
 
   test "a scoped actor may not get an application-wide command; control: scoped and unscoped actors" do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedDomain do
-        use EhOsContract.Domain, name: :scoped, language: :pl
+        use EhOsContract.Domain, name: :scoped, language: :en
 
         subdomain :core, "Core", type: :core
-        context :work, "Praca", subdomain: :core
-        actor :clerk, :human, "Księgowa", scope: [:company_id]
+        context :work, "Work", subdomain: :core
+        actor :clerk, :human, "Accountant", scope: [:company_id]
         actor :administrator, :human, "Administrator"
       end
 
@@ -128,14 +183,14 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.ScopedDomain,
           context: :work, id: "scoped.scoped_contract"
 
-        aggregate :company, "Firma" do
+        aggregate :company, "Company" do
           identity :company_id
-          command :rename, "Zmień nazwę", by: :clerk, emits: :renamed
-          command :archive, "Archiwizuj", by: :clerk, scope: :company_id, emits: :archived
-          command :restore, "Przywróć", by: :administrator, emits: :restored
-          event :renamed, "Zmieniono nazwę"
-          event :archived, "Zarchiwizowano"
-          event :restored, "Przywrócono"
+          command :rename, "Rename", by: :clerk, emits: :renamed
+          command :archive, "Archive", by: :clerk, scope: :company_id, emits: :archived
+          command :restore, "Restore", by: :administrator, emits: :restored
+          event :renamed, "Renamed"
+          event :archived, "Archived"
+          event :restored, "Restored"
         end
       end
       """,
@@ -182,6 +237,82 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
                "of context :settlement"
   end
 
+  # Plan DD, L3 (#286): a field typed `{:id, unit}` of another context's unit is a
+  # reference into that context, as one naming an entity it owns is.
+  defp unit_reference(name, relation) do
+    domain = Module.concat(__MODULE__, "#{name}Domain")
+    scheduling = Module.concat(__MODULE__, "#{name}Scheduling")
+    billing = Module.concat(__MODULE__, "#{name}Billing")
+    namespace = Macro.underscore(name)
+
+    compile(
+      """
+      defmodule #{inspect(domain)} do
+        use EhOsContract.Domain, name: :#{namespace}, language: :en
+
+        subdomain :supporting, "Support", type: :supporting
+        context :scheduling, "Scheduling", subdomain: :supporting
+        context :billing, "Settlement", subdomain: :supporting
+        actor :reception, :human, "Front desk"
+        #{relation}
+      end
+
+      defmodule #{inspect(scheduling)} do
+        use EhOsContract.Contract, domain: #{inspect(domain)}, context: :scheduling, id: "#{namespace}.scheduling"
+
+        aggregate :appointment, "Visit" do
+          identity :appointment_id
+          command :book, "Book", by: :reception, emits: :booked
+          event :booked, "Booked"
+        end
+      end
+
+      defmodule #{inspect(billing)} do
+        use EhOsContract.Contract, domain: #{inspect(domain)}, context: :billing, id: "#{namespace}.billing"
+
+        aggregate :bill, "Bill" do
+          identity :bill_id
+
+          command :charge, "Charge", by: :reception, emits: :charged do
+            field :appointment_id, {:id, :appointment}
+          end
+
+          event :charged, "Charged" do
+            field :appointment_id, {:id, :appointment}
+          end
+        end
+      end
+      """,
+      "#{namespace}.ex"
+    )
+
+    for f <- Completeness.findings([scheduling, billing]),
+        f.rule in [
+          "cross-bounded-context-reference-without-mapping",
+          "orphan-context-mapping"
+        ],
+        do: {f.rule, f.message}
+  end
+
+  test "a field identifying another context's unit with no relation between them" do
+    assert [{"cross-bounded-context-reference-without-mapping", message}] =
+             unit_reference("UnitUnmapped", "")
+
+    assert message =~
+             "UnitUnmappedBilling in context :billing names unit :appointment of " <>
+               "#{inspect(__MODULE__)}.UnitUnmappedScheduling of context :scheduling"
+  end
+
+  test "a field identifying a unit against the relation's direction is the compiler's (X11), and crosses it" do
+    relation = "relation :customer_supplier, upstream: :billing, downstream: :scheduling"
+    assert unit_reference("UnitAgainst", relation) == []
+  end
+
+  test "control: a relation the unit reference follows, crossed and not orphaned" do
+    relation = "relation :customer_supplier, upstream: :scheduling, downstream: :billing"
+    assert unit_reference("UnitMapped", relation) == []
+  end
+
   test "a subdomain no context belongs to; control: the three contexts name theirs" do
     assert [{message, {"clinic.ex", 26}}] = findings("subdomain-without-bounded-context")
     assert message =~ "subdomain :legacy of #{inspect(@domain)} is the `subdomain:` of no context"
@@ -191,15 +322,15 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.Billing do
-        use EhOsContract.Domain, name: :billing, language: :pl
+        use EhOsContract.Domain, name: :billing, language: :en
 
-        subdomain :supporting, "Wsparcie", type: :supporting
-        context :invoicing, "Fakturowanie", subdomain: :supporting
-        context :archive, "Archiwum", subdomain: :supporting
-        actor :accountant, :human, "Księgowa"
-        external :ksef, "KSeF", direction: :outbound
-        external :registry, "Rejestr", direction: :outbound
-        relation :conformist, upstream: :ksef, downstream: :invoicing
+        subdomain :supporting, "Support", type: :supporting
+        context :invoicing, "Invoicing", subdomain: :supporting
+        context :archive, "Archive", subdomain: :supporting
+        actor :accountant, :human, "Accountant"
+        external :e_invoicing, "E-invoicing registry", direction: :outbound
+        external :registry, "Registry", direction: :outbound
+        relation :conformist, upstream: :e_invoicing, downstream: :invoicing
         relation :conformist, upstream: :registry, downstream: :archive
       end
 
@@ -208,13 +339,13 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.Billing,
           context: :invoicing, id: "billing.invoices"
 
-        aggregate :invoice, "Faktura" do
+        aggregate :invoice, "Invoice" do
           identity :invoice_id
-          command :issue, "Wystaw", by: :accountant, emits: :issued
-          event :issued, "Wystawiono"
+          command :issue, "Issue", by: :accountant, emits: :issued
+          event :issued, "Issued"
         end
 
-        effect :send, "Wyślij do KSeF", handles: :issued, calls: :ksef, idempotency: [key: :invoice_id, owner: :self]
+        effect :send, "Send to the e-invoicing registry", handles: :issued, calls: :e_invoicing, idempotency: [key: :invoice_id, owner: :self]
       end
       """,
       "billing.ex"
@@ -226,7 +357,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           do: {f.rule, f.message}
 
     # :registry ends a relation, so it is not an orphan; nothing of :archive calls it,
-    # so that relation is. :ksef is called by the effect: its relation is crossed.
+    # so that relation is. :e_invoicing is called by the effect: its relation is crossed.
     assert [{"orphan-context-mapping", message}] = rules
     assert message =~ "relation :conformist between :registry and :archive"
   end
@@ -235,13 +366,13 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.ReportsDomain do
-        use EhOsContract.Domain, name: :reporting, language: :pl
+        use EhOsContract.Domain, name: :reporting, language: :en
 
-        subdomain :supporting, "Wsparcie", type: :supporting
-        context :reports, "Raporty", subdomain: :supporting
-        actor :specialist, :human, "Specjalista"
-        external :p1, "P1", direction: :outbound
-        relation :conformist, upstream: :p1, downstream: :reports
+        subdomain :supporting, "Support", type: :supporting
+        context :reports, "Reports", subdomain: :supporting
+        actor :specialist, :human, "Specialist"
+        external :health_registry, "Health registry", direction: :outbound
+        relation :conformist, upstream: :health_registry, downstream: :reports
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Reports do
@@ -249,14 +380,14 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.ReportsDomain,
           context: :reports, id: "reporting.reports"
 
-        aggregate :report, "Zgłoszenie" do
+        aggregate :report, "Report" do
           identity :visit_id
-          command :note_number, "Zapisz numer", by: :specialist, emits: :numbered do
-            field :p1_report_id, :id, issued_by: :p1
+          command :note_number, "Note the number", by: :specialist, emits: :numbered do
+            field :registry_report_id, :id, issued_by: :health_registry
           end
 
-          event :numbered, "Zapisano numer" do
-            field :p1_report_id, :id, issued_by: :p1
+          event :numbered, "Number noted" do
+            field :registry_report_id, :id, issued_by: :health_registry
           end
         end
       end
@@ -275,19 +406,19 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.Ledger do
-        use EhOsContract.Domain, name: :ledger, language: :pl
+        use EhOsContract.Domain, name: :ledger, language: :en
 
-        subdomain :supporting, "Wsparcie", type: :supporting
-        context :invoicing, "Fakturowanie", subdomain: :supporting
-        context :reports, "Raporty", subdomain: :supporting
-        actor :accountant, :human, "Księgowa"
-        actor :bot, :system, "Robot rejestru", backed_by: :registry
-        external :ksef, "KSeF", direction: :outbound
-        external :registry, "Rejestr", direction: :inbound
-        relation :conformist, upstream: :ksef, downstream: :invoicing
+        subdomain :supporting, "Support", type: :supporting
+        context :invoicing, "Invoicing", subdomain: :supporting
+        context :reports, "Reports", subdomain: :supporting
+        actor :accountant, :human, "Accountant"
+        actor :bot, :system, "Registry robot", backed_by: :registry
+        external :e_invoicing, "E-invoicing registry", direction: :outbound
+        external :registry, "Registry", direction: :inbound
+        relation :conformist, upstream: :e_invoicing, downstream: :invoicing
         relation :conformist, upstream: :registry, downstream: :reports
 
-        entity :invoice, "Faktura", context: :invoicing, identity: :number, issued_by: :ksef do
+        entity :invoice, "Invoice", context: :invoicing, identity: :number, issued_by: :e_invoicing do
         end
       end
 
@@ -296,10 +427,10 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.Ledger,
           context: :invoicing, id: "ledger.invoicing"
 
-        aggregate :draft, "Szkic" do
+        aggregate :draft, "Draft" do
           identity :draft_id
-          command :prepare, "Przygotuj", by: :accountant, emits: :prepared
-          event :prepared, "Przygotowano"
+          command :prepare, "Prepare", by: :accountant, emits: :prepared
+          event :prepared, "Prepared"
         end
       end
 
@@ -308,17 +439,17 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.Ledger,
           context: :reports, id: "ledger.reports"
 
-        aggregate :report, "Raport" do
+        aggregate :report, "Report" do
           identity :report_id
-          command :file, "Złóż", by: :accountant, emits: :filed
-          event :filed, "Złożono"
+          command :file, "File", by: :accountant, emits: :filed
+          event :filed, "Filed"
         end
 
-        read_model :filed_reports, "Raporty", projects: :filed do
+        read_model :filed_reports, "Reports", projects: :filed do
           field :report_id, :id
         end
 
-        query :reports, "Raporty", reads: :filed_reports, by: :bot do
+        query :reports, "Reports", reads: :filed_reports, by: :bot do
           param :report_id, :id
         end
       end
@@ -339,11 +470,11 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.Desk do
-        use EhOsContract.Domain, name: :desk, language: :pl
+        use EhOsContract.Domain, name: :desk, language: :en
 
-        subdomain :supporting, "Wsparcie", type: :supporting
-        context :desk, "Recepcja", subdomain: :supporting
-        actor :reception, :human, "Recepcja"
+        subdomain :supporting, "Support", type: :supporting
+        context :desk, "Front desk", subdomain: :supporting
+        actor :reception, :human, "Front desk"
         external :sms, "SMS", direction: :outbound
       end
 
@@ -352,19 +483,19 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           domain: EhOsContract.CheckCompletenessDomainTest.Desk,
           context: :desk, id: "desk.notes"
 
-        aggregate :note, "Notatka" do
+        aggregate :note, "Note" do
           identity :note_id
 
-          command :write, "Zapisz", by: :reception, emits: :written do
+          command :write, "Write", by: :reception, emits: :written do
             field :issued_by, {:enum, [:sms, :hand]}
           end
 
-          event :written, "Zapisano" do
+          event :written, "Written" do
             field :issued_by, {:enum, [:sms, :hand]}
           end
         end
 
-        scenario "zapis ręczny" do
+        scenario "written by hand" do
           command :write, %{issued_by: :sms}
           expect :written, %{issued_by: :sms}
         end

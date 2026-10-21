@@ -1,20 +1,24 @@
 defmodule Mix.Tasks.EhOsContract.Graph do
-  @shortdoc "Gives a contract's or a domain's graph.v1 document, or what the log says over it"
+  @shortdoc "Gives a contract's, a process's or a domain's graph.v1 document, or the log over it"
 
   @moduledoc """
   The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
-  contract the registry finds — that is, of the binary that runs — or of its domain,
-  and with `--overlay` what the log says over it (`EhOsContract.Graph.Overlay`).
+  contract or process module the registry finds — that is, of the binary that runs — or
+  of its domain, and with `--overlay` what the log says over it
+  (`EhOsContract.Graph.Overlay`).
 
-      mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
-      mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
-      mix eh_os_contract.graph --domain rehmed --output rehmed.json
+      mix eh_os_contract.graph --contract lending.circulation --output circulation.json
+      mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
+      mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
+      mix eh_os_contract.graph --domain lending --output lending.json
 
-  `--contract` names a contract by its `id:`. Without it the task gives the domain's
-  document — its context map, its contracts and what flows between them, its actors —
-  and `--domain` names the domain by its `name:`, which it may leave out when the
-  application has one. The bytes are the ones the API serves, every object's keys in
-  order, so two of them compare with `diff`. A document holds every fact of its
+  `--contract` names a contract by its `id:`, `--process` a process module by its
+  `id:`; a process module may share its id with a contract, so they are two options.
+  Without either the task gives the domain's document — its context map, its contracts
+  and process modules and what flows between them, its actors — and `--domain` names
+  the domain by its `name:`, which it may leave out when the application has one. The
+  bytes are the ones the API serves, every object's keys in order, so two of them
+  compare with `diff`. A document holds every fact of its
   contract or domain, whatever a renderer draws of them; the pictures are the
   renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
@@ -40,6 +44,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       OptionParser.parse!(args,
         strict: [
           contract: :string,
+          process: :string,
           domain: :string,
           overlay: :boolean,
           since: :string,
@@ -51,8 +56,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       rest != [] ->
         Mix.raise("unexpected arguments: #{Enum.join(rest, " ")}")
 
-      opts[:contract] && opts[:domain] ->
-        Mix.raise("--contract gives a contract's document, --domain a domain's; pass one of them")
+      Enum.count([:contract, :process, :domain], &opts[&1]) > 1 ->
+        Mix.raise(
+          "--contract gives a contract's document, --process a process module's, " <>
+            "--domain a domain's; pass one of them"
+        )
 
       opts[:since] && !opts[:overlay] ->
         Mix.raise(
@@ -79,23 +87,30 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     EhOsContract.Registry.load!()
 
     period = [since: since(opts)]
-    contracts = EhOsContract.Registry.contracts()
+    modules = EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
 
     document =
-      case opts[:contract] do
-        nil ->
-          domain = EhOsContract.Tools.domain!(EhOsContract.Registry.domains(), opts[:domain])
-
-          if opts[:overlay],
-            do: Overlay.domain(domain, contracts, period),
-            else: Document.domain(domain, contracts)
-
-        id ->
+      cond do
+        id = opts[:contract] ->
           contract = contract!(id)
 
           if opts[:overlay],
             do: Overlay.contract(contract, period),
             else: Document.contract(contract)
+
+        id = opts[:process] ->
+          process = process!(id)
+
+          if opts[:overlay],
+            do: Overlay.process(process, period),
+            else: Document.process(process)
+
+        true ->
+          domain = EhOsContract.Tools.domain!(EhOsContract.Registry.domains(), opts[:domain])
+
+          if opts[:overlay],
+            do: Overlay.domain(domain, modules, period),
+            else: Document.domain(domain, modules)
       end
 
     emit_output(Document.encode(document, pretty: true) <> "\n", opts)
@@ -174,6 +189,17 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       Mix.raise(
         "no contract #{id}. Registered: " <>
           (EhOsContract.Registry.contracts()
+           |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+           |> Enum.sort()
+           |> Enum.join(", "))
+      )
+  end
+
+  defp process!(id) do
+    EhOsContract.Registry.process(id) ||
+      Mix.raise(
+        "no process module #{id}. Registered: " <>
+          (EhOsContract.Registry.processes()
            |> Enum.map(&EhOsContract.Model.fetch(&1).id)
            |> Enum.sort()
            |> Enum.join(", "))

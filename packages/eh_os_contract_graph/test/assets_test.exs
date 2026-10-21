@@ -86,6 +86,56 @@ defmodule EhOsContract.GraphRenderer.AssetsTest do
         do: assert(String.starts_with?(name, "--eh-os-contract-graph-"), name)
   end
 
+  test "every rule of the stylesheet reaches only the package's own elements" do
+    css = Regex.replace(~r{/\*.*?\*/}s, File.read!(@stylesheet), "")
+
+    # Each rule with its declarations; an at-rule's own condition is not a rule.
+    rules =
+      for [selectors, body] <-
+            Regex.scan(~r/([^{};]+)\{([^{}]*)\}/, css, capture: :all_but_first),
+          selectors = String.trim(selectors),
+          not String.starts_with?(selectors, "@"),
+          do: {selectors, body}
+
+    # A class of the package, `.ehg` or `.ehg-*`, on an element or on its own.
+    own = ~r/\.ehg(?:-[\w-]+)?(?![\w-])/
+    # The same class, then a descendant or a child: what follows is inside the package's element.
+    inside = ~r/\.ehg(?:-[\w-]+)?(?![\w-])[^\s>]*\s*[\s>]\s*\S/
+
+    for {selectors, body} <- rules,
+        # What a pseudo-class or an attribute takes as its argument is not where a rule
+        # reaches: `:not(.ehg)` and `[class~=ehg]` say nothing of that.
+        bare = selectors |> strip(~r/\[[^\[\]]*\]/, "[]") |> strip(~r/\([^()]*\)/, "()"),
+        selector <- bare |> String.split(",") |> Enum.map(&String.trim/1) do
+      if selector == ":root" do
+        # The page's root may hold only the package's own custom properties.
+        for [name] <- Regex.scan(~r/([\w-]+)\s*:/, body, capture: :all_but_first),
+            do: assert(String.starts_with?(name, "--eh-os-contract-graph-"), ":root sets #{name}")
+      else
+        [first | siblings] = String.split(selector, ~r/\s*[~+]\s*/)
+        assert first =~ own, "#{selector} reaches outside the package's elements"
+
+        # What a sibling combinator reaches is the package's when it is one of its elements, or
+        # when the selector already stands inside one: `.ehg p + span` is, `.ehg ~ p` is not.
+        Enum.reduce(siblings, first, fn sibling, before ->
+          assert sibling =~ own or before =~ inside,
+                 "#{selector} reaches outside the package's elements"
+
+          before <> " + " <> sibling
+        end)
+      end
+    end
+  end
+
+  # `text` with every match of `pattern` replaced by `with`, again until none is left, so
+  # nested arguments go from the inside out.
+  defp strip(text, pattern, with) do
+    case Regex.replace(pattern, text, with) do
+      ^text -> text
+      stripped -> strip(stripped, pattern, with)
+    end
+  end
+
   test "NOTICE names each vendored library the bundle carries" do
     notice = File.read!(Path.join(@root, "NOTICE"))
 

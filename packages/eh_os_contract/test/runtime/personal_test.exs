@@ -146,7 +146,7 @@ defmodule EhOsContract.PersonalTest do
                    DispatchRig.Ledger,
                    %DispatchRig.Ledger.Commands.OpenAccount{
                      account_id: "account-anna",
-                     branch_id: "branch-krakow"
+                     branch_id: "branch-north"
                    },
                    actor: clerk
                  )

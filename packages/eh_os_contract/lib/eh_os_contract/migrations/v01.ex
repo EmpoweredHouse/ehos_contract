@@ -107,7 +107,7 @@ defmodule EhOsContract.Migrations.V01 do
       # Which agreement was in force. Without it, every deploy that removes an event
       # produces false alarms in the overlay.
       add :contract_version, :text, null: false
-      # 'accounting_month:c-1|p-7'; nil for an event that belongs to no stream.
+      # 'loan:loan-1'; nil for an event that belongs to no stream.
       add :stream_id, :text
       add :stream_version, :bigint
       # 'payer_id:p-1', 'visit_id:w-1'

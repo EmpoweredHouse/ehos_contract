@@ -3,9 +3,10 @@
 A conformance dashboard for [EhOsContract](https://hex.pm/packages/eh_os_contract), mounted in your
 own router.
 
-2 screens and nothing else: the contract's conformance status, and the graphs:
-each domain's context map and system, and per contract its process's declared shape,
-its full graph with the log laid over it, and its units and their lifecycles.
+2 screens and nothing else: the conformance status of each contract and each process module,
+and the graphs: each domain's context map and system, per contract its full graph with the log
+laid over it and its units and their lifecycles, and per process module its stages, events and
+promises with the log over them.
 
 The graphs are drawn by
 [`eh_os_contract_graph`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_graph),
@@ -95,8 +96,9 @@ runs in EHOS.
 ## The API
 
 `eh_os_contract_api/2` mounts read-only JSON routes in a scope of their own (its docs
-show the pipeline): what a client of the engine (EHOS Console, a CI job, a renderer)
-reads without the dashboard.
+show the pipeline): what a client of the engine (a CI job, a renderer, a tool)
+reads without the dashboard. The EHOS Console does not call it: it takes each domain's graph
+document with the application's deployment (eh-os D-123).
 
 ```elixir
 scope "/" do
@@ -110,29 +112,29 @@ end
 | Route | What |
 | --- | --- |
 | `GET /api/conformance?contract=…&since=…&until=…` | the conformance report, `eh_os_contract.conformance.v3` |
-| `GET /api/model`, `/api/model/rehmed.settlement` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
-| `GET /api/asyncapi`, `/api/asyncapi/rehmed.settlement` | what a contract publishes, as AsyncAPI |
-| `GET /api/openapi`, `/api/openapi/rehmed.settlement` | its commands and queries, as OpenAPI |
-| `GET /api/graph` | every contract and domain with its version and graph digest |
-| `GET /api/graph/rehmed.settlement` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |
-| `GET /api/graph/rehmed.settlement/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
-| `GET /api/graph/domain/Rehmed.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts and what crosses between them |
+| `GET /api/model`, `/api/model/lending.circulation` | the exported model, `eh_os_contract.model.v1`, digest as `ETag` |
+| `GET /api/asyncapi`, `/api/asyncapi/billing.subscriptions` | what a contract publishes, as AsyncAPI |
+| `GET /api/openapi`, `/api/openapi/lending.circulation` | its commands and queries, as OpenAPI |
+| `GET /api/graph` | every contract, process module and domain with its version and graph digest |
+| `GET /api/graph/lending.circulation` | the contract's `graph.v1` document: its graph of facts, with the panels' content and scenarios |
+| `GET /api/graph/lending.circulation/overlay?since=…&until=…` | what the log says over it, `eh_os_contract.graph_overlay.v1` |
+| `GET /api/graph/process/fulfilment.order`, `…/overlay` | the same for a process module: its stages, the events they include, its promises; over it its runs, the events' occurrences and each promise's verdicts |
+| `GET /api/graph/domain/Lending.Domain`, `…/overlay` | the same for a domain: contexts, actors, contracts, process modules and what crosses between them |
 
+**Which to read.** A client that draws a graph or a picture of a contract (a renderer) reads
+`/graph`. Its document holds every fact a picture or a panel shows, by stable ids, and its
+overlay holds what the log says over them. `/model` is the contract as its DSL declares it,
+one key per declaration. It is for a reader that works with the declarations themselves
+rather than a picture of them, such as a code generator or a diff of 2 versions in CI.
 
-**Which to read.** A client that draws a graph or a picture of a contract (the EHOS Console,
-a renderer) reads `/graph`. Its document holds every fact a picture or a panel shows, by
-stable ids, and its overlay holds what the log says over them. `/model` is the contract as
-its DSL declares it, one key per declaration. It is for a reader that works with the
-declarations themselves rather than a picture of them, such as a code generator or a diff
-of 2 versions in CI.
-
-A contract is named by its `id:` on every route; a domain, which has none, by its module.
+A contract is named by its `id:` on every route, and a process module by its own under
+`/graph/process/`, since the two may share one. A domain, which has none, is named by its module.
 A graph document is the same bytes for the same declarations (every object's keys in
 order), so its digest is its `ETag`, and a request sending it back in `If-None-Match`
 gets `304`. An overlay names the digest of the document it joins (`document_digest`)
 and is joined onto it by id. The schemas ship with `eh_os_contract`, in
-`priv/schema/graph.v1.json` and `priv/schema/graph_overlay.v1.json`. A contract or a
-domain the registry does not hold is `404`, never an empty graph.
+`priv/schema/graph.v1.json` and `priv/schema/graph_overlay.v1.json`. A contract, a
+process module or a domain the registry does not hold is `404`, never an empty graph.
 
 ## Who may see it
 

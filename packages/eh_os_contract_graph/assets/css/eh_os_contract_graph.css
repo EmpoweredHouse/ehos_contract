@@ -22,8 +22,83 @@
   --eh-os-contract-graph-panel-width: 420px;
 }
 
-/* As tall as this until the hook has laid the graph out; then as tall as the graph fitted to the canvas's
-   width, never taller than this. */
+/* The bar over the canvas: the search, the log's switch, focus, and the zoom's buttons. */
+
+.ehg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ehg-search {
+  display: flex;
+  flex: 0 1 300px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ehg-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.ehg-search input:focus-visible {
+  outline: 2px solid var(--accent-ink, var(--text-primary));
+  outline-offset: 1px;
+}
+
+.ehg-found {
+  flex: none;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ehg-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehg-tool {
+  padding: 4px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ehg-tool:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--border-soft));
+}
+
+.ehg-zoom {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* What the search does not find, faint; what it finds keeps its look. */
+.ehg .is-unmatched {
+  opacity: 0.25;
+}
+
+/* As tall as this until the hook has laid the graph out; then as tall as the graph at the scale it starts at,
+   never taller than this. */
 /* Contained: what changes inside a canvas — a zoom, a selection, a new layout — is laid out and painted inside
    it, never the page around it. Its height is always set, so size containment costs nothing. */
 .ehg-canvas {
@@ -172,52 +247,102 @@
   cursor: pointer;
 }
 
+/* A card of its kind, as a catalog draws one: a badge with the kind's icon and name, the client's label, the name in
+   code, what it lists, and where it lives in a footer. The kind's colour (--eh-os-contract-graph-hue) is its border,
+   its badge and a faint tint; the ink is the host's text colour, so a card reads in either theme. No shadow and two
+   weights, as the design system asks. */
+
 .ehg-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 200px;
-  padding: 6px 9px;
-  border: 1px solid var(--eh-os-contract-graph-stroke);
-  border-radius: 6px;
-  background: var(--eh-os-contract-graph-fill);
-  color: #000;
+  gap: 3px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 7px 10px 8px;
+  border: 1.5px solid var(--eh-os-contract-graph-hue);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--eh-os-contract-graph-hue) 9%, var(--surface-1));
+  color: var(--text-primary);
   font-size: 12px;
   line-height: 1.3;
 }
 
+.ehg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .ehg-kind {
-  font-size: 10px;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--eh-os-contract-graph-hue);
+  font-family: var(--mono, monospace);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.7;
+}
+
+.ehg-icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ehg-label {
-  overflow-wrap: anywhere;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.ehg-name,
+.ehg-field,
+.ehg-foot {
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+  overflow-wrap: break-word;
 }
 
 .ehg-name {
-  font-family: var(--mono, monospace);
-  font-size: 10.5px;
-  opacity: 0.75;
-  overflow-wrap: anywhere;
+  color: var(--text-secondary);
 }
 
-.ehg-field {
-  font-family: var(--mono, monospace);
-  font-size: 10.5px;
-  overflow-wrap: anywhere;
-}
-
-.ehg-kind + .ehg-label + .ehg-name + .ehg-field,
-.ehg-kind + .ehg-label + .ehg-field {
+.ehg-label + .ehg-field,
+.ehg-name + .ehg-field {
   margin-top: 3px;
+}
+
+.ehg-foot {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-soft);
+  color: var(--text-secondary);
 }
 
 .ehg-count {
   font-variant-numeric: tabular-nums;
   font-weight: 500;
+}
+
+.ehg-card .ehg-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--eh-os-contract-graph-hue) 18%, transparent);
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+}
+
+/* A contract's drift on the domain's map: where it is worth going in, in the error colour. */
+.ehg-card .ehg-drift {
+  background: var(--error-soft);
+  color: var(--error-ink);
 }
 
 .ehg-relation {
@@ -242,59 +367,218 @@
   overflow: hidden;
 }
 
-/* The palette: one row per kind, in Event Storming's colours as the engine's pictures had them before
-   this package, dark ink on a light note in both themes. A kind not in the table is a grey note. */
+/* The palette: a hue per kind, in Event Storming's families (a command blue, an event orange, a policy lilac and a
+   process manager magenta, an actor yellow, a read model green, a rule red), lighter on the dark surfaces the design
+   system starts from and deeper on its light ones. Kinds of one family share a hue only where no view draws them
+   together: a unit and an actor, a context and a command, a contract and a read model. A kind not in the table takes
+   the host's tertiary ink. */
 
-.ehg-card {
-  --eh-os-contract-graph-fill: #f5f5f5;
-  --eh-os-contract-graph-stroke: #9e9e9e;
+.ehg-card,
+.ehg-legend-kind {
+  --eh-os-contract-graph-hue: var(--text-tertiary);
 }
 
-.ehg-card[data-kind="command"] { --eh-os-contract-graph-fill: #a7c7e7; --eh-os-contract-graph-stroke: #3b6ea5; }
-.ehg-card[data-kind="event"] { --eh-os-contract-graph-fill: #ffb86c; --eh-os-contract-graph-stroke: #c46a00; }
-.ehg-card[data-kind="policy"] { --eh-os-contract-graph-fill: #d7b8f3; --eh-os-contract-graph-stroke: #7b4fa8; }
-.ehg-card[data-kind="process_manager"] { --eh-os-contract-graph-fill: #b39ddb; --eh-os-contract-graph-stroke: #5e35b1; }
-.ehg-card[data-kind="effect"] { --eh-os-contract-graph-fill: #f8bbd0; --eh-os-contract-graph-stroke: #ad1457; }
-.ehg-card[data-kind="timer"] { --eh-os-contract-graph-fill: #e0e0e0; --eh-os-contract-graph-stroke: #757575; }
-.ehg-card[data-kind="actor"] { --eh-os-contract-graph-fill: #fff59d; --eh-os-contract-graph-stroke: #f9a825; }
-.ehg-card[data-kind="unit"] { --eh-os-contract-graph-fill: #fff9c4; --eh-os-contract-graph-stroke: #f9a825; }
-.ehg-card[data-kind="status"] { --eh-os-contract-graph-fill: #fff9c4; --eh-os-contract-graph-stroke: #f9a825; }
-.ehg-card[data-kind="read_model"] { --eh-os-contract-graph-fill: #c5e1a5; --eh-os-contract-graph-stroke: #558b2f; }
-.ehg-card[data-kind="query"] { --eh-os-contract-graph-fill: #dcedc8; --eh-os-contract-graph-stroke: #689f38; }
-.ehg-card[data-kind="invariant"] { --eh-os-contract-graph-fill: #ffcdd2; --eh-os-contract-graph-stroke: #c62828; }
-.ehg-card[data-kind="constraint"] { --eh-os-contract-graph-fill: #ffebee; --eh-os-contract-graph-stroke: #c62828; }
-.ehg-card[data-kind="external"] { --eh-os-contract-graph-fill: #eceff1; --eh-os-contract-graph-stroke: #546e7a; }
-.ehg-card[data-kind="context"] { --eh-os-contract-graph-fill: #e3f2fd; --eh-os-contract-graph-stroke: #1565c0; }
-.ehg-card[data-kind="contract"] { --eh-os-contract-graph-fill: #f5f5f5; --eh-os-contract-graph-stroke: #424242; }
-.ehg-card[data-kind="publication"] { --eh-os-contract-graph-fill: #e0f7fa; --eh-os-contract-graph-stroke: #00838f; }
+.ehg,
+.ehg-explorer {
+  --eh-os-contract-graph-command: #6aa6e8;
+  --eh-os-contract-graph-event: #f0954a;
+  --eh-os-contract-graph-policy: #c39af0;
+  --eh-os-contract-graph-process-manager: #e39ce8;
+  --eh-os-contract-graph-effect: #f28cb8;
+  --eh-os-contract-graph-timer: #a6a39a;
+  --eh-os-contract-graph-actor: #d9b443;
+  --eh-os-contract-graph-unit: #d9b443;
+  --eh-os-contract-graph-read-model: #7cc58a;
+  --eh-os-contract-graph-query: #a5d68a;
+  --eh-os-contract-graph-rule: #f07272;
+  --eh-os-contract-graph-external: #5fb6d6;
+  --eh-os-contract-graph-process: #9d98f0;
+  --eh-os-contract-graph-context: #6aa6e8;
+  --eh-os-contract-graph-contract: #7cc58a;
+  --eh-os-contract-graph-publication: #5fc8c8;
+  --eh-os-contract-graph-service: #9fb2bf;
+  --eh-os-contract-graph-ends: #7cc58a;
+}
 
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .ehg,
+  :root:not([data-theme="dark"]) .ehg-explorer {
+    --eh-os-contract-graph-command: #2f6db5;
+    --eh-os-contract-graph-event: #b85c0c;
+    --eh-os-contract-graph-policy: #7b4fa8;
+    --eh-os-contract-graph-process-manager: #9c27b0;
+    --eh-os-contract-graph-effect: #ad1457;
+    --eh-os-contract-graph-timer: #6b6559;
+    --eh-os-contract-graph-actor: #8a6d12;
+    --eh-os-contract-graph-unit: #8a6d12;
+    --eh-os-contract-graph-read-model: #3d7a4f;
+    --eh-os-contract-graph-query: #4f7f2a;
+    --eh-os-contract-graph-rule: #b3261e;
+    --eh-os-contract-graph-external: #2b7f9e;
+    --eh-os-contract-graph-process: #5a55c7;
+    --eh-os-contract-graph-context: #2f6db5;
+    --eh-os-contract-graph-contract: #3d7a4f;
+    --eh-os-contract-graph-publication: #00838f;
+    --eh-os-contract-graph-service: #546e7a;
+    --eh-os-contract-graph-ends: #2e7d32;
+  }
+}
+
+[data-theme="light"] .ehg,
+[data-theme="light"] .ehg-explorer {
+  --eh-os-contract-graph-command: #2f6db5;
+  --eh-os-contract-graph-event: #b85c0c;
+  --eh-os-contract-graph-policy: #7b4fa8;
+  --eh-os-contract-graph-process-manager: #9c27b0;
+  --eh-os-contract-graph-effect: #ad1457;
+  --eh-os-contract-graph-timer: #6b6559;
+  --eh-os-contract-graph-actor: #8a6d12;
+  --eh-os-contract-graph-unit: #8a6d12;
+  --eh-os-contract-graph-read-model: #3d7a4f;
+  --eh-os-contract-graph-query: #4f7f2a;
+  --eh-os-contract-graph-rule: #b3261e;
+  --eh-os-contract-graph-external: #2b7f9e;
+  --eh-os-contract-graph-process: #5a55c7;
+  --eh-os-contract-graph-context: #2f6db5;
+  --eh-os-contract-graph-contract: #3d7a4f;
+  --eh-os-contract-graph-publication: #00838f;
+  --eh-os-contract-graph-service: #546e7a;
+  --eh-os-contract-graph-ends: #2e7d32;
+}
+
+.ehg [data-kind="command"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-command); }
+.ehg [data-kind="event"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-event); }
+.ehg [data-kind="policy"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-policy); }
+.ehg [data-kind="process_manager"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process-manager); }
+.ehg [data-kind="effect"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-effect); }
+.ehg [data-kind="timer"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-timer); }
+.ehg [data-kind="actor"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-actor); }
+.ehg [data-kind="unit"],
+.ehg [data-kind="status"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-unit); }
+.ehg [data-kind="read_model"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-read-model); }
+.ehg [data-kind="query"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-query); }
+.ehg [data-kind="invariant"],
+.ehg [data-kind="constraint"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-rule); }
+.ehg [data-kind="external"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-external); }
+.ehg [data-kind="process"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-process); }
+.ehg [data-kind="context"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-context); }
+.ehg [data-kind="contract"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-contract); }
+.ehg [data-kind="publication"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-publication); }
+.ehg [data-kind="domain_service"] { --eh-os-contract-graph-hue: var(--eh-os-contract-graph-service); }
+
+/* An external system is outside the application: its border dashed. */
 .ehg-card[data-kind="external"] {
   border-style: dashed;
 }
 
-/* A look of a kind, as the engine's pictures drew it: an event that ends a process green, a lifecycle's end a
-   status drawn heavier, and where a new aggregate starts a dot, in the ink of the host's theme so that it shows
-   on a dark canvas too. */
+/* A look of a kind: an event that ends a run of a process in the colour of an end, a lifecycle's end a status drawn
+   heavier, and where a new aggregate starts a dot, in the ink of the host's theme. */
 
-.ehg-card[data-variant="terminal"] { --eh-os-contract-graph-fill: #c8e6c9; --eh-os-contract-graph-stroke: #2e7d32; }
+.ehg-card[data-variant="terminal"] {
+  --eh-os-contract-graph-hue: var(--eh-os-contract-graph-ends);
+  border-width: 2.5px;
+}
 
 .ehg-card[data-variant="final"] {
   border-width: 3px;
 }
 
 .ehg-card[data-kind="start"] {
-  --eh-os-contract-graph-fill: var(--text-primary);
-  --eh-os-contract-graph-stroke: var(--text-primary);
+  --eh-os-contract-graph-hue: var(--text-primary);
   width: 18px;
+  min-width: 0;
   height: 18px;
   padding: 0;
   border-radius: 50%;
+  background: var(--text-primary);
 }
 
 /* The dot is the unit's card, so the log's count of its aggregates comes with it; the dot says nothing, as
    the picture's did. */
 .ehg-card[data-kind="start"] > * {
   display: none;
+}
+
+/* The legend, under the canvas: what each colour and icon and each look of an arrow means, for what this picture
+   draws. */
+
+.ehg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  list-style: none;
+}
+
+.ehg-legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ehg-legend-kind .ehg-icon {
+  color: var(--eh-os-contract-graph-hue);
+}
+
+/* A card drawn other than its kind, as a small card: an end of a run in the colour of an end, a final status
+   heavier. */
+.ehg-legend-swatch {
+  width: 14px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 3px;
+}
+
+.ehg-legend-variant[data-variant="terminal"] .ehg-legend-swatch {
+  border: 2.5px solid var(--eh-os-contract-graph-ends);
+}
+
+.ehg-legend-variant[data-variant="final"] .ehg-legend-swatch {
+  border-width: 3px;
+}
+
+/* Said to a screen reader, not shown. */
+.ehg-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Each swatch drawn as the arrows are: the same ink and widths, a head where the arrows have one. */
+.ehg-legend-line svg {
+  width: 24px;
+  height: 8px;
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1.25px;
+}
+
+.ehg-legend-line .ehg-legend-head {
+  fill: var(--text-tertiary);
+  stroke: none;
+}
+
+.ehg-legend-line[data-look="dotted"] path:first-child {
+  stroke-dasharray: 4 3;
+}
+
+.ehg-legend-line[data-look="thick"] path:first-child {
+  stroke-width: 2.5px;
+}
+
+.ehg-legend-line[data-look="observed"] svg {
+  stroke: var(--error-ink);
+}
+
+.ehg-legend-line[data-look="observed"] .ehg-legend-head {
+  fill: var(--error-ink);
 }
 
 /* What is selected, what touches it, and the rest, faint. None of these changes a size, so a selection
@@ -667,4 +951,135 @@
 
 .ehg-cell-line {
   display: block;
+}
+
+/* The explorer: two viewpoints as tabs, the path back up, the lenses of a picture, and the list of processes. */
+
+.ehg-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* The viewpoints' tabs, and at the other end of their line the switch of who reads. */
+.ehg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.ehg-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.ehg-audience {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  padding-bottom: 4px;
+}
+
+.ehg-tab {
+  margin-bottom: -1px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ehg-tab.is-current {
+  border-color: var(--border-soft);
+  border-bottom-color: var(--surface-1);
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.ehg-path ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  list-style: none;
+}
+
+.ehg-path li + li::before {
+  content: "›";
+  margin-right: 4px;
+  color: var(--text-tertiary);
+}
+
+.ehg-path button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong, var(--border-soft));
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ehg-path [aria-current] {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.ehg-lenses {
+  display: flex;
+  gap: 4px;
+}
+
+.ehg-tool.is-current {
+  border-color: var(--border-strong, var(--border-soft));
+  color: var(--text-primary);
+}
+
+.ehg-failed {
+  color: var(--error-ink);
+}
+
+.ehg-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ehg-places button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--eh-os-contract-graph-process);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--eh-os-contract-graph-process) 9%, var(--surface-1));
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The panel's way to where the selected card leads. */
+.ehg-panel .ehg-open {
+  margin: 0 0 10px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong, var(--border-soft));
+  border-radius: var(--radius-sm, 6px);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
 }

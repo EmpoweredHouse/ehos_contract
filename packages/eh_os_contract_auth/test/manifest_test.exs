@@ -6,7 +6,9 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of
   `ehos-ledger`, unchanged: `eh-os` `test/support/fixtures/manifests/ledger.v2.json`,
   last changed in `ff1388e`, read at `f7b2330`. EHOS deploys ledger with it (step 6c)
-  until this generator writes it.
+  until this generator writes it. Its capabilities name the process the ledger's
+  contract declared; a contract declares none since plan DD, P2h (#221), so the test
+  reads that copy without them, a field EHOS keeps optional (eh-os#203).
 
   `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand
   from `ehos_yaml/accepted/sign_in.yaml`, an `ehos.yaml/v2` that signs people in
@@ -15,6 +17,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_people.v3.json` is that ledger written by hand from
   `ehos_yaml/accepted/people.yaml`, an `ehos.yaml/v3` that reads the company's people
   (`eh-os` D-81, issue #252).
+
+  `test/fixtures/manifests/ledger_secrets.v4.json` is that ledger written by hand from
+  `ehos_yaml/accepted/secrets.yaml`, an `ehos.yaml/v4` that seeds its database and is given
+  secrets (`eh-os` D-98, D-99, issue #306).
   """
 
   use ExUnit.Case, async: true
@@ -67,7 +73,7 @@ defmodule EhOsContract.Auth.ManifestTest do
         field(:branch_id, :id)
       end
 
-      event(:job_finished, "Job finished", terminal: true)
+      event(:job_finished, "Job finished")
       event(:job_noted, "Job noted", recorded_by: :clerk)
     end
 
@@ -84,10 +90,6 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
 
     policy(:finish_started, "Finish a started job", handles: :job_started, issues: :finish_job)
-
-    process :work, "Work" do
-      correlate(:job_id)
-    end
   end
 
   defmodule ReadDomain do
@@ -115,6 +117,58 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
 
     query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
+  end
+
+  # eh-os D-112: an office employee may grant a client; a visitor holds nothing, so is no role.
+  defmodule GrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule GrantWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: GrantDomain, context: :work, id: "grant-rig.grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
+  end
+
+  defmodule RoleLessGrantDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"grant-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:office_employee, :human, "Office employee", may_grant: [:client, :visitor])
+    actor(:client, :human, "Client")
+    actor(:visitor, :human, "Visitor")
+  end
+
+  defmodule RoleLessGrantWork do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: RoleLessGrantDomain,
+      context: :work,
+      id: "grant-rig.role_less_grant_work"
+
+    aggregate :case, "Case" do
+      identity(:case_id)
+      command(:open_case, "Open a case", by: :office_employee, emits: :case_opened)
+      command(:comment_case, "Comment on a case", by: :client, emits: :case_commented)
+      event(:case_opened, "Case opened")
+      event(:case_commented, "Case commented")
+    end
   end
 
   defmodule MachineDomain do
@@ -232,11 +286,7 @@ defmodule EhOsContract.Auth.ManifestTest do
       command(:record_entry, "Record an entry", by: :clerk, emits: :recorded)
       command(:flag_entry, "Flag an entry", by: :auditor, emits: :flagged)
       event(:recorded, "Entry recorded")
-      event(:flagged, "Entry flagged", terminal: true)
-    end
-
-    process :entries, "Entries" do
-      correlate(:entry_id)
+      event(:flagged, "Entry flagged")
     end
   end
 
@@ -252,7 +302,13 @@ defmodule EhOsContract.Auth.ManifestTest do
   describe "ledger" do
     test "its ehos.yaml and offers give EHOS's own ledger.v2.json, with the engine beside" do
       expected =
-        @fixtures |> Path.join("manifests/ledger.v2.json") |> File.read!() |> Jason.decode!()
+        @fixtures
+        |> Path.join("manifests/ledger.v2.json")
+        |> File.read!()
+        |> Jason.decode!()
+        |> update_in(["offers", "capabilities"], fn capabilities ->
+          Enum.map(capabilities, &Map.delete(&1, "process"))
+        end)
 
       manifest = Manifest.build(ehos_yaml!("ehos_yaml/accepted/ledger.yaml"), [Ledger], [Entries])
 
@@ -337,13 +393,132 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "needs.database.seed and needs.secrets, from ehos.yaml/v4" do
+    test "makes an ehos.manifest/v4, carried as written, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_secrets.v4.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/secrets.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # EHOS refuses a v2 or v3 that names an ehos.yaml/v4: neither ever read a seed or a secret.
+    test "is the only thing that makes a v4" do
+      file = %{"schema" => "ehos.yaml/v4", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v4"
+
+      file = %{"schema" => "ehos.yaml/v3", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v3"
+    end
+  end
+
+  describe "a role that may grant another, eh-os D-112" do
+    test "makes an ehos.manifest/v5 whose role carries the roles its actor may grant" do
+      manifest = Manifest.build(@file_v1, [GrantDomain], [GrantWork])
+
+      assert manifest["schema"] == "ehos.manifest/v5"
+      assert manifest["ehos_yaml"] == "ehos.yaml/v1"
+
+      assert manifest["offers"]["roles"] == [
+               %{
+                 "name" => "grant-rig.client",
+                 "label" => "Client",
+                 "capabilities" => ["grant-rig.comment_case"]
+               },
+               %{
+                 "name" => "grant-rig.office_employee",
+                 "label" => "Office employee",
+                 "capabilities" => ["grant-rig.open_case"],
+                 "may_grant" => ["grant-rig.client"]
+               }
+             ]
+    end
+
+    # EHOS's v5 takes every ehos.yaml v4 does.
+    test "is v5 whatever the version of ehos.yaml" do
+      for version <- EhosYaml.versions() do
+        file = %{"schema" => version, "health" => @health}
+
+        assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v5",
+               version
+      end
+    end
+
+    test "is refused when it names an actor that holds no capability, and so is no role" do
+      assert_raise ArgumentError,
+                   ~r/actor :office_employee's may_grant names :visitor, which holds no capability and so is no role/,
+                   fn ->
+                     Manifest.build(@file_v1, [RoleLessGrantDomain], [RoleLessGrantWork])
+                   end
+    end
+
+    # A domain given as a map has not been through D4: what EHOS refuses, the generator refuses.
+    test "a domain given as a map is held to what EHOS takes" do
+      with_rule = fn actor, rule ->
+        domain = Model.fetch(GrantDomain)
+
+        actors =
+          Enum.map(domain.actors, fn
+            %{name: ^actor} = a -> Map.put(a, :may_grant, rule)
+            a -> a
+          end)
+
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      for {actor, rule, reason} <- [
+            {:office_employee, [:office_employee], "names the actor itself"},
+            {:office_employee, [:client, :client], "names :client twice"},
+            {:office_employee, [:robot, :"ehos.admin"],
+             ~s|names :robot, :"ehos.admin", no person actor of this domain|},
+            {:office_employee, nil, "is nil, not a list of person actors"},
+            {:visitor, [:client], "actor :visitor has may_grant but holds no capability"}
+          ] do
+        error = assert_raise ArgumentError, with_rule.(actor, rule)
+        assert error.message =~ reason, inspect(rule)
+      end
+    end
+
+    test "a domain given as a map has no system with a rule, nor rules that lead back" do
+      domain = Model.fetch(GrantDomain)
+
+      rule = fn rules ->
+        actors = Enum.map(domain.actors, &Map.put(&1, :may_grant, Map.get(rules, &1.name, [])))
+        fn -> Manifest.build(@file_v1, [%{domain | actors: actors}], [GrantWork]) end
+      end
+
+      system = %{name: :sync, kind: :system, label: "Sync", may_grant: [:client]}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [%{domain | actors: domain.actors ++ [system]}], [GrantWork])
+        end
+
+      assert error.message =~ "actor :sync is a system and cannot have may_grant"
+
+      error =
+        assert_raise ArgumentError,
+                     rule.(%{office_employee: [:client], client: [:office_employee]})
+
+      assert error.message =~
+               "actor :client, :office_employee have may_grant rules that lead back to them"
+    end
+  end
+
   # schemas/0 is what a release says the package produces: exactly what build/3 writes from
-  # every ehos.yaml it can read, no more.
+  # every ehos.yaml it can read, no more, with a rule and without.
   test "schemas/0 lists exactly the versions build/3 writes" do
     written =
-      for version <- EhosYaml.versions(), uniq: true do
+      for version <- EhosYaml.versions(),
+          {domain, contract} <- [{Ledger, Entries}, {GrantDomain, GrantWork}],
+          uniq: true do
         file = %{"schema" => version, "health" => @health}
-        Manifest.build(file, [Ledger], [Entries])["schema"]
+        Manifest.build(file, [domain], [contract])["schema"]
       end
 
     # Oldest first, by the number: as text, "ehos.manifest/v10" would sort before "/v2".
@@ -365,21 +540,18 @@ defmodule EhOsContract.Auth.ManifestTest do
                    "name" => "manifest-rig.job_noted",
                    "record" => "job_noted",
                    "label" => "Job noted",
-                   "process" => "work",
                    "principals" => ["human"]
                  },
                  %{
                    "name" => "manifest-rig.jobs_in_branch",
                    "query" => "jobs_in_branch",
                    "label" => "Jobs in a branch",
-                   "process" => "work",
                    "principals" => ["human"]
                  },
                  %{
                    "name" => "manifest-rig.start_job",
                    "command" => "start_job",
                    "label" => "Start a job",
-                   "process" => "work",
                    "principals" => ["human"]
                  }
                ],
@@ -398,13 +570,12 @@ defmodule EhOsContract.Auth.ManifestTest do
            }
   end
 
-  # Plan DD, P1b (#186): a contract without a process offers its capabilities all the
-  # same, naming no process; EHOS keeps the field optional (eh-os#203). `ReadWork`
-  # declares none since P1e (#192); a capability of every kind passes through the
-  # same `with_process/2`, so its one query stands for the others.
-  test "a contract without a process offers capabilities that name none" do
+  # Plan DD, P2h (#221): a contract declares no process, so no capability names one;
+  # EHOS keeps the field optional and reads it nowhere (eh-os#203). `Work` offers a
+  # command, a query and a recording.
+  test "a capability names no process" do
     %{"offers" => %{"capabilities" => capabilities}} =
-      Manifest.build(@file_v1, [ReadDomain], [ReadWork])
+      Manifest.build(@file_v1, [Domain], [Work])
 
     assert capabilities != []
     refute Enum.any?(capabilities, &Map.has_key?(&1, "process"))

@@ -15,23 +15,23 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
   alias EhOsContract.{Model, Pages, ScenarioCase}
 
   @contract """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
-      command :pay, "Płatność", by: :reception, emits: :paid
-      command :remind, "Przypomnienie", emits: :reminded
-      event :paid, "Zapłacono" do
+      command :pay, "Payment", by: :reception, emits: :paid
+      command :remind, "Reminder", emits: :reminded
+      event :paid, "Paid" do
         field :amount, :integer
       end
-      event :reminded, "Przypomniano"
+      event :reminded, "Reminded"
     end
 
-    policy :thank, "Podziękuj za płatność", handles: :paid, issues: :remind,
+    policy :thank, "Thank for the payment", handles: :paid, issues: :remind,
       delivery: :at_least_once, idempotency: [key: :event_id, owner: :infrastructure]
 
-    effect :receipt, "Wyślij paragon", handles: :paid, calls: :mail,
+    effect :receipt, "Send the receipt", handles: :paid, calls: :mail,
       idempotency: [key: :event_id, owner: :downstream]
 
-    process_manager :chase, "Pogoń" do
+    process_manager :chase, "Chase" do
       correlate :visit_id
 
       state do
@@ -45,27 +45,27 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       ends_on :reminded
     end
 
-    scenario "pierwsza płatność — termin przypomnienia" do
+    scenario "first payment — the reminder's date" do
       target :chase
       on :paid, %{visit_id: "w-1", amount: 30}
       sets :later
       state %{visit_id: "w-1", paid: 30, remind_at: "2026-01-02T09:00:00Z"}
     end
 
-    scenario "druga płatność — suma rośnie" do
+    scenario "a second payment — the sum grows" do
       target :chase
       given :paid, %{amount: 30}
       on :paid, %{amount: 20}
       state %{paid: 50}
     end
 
-    scenario "płatność — run innej wizyty" do
+    scenario "payment — another visit's run" do
       target :chase
       on :paid, %{amount: 20}
       state %{visit_id: "w-9"}
     end
 
-    scenario "przypomnienie po zakończeniu" do
+    scenario "reminder after the end" do
       target :chase
       given :paid, %{amount: 30}
       given :reminded
@@ -73,21 +73,21 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       state %{paid: 30}
     end
 
-    scenario "przypomniano, zanim cokolwiek zapłacono" do
+    scenario "reminded before anything was paid" do
       target :chase
       given :reminded
       on :paid, %{amount: 20}
       state %{paid: 20}
     end
 
-    scenario "płatności dwóch wizyt" do
+    scenario "payments of two visits" do
       target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       on :paid, %{visit_id: "w-2", amount: 20}
       state %{paid: 50}
     end
 
-    scenario "płatności dwóch wizyt — przypomnienie" do
+    scenario "payments of two visits — reminder" do
       target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       given :paid, %{visit_id: "w-2", amount: 20}
@@ -95,14 +95,14 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       issues :remind
     end
 
-    scenario "druga płatność tej samej wizyty" do
+    scenario "a second payment of the same visit" do
       target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       on :paid, %{amount: 20}
       state %{visit_id: "w-1", paid: 50}
     end
 
-    scenario "przypomnienie — stan bez zmian" do
+    scenario "reminder — state unchanged" do
       target :chase
       given :paid, %{amount: 30}
       on :later
@@ -141,8 +141,8 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       """
       defmodule EhOsContract.RunStateAndIdempotencyTest.Domain do
         use EhOsContract.Domain, name: :clinic, language: :pl
-        subdomain :billing, "Rozliczenia", type: :supporting
-        context :settlement, "Rozliczenia", subdomain: :billing
+        subdomain :billing, "Settlement", type: :supporting
+        context :settlement, "Settlement", subdomain: :billing
       end
       """,
       "run_state_domain.ex"
@@ -165,23 +165,23 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
   describe "a process manager's state in a scenario" do
     test "is kept in the model only where a scenario says it", %{model: model} do
       assert %{state: %{paid: 50}} =
-               Enum.find(model.scenarios, &(&1.description == "druga płatność — suma rośnie"))
+               Enum.find(model.scenarios, &(&1.description == "a second payment — the sum grows"))
 
       model =
         compile_contract("RunStateNone", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :pay, "Płatność", by: :reception, emits: :paid
-            event :paid, "Zapłacono"
+            command :pay, "Payment", by: :reception, emits: :paid
+            event :paid, "Paid"
           end
 
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :visit_id
             starts_on :paid, sets: :later
             timer :later, "Later", wait: {1, :day}
           end
 
-          scenario "płatność — termin" do
+          scenario "payment — the date" do
             on :paid
             sets :later
           end
@@ -193,9 +193,9 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "passes when the run holds it after the step: the event folded, a timer folding none",
          %{model: model} do
       for description <- [
-            "pierwsza płatność — termin przypomnienia",
-            "druga płatność — suma rośnie",
-            "przypomnienie — stan bez zmian"
+            "first payment — the reminder's date",
+            "a second payment — the sum grows",
+            "reminder — state unchanged"
           ] do
         assert run(model, description, @right), description
       end
@@ -206,7 +206,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "fails when evolve/2 does not keep what the scenario says", %{model: model} do
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "druga płatność — suma rośnie", @forgetful)
+          run(model, "a second payment — the sum grows", @forgetful)
         end
 
       message = ExUnit.AssertionError.message(error)
@@ -220,7 +220,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "fails on a correlation no given or trigger gives the run", %{model: model} do
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "płatność — run innej wizyty", @right)
+          run(model, "payment — another visit's run", @right)
         end
 
       assert ExUnit.AssertionError.message(error) =~ ~s|visit_id: "scenario"|
@@ -231,7 +231,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "fails on a step the engine would not take", %{model: model} do
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "przypomnienie po zakończeniu", @right)
+          run(model, "reminder after the end", @right)
         end
 
       assert ExUnit.AssertionError.message(error) =~
@@ -239,7 +239,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "przypomniano, zanim cokolwiek zapłacono", @right)
+          run(model, "reminded before anything was paid", @right)
         end
 
       assert ExUnit.AssertionError.message(error) =~
@@ -247,7 +247,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "płatności dwóch wizyt", @right)
+          run(model, "payments of two visits", @right)
         end
 
       assert ExUnit.AssertionError.message(error) =~
@@ -256,28 +256,28 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       # Any scenario of the process manager, not only one that says a state.
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          run(model, "płatności dwóch wizyt — przypomnienie", @right)
+          run(model, "payments of two visits — reminder", @right)
         end
 
       assert ExUnit.AssertionError.message(error) =~ "belong to more than one run of :chase"
 
       # Control: a value one event names and another leaves out is one run.
-      assert run(model, "druga płatność tej samej wizyty", @right)
+      assert run(model, "a second payment of the same visit", @right)
     end
 
     test "S3 refuses a field the run does not have, and a value of the wrong type" do
       message =
         refuse_contract("RunStateFields", """
         #{@contract}
-          scenario "płatność — zła nazwa pola" do
+          scenario "payment — a wrong field name" do
             target :chase
             on :paid, %{amount: 1}
-            state %{owed: 1, paid: "dużo"}
+            state %{owed: 1, paid: "a lot"}
           end
         """)
 
       assert message =~
-               "S3: scenario \"płatność — zła nazwa pola\" (process manager :chase): the state " <>
+               "S3: scenario \"payment — a wrong field name\" (process manager :chase): the state " <>
                  "of process manager :chase has no field :owed"
 
       assert message =~ "the state of process manager :chase, field :paid:"
@@ -287,21 +287,21 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       message =
         refuse_contract("RunStateWhere", """
         #{@contract}
-          scenario "płatność — stan dwa razy" do
+          scenario "payment — state twice" do
             target :chase
             on :paid, %{amount: 1}
             state %{paid: 1}
             state %{paid: 1}
           end
 
-          scenario "płatność — stan polityki" do
+          scenario "payment — the policy's state" do
             target :thank
             on :paid, %{amount: 1}
             issues :remind
             state %{paid: 1}
           end
 
-          scenario "płatność — stan komendy" do
+          scenario "payment — the command's state" do
             command :pay
             expect :paid
             state %{paid: 1}
@@ -309,11 +309,11 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
         """)
 
       assert message =~
-               "S6: scenario \"płatność — stan dwa razy\" (process manager :chase): " <>
+               "S6: scenario \"payment — state twice\" (process manager :chase): " <>
                  "a scenario says the state once"
 
       assert message =~ "(policy :thank): state belongs to a process manager's scenario"
-      assert message =~ "płatność — stan komendy"
+      assert message =~ "payment — the command's state"
       assert message =~ "state belongs to a process manager's scenario"
     end
   end
@@ -328,18 +328,18 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "P3 refuses a downstream owner on a policy and on a process manager" do
       message =
         refuse_contract("DownstreamPolicy", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :pay, "Płatność", by: :reception, emits: :paid
-            command :remind, "Przypomnienie", emits: :reminded
-            event :paid, "Zapłacono"
-            event :reminded, "Przypomniano"
+            command :pay, "Payment", by: :reception, emits: :paid
+            command :remind, "Reminder", emits: :reminded
+            event :paid, "Paid"
+            event :reminded, "Reminded"
           end
 
-          policy :thank, "Podziękuj", handles: :paid, issues: :remind,
+          policy :thank, "Thank", handles: :paid, issues: :remind,
             delivery: :at_least_once, idempotency: [key: :event_id, owner: :downstream]
 
-          process_manager :chase, "Pogoń", idempotency: [key: :event_id, owner: :downstream] do
+          process_manager :chase, "Chase", idempotency: [key: :event_id, owner: :downstream] do
             correlate :visit_id
             starts_on :paid
           end
@@ -355,18 +355,18 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     test "P3 refuses the engine as an effect's owner, and on a key other than the event's id" do
       message =
         refuse_contract("InfrastructureEffect", """
-          aggregate :visit, "Wizyta" do
+          aggregate :visit, "Visit" do
             identity :visit_id
-            command :pay, "Płatność", by: :reception, emits: :paid
-            command :remind, "Przypomnienie", emits: :reminded
-            event :paid, "Zapłacono"
-            event :reminded, "Przypomniano"
+            command :pay, "Payment", by: :reception, emits: :paid
+            command :remind, "Reminder", emits: :reminded
+            event :paid, "Paid"
+            event :reminded, "Reminded"
           end
 
-          effect :receipt, "Wyślij paragon", handles: :paid, calls: :mail,
+          effect :receipt, "Send the receipt", handles: :paid, calls: :mail,
             idempotency: [key: :event_id, owner: :infrastructure]
 
-          policy :thank, "Podziękuj", handles: :paid, issues: :remind,
+          policy :thank, "Thank", handles: :paid, issues: :remind,
             delivery: :at_least_once, idempotency: [key: :visit_id, owner: :infrastructure]
         """)
 
@@ -383,13 +383,13 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       for idempotency <- ["[key: :event_id]", "[key: :event_id, owner: :somebody]", ":event_id"] do
         assert_raise Spark.Error.DslError, fn ->
           compile_contract("Owner#{System.unique_integer([:positive])}", """
-            aggregate :visit, "Wizyta" do
+            aggregate :visit, "Visit" do
               identity :visit_id
-              command :pay, "Płatność", by: :reception, emits: :paid
-              event :paid, "Zapłacono"
+              command :pay, "Payment", by: :reception, emits: :paid
+              event :paid, "Paid"
             end
 
-            effect :receipt, "Wyślij paragon", handles: :paid, idempotency: #{idempotency}
+            effect :receipt, "Send the receipt", handles: :paid, idempotency: #{idempotency}
           """)
         end
       end
@@ -406,7 +406,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
                "the engine keys what it does by it, with no code here."
 
       assert Doc.callback(model, :process_manager, :chase, :paid) =~
-               ~s|"druga płatność — suma rośnie": holds `paid`|
+               ~s|"a second payment — the sum grows": holds `paid`|
     end
 
     test "the pages say the owner and the state a scenario holds", %{

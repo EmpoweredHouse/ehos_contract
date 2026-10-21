@@ -9,10 +9,15 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   defp between(view, from, to),
     do: Enum.filter(view.relations, &(&1.from == from and &1.to == to))
 
+  defp without_declared_in(document),
+    do:
+      update_in(document, ["nodes", "event"], fn events ->
+        for e <- events, do: Map.delete(e, "declared_in")
+      end)
+
   describe "all/1" do
     test "keeps every node of every fixture, each with the kind of its group" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         view = View.all(document)
 
         assert Enum.map(view.nodes, & &1.id) |> Enum.sort() ==
@@ -25,8 +30,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "keeps every relation whose two ends are nodes, and only those" do
-      for name <- Fixtures.names() do
-        document = Fixtures.document(name)
+      for {name, document} <- Fixtures.documents() do
         ids = MapSet.new(Fixtures.nodes(document), & &1["id"])
         view = View.all(document)
 
@@ -59,7 +63,7 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "keeps each group in the document's order" do
-      document = Fixtures.document("rehmed.settlement")
+      document = Fixtures.document("lending.circulation")
       commands = for %{kind: "command"} = node <- View.all(document).nodes, do: node.id
 
       assert commands == Enum.map(document["nodes"]["command"], & &1["id"])
@@ -67,51 +71,154 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   end
 
   describe "views/1" do
-    test "lists a contract's declared shape, its full graph, and each unit with its lifecycle" do
-      assert View.views(Fixtures.document("rehmed.statutory_reporting")) == [
-               {:declared,
-                "Declared shape — Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"},
+    test "lists a contract's full graph, and each unit with its lifecycle" do
+      assert View.views(Fixtures.document("lending.membership")) == [
                {:contract, "Full graph"},
-               {{:unit, "unit:rehmed.statutory_reporting:p1_report"},
-                "aggregate p1_report — Zgłoszenie P1"}
+               {{:unit, "unit:lending.membership:membership"},
+                "aggregate membership — Membership"}
              ]
 
-      assert {{:lifecycle, "unit:appunite_equipment.demands:demand"},
-              "Lifecycle — Zapotrzebowanie na komputer"} in View.views(
-               Fixtures.document("appunite_equipment.demands")
+      assert {{:lifecycle, "unit:fulfilment.shipping:shipment"}, "Lifecycle — Shipment"} in View.views(
+               Fixtures.document("fulfilment.shipping")
              )
     end
 
+    test "lists a process module's picture" do
+      assert View.views(Fixtures.document("process.fulfilment.order")) == [
+               {:process, "Process — An order, from its placing to its delivery"}
+             ]
+    end
+
     test "lists a domain's context map and system" do
-      assert View.views(Fixtures.document("domain.rehmed")) == [
+      assert View.views(Fixtures.document("domain.fulfilment")) == [
                {:context_map, "Context map"},
                {:system, "System"}
              ]
     end
 
     test "every view a fixture lists is built, and a unit it does not have is empty" do
-      for name <- Fixtures.names(), {spec, _title} <- View.views(Fixtures.document(name)) do
-        assert View.build(Fixtures.document(name), spec).nodes != [], "#{name}: #{inspect(spec)}"
+      for {name, document} <- Fixtures.documents(), {spec, _title} <- View.views(document) do
+        assert View.build(document, spec).nodes != [], "#{name}: #{inspect(spec)}"
       end
 
-      document = Fixtures.document("rehmed.settlement")
+      document = Fixtures.document("lending.membership")
       assert View.build(document, {:unit, "unit:nowhere"}).nodes == []
 
-      assert View.build(document, {:lifecycle, "unit:rehmed.settlement:visit_settlement"}).nodes ==
-               []
+      assert View.build(document, {:lifecycle, "unit:lending.membership:membership"}).nodes == []
 
-      assert View.build(document, :declared).nodes == []
+      # A view of another kind of document than its own is empty.
+      assert View.build(document, :process).nodes == []
+      assert View.build(Fixtures.document("domain.fulfilment"), :process).nodes == []
+    end
+  end
+
+  describe "around/2" do
+    test "keeps a card, every card its relations reach, their boxes, and the relations between them" do
+      view = View.contract(Fixtures.document("lending.circulation"))
+      id = "command:lending.circulation:return_copy"
+      around = View.around(view, id)
+
+      reached =
+        for r <- view.relations, r.from == id or r.to == id, end_id <- [r.from, r.to], do: end_id
+
+      assert MapSet.new(around.nodes, & &1.id) ==
+               MapSet.new([id | reached]) |> MapSet.intersection(MapSet.new(view.nodes, & &1.id))
+
+      kept = MapSet.new(around.nodes ++ around.groups, & &1.id)
+      boxes = MapSet.new(around.groups, & &1.id)
+      assert Enum.all?(around.relations, &(&1.from in kept and &1.to in kept))
+      assert Enum.all?(around.nodes, &(&1.group == nil or &1.group in boxes))
+      assert length(around.nodes) < length(view.nodes)
+    end
+
+    test "keeps a group's cards, and leaves a view as it is for an id it does not draw" do
+      view = View.contract(Fixtures.document("lending.circulation"))
+      unit = "unit:lending.circulation:loan"
+      members = for %{group: ^unit} = n <- view.nodes, do: n.id
+
+      assert Enum.all?(
+               members,
+               &(&1 in MapSet.new(View.around(view, unit).nodes, fn n -> n.id end))
+             )
+
+      assert View.around(view, "nothing:here") == view
+    end
+  end
+
+  describe "matches/2" do
+    test "finds cards by label, name, kind or footer, ignoring case, and nothing for a blank query" do
+      view = View.process(Fixtures.document("process.fulfilment.order"))
+
+      assert View.matches(view, "  ") == nil
+      assert View.matches(view, nil) == nil
+
+      assert "event:fulfilment.warehouse:parcel_packed" in View.matches(view, "PARCEL_PACKED")
+      assert "event:fulfilment.shipping:dispatched" in View.matches(view, "handed to the")
+
+      by_contract = View.matches(view, "fulfilment.warehouse")
+      assert by_contract != MapSet.new()
+      assert Enum.all?(by_contract, &String.contains?(&1, "fulfilment.warehouse"))
+
+      # An id's kind and context path are not the card's words: "event:" finds no card by
+      # its id alone.
+      assert View.matches(view, "event:fulfilment") == MapSet.new()
+      assert View.matches(view, "no such thing") == MapSet.new()
+    end
+  end
+
+  describe "legend/1" do
+    test "lists the kinds of the cards the view draws, in a fixed order, and only those" do
+      legend = View.legend(View.process(Fixtures.document("process.fulfilment.order")))
+
+      assert legend.kinds == [
+               {"actor", "actor"},
+               {"event", "event"},
+               {"external", "external"},
+               {"process", "process"}
+             ]
+    end
+
+    test "lists each look of an arrow the view draws, with what it means" do
+      legend = View.legend(View.process(Fixtures.document("process.fulfilment.order")))
+      looks = Enum.map(legend.lines, &elem(&1, 0))
+
+      assert "thick" in looks
+      assert "headless" in looks
+
+      refute View.legend(View.contract(Fixtures.document("lending.circulation"))).lines
+             |> Enum.any?(&(elem(&1, 0) == "thick"))
+    end
+
+    test "lists a card drawn other than its kind, only where the view has one" do
+      process = View.legend(View.process(Fixtures.document("process.fulfilment.order")))
+      assert process.variants == [{"terminal", "ends a run"}]
+
+      assert View.legend(View.contract(Fixtures.document("lending.circulation"))).variants == []
+    end
+
+    test "explains a dotted line with no head as both dotted and headless" do
+      view = %{nodes: [], relations: [%{line: "dotted", head: false}], groups: []}
+
+      assert Enum.map(View.legend(view).lines, &elem(&1, 0)) == ["dotted", "headless"]
+    end
+
+    test "leaves out the start of a lifecycle, which says nothing" do
+      document = Fixtures.document("fulfilment.shipping")
+      [unit | _] = for u <- document["nodes"]["unit"], do: u["id"]
+      kinds = Enum.map(View.legend(View.lifecycle(document, unit)).kinds, &elem(&1, 0))
+
+      refute "start" in kinds
     end
   end
 
   describe "contract/1, the full graph" do
     test "puts each unit's commands and events in its group, and draws no other kind of fact" do
-      document = Fixtures.document("rehmed.settlement")
+      document = Fixtures.document("lending.membership")
       view = View.contract(document)
       [unit] = document["nodes"]["unit"]
 
       assert view.direction == "LR"
-      assert [%{id: id, kind: "unit", title: "Rozliczenie wizyty · aggregate"}] = view.groups
+      assert [%{id: id, kind: "unit", title: "Membership · aggregate"}] = view.groups
       assert id == unit["id"]
 
       members = for node <- view.nodes, node.group == id, do: node.id
@@ -124,51 +231,94 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert kinds(view) == ~w(actor command event query read_model)
     end
 
+    test "says where an event is declared when no unit of the contract holds it" do
+      packed = "event:fulfilment.shipping:parcel_packed"
+      consumed = Fixtures.document("fulfilment.shipping")
+
+      assert card(View.contract(consumed), packed).foot == "fulfilment.warehouse"
+
+      # A document from before `declared_in` says it by the id `declared_as` names.
+      before = without_declared_in(consumed)
+      assert card(View.contract(before), packed).foot == "fulfilment.warehouse"
+
+      received = View.contract(Fixtures.document("messaging"))
+      assert card(received, "event:messaging:copy_lent").foot == "another application"
+
+      bare =
+        update_in(before, ["nodes", "event"], fn events ->
+          for e <- events,
+              do:
+                if(e["declared_as"], do: %{e | "declared_as" => "event::parcel_packed"}, else: e)
+        end)
+
+      assert card(View.contract(bare), packed).foot == nil
+
+      own = View.contract(Fixtures.document("lending.membership"))
+      assert for(%{kind: "event"} = e <- own.nodes, do: e.foot) |> Enum.uniq() == [nil]
+    end
+
+    test "takes the contract an event is declared in from declared_in, before its id" do
+      document =
+        update_in(Fixtures.document("fulfilment.shipping"), ["nodes", "event"], fn events ->
+          for e <- events,
+              do: if(e["declared_as"], do: Map.put(e, "declared_in", "said.here"), else: e)
+        end)
+
+      assert card(View.contract(document), "event:fulfilment.shipping:parcel_packed").foot ==
+               "said.here"
+    end
+
     test "draws an event of another contract only where a reaction takes it" do
-      view = View.contract(Fixtures.document("appunite_equipment.demands"))
-      issued = card(view, "event:appunite_equipment.demands:issued")
+      view = View.contract(Fixtures.document("fulfilment.shipping"))
+      packed = card(view, "event:fulfilment.shipping:parcel_packed")
 
-      assert issued.group == nil
+      assert packed.group == nil
 
-      assert [%{line: "solid", words: nil}] =
-               between(view, issued.id, "policy:appunite_equipment.demands:fulfil_on_issue")
+      assert [%{type: "handled_by", line: "dotted", words: "async"}] =
+               between(view, packed.id, "policy:fulfilment.shipping:book_carrier")
     end
 
     test "says async on a dotted arrow after the transaction, and which of a manager's two is which" do
-      view = View.contract(Fixtures.document("taxvision.registry_watch"))
-      pm = "process_manager:taxvision.registry_watch:monthly_registry_check"
-      timer = "timer:taxvision.registry_watch:monthly_registry_check:next_month"
-      event = "event:taxvision.registry_watch:data_completeness_confirmed"
+      view = View.contract(Fixtures.document("lending.circulation"))
+      pm = "process_manager:lending.circulation:overdue_chase"
+      timer = "timer:lending.circulation:overdue_chase:reminder"
 
       assert view |> between(pm, timer) |> Enum.map(&{&1.words, &1.line, &1.head}) |> Enum.sort() ==
                [{"sets · at start", "dotted", false}, {"sets · during the run", "dotted", false}]
 
-      assert view |> between(event, pm) |> Enum.map(& &1.words) |> Enum.sort() ==
-               ["during the run · async", "starts · async"]
+      assert [%{words: "starts · async"}] =
+               between(view, "event:lending.circulation:copy_lent", pm)
+
+      assert [%{words: "during the run · async"}] =
+               between(view, "event:lending.circulation:overdue_notice_sent", pm)
+
+      assert [%{words: "ends · async"}] =
+               between(view, "event:lending.circulation:copy_returned", pm)
 
       assert [%{words: "async", line: "dotted"}] =
-               between(view, timer, "command:taxvision.registry_watch:check_registries")
+               between(view, timer, "command:lending.circulation:send_overdue_notice")
+
+      # A reaction in the transaction that records the event is a solid arrow saying nothing.
+      view = View.contract(Fixtures.document("billing.subscriptions"))
+      policy = "policy:billing.subscriptions:invoice_the_period"
+
+      assert [%{line: "solid", words: nil}] =
+               between(view, "event:billing.subscriptions:billing_period_closed", policy)
+
+      assert [%{line: "solid", words: nil}] =
+               between(view, policy, "command:billing.subscriptions:add_invoice_line")
+
+      view = View.contract(Fixtures.document("billing.payments"))
+      gateway = "external:Billing.Domain:payment_gateway"
+      integration = "actor:Billing.Domain:gateway_integration"
 
       assert [%{words: "calls", line: "dotted", head: true}] =
-               between(
-                 view,
-                 "effect:taxvision.registry_watch:look_up_registries",
-                 "external:Taxvision.Domain:registries"
-               )
+               between(view, "effect:billing.payments:collect_payment", gateway)
 
-      assert [%{words: "backed by", head: false}] =
-               between(
-                 view,
-                 "actor:Taxvision.Domain:registry_integration",
-                 "external:Taxvision.Domain:registries"
-               )
+      assert [%{words: "backed by", head: false}] = between(view, integration, gateway)
 
       assert [%{words: "records"}] =
-               between(
-                 view,
-                 "actor:Taxvision.Domain:registry_integration",
-                 "event:taxvision.registry_watch:registry_status_checked"
-               )
+               between(view, integration, "event:billing.payments:collected")
     end
 
     test "draws an external that gives a field its value, with the field on the arrow" do
@@ -182,68 +332,125 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
   end
 
-  describe "declared/1, the declared shape" do
+  describe "process/1, a process module" do
     setup do
-      [view: View.declared(Fixtures.document("rehmed.statutory_reporting"))]
+      document = Fixtures.document("process.fulfilment.order")
+      [document: document, view: View.process(document)]
     end
 
-    test "draws the stages top to bottom, in order, each after the one before", %{view: view} do
-      stages =
-        for s <- ~w(departure closing reporting),
-            do: "stage:rehmed.statutory_reporting:clinical_visit:#{s}"
+    test "draws the stages top to bottom, in order, each after the one before", %{
+      document: document,
+      view: view
+    } do
+      stages = for s <- ~w(ordering picking shipping), do: "stage:fulfilment.order:#{s}"
 
       assert view.direction == "TB"
       assert Enum.map(view.groups, & &1.id) == stages
 
-      assert Enum.map(view.groups, & &1.title) ==
-               ["departure", "closing", "reporting · no order claimed inside"]
+      assert Enum.map(view.groups, & &1.title) == [
+               "Ordering · no order claimed inside",
+               "Picking · no order claimed inside",
+               "Shipping · no order claimed inside"
+             ]
 
       assert for(%{type: "precedes"} = r <- view.relations, do: {r.from, r.to}) ==
                Enum.zip(Enum.drop(stages, -1), Enum.drop(stages, 1))
+
+      # A stage of one event claims no order inside it, as it has none to claim.
+      placed_alone =
+        update_in(document, ["nodes", "event"], fn events ->
+          Enum.reject(
+            events,
+            &(&1["stage"] == "stage:fulfilment.order:ordering" and
+                &1["name"] != "placed")
+          )
+        end)
+
+      assert hd(View.process(placed_alone).groups).title == "Ordering"
     end
 
-    test "puts each event in its stage, the ends in a colour of their own", %{view: view} do
-      sent = card(view, "event:rehmed.statutory_reporting:p1_report_sent")
-      assert sent.group == "stage:rehmed.statutory_reporting:clinical_visit:reporting"
-      assert sent.variant == "terminal"
-      assert card(view, "event:rehmed.statutory_reporting:p1_report_queued").variant == nil
-      assert card(view, "event:rehmed.statutory_reporting:visit_completed").group =~ "departure"
-      assert kinds(view) == ~w(event external)
-    end
-
-    test "draws the promise as a heavy arrow with its window, and its other way dotted", %{
+    test "puts each event in its stage with its contract, the ends in a colour of their own", %{
       view: view
     } do
-      opened = "event:rehmed.statutory_reporting:visit_completed"
+      delivered = card(view, "event:fulfilment.shipping:delivered")
+      assert delivered.group == "stage:fulfilment.order:shipping"
+      assert delivered.variant == "terminal"
+      assert delivered.foot == "fulfilment.shipping"
+      assert card(view, "event:fulfilment.shipping:booked").variant == nil
 
-      assert [%{type: "promise", words: "within 2 days", line: "thick"}] =
-               between(view, opened, "event:rehmed.statutory_reporting:p1_report_sent")
+      placed = card(view, "event:fulfilment.orders:placed")
+      assert placed.group == "stage:fulfilment.order:ordering"
+      assert placed.foot == "fulfilment.orders"
 
-      assert [%{type: "or_else", words: "or else", line: "dotted"}] =
-               between(view, opened, "event:rehmed.statutory_reporting:p1_reporting_not_required")
+      assert kinds(view) == ~w(actor event external process)
     end
 
     test "hangs the external system off the events resting on it, with no arrowhead", %{
       view: view
     } do
-      p1 = "external:Rehmed.Domain:p1"
-      resting = for r <- view.relations, r.to == p1, do: {r.from, r.line, r.head}
+      carrier = "external:Fulfilment.Domain:carrier"
+      assert card(view, carrier).group == nil
+      resting = for r <- view.relations, r.to == carrier, do: {r.from, r.line, r.head}
 
-      assert Enum.sort(resting) == [
-               {"event:rehmed.statutory_reporting:p1_report_failed", "dotted", false},
-               {"event:rehmed.statutory_reporting:p1_report_sent", "dotted", false}
-             ]
+      assert resting == [{"event:fulfilment.shipping:delivered", "dotted", false}]
     end
 
-    test "draws a stage nothing sits in" do
-      document = Fixtures.document("rehmed.statutory_reporting")
+    test "hangs what a promise waits on off the event that opens it, with no arrowhead" do
+      promise = "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+      carrier = "external:Fulfilment.Domain:carrier"
+      waits = %{"id" => "waits_on:#{promise}:#{carrier}", "from" => promise, "to" => carrier}
 
-      emptied =
-        update_in(document, ["nodes", "event"], fn events ->
-          Enum.map(events, &Map.put(&1, "stage", nil))
+      document =
+        put_in(
+          Fixtures.document("process.fulfilment.order"),
+          ["relations", "waits_on"],
+          [waits]
+        )
+
+      assert [arrow] = for(r <- View.process(document).relations, r.type == "waits_on", do: r)
+
+      assert {arrow.from, arrow.to, arrow.words, arrow.line, arrow.head, arrow.facts} ==
+               {"event:fulfilment.orders:payment_confirmed", carrier, "waits on", "dotted", false,
+                waits}
+    end
+
+    test "draws the process with its run, and the actor accountable for it", %{view: view} do
+      process = card(view, "process:fulfilment.order")
+      assert process.group == nil
+      assert process.lines == ["one run per order_id", "ends within 14 days"]
+
+      assert [%{words: "accountable for", head: false}] =
+               between(view, "actor:Fulfilment.Domain:dispatcher", process.id)
+    end
+
+    test "says a process's deadline, and that it is not confirmed", %{document: document} do
+      timed =
+        update_in(document, ["nodes", "process"], fn [p] ->
+          [Map.put(p, "deadline", %{"amount" => 30, "unit" => "day", "unverified" => true})]
         end)
 
-      view = View.declared(emptied)
+      assert card(View.process(timed), "process:fulfilment.order").lines ==
+               ["one run per order_id", "ends within 30 days · not confirmed"]
+    end
+
+    test "draws the promise as a heavy arrow with its window, and its other way dotted" do
+      view = View.process(Fixtures.order_with_other_way())
+      opened = "event:fulfilment.orders:payment_confirmed"
+
+      assert [%{type: "promise", words: "within 24 hours", line: "thick"} = promise] =
+               between(view, opened, "event:fulfilment.shipping:dispatched")
+
+      assert promise.facts["id"] ==
+               "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+
+      assert [%{type: "or_else", words: "or else", line: "dotted"}] =
+               between(view, opened, "event:fulfilment.orders:cancelled")
+    end
+
+    test "draws a stage nothing sits in", %{document: document} do
+      emptied = put_in(document, ["nodes", "event"], [])
+
+      view = View.process(emptied)
       assert length(view.groups) == 3
       assert view.nodes |> Enum.filter(&(&1.kind == "event")) == []
       assert Enum.count(view.relations, &(&1.type == "precedes")) == 2
@@ -251,15 +458,41 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
   end
 
   describe "unit/2, one unit" do
+    # No unit of the case studies consults an event of another contract; in circulation's
+    # variant the hold on a copy consults membership's member_registered.
+    test "says which contract an event it consults from elsewhere is declared in" do
+      hold = "unit:lending.circulation:copy_hold"
+      event = "event:lending.circulation:member_registered"
+
+      view = View.unit(Fixtures.circulation_variant(), hold)
+      assert card(view, event).foot == "lending.membership"
+
+      assert [%{words: "consulted by member_id"}] = between(view, event, hold)
+
+      own = for %{kind: "event", facts: %{"unit" => ^hold}} = e <- view.nodes, do: e
+      assert own != []
+      assert Enum.all?(own, &(&1.foot == nil))
+    end
+
+    test "says which unit of the contract an event it consults from another unit is in" do
+      hold = "unit:lending.circulation:copy_hold"
+      view = View.unit(Fixtures.document("lending.circulation"), hold)
+
+      assert card(view, "event:lending.circulation:copy_lent").foot == "Loan"
+      assert card(view, "event:lending.circulation:withdrawn_from_circulation").foot == "Copy"
+    end
+
+    # Circulation's variant gives lending a copy a constraint, which no command of the case
+    # studies has.
     test "lists the state's fields on its card, and counts the scenarios on each arrow" do
-      document = Fixtures.document("rehmed.settlement")
-      id = "unit:rehmed.settlement:visit_settlement"
+      document = Fixtures.circulation_variant()
+      id = "unit:lending.circulation:loan"
       view = View.unit(document, id)
       state = card(view, id)
 
       assert state.tag == "aggregate"
-      assert "visit_id: id · identity" in state.lines
-      assert "scope_changed: boolean" in state.lines
+      assert "loan_id: id · identity" in state.lines
+      assert "fee_owed: boolean" in state.lines
       assert kinds(view) == ~w(command constraint event invariant unit)
 
       pinned =
@@ -289,22 +522,22 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
     end
 
     test "draws a boundary's consulted events by the fields that match them" do
-      id = "unit:rehmed.external_payers:payer_period"
-      view = View.unit(Fixtures.document("rehmed.external_payers"), id)
+      id = "unit:lending.circulation:copy_hold"
+      view = View.unit(Fixtures.document("lending.circulation"), id)
 
       assert card(view, id).tag == "dcb"
 
-      assert [%{type: "consulted_by", words: "consulted by payer_id, period_id", line: "dotted"}] =
-               between(view, "event:rehmed.external_payers:visit_charged_to_payer", id)
+      assert [%{type: "consulted_by", words: "consulted by copy_id", line: "dotted"}] =
+               between(view, "event:lending.circulation:copy_lent", id)
 
-      assert card(view, "event:rehmed.external_payers:visit_charged_to_payer")
+      assert card(view, "event:lending.circulation:copy_lent")
     end
   end
 
   describe "lifecycle/2" do
     setup do
-      document = Fixtures.document("appunite_equipment.demands")
-      id = "unit:appunite_equipment.demands:demand"
+      document = Fixtures.document("fulfilment.shipping")
+      id = "unit:fulfilment.shipping:shipment"
       [document: document, id: id, view: View.lifecycle(document, id)]
     end
 
@@ -312,16 +545,16 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert view.direction == "TB"
       assert [%{id: ^id, kind: "start", label: nil, name: nil, tag: nil} | statuses] = view.nodes
       assert Enum.map(statuses, & &1.kind) == ~w(status status status)
-      assert card(view, "status:appunite_equipment.demands:demand:fulfilled").variant == "final"
+      assert card(view, "status:fulfilment.shipping:shipment:delivered").variant == "final"
 
-      assert [%{type: "enters", words: "Otwarto zapotrzebowanie na komputer"}] =
-               between(view, id, "status:appunite_equipment.demands:demand:open")
+      assert [%{type: "enters", words: "Shipment booked"}] =
+               between(view, id, "status:fulfilment.shipping:shipment:booked")
 
-      assert [%{type: "transition", words: "Zamówiono komputer w Innergo", line: "solid"}] =
+      assert [%{type: "transition", words: "Parcel handed to the carrier", line: "solid"}] =
                between(
                  view,
-                 "status:appunite_equipment.demands:demand:open",
-                 "status:appunite_equipment.demands:demand:ordered"
+                 "status:fulfilment.shipping:shipment:booked",
+                 "status:fulfilment.shipping:shipment:dispatched"
                )
     end
 
@@ -334,13 +567,13 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
                 "id" => "undeclared:a",
                 "from" => c.id,
                 "to" => c.id,
-                "event" => "event:appunite_equipment.demands:fulfilled"
+                "event" => "event:fulfilment.shipping:delivered"
               },
               %{
                 "id" => "undeclared:b",
                 "from" => "status:gone",
                 "to" => c.id,
-                "event" => "event:appunite_equipment.demands:fulfilled"
+                "event" => "event:fulfilment.shipping:delivered"
               }
             ]
           }
@@ -352,64 +585,170 @@ defmodule EhOsContract.GraphRenderer.ViewTest do
       assert [%{id: "undeclared:a", words: words, line: "dotted"}] =
                Enum.filter(view.relations, &(&1.type == "undeclared"))
 
-      assert words == "Wydano komputer — zapotrzebowanie zaspokojone · not declared"
+      assert words == "Parcel delivered · not declared"
       assert View.build(c.document, {:lifecycle, c.id}, nil) == c.view
     end
   end
 
   describe "context_map/1 and system/1" do
     setup do
-      [document: Fixtures.document("domain.rehmed")]
+      [document: Fixtures.document("domain.fulfilment")]
     end
 
     test "draws the subdomains around their contexts, every external, and the patterns", c do
       view = View.context_map(c.document)
 
-      assert Enum.map(view.groups, & &1.title) == [
-               "Rdzeń · core",
-               "Wsparcie · supporting",
-               "Ogólne · generic"
-             ]
+      assert Enum.map(view.groups, & &1.title) == ["Fulfilment · core", "Logistics · supporting"]
 
-      assert card(view, "context:Rehmed.Domain:scheduling").group ==
-               "subdomain:Rehmed.Domain:core"
+      assert card(view, "context:Fulfilment.Domain:orders").group ==
+               "subdomain:Fulfilment.Domain:core"
 
       assert Enum.count(view.nodes, &(&1.kind == "external")) ==
                length(c.document["nodes"]["external"])
 
       assert kinds(view) == ~w(context external)
 
-      assert [%{words: "partnership", head: false, line: "solid"}] =
+      assert [%{words: "customer supplier", head: true, line: "solid"}] =
                between(
                  view,
-                 "context:Rehmed.Domain:scheduling",
-                 "context:Rehmed.Domain:clinical_documentation"
+                 "context:Fulfilment.Domain:orders",
+                 "context:Fulfilment.Domain:warehouse"
                )
+
+      assert [%{words: "conformist", head: true}] =
+               between(
+                 view,
+                 "external:Fulfilment.Domain:carrier",
+                 "context:Fulfilment.Domain:shipping"
+               )
+
+      # No context of the case studies is in a pattern declared between its two ends, nor
+      # keeps an anticorruption layer; the domain's variant has both.
+      view = View.context_map(Fixtures.fulfilment_variant())
+
+      assert [%{words: "partnership", head: false, line: "solid"}] =
+               view
+               |> between(
+                 "context:Fulfilment.Domain:warehouse",
+                 "context:Fulfilment.Domain:shipping"
+               )
+               |> Enum.filter(&(&1.type == "partnership"))
 
       assert [%{words: "anticorruption layer", head: true}] =
                between(
                  view,
-                 "external:Rehmed.Domain:payer_system",
-                 "context:Rehmed.Domain:external_payers"
+                 "external:Fulfilment.Domain:carrier",
+                 "context:Fulfilment.Domain:warehouse"
                )
     end
 
     test "draws the contracts in their contexts, and what one consumes from another", c do
       view = View.system(c.document)
-      reporting = card(view, "contract:rehmed.statutory_reporting")
+      shipping = card(view, "contract:fulfilment.shipping")
 
-      assert reporting.label ==
-               "StatutoryReporting · Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego"
+      assert shipping.label == "Shipping"
 
-      assert card(view, "contract:rehmed.settlement").label == "Settlement"
-      assert reporting.group == "context:Rehmed.Domain:statutory_reporting"
-      assert kinds(view) == ~w(contract)
+      assert card(view, "contract:fulfilment.warehouse").label == "Warehouse"
+      assert shipping.group == "context:Fulfilment.Domain:shipping"
+      assert kinds(view) == ~w(actor contract process)
 
-      assert Enum.find(view.groups, &(&1.id == reporting.group)).title ==
-               "Zgodność i sprawozdawczość · context"
+      assert Enum.find(view.groups, &(&1.id == shipping.group)).title == "Shipping · context"
 
-      assert [%{words: "visit_completed", line: "solid", head: true}] =
-               between(view, "contract:rehmed.scheduling", reporting.id)
+      assert [%{words: "parcel_packed", line: "solid", head: true}] =
+               view
+               |> between("contract:fulfilment.warehouse", shipping.id)
+               |> Enum.filter(&(&1.type == "consumed_by"))
+
+      # Plan DD, L3 (#286): a contract keeping the number of a sibling's unit, drawn the
+      # way the number travels, as a consumed event is.
+      assert [%{words: "number of order", line: "dotted", head: true}] =
+               between(view, "contract:fulfilment.orders", shipping.id)
+    end
+
+    # Plan DD, P2e (#220).
+    test "draws each process module, the contracts whose events it includes, and who answers for it",
+         c do
+      view = View.system(c.document)
+      order = card(view, "process:fulfilment.order")
+
+      assert order.label == "An order, from its placing to its delivery"
+      assert order.group == nil
+
+      included =
+        for %{type: "includes", from: "process:fulfilment.order"} = r <- view.relations,
+            do: {r.to, r.words, r.line, r.head}
+
+      assert Enum.sort(included) == [
+               {"contract:fulfilment.orders", "includes", "dotted", true},
+               {"contract:fulfilment.shipping", "includes", "dotted", true},
+               {"contract:fulfilment.warehouse", "includes", "dotted", true}
+             ]
+
+      assert [%{words: "accountable for", head: false}] =
+               between(view, "actor:Fulfilment.Domain:dispatcher", order.id)
+
+      # Only an actor who answers for a process is drawn.
+      assert for(%{kind: "actor"} = a <- view.nodes, do: a.id) == [
+               "actor:Fulfilment.Domain:dispatcher"
+             ]
+    end
+  end
+
+  # Plan DD, L4 (#326): what a view draws for the business owner.
+  describe "build/4 for the owner" do
+    test "a card says its label alone, and nothing only the code reads is drawn" do
+      for {name, document} <- Fixtures.documents(),
+          {spec, _title} <- View.views(document),
+          view = View.build(document, spec, nil, :owner) do
+        where = "#{name} #{inspect(spec)}"
+
+        assert Enum.all?(view.nodes, &(&1.label == nil or &1.name == nil)), where
+        refute Enum.any?(view.nodes, &(&1.kind == "publication")), where
+        refute Enum.any?(view.nodes, &(&1.foot && &1.foot =~ ~r/^[a-z_]+\.[a-z_.]+$/)), where
+        refute Enum.any?(view.relations, &(&1.words && &1.words =~ ~r/async|one run per/)), where
+
+        refute Enum.any?(view.nodes, fn n -> Enum.any?(n.lines, &(&1 =~ "one run per")) end),
+               where
+      end
+    end
+
+    test "a process's event says the context of its contract, and its card no key of a run" do
+      # Each case study's context is labelled as its contract's module is named, so shipping
+      # is labelled apart here, and the foot cannot be the module's last segment.
+      document =
+        Fixtures.relabel(Fixtures.document("process.fulfilment.order"), %{
+          "context:Fulfilment.Domain:shipping" => "Dispatch"
+        })
+
+      view = View.build(document, :process, nil, :owner)
+
+      event = Enum.find(view.nodes, &(&1.id == "event:fulfilment.shipping:dispatched"))
+      assert event.label == "Parcel handed to the carrier"
+      assert event.name == nil
+      assert event.foot == "Dispatch"
+
+      process = Enum.find(view.nodes, &(&1.kind == "process"))
+      # The engineer reads "one run per order_id" there too; the owner reads the deadline alone.
+      assert process.lines == ["ends within 14 days"]
+    end
+
+    test "an event received from another application, with no label, says where it comes from" do
+      document =
+        update_in(Fixtures.document("messaging"), ["nodes", "event"], fn events ->
+          for e <- events,
+              do: if(e["id"] == "event:messaging:copy_lent", do: %{e | "label" => nil}, else: e)
+        end)
+
+      card = card(View.build(document, :contract, nil, :owner), "event:messaging:copy_lent")
+
+      assert card.label == "An event from another application"
+      assert card.name == nil
+    end
+
+    test "the engineer's view is the one before the switch" do
+      for {_name, document} <- Fixtures.documents(),
+          {spec, _title} <- View.views(document),
+          do: assert(View.build(document, spec, nil, :engineering) == View.build(document, spec))
     end
   end
 end

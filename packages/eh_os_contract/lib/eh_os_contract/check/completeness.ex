@@ -17,12 +17,14 @@ defmodule EhOsContract.Check.Completeness do
   alias EhOsContract.Lifecycle
   alias EhOsContract.Model
   alias EhOsContract.Contract.{Links, Rules}
+  alias EhOsContract.Contract.Links.ContextMap
 
   @doc """
   Every finding of a completeness rule about `contracts`, v2 contract modules,
   and the domains they name. `processes`, the process modules, are read for what they
   include: an event one includes has a reader, the report of its runs (plan DD, P2d,
-  #213).
+  #213); and for whom they hold `accountable`, an actor with something to do (plan DD,
+  P2h, #221).
   """
   @spec findings([module()], [module()]) :: [Finding.t()]
   def findings(contracts, processes \\ []) do
@@ -33,7 +35,7 @@ defmodule EhOsContract.Check.Completeness do
       for {domain, members} <- Enum.group_by(linked, & &1.model.domain),
           members = Enum.reject(members, &is_nil(&1.domain)),
           members != [],
-          finding <- domain(domain, members),
+          finding <- domain(domain, members, processes),
           do: finding
 
     domains ++ Enum.flat_map(linked, &contract(&1, linked, included))
@@ -85,7 +87,8 @@ defmodule EhOsContract.Check.Completeness do
   # actor may issue too (`by:`) is a person's request like any other.
   defp core_commands_never_refusing(%{model: model} = c) do
     if core?(c) do
-      issued = EhOsContract.Refusals.issued_by_reactions(model)
+      # Every way a reaction issues, a timer's included: what one fires was decided too.
+      issued = MapSet.new(EhOsContract.Reactions.issued(model), & &1.command)
 
       for command <- model.commands,
           not EhOsContract.Refusals.refuses?(command),
@@ -122,7 +125,7 @@ defmodule EhOsContract.Check.Completeness do
 
   defp declared_event(c, unit, name) do
     with %{} = declared <- declared_unit(c, unit),
-         %{} = event <- Enum.find(Rules.events(declared), &(&1.name == name)),
+         %{} = event <- Enum.find(declared.events, &(&1.name == name)),
          do: Links.at(event)
   end
 
@@ -148,13 +151,11 @@ defmodule EhOsContract.Check.Completeness do
   # ESDM's `event-without-consumer`. A consumer is what reacts to or reads the
   # event: a policy, an effect, a process manager, a read model, a boundary that
   # consults it, a contract that consumes it, a `publish`. So is the conformance
-  # half of this library, for an event a promise names or one that ends a run, and for
-  # one a unit's lifecycle starts on or moves on (plan DD, P1b, #186): the report reads
-  # it, process or not; and for one a process module includes (plan DD, P2d, #213). The
+  # half of this library, for an event a unit's lifecycle starts on or moves on (plan
+  # DD, P1b, #186): the report reads it, process or not; and for one a process module
+  # includes (plan DD, P2d, #213), whose promises and ends are its own events. The
   # unit's own `evolve` does not count; ESDM's aggregate folds its events too.
   defp events_without_consumer(%{model: model} = c, all, included) do
-    process = Model.process(model)
-
     local =
       Enum.flat_map(model.policies, &List.wrap(&1.handles)) ++
         Enum.flat_map(model.effects, &List.wrap(&1.handles)) ++
@@ -164,11 +165,7 @@ defmodule EhOsContract.Check.Completeness do
         Enum.flat_map(model.read_models, &List.wrap(&1.projects)) ++
         Enum.flat_map(model.units, fn u -> Enum.map(u.consults, & &1.event) end) ++
         Enum.map(model.publishes, & &1.from) ++
-        lifecycle_events(model) ++
-        if(process,
-          do: Enum.flat_map(process.promises, &[&1.from, &1.eventually, &1.or_else]),
-          else: []
-        )
+        lifecycle_events(model)
 
     siblings =
       for %{model: other} <- all,
@@ -181,14 +178,13 @@ defmodule EhOsContract.Check.Completeness do
 
     consumed = MapSet.new(local ++ siblings ++ of_modules)
 
-    for event <- model.events,
-        not event.terminal,
-        not MapSet.member?(consumed, event.name) do
+    for event <- model.events, not MapSet.member?(consumed, event.name) do
       Finding.new(
         "event-without-consumer",
         "event #{inspect(event.name)} of #{inspect(model.module)} has no consumer: no policy, " <>
           "effect, process manager or read model takes it, no boundary consults it, no contract " <>
-          "consumes it, nothing publishes it, no promise names it, and no lifecycle moves on it",
+          "consumes it, nothing publishes it, no process includes it, and no lifecycle moves on " <>
+          "it",
         declared_event(c, event.unit, event.name)
       )
     end
@@ -430,26 +426,57 @@ defmodule EhOsContract.Check.Completeness do
 
   # --- a whole domain ------------------------------------------------------------
 
-  defp domain(module, contracts) do
+  defp domain(module, contracts, processes) do
     model = hd(contracts).domain
     declared = declared(module)
 
     Enum.concat([
-      orphan_actors(model, declared, contracts),
+      orphan_actors(model, declared, contracts, processes),
       orphan_externals(model, declared, contracts),
       uncalled_operations(model, declared, contracts),
       empty_contexts(model, declared, contracts),
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts),
-      relations_against_references(model, contracts),
       avoided_terms(model, contracts),
       words_without_terms(model, declared, contracts),
       terms_of_other_contexts(model, contracts),
       directions(model, declared, contracts),
       scoped_actors_with_unscoped_commands(model, contracts),
-      unchecked_values(model, declared, contracts)
+      unchecked_values(model, declared, contracts),
+      unlabelled_values(model, declared)
     ])
+  end
+
+  # Plan DD, L4 (#326): the owner's view names a value, and each member of its enum, by
+  # its label; a member written as a bare atom has none.
+  defp unlabelled_values(model, declared) do
+    for value <- model.values,
+        unlabelled = unlabelled(value),
+        unlabelled != [] do
+      Finding.new(
+        "owner-view-without-label",
+        "value #{inspect(value.name)} of #{inspect(model.module)}: #{Enum.join(unlabelled, ", ")} " <>
+          "#{if length(unlabelled) == 1, do: "has", else: "have"} no label, so the owner's view " <>
+          "names it as the code does",
+        at(declared.values, value.name)
+      )
+    end
+  end
+
+  defp unlabelled(value) do
+    own = if value.label == nil, do: ["the value"], else: []
+
+    members =
+      case value.type do
+        {:enum, members} ->
+          for member <- members, is_atom(member), do: "member #{inspect(member)}"
+
+        _other ->
+          []
+      end
+
+    own ++ members
   end
 
   # A scoped actor has a grant narrowed to rows or units identified by those
@@ -522,25 +549,35 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # ESDM's `orphan-actor`: an actor no command, query, recorded event or process
-  # names. A scenario's actor is in a command's `by:` already (S7).
-  defp orphan_actors(model, declared, contracts) do
+  # module names. A scenario's actor is in a command's `by:` already (S7). A process
+  # module of the domain names its `accountable` (plan DD, P2h, #221).
+  defp orphan_actors(model, declared, contracts, processes) do
+    accountable =
+      for module <- processes,
+          %{domain: domain, accountable: actor} <- [Model.fetch(module)],
+          domain == model.module,
+          actor != nil,
+          do: actor
+
     named =
       MapSet.new(
-        for %{model: m} <- contracts,
+        accountable ++
+          for(
+            %{model: m} <- contracts,
             actor <-
               Enum.flat_map(m.commands, & &1.by) ++
                 Enum.flat_map(m.queries, & &1.by) ++
-                Enum.flat_map(m.events, & &1.recorded_by) ++
-                List.wrap(Model.process(m)[:accountable]),
+                Enum.flat_map(m.events, & &1.recorded_by),
             do: actor
+          )
       )
 
     for actor <- model.actors, not MapSet.member?(named, actor.name) do
       Finding.new(
         "orphan-actor",
         "actor #{inspect(actor.name)} of #{inspect(model.module)} is in no command's or query's " <>
-          "`by:`, no event's `recorded_by:` and no process's `accountable`, so no contract gives " <>
-          "it anything to do",
+          "`by:`, no event's `recorded_by:` and no process's `accountable`, so no contract or " <>
+          "process gives it anything to do",
         at(declared.actors, actor.name)
       )
     end
@@ -659,7 +696,7 @@ defmodule EhOsContract.Check.Completeness do
             do: MapSet.new([external, context])
 
     crossing =
-      MapSet.new(Enum.map(crossings(model, contracts), &elem(&1, 0)) ++ external_uses)
+      MapSet.new(Enum.map(ContextMap.crossings(model, contracts), & &1.pair) ++ external_uses)
 
     for {relation, index} <- Enum.with_index(model.relations),
         pair = relation |> Domain.Build.endpoints() |> MapSet.new(),
@@ -670,19 +707,21 @@ defmodule EhOsContract.Check.Completeness do
         "orphan-context-mapping",
         "relation #{inspect(relation.type)} between #{inspect(a)} and #{inspect(b)} in " <>
           "#{inspect(model.module)} is crossed by no reference: no contract of one consumes a " <>
-          "contract of the other or names an entity it owns, and none uses an external it ends at",
+          "contract of the other or names an entity or a unit it owns, and none uses an external it " <>
+          "ends at",
         declared.relations |> Enum.at(index) |> then(&(&1 && Links.at(&1)))
       )
     end
   end
 
   # ESDM's `cross-bounded-context-reference-without-mapping`: a contract that consumes
-  # a contract of another context, or names an entity another context owns, with no
+  # a contract of another context, or names an entity or a unit another context owns, with no
   # relation declared between the two contexts. One finding per reference.
   defp unmapped_references(model, contracts) do
     mapped = MapSet.new(model.relations, &MapSet.new(Domain.Build.endpoints(&1)))
 
-    for {pair, contract, what, at} <- crossings(model, contracts),
+    for %{pair: pair, contract: contract, what: what, at: at} <-
+          ContextMap.crossings(model, contracts),
         not MapSet.member?(mapped, pair),
         uniq: true do
       other = pair |> MapSet.delete(contract.model.context) |> Enum.at(0)
@@ -696,51 +735,6 @@ defmodule EhOsContract.Check.Completeness do
       )
     end
   end
-
-  # The library's own (plan EL2, rule 1 of the prose review): a relation that says which way the
-  # dependency runs, and a reference that runs the other way. `separate_ways` says
-  # there is none, so any reference contradicts it; a directed relation says the
-  # downstream context depends on the upstream one, so a reference from the upstream
-  # context into the downstream one contradicts it. Between contexts only: which way
-  # a call to an external system runs says nothing about who depends on whom.
-  defp relations_against_references(model, contracts) do
-    references = crossings(model, contracts)
-    directed = EhOsContract.Domain.Dsl.directed_relations()
-
-    # At the reference, which is what the finding asks to check: the relation may be
-    # right and the `consumes` wrong, and three such references are three places.
-    for relation <- model.relations,
-        relation_pair = MapSet.new(Domain.Build.endpoints(relation)),
-        {pair, contract, what, at} <- references,
-        pair == relation_pair,
-        against?(relation, contract.model.context, directed),
-        uniq: true do
-      Finding.new(
-        "relation-against-references",
-        "#{inspect(contract.module)} in context #{inspect(contract.model.context)} #{what}, " <>
-          "and #{describe_relation(relation)} in #{inspect(model.module)} says #{says(relation)}",
-        at
-      )
-    end
-  end
-
-  defp against?(%{type: :separate_ways}, _from, _directed), do: true
-
-  defp against?(%{type: type, upstream: upstream}, from, directed),
-    do: type in directed and from == upstream
-
-  defp says(%{type: :separate_ways}), do: "the two contexts do not depend on each other"
-
-  defp says(relation),
-    do: "#{inspect(relation.upstream)} does not depend on #{inspect(relation.downstream)}"
-
-  defp describe_relation(%{type: :separate_ways, between: [a, b]}),
-    do: "relation :separate_ways between #{inspect(a)} and #{inspect(b)}"
-
-  defp describe_relation(relation),
-    do:
-      "relation #{inspect(relation.type)} from upstream #{inspect(relation.upstream)} to " <>
-        "downstream #{inspect(relation.downstream)}"
 
   # The library's own (plan EL2, rule 2 of the prose review): a label of a contract that uses a
   # word its context's glossary says to avoid. Whole words, any case; the words a
@@ -830,8 +824,8 @@ defmodule EhOsContract.Check.Completeness do
 
   # A name of a thing that says a term another context has and its own does not: a
   # word of another context's language in this one's code. A word the context's own
-  # terms cover is its own, as "Visit" is of every context of Rehmed that has it, and
-  # so is one inside a longer term of its own ("Visit date"). A field named like the
+  # terms cover is its own, as "Member" is of both lending contexts that have it, and
+  # so is one inside a longer term of its own (a term "Member card" covers "Member"). A field named like the
   # identity of a unit of another context refers to that unit, as a field typed
   # `{:id, entity}` refers to an entity, and is not read. One finding per name of a
   # contract, at its first declaration.
@@ -976,42 +970,18 @@ defmodule EhOsContract.Check.Completeness do
     issued ++ backed
   end
 
-  # Every reference from a contract into another context: `{contexts, contract, what,
-  # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
-  # an entity named in a field, the contract's `use`.
-  defp crossings(model, contracts) do
-    context_of = Map.new(contracts, &{&1.module, &1.model.context})
-    owner = Map.new(model.entities, &{&1.name, &1.context})
-
-    for contract <- contracts,
-        {other, what, at} <-
-          for(
-            %{from: from} = consumes <- contract.declarations.consumes,
-            is_atom(from),
-            other = Map.get(context_of, from) || context_of(from),
-            do: {other, "consumes #{inspect(from)}", Links.at(consumes)}
-          ) ++
-            for(
-              entity <- contract.model |> references() |> Enum.uniq(),
-              other = Map.get(owner, entity),
-              do: {other, "names entity #{inspect(entity)}", contract.at}
-            ),
-        other != nil and other != contract.model.context do
-      {MapSet.new([other, contract.model.context]), contract, what, at}
-    end
-  end
-
   # The externals a contract reaches: what its effects call, what its events depend on,
   # what issues its fields' values, and what stands behind the actors it names — in a
-  # command's or a query's `by:`, an event's `recorded_by:`, the process's `accountable`.
+  # command's or a query's `by:`, an event's `recorded_by:`. A process module's
+  # `accountable` is not among them: the module belongs to no context, and a use here
+  # crosses a relation of the contract's context.
   defp externals_used(contract, domain) do
     backing = Map.new(domain.actors, &{&1.name, &1.backed_by})
 
     actors =
       Enum.flat_map(contract.commands, & &1.by) ++
         Enum.flat_map(contract.queries, & &1.by) ++
-        Enum.flat_map(contract.events, & &1.recorded_by) ++
-        List.wrap(Model.process(contract)[:accountable])
+        Enum.flat_map(contract.events, & &1.recorded_by)
 
     Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
       Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++
@@ -1042,20 +1012,4 @@ defmodule EhOsContract.Check.Completeness do
         external = Map.get(field, :issued_by),
         do: {Map.get(owner, :context), external}
   end
-
-  # A consumed contract outside the modules checked is looked up by name, as L3 does.
-  defp context_of(module) do
-    case Links.contract(module) do
-      %{model: %{context: context}} -> context
-      nil -> nil
-    end
-  end
-
-  # Every entity a field of the model refers to (plan EM2), at any depth.
-  defp references(%{refers_to: entity} = map),
-    do: [entity | map |> Map.delete(:refers_to) |> references()]
-
-  defp references(%{} = map), do: map |> Map.values() |> Enum.flat_map(&references/1)
-  defp references(list) when is_list(list), do: Enum.flat_map(list, &references/1)
-  defp references(_other), do: []
 end

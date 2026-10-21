@@ -19,7 +19,7 @@ defmodule EhOsContract.ProcessModuleTest do
     correlate :visit_id
 
     stage :departure, include: [{Clinic.Scheduling, :visit_completed}]
-    stage :closing, "Zamknięcie", include: [{Clinic.Documentation, :visit_closed_clinically}]
+    stage :closing, "Closing", include: [{Clinic.Documentation, :visit_closed_clinically}]
 
     stage :reporting,
       include: [{Clinic.Reporting, [:report_queued, :report_sent, :reporting_not_required]}]
@@ -31,7 +31,7 @@ defmodule EhOsContract.ProcessModuleTest do
       eventually :report_sent
       within {2, :day}
       or_else :reporting_not_required
-      source "Dz.U. 2025 poz. 866"
+      source "Example Act, s. 12"
     end
   """
 
@@ -45,7 +45,7 @@ defmodule EhOsContract.ProcessModuleTest do
       model =
         compile_process("ClinicalVisit", @body <> "\n  deadline {30, :day}, unverified: true\n",
           accountable: :manager,
-          source: "Warsztat 2"
+          source: "Workshop 2"
         )
 
       assert %{
@@ -53,10 +53,10 @@ defmodule EhOsContract.ProcessModuleTest do
                kind: :process,
                module: EhOsContract.Fixtures.ClinicalVisit,
                id: "clinic.clinical_visit",
-               label: "Wizyta",
+               label: "Visit",
                domain: Clinic,
                accountable: :manager,
-               source: "Warsztat 2",
+               source: "Workshop 2",
                correlate: [:visit_id],
                ends_on: [:report_sent, :reporting_not_required],
                deadline: %{amount: 30, unit: :day, unverified: true}
@@ -70,7 +70,7 @@ defmodule EhOsContract.ProcessModuleTest do
                },
                %{
                  name: :closing,
-                 label: "Zamknięcie",
+                 label: "Closing",
                  includes: [%{contract: Clinic.Documentation, event: :visit_closed_clinically}]
                },
                %{
@@ -92,7 +92,7 @@ defmodule EhOsContract.ProcessModuleTest do
                  within: %{amount: 2, unit: :day},
                  or_else: :reporting_not_required,
                  unverified: false,
-                 source: "Dz.U. 2025 poz. 866"
+                 source: "Example Act, s. 12"
                }
              ] = model.promises
 
@@ -103,6 +103,52 @@ defmodule EhOsContract.ProcessModuleTest do
                  ["stage:closing", "stage:departure", "stage:reporting"]
 
       assert Model.fetch(model) == model
+    end
+
+    test "waits_on is in the model and the digest only where a promise declares it" do
+      without = compile_process("WaitsOnNone", @body)
+      refute Map.has_key?(hd(without.promises), :waits_on)
+
+      body =
+        replace(
+          @body,
+          "or_else :reporting_not_required\n",
+          "or_else :reporting_not_required\n    waits_on [:register, :register]\n"
+        )
+
+      with_it = compile_process("WaitsOnRegister", body)
+      assert [%{waits_on: [:register]}] = with_it.promises
+
+      # Adding the word moved no version of a promise without it; declaring it moves its own.
+      assert without.digests["promise:reported_within_two_days"] ==
+               compile_process("WaitsOnNoneAgain", @body).digests[
+                 "promise:reported_within_two_days"
+               ]
+
+      refute with_it.digests["promise:reported_within_two_days"] ==
+               without.digests["promise:reported_within_two_days"]
+    end
+
+    test "waits_on is a set: its order moves neither the promise's digest nor the deploy's" do
+      waits = fn list ->
+        replace(
+          @body,
+          "or_else :reporting_not_required\n",
+          "or_else :reporting_not_required\n    waits_on #{list}\n"
+        )
+      end
+
+      one = compile_process("WaitsOnOrderOne", waits.("[:register, :mail]"))
+      other = compile_process("WaitsOnOrderOther", waits.("[:mail, :register]"))
+
+      assert [%{waits_on: [:mail, :register]} = first] = one.promises
+      assert [second] = other.promises
+
+      assert one.digests["promise:reported_within_two_days"] ==
+               other.digests["promise:reported_within_two_days"]
+
+      assert EhOsContract.Deployment.promise_digest(first) ==
+               EhOsContract.Deployment.promise_digest(second)
     end
 
     test "without a deadline or the optional options, the model says nil" do
@@ -147,12 +193,42 @@ defmodule EhOsContract.ProcessModuleTest do
       refute a.version == c.version
     end
 
+    # Plan DD, V5 (#322).
+    test "its version does not see its words, and its words' digest does" do
+      a = compile_process("WordsA", @body)
+
+      b =
+        compile_process(
+          "WordsB",
+          @body
+          |> replace(~s(source "Example Act, s. 12"), ~s(source "Example Act, s. 13"))
+          |> replace(~s("Closing"), ~s("Closing the visit")),
+          id: "clinic.words_a"
+        )
+
+      assert a.version == b.version
+      assert a.digests == b.digests
+      refute a.text_digest == b.text_digest
+
+      moved = for {key, digest} <- a.text_digests, b.text_digests[key] != digest, do: key
+      assert Enum.sort(moved) == ["promise:reported_within_two_days", "stage:closing"]
+    end
+
     test "its vocabulary is the process DSL's" do
       assert EhOsContract.Process.vocabulary() == %{
                [:correlate] => [:fields],
                [:stage] => [:name, :label, :include],
                [:ends_on] => [:events],
-               [:promise] => [:name, :from, :eventually, :within, :or_else, :unverified, :source],
+               [:promise] => [
+                 :name,
+                 :from,
+                 :eventually,
+                 :within,
+                 :or_else,
+                 :waits_on,
+                 :unverified,
+                 :source
+               ],
                [:deadline] => [:within, :unverified],
                [:scenario] => [:description, :verdict, :via],
                [:scenario, :given] => [:event, :data, :at],
@@ -246,7 +322,7 @@ defmodule EhOsContract.ProcessModuleTest do
 
     test "a blank label is refused, the process's at the use and a stage's at the stage" do
       message =
-        refuse_process("BlankLabels", replace(@body, ~s|"Zamknięcie"|, ~s|" "|), label: "")
+        refuse_process("BlankLabels", replace(@body, ~s|"Closing"|, ~s|" "|), label: "")
 
       assert message =~
                ~s|N1: process "clinic.blank_labels" has a blank label; say what the business | <>
@@ -331,8 +407,8 @@ defmodule EhOsContract.ProcessModuleTest do
           "EmptyStage",
           replace(
             @body,
-            ~s|stage :closing, "Zamknięcie", include: [{Clinic.Documentation, :visit_closed_clinically}]|,
-            ~s|stage :closing, "Zamknięcie"|
+            ~s|stage :closing, "Closing", include: [{Clinic.Documentation, :visit_closed_clinically}]|,
+            ~s|stage :closing, "Closing"|
           )
         )
 
@@ -484,6 +560,31 @@ defmodule EhOsContract.ProcessModuleTest do
 
       assert message =~
                ~s|R6: process "clinic.not_a_duration": deadline is 30, which is not {count, unit}|
+    end
+
+    test "a within or a deadline longer than 100 years is refused" do
+      message =
+        refuse_process(
+          "CenturyDurations",
+          replace(@body, "within {2, :day}", "within {36_601, :day}") <>
+            "\n  deadline {878_401, :hour}\n"
+        )
+
+      assert message =~
+               "R6: promise :reported_within_two_days: within is longer than 100 years, the " <>
+                 "longest a duration may be"
+
+      assert message =~
+               ~s|R6: process "clinic.century_durations": deadline is longer than 100 years|
+    end
+
+    test "control: a within and a deadline of exactly 100 years compile" do
+      assert %{deadline: %{amount: 36_600, unit: :day}} =
+               compile_process(
+                 "CenturyDurationsKept",
+                 replace(@body, "within {2, :day}", "within {36_600, :day}") <>
+                   "\n  deadline {36_600, :day}\n"
+               )
     end
 
     test "a deadline declared twice is refused at the second" do

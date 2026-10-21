@@ -24,7 +24,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
 
   @moduletag :tmp_dir
 
-  @address "https://rehmed.test"
+  @address "https://clinic.test"
   @secret_key_base String.duplicate("k", 64)
 
   setup %{tmp_dir: dir} do
@@ -34,7 +34,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     {key_file, _key} = FakeEhos.client_key_file(dir)
 
     Application.put_env(:eh_os_contract_auth, :sign_in,
-      client_id: "rehmed/test",
+      client_id: "clinic/test",
       client_key_file: key_file,
       address: @address,
       secret_key_base: String.duplicate("s", 64),
@@ -72,12 +72,14 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
          context do
       query = context |> start_sign_in("/") |> authorization_query()
 
-      assert query["client_id"] == "rehmed/test"
+      assert query["client_id"] == "clinic/test"
       assert query["redirect_uri"] == @address <> "/auth/ehos/callback"
       assert query["response_type"] == "code"
       assert query["code_challenge_method"] == "S256"
       assert byte_size(query["code_challenge"]) == 43
       assert is_binary(query["nonce"]) and is_binary(query["state"])
+      # eh-os D-113: never older than this application's absolute limit, twelve hours here.
+      assert query["max_age"] == "43200"
     end
 
     test "a callback whose iss is not EHOS's is refused, and nobody is signed in", context do
@@ -93,7 +95,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     test "a callback from another address than the redirect's signs in all the same", context do
       started = start_sign_in(context, "/")
       query = authorization_query(started)
-      FakeEhos.grant(context.ehos, "code-1", "rehmed/test", %{"nonce" => query["nonce"]})
+      FakeEhos.grant(context.ehos, "code-1", "clinic/test", %{"nonce" => query["nonce"]})
 
       callback =
         conn(
@@ -123,7 +125,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       started = start_sign_in(context, "/")
       query = authorization_query(started)
       # EHOS holds another challenge than the one the router sent.
-      FakeEhos.grant(context.ehos, "code-1", "rehmed/test", %{
+      FakeEhos.grant(context.ehos, "code-1", "clinic/test", %{
         "nonce" => query["nonce"],
         "code_challenge" => Base.url_encode64(:crypto.hash(:sha256, "other"), padding: false)
       })
@@ -186,8 +188,17 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       {:ok, session} =
         EhOsContract.Auth.SignIn.Sessions.fetch(context.name, session_token(context, browser))
 
-      expires_at = session.credentials["https://rehmed.test"].expires_at
+      expires_at = session.credentials["https://clinic.test"].expires_at
       assert DateTime.diff(expires_at, DateTime.utc_now()) in 90..101
+    end
+
+    # eh-os D-113: just inside the limit EHOS was asked as max_age, the sign-in stands.
+    test "a sign-in just inside the absolute limit is kept", context do
+      browser =
+        sign_in(context, "/", grant: %{"auth_time" => System.os_time(:second) - 43_200 + 120})
+
+      assert browser.status == 302
+      assert rows() == 1
     end
 
     test "a token response missing what a session needs refuses the sign-in", context do
@@ -195,6 +206,9 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
             %{"sid" => ""},
             %{"sub" => ""},
             %{"auth_time" => 999_999_999_999_999},
+            # Past the absolute limit, which EHOS was asked as max_age (eh-os D-113): read, it
+            # would send the browser round and round EHOS.
+            %{"auth_time" => System.os_time(:second) - 43_200 - 60},
             # Within the renewal margin: every request would renew it.
             %{"credential_lifetime" => 20}
           ] do
@@ -362,7 +376,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     FakeEhos.grant(
       context.ehos,
       "code-1",
-      "rehmed/test",
+      "clinic/test",
       Map.merge(
         %{
           "nonce" => query["nonce"],

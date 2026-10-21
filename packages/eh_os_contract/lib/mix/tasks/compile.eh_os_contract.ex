@@ -8,8 +8,9 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   Among them: a contract's domain declares the contexts, terms, values and actors it
   uses; a sibling contract declares every event and field this one consumes; a
   policy or read model that takes another context's event says how it is delivered;
-  personal data stays out of what is published; no declaration has two
-  implementations; names are unique across the application; and a process module
+  personal data stays out of what is published; a reference from one context into
+  another follows the relation the domain declares between them, and takes no more
+  than its pattern lets through; no declaration has two implementations; names are unique across the application; and a process module
   agrees with the contracts whose events it includes.
 
   Some of what these rules leave open is reported by `mix eh_os_contract.check`

@@ -91,7 +91,7 @@ defmodule EhOsContract.Model.Export do
 
   # A scenario of a consumer names a sibling's event by its local name, and the
   # sibling declares which of its fields are personal: the contract's own events are
-  # not enough to know (a policy on `ClinicalDocumentation`'s closing carries a PESEL).
+  # not enough to know (a policy on another contract's closing event can carry a national id).
   defp redact_event(item, name_key, model, values),
     do: redact_data(item, event_fields(model, Map.get(item, name_key)), values)
 

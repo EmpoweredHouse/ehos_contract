@@ -8,10 +8,11 @@ happened is what the contract says should.**
 
 ## Two halves, one contract
 
-A process is written down as two Elixir modules, in the manner of [ESDM](https://www.esdm.io): a
-**domain** — its words, contexts, actors and the systems it depends on — and a **contract** per process —
-the units that decide, their commands, events and invariants, what reacts to them, what is read, and what
-the process owner was promised. Both halves of the library read those modules and nothing else.
+A process is written down as Elixir modules, in the manner of [ESDM](https://www.esdm.io): a **domain** —
+its words, contexts, actors and the systems it depends on — **contracts** — the units that decide, their
+commands, events and invariants, what reacts to them and what is read — and a **process** module — its
+runs, their stages and endings, and what the process owner was promised. Both halves of the library read
+those modules and nothing else.
 
 **Events.** `EhOsContract.dispatch/3` runs a command through the contract: it asks whether the actor may
 issue it, checks its fields, reads the unit's history from the log, lets the implementation decide, and
@@ -65,9 +66,9 @@ green — the code that should have run it just never fired.
 
 ## The idea
 
-Declare the process once, as a **contract**: an Elixir module, written by developers, approved
+Declare the process once, as **contracts** and a **process**: Elixir modules, written by developers, approved
 by the person who owns the process, and versioned like any other code. Everything downstream
-reads that one module and nothing else — the code structure, the tests, the API surface, the
+reads those modules and nothing else — the code structure, the tests, the API surface, the
 graph of events the system is allowed to emit, and the assertions a log of what actually
 happened will be checked against ("within 3 days of X, Y must happen, or else Z").
 
@@ -88,8 +89,8 @@ flowchart LR
 
 ## Seeing it work
 
-A process with one promise: a case is opened, and within three days it is either filed or explicitly
-flagged for review.
+A contract that decides cases, and a process with one promise about them: a case is opened, and within
+three days it is either filed or explicitly flagged for review.
 
 ```elixir
 defmodule Acme.Contracts.InvoiceFiling do
@@ -103,19 +104,29 @@ defmodule Acme.Contracts.InvoiceFiling do
     command :flag_invoice, "Flag for manual review", by: :clerk, emits: :invoice_flagged
 
     event :case_opened, "Case opened"
-    event :invoice_filed, "Invoice filed", terminal: true
-    event :invoice_flagged, "Invoice flagged for manual review", terminal: true
+    event :invoice_filed, "Invoice filed"
+    event :invoice_flagged, "Invoice flagged for manual review"
   end
+end
 
-  process :invoice_filing, "Invoice filing" do
-    correlate :case_id
+defmodule Acme.Processes.CaseFiling do
+  use EhOsContract.Process,
+    id: "acme.case_filing",
+    domain: Acme.Domain,
+    label: "Invoice filing"
 
-    promise :invoice_follows_case do
-      from :case_opened
-      eventually :invoice_filed
-      within {3, :day}
-      or_else :invoice_flagged
-    end
+  correlate :case_id
+
+  stage :filing, "Filing",
+    include: [{Acme.Contracts.InvoiceFiling, [:case_opened, :invoice_filed, :invoice_flagged]}]
+
+  ends_on [:invoice_filed, :invoice_flagged]
+
+  promise :invoice_follows_case do
+    from :case_opened
+    eventually :invoice_filed
+    within {3, :day}
+    or_else :invoice_flagged
   end
 end
 ```
@@ -125,18 +136,14 @@ month, 40 cases were opened. 39 look completely uneventful — filed or flagged,
 didn't: a code path that should have flagged it never ran, for reasons that have nothing to do with this
 library (a bug, a missed deploy, an edge case nobody tested). No error, so nothing paged anyone. This is
 the part of what `mix eh_os_contract.report` prints for that month about the process, in the sentences it
-prints — the header and the contract's version, deployed since when, come before it:
+prints — the header and the process's version, deployed since when, come before it:
 
 ```
 PROCESS: Invoice filing
   Runs in this period: 40.
-  All agreed steps were carried out in this period.
   Rule: after "Case opened" within 3 days, "Invoice filed" follows, or else "Invoice flagged for manual review".
     BREACHED in 1 of 40 runs.
     Of those that were met, 2 runs reached the fallback ending, which conforms to the rule.
-
-DRIFT
-  None: nothing happened outside the agreement.
 ```
 
 `BREACHED in 1 of 40 runs` is the conformance half on one line. It doesn't point at a stack trace, and it
@@ -169,16 +176,26 @@ mounted at `/dashboard` on this repository's sandbox host the way `oban_web` mou
 app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
 showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
 status (the four questions, per contract), and graph — a domain's context map, its system of contracts and
-what flows between them, and each contract's full graph, its process's declared shape, its units and their
-lifecycles, over the log — drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the
-`graph.v1` document the engine gives, with a panel for whatever is clicked.
+what flows between them, and each contract's full graph, its units and their lifecycles, over the log —
+drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the `graph.v1` document the
+engine gives, with a panel for whatever is clicked.
 
 ```bash
 cd sandbox && mix phx.server
 ```
 
+An empty log gives empty screens. `mix sandbox.traffic` fills one with about six weeks of the case studies'
+runs, drift included: broken and suspended promises, a deadline passed, stages out of order, a move the
+lifecycle does not allow, a step that fails. Run it on a database of your own, since the default development
+database is shared by every checkout on the machine:
+
+```bash
+cd sandbox && export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
+mix ecto.reset && mix sandbox.traffic && mix phx.server
+```
+
 The same answers, and each contract's and domain's graph as a `graph.v1` document with what the log says
-over it, are JSON for any other client — EHOS Console, CI — under the host's `/api` mount: the routes are in
+over it, are JSON for any other client — a CI job, a tool — under the host's `/api` mount: the routes are in
 [the web package's README](packages/eh_os_contract_web/README.md#the-api), and `mix eh_os_contract.graph`
 writes the same documents to a file.
 
@@ -235,7 +252,7 @@ mix check
 ```
 
 `mix check` in `sandbox/` is the gate: formatting, `compile --force --warnings-as-errors`,
-`eh_os_contract.check` and the sandbox's own tests, then each package's own `mix check` as a
+`eh_os_contract.check`, `eh_os_contract.schema --check` and the sandbox's own tests, then each package's own `mix check` as a
 separate project — the engine's includes `eh_os_contract.docs --check` and `eh_os_contract.rules --check`. `--warnings-as-errors`
 matters because `boundary` reports module-boundary violations as warnings, so without that flag the
 boundaries below would be documentation rather than a check.
@@ -246,6 +263,7 @@ boundaries below would be documentation rather than a check.
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
 | `mix eh_os_contract.graph --contract <id> \| --domain <name> [--overlay [--since …]]` | a contract's or a domain's `graph.v1` document — steps, actors, read side, external systems, stages, promises, lifecycles, the context map — or, with `--overlay`, what the log says over it |
 | `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
+| `mix eh_os_contract.schema [--check \| --forget TYPE]` | records every event's fields by version in `eh_os_contract.lock`, and fails on a recorded version whose fields changed |
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
 | `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
 | `mix eh_os_contract.docs` / `rules` | inside `packages/eh_os_contract` only: regenerate `docs/dsl/` and `docs/rules.md` |
@@ -260,7 +278,7 @@ boundaries below would be documentation rather than a check.
 | [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
 | [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress) |
 | [`sandbox`](sandbox) | a host application around the packages, with the test material below |
-| [`docs`](docs) | the starting assumptions (`docs/adr/`), distillations of the test material, and workshop material |
+| [`docs`](docs) | the starting assumptions and the design record (`docs/adr/`) |
 
 The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
 of it requiring a client application to exist. That is the part meant to eventually ship to Hex.
@@ -269,9 +287,9 @@ of it requiring a client application to exist. That is the part meant to eventua
 [above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
 router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
 
-The sandbox — `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/` and `sandbox/lib/appunite_equipment/`, the
-domains, contracts and implementations of three unrelated businesses, accounting, healthcare and a company's
-equipment — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
+The sandbox — `sandbox/lib/lending/`, `sandbox/lib/billing/` and `sandbox/lib/fulfilment/`, the domains,
+contracts and implementations of three invented businesses, a library lending copies, a company billing
+subscriptions and a shop fulfilling orders — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
 imagination. [`boundary`](https://hex.pm/packages/boundary) enforces the line between the two
 from the first commit, so it's a fact the compiler checks, not a promise in a document.
 

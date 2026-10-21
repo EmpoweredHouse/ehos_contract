@@ -26,7 +26,8 @@ defmodule EhOsContract.Contract.Rules do
     Rules.Fields,
     Rules.Units,
     Rules.Lifecycles,
-    Rules.Process,
+    Rules.Versions,
+    Rules.Durations,
     Rules.Consumes,
     Rules.Consumers,
     Rules.Boundaries,
@@ -65,7 +66,6 @@ defmodule EhOsContract.Contract.Rules do
       domain_services: of.(Dsl.DomainService),
       consumes: of.(Dsl.Consumes),
       publishes: of.(Dsl.Publish),
-      processes: of.(Dsl.ProcessDeclaration),
       scenarios: of.(Dsl.Scenario)
     }
   end
@@ -94,13 +94,9 @@ defmodule EhOsContract.Contract.Rules do
     end
   end
 
-  @doc "A unit's events, whether written in a stage group or outside one."
-  @spec events(struct()) :: [struct()]
-  def events(%Dsl.Unit{} = unit), do: unit.events ++ Enum.flat_map(unit.stages, & &1.events)
-
   @doc "Every event of every unit."
   @spec local_events(map()) :: [struct()]
-  def local_events(declarations), do: Enum.flat_map(declarations.units, &events/1)
+  def local_events(declarations), do: Enum.flat_map(declarations.units, & &1.events)
 
   @doc "Every command of every unit."
   @spec commands(map()) :: [struct()]

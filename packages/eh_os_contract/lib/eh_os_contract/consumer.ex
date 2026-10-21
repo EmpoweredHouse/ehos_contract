@@ -23,11 +23,13 @@ defmodule EhOsContract.Consumer do
     Erased,
     Event,
     Implementations,
+    LogMetadata,
     Meta,
     Model,
     NewerSchemaError,
     Personal,
-    Rejection
+    Rejection,
+    Upcast
   }
 
   @longest_chain 32
@@ -39,16 +41,23 @@ defmodule EhOsContract.Consumer do
   caller knows whether to roll back or to retry.
   """
   @spec handle!(Implementations.inline(), struct(), [String.t()]) :: :ok | {:error, term()}
+  # What the consumer logs while it handles the event carries the event's correlation (#298).
+  def handle!(consumer, event, chain),
+    do: LogMetadata.correlated(correlation(event), fn -> handled!(consumer, event, chain) end)
+
+  defp correlation(%{__meta__: %{correlation_id: correlation_id}}), do: correlation_id
+  defp correlation(_erased), do: nil
+
   # An erasure: the read model forgets the subject, if it holds that type's data at
   # all (v2 §14). One nobody implemented has written nothing to forget, and must not
   # stop every erasure of the type.
-  def handle!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
+  defp handled!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
     if consumer.module != nil and MapSet.member?(consumer.forgets, erased.subject),
       do: forget!(consumer, erased),
       else: :ok
   end
 
-  def handle!(%{kind: :read_model} = consumer, event, _chain) do
+  defp handled!(%{kind: :read_model} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
         :ok
@@ -60,7 +69,7 @@ defmodule EhOsContract.Consumer do
     end
   end
 
-  def handle!(%{kind: :effect} = consumer, event, _chain) do
+  defp handled!(%{kind: :effect} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
         :ok
@@ -75,7 +84,7 @@ defmodule EhOsContract.Consumer do
     end
   end
 
-  def handle!(%{kind: :policy} = consumer, event, chain) do
+  defp handled!(%{kind: :policy} = consumer, event, chain) do
     module = implemented!(consumer)
     model = Model.fetch(consumer.contract)
     policy = Enum.find(model.policies, &(&1.name == consumer.name))
@@ -92,7 +101,17 @@ defmodule EhOsContract.Consumer do
 
     case apply(module, consumer.callback, [event]) do
       {:ok, commands} when is_list(commands) ->
-        issue!(consumer, :policy, event.__meta__, commands, {model, policy.issues}, [link | chain])
+        # The policy's `issues:` is what `Reactions.commands/2` answers for a policy that
+        # handles an event, as this one has just done (`ReactionsTest` holds the two
+        # equal); read directly, it costs nothing on every event.
+        issue!(
+          consumer,
+          :policy,
+          event.__meta__,
+          commands,
+          {model, List.wrap(policy.issues)},
+          [link | chain]
+        )
 
       other ->
         raise ArgumentError,
@@ -158,16 +177,24 @@ defmodule EhOsContract.Consumer do
   @spec decode_all!(map(), map(), [Event.t()]) :: [struct()]
   def decode_all!(model, values, rows) do
     # The version first, before a newer payload is read for its subjects with fields it
-    # may no longer have.
+    # may no longer have; then an older one in the declared shape (plan DD, V1, #333),
+    # with the path each renamed field was sealed under.
+    # A unit's implementation is looked up once for all the rows (plan DD, V2, #338).
+    implementations = implementations(model, rows)
+
     declared =
       Enum.map(rows, fn row ->
         declaration = declaration!(model, row)
         current!(declaration, row)
-        {declaration, row}
+
+        {payload, paths} =
+          Upcast.read(declaration, row, implementations.(declaration), values)
+
+        {declaration, %{row | payload: payload}, paths}
       end)
 
     subjects =
-      for {declaration, row} <- declared,
+      for {declaration, row, _paths} <- declared,
           subject <- Codec.subjects(declaration.fields, row.payload, values, :stored),
           uniq: true,
           do: subject
@@ -184,8 +211,9 @@ defmodule EhOsContract.Consumer do
         Enum.reject(subjects, fn {t, id} -> MapSet.member?(keyed, {Atom.to_string(t), id}) end)
       )
 
-    for {declaration, row} <- declared do
-      decode!(model, values, declaration, row, Personal.opener(keys, row.type, erased))
+    for {declaration, row, paths} <- declared do
+      open = Upcast.opener(Personal.opener(keys, row.type, erased), paths)
+      decode!(model, values, declaration, row, open)
     end
   end
 
@@ -193,7 +221,7 @@ defmodule EhOsContract.Consumer do
   Raises `EhOsContract.NewerSchemaError` when `row` was written with a newer version
   of its event's fields than `model` declares (plan W1), for a reader that takes a
   row's payload as stored rather than through `decode!/1`, as a relay does. An older
-  version passes, as it decodes, until upcasters exist (V1).
+  version passes: its event's steps (`upcast`) read it in the current shape.
   """
   @spec current!(map(), Event.t()) :: :ok
   def current!(%{kind: :contract} = model, row), do: current!(declaration!(model, row), row)
@@ -214,6 +242,25 @@ defmodule EhOsContract.Consumer do
   def current!(_declaration, _row), do: :ok
 
   @doc false
+  # Plan DD, V1 (#333): `row` with its payload in the shape `model` declares its event in,
+  # for a reader that takes the payload as stored, as a relay does. A sealed value stays
+  # sealed, and goes out sealed, as `EhOsContract.Relay` says of a field that was personal.
+  @spec upcast(map(), Event.t()) :: Event.t()
+  def upcast(%{kind: :contract} = model, row) do
+    declaration = declaration!(model, row)
+
+    {payload, _paths} =
+      Upcast.read(
+        declaration,
+        row,
+        implementation(model, declaration),
+        fn -> Codec.values(model.domain) end
+      )
+
+    %{row | payload: payload, schema_version: declaration.schema_version}
+  end
+
+  @doc false
   # Plan W1: whether `row` was written with a newer version of its event's fields than
   # this code declares, asked of a batch before it is applied, so that the events
   # before a newer row commit instead of rolling back with it. A row this cannot place
@@ -231,6 +278,50 @@ defmodule EhOsContract.Consumer do
   end
 
   def newer?(_row), do: false
+
+  # The implementation of the unit that declares `declaration`, found only when a step by a
+  # function asks for it (plan DD, V2, #338).
+  defp implementation(model, declaration) do
+    fn ->
+      unit = Enum.find(model.units, &(&1.name == declaration.unit))
+      Implementations.fetch!(model, unit.kind, unit.name)
+    end
+  end
+
+  # For each declaration, a function giving its unit's implementation, looked up once for
+  # all of `rows` and only for a unit a row of which goes through a step by a function: a
+  # stream folded from many older rows asks the index once, and one with none not at all.
+  # A lookup that fails is refused when a step asks, where the step can be named.
+  defp implementations(model, rows) do
+    needing =
+      for row <- rows,
+          declaration = Enum.find(model.events, &(&1.type == row.type)),
+          declaration != nil and Upcast.function_step?(declaration, row),
+          uniq: true,
+          do: declaration
+
+    found =
+      for declaration <- Enum.uniq_by(needing, & &1.unit), into: %{} do
+        lookup =
+          try do
+            {:ok, implementation(model, declaration).()}
+          rescue
+            exception in ArgumentError -> {:error, Exception.message(exception)}
+          end
+
+        {declaration.unit, lookup}
+      end
+
+    fn declaration ->
+      fn ->
+        case Map.fetch(found, declaration.unit) do
+          {:ok, {:ok, module}} -> module
+          {:ok, {:error, message}} -> raise ArgumentError, message
+          :error -> implementation(model, declaration).()
+        end
+      end
+    end
+  end
 
   defp declaration!(model, row) do
     Enum.find(model.events, &(&1.type == row.type)) ||

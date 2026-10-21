@@ -21,6 +21,113 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
+### Added
+
+- **The process view draws what a promise waits on through an earlier step** (plan DD, stage OW1, #355): a
+  `graph.v1` document's `waits_on` relation is a dotted arrow, with no head, from the event that opens the promise
+  to the external system. The promise's panel names the systems it waits on, and the system's panel the promises
+  that wait on it; the owner's label of a promise ends with "waiting on" them.
+
+## [0.3.0] - 2026-10-16
+
+### Added
+
+- **The explorer reads the model for the business owner** (plan DD, stage L4, #326): a switch "Engineering /
+  Owner" over the canvas, and `audience={:owner}` on `EhOsContract.GraphRenderer.Explorer` to start there
+  (`:engineering` by default, as before). `EhOsContract.GraphRenderer.Canvas` takes the same `audience`, and
+  `EhOsContract.GraphRenderer.View.build/4` too. For the owner the cards and the panel say each declaration by
+  its label, a field by its label alone, a contract by its context's label and a promise by its rule, and leave
+  out names and modules in code, the stored type, delivery, idempotency, the keys runs are told by, grants,
+  roles, scopes, identities, fields with no label, scenarios' data and the wire between applications. The
+  numbers from the log stay.
+
+- **A process's picture shows the stages runs entered out of order** (plan DD, stage O2, #319): a dotted arrow
+  in the error look from the later stage's lane back to the earlier one, "entered first", with how many runs,
+  from the overlay's `observed.relations.out_of_order`; its panel names the two stages.
+
+## [0.2.0] - 2026-10-16
+
+### Added
+
+- **Several applications joined into one landscape** (plan DD, stage G1, #297):
+  `EhOsContract.GraphRenderer.Landscape.join/1` takes `{application, domain_document}` pairs and matches what one
+  publishes to what another subscribes to by the name on the wire; `Canvas` draws the result with
+  `view={:landscape}`, a box per domain holding its contracts on the wire and saying how many others it has, and a
+  card per name between them. A name some document subscribes to and none of the set publishes is drawn as coming
+  from outside the set. Two domains of one application are joined as two applications are.
+
+- **A contract's card on the domain's map says its drift** (plan DD, stage G1, #297): "2 never taken, 1 move not
+  allowed", from the domain's overlay, in the error colour; nothing where the log found none. An event a
+  contract consumes takes the contract that declares it from the document's `declared_in`, and reads it out of
+  the sibling event's id only in a document from before it.
+- **An explorer of a domain** (plan DD, stage G1, #297): `EhOsContract.GraphRenderer.Explorer` is one canvas
+  with two viewpoints, the structure (the domain's system with a switch to its context map, a contract, a unit
+  with a switch to its lifecycle) and the processes, a path back up, and the panel's "Open" where a card leads —
+  across the viewpoints, from a process's event to its contract. Its documents and overlays come from a loader
+  the host implements (`EhOsContract.GraphRenderer.Loader`), called in the background when the reader enters a
+  picture, an overlay only where the picture draws it; one that fails is said in place of the picture and loaded
+  again when the reader comes back. `Canvas` takes `open`, the component the
+  panel's "Open" goes to.
+- **A bar over the canvas: search, focus, the log's switch and zoom** (plan DD, stage G1, #297). The search dims
+  the cards it does not find and on Enter selects the first one and moves the view to it (`View.matches/2`);
+  "Focus on the selection" draws a card or a group with what its relations reach, laid out again
+  (`View.around/2`); a switch draws the declaration alone or with what the log says; buttons zoom in and out,
+  return to the readable start, or show the whole picture.
+- **A picture starts at a readable scale** (plan DD, stage G1, #297): a picture that does not fit the canvas is no
+  longer shrunk until its cards cannot be read; it starts at the edge it overflows from, its left or its top, and
+  the reader pans, or asks for the whole picture.
+- **Cards of their kind, and a legend** (plan DD, stage G1, #297): every card has a badge with its kind's icon and
+  name, the client's label, the name in code, which may break after a dot, an underscore or a colon, and a footer
+  saying where the element lives when the picture does not: the contract that declares an event of a process, the
+  sibling contract an event is consumed from, or another application it is received from. Each kind has a colour
+  in Event Storming's families, a process's among them, on the design system's surfaces, in a dark and a light
+  theme. Under the canvas, a legend lists the kinds, the cards drawn other than their kind (an event that ends a
+  run, a final status) and the looks of the arrows the view draws, each look said in words to a screen reader
+  (`View.legend/1`).
+- **A unit that records only is marked** (plan DD, stage C1, #304): when the document says `records_only`, the
+  unit's card and its box say "records only" beside its kind, and its panel says "Records only: no command it
+  takes can be refused."
+- **A process module's picture** (plan DD, stage P2e, #220): the view `:process` draws a process module's
+  `graph.v1` document top to bottom — the process, with what one run is and its deadline, and the actor
+  accountable for it; its stages as boxes in their order, each after the one before; in each, the events it
+  includes, each naming the contract that declares it, those that end a run in green; each promise a heavy arrow
+  from the event that opens it to the one that keeps it, with its window, and a dotted one to the event that keeps
+  it the other way; and the external systems the events rest on, whose outage suspends a promise, hung off them
+  by a dotted line. With the process's overlay, the process card counts its runs, each event how often it happened
+  (×0 included), and a promise's arrow its verdicts — "3 kept, 1 broken, 2 pending", in the
+  error colour when a run broke it. A promise the owner has yet to confirm, which no run is judged against, reads
+  "unconfirmed", with or without an overlay. The panels say a process's run, deadline, accountable actor, contracts, stages, promises and runs; a
+  stage's place and events; a promise's window, events and verdicts; and an event's contract and stage, its fields
+  being in the contract's own document.
+- **The system view draws a domain's process modules** (plan DD, stage P2e, #220): a card for each, a dotted
+  "includes" arrow to each contract whose events it includes, the actor accountable for it, and its runs from the
+  domain's overlay. A process's panel names its module and the contracts it includes, and a contract's the
+  processes that include its events.
+- **A contract keeping the number of a sibling's unit, drawn** (plan DD, stage L3, #286). The system view draws a
+  dotted arrow from the sibling to the contract keeping its unit's number, "number of visit", the way the number
+  travels, as a consumed event's arrow does; its panel says which units, and a contract's panel lists the units
+  whose numbers it keeps ("Keeps the number of") and the contracts keeping its units' ("Its units' numbers are
+  kept by"). It reads the domain document's `refers_to` relations, which the engine writes from this release.
+
+### Changed
+
+- **Breaking:** a card of the `:process` view names the contract that declares its event in `foot`, a new key of a
+  view's node, rather than in `lines` (plan DD, stage G1, #297). A host reading `View.build/3`'s nodes reads it there.
+- **Breaking:** the custom properties `--eh-os-contract-graph-fill` and `--eh-os-contract-graph-stroke` are gone
+  (plan DD, stage G1, #297). A card is drawn on the host's surface in its kind's hue,
+  `--eh-os-contract-graph-hue`, taken from the palette's properties on `.ehg` (`--eh-os-contract-graph-event`,
+  `--eh-os-contract-graph-command`, …, one set for each theme); a host that recoloured a kind overrides those
+  instead. Its ink is the host's `--text-primary`, no longer black.
+
+### Removed
+
+- **Breaking:** the view `:declared`, a contract's process (plan DD, stage P2e, #220). A contract declares no
+  process since the engine's #221, so the view was always empty; draw a process module's document with `:process`
+  instead. A contract's full graph no longer draws an event because a process includes it, and the system view's
+  contract card no longer names a process, both of which only a contract's own process gave.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

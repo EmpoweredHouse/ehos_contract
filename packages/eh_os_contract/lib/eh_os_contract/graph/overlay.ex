@@ -8,13 +8,17 @@ defmodule EhOsContract.Graph.Overlay do
   whatever the log holds.
 
   It carries **only the numbers the conformance report computes**, and its readings
-  of them, so a reader recounts nothing: an event's occurrences, a process's runs,
-  how often a step was taken, what waits and what fails there and whether the report
-  counts it as never taken or not yet; a lifecycle transition's count, "not yet" and
-  "never", and an aggregate's count; between contracts, the events the log holds and
-  what waits or fails at the consumer, and each contract's runs. They are counted as
-  `EhOsContract.Conformance.report/2` counts them; between contracts, from the
-  consumer's steps and one count of the consumed events.
+  of them, so a reader recounts nothing: an event's occurrences, how often a step was
+  taken, what waits and what fails there and whether the report counts it as never
+  taken or not yet; a lifecycle transition's count, "not yet" and "never", and an
+  aggregate's count; between contracts, the events the log holds and what waits or
+  fails at the consumer. A run is a process module's, and a contract's overlay counts
+  none: a process module's overlay (`process/2`) has its runs, how often each event it
+  includes happened and each promise's verdicts, and a domain's has each process
+  module's runs. They are counted as
+  `EhOsContract.Conformance.report/2` and `EhOsContract.Conformance.process/2` count
+  them; between contracts, from the consumer's steps and one count of the consumed
+  events.
 
   Its JSON Schema is at `schema_path/0`, beside the document's.
 
@@ -64,16 +68,21 @@ defmodule EhOsContract.Graph.Overlay do
   A step the facts end at no relation, or at two that are not such a manager's
   phases, is a shape of the DSL this module does not know: its relations get no
   numbers and a warning is logged, and a test over every fixture fails on it.
+
+  Like the document it joins onto, an overlay changes only by addition
+  (`EhOsContract.Graph.Document`, "Changes only by addition").
   """
 
   require Logger
 
-  import Ecto.Query
-
-  alias EhOsContract.{Conformance, Event, Model, Paths}
+  alias EhOsContract.{Conformance, Model, Paths, StageOrder}
   alias EhOsContract.Graph.Document
 
   @schema "eh_os_contract.graph_overlay.v1"
+
+  # A promise's verdicts, as `Conformance.promise_verdicts/2` gives them.
+  @verdicts ~w(satisfied satisfied_via_eventually satisfied_via_or_else violated pending
+               suspended instances)a
 
   @doc """
   The overlay of `contract` over the period `opts` names (`:since`, `:until`, as in
@@ -95,10 +104,6 @@ defmodule EhOsContract.Graph.Overlay do
       for {name, occurrences} <- Paths.occurrences(model, period),
           do: {id.(:event, name), %{occurrences: occurrences}}
 
-    process =
-      for p <- List.wrap(Model.process(model)),
-          do: {id.(:process, p.name), %{runs: Paths.runs_of(model, to_string(p.name), period)}}
-
     units = for l <- lifecycles, do: {id.(:unit, l.unit), %{aggregates: l.aggregates}}
 
     {undeclared, moved} = undeclared(c, lifecycles)
@@ -110,7 +115,7 @@ defmodule EhOsContract.Graph.Overlay do
         "module" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(events ++ process ++ units),
+        "nodes" => Map.new(events ++ units),
         "relations" =>
           Map.new(on_steps(document, c, steps) ++ transitions(document, c, lifecycles) ++ moved),
         "observed" => %{"relations" => %{"undeclared" => undeclared}}
@@ -120,27 +125,128 @@ defmodule EhOsContract.Graph.Overlay do
   end
 
   @doc """
-  The overlay of `domain` over `contracts` (those naming another domain are left
-  out) and the period `opts` names, against `Document.domain/2` of the same: each
-  contract's runs, and what crosses between two contracts.
+  The overlay of the process module `process` over the period `opts` names (`:since`,
+  `:until`, as in the report), against `Document.process/1` of the same: on the
+  process node its `runs`; on each event it includes, its `occurrences` in the period,
+  0 for one that did not happen, whatever run, if any, each falls in; and on each
+  promise its verdicts over the runs it opened — `satisfied`, of them `satisfied_via_eventually` and
+  `satisfied_via_or_else`, `violated`, `pending`, `suspended` and `instances` — as
+  the report gives them, under the promise's current declaration
+  (`EhOsContract.Conformance.promise_verdicts/2`, the report's own computation). A
+  promise the owner has yet to confirm (`unverified`) has none, as the report judges
+  none. Its `relations` are empty. Under `observed`, `out_of_order` lists each pair of
+  stages runs entered the wrong way round — from the later stage's node to the
+  earlier one's, with how many runs — as the report counts them
+  (`EhOsContract.StageOrder`).
+
+      EhOsContract.Graph.Overlay.process(Fulfilment.Processes.Order,
+        since: ~U[2026-07-01 00:00:00Z]
+      )
+  """
+  @spec process(module() | map(), keyword()) :: map()
+  def process(process, opts \\ []) do
+    model = Model.fetch(process)
+    document = Document.process(model)
+    period = Keyword.take(opts, [:since, :until])
+    verdicts = Map.new(Conformance.promise_verdicts(model, period), &{to_string(&1.promise), &1})
+
+    # Keyed by the ids of the document it joins, read from it: how they are made is the
+    # facts' alone.
+    nodes = document["nodes"]
+    [process_node] = nodes["process"]
+    by_type = nodes["event"] |> Enum.map(& &1["type"]) |> Paths.occurrences_by_type(period)
+
+    # Every event it includes, one that did not happen at 0, so no reader takes a missing
+    # entry for a number.
+    events =
+      for e <- nodes["event"], do: {e["id"], %{occurrences: Map.get(by_type, e["type"], 0)}}
+
+    promises =
+      for p <- nodes["promise"],
+          verdict = verdicts[p["name"]],
+          do: {p["id"], Map.take(verdict, @verdicts)}
+
+    runs = {process_node["id"], %{runs: Paths.runs_of(model, model.id, period)}}
+
+    # Plan DD, O2 (#319): the stages a run entered the wrong way round, keyed by the
+    # stage nodes' ids, read from the document as everything else here is.
+    stage_id = Map.new(nodes["stage"] || [], &{&1["name"], &1["id"]})
+
+    # Both come from the model's stages, so a pair always has its two nodes.
+    out_of_order =
+      for %{earlier: earlier, later: later, runs: n} <- StageOrder.evaluate(model, period).pairs do
+        {from, to} =
+          {Map.fetch!(stage_id, to_string(later)), Map.fetch!(stage_id, to_string(earlier))}
+
+        %{"id" => "out_of_order:#{from}:#{to}", "from" => from, "to" => to, "runs" => n}
+      end
+
+    seal(
+      %{
+        "kind" => "process",
+        "process" => model.id,
+        "module" => Model.json_data(model.module),
+        "version" => model.version,
+        "document_digest" => document["digest"],
+        "nodes" => Map.new([runs | events ++ promises]),
+        "relations" => %{},
+        "observed" => %{"relations" => %{"undeclared" => [], "out_of_order" => out_of_order}}
+      },
+      period
+    )
+  end
+
+  @doc """
+  The overlay of `domain` over `modules`, its contracts and process modules (those
+  naming another domain are left out), and the period `opts` names, against
+  `Document.domain/2` of the same: what crosses between two contracts; on each
+  process module's node its `runs`; and on each contract's node its drift, as many as the
+  lines the conformance report lists for it — `untraversed`, its declared steps and its
+  lifecycles' transitions never taken, each counted once, and `undeclared`, the distinct
+  moves its lifecycles do not allow that happened, however often each did
+  (`EhOsContract.Conformance.steps/2`, `lifecycles/2`). Events written around dispatch,
+  which the report lists apart, are not counted here.
   """
   @spec domain(module() | map(), [module() | map()], keyword()) :: map()
-  def domain(domain, contracts, opts \\ []) do
+  def domain(domain, modules, opts \\ []) do
     model = Model.fetch(domain)
-    document = Document.domain(model, contracts)
+    document = Document.domain(model, modules)
     period = Keyword.take(opts, [:since, :until])
 
-    models =
-      contracts
+    fetched =
+      modules
       |> Enum.map(&Model.fetch/1)
       |> Enum.filter(&(&1.domain == model.module))
 
-    id = &Document.id([:contract, &1.id])
+    models = Enum.filter(fetched, &(&1.kind == :contract))
+
+    # One query for every process module's runs, keyed by its node in the document.
+    counted = fetched |> Enum.filter(&(&1.kind == :process)) |> Paths.runs_by_process(period)
 
     runs =
-      for m <- models,
-          p = Model.process(m),
-          do: {id.(m), %{runs: Paths.runs_of(m, to_string(p.name), period)}}
+      for p <- document["nodes"]["process"],
+          do: {p["id"], %{runs: Map.fetch!(counted, p["name"])}}
+
+    id = &Document.id([:contract, &1.id])
+
+    # Each contract's steps, read once: its drift, and for a consumer what crosses to it.
+    observed = Map.new(models, &{&1.module, Conformance.steps(&1, period)})
+
+    # Plan DD, G1 (#297): where it is worth going in, on the map. The same steps and
+    # lifecycles the contract's own overlay reads.
+    drift =
+      for m <- models do
+        steps = Enum.uniq(observed[m.module])
+        lifecycles = Conformance.lifecycles(m, period)
+
+        {id.(m),
+         %{
+           untraversed:
+             Enum.count(steps, & &1.untraversed) +
+               Enum.sum(for l <- lifecycles, do: length(l.untraversed)),
+           undeclared: Enum.sum(for l <- lifecycles, do: length(l.undeclared))
+         }}
+      end
 
     seal(
       %{
@@ -148,8 +254,8 @@ defmodule EhOsContract.Graph.Overlay do
         "domain" => Model.json_data(model.module),
         "version" => model.version,
         "document_digest" => document["digest"],
-        "nodes" => Map.new(runs),
-        "relations" => Map.new(between(document, models, id, period)),
+        "nodes" => Map.new(runs ++ drift),
+        "relations" => Map.new(between(document, models, id, observed, period)),
         "observed" => %{"relations" => %{"undeclared" => []}}
       },
       period
@@ -159,24 +265,21 @@ defmodule EhOsContract.Graph.Overlay do
   # What crosses from one contract to another, on the one relation the facts have for
   # the pair: how many of the consumed events the log holds, and what waits or fails at
   # the consumer's steps that start from them. A contract that consumes from a sibling
-  # twice has one relation and the sum of both. Only a consumer's steps are read, once
-  # however many siblings it consumes from, and the consumed events are counted in one
-  # query for every pair.
-  defp between(document, models, id, period) do
+  # twice has one relation and the sum of both. A consumer's steps are those the drift
+  # read, and the consumed events are counted in one query for every pair.
+  defp between(document, models, id, observed, period) do
     pairs =
       for m <- models,
           %{kind: :contract, from: from} = c <- m.consumes,
           sibling = Enum.find(models, &(&1.module == from)),
           do: {sibling, m, c}
 
-    consumers = pairs |> Enum.map(&elem(&1, 1)) |> Enum.uniq_by(& &1.module)
-    steps = Map.new(consumers, &{&1.module, Paths.observe(&1, period)})
     types = for {sibling, _m, c} <- pairs, e <- sibling.events, e.name in c.events, do: e.type
-    counts = counts(types, period)
+    counts = Paths.occurrences_by_type(types, period)
 
     for {sibling, m, c} <- pairs,
         rid <- find(document, "consumed_by", id.(sibling), id.(m), %{}) do
-      {rid, traffic(sibling, c, steps[m.module], counts)}
+      {rid, traffic(sibling, c, observed[m.module], counts)}
     end
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     |> Enum.map(fn {rid, many} ->
@@ -188,29 +291,6 @@ defmodule EhOsContract.Graph.Overlay do
        }}
     end)
   end
-
-  # How many events of each type the log holds, in the period. `count(position)`
-  # rather than of the id, so the `(type, position)` index answers it alone.
-  defp counts([], _period), do: %{}
-
-  defp counts(types, period) do
-    from(e in Event,
-      as: :event,
-      where: e.type in ^Enum.uniq(types),
-      group_by: e.type,
-      select: {e.type, count(e.position)}
-    )
-    |> since(period[:since])
-    |> until(period[:until])
-    |> repo().all()
-    |> Map.new()
-  end
-
-  defp since(query, nil), do: query
-  defp since(query, at), do: where(query, [event: e], e.occurred_at >= ^at)
-
-  defp until(query, nil), do: query
-  defp until(query, at), do: where(query, [event: e], e.occurred_at <= ^at)
 
   # One `consumes` of a sibling: how many of its events the log holds, and what waits or
   # fails at the consumer's steps that start from them, under the names they have there.
@@ -230,8 +310,6 @@ defmodule EhOsContract.Graph.Overlay do
       failing: Enum.any?(steps, &Conformance.failing?/1)
     }
   end
-
-  defp repo, do: EhOsContract.Config.fetch!(:repo)
 
   @doc "Where the JSON Schema of an overlay is: in the package's `priv/schema`."
   @spec schema_path() :: Path.t()

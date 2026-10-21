@@ -66,6 +66,15 @@ defmodule EhOsContract.Dependency do
   Only `{:error, :unavailable}` counts. Every other result, including other errors, passes
   through untouched and unrecorded, because a suspension deletes a violation from the
   report and guessing in that direction hides real problems.
+
+  The observation is stamped with `EhOsContract.Clock.now/0`: the moment
+  `EhOsContract.Clock.at/2` sets, as for the events the same code appends, or now.
+
+      def charge(customer, amount) do
+        EhOsContract.Dependency.observe(MyApp.Contracts.Payments, :payment_gateway, fn ->
+          MyApp.Gateway.charge(customer, amount)
+        end)
+      end
   """
   @spec observe(module(), atom(), (-> term())) :: term()
   def observe(contract, external, fun) do
@@ -90,19 +99,22 @@ defmodule EhOsContract.Dependency do
 
   A contract's externals are declared in its domain, and the contract uses one in two
   ways: an event `depends_on` it, or an effect `calls:` it. A promise reads an
-  observation only through the first (`EhOsContract.Trace`), so an observation about
-  an external only an effect calls suspends nothing. It is recorded all the same,
-  because the adapter that makes the call is the one wrapped in `observe/3`, and
-  refusing there would crash the effect in the middle of the outage it reports.
+  observation (`EhOsContract.Trace`) when the event it awaits depends on the external,
+  or when the promise `waits_on` it and the contract is one its process includes. An
+  observation about an external only an effect calls suspends a promise only through
+  the second, and is recorded all the same, because the adapter that makes the call
+  is the one wrapped in `observe/3`, and refusing there would crash the effect in the
+  middle of the outage it reports.
 
-  A domain, or any module that is not a contract, is refused by name.
+  A domain, or any module that is not a contract, is refused by name. `now` is the
+  moment the outage was seen, `EhOsContract.Clock.now/0` unless given.
   """
   # Recording an observation about an external only an effect calls was decided by the
   # user, 29 September 2026, in the review of plan E11a.
   @spec unavailable!(module(), atom()) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil, DateTime.t()) :: t()
-  def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
+  def unavailable!(contract, external, reason \\ nil, now \\ EhOsContract.Clock.now()) do
     unless external in used(contract) do
       raise ArgumentError,
             "#{inspect(contract)} uses no external #{inspect(external)}: no event of it " <>
@@ -148,6 +160,32 @@ defmodule EhOsContract.Dependency do
     |> bound(:<=, Keyword.get(opts, :until))
     |> repo().all()
     |> Enum.group_by(fn {external, _at} -> external end, fn {_external, at} -> at end)
+  end
+
+  # The moments each `{contract, external}` of `pairs` was seen unavailable, in one query
+  # for a promise's whole evaluation: what its awaited events depend on, and what it
+  # `waits_on` as observed by each contract its process includes. Not bounded in time,
+  # as `observations_by_external/2` is not when a promise is judged.
+  # Called by trace.ex.
+  @doc false
+  @spec observations([{module(), atom()}]) :: [DateTime.t()]
+  def observations([]), do: []
+
+  def observations(pairs) do
+    wanted =
+      MapSet.new(pairs, fn {contract, external} ->
+        {EhOsContract.Model.fetch(contract).id, to_string(external)}
+      end)
+
+    {contracts, externals} = Enum.unzip(wanted)
+
+    from(o in __MODULE__,
+      where: o.contract in ^Enum.uniq(contracts) and o.external in ^Enum.uniq(externals),
+      select: {o.contract, o.external, o.observed_at}
+    )
+    |> repo().all()
+    |> Enum.filter(fn {contract, external, _at} -> {contract, external} in wanted end)
+    |> Enum.map(fn {_contract, _external, at} -> at end)
   end
 
   @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()

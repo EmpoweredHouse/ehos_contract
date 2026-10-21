@@ -3,7 +3,8 @@ defmodule EhOsContract.Check.Contracts do
   # an implementation can answer (v2 §6, L5; plan EL1).
   #
   # - `backward-edge` — a reaction that issues a command whose events sit in an
-  #   earlier stage than the event it reacts to.
+  #   earlier stage of a process module than the event it reacts to (plan DD, P2h,
+  #   #221: a contract's own stages went with its process).
   # - `competing-in-transaction-consumers` — an event two or more policies or effects
   #   react to inside the emitting transaction.
   # - `in-transaction-across-contexts` — a reaction declared `:in_transaction` on an
@@ -13,25 +14,28 @@ defmodule EhOsContract.Check.Contracts do
   #   implementation names.
   #
   # No rule compares a promise's unit with its run: a run is keyed by its
-  # `correlate`, and R2 puts those fields in every event of the run.
+  # `correlate`, and X6 puts those fields in every event of the run.
   @moduledoc false
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Model
-  alias EhOsContract.Contract.{Callbacks, Links, Rules}
+  alias EhOsContract.Contract.{Callbacks, Links}
 
   @doc """
   Every finding of these rules about `contracts`, v2 contract modules. Their
   implementations are the ones dispatch finds (`EhOsContract.Implementations`),
-  unless `implementations` names the modules to read instead.
+  unless `implementations` names the modules to read instead. The stages a reaction
+  could go back across are those of `processes`, the process modules (none unless
+  given), or of every process module the registry has when it is `nil`.
   """
-  @spec findings([module()], [module()] | nil) :: [Finding.t()]
-  def findings(contracts, implementations \\ nil) do
+  @spec findings([module()], [module()] | nil, [module()] | nil) :: [Finding.t()]
+  def findings(contracts, implementations \\ nil, processes \\ []) do
     linked = contracts |> Enum.map(&Links.contract/1) |> Enum.reject(&is_nil/1)
+    staged = staged(processes || EhOsContract.Registry.processes())
 
     competing(linked) ++
       Enum.flat_map(linked, fn c ->
-        backward(c) ++
+        backward(c, staged) ++
           across_contexts(c) ++
           free_text(c) ++ never_emitted(c, implemented(c.module, implementations))
       end)
@@ -58,40 +62,42 @@ defmodule EhOsContract.Check.Contracts do
   end
 
   # What each reaction of a contract reacts to and what it issues: a policy, and a
-  # process manager's start and its reactions to events. A timer's firing has no
-  # stage, so it cannot go back into one.
+  # process manager's start and its reactions to events. What goes out when a timer
+  # fires, its own or an `on` naming it, is left out: a firing has no stage, so it
+  # cannot go back into one.
   defp reactions(model) do
-    for(p <- model.policies, e <- List.wrap(p.handles), do: {:policy, p.name, e, p.issues}) ++
-      Enum.flat_map(model.process_managers, fn pm ->
-        for(s <- pm.starts_on, do: {:process_manager, pm.name, s.event, s.issues}) ++
-          for o <- pm.on, do: {:process_manager, pm.name, o.event, o.issues}
-      end)
+    for r <- EhOsContract.Reactions.issued(model),
+        not EhOsContract.Reactions.timer?(r),
+        do: {r.kind, r.reaction.name, r.on, r.command}
   end
 
-  # The stage an event sits in for this contract's process: its own, or the one the
-  # process gives a consumed event it includes. `nil` when it has none.
-  defp stage_of(model, event) do
-    Enum.find_value(Model.process_events(model), &(&1.name == event && &1.stage))
-  end
+  # Every process module with two stages or more, as `{module, stage of}`: the index of
+  # the stage each of its events sits in, keyed by the contract that declares the event
+  # and its name there, and the stage's name.
+  defp staged(processes) do
+    for module <- processes,
+        %{stages: [_, _ | _] = stages} <- [Model.process(module)] do
+      order = stages |> Enum.map(& &1.name) |> Enum.with_index() |> Map.new()
 
-  defp backward(%{model: model} = c) do
-    case Model.process(model) do
-      %{stages: [_, _ | _] = stages} -> backward(c, model, stages)
-      _none -> []
+      {module,
+       Map.new(
+         Model.process_events(module),
+         &{{&1.contract, &1.declaration.name}, {order[&1.stage], &1.stage}}
+       )}
     end
   end
 
-  defp backward(c, model, stages) do
-    order = stages |> Enum.map(& &1.name) |> Enum.with_index() |> Map.new()
-
-    for {kind, name, event, issues} <- reactions(model),
-        from = order[stage_of(model, event)],
-        from != nil,
-        command <- List.wrap(issues),
+  # A reaction of the contract to an event one stage of a process module includes,
+  # issuing a command of the contract whose event sits in an earlier stage of it.
+  defp backward(%{model: model} = c, staged) do
+    for {kind, name, event, command} <- reactions(model),
+        {:ok, reacted} <- [declared_as(model, event)],
         %{} = issued <- [Enum.find(model.commands, &(&1.name == command))],
         into <- issued.emits,
-        to = order[stage_of(model, into)],
-        to != nil and to < from,
+        {process, stage_of} <- staged,
+        {from, from_stage} <- [stage_of[reacted]],
+        {to, to_stage} <- [stage_of[{model.module, into}]],
+        to < from,
         uniq: true do
       declarations =
         if kind == :policy, do: c.declarations.policies, else: c.declarations.process_managers
@@ -99,11 +105,26 @@ defmodule EhOsContract.Check.Contracts do
       Finding.new(
         "backward-edge",
         "#{kind} #{inspect(name)} of #{inspect(model.module)} reacts to #{inspect(event)} in stage " <>
-          "#{inspect(stage_of(model, event))} and issues #{inspect(command)}, whose " <>
-          "#{inspect(into)} is in the earlier stage #{inspect(stage_of(model, into))}",
+          "#{inspect(from_stage)} of #{inspect(process)} and issues #{inspect(command)}, whose " <>
+          "#{inspect(into)} is in the earlier stage #{inspect(to_stage)}",
         at(declarations, name)
       )
     end
+  end
+
+  # An event a contract names, as the contract that declares it and its name there,
+  # without loading a sibling: one nobody compiled is X5's to report.
+  defp declared_as(model, event) do
+    cond do
+      Enum.any?(model.events, &(&1.name == event)) -> {:ok, {model.module, event}}
+      match?({:contract, _, _}, Model.consumed(model, event)) -> sibling(model, event)
+      true -> :error
+    end
+  end
+
+  defp sibling(model, event) do
+    {:contract, from, original} = Model.consumed(model, event)
+    {:ok, {from, original}}
   end
 
   # Several reactions in one transaction, to one
@@ -204,7 +225,7 @@ defmodule EhOsContract.Check.Contracts do
         path <- text_paths(field.type, values, [field.name], MapSet.new()) do
       at =
         with %{} = unit <- Enum.find(c.declarations.units, &(&1.name == event.unit)),
-             %{} = declared <- Enum.find(Rules.events(unit), &(&1.name == event.name)),
+             %{} = declared <- Enum.find(unit.events, &(&1.name == event.name)),
              do: at(declared.fields, field.name)
 
       Finding.new(

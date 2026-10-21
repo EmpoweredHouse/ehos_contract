@@ -133,6 +133,18 @@ lets the implementation decide, and appends what it emits to the log, all in one
 credential from outside enters through `EhOsContract.call/3` instead, and over HTTP through
 `EhOsContract.Plug` ([authorization](authorization.md)).
 
+Every command belongs to a piece of work, named by its correlation: `correlation_id:` in dispatch's
+options, `x-correlation-id` over HTTP, or a new one. While the engine runs the command, or reacts to
+an event, a timer or a message of that work, the Logger's metadata holds it as `correlation_id`, and
+what was there before is back afterwards. It is written in lower case, as the log keeps it. An
+erasure belongs to no piece of work and sets none, nor does an identifier that is not a UUID's text,
+from another application's message for instance: the metadata stays as it was. Name it in the formatter's metadata to write it on each
+line, so one piece of work can be read across applications:
+
+```elixir
+config :logger, :default_formatter, metadata: [:request_id, :correlation_id]
+```
+
 ## 6. Check, draw and report
 
 ```
@@ -154,5 +166,12 @@ questions for each contract once there is something in the log. Every task, and 
   [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
   [between contracts](concepts/between-contracts.md), [processes](concepts/process.md) and
   [scenarios](concepts/scenarios.md).
-- With an assistant: the skills in the repository's `.claude/skills/` (writing an event, a decider, a
-  reaction, changing a contract that has history) work in an application's repository too.
+- With an assistant: the `eh-os-contract` Claude Code plugin, from this repository's marketplace, gives
+  an application the skills for deciding where a feature lives, distilling a process into a domain and
+  contracts, writing an event, a decider and a reaction, and changing a contract that has history
+  (`/eh-os-contract:change-contract`). An application enables it in its `.claude/settings.json`: the
+  marketplace `EmpoweredHouse/eh-os-contract` at the tag of the plugin's release,
+  `eh-os-contract-plugin-vX.Y.Z`, and the plugin `eh-os-contract@eh-os-contract`; `ehos_app`'s template
+  is to write both into the projects it generates. The repository is private, so Claude Code fetches
+  it with the machine's git credentials: without a GitHub SSH key, set
+  `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and run `gh auth setup-git`.

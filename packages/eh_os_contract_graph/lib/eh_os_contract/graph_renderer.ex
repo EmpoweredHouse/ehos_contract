@@ -13,7 +13,9 @@ defmodule EhOsContract.GraphRenderer do
 
   `EhOsContract.GraphRenderer.Canvas` is the component a host renders, with the panel
   that says what is selected; `EhOsContract.GraphRenderer.Actors` is a domain's actors
-  as a table, a row selecting one in a canvas. The server renders every card and every
+  as a table, a row selecting one in a canvas; `EhOsContract.GraphRenderer.Explorer` moves
+  through a domain's pictures, and `EhOsContract.GraphRenderer.Landscape` joins several
+  applications' domains into one. The server renders every card and every
   relation's label in HEEx; a hook in
   `priv/static/eh_os_contract_graph.esm.js` measures them, lays them out with dagre,
   draws the arrows in SVG and pans and zooms with `d3-zoom`. What is selected, and
@@ -21,5 +23,5 @@ defmodule EhOsContract.GraphRenderer do
   lives on the server alone.
   """
 
-  use Boundary, deps: [], exports: [Actors, Canvas, View]
+  use Boundary, deps: [], exports: [Actors, Canvas, Explorer, Landscape, Loader, View]
 end

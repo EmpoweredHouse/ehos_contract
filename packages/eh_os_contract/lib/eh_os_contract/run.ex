@@ -1,7 +1,7 @@
 defmodule EhOsContract.Run do
   # How long a run took, against the duration its process declared.
   #
-  # A process may declare `deadline: {n, unit}` — how long a run is agreed to take.
+  # A process module may declare `deadline {n, unit}` — how long a run is agreed to take.
   # Until now nothing read it: the only mentions were a filter that excluded it when
   # unconfirmed and a renderer that printed it. A declaration nobody reads is the
   # thing stage 2 existed to delete, and this was the last one left.
@@ -15,7 +15,7 @@ defmodule EhOsContract.Run do
   # handle — and it is the one the report's existing sentence already promises,
   # *"Deadline: 2 days from the start."*
   #
-  # **End is the earliest event declared `terminal: true`.** Three alternatives were
+  # **End is the earliest event the process's `ends_on` names.** Three alternatives were
   # rejected for stateable reasons:
   #
   #   * *The last event.* A run in progress always has one, so every open run would
@@ -55,10 +55,10 @@ defmodule EhOsContract.Run do
   #
   # ## The runs
   #
-  # A contract's one `process` declares its `deadline` (v2 §13, plan E7c), and its runs are the rows of
-  # `eh_os_contract_event_runs` for that process, over its own events' types and the
-  # ones it includes (D7): an included event can start a run, and an included one
-  # declared `terminal:` ends it.
+  # A process module declares its `deadline` (v2 §13, plan E7c; since plan DD, P2h, #221,
+  # only a process module declares a process), and its runs are the rows of
+  # `eh_os_contract_event_runs` filed under its `id:`, over the types of the events it
+  # includes (D7): any of them can start a run, and one its `ends_on` names ends it.
   #
   # Like `EhOsContract.Trace`, this counts runs and never names them. Which client is late is a
   # question for the client's own application, which already knows.
@@ -87,13 +87,13 @@ defmodule EhOsContract.Run do
   Returns `[]` when the process declares no `deadline`, which is the ordinary case
   — most processes promise nothing about how long they take.
 
-  `contract` is a contract, and `process_name` its process's name; or a process
-  module, and `process_name` its `id:` (plan DD, P2d, #213).
+  `contract` is a process module, and `process_name` its `id:`. A contract declares no
+  process, and has no runs to measure: `[]`.
 
   `opts`: `:since`, `:until`, `:instance`, and `:now` for the comparison, which is
   what makes `:overdue` testable without waiting.
   """
-  @spec evaluate(module(), atom() | String.t(), keyword()) :: [outcome()]
+  @spec evaluate(module(), String.t(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
     model = Model.fetch(contract)
 
@@ -167,15 +167,14 @@ defmodule EhOsContract.Run do
   # same rows rather than a second query, so a run cannot be seen to start in one
   # snapshot and end in another.
   # Which rows make the runs of a process, and which of their types end one: the rows
-  # of `eh_os_contract_event_runs` of its events' types, its own and the ones it
-  # includes (D7), so an event another contract decided starts or ends a run too.
+  # of `eh_os_contract_event_runs` of the types of the events it includes (D7).
   @typep source :: {:runs, String.t(), [String.t()], [String.t()]}
 
   @spec runs_of(map()) :: source()
   defp runs_of(model) do
     events = Model.process_events(model)
 
-    {:runs, to_string(Model.process(model).name), Enum.map(events, & &1.type),
+    {:runs, Model.process(model).name, Enum.map(events, & &1.type),
      for(%{type: type, terminal: true} <- events, do: type)}
   end
 

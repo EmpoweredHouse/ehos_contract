@@ -350,7 +350,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp fits(where, scenario, trigger, kind, unit, d) when kind in [:aggregate, :dcb] do
     command = Enum.find(unit.commands, &(&1.name == trigger.name))
-    events = Map.new(Rules.events(unit), &{&1.name, &1})
+    events = Map.new(unit.events, &{&1.name, &1})
     consulted = MapSet.new(unit.consults, & &1.event)
     where = "#{where} (#{kind(kind)} #{inspect(unit.name)})"
 
@@ -441,7 +441,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     givens ++
       event_data(where, trigger, trigger.name, d) ++
-      issued(where, scenario, policy.issues, d) ++
+      issued(where, scenario, EhOsContract.Reactions.commands(:policy, policy), d) ++
       decisions_only(where, scenario) ++
       no_timers(where, scenario, "a policy") ++
       no_state(where, scenario) ++ outcome ++ no_actor(where, scenario)
@@ -507,7 +507,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     # A timer that fires delivers no event, so it has no data to check.
     delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
-    issues = Enum.flat_map(reactions, & &1.issues) ++ if(timer, do: timer.issues, else: [])
+
+    issues = EhOsContract.Reactions.commands_on(:process_manager, pm, trigger.name)
 
     givens ++
       delivered ++
@@ -582,7 +583,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
         end
 
       event ->
-        unit = Enum.find(d.units, fn u -> event in Rules.events(u) end)
+        unit = Enum.find(d.units, fn u -> event in u.events end)
         data(where, declaration, "event #{inspect(name)}", event.fields, unit, required: true)
     end
   end

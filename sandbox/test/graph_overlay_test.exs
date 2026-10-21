@@ -1,10 +1,10 @@
 defmodule EhOsContract.GraphOverlayTest do
   @moduledoc """
-  Plan E13a, batch 5: the overlay of every contract and every domain of the client
-  trees holds to the schema the engine ships and joins the document it names.
+  Plan E13a, batch 5: the overlay of every contract and every domain of the sandbox's
+  case studies holds to the schema the engine ships and joins the document it names.
   """
 
-  use Taxvision.DataCase, async: false
+  use EhOsContractHost.DataCase, async: false
 
   alias EhOsContract.Graph.{Document, Overlay}
   alias EhOsContract.Registry
@@ -13,15 +13,17 @@ defmodule EhOsContract.GraphOverlayTest do
 
   test "every overlay holds to its schema and names its document's digest" do
     contracts = Registry.contracts()
+    modules = contracts ++ Registry.processes()
 
     overlays =
       for(c <- contracts, do: {Overlay.contract(c), Document.contract(c)}) ++
+        for(p <- Registry.processes(), do: {Overlay.process(p), Document.process(p)}) ++
         for d <- Registry.domains(),
-            do: {Overlay.domain(d, contracts), Document.domain(d, contracts)}
+            do: {Overlay.domain(d, modules), Document.domain(d, modules)}
 
     for {overlay, document} <- overlays do
       assert {:ok, _} = JSV.validate(overlay, @schema),
-             inspect(overlay["contract"] || overlay["domain"])
+             inspect(overlay["contract"] || overlay["process"] || overlay["domain"])
 
       assert overlay["document_digest"] == document["digest"]
 
@@ -34,5 +36,20 @@ defmodule EhOsContract.GraphOverlayTest do
       for id <- Map.keys(overlay["nodes"]), do: assert(MapSet.member?(ids, id), id)
       for id <- Map.keys(overlay["relations"]), do: assert(MapSet.member?(relations, id), id)
     end
+  end
+
+  # Plan DD, P2e (#220): with nothing in the log, the order has no runs, and its promise
+  # has verdicts all zero, not none: the report judges it.
+  test "the order's overlay has its runs and its promise's verdicts" do
+    o = Overlay.process(Fulfilment.Processes.Order)
+
+    assert {:ok, _} = JSV.validate(o, @schema)
+    assert o["nodes"]["process:fulfilment.order"] == %{"runs" => 0}
+
+    assert %{"violated" => 0, "instances" => 0, "suspended" => 0} =
+             o["nodes"]["promise:fulfilment.order:dispatched_within_a_day_of_payment"]
+
+    domain = Overlay.domain(Billing.Domain, Registry.contracts() ++ Registry.processes())
+    assert domain["nodes"]["process:billing.month"] == %{"runs" => 0}
   end
 end

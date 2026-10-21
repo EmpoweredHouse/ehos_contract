@@ -2,11 +2,11 @@ defmodule EhOsContractHostWeb.Router do
   @moduledoc """
   Three mounts. Two from `eh_os_contract_web`: the dashboard at `/dashboard` for a person,
   and the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
-  And, since v2 stage EA, the commands, recordings and queries of Rehmed's v2
-  contracts at `/api/rehmed`, served by `EhOsContract.Plug` behind `EhOsContract.Auth.Plug`, which
-  verifies the bearer credential. Nothing else lives here — this project has no other
-  frontend, and `docs/adr/architecture.md` §16-17 puts frontends outside the engine
-  regardless.
+  And the commands, recordings and queries of the sandbox's domains, each at
+  `/api/<domain>` (`/api/fulfilment`, `/api/lending`, …), served by `EhOsContract.Plug`
+  behind `EhOsContract.Auth.Plug`, which verifies the bearer credential. Nothing else
+  lives here — this project has no other frontend, and `docs/adr/architecture.md` §16-17
+  puts frontends outside the engine regardless.
   """
 
   use Phoenix.Router
@@ -47,24 +47,22 @@ defmodule EhOsContractHostWeb.Router do
     plug EhOsContract.Auth.Plug
   end
 
-  scope "/api/rehmed" do
+  scope "/api/fulfilment" do
     pipe_through :commands
 
     forward "/", EhOsContract.Plug,
       contracts: [
-        Rehmed.Contracts.Scheduling,
-        Rehmed.Contracts.ClinicalDocumentation,
-        Rehmed.Contracts.StatutoryReporting,
-        Rehmed.Contracts.Settlement,
-        Rehmed.Contracts.ExternalPayers
+        Fulfilment.Contracts.Orders,
+        Fulfilment.Contracts.Warehouse,
+        Fulfilment.Contracts.Shipping
       ]
   end
 
-  scope "/api/taxvision" do
+  scope "/api/lending" do
     pipe_through :commands
 
     forward "/", EhOsContract.Plug,
-      contracts: [Taxvision.Contracts.RegistryWatch, Taxvision.Contracts.AccountingMonth]
+      contracts: [Lending.Contracts.Membership, Lending.Contracts.Circulation]
   end
 
   scope "/" do

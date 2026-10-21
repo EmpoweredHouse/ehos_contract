@@ -1,7 +1,8 @@
 defmodule EhOsContract.Trace do
   # The union of the dependencies below was decided rather than assumed, 21 August
-  # 2026. A promise is declared in a contract's one `process` (v2 §13, plan E7c), and
-  # an included event counts in the including run (v2 D7). Notes §9 also foresee a
+  # 2026. A promise was declared in a contract's one `process` (v2 §13, plan E7c), and
+  # since plan DD, P2h (#221) only in a process module; an included event counts in the
+  # including run (v2 D7). Notes §9 also foresee a
   # single-run view, for debugging: "what happened to invoice 4712".
   # test/conformance/promise_edges_test.exs pins the disjunction's edge cases, and
   # test/conformance/promise_test.exs the verdicts.
@@ -9,21 +10,21 @@ defmodule EhOsContract.Trace do
   Evaluation of a process's `promise`s **per run**.
 
   This is where anything at run time **reads** a promise. Without it a promise
-  would be declared in the contract and checked only for whether its event names
+  would be declared in a process module and checked only for whether its event names
   exist — that is, prose in Elixir syntax. The log knows what happened; this asks
-  whether that agrees with the contract.
+  whether that agrees with the process.
 
   A promise reads like this:
 
-      promise :month_opens_or_is_blocked do
-        from :data_completeness_confirmed
-        eventually :accounting_month_opened
-        within {2, :day}
-        or_else :registry_discrepancy_detected
+      promise :dispatched_within_a_day_of_payment do
+        from :payment_confirmed
+        eventually :dispatched
+        within {24, :hour}
+        or_else :cancelled
       end
 
-  *"After the data set is confirmed complete, within two days the month either
-  opens or a registry discrepancy is detected."*
+  *"After the payment is confirmed, within a day the parcel is either dispatched or
+  the order is cancelled."*
 
   ## Four verdicts
 
@@ -51,6 +52,12 @@ defmodule EhOsContract.Trace do
   arrive.** `from` already happened, so whatever it needed was working. What blocked the
   run is whatever `eventually` or `or_else` depends on. Taking the union of the whole
   contract's dependencies would suspend a run because something unrelated was down.
+
+  **A promise may name what it waits on through an earlier step: `waits_on`.** An
+  accounting month opens, or is blocked, only after the company is checked against the
+  public registries, yet opening the month does not call them. `waits_on [:registries]`
+  says so, and an outage of the registries observed by any contract the process includes
+  counts as one of the events' own dependencies does.
 
   **This union is `eventually`'s dependency `or` `or_else`'s, not their
   intersection.** A narrower reading would suspend only when every still-possible
@@ -114,16 +121,16 @@ defmodule EhOsContract.Trace do
 
   The rules above live in `judge/3`, which takes a `trace/0` and the events to judge
   and reads neither the log nor the clock. `trace/2` reads the trace from the
-  contract; `evaluate/3` is the two of them over the log's rows and the recorded
+  process module; `evaluate/3` is the two of them over the log's rows and the recorded
   outages. So a verdict can be asked of events that never reached a log — a
   scenario's, a test's — and it is the same verdict the report would give.
 
   ## The runs
 
-  A contract declares `promise` in its one `process`. The runs are the rows of
-  `eh_os_contract_event_runs` for that process, so an event another contract decided
-  and this one includes counts in its run, and the events are
-  named by their stored types, `"<contract id>.<event>"`.
+  A process module (`EhOsContract.Process`) declares `promise`. The runs are the rows of
+  `eh_os_contract_event_runs` filed under its `id:`, so every event it includes counts
+  in its run, whichever contract decided it, and the events are named by their stored
+  types, `"<contract id>.<event>"`.
 
   But **the report aggregates to numbers** (`summary/1`). "Which company has no
   open July" is a question about the state of the business and belongs to the
@@ -201,16 +208,16 @@ defmodule EhOsContract.Trace do
   end
 
   @doc """
-  The trace of a contract's `promise`: what `judge/3` needs from the
-  contract, and nothing from the log.
+  The trace of a process module's `promise`: what `judge/3` needs from the
+  module, and nothing from the log.
 
-  Its events are named by their stored types, `"<contract id>.<event>"` — the sibling's
-  for an event the contract includes. Its `identity` is set when the unit of
-  `from`'s event is strictly finer than the process's correlation, which is when the
-  promise is made per item inside a run.
+  Its events are named by their stored types, `"<contract id>.<event>"` of the
+  contract that declares each. Its `identity` is set when the unit of `from`'s event is
+  strictly finer than the process's correlation, which is when the promise is made per
+  item inside a run.
 
-  Raises `ArgumentError` when the contract declares no such promise, and for a domain,
-  which declares none.
+  Raises `ArgumentError` when the module declares no such promise, and for a contract
+  or a domain, which declare none.
   """
   @spec trace(module() | map(), atom()) :: trace()
   def trace(contract, name) do
@@ -241,8 +248,9 @@ defmodule EhOsContract.Trace do
 
   - `now:` (required) — the moment of judgement, which tells `:pending` from
     `:violated`.
-  - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
-    unavailable; a window that closed empty with one inside it is `:suspended`.
+  - `outages:` — the moments a dependency of `eventually` or `or_else`, or a system
+    the promise `waits_on`, was seen unavailable; a window that closed empty with one
+    inside it is `:suspended`.
     Defaults to none.
 
   Occurrences of types other than the trace's three are ignored. For a trace with an
@@ -267,8 +275,8 @@ defmodule EhOsContract.Trace do
 
   @spec promise!(map(), atom()) :: map()
   defp promise!(model, name) do
-    # A domain's model has no process to ask, and is refused by name like a contract
-    # that declares no such promise.
+    # A contract's or a domain's model has no process to ask, and is refused by name like
+    # a process that declares no such promise.
     process = Model.process(model)
 
     (process && Enum.find(process.promises, &(&1.name == name))) ||
@@ -299,21 +307,29 @@ defmodule EhOsContract.Trace do
   # and including it would suspend runs on the strength of an outage that demonstrably
   # did not stop anything. Taking every dependency in the contract would be worse
   # still: a run would be excused because something it never touched was down.
+  #
+  # Beside them, the systems the promise says it `waits_on` through an earlier step
+  # (plan DD, OW1 (#355)), as observed by any contract the process includes: a registry
+  # down does not happen to one contract, and the step that calls it is one of the run's.
   @spec promised_outages(map(), map()) :: [DateTime.t()]
   defp promised_outages(model, promise) do
-    for name <- [promise.eventually, promise.or_else],
-        name != nil,
-        {contract, event} = Model.declaring(model, name),
-        external = event.depends_on,
-        external != nil,
-        at <-
-          Map.get(
-            EhOsContract.Dependency.observations_by_external(contract),
-            to_string(external),
-            []
-          ) do
-      at
-    end
+    awaited =
+      for name <- [promise.eventually, promise.or_else],
+          name != nil,
+          {contract, event} = Model.declaring(model, name),
+          event.depends_on != nil,
+          do: {contract, event.depends_on}
+
+    # The contracts the process includes as the one rule for its includes reads them,
+    # which leaves out one this node cannot load or of another domain.
+    included = model |> Model.process_events() |> Enum.map(& &1.contract) |> Enum.uniq()
+
+    waited =
+      for external <- Map.get(promise, :waits_on, []),
+          contract <- included,
+          do: {contract, external}
+
+    EhOsContract.Dependency.observations(Enum.uniq(awaited ++ waited))
   end
 
   @spec judge_per_run(trace(), [occurrence()], DateTime.t(), [DateTime.t()]) :: [verdict()]
@@ -575,9 +591,8 @@ defmodule EhOsContract.Trace do
   end
 
   # The rows a promise is judged on, as `occurrence()`s: the rows of
-  # `eh_os_contract_event_runs` for the contract's one process, whichever contract
-  # decided the event, so an event another contract decided counts in a run that
-  # includes it (D7).
+  # `eh_os_contract_event_runs` filed under the process's id, whichever contract decided
+  # the event, so every event the process includes counts in its run (D7).
   #
   # `payload` is selected only for a trace with an `identity`, because pairing an
   # occurrence to an item needs the values of `from`'s identity fields wherever they
@@ -585,7 +600,7 @@ defmodule EhOsContract.Trace do
   # overwhelming majority — fetch a column it never reads.
   @spec occurrences(map(), trace(), keyword()) :: [occurrence()]
   defp occurrences(model, trace, opts) do
-    process = to_string(Model.process(model).name)
+    process = Model.process(model).name
     types = types(trace)
 
     query =

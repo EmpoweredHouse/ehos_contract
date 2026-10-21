@@ -6,14 +6,15 @@ defmodule EhOsContract.Contract.Links.Domain do
   #   its contexts. When the domain is not one, nothing else here is checked, since
   #   there is nothing to check it against.
   # - **X2.** Every actor a contract names — in a command's or a query's `by:`, an
-  #   event's `recorded_by:`, the process's `accountable` and a scenario's `actor` —
+  #   event's `recorded_by:` and a scenario's `actor` —
   #   is an actor of the domain, and of this contract's context unless the actor
   #   names no context. A command whose `actor_is` names who must issue it has a
   #   `:human` actor in `by:`, and its scenario by a person names them with `as`, which
   #   no `:system` actor and no other command takes (plan DD, A1, #247).
   # - **X3.** Every field type that is not built in is a value of the domain, inside
-  #   a list as well; every `{:id, entity}` names an entity of the domain; every
-  #   `subject:` is a subject of the domain.
+  #   a list as well; every `{:id, name}` names exactly one entity of the domain or
+  #   unit of one of its contracts (plan DD, L3 (#286)); every `subject:` is a subject
+  #   of the domain.
   # - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
   #   `issued_by` name externals of the domain. Since plan EP5a, a call that names an
   #   operation, `{:p1, :submit_report}`, names one of that external's; and a call to an
@@ -27,44 +28,54 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **D11**, the part that needs the domain: a publication carries no field of a
   #   type that holds personal data; a copy on a broker cannot be erased.
   # - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
-  #   scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
+  #   scope dimension, `actor :lead, :human, "…", scope: [:warehouse_id]`, since a
   #   grant to that actor carries the values the answer is narrowed to. The same for a
   #   scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   # - **F8**, the part that needs the domain: a field a run or a process manager's
   #   record is told by, typed by a domain value, is of one resting on `:id`.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
-  #   `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
+  #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
+  # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
+  #   `reads:` is an entity the application keeps, never a unit, whose state is its
+  #   events.
   @moduledoc false
 
   alias EhOsContract.Codec
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
   alias EhOsContract.Key
+  alias EhOsContract.References
   alias EhOsContract.Contract.{Links, Rules}
 
   @built_in Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [Links.violation()]
-  def check(system), do: Enum.flat_map(system.contracts, &contract/1)
+  def check(system) do
+    # A reference may name a unit of any contract of the domain (plan DD, L3 (#286)).
+    models = Enum.map(system.contracts, & &1.model)
+    Enum.flat_map(system.contracts, &contract(&1, models))
+  end
 
-  defp contract(%{domain: nil} = c) do
+  defp contract(%{domain: nil} = c, _models) do
     [
       {"X1: #{inspect(c.module)} names domain #{inspect(c.model.domain)}, which is not a " <>
          "compiled EhOsContract.Domain", c.at}
     ]
   end
 
-  defp contract(c) do
+  defp contract(c, models) do
     Enum.concat([
       context(c),
       actors(c),
       people(c),
       types(c),
       returns(c),
-      entities(c),
+      references(c, models),
+      reads(c, models),
       subjects(c),
       personal_values(c),
+      upcast_values(c),
       correlation_values(c),
       externals(c),
       scopes(c),
@@ -95,11 +106,6 @@ defmodule EhOsContract.Contract.Links.Domain do
           e <- Rules.local_events(d),
           a <- e.recorded_by,
           do: {e, "event #{inspect(e.name)}: recorded_by:", a}
-        ) ++
-        for(
-          p <- d.processes,
-          p.accountable != nil,
-          do: {p, "process #{inspect(p.name)}: accountable", p.accountable}
         ) ++
         for s <- d.scenarios,
             s.actor != nil,
@@ -193,27 +199,71 @@ defmodule EhOsContract.Contract.Links.Domain do
     end
   end
 
-  defp entities(%{declarations: d, domain: domain}) do
-    entities = Enum.map(Map.get(domain, :entities, []), & &1.name)
-
+  # Plan DD, L3 (#286): `{:id, name}` names an entity of the domain or a unit of one of
+  # its contracts, and exactly one, since every reader after this takes the name alone.
+  defp references(%{declarations: d, domain: domain}, models) do
     fields =
       for {where, field} <- fields(d),
           name <- Domain.Rules.references(field.type),
-          name not in entities do
-        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names no entity of " <>
-           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(field)}
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} #{problem}",
+         Links.at(field)}
       end
 
     returns =
       for {where, function} <- Rules.Fields.returns(d),
           function.returns != nil,
           name <- Domain.Rules.references(function.returns.type),
-          name not in entities do
-        {"X3: #{where} returns {:id, #{inspect(name)}}, which names no entity of " <>
-           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(function)}
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{where} returns {:id, #{inspect(name)}}, which #{problem}", Links.at(function)}
       end
 
-    fields ++ returns
+    identities =
+      for unit <- d.units,
+          {field, type} <- unit.identity_types,
+          name <- Domain.Rules.references(type),
+          problem <- reference_problems(name, domain, models) do
+        {"X3: #{unit.kind} #{inspect(unit.name)}: identity #{inspect(field)}: " <>
+           "{:id, #{inspect(name)}} #{problem}", Links.at(unit)}
+      end
+
+    fields ++ returns ++ identities
+  end
+
+  defp reference_problems(name, domain, models) do
+    case References.candidates(name, domain, models) do
+      [_one] ->
+        []
+
+      [] ->
+        [
+          "names no entity of #{inspect(domain.module)} and no unit of its contracts; " <>
+            suggest(name, References.names(domain, models), "they declare")
+        ]
+
+      many ->
+        [
+          "names more than one: #{Enum.map_join(many, ", ", &References.describe/1)}; a " <>
+            "reference cannot tell them apart, so rename one"
+        ]
+    end
+  end
+
+  # A8, the part that needs the domain (plan DD, L3 (#286)): a command reads a row the
+  # application keeps (`EhOsContract.Entities`). A unit's state is its events, which
+  # its own contract decides, and the host has no row of it to give.
+  defp reads(%{declarations: d, domain: domain}, models) do
+    for command <- Rules.commands(d),
+        {name, field_name} <- Map.get(command, :reads, []),
+        field = Enum.find(command.fields, &(&1.name == field_name)),
+        field != nil,
+        [target] <- [Domain.Rules.references(field.type)],
+        {:unit, _c, _name} = unit <- [References.resolve(target, domain, models)] do
+      {"A8: command #{inspect(command.name)} reads #{inspect(name)} by " <>
+         "#{inspect(field_name)}, which identifies #{References.describe(unit)}; a command reads " <>
+         "only an entity the application keeps, and a unit's state is its events",
+       Links.at(command)}
+    end
   end
 
   defp subjects(%{declarations: d, domain: domain}) do
@@ -276,6 +326,57 @@ defmodule EhOsContract.Contract.Links.Domain do
       end
 
     outside ++ nested ++ published(d, values)
+  end
+
+  # --- U3 and U4: an event's steps against the domain's values ----------------------
+
+  # Plan DD, V1 (#333): what L2 holds a step to for a built-in type
+  # (`EhOsContract.Contract.Rules.Versions`), for a field of a domain value: one resting
+  # on an `:id` or a day is tagged and keeps its old name in old rows, one holding
+  # personal data takes no default, and a default fits its value.
+  defp upcast_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for unit <- d.units,
+        event <- unit.events,
+        u <- event.upcasts,
+        {kind, target, value} <-
+          Enum.map(u.rename, fn {_old, new} -> {:rename, new, nil} end) ++
+            Enum.map(u.default, fn {field, value} -> {:default, field, value} end),
+        is_atom(target),
+        final = Rules.Versions.ends_as(event, u.from, target),
+        field = final && Enum.find(event.fields, &(&1.name == final)),
+        field != nil and of_values?(field.type),
+        why = upcast_refused(kind, Rules.Versions.named(target, final), field, value, values),
+        why != nil do
+      {"#{why} (event #{inspect(event.name)}, `upcast from: #{u.from}`)", Links.at(u)}
+    end
+  end
+
+  # A type of the domain's values, or a list of them: what L2 could not judge.
+  defp of_values?({:list, inner}), do: of_values?(inner)
+  defp of_values?(type), do: is_atom(type) and type not in @built_in
+
+  defp upcast_refused(kind, named, field, value, values) do
+    gives = if kind == :rename, do: "renames a field to", else: "gives a default to"
+
+    cond do
+      Key.tag_field?(field, values) or Key.bucket_field?(field, values) ->
+        "U3: a step #{gives} #{named}, of #{inspect(field.type)}, which rests on an :id or a " <>
+          "day, so the log tags each row with it: #{Rules.Versions.untagged(kind)}. Declare a " <>
+          "new event instead"
+
+      kind == :default and Codec.personal_type?(field.type, values) ->
+        "U3: a step gives a default to #{named}, of #{inspect(field.type)}, which holds " <>
+          "personal data; the log holds a seal there, and a default would be clear text"
+
+      kind == :default and not Rules.Versions.fits?(field, value, values) ->
+        "U4: a step gives #{named} the default #{inspect(value)}, which is not a value of " <>
+          "#{inspect(field.type)}: every old row would fail to read"
+
+      true ->
+        nil
+    end
   end
 
   defp published(d, values) do
@@ -461,9 +562,9 @@ defmodule EhOsContract.Contract.Links.Domain do
     published ++ named
   end
 
-  defp suggest(name, names) do
+  defp suggest(name, names, declare \\ "it declares") do
     case DslRules.closest(name, names) do
-      nil -> "it declares #{inspect(Enum.sort(names))}"
+      nil -> "#{declare} #{inspect(Enum.sort(names))}"
       suggestion -> "did you mean #{inspect(suggestion)}?"
     end
   end

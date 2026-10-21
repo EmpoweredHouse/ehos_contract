@@ -94,7 +94,7 @@ moving that `ref`, and a session picks it up after `/reload-plugins` or a restar
 credential with `gh auth setup-git`, since ehos-tools is private. In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
-  `eh_os_contract_auth` `~> 0.1.0-dev` while the engine is at 0.3.0, and one shared number would break it.
+  `eh_os_contract_auth` `~> 0.2.0` while the engine is at 0.4.0, and one shared number would break it.
 - **At a release, each package with lines under `## [Unreleased]` moves to its next version**, its lines under
   `## [X.Y.Z] - YYYY-MM-DD`, in the release's pull request; a package with none stays at its `-dev` and is not
   released at that tag, though `release.json` names its version.
@@ -112,9 +112,20 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
   nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
   this repository's `main` (ehos-tools' T-05), that is the next patch's `-dev`, not the next minor's, which
-  eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.3.0-dev` of the engine and
-  `~> 0.1.0-dev` of the verifier, and `0.4.0-dev` or `0.2.0-dev` on `main` would refuse its next
+  eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.4.0` of the engine and
+  `~> 0.2.0` of the verifier, and `0.5.0-dev` or `0.3.0-dev` on `main` would refuse its next
   `mix deps.update`, and every project `ehosctl` 0.2.0 generates.
+- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
+  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
+  `write-docs` stay this repository's alone. The plugin is a directory of its own so that nothing else
+  in the repository reaches an application through it: a hook or an MCP server added at the root for
+  work here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. The plugin is not a
+  package and has no `-dev`: raise its `version` (`plugins/eh-os-contract/.claude-plugin/plugin.json`)
+  in the pull request that changes one of its skills, then tag that pull request's merge commit
+  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
+  must hold it as they hold `v*`, since applications' settings name it. An application takes a new
+  version by moving the `ref` in its `.claude/settings.json`, which `ehos_app`'s installer is to do. A
+  skill it carries says, at its top, where its paths are in an application.
 
 ## Following a line back to its reason
 
@@ -124,9 +135,10 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
 
 ## Writing
 
-- Code, commit messages, pull requests, issues, `README.md` and `docs/` are in English. The only Polish is
-  text the client reads in sentences, inside strings: labels, glossary terms, scenario descriptions
-  (`CLAUDE.md` lists them).
+- Code, commit messages, pull requests, issues, `README.md` and `docs/` are in English, and so are the
+  sandbox's case studies. A string in another language is there only where a test of the packages needs a
+  second language or non-ASCII text, and only in text a client reads in sentences: labels, glossary terms,
+  scenario descriptions (`CLAUDE.md` lists them).
 - Codes are for the compiler and the tests. In prose a code never stands alone: the meaning first, the code in
   parentheses — "a reaction to another context's event that leaves delivery out (X10)".
 - Plain writing: the problem before the solution, a concrete example over an adjective, active voice, no

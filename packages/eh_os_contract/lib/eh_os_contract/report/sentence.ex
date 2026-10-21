@@ -121,6 +121,108 @@ defmodule EhOsContract.Report.Sentence do
     end
   end
 
+  @doc """
+  The count of a process's runs in the period, with what one run is when its
+  `correlate` is given: `Runs in this period: 3, one per visit_id.`
+  """
+  @spec runs_in_period(non_neg_integer(), [atom() | String.t()]) :: String.t()
+  def runs_in_period(runs, correlate) do
+    case runs_per(correlate) do
+      nil -> "Runs in this period: #{runs}."
+      clause -> "Runs in this period: #{runs}, #{clause}."
+    end
+  end
+
+  @doc """
+  A process module's deployment (`EhOsContract.Deployment`'s, as a process module's
+  report carries it): its version and since when it is deployed, then what changed
+  since the previous version. A process module stamps no event with its version, so
+  it is in force since the deployment that carries it was first recorded.
+  """
+  @spec process_deployment(map()) :: [String.t()]
+  def process_deployment(deployment) do
+    since =
+      case deployment.deployed.since do
+        nil -> "not recorded as deployed"
+        at -> "deployed since #{at |> DateTime.to_date() |> Date.to_string()}"
+      end
+
+    change =
+      case deployment.changed do
+        nil -> []
+        c -> change(c, paths: false)
+      end
+
+    ["Version #{deployment.deployed.version}, #{since}." | change]
+  end
+
+  @doc """
+  What changed since the previous deployment (`EhOsContract.Deployment`'s), as
+  sentences: when the version moved, the events and, with `paths: true`, the paths
+  added and removed, then the declarations and the words that changed; when only the
+  words did, that the agreement did not, and whose words; when only the code did, that.
+
+      iex> EhOsContract.Report.Sentence.change(
+      ...>   %{agreement_changed: false, words: ["event:visit_completed"],
+      ...>     events_added: [], events_removed: [], declarations: %{added: [], removed: [], changed: []}},
+      ...>   paths: false
+      ...> )
+      ["Only the words changed since the previous deployment, not the agreement: 1 (event:visit_completed)."]
+  """
+  @spec change(map(), keyword()) :: [String.t()]
+  def change(%{agreement_changed: false, words: [_ | _] = words}, _opts) do
+    [
+      "Only the words changed since the previous deployment, not the agreement: " <>
+        "#{length(words)} (#{Enum.join(words, ", ")})."
+    ]
+  end
+
+  # A new wiring under the same version and words: the code moved, and nothing the
+  # contract says did.
+  def change(%{agreement_changed: false, words: []}, _opts),
+    do: ["Only the code changed since the previous deployment, not the agreement or its words."]
+
+  def change(c, opts) do
+    paths =
+      if Keyword.fetch!(opts, :paths),
+        do: ", paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}",
+        else: ""
+
+    [
+      "Since the previous version: " <>
+        "events added #{length(c.events_added)}, removed #{length(c.events_removed)}" <>
+        paths <> "."
+    ] ++ declarations_changed(c.declarations) ++ words_changed(c.words)
+  end
+
+  # Words that changed with the agreement, named as the declarations are. Not recorded
+  # on either side says nothing: the agreement's change is what the reader looks for.
+  defp words_changed([_ | _] = words),
+    do: ["Words changed: #{length(words)} (#{Enum.join(words, ", ")})."]
+
+  defp words_changed(_none_or_not_recorded), do: []
+
+  @doc """
+  What declarations changed since the previous version, which events and paths could
+  never carry: a promise whose window moved, or an event whose field became
+  `personal:`, adds and removes nothing. Named rather than counted, because "2
+  declarations changed" sends the reader looking and the names end the search.
+  """
+  @spec declarations_changed(map() | :not_recorded) :: [String.t()]
+  def declarations_changed(:not_recorded) do
+    [
+      "What the declarations said under the previous version was not recorded, " <>
+        "so it cannot be compared."
+    ]
+  end
+
+  def declarations_changed(%{added: [], removed: [], changed: []}), do: []
+
+  def declarations_changed(d) do
+    moved = d.changed ++ d.added ++ d.removed
+    ["Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."]
+  end
+
   @doc "A confirmed process declaration, as a sentence."
   @spec declaration(map()) :: String.t()
   def declaration(%{key: :deadline, value: value}),

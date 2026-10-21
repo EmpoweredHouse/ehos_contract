@@ -1,7 +1,7 @@
 defmodule EhOsContract.Web.MixProject do
   use Mix.Project
 
-  @version "0.2.1-dev"
+  @version "0.4.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   @description "A mountable conformance dashboard for EhOsContract."
@@ -186,8 +186,7 @@ defmodule EhOsContract.Web.MixProject do
       {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
       # Endpoint adapter for the test host. `only: :test` because nothing in
       # this package ever starts a real listening socket outside its own
-      # suite — see PLAN.md's dopisek on why it might still turn out to be
-      # unnecessary.
+      # suite.
       {:bandit, "~> 1.5", only: :test},
       # phoenix_live_view's own `live/2` test helper parses the dead-render
       # HTML with this and refuses to run without it — not optional despite

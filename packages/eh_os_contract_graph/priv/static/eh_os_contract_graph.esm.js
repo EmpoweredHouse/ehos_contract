@@ -4419,6 +4419,7 @@ function zoom_default2() {
 
 // js/eh_os_contract_graph.js
 var SVG = "http://www.w3.org/2000/svg";
+var READABLE = 0.75;
 var SPACING = { nodesep: 28, ranksep: 72, edgesep: 14, marginx: 24, marginy: 24 };
 var HOLD = "\0hold";
 var instances = 0;
@@ -4493,6 +4494,18 @@ var loop = (card, label) => {
   const at2 = (along, out) => `${card.x + ux * (edge + out) + vx * along},${card.y + uy * (edge + out) + vy * along}`;
   return `M${at2(centre - spread, 0)}C${at2(centre - spread - 12, reach)} ${at2(centre + spread + 12, reach)} ${at2(centre + spread, 0)}`;
 };
+var bow = (id2, start2, end) => {
+  const [dx, dy] = [end.x - start2.x, end.y - start2.y];
+  const length = Math.hypot(dx, dy) || 1;
+  const reach = Math.max(48, length * 0.2);
+  const [nx, ny] = [-dy / length, dx / length];
+  const control = { x: (start2.x + end.x) / 2 + nx * 2 * reach, y: (start2.y + end.y) / 2 + ny * 2 * reach };
+  const t = 0.15;
+  const along = (a, c, b) => (1 - t) ** 2 * a + 2 * (1 - t) * t * c + t ** 2 * b;
+  const at2 = { x: along(start2.x, control.x, end.x), y: along(start2.y, control.y, end.y) };
+  const apex = { x: (start2.x + end.x) / 4 + control.x / 2, y: (start2.y + end.y) / 4 + control.y / 2 };
+  return { id: id2, d: `M${start2.x},${start2.y}Q${control.x},${control.y} ${end.x},${end.y}`, x: at2.x, y: at2.y, apex };
+};
 var border = (box, toward) => {
   const [dx, dy] = [toward.x - box.x, toward.y - box.y];
   const s = Math.min(dx ? box.width / 2 / Math.abs(dx) : Infinity, dy ? box.height / 2 / Math.abs(dy) : Infinity);
@@ -4527,7 +4540,7 @@ var EhOsContractGraph = {
     this.closeOthers = ({ detail }) => {
       if (detail === this.el || this.el.dataset.selected === void 0) return;
       this.el.querySelector(".ehg-panel")?.setAttribute("hidden", "");
-      this.pushEventTo(this.el, "deselect", {});
+      this.pushEventTo(this.el, "closed", {});
     };
     window.addEventListener("eh_os_contract_graph:opened", this.closeOthers);
     this.escape = (event) => {
@@ -4535,6 +4548,10 @@ var EhOsContractGraph = {
     };
     document.addEventListener("keydown", this.escape);
     this.announce();
+    this.el.querySelector(".ehg-bar")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-ehg-zoom]");
+      if (button) this.zoomTo(button.dataset.ehgZoom);
+    });
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
       const arrow = event.target.closest("[data-ehg-arrow]");
       if (arrow) this.pushEventTo(this.el, "select", { id: arrow.dataset.ehgArrow });
@@ -4549,6 +4566,7 @@ var EhOsContractGraph = {
       this.draw();
     });
     this.resized.observe(this.canvas);
+    this.revealed = this.el.dataset.reveal;
     this.drawn = Promise.resolve();
     this.draw();
   },
@@ -4637,6 +4655,7 @@ var EhOsContractGraph = {
       id: el.dataset.ehgRelation,
       from: el.dataset.from,
       to: el.dataset.to,
+      observed: el.dataset.observed === "true",
       width: el.offsetWidth,
       height: el.offsetHeight
     }));
@@ -4654,6 +4673,10 @@ var EhOsContractGraph = {
       this.touched = false;
     }
     if (!this.fitted) this.fit();
+    if (this.el.dataset.reveal !== this.revealed) {
+      this.revealed = this.el.dataset.reveal;
+      this.reveal(this.el.dataset.selected);
+    }
   },
   lay(direction, groups, cards, labels) {
     if (!cards.length) {
@@ -4662,6 +4685,7 @@ var EhOsContractGraph = {
       this.tall = null;
       this.el.querySelector(".ehg-arrows").replaceChildren();
       this.arrows = /* @__PURE__ */ new Map();
+      this.places = /* @__PURE__ */ new Map();
       this.size = null;
       return;
     }
@@ -4678,7 +4702,7 @@ var EhOsContractGraph = {
     labels.forEach((label) => {
       const { id: id2, from, to, width: width2, height: height2 } = label;
       if (!boxed(label)) return graph.setEdge({ v: from, w: to, name: id2 }, { width: width2, height: height2, labelpos: "c" });
-      if (from === to) return;
+      if (from === to || label.observed) return;
       for (const v of members.get(from) ?? [from])
         for (const w of members.get(to) ?? [to]) if (v !== w) graph.setEdge({ v, w, name: `${HOLD}${++held}` }, {});
     });
@@ -4688,6 +4712,7 @@ var EhOsContractGraph = {
       if (boxed(label)) {
         const [a, b] = [graph.node(from), graph.node(to)];
         const [start2, end] = [border(a, b), border(b, a)];
+        if (label.observed) return bow(id2, start2, end);
         return { id: id2, d: `M${start2.x},${start2.y}L${end.x},${end.y}`, x: (start2.x + end.x) / 2, y: (start2.y + end.y) / 2 };
       }
       const edge = graph.edge({ v: from, w: to, name: id2 });
@@ -4695,7 +4720,14 @@ var EhOsContractGraph = {
       const d = from === to ? loop(graph.node(from), { x: at2.x, y: at2.y, width: width2, height: height2 }) : curve(edge.points);
       return { id: id2, d, x: at2.x, y: at2.y, width: width2, height: height2 };
     });
-    const { width, height } = graph.graph();
+    const bounds = graph.graph();
+    let [width, height] = [bounds.width, bounds.height];
+    labels.forEach(({ width: w, height: h }, i) => {
+      const { apex, x, y } = geometry[i];
+      if (!apex) return;
+      width = Math.max(width, apex.x + 8, x + w / 2 + 8);
+      height = Math.max(height, apex.y + 8, y + h / 2 + 8);
+    });
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
     groups.forEach(({ id: id2 }) => {
       const { x, y, width: width2, height: height2 } = graph.node(id2);
@@ -4703,8 +4735,10 @@ var EhOsContractGraph = {
         `${this.scope} [data-ehg-group=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px; width: ${width2}px; height: ${height2}px }`
       );
     });
+    this.places = /* @__PURE__ */ new Map();
     cards.forEach(({ id: id2, width: width2, height: height2 }) => {
       const { x, y } = graph.node(id2);
+      this.places.set(id2, { x, y });
       rules.push(`${this.scope} [data-ehg-node=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px }`);
     });
     labels.forEach(({ id: id2, width: width2, height: height2 }, i) => {
@@ -4760,24 +4794,61 @@ var EhOsContractGraph = {
       arrow.setAttribute("data-head", el.dataset.head ?? "arrow");
     });
   },
-  // The whole graph in view, never larger than its own size, centred, in a canvas as tall as the graph fitted to
-  // its width, so a small picture takes little room; the stylesheet's max-height holds a tall one, which is fitted
-  // smaller and zoomed into, and its min-height a tiny one. Not while the canvas has no width: the
-  // ResizeObserver tries again when it has one.
+  // The picture at a readable scale, never larger than its own size: whole and centred when it fits, otherwise from
+  // where reading starts. The canvas is as tall as the picture at that scale, so a small picture takes little room;
+  // the stylesheet's max-height holds a tall one and its min-height a tiny one. Not while the canvas has no width:
+  // the ResizeObserver tries again when it has one.
   fit() {
     const wide = this.canvas.getBoundingClientRect().width;
     if (!this.size || !wide) return;
     const { width, height } = this.size;
-    const tall = Math.ceil(height * Math.min(1, (wide - 32) / width) + 32);
+    const across2 = Math.max(READABLE, Math.min(1, (wide - 32) / width));
+    const tall = Math.ceil(height * across2 + 32);
     if (tall !== this.tall) {
       this.tall = tall;
       this.sizeSheet.replaceSync(`${this.scope} .ehg-canvas { height: ${tall}px }`);
     }
     const box = this.canvas.getBoundingClientRect();
-    const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
-    const at2 = identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k);
+    const k = Math.max(READABLE, Math.min(1, (box.width - 32) / width, (box.height - 32) / height));
+    const start2 = (room, size) => size * k <= room - 32 ? (room - size * k) / 2 : 16;
+    const at2 = identity2.translate(start2(box.width, width), start2(box.height, height)).scale(k);
     select_default2(this.canvas).call(this.zoom.transform, at2);
     this.fitted = true;
+  },
+  // The zoom's buttons: closer, farther, the readable start, or the whole picture however small.
+  zoomTo(how) {
+    const canvas = select_default2(this.canvas);
+    if (how === "read") {
+      this.touched = false;
+      this.fit();
+      return;
+    }
+    if (how === "in") canvas.call(this.zoom.scaleBy, 1.25);
+    else if (how === "out") canvas.call(this.zoom.scaleBy, 0.8);
+    else if (how === "all" && this.size) {
+      const box = this.canvas.getBoundingClientRect();
+      if (box.width <= 32 || box.height <= 32) return;
+      const { width, height } = this.size;
+      const k = Math.min(1, (box.width - 32) / width, (box.height - 32) / height);
+      this.zoom.scaleExtent([Math.min(0.1, k), 2]);
+      canvas.call(
+        this.zoom.transform,
+        identity2.translate((box.width - width * k) / 2, (box.height - height * k) / 2).scale(k)
+      );
+    } else return;
+    this.touched = true;
+  },
+  // Card `id` in the middle of the canvas, at the scale the reader has, or a readable one.
+  reveal(id2) {
+    const place = id2 !== void 0 && this.places?.get(id2);
+    if (!place) return;
+    const box = this.canvas.getBoundingClientRect();
+    const k = Math.max(READABLE, this.at?.k ?? 1);
+    select_default2(this.canvas).call(
+      this.zoom.transform,
+      identity2.translate(box.width / 2 - place.x * k, box.height / 2 - place.y * k).scale(k)
+    );
+    this.touched = true;
   },
   zoomed(at2) {
     this.at = at2;

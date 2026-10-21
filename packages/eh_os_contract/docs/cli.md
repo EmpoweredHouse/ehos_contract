@@ -15,8 +15,9 @@ need its domain, the contracts it consumes, or the rest of the application.
 Among them: a contract's domain declares the contexts, terms, values and actors it
 uses; a sibling contract declares every event and field this one consumes; a
 policy or read model that takes another context's event says how it is delivered;
-personal data stays out of what is published; no declaration has two
-implementations; names are unique across the application; and a process module
+personal data stays out of what is published; a reference from one context into
+another follows the relation the domain declares between them, and takes no more
+than its pattern lets through; no declaration has two implementations; names are unique across the application; and a process module
 agrees with the contracts whose events it includes.
 
 Some of what these rules leave open is reported by `mix eh_os_contract.check`
@@ -88,33 +89,39 @@ Prints a domain's ubiquitous language as Markdown
 Prints the glossary of the application's domain as Markdown: each context's terms,
 their definitions, the words to avoid and their translations, and each term's word in
 code — its translation into the domain's `code_language:` — with the declarations of
-the context's contracts named with it.
+the context's contracts named with it, and the process modules that include the
+context's events and are named with it: their id, a stage, a promise or a field that
+tells their runs apart.
 
     mix eh_os_contract.glossary                        # every term, in its context's language
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
-    mix eh_os_contract.glossary --context settlement   # one context
-    mix eh_os_contract.glossary --domain rehmed        # when the application has more than one domain
+    mix eh_os_contract.glossary --context circulation  # one context
+    mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
 The domain is found among the modules of `config :eh_os_contract, applications:`.
 `--output` writes the glossary to a file.
 
 ## mix eh_os_contract.graph
 
-Gives a contract's or a domain's graph.v1 document, or what the log says over it
+Gives a contract's, a process's or a domain's graph.v1 document, or the log over it
 
 The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
-contract the registry finds — that is, of the binary that runs — or of its domain,
-and with `--overlay` what the log says over it (`EhOsContract.Graph.Overlay`).
+contract or process module the registry finds — that is, of the binary that runs — or
+of its domain, and with `--overlay` what the log says over it
+(`EhOsContract.Graph.Overlay`).
 
-    mix eh_os_contract.graph --contract rehmed.settlement --output settlement.json
-    mix eh_os_contract.graph --contract rehmed.settlement --overlay --since 2026-07-01T00:00:00Z
-    mix eh_os_contract.graph --domain rehmed --output rehmed.json
+    mix eh_os_contract.graph --contract lending.circulation --output circulation.json
+    mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
+    mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
+    mix eh_os_contract.graph --domain lending --output lending.json
 
-`--contract` names a contract by its `id:`. Without it the task gives the domain's
-document — its context map, its contracts and what flows between them, its actors —
-and `--domain` names the domain by its `name:`, which it may leave out when the
-application has one. The bytes are the ones the API serves, every object's keys in
-order, so two of them compare with `diff`. A document holds every fact of its
+`--contract` names a contract by its `id:`, `--process` a process module by its
+`id:`; a process module may share its id with a contract, so they are two options.
+Without either the task gives the domain's document — its context map, its contracts
+and process modules and what flows between them, its actors — and `--domain` names
+the domain by its `name:`, which it may leave out when the application has one. The
+bytes are the ones the API serves, every object's keys in order, so two of them
+compare with `diff`. A document holds every fact of its
 contract or domain, whatever a renderer draws of them; the pictures are the
 renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
@@ -127,29 +134,43 @@ before the task runs.
 
 ## mix eh_os_contract.pages
 
-Writes the domain and its contracts as Markdown pages, one per element
+Writes the domain, its contracts and processes as Markdown pages, one per element
 
-The application's domain and its contracts as linked Markdown pages, one per
-element.
+The application's domain, its contracts and its process modules as linked Markdown
+pages, one per element.
 
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?
-    mix eh_os_contract.pages --output docs/model --domain rehmed  # when there is more than one domain
+    mix eh_os_contract.pages --output docs/model --domain lending # when there is more than one domain
+    mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
-The domain and its contracts are found among the modules of
+The domain, its contracts and its process modules are found among the modules of
 `config :eh_os_contract, applications:`. The pages go where `--output` says: the
 host decides whether to commit them, add them to ExDoc's `extras`, or only read
-them. Beside the pages, `graph/<contract id>.json` holds each contract's `graph.v1`
-document (`EhOsContract.Graph.Document`), linked from its page. A page the model no
+them. A process module's page is `processes/<its id after the domain's name>.md`,
+linked from the domain's page and from the page of each contract whose events it
+includes: its stages in order with their events, what ends a run, its promises, its
+deadline and the external systems its events rest on. Beside the pages,
+`graph/<contract id>.json` holds each contract's `graph.v1` document and
+`graph/process/<process id>.json` each process module's
+(`EhOsContract.Graph.Document`), linked from its page. A page the model no
 longer has is deleted — only a file that starts with the marker line of the domain's
-pages, or a `graph.v1` document of one of the domain's contracts at the path the
-task gives that contract, so another domain's pages in the same directory stay — and
+pages, or a `graph.v1` document of one of the domain's contracts or process modules
+at the path the task gives it, so another domain's pages in the same directory stay — and
 a page is never written over a file without it, nor through a symbolic link: then
 nothing is written, and the task names what is in the way. Nothing outside
 `--output` is read or touched.
 
 `--check` writes nothing, and fails naming every page that is missing, differs or
 is left over.
+
+`--audience owner` writes the pages a business owner reads: the same tree, each
+declaration by its label, without module names, versions, stored types, delivery,
+idempotency, correlation keys, field names and types, and without the graph
+documents. They have a marker of their own, so they go to a directory of their own:
+in the engineer's directory each would be a file in the way. A stage or a value the
+owner would read by its name in the code is `mix eh_os_contract.check`'s
+`owner-view-without-label`. `--audience engineering` is the default.
 
 ## mix eh_os_contract.report
 
@@ -187,6 +208,96 @@ this, and only then drop the old key. No event is rewritten; each data key is
 unwrapped with the key that wrapped it and wrapped again. It runs in batches of
 500, each its own transaction, so it can be stopped and run again.
 
+## mix eh_os_contract.schema
+
+Records the fields of every event, and refuses a change old rows would not read
+
+Keeps `eh_os_contract.lock`, the record of every event's fields by its
+`schema_version`, and refuses a change to a recorded version that old rows would not
+read, or a new version whose step does not cover what changed.
+
+The log keeps every event it ever recorded and reads each one again whenever it
+rebuilds a unit or a list, with today's declaration. A row that lacks a field the
+declaration now requires, or holds one in another shape or under another seal, does
+not read, so a change to an event's fields raises its `schema_version` and says, in an
+`upcast` step, how an old row reads. Nothing in a
+compile notices a change made without that: the code compiles, the tests pass on an
+empty log, and the deployed application fails on its first old row. This task
+notices it where the code is written.
+
+    mix eh_os_contract.schema                  # record what is new
+    mix eh_os_contract.schema --check          # fail when anything is new or changed
+    mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, record again
+
+It reads every contract of the applications `config :eh_os_contract, applications:`
+names, as `mix eh_os_contract.check` does, and keeps the file beside the project's
+`mix.lock` (in an umbrella, at its root). Commit the file: a change to it shows in a
+pull request as the fields that changed.
+
+### What it records
+
+An entry per event type, as the log names it, and version, with the fields as a row
+holds them:
+
+    %{
+      "shop.orders.order_placed" => %{
+        1 => [
+          customer_id: [type: :id, subject: :customer],
+          note: [type: :string, optional: true, personal: :customer_id],
+          order_id: [type: :id],
+          total: [
+            type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+          ]
+        ]
+      }
+    }
+
+A field's type is what the log stores: a built-in type, an enum as its members' names,
+a list as what it holds, and a domain value as its own shape, its inner type or its
+fields. Then whether it may be absent, whether it is personal and whose identifier
+seals it, and the subject an identifier names. Labels, the names of domain values,
+invariants and the order of fields change no stored row, and are left out: a domain
+value renamed changes nothing, and one given a field changes every event that holds
+it.
+
+### What it refuses
+
+Recording the current version of every event adds what the file lacks, and records in
+place a change old rows still read: a field added as optional, a field removed, a
+required field made optional, an enum given members, an `:integer` made a `:decimal`,
+an `:id` made a `:string`, and the same inside a list or a domain value. A field removed
+stays in the file, marked `removed: true`, since old rows still hold it and rows written
+since do not: a field declared again under its name is held to what both hold. It
+refuses, writing nothing, when:
+
+  * the file holds the event's current version with fields an old row would not read
+    as: a field added as required, a type changed otherwise. The message names each
+    such field. Raise the event's `schema_version` and add its `upcast` step: the new
+    version is recorded beside the old one.
+  * the steps from a recorded version to the declared one do not cover what changed: a
+    field renamed without `rename:`, a required field added without `default:`, an
+    optional field made required (old rows hold an explicit `nil`), a type changed
+    otherwise than above, with no step a function. A function covers every change a
+    step could carry, since the engine cannot see what it does.
+  * a field becomes personal or stops being, or another identifier seals it; a personal
+    field changes its type, or a value holding personal data its shape; a required
+    personal field, at any depth, is one old rows may lack; an identifier that seals a field
+    changes its `subject:`; or a field the log tags rows with (a required,
+    non-personal `:id`, `:date` or `:timestamp`) was not tagged so under that name in
+    the version before. Inside a domain value too. No step carries those: rows already
+    sealed or tagged keep what they were written with. Declare a new event.
+  * the file holds a version newer than the one declared, whose rows would not read.
+  * the file holds an event no contract declares any more, renamed or removed, whose
+    rows would not read either.
+
+`--forget TYPE` drops the event's versions from the one its contract declares up, or
+every version of an event no contract declares, and records what is declared: it says
+that no log holds rows of what it drops, as of a version added on a branch that was
+never deployed. It may be given more than once.
+
+`--check` writes nothing and fails when recording would change the file, or refuse.
+Run it beside `mix eh_os_contract.check`.
+
 ## mix eh_os_contract.subscriptions
 
 Where each subscription stands, and a person's way past a poison event
@@ -223,16 +334,17 @@ of two ways:
 
 ## mix eh_os_contract.view
 
-Prints the domain as a tree: contexts, contracts, units and consumers
+Prints the domain as a tree: contexts, contracts, units, consumers and processes
 
 Prints the application's domain as a tree for a terminal: its contexts, and in
-each its contracts, their units, consumers and queries.
+each its contracts, their units, consumers and queries; then its process modules,
+each with its stages in order and the events each includes, by contract.
 
     mix eh_os_contract.view                                   # the whole domain
-    mix eh_os_contract.view settlement                        # one context
-    mix eh_os_contract.view settlement/visit_settlement       # one unit, consumer or query
+    mix eh_os_contract.view circulation                       # one context, without the processes
+    mix eh_os_contract.view circulation/loan                  # one unit, consumer or query
     mix eh_os_contract.view --details                         # with what each row declares
-    mix eh_os_contract.view --domain rehmed                   # when there is more than one domain
+    mix eh_os_contract.view --domain lending                  # when there is more than one domain
 
-The domain and its contracts are found among the modules of
+The domain, its contracts and process modules are found among the modules of
 `config :eh_os_contract, applications:`. `--output` writes the tree to a file.

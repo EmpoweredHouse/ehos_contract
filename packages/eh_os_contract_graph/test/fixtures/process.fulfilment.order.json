@@ -1,0 +1,259 @@
+{
+  "digest": "a325b0f42539",
+  "domain": "Fulfilment.Domain",
+  "kind": "process",
+  "label": "An order, from its placing to its delivery",
+  "module": "Fulfilment.Processes.Order",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Fulfilment.Domain:dispatcher",
+        "label": "Dispatcher",
+        "name": "dispatcher",
+        "responsibilities": [],
+        "role": "fulfilment.dispatcher",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Fulfilment.Domain:orders",
+        "label": "Orders",
+        "name": "orders",
+        "source": null
+      },
+      {
+        "id": "context:Fulfilment.Domain:warehouse",
+        "label": "Warehouse",
+        "name": "warehouse",
+        "source": null
+      },
+      {
+        "id": "context:Fulfilment.Domain:shipping",
+        "label": "Shipping",
+        "name": "shipping",
+        "source": null
+      }
+    ],
+    "contract": [
+      {
+        "context": "context:Fulfilment.Domain:orders",
+        "id": "contract:fulfilment.orders",
+        "label": null,
+        "module": "Fulfilment.Contracts.Orders",
+        "name": "fulfilment.orders",
+        "source": null
+      },
+      {
+        "context": "context:Fulfilment.Domain:warehouse",
+        "id": "contract:fulfilment.warehouse",
+        "label": null,
+        "module": "Fulfilment.Contracts.Warehouse",
+        "name": "fulfilment.warehouse",
+        "source": null
+      },
+      {
+        "context": "context:Fulfilment.Domain:shipping",
+        "id": "contract:fulfilment.shipping",
+        "label": null,
+        "module": "Fulfilment.Contracts.Shipping",
+        "name": "fulfilment.shipping",
+        "source": null
+      }
+    ],
+    "event": [
+      {
+        "contract": "contract:fulfilment.orders",
+        "id": "event:fulfilment.orders:placed",
+        "label": "Order placed",
+        "name": "placed",
+        "source": null,
+        "stage": "stage:fulfilment.order:ordering",
+        "type": "fulfilment.orders.placed"
+      },
+      {
+        "contract": "contract:fulfilment.orders",
+        "id": "event:fulfilment.orders:payment_confirmed",
+        "label": "Payment confirmed",
+        "name": "payment_confirmed",
+        "source": null,
+        "stage": "stage:fulfilment.order:ordering",
+        "type": "fulfilment.orders.payment_confirmed"
+      },
+      {
+        "contract": "contract:fulfilment.orders",
+        "id": "event:fulfilment.orders:cancelled",
+        "label": "Order cancelled",
+        "name": "cancelled",
+        "source": null,
+        "stage": "stage:fulfilment.order:ordering",
+        "terminal": true,
+        "type": "fulfilment.orders.cancelled"
+      },
+      {
+        "contract": "contract:fulfilment.warehouse",
+        "id": "event:fulfilment.warehouse:opened",
+        "label": "Pick list opened",
+        "name": "opened",
+        "source": null,
+        "stage": "stage:fulfilment.order:picking",
+        "type": "fulfilment.warehouse.opened"
+      },
+      {
+        "contract": "contract:fulfilment.warehouse",
+        "id": "event:fulfilment.warehouse:assigned",
+        "label": "Pick list assigned",
+        "name": "assigned",
+        "source": null,
+        "stage": "stage:fulfilment.order:picking",
+        "type": "fulfilment.warehouse.assigned"
+      },
+      {
+        "contract": "contract:fulfilment.warehouse",
+        "id": "event:fulfilment.warehouse:picked",
+        "label": "Pick list picked",
+        "name": "picked",
+        "source": null,
+        "stage": "stage:fulfilment.order:picking",
+        "type": "fulfilment.warehouse.picked"
+      },
+      {
+        "contract": "contract:fulfilment.warehouse",
+        "id": "event:fulfilment.warehouse:parcel_packed",
+        "label": "Parcel packed",
+        "name": "parcel_packed",
+        "source": null,
+        "stage": "stage:fulfilment.order:picking",
+        "type": "fulfilment.warehouse.parcel_packed"
+      },
+      {
+        "contract": "contract:fulfilment.shipping",
+        "id": "event:fulfilment.shipping:booked",
+        "label": "Shipment booked",
+        "name": "booked",
+        "source": null,
+        "stage": "stage:fulfilment.order:shipping",
+        "type": "fulfilment.shipping.booked"
+      },
+      {
+        "contract": "contract:fulfilment.shipping",
+        "id": "event:fulfilment.shipping:dispatched",
+        "label": "Parcel handed to the carrier",
+        "name": "dispatched",
+        "source": null,
+        "stage": "stage:fulfilment.order:shipping",
+        "type": "fulfilment.shipping.dispatched"
+      },
+      {
+        "contract": "contract:fulfilment.shipping",
+        "id": "event:fulfilment.shipping:delivered",
+        "label": "Parcel delivered",
+        "name": "delivered",
+        "source": null,
+        "stage": "stage:fulfilment.order:shipping",
+        "terminal": true,
+        "type": "fulfilment.shipping.delivered"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Fulfilment.Domain:carrier",
+        "label": "Carrier",
+        "name": "carrier",
+        "operations": [],
+        "source": null,
+        "unavailable_looks_like": "the carrier's tracking does not answer"
+      }
+    ],
+    "process": [
+      {
+        "correlate": [
+          "order_id"
+        ],
+        "deadline": {
+          "amount": 14,
+          "unit": "day",
+          "unverified": false
+        },
+        "id": "process:fulfilment.order",
+        "label": "An order, from its placing to its delivery",
+        "name": "fulfilment.order",
+        "source": null
+      }
+    ],
+    "promise": [
+      {
+        "id": "promise:fulfilment.order:dispatched_within_a_day_of_payment",
+        "label": null,
+        "name": "dispatched_within_a_day_of_payment",
+        "process": "process:fulfilment.order",
+        "source": null,
+        "within": {
+          "amount": 24,
+          "unit": "hour"
+        }
+      }
+    ],
+    "stage": [
+      {
+        "id": "stage:fulfilment.order:ordering",
+        "label": "Ordering",
+        "name": "ordering",
+        "process": "process:fulfilment.order",
+        "source": null
+      },
+      {
+        "id": "stage:fulfilment.order:picking",
+        "label": "Picking",
+        "name": "picking",
+        "process": "process:fulfilment.order",
+        "source": null
+      },
+      {
+        "id": "stage:fulfilment.order:shipping",
+        "label": "Shipping",
+        "name": "shipping",
+        "process": "process:fulfilment.order",
+        "source": null
+      }
+    ]
+  },
+  "process": "fulfilment.order",
+  "relations": {
+    "accountable_for": [
+      {
+        "from": "actor:Fulfilment.Domain:dispatcher",
+        "id": "accountable_for:actor:Fulfilment.Domain:dispatcher:process:fulfilment.order",
+        "to": "process:fulfilment.order"
+      }
+    ],
+    "depends_on": [
+      {
+        "from": "event:fulfilment.shipping:delivered",
+        "id": "depends_on:event:fulfilment.shipping:delivered:external:Fulfilment.Domain:carrier",
+        "to": "external:Fulfilment.Domain:carrier"
+      }
+    ],
+    "fulfils": [
+      {
+        "from": "event:fulfilment.shipping:dispatched",
+        "id": "fulfils:event:fulfilment.shipping:dispatched:promise:fulfilment.order:dispatched_within_a_day_of_payment",
+        "to": "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+      }
+    ],
+    "opens": [
+      {
+        "from": "event:fulfilment.orders:payment_confirmed",
+        "id": "opens:event:fulfilment.orders:payment_confirmed:promise:fulfilment.order:dispatched_within_a_day_of_payment",
+        "to": "promise:fulfilment.order:dispatched_within_a_day_of_payment"
+      }
+    ],
+    "or_else": [],
+    "waits_on": []
+  },
+  "schema": "eh_os_contract.graph.v1",
+  "version": "1ce4bcabbc4e"
+}

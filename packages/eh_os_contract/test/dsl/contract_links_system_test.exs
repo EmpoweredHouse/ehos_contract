@@ -15,10 +15,10 @@ defmodule EhOsContract.ContractLinksSystemTest do
     compile(
       """
       defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
+        use EhOsContract.Domain, name: :clinic, language: :en
 
-        context :settlement, "Rozliczenia", subdomain: :core
-        actor :reception, :human, "Recepcja"
+        context :settlement, "Settlement", subdomain: :core
+        actor :reception, :human, "Reception"
 
         subdomain :core, "Core", type: :core
       end
@@ -33,65 +33,37 @@ defmodule EhOsContract.ContractLinksSystemTest do
     :ok
   end
 
-  # A contract with one aggregate: the command at line 6, the process, if `process:`
-  # names one, at line 10, and what `extra:` adds from line 9, or 13 after a process.
+  # A contract with one aggregate: the command at line 6, and what `extra:` adds from
+  # line 9. A process module's id among the system's processes (X7) is
+  # `ProcessLinksTest`'s.
   defp unit_contract(name, opts) do
     unit = Keyword.fetch!(opts, :unit)
     command = Keyword.fetch!(opts, :command)
-
-    process =
-      if process = opts[:process] do
-        """
-
-          process #{inspect(process)}, "Proces" do
-            correlate :case_id
-          end
-        """
-      else
-        ""
-      end
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
       use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
 
-      aggregate #{inspect(unit)}, "Jednostka" do
+      aggregate #{inspect(unit)}, "Unit" do
         identity :case_id
-        command #{inspect(command)}, "Komenda", by: :reception, emits: :done
-        event :done, "Zrobione"
+        command #{inspect(command)}, "Command", by: :reception, emits: :done
+        event :done, "Done"
       end
-    #{process}#{Keyword.get(opts, :extra, "")}
+    #{Keyword.get(opts, :extra, "")}
     end
     """
 
     {"#{Macro.underscore(name)}.ex", source}
   end
 
-  describe "X7: a process name is the application's" do
-    test "two contracts declaring one process" do
-      violations =
-        links([
-          unit_contract("SysProcessA", unit: :visit, process: :visit, command: :open_a),
-          unit_contract("SysProcessB", unit: :visit, process: :visit, command: :open_b)
-        ])
-
-      assert assert_linked(violations, "X7:", "sys_process_b.ex", 10) =~
-               "process :visit of #{inspect(@fixtures)}.SysProcessB is also declared by " <>
-                 "#{inspect(@fixtures)}.SysProcessA (sys_process_a.ex:10); a process's name " <>
-                 "keys its runs, so it is unique in the application"
-
-      assert length(violations) == 1
-    end
-  end
-
   describe "D14: a command, query or recorded event name is the domain's" do
     test "a command of one name in two contracts, and a query named like a command" do
       query = """
-        read_model :cases, "Sprawy", projects: :done do
+        read_model :cases, "Cases", projects: :done do
           field :case_id, :id
         end
 
-        query :open_a, "Sprawy", reads: :cases, by: :reception
+        query :open_a, "Cases", reads: :cases, by: :reception
       """
 
       violations =
@@ -127,11 +99,11 @@ defmodule EhOsContract.ContractLinksSystemTest do
       defmodule #{inspect(@fixtures)}.SysNameD do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.sys_name_d"
 
-        aggregate :fourth, "Jednostka" do
+        aggregate :fourth, "Unit" do
           identity :case_id
-          command :open_d, "Komenda", by: :reception, emits: :done
-          event :done, "Zrobione"
-          event :open_a, "Otwarte", recorded_by: :reception
+          command :open_d, "Command", by: :reception, emits: :done
+          event :done, "Done"
+          event :open_a, "Opened", recorded_by: :reception
         end
       end
       """

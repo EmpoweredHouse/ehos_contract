@@ -14,41 +14,41 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
   setup_all do
     compile(
       contract("CoverageVisits", """
-        aggregate :visit, "Wizyta" do
+        aggregate :visit, "Visit" do
           identity :visit_id
-          command :book, "Umów", by: :reception, emits: :booked
-          command :remind, "Przypomnij", emits: :reminded
-          event :booked, "Umówiono"
-          event :reminded, "Przypomniano"
+          command :book, "Book", by: :reception, emits: :booked
+          command :remind, "Remind", emits: :reminded
+          event :booked, "Booked"
+          event :reminded, "Reminded"
         end
 
-        policy :remind_on_booking, "Przypomnij po umówieniu", handles: :booked, issues: :remind
-        policy :remind_again, "Przypomnij jeszcze raz", handles: :reminded, issues: :remind
+        policy :remind_on_booking, "Remind after booking", handles: :booked, issues: :remind
+        policy :remind_again, "Remind again", handles: :reminded, issues: :remind
 
-        process_manager :chase, "Pogoń" do
+        process_manager :chase, "Chase" do
           correlate :visit_id
           starts_on :booked, sets: :later
           timer :later, "Later", wait: {1, :day}, issues: :remind
           ends_on :reminded
         end
 
-        read_model :bookings, "Wizyty", projects: :booked do
+        read_model :bookings, "Visits", projects: :booked do
           field :visit_id, :id
         end
 
-        query :bookings_of, "Wizyty", reads: :bookings, by: :reception do
+        query :bookings_of, "Visits", reads: :bookings, by: :reception do
           param :visit_id, :id
         end
 
-        query :all_bookings, "Wszystkie wizyty", reads: :bookings, by: :reception
+        query :all_bookings, "All visits", reads: :bookings, by: :reception
 
-        scenario "umówienie — przypomnienie" do
+        scenario "booking — reminder" do
           on :booked
           target :remind_on_booking
           issues :remind
         end
 
-        scenario "zapytanie o wizytę" do
+        scenario "asking about a visit" do
           given :booked
           query :bookings_of, %{visit_id: "visit-anna"}
           answers []

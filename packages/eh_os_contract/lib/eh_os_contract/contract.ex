@@ -1,35 +1,32 @@
 defmodule EhOsContract.Contract do
   @moduledoc """
-  A part of a business, and at most one process, written down: the contract DSL.
+  What is decided in one context of a business, written down: the contract DSL.
 
-      defmodule Rehmed.Contracts.VisitSettlement do
+      defmodule Lending.Contracts.Circulation do
         use EhOsContract.Contract,
-          domain: Rehmed.Domain,
-          context: :settlement,
-          id: "rehmed.visit_settlement"
+          domain: Lending.Domain,
+          context: :circulation,
+          id: "lending.circulation"
 
-        aggregate :visit_settlement, "Rozliczenie wizyty" do
-          identity :visit_id
+        aggregate :loan, "Loan" do
+          identity :loan_id
 
-          command :record_payment, "Przyjęcie płatności za wizytę",
-            by: :reception, emits: :payment_recorded do
-            field :amount, :money
+          command :pay_late_fee, "Take payment of a late fee",
+            by: :librarian, emits: :late_fee_paid do
+            field :method, {:enum, [:cash, :card]}
           end
 
-          event :payment_recorded, "Pacjent opłacił wizytę" do
-            field :amount, :money
+          event :late_fee_paid, "Late fee paid" do
+            field :method, {:enum, [:cash, :card]}
           end
-        end
-
-        process :visit_settlement, "Rozliczenie wizyty" do
-          correlate :visit_id
         end
       end
 
-  Everything born in the process is declared here: the units that decide, with
+  What the contract decides is declared here: the units that decide, with
   their state, invariants, commands and events; what reacts to events; what is read;
-  what enters from elsewhere and what leaves; the process with its stages and
-  promises; scenarios. The module compiles to plain data,
+  what enters from elsewhere and what leaves; scenarios. The run those events make,
+  with its stages and promises, is an `EhOsContract.Process` of its own. The module
+  compiles to plain data,
   `__eh_os_contract_model__/0`, which `EhOsContract.Model.fetch/1` returns.
 
   `domain:` names the application's `EhOsContract.Domain` and `context:` one of its
@@ -50,13 +47,13 @@ defmodule EhOsContract.Contract do
     default_extensions: [extensions: [EhOsContract.Contract.Dsl]],
     opt_schema: [
       domain: [type: :atom, required: true, doc: "The application's domain module."],
-      context: [type: :atom, required: true, doc: "The domain context the process belongs to."],
+      context: [type: :atom, required: true, doc: "The domain context the contract belongs to."],
       id: [
         type: :string,
         doc:
           "The contract's name, required (D11): the domain's `name:`, " <>
-            "then dotted snake_case segments, like `\"rehmed.settlement\"`; it types every " <>
-            "event the contract records, `\"rehmed.settlement.payment_recorded\"`."
+            "then dotted snake_case segments, like `\"lending.circulation\"`; it types every " <>
+            "event the contract records, `\"lending.circulation.late_fee_paid\"`."
       ]
     ]
 

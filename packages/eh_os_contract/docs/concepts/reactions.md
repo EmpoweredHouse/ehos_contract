@@ -81,7 +81,7 @@ defmodule Concepts.Reactions.Contracts.Loans do
 
     event :copy_returned, "Copy returned"
     event :loan_marked_overdue, "Loan overdue"
-    event :loan_closed, "Loan closed", terminal: true
+    event :loan_closed, "Loan closed"
   end
 
   policy :close_on_return, "A returned copy closes its loan",
@@ -102,10 +102,6 @@ defmodule Concepts.Reactions.Contracts.Loans do
     timer :due, "Return date", wait: {30, :day}, issues: :mark_overdue
 
     ends_on :loan_closed
-  end
-
-  process :lending, "A loan, from lending to return" do
-    correlate :loan_id
   end
 
   scenario "a returned copy closes its loan" do
@@ -231,6 +227,8 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 - A process manager that starts on nothing, has an empty `correlate`, or is delivered `:in_transaction`; a
   trigger that is neither an event it may take nor its own timer; a timer without exactly one of `wait:` and
   `at:` ([`P4`](../contract.md#refusals-p)).
+- A timer's `wait:` that is negative, malformed, or longer than 100 years, a year counted as 366 days and a
+  month as a twelfth of that ([`R6`](../contract.md#refusals-r)): a timer longer than a century is a mistake in the contract.
 - A command no actor may issue and no reaction issues ([`C1`](../contract.md#refusals-c)).
 - In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](../contract.md#refusals-i), [`I6`](../contract.md#refusals-i)).
 
@@ -246,11 +244,11 @@ holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the
 - `process-manager-without-event-reactions` (warning): after it starts, the manager reacts only to its own
   timers, so the process can end it but not steer it. It is a schedule, and may be simpler as one.
 - `event-without-consumer` (warning): nothing reacts to or reads an event: no reaction, read model,
-  boundary, consuming contract or `publish`, and no promise, lifecycle or `terminal:` that the conformance
+  boundary, consuming contract or `publish`, and no lifecycle or process module that the conformance
   report reads. Add the reader it was declared for, or ask whether it is needed.
-- `backward-edge` (warning): with stages declared, a policy or a process manager reacting to an event of one
-  stage issues a command whose events sit in an earlier one. Either the stages are in the wrong order or the
-  reaction is a loop the process has not declared.
+- `backward-edge` (warning): a policy or a process manager reacting to an event that one stage of a
+  [process module](process.md) includes issues a command whose events sit in an earlier stage of it. Either
+  the stages are in the wrong order or the reaction is a loop the process has not declared.
 
 All of the rules are in [the catalogue](../rules.md). Reactions to another context's events, and to another
 application's, are on [their own page](between-contracts.md).

@@ -7,8 +7,8 @@ defmodule EhOsContract.Paths do
   # ("The shape"): change it with what is computed here. How each is counted:
   #
   # **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
-  # P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
-  # row names the command's row (`command_id`); a reaction issued a command when a row
+  # P1a, #183): a step is the contract's, which has no runs of its own. A command
+  # emitted an event when the event's row names the command's row (`command_id`); a reaction issued a command when a row
   # of `eh_os_contract_commands` names its actor and, as its cause, an event of the
   # step's type. Another application's event never enters this log (D12): a policy on
   # it issued a command when the row names, as its cause, a row of
@@ -137,21 +137,19 @@ defmodule EhOsContract.Paths do
         }
       end
 
+    issued = EhOsContract.Reactions.issued(model)
+
     policies =
-      for policy <- model.policies,
-          event <- policy.handles,
+      for %{kind: :policy, reaction: policy, on: event, command: command} <- issued,
           type = type_of(model, event),
-          type != nil,
-          command <- policy.issues do
+          type != nil do
         reaction(model, :policy, policy, event, type, command, label)
       end
 
     # Another application's event, which has no stored type here: taken through its inbox.
     received =
-      for policy <- model.policies,
-          event <- policy.handles,
-          match?({:published, _fields}, Model.consumed(model, event)),
-          command <- policy.issues do
+      for %{kind: :policy, reaction: policy, on: event, command: command} <- issued,
+          match?({:published, _fields}, Model.consumed(model, event)) do
         %{
           from: ref(:event, event, nil),
           via: ref(:policy, policy.name, policy.label),
@@ -165,17 +163,24 @@ defmodule EhOsContract.Paths do
         }
       end
 
+    # An event a process manager takes, `starts_on` or `on`, not a timer's firing, and
+    # one with a stored type: an event of no contract here is left out.
     managers =
-      for pm <- model.process_managers,
-          {event, commands} <- reactions(pm),
+      for %{kind: :process_manager, trigger: trigger, on: event} = r <- issued,
+          trigger in [:starts_on, :on],
+          not EhOsContract.Reactions.timer?(r),
           type = type_of(model, event),
-          type != nil,
-          command <- commands do
-        reaction(model, :process_manager, pm, event, type, command, label)
+          type != nil do
+        reaction(model, :process_manager, r.reaction, event, type, r.command, label)
       end
 
+    # A timer's firing: what the timer itself issues, and what an `on` naming the timer
+    # issues, which runs on the same firing. One path per manager, timer and command.
     timers =
-      for pm <- model.process_managers, timer <- pm.timers, command <- timer.issues do
+      for %{kind: :process_manager, reaction: pm, command: command} = r <- issued,
+          EhOsContract.Reactions.timer?(r),
+          timer = Enum.find(pm.timers, &(&1.name == r.on)),
+          uniq: true do
         %{
           from: ref(:timer, timer.name, timer.label),
           via: ref(:process_manager, pm.name, pm.label),
@@ -234,51 +239,91 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
-  Distinct runs of the contract's process in the period, over its own events' types
-  and the ones it includes. A process's own count: a step is counted in occurrences,
-  not runs (plan DD, P1a, #183).
+  Distinct runs of the process module `model`, filed under `process`, its `id:`, in the
+  period, over the types of the events it includes. A process's own count: a step is
+  counted in occurrences, not runs.
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
-    types = Enum.map(Model.process_events(model), & &1.type)
+    [{process, Enum.map(Model.process_events(model), & &1.type)}]
+    |> count_runs(opts)
+    |> Map.get(process, 0)
+  end
+
+  @doc """
+  Distinct runs of each of the process modules `models` in the period `opts` names, as
+  `runs_of/3` counts one's under its `id:`: `%{id => runs}`, every module's id present,
+  in one query however many there are.
+
+      EhOsContract.Paths.runs_by_process([Model.fetch(MyApp.Processes.Loan)], since: since)
+      #=> %{"my_app.loan" => 41}
+  """
+  @spec runs_by_process([map()], keyword()) :: %{String.t() => non_neg_integer()}
+  def runs_by_process(models, opts \\ []) do
+    filed = for m <- models, do: {m.id, Enum.map(Model.process_events(m), & &1.type)}
+    counted = count_runs(filed, opts)
+    Map.new(filed, fn {process, _types} -> {process, Map.get(counted, process, 0)} end)
+  end
+
+  # Distinct runs per process, each over the types of the events it includes.
+  defp count_runs([], _opts), do: %{}
+
+  defp count_runs(filed, opts) do
+    included =
+      Enum.reduce(filed, dynamic(false), fn {process, types}, acc ->
+        dynamic([r, event: e], ^acc or (r.process == ^process and e.type in ^types))
+      end)
 
     from(r in EventRun,
       join: e in Event,
       as: :event,
       on: e.position == r.position,
-      where: r.process == ^process and e.type in ^types,
-      select: count(r.instance_id, :distinct)
+      where: ^included,
+      group_by: r.process,
+      select: {r.process, count(r.instance_id, :distinct)}
     )
     |> bounded(opts)
-    |> repo().one()
+    |> repo().all()
+    |> Map.new()
   end
 
   @doc """
-  How often each event the contract records, and each its process includes, happened
-  in the period: `%{name => occurrences}`, by the name the event has in this contract,
-  whatever run, if any, it falls in (plan DD, P1a, #183). A contract with no process
-  counts its own events; an included event its sibling does not declare is left out.
+  How often each event the contract records happened in the period:
+  `%{name => occurrences}`, whatever run, if any, it falls in.
   """
   @spec occurrences(map(), keyword()) :: %{atom() => non_neg_integer()}
   def occurrences(model, opts \\ []) do
-    by_type =
-      Map.new(model.events, &{&1.type, &1.name})
-      |> Map.merge(
-        for(%{included: true} = e <- Model.process_events(model), into: %{}, do: {e.type, e.name})
-      )
+    by_type = Map.new(model.events, &{&1.type, &1.name})
 
-    types = Map.keys(by_type)
+    by_type
+    |> Map.keys()
+    |> occurrences_by_type(opts)
+    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+  end
 
+  @doc """
+  How often events of each of `types` happened in the period `opts` names (`:since`,
+  `:until`): `%{type => occurrences}`, whatever contract or run they fall in. A type
+  the log does not hold in the period has no entry. One query, however many types.
+
+      EhOsContract.Paths.occurrences_by_type(["lending.circulation.copy_returned"])
+      #=> %{"lending.circulation.copy_returned" => 12}
+  """
+  @spec occurrences_by_type([String.t()], keyword()) :: %{String.t() => non_neg_integer()}
+  def occurrences_by_type(types, opts \\ [])
+  def occurrences_by_type([], _opts), do: %{}
+
+  def occurrences_by_type(types, opts) do
     from(e in Event,
       as: :event,
-      where: e.type in ^types,
+      where: e.type in ^Enum.uniq(types),
       group_by: e.type,
       # `position`, not `id`: without a period the `(type, position)` index answers it alone.
       select: {e.type, count(e.position)}
     )
     |> bounded(opts)
     |> repo().all()
-    |> Map.new(fn {type, count} -> {Map.fetch!(by_type, type), count} end)
+    |> Map.new()
   end
 
   # --- declarations --------------------------------------------------------------------
@@ -294,13 +339,6 @@ defmodule EhOsContract.Paths do
       issued_by: "#{if kind == :policy, do: "policy", else: "pm"}:#{consumer.name}",
       command_type: Atom.to_string(command)
     }
-  end
-
-  # What each event a process manager takes issues: `starts_on` and `on`, in order.
-  defp reactions(pm) do
-    for reaction <- pm.starts_on ++ pm.on,
-        reaction.issues != [],
-        do: {reaction.event, reaction.issues}
   end
 
   defp ref(kind, name, label), do: %{kind: kind, name: name, label: label}

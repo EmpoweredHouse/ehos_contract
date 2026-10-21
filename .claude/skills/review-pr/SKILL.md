@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/taxvision/ or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/ or sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
 ---
 
 # Reviewing a pull request
@@ -15,7 +15,7 @@ this form.
 `write-reaction` are for whoever writes. `ehos-dev:pre-pr-review`, with this repository's part in
 `.claude/review.md`, is the author reviewing their own change
 before the pull request. This skill is for the person who receives it and has to approve it or send
-it back — the gate `CLAUDE.md` names ("Człowiek jest bramą"). When the change edits a contract that
+it back — the gate `CLAUDE.md` names ("A person is the gate, so readability is a requirement"). When the change edits a contract that
 may have history, it does not re-derive the risk: it opens `change-contract`'s table and holds the
 change to it, row by row.
 
@@ -68,7 +68,7 @@ hide a mistake:
 | `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own? |
 | `unverified-declaration` | Is the change relying on an `unverified: true` number as if it were confirmed? |
 | `consults-without-match` | A boundary reading every event of a type conflicts under load. |
-| `backward-edge` | A new one on a real contract is an ordering mistake or an undeclared loop. |
+| `backward-edge` | A new one on a real process module is an ordering mistake in its stages or an undeclared loop. |
 | `declaration-without-implementation` | Declared, not built — intended in this pull request, or forgotten? |
 
 ### Where the randomness is
@@ -90,7 +90,7 @@ once per pattern. In a pull request here that is:
   count.
 - **A host-visible shape** — a capability (a command's or query's name), a command's fields, a
   query's parameters, a publication, configuration, a status. These go to the user before they
-  change (`PLAN.md`, stage 6 strategy).
+  change.
 
 ### Verified in reverse
 
@@ -103,17 +103,19 @@ that was broken.
 ### The language boundary
 
 Code is English, without exceptions, in everything under `packages/` and `sandbox/` and in `docs/`.
-Polish is allowed only inside the strings `CLAUDE.md` lists ("Po polsku jest wyłącznie…"): labels
-and `source:` in a domain and a contract, a term's text, its definition, `avoid` and translation,
-`where` prose at `consults`, scenario descriptions, task names, a notification subject. Everywhere
-else — identifiers, moduledocs, `@doc`, comments, test names, error messages — it is a defect.
+The sandbox's case studies are English throughout. Another language is allowed only in a test of the
+packages that needs a second language or non-ASCII text, and there only inside the strings `CLAUDE.md`
+lists ("Language"): labels and `source:` in a domain and a contract, a term's text, its definition,
+`avoid` and translation, `where` prose at `consults`, scenario descriptions, task names, a
+notification subject. Everywhere else — identifiers, moduledocs, `@doc`, comments, test names, error
+messages — it is a defect.
 **Grepping for `[ąćęłńóśźż]` is not enough**: much of Polish has no diacritics, and a word such as
 `rejestry` once survived a full file-by-file rewrite that way. Read the strings.
 
 ### Dated corrections, not silent rewrites
 
 A change to what `docs/adr/` assumes or `PLAN.md` decided comes as a dated note, never a quiet edit
-that erases what was believed before (`CLAUDE.md`, "Zanim cokolwiek zmienisz"). For a change to
+that erases what was believed before (`CLAUDE.md`, "Before you change anything"). For a change to
 contract semantics or to a check's meaning, look for the note in the same pull request.
 
 ### A changelog line that is missing, says too little, or misses a marker
@@ -133,6 +135,7 @@ the question lives here and only here:
 `packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
 `run.ex`, `stage_order.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`,
 `dependency.ex`, `digest.ex`, `contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
+`upcast.ex` (how an older row reads, and so what every reader of it counts),
 `report.ex`, `report/`, `graph.ex`, `graph/` — and, where the change touches runs, keys or failure
 labels, `store/postgres.ex`, `key.ex` and `dispatcher.ex`.
 

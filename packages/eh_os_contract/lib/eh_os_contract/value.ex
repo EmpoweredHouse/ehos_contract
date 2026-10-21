@@ -1,14 +1,14 @@
 defmodule EhOsContract.Value do
   # A value of a domain, held to its invariants (plan EL2b).
   #
-  #     value :money, :integer, unit: :grosze do
-  #       invariant :not_negative, "Kwota nie jest ujemna",
+  #     value :money, :integer, unit: :cents do
+  #       invariant :not_negative, "An amount is not negative",
   #         violated_by: [-1],
   #         satisfied_by: [0, 15_000]
   #     end
   #
   # The domain generates a behaviour for a value that declares invariants,
-  # `Rehmed.Domain.Values.Money`, and a module bound with `use Rehmed.Domain, value:
+  # `Lending.Domain.Values.Money`, and a module bound with `use Lending.Domain, value:
   # :money` defines one function per invariant, answering whether a value keeps it.
   # `EhOsContract.Codec` asks here once a field's value fits its type, so dispatch
   # refuses a command, or a recorded event, that carries a value breaking one, and

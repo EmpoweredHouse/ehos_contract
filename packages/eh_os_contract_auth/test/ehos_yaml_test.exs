@@ -6,8 +6,9 @@ defmodule EhOsContract.Auth.EhosYamlTest do
   The corpus is one file per refusal, in `test/fixtures/ehos_yaml/refused/`. The
   accepted files are the example of `eh-os` `docs/ehos-yaml.md` (at `f7b2330`) and
   the `ehos.yaml` of `EmpoweredHouse/ehos-ledger` (at `341fc19`), unchanged, and a
-  made-up `ehos.yaml/v2` with `sign_in` (`eh-os` D-69), and a made-up `ehos.yaml/v3` that
-  reads the company's people (`eh-os` D-81).
+  made-up `ehos.yaml/v2` with `sign_in` (`eh-os` D-69), a made-up `ehos.yaml/v3` that
+  reads the company's people (`eh-os` D-81), and a made-up `ehos.yaml/v4` that seeds its
+  database and is given secrets (`eh-os` D-98, D-99).
   """
 
   use ExUnit.Case, async: true
@@ -41,7 +42,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       {"schema", nil, "is required: it names the version of ehos.yaml the file is in"},
     "unknown_version.yaml" =>
       {"schema", 1,
-       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3; "ehos.yaml/v9" is not one)},
+       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3, ehos.yaml/v4; "ehos.yaml/v9" is not one)},
     "no_health.yaml" => {"health", nil, "is required"},
     "database_without_engine.yaml" => {"needs.database.engine", 3, "is required"},
     "unknown_key.yaml" => {"replicas", 6, "is not a field of ehos.yaml/v1"},
@@ -150,6 +151,45 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  describe "ehos.yaml/v4" do
+    test "reads needs.database.seed and needs.secrets, as written" do
+      text = File.read!(Path.join([@fixtures, "accepted", "secrets.yaml"]))
+
+      assert {:ok, %{"schema" => "ehos.yaml/v4", "needs" => needs}} = EhosYaml.read(text)
+      assert needs["database"]["seed"] == ["/app/bin/seed"]
+
+      assert needs["secrets"] == [
+               %{"name" => "smtp_password"},
+               %{"name" => "gus_api_key", "version" => 2}
+             ]
+    end
+
+    test "takes a seed and secrets only from v4 on" do
+      for version <- ["ehos.yaml/v3", "ehos.yaml/v2"] do
+        seed =
+          "schema: #{version}\nneeds:\n  database:\n    engine: postgres\n    seed: [x]\n" <>
+            @health
+
+        assert {:error, [%{path: path}]} = EhosYaml.read(seed)
+        assert path in ["needs.database", "needs.database.seed"]
+
+        secrets = "schema: #{version}\nneeds:\n  secrets:\n    - name: smtp_password\n" <> @health
+        assert {:error, [%{path: path}]} = EhosYaml.read(secrets)
+        assert path in ["needs", "needs.secrets"]
+      end
+    end
+
+    test "refuses a secret named as one EHOS gives every workload" do
+      text = "schema: ehos.yaml/v4\nneeds:\n  secrets:\n    - name: database_url\n" <> @health
+      assert {:error, [%{path: "needs.secrets[0].name", message: message}]} = EhosYaml.read(text)
+
+      assert message ==
+               "is a name EHOS reserves: it must not match " <>
+                 "^(ehos_|database_|phx_|otel_|pg|release_|erl_|elixir_|ld_|lc_|kubernetes_), " <>
+                 "or be secret_key_base, path, home, hostname, lang, shell, user, tmpdir"
+    end
+  end
+
   describe "the schema" do
     test "is EHOS's ehos.yaml/v1, byte for byte" do
       # `eh-os` `priv/schemas/ehos.yaml/v1.json`, last changed in `eeb732a`, read at `f7b2330`;
@@ -185,8 +225,25 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       assert Jason.decode!(document)["title"] == "ehos.yaml/v3"
     end
 
-    test "are v1, v2 and v3" do
-      assert EhosYaml.versions() == ["ehos.yaml/v1", "ehos.yaml/v2", "ehos.yaml/v3"]
+    test "is EHOS's ehos.yaml/v4, byte for byte" do
+      # `eh-os` `priv/schemas/ehos.yaml/v4.json`, added in `aa0e23eb` (D-98), last changed in
+      # `de370ed9` (D-99), read at `eadd7112` (17 October 2026). A new hash here is a new copy of
+      # EHOS's file.
+      document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v4"))
+
+      assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
+               "74469f3cfb8679fc3a3f445c58bef21564c1748f0896000bf1a986c147ed9563"
+
+      assert Jason.decode!(document)["title"] == "ehos.yaml/v4"
+    end
+
+    test "are v1 to v4" do
+      assert EhosYaml.versions() == [
+               "ehos.yaml/v1",
+               "ehos.yaml/v2",
+               "ehos.yaml/v3",
+               "ehos.yaml/v4"
+             ]
     end
 
     test "fills in no default: public is absent when the file does not write it" do

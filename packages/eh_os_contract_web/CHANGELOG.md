@@ -25,6 +25,93 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-16
+
+### Added
+
+- **The Graph screen has a switch "Engineering / Owner"** (plan DD, stage L4, eh-os-contract#326): read as the
+  owner, the pictures and the panel show the client's labels and the numbers from the log, and nothing of the
+  engineering — no delivery, idempotency, correlation keys or names in code. The screen starts as the engineer
+  reads it, as before.
+
+- **A contract's status page says what changed since the previous deployment** (plan DD, stage V5,
+  eh-os-contract#322), as the text report does, and a deploy that changed only the words says so: "Only the words
+  changed since the previous deployment, not the agreement". A process module's says it too.
+
+- **The Graph screen's process picture shows the stages runs entered out of order** (plan DD, stage O2,
+  eh-os-contract#319): an arrow from the later stage back to the earlier one, with how many runs, beside the
+  sentence the status page already gave.
+
+## [0.3.0] - 2026-10-16
+
+### Added
+
+- **The graph screen's map says where to go in** (plan DD, stage G1, eh-os-contract#297): each contract's card
+  on a domain's system says how many of its declared paths were never taken and how many moves it does not allow
+  happened. Moves no verdict.
+
+- **The graph screen is one explorer per domain** (plan DD, stage G1, eh-os-contract#297): the structure and the
+  processes as two tabs of one canvas with a path, instead of every domain's map and system, a selector, the
+  selected contract's pictures and each unit stacked on one page; the panel opens a contract, a unit or an
+  event's contract. Each picture's document and the log's numbers over it are built when the reader enters
+  it, in the background — the log only for a picture that draws it — so opening the screen counts the log for
+  each domain's system alone, not for a contract the reader never opens. Moves no verdict.
+
+- **The graph screen's pictures can be searched, focused and zoomed** (plan DD, stage G1, eh-os-contract#297):
+  each has a bar with a search that finds a card by its words and moves to it, focus on the selection's
+  neighbourhood, a switch between the declaration alone and with the log, and zoom buttons; a large picture
+  starts at a readable scale instead of shrunk to fit. Moves no verdict.
+
+- **The graph screen draws cards of their kind, with a legend** (plan DD, stage G1, eh-os-contract#297): each card
+  has a badge with its kind's icon, the client's label, the name in code and, where the picture does not say it,
+  the contract it is declared in or that it comes from another application; each kind has a colour in both themes;
+  a legend under each picture says what its colours, icons and arrows mean. Moves no verdict.
+
+- **The graph screen draws process modules** (plan DD, stage P2e, eh-os-contract#220). Its selector lists them
+  beside the contracts, each kind in a group of its own and each by its id; a process module selected is drawn as
+  its stages, the events each includes and its promises, with its runs, each event's occurrences and each
+  promise's verdicts from the log. Each domain's system view draws its process modules, the contracts whose
+  events each includes, the actor accountable for each and their runs. Moves no verdict.
+
+- **A process module's graph over HTTP** (plan DD, stage P2e, eh-os-contract#220): `GET <mount>/graph/process/<id>`
+  serves its `graph.v1` document, with its digest as the `ETag` and `304` for a request that holds it, and
+  `GET <mount>/graph/process/<id>/overlay?since=…&until=…` what the log says over it: its runs, how often each event
+  happened and each promise's verdicts. A process module has its own path because its id may be a contract's. An
+  id no process module has is `404`. The `/graph` index lists the process modules under `processes`. Moves no
+  verdict.
+
+- **The status screen shows each process module's report** (plan DD, stage P2e, eh-os-contract#220), after the
+  contracts, in the sentences of `mix eh_os_contract.report`: its version and since when it is deployed, the actor
+  accountable for it, its runs in the period and what one run is ("one per visit_id"), its confirmed deadline and
+  the runs measured against it, the runs that entered a stage out of order, and each confirmed promise with its
+  verdict, coloured as a contract's promise was, and what changed since the previous version. The process modules'
+  reports are computed once the page connects; the static render says they will be. Moves no verdict.
+
+### Changed
+
+- **Breaking:** `<mount>/graph/<contract>` serves a contract's document without the kinds of a process — no
+  `process`, `stage` or `promise` nodes, no `accountable_for`, `opens`, `fulfils` or `or_else` relations, all empty
+  since a contract declares no process (engine, plan DD, stage P2e, eh-os-contract#220). A reader holding the
+  document to the schema shipped with the engine's 0.3.0 refuses it: take the schema with the engine. Moves no
+  verdict.
+- **Breaking:** `<mount>/graph/domain/<module>` serves the domain's document with its process modules — a
+  `process` node each, an `includes` relation to each contract whose events it includes, the actor
+  `accountable_for` it — and its overlay with each one's runs (engine, plan DD, stage P2e, eh-os-contract#220). A
+  reader holding the document to the schema shipped with the engine's 0.3.0 refuses the new keys: take the schema
+  with the engine. The index's domain digests are those of these documents. Moves no verdict.
+
+### Removed
+
+- **Breaking:** `<mount>/model/<id>` serves a contract's model without `process`, and its events without `stage`
+  and `terminal`, because a contract can no longer declare a process (engine, plan DD, stage P2h,
+  eh-os-contract#221). A consumer of the model reads a run's stages, endings and promises from a process module
+  once the API serves process documents. The digests and versions of existing contracts do not move. `graph.v1`
+  keeps its process, stage and promise kinds, empty in a contract's document. Moves no verdict.
+- **The contract status screen no longer shows a contract's process** — its runs, accountable, duration and
+  promises — and the graph screen no longer draws a contract's declared process shape or names the process beside
+  the contract in its selector (plan DD, stage P2h, eh-os-contract#221). A contract has none any more; a process
+  module's screens come with P2e (eh-os-contract#220). Moves no verdict.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added
@@ -90,7 +177,7 @@ and the `ehos-dev:release` skill makes one.
   `"contract" => <id>`, where it was `select_process` with `"<module>:<process>"`.
 
 - **Breaking:** **The APIs name a contract by its `id:`, and the conformance report is `conformance.v3`** (plan DD, P1a,
-  eh-os-contract#183). `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/<id>`,
+  eh-os-contract#183). `GET <mount>/conformance?contract=lending.circulation`, `<mount>/model/<id>`,
   `<mount>/openapi/<id>` and `<mount>/asyncapi/<id>` take the contract's id; a module's name is an unknown contract,
   and a parameter given as a list or a map is a bad request. The indexes list `"contract"` as the id and add
   `"module"`; the model index is `eh_os_contract.model-index.v2`. OpenAPI and AsyncAPI documents carry the id as

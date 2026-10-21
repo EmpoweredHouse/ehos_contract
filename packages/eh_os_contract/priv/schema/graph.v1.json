@@ -2,10 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:eh-os-contract:schema:graph.v1",
   "title": "eh_os_contract graph.v1",
-  "description": "A contract or a domain as a graph of facts: what is declared, with nothing of how it is drawn, which pictures it is shown in, or what the log holds. Nodes are grouped by kind and relations by type, every kind and type present; a relation goes from its source to its target and its type reads in that direction. Ids are opaque and unique in a document: a reader joins on them and never takes them apart. Every id resolves to a node of the same document, except those described as a reference into another document.",
+  "description": "A contract, a process module or a domain as a graph of facts: what is declared, with nothing of how it is drawn, which pictures it is shown in, or what the log holds. Nodes are grouped by kind and relations by type, every kind and type present; a relation goes from its source to its target and its type reads in that direction. Ids are opaque and unique in a document: a reader joins on them and never takes them apart. Every id resolves to a node of the same document, except those described as a reference into another document.",
   "oneOf": [
     {
       "$ref": "#/$defs/contract_document"
+    },
+    {
+      "$ref": "#/$defs/process_document"
     },
     {
       "$ref": "#/$defs/domain_document"
@@ -111,9 +114,6 @@
           "type": "object",
           "description": "The contract's declarations, and the domain's it names, by kind.",
           "required": [
-            "process",
-            "stage",
-            "promise",
             "unit",
             "status",
             "invariant",
@@ -137,24 +137,6 @@
           ],
           "additionalProperties": false,
           "properties": {
-            "process": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/node_process"
-              }
-            },
-            "stage": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/node_stage"
-              }
-            },
-            "promise": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/node_promise"
-              }
-            },
             "unit": {
               "type": "array",
               "items": {
@@ -292,7 +274,6 @@
             "may_issue",
             "may_record",
             "may_ask",
-            "accountable_for",
             "builds",
             "consulted_by",
             "projected_into",
@@ -301,9 +282,6 @@
             "enters",
             "transition",
             "allowed_in",
-            "opens",
-            "fulfils",
-            "or_else",
             "depends_on",
             "calls",
             "backed_by",
@@ -378,12 +356,6 @@
                 "$ref": "#/$defs/relation_may_ask"
               }
             },
-            "accountable_for": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/relation_accountable_for"
-              }
-            },
             "builds": {
               "type": "array",
               "items": {
@@ -430,24 +402,6 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/relation_allowed_in"
-              }
-            },
-            "opens": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/relation_opens"
-              }
-            },
-            "fulfils": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/relation_fulfils"
-              }
-            },
-            "or_else": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/relation_or_else"
               }
             },
             "depends_on": {
@@ -610,11 +564,12 @@
         },
         "nodes": {
           "type": "object",
-          "description": "The domain's declarations, its contracts and the events that cross them, by kind.",
+          "description": "The domain's declarations, its contracts and process modules, and the events that cross a contract's edge, by kind.",
           "required": [
             "subdomain",
             "context",
             "contract",
+            "process",
             "event",
             "publication",
             "actor",
@@ -641,6 +596,12 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/node_contract"
+              }
+            },
+            "process": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_process"
               }
             },
             "event": {
@@ -700,10 +661,12 @@
             "open_host_service",
             "published_language",
             "consumed_by",
+            "refers_to",
             "publishes",
             "subscribed_by",
             "backed_by",
-            "accountable_for"
+            "accountable_for",
+            "includes"
           ],
           "additionalProperties": false,
           "properties": {
@@ -761,6 +724,12 @@
                 "$ref": "#/$defs/relation_consumed_by"
               }
             },
+            "refers_to": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_refers_to"
+              }
+            },
             "publishes": {
               "type": "array",
               "items": {
@@ -783,6 +752,12 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/relation_accountable_for"
+              }
+            },
+            "includes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_includes"
               }
             }
           }
@@ -852,7 +827,7 @@
         },
         "refers_to": {
           "type": "string",
-          "description": "The id of the entity it identifies."
+          "description": "The id of what it identifies: an entity of the domain, or a unit of this contract. A unit of another contract is in no node of this document, and the field then has no refers_to."
         },
         "issued_by": {
           "type": "string",
@@ -1210,28 +1185,6 @@
         "module": {
           "type": "string",
           "description": "The contract's module, for a reader in the code."
-        },
-        "process": {
-          "type": "object",
-          "required": [
-            "name",
-            "label"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "label": {
-              "$ref": "#/$defs/label"
-            }
-          }
-        },
-        "correlate": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -1469,6 +1422,48 @@
         }
       }
     },
+    "node_domain_process": {
+      "type": "object",
+      "description": "A process module of the domain: one run that crosses its contracts. Its id is the one its process node has in its own document.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "module",
+        "correlate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The process module's id:, which names it outside the code."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "module": {
+          "type": "string",
+          "description": "The process module, for a reader in the code."
+        },
+        "correlate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "node_domain_service": {
       "type": "object",
       "description": "Domain logic of no unit, called by decisions; which command uses it the contract does not declare.",
@@ -1551,7 +1546,7 @@
                   },
                   "refers_to": {
                     "type": "string",
-                    "description": "The id of the entity it identifies."
+                    "description": "The id of what it identifies: an entity of the domain, or a unit of this contract. A unit of another contract is in no node of this document, and the field then has no refers_to."
                   },
                   "issued_by": {
                     "type": "string",
@@ -1720,26 +1715,18 @@
         },
         "unit": {
           "type": "string",
-          "description": "The unit's id; absent for an event consumed from a sibling or received from another application, whether or not the process includes it."
-        },
-        "stage": {
-          "type": "string",
-          "description": "The stage's id; absent where the event sits in no stage."
-        },
-        "included": {
-          "const": true,
-          "description": "The process includes it; absent otherwise."
+          "description": "The unit's id; absent for an event consumed from a sibling or received from another application."
         },
         "declared_as": {
           "type": "string",
           "description": "The sibling's event id, under its name there, in the sibling's document: a reference into another document. Absent for the contract's own and for a received event."
         },
+        "declared_in": {
+          "type": "string",
+          "description": "The id of the sibling contract that declares it, the one its declared_as names: what a reader shows and opens, rather than reading it out of declared_as. Absent for the contract's own and for a received event."
+        },
         "fields": {
           "$ref": "#/$defs/fields"
-        },
-        "terminal": {
-          "const": true,
-          "description": "It ends the run."
         },
         "type": {
           "type": "string",
@@ -1880,7 +1867,7 @@
     },
     "node_process": {
       "type": "object",
-      "description": "The contract's process: what one run is.",
+      "description": "A process: what one run is.",
       "required": [
         "id",
         "name",
@@ -1915,6 +1902,55 @@
         },
         "deadline": {
           "$ref": "#/$defs/timed"
+        }
+      }
+    },
+    "node_process_event": {
+      "type": "object",
+      "description": "An event a process's stage includes. Its id is the one it has in the document of the contract that declares it, where its fields and its unit are.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "contract",
+        "stage",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "contract": {
+          "type": "string",
+          "description": "The id of the contract that declares it."
+        },
+        "stage": {
+          "type": "string",
+          "description": "The id of the stage that includes it."
+        },
+        "terminal": {
+          "const": true,
+          "description": "It ends the run; absent otherwise."
+        },
+        "type": {
+          "type": "string",
+          "description": "Its type in the log, \"<contract id>.<event>\"."
         }
       }
     },
@@ -2357,6 +2393,10 @@
         },
         "state": {
           "$ref": "#/$defs/fields"
+        },
+        "records_only": {
+          "const": true,
+          "description": "It has events and no command it takes can be refused: it decides nothing. Absent otherwise."
         }
       }
     },
@@ -2446,6 +2486,169 @@
         "issued_by": {
           "type": "string",
           "description": "The id of the external that gives it its value: its own, or its entity's identity's."
+        }
+      }
+    },
+    "process_document": {
+      "type": "object",
+      "description": "A process module's document: one run of the process, its stages, the events its stages include, the external systems they rest on, its promises and who answers for it.",
+      "required": [
+        "schema",
+        "kind",
+        "process",
+        "module",
+        "domain",
+        "label",
+        "version",
+        "digest",
+        "nodes",
+        "relations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "eh_os_contract.graph.v1"
+        },
+        "kind": {
+          "const": "process"
+        },
+        "process": {
+          "type": "string",
+          "description": "The process module's id:, which names it outside the code and under which its runs are filed; the ids of its stages and promises are scoped to it."
+        },
+        "module": {
+          "type": "string",
+          "description": "The process module, for a reader in the code."
+        },
+        "domain": {
+          "type": "string",
+          "description": "The module of the domain it names."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "version": {
+          "type": "string",
+          "description": "The process module's version: a hash of its declarations."
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "nodes": {
+          "type": "object",
+          "description": "The process, what it includes, and the domain's declarations it names, by kind.",
+          "required": [
+            "process",
+            "stage",
+            "promise",
+            "event",
+            "contract",
+            "context",
+            "actor",
+            "external"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "process": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_process"
+              }
+            },
+            "stage": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_stage"
+              }
+            },
+            "promise": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_promise"
+              }
+            },
+            "event": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_process_event"
+              }
+            },
+            "contract": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_contract"
+              }
+            },
+            "context": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_context"
+              }
+            },
+            "actor": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_actor"
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_external"
+              }
+            }
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "The links between them, by type.",
+          "required": [
+            "accountable_for",
+            "opens",
+            "fulfils",
+            "or_else",
+            "depends_on",
+            "waits_on"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "accountable_for": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_accountable_for"
+              }
+            },
+            "opens": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_opens"
+              }
+            },
+            "fulfils": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_fulfils"
+              }
+            },
+            "or_else": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_or_else"
+              }
+            },
+            "depends_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_depends_on"
+              }
+            },
+            "waits_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relation_waits_on"
+              }
+            }
+          }
         }
       }
     },
@@ -2763,6 +2966,63 @@
                 "description": "The name it has in the consumer."
               }
             }
+          }
+        }
+      }
+    },
+    "relation_includes": {
+      "type": "object",
+      "description": "process — a process module includes events a contract declares.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string",
+          "description": "The process module."
+        },
+        "to": {
+          "type": "string",
+          "description": "The contract."
+        }
+      }
+    },
+    "relation_refers_to": {
+      "type": "object",
+      "description": "between — a contract keeps the number of a unit a sibling decides: a field or its identity identifies the unit.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "units"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string",
+          "description": "The contract that keeps the number."
+        },
+        "to": {
+          "type": "string",
+          "description": "The contract whose unit it is."
+        },
+        "units": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The names of the sibling's units it identifies.",
+          "items": {
+            "type": "string"
           }
         }
       }
@@ -3140,6 +3400,28 @@
     "relation_or_else": {
       "type": "object",
       "description": "process — an event settles a promise otherwise.",
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The type, the two ends and what tells it apart from another of that type between them."
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "relation_waits_on": {
+      "type": "object",
+      "description": "process — a promise waits on an external system through an earlier step.",
       "required": [
         "id",
         "from",

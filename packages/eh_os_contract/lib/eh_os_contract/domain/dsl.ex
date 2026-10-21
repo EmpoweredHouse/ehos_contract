@@ -39,7 +39,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Actor do
     @moduledoc false
-    defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: []] ++
+    defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: [], may_grant: []] ++
                 [responsibilities: [], __spark_metadata__: nil]
   end
 
@@ -246,6 +246,13 @@ defmodule EhOsContract.Domain.Dsl do
         default: [],
         doc: "The fields a grant to this actor narrows query answers by."
       ],
+      may_grant: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "The other person actors of this domain whose role a person in this one may grant " <>
+            "through the application (eh-os D-112)."
+      ],
       source: [type: :string, doc: "Where the actor comes from in the material."]
     ]
   }
@@ -321,7 +328,7 @@ defmodule EhOsContract.Domain.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The value's name, used as a field type."],
       type: [type: :any, doc: "The built-in type, when the value is not a set of fields."],
-      unit: [type: :atom, doc: "What a number counts, e.g. `:grosze`."],
+      unit: [type: :atom, doc: "What a number counts, e.g. `:cents`."],
       label: [type: :string, doc: "What the business calls it."],
       context: [type: :atom, doc: "The context the value belongs to."],
       source: [type: :string, doc: "Where the value comes from in the material."]
@@ -412,7 +419,7 @@ defmodule EhOsContract.Domain.Dsl do
         doc:
           "Terms the relation translates, as pairs: the word of the first end, upstream or " <>
             "the first of `between:`, and the word of the second, each a term of its " <>
-            "context's glossary. `{\"Wizyta\", \"Wizyta\"}`."
+            "context's glossary. `{\"Member\", \"Member\"}`."
       ],
       source: [type: :string, doc: "Where the relation comes from in the material."]
     ]

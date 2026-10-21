@@ -22,9 +22,10 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   #   A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
   #
   # An event no transition names moves nothing: it is allowed in every status that is
-  # not final, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
-  # checked here: `terminal:` on an event ends a run, and a run may be correlated by
-  # other fields than the aggregate's identity.
+  # not final, once an initial event has started the aggregate. Whether a run of a
+  # process ends with the aggregate's life is not checked here: a process module's
+  # `ends_on` ends a run, and a run may be correlated by other fields than the
+  # aggregate's identity.
   @moduledoc false
 
   alias EhOsContract.DslRules
@@ -105,7 +106,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
 
   defp references(unit, where, lifecycle) do
     statuses = Enum.map(lifecycle.statuses, & &1.name)
-    events = Enum.map(Rules.events(unit), & &1.name)
+    events = Enum.map(unit.events, & &1.name)
 
     status = fn name, what, declaration ->
       if name in statuses,
@@ -303,8 +304,8 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
 
   # Whether the graph lets the command's events out of the statuses it is issued in:
   # each event a transition names leaves at least one of them. A status in `from:`
-  # that none of the events can leave is where the decision only refuses (plan LC4a,
-  # AppUnite's `:for_sale_not_issued`), so it needs a rule of its own in `rejects:`.
+  # that none of the events can leave is where the decision only refuses (plan LC4a:
+  # an item put up for sale but never handed out), so it needs a rule of its own in `rejects:`.
   # Checked only once every status in `from:` is a declared one that is not final,
   # which the checks above report.
   defp graph(command, what, where, statuses, allowed, moving) do

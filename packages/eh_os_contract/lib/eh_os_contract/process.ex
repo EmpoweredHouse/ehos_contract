@@ -3,32 +3,29 @@ defmodule EhOsContract.Process do
   A process written as a module of its own: one run that crosses the contracts of
   several parts of a business.
 
-      defmodule Rehmed.Processes.ClinicalVisit do
+      defmodule Fulfilment.Processes.Order do
         use EhOsContract.Process,
-          id: "rehmed.clinical_visit",
-          domain: Rehmed.Domain,
-          label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-          accountable: :manager
+          id: "fulfilment.order",
+          domain: Fulfilment.Domain,
+          label: "An order, from its placing to its delivery",
+          accountable: :dispatcher
 
-        correlate :visit_id
+        correlate :order_id
 
-        stage :departure, include: [{Rehmed.Contracts.Scheduling, :visit_completed}]
-        stage :closing, include: [{Rehmed.Contracts.ClinicalDocumentation, :visit_closed_clinically}]
+        stage :ordering, include: [{Fulfilment.Contracts.Orders, [:placed, :payment_confirmed, :cancelled]}]
+        stage :picking, include: [{Fulfilment.Contracts.Warehouse, [:picked, :parcel_packed]}]
 
-        stage :reporting,
-          include: [
-            {Rehmed.Contracts.StatutoryReporting,
-             [:p1_report_queued, :p1_report_sent, :p1_report_failed, :p1_reporting_not_required]}
-          ]
+        stage :shipping,
+          include: [{Fulfilment.Contracts.Shipping, [:booked, :dispatched, :delivered]}]
 
-        ends_on [:p1_report_sent, :p1_reporting_not_required]
+        ends_on [:delivered, :cancelled]
 
-        promise :medical_event_reported_within_statutory_window do
-          from :visit_completed
-          eventually :p1_report_sent
-          within {2, :day}
-          or_else :p1_reporting_not_required
-          source "Dz.U. 2025 poz. 866"
+        promise :dispatched_within_a_day_of_payment do
+          from :payment_confirmed
+          eventually :dispatched
+          within {24, :hour}
+          or_else :cancelled
+          source "The shop's terms of sale"
         end
       end
 
@@ -51,8 +48,10 @@ defmodule EhOsContract.Process do
   between modules, and dispatch files each event it includes into its run, under its
   `id:` and keyed by its `correlate`. The conformance report shows those runs, its
   deployment record its version, and the check reads what it includes; the
-  conformance wire carries its report too (`EhOsContract.Conformance.as_data/2`); the
-  dashboard does not list it yet.
+  conformance wire carries its report too (`EhOsContract.Conformance.as_data/2`). It
+  has a page of its own (`mix eh_os_contract.pages`), a `graph.v1` document
+  (`EhOsContract.Graph.Document.process/1`), a branch of `mix eh_os_contract.view` and a
+  section on the dashboard's status screen.
 
   Inside the library this module is always written in full, never aliased: `Process`
   is Elixir's.
@@ -66,7 +65,7 @@ defmodule EhOsContract.Process do
         required: true,
         doc:
           "The process's name (D11): the domain's `name:`, then dotted snake_case segments, " <>
-            "like `\"rehmed.clinical_visit\"`."
+            "like `\"fulfilment.order\"`."
       ],
       label: [type: :string, required: true, doc: "What the business calls the process."],
       domain: [type: :atom, required: true, doc: "The application's domain module."],

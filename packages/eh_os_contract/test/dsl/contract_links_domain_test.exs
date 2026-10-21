@@ -26,17 +26,17 @@ defmodule EhOsContract.ContractLinksDomainTest do
   defp domain_source(module, name) do
     """
     defmodule #{inspect(module)} do
-      use EhOsContract.Domain, name: #{inspect(name)}, language: :pl
+      use EhOsContract.Domain, name: #{inspect(name)}, language: :en
 
-      context :settlement, "Rozliczenia", subdomain: :core
-      context :scheduling, "Terminarz", subdomain: :supporting
+      context :settlement, "Settlement", subdomain: :core
+      context :scheduling, "Schedule", subdomain: :supporting
 
-      actor :reception, :human, "Recepcja", scope: [:clinic_id]
-      actor :cashier, :human, "Kasjer"
-      actor :scheduler, :human, "Rejestracja", context: :scheduling
+      actor :reception, :human, "Reception", scope: [:clinic_id]
+      actor :cashier, :human, "Cashier"
+      actor :scheduler, :human, "Front desk", context: :scheduling
 
-      subject :patient, "Pacjent"
-      value :money, :integer, unit: :grosze
+      subject :patient, "Patient"
+      value :money, :integer, unit: :cents
 
       value :contact do
         field :patient_id, :id, subject: :patient
@@ -47,9 +47,9 @@ defmodule EhOsContract.ContractLinksDomainTest do
       value :clinic_ids, {:list, :id}
       value :period_id, :id
       value :clinic_ref, {:id, :clinic}
-      external :payer_registry, "Rejestr płatnika", direction: :outbound
+      external :payer_registry, "Payer registry", direction: :outbound
 
-      entity :clinic, "Przychodnia", context: :settlement, identity: :clinic_id do
+      entity :clinic, "Clinic", context: :settlement, identity: :clinic_id do
         field :city, :string
       end
 
@@ -79,18 +79,18 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
   # Everything the rules below read, named right.
   @body """
-    aggregate :visit, "Wizyta" do
+    aggregate :visit, "Visit" do
       identity :visit_id
 
-      invariant :paid_once, "Wizyta jest opłacona raz"
+      invariant :paid_once, "A visit is paid once"
 
-      command :record_payment, "Płatność",
+      command :record_payment, "Payment",
         by: [:reception, :cashier], emits: :payment_recorded, rejects: :paid_once do
         field :amount, :money
         field :patient_id, :id, subject: :patient
       end
 
-      event :payment_recorded, "Zapłacono", depends_on: :payer_registry do
+      event :payment_recorded, "Paid", depends_on: :payer_registry do
         field :amount, :money
         field :clinic_id, {:id, :clinic}
         field :amounts, {:list, :money}
@@ -98,20 +98,20 @@ defmodule EhOsContract.ContractLinksDomainTest do
       end
     end
 
-    process :visit, "Wizyta" do
+    process_manager :visit_chase, "Chase" do
       correlate :visit_id
-      accountable :reception
+      starts_on :payment_recorded
     end
 
-    effect :notify_payer, "Powiadom płatnika", handles: :payment_recorded,
+    effect :notify_payer, "Notify the payer", handles: :payment_recorded,
       calls: :payer_registry, idempotency: [key: :visit_id, owner: :self]
 
-    read_model :payments, "Płatności", projects: :payment_recorded do
+    read_model :payments, "Payments", projects: :payment_recorded do
       field :clinic_id, :id
       field :amount, :money
     end
 
-    query :payments_in_clinic, "Płatności w przychodni",
+    query :payments_in_clinic, "Payments in a clinic",
       reads: :payments, by: :reception do
       param :clinic_id, :id
       scope :clinic_id
@@ -120,12 +120,12 @@ defmodule EhOsContract.ContractLinksDomainTest do
     publish :payment_recorded, as: "clinic.payment.recorded.v1",
       from: :payment_recorded, fields: [:visit_id, :amount]
 
-    scenario "płatność przyjęta" do
+    scenario "a payment accepted" do
       command :record_payment, %{amount: 100, patient_id: "p-1"}
       expect :payment_recorded
     end
 
-    scenario "druga płatność odrzucona" do
+    scenario "a second payment refused" do
       command :record_payment, %{amount: 100, patient_id: "p-1"}
       actor :cashier
       rejected :paid_once
@@ -158,15 +158,14 @@ defmodule EhOsContract.ContractLinksDomainTest do
   end
 
   describe "X2: every actor named is the domain's, and of this context" do
-    test "a typo in by:, recorded_by:, accountable and a scenario's actor" do
+    test "a typo in by:, recorded_by: and a scenario's actor" do
       body =
         @body
         |> String.replace("by: [:reception, :cashier]", "by: [:recepion, :cashier]")
         |> String.replace(
-          ~s|"Zapłacono", depends_on|,
-          ~s|"Zapłacono", recorded_by: :kasjer, depends_on|
+          ~s|"Paid", depends_on|,
+          ~s|"Paid", recorded_by: :teller, depends_on|
         )
-        |> String.replace("accountable :reception", "accountable :recption")
         |> String.replace("actor :cashier", "actor :recepion")
 
       violations = links("LinksActors", body)
@@ -179,24 +178,17 @@ defmodule EhOsContract.ContractLinksDomainTest do
              ) =~
                "is not an actor of #{inspect(@domain)}; did you mean :reception?"
 
-      assert assert_linked(violations, "recorded_by: :kasjer", "links_actors.ex", 15) =~
+      assert assert_linked(violations, "recorded_by: :teller", "links_actors.ex", 15) =~
                "it declares [:cashier, :reception, :scheduler]"
 
       assert_linked(
         violations,
-        "X2: process :visit: accountable :recption",
-        "links_actors.ex",
-        23
-      )
-
-      assert_linked(
-        violations,
-        ~s|X2: scenario "druga płatność odrzucona": actor :recepion|,
+        ~s|X2: scenario "a second payment refused": actor :recepion|,
         "links_actors.ex",
         50
       )
 
-      assert length(violations) == 4
+      assert length(violations) == 3
     end
 
     test "an actor of another context" do
@@ -216,10 +208,10 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
     test "control: the same actor passes in its own context" do
       body = """
-        aggregate :slot, "Termin" do
+        aggregate :slot, "Slot" do
           identity :slot_id
-          command :book_slot, "Rezerwacja", by: :scheduler, emits: :slot_booked
-          event :slot_booked, "Zarezerwowano"
+          command :book_slot, "Booking", by: :scheduler, emits: :slot_booked
+          event :slot_booked, "Booked"
         end
       """
 
@@ -260,6 +252,130 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # Plan DD, L3 (#286): a contract of the scheduling context, beside the settlement one
+  # `@body` declares, with a unit and a field that may identify another unit.
+  defp scheduling(unit, field_type, opts \\ []) do
+    reads = if opts[:reads], do: ", reads: [visit: :visit_id]", else: ""
+
+    """
+      aggregate #{inspect(unit)}, "Booking" do
+        identity :booking_id
+
+        command :book, "Book", by: :scheduler, emits: :booked#{reads} do
+          field :visit_id, #{field_type}
+        end
+
+        event :booked, "Booked" do
+          field :visit_id, #{field_type}
+        end
+      end
+    """
+  end
+
+  defp scheduling_links(name, body, other \\ @body) do
+    links([
+      {"links_settlement_#{Macro.underscore(name)}.ex", source("Settlement#{name}", other, [])},
+      {"#{Macro.underscore(name)}.ex", source(name, body, context: :scheduling)}
+    ])
+  end
+
+  describe "X3: a unit's identifier names exactly one unit or entity of the domain" do
+    test "control: {:id, unit} naming a unit of another contract compiles, and refers to it" do
+      assert scheduling_links("LinksUnitRef", scheduling(:booking, "{:id, :visit}")) == []
+
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.LinksUnitRef)
+      event = Enum.find(model.events, &(&1.name == :booked))
+
+      assert %{type: :id, refers_to: :visit} = Enum.find(event.fields, &(&1.name == :visit_id))
+    end
+
+    test "{:id, name} naming neither a unit nor an entity is refused, with a suggestion" do
+      violations = scheduling_links("LinksUnitTypo", scheduling(:booking, "{:id, :visti}"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :booked, field :visit_id: {:id, :visti}",
+               "links_unit_typo.ex"
+             ) =~
+               "names no entity of #{inspect(@domain)} and no unit of its contracts; did you " <>
+                 "mean :visit?"
+
+      assert_linked(violations, "X3: command :book, field :visit_id", "links_unit_typo.ex")
+      assert length(violations) == 2
+    end
+
+    test "a name two units share is refused at the reference, naming both" do
+      violations = scheduling_links("LinksUnitTwice", scheduling(:visit, "{:id, :visit}"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :booked, field :visit_id: {:id, :visit} names more than one",
+               "links_unit_twice.ex"
+             ) =~
+               "unit :visit of EhOsContract.Fixtures.LinksUnitTwice, unit :visit of " <>
+                 "EhOsContract.Fixtures.SettlementLinksUnitTwice; a reference cannot tell them " <>
+                 "apart, so rename one"
+
+      assert length(violations) == 2
+    end
+
+    test "control: two units of one name that nothing refers to are not refused" do
+      assert scheduling_links("LinksUnitTwiceUnused", scheduling(:visit, ":id")) == []
+    end
+
+    test "a name an entity and a unit share is refused at the reference, naming both" do
+      violations = scheduling_links("LinksUnitEntity", scheduling(:clinic, ":id"))
+
+      assert assert_linked(
+               violations,
+               "X3: event :payment_recorded, field :clinic_id: {:id, :clinic} names more than one",
+               "links_settlement_links_unit_entity.ex"
+             ) =~ "entity :clinic, unit :clinic of EhOsContract.Fixtures.LinksUnitEntity"
+
+      assert length(violations) == 1
+    end
+
+    test "an identity typed as a unit's number is checked too, at the unit" do
+      body = """
+        aggregate :visit_note, "A note on a visit" do
+          identity visit_id: {:id, :visti}
+          command :note, "Note", by: :scheduler, emits: :noted
+          event :noted, "Noted"
+        end
+      """
+
+      violations = scheduling_links("LinksIdentityRef", body)
+
+      assert assert_linked(
+               violations,
+               "X3: aggregate :visit_note: identity :visit_id: {:id, :visti}",
+               "links_identity_ref.ex",
+               4
+             ) =~
+               "names no entity of #{inspect(@domain)} and no unit of its contracts; did you mean :visit?"
+
+      assert length(violations) == 1
+
+      right = String.replace(body, ":visti", ":visit")
+      assert scheduling_links("LinksIdentityRefRight", right) == []
+    end
+
+    test "A8: a command reading a unit by its identifier is refused" do
+      violations =
+        scheduling_links("LinksUnitRead", scheduling(:booking, "{:id, :visit}", reads: true))
+
+      assert assert_linked(
+               violations,
+               "A8: command :book reads :visit by :visit_id",
+               "links_unit_read.ex"
+             ) =~
+               "which identifies unit :visit of EhOsContract.Fixtures.SettlementLinksUnitRead; " <>
+                 "a command reads only an entity the application keeps, and a unit's state is its events"
+
+      assert length(violations) == 1
+    end
+  end
+
   describe "X3: an entity's identifier names an entity of the domain" do
     test "{:id, entity} naming no entity of the domain is refused" do
       body = String.replace(@body, "{:id, :clinic}", "{:id, :clinc}")
@@ -271,7 +387,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
                "links_entity.ex",
                17
              ) =~
-               "{:id, :clinc} names no entity of #{inspect(@domain)}; did you mean :clinic?"
+               "{:id, :clinc} names no entity of #{inspect(@domain)} and no unit of its " <>
+                 "contracts; did you mean :clinic?"
 
       assert length(violations) == 1
     end
@@ -280,8 +397,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
       body =
         @body <>
           """
-            domain_service :pricing, "Cennik" do
-              function :price, "Cena" do
+            domain_service :pricing, "Price list" do
+              function :price, "Price" do
                 argument :amount, :money
                 returns :mony
               end
@@ -305,8 +422,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
       body =
         @body <>
           """
-            domain_service :lookup, "Wyszukiwanie" do
-              function :nearest, "Najbliższa przychodnia" do
+            domain_service :lookup, "Lookup" do
+              function :nearest, "The nearest clinic" do
                 argument :city, :string
                 returns {:id, :clinc}
               end
@@ -320,7 +437,9 @@ defmodule EhOsContract.ContractLinksDomainTest do
                "X3: domain service :lookup, function :nearest returns {:id, :clinc}",
                "links_service_entity.ex",
                56
-             ) =~ "which names no entity of #{inspect(@domain)}; did you mean :clinic?"
+             ) =~
+               "which names no entity of #{inspect(@domain)} and no unit of its contracts; " <>
+                 "did you mean :clinic?"
 
       assert length(violations) == 1
     end
@@ -347,7 +466,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
         )
         |> String.replace("correlate :visit_id\n", "correlate [:visit_id, :amount]\n")
         |> Kernel.<>("""
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate [:visit_id, :clinics, :contact]
 
             state do
@@ -362,7 +481,8 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       assert assert_linked(
                violations,
-               "F8: event :payment_recorded, field :amount tells which run of process :visit",
+               "F8: event :payment_recorded, field :amount tells which run of process manager " <>
+                 ":visit_chase",
                "links_text_correlation.ex",
                16
              ) =~ "it is :money, which rests on :integer; correlate only on an identifier"
@@ -408,7 +528,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
           "    field :clinic_id, :contact\n    field :amount, :money"
         )
         |> Kernel.<>("""
-          process_manager :chase, "Pogoń" do
+          process_manager :chase, "Chase" do
             correlate :visit_id
 
             state do
@@ -499,6 +619,84 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       # Control: :contacts, not personal itself and not published before, was no problem.
       assert length(violations) == 2
+    end
+  end
+
+  # Plan DD, V1 (#333): what a step does to a field of a domain value.
+  describe "U3 and U4: an event's steps against the domain's values" do
+    defp stepped(steps) do
+      String.replace(
+        @body,
+        "event :payment_recorded, \"Paid\", depends_on: :payer_registry do",
+        "event :payment_recorded, \"Paid\", depends_on: :payer_registry, schema_version: 2 do\n" <>
+          "      field :carer, :contact, optional: true\n" <>
+          "      field :period, :period_id\n" <>
+          "      upcast from: 1, #{steps}"
+      )
+    end
+
+    test "a value resting on an :id renamed onto, a value holding personal data or a misfit defaulted" do
+      violations =
+        links(
+          "LinksUpcastValues",
+          stepped(~s(rename: [term: :period], default: [carer: %{phone: "000"}, amount: "a lot"]))
+        )
+
+      assert assert_linked(
+               violations,
+               "U3: a step renames a field to :period",
+               "links_upcast_values.ex"
+             ) =~
+               "which rests on an :id or a day, so the log tags each row with it"
+
+      assert assert_linked(
+               violations,
+               "U3: a step gives a default to :carer",
+               "links_upcast_values.ex"
+             ) =~
+               "which holds personal data"
+
+      assert assert_linked(
+               violations,
+               "U4: a step gives :amount the default",
+               "links_upcast_values.ex"
+             ) =~
+               "which is not a value of :money"
+
+      assert length(violations) == 3
+    end
+
+    test "a list of values holding personal data, or of a misfit, defaulted" do
+      body =
+        @body
+        |> String.replace(
+          "event :payment_recorded, \"Paid\", depends_on: :payer_registry do",
+          "event :payment_recorded, \"Paid\", depends_on: :payer_registry, schema_version: 2 do\n" <>
+            "      field :contacts, {:list, :contact}, optional: true\n" <>
+            "      upcast from: 1, default: [contacts: [%{phone: \"000\"}], amounts: [\"a lot\"]]"
+        )
+
+      violations = links("LinksUpcastLists", body)
+
+      assert assert_linked(
+               violations,
+               "U3: a step gives a default to :contacts",
+               "links_upcast_lists.ex"
+             ) =~
+               "which holds personal data"
+
+      assert assert_linked(
+               violations,
+               "U4: a step gives :amounts the default",
+               "links_upcast_lists.ex"
+             ) =~
+               "which is not a value of {:list, :money}"
+
+      assert length(violations) == 2
+    end
+
+    test "control: a default of a value that fits it" do
+      assert links("LinksUpcastValuesRight", stepped("default: [amount: 100]")) == []
     end
   end
 
@@ -598,7 +796,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
     test "a scope typed by a value made of fields" do
       command = """
-          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+          command :contact_patient, "Contact", by: :reception, emits: :payment_recorded,
             scope: :contact do
             field :contact, :contact
           end
@@ -621,12 +819,12 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
     test "a scope typed by an alias of a value made of fields, or of a list" do
       command = """
-          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+          command :contact_patient, "Contact", by: :reception, emits: :payment_recorded,
             scope: :contact do
             field :contact, :contact_ref
           end
 
-          command :move_patient, "Przeniesienie", by: :reception, emits: :payment_recorded,
+          command :move_patient, "Moving", by: :reception, emits: :payment_recorded,
             scope: :clinics do
             field :clinics, :clinic_ids
           end

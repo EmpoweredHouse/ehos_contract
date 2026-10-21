@@ -1,7 +1,13 @@
 import Config
 
-config :eh_os_contract_host, Taxvision.Repo,
-  database: "eh_os_contract_host_dev",
+config :eh_os_contract_host, EhOsContractHost.Repo,
+  # Every checkout on the machine shares the default, and `mix ecto.reset` empties it for
+  # all of them: `EH_OS_CONTRACT_DEV_DB` names one of your own (`mix sandbox.traffic`).
+  database:
+    (case System.get_env("EH_OS_CONTRACT_DEV_DB") do
+       name when name in [nil, ""] -> "eh_os_contract_host_dev"
+       name -> name
+     end),
   show_sensitive_data_on_connection_error: true
 
 # No `server: true`: `mix phx.server` serves the endpoint anyway, and with it every
@@ -16,7 +22,7 @@ config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
 
 config :logger, level: :info
 
-# The master key of Rehmed's personal fields — a PESEL, the ICD codes (E9). A key
+# The master key of the personal fields — a library member's name and e-mail. A key
 # made for this sandbox's development database and nothing else; a real host reads
 # its keys from the runtime environment (`EhOsContract.Vault`).
 config :eh_os_contract, EhOsContract.Vault,

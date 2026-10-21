@@ -46,7 +46,7 @@ defmodule EhOsContract.ProcessModuleReportTest do
   end
 
   describe "the model" do
-    test "answers for the module's run as for a contract's process" do
+    test "answers for the module's run" do
       assert %{name: "dispatch_rig.account_review", correlate: [:account_id]} =
                Model.process(AccountReview)
 
@@ -108,11 +108,25 @@ defmodule EhOsContract.ProcessModuleReportTest do
       assert text =~ "PROCESS MODULE: dispatch_rig.account_review"
       assert text =~ "deployed since 2026-10-01"
       assert text =~ "PROCESS: Account review"
-      assert text =~ "Runs in this period: 2."
+      # What one run is, as the dashboard says it too.
+      assert text =~ "Runs in this period: 2, one per account_id."
       assert text =~ "Deadline: 2 days from the start."
       assert text =~ "1 run still open and already past it."
       assert text =~ "BREACHED in 1 of 2 runs."
       refute text =~ "STEPS"
+    end
+
+    # Plan DD, P2e (#220), review: the runs line read `correlate` from the module, and
+    # raised for a report whose module this node has not loaded.
+    test "says what one run is from the report, whatever modules this node has" do
+      report = Conformance.report(AccountReview, now: later())
+      assert [%{correlate: [:account_id]}] = report.processes
+
+      elsewhere = %{report | module: EhOsContract.ProcessModuleReportTest.NotLoaded}
+      assert Report.render(elsewhere) =~ ~r"Runs in this period: [0-9]+, one per account_id\."
+
+      wire = Conformance.as_data(AccountReview, now: later())
+      assert [%{"correlate" => ["account_id"]}] = wire["report"]["processes"]
     end
 
     test "leaves a contract's report as it was" do
@@ -175,15 +189,18 @@ defmodule EhOsContract.ProcessModuleReportTest do
     end
 
     test "applies the process rules to a process module" do
-      assert EhOsContract.Check.process_module_findings([AccountReview]) == []
+      # Its stages have no label on purpose: `StageOrderTest` reads their names as what a
+      # stage without one is called. That notice is `CheckTest`'s.
+      assert EhOsContract.Check.process_module_findings([AccountReview])
+             |> Enum.reject(&(&1.rule == "owner-view-without-label")) == []
 
       %{module: unowned} =
         EhOsContract.DslCase.compile_process(
           "UnownedReview",
           """
             correlate :account_id
-            stage :withdrawal, include: [{DispatchRig.Ledger, :withdrawn}]
-            stage :confirmation, include: [{DispatchRig.Ledger, :balance_confirmed}]
+            stage :withdrawal, "Withdrawal", include: [{DispatchRig.Ledger, :withdrawn}]
+            stage :confirmation, "Confirmation", include: [{DispatchRig.Ledger, :balance_confirmed}]
             ends_on :balance_confirmed
             deadline {2, :day}, unverified: true
 
@@ -217,11 +234,11 @@ defmodule EhOsContract.ProcessModuleReportTest do
 
       assert [_, _] = Model.process_events(review)
       assert Model.process_events(elsewhere) == []
-      assert EhOsContract.Implementations.runs_of([], [elsewhere]) == %{}
+      assert EhOsContract.Implementations.runs_of([elsewhere]) == %{}
 
       types = review |> Model.process_events() |> Enum.map(& &1.type) |> Enum.sort()
 
-      assert EhOsContract.Implementations.runs_of([], [review]) |> Map.keys() |> Enum.sort() ==
+      assert EhOsContract.Implementations.runs_of([review]) |> Map.keys() |> Enum.sort() ==
                types
     end
   end

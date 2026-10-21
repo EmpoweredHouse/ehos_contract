@@ -28,8 +28,8 @@ defmodule EhOsContract.DomainValuesTest do
         defmodule EhOsContract.DomainTest.Typed do
           use EhOsContract.Domain, name: :clinic, language: :pl
 
-          value :money, :integer, unit: :grosze
-          value :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+          value :money, :integer, unit: :cents
+          value :method, {:enum, [card: "Card", cash: "Cash"]}
           value :codes, {:list, :id}
 
           value :line do

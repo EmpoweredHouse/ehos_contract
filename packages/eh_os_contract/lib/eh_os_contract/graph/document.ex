@@ -4,7 +4,8 @@ defmodule EhOsContract.Graph.Document do
   # (#173).
   @moduledoc """
   The `graph.v1` documents: what the engine hands a renderer, in the same process or
-  over HTTP — a contract's (`contract/1`) and a domain's (`domain/2`).
+  over HTTP — a contract's (`contract/1`), a process module's (`process/1`) and a
+  domain's (`domain/2`).
 
   ## The documents
 
@@ -14,7 +15,8 @@ defmodule EhOsContract.Graph.Document do
   `EhOsContract.Model.to_data/1`. It holds no pictures — which facts are shown together,
   and how, is the renderer's — and nothing from the log. It is JSON-ready data — string
   keys, atoms as strings, modules without `Elixir.` — whose top level says what it is:
-  `schema` (`"eh_os_contract.graph.v1"`), `kind` (`"contract"` or `"domain"`), what it
+  `schema` (`"eh_os_contract.graph.v1"`), `kind` (`"contract"`, `"process"` or
+  `"domain"`), what it
   is of, its `version`, and a `digest` (`digest/1`). Its shape is the JSON Schema at
   `schema_path/0`, which ships with the package so a renderer can hold a document to it
   without the engine.
@@ -32,9 +34,26 @@ defmodule EhOsContract.Graph.Document do
   so moving the contract's module moves no id: an event it consumes is a node under the
   name it has *here*, which a rename may make another than its sibling's, so it is
   `event:<this contract's id>:<local name>` and says which sibling event it is in
-  `declared_as`. An actor, an external system, a context, a subdomain and a publication
-  are the domain's, scoped to the domain's module. Nothing should read an id apart: a
-  client's name may hold any character, a colon included.
+  `declared_as`, and which contract declares it in `declared_in`. An actor, an external system, a context, a subdomain and a publication
+  are the domain's, scoped to the domain's module. A process module's stages and
+  promises are scoped to its `id:`; the events it includes keep the ids they have in
+  the documents of the contracts that declare them, and a contract or a process module
+  has one id in every document it is in, so the documents join on them. Nothing should
+  read an id apart: a client's name may hold any character, a colon included.
+
+  ## Changes only by addition
+
+  **A document and its overlay change only by adding to them.** A key once in the
+  schema keeps its name, its type and its meaning, a node kind or relation type its
+  name, and a key a document always carries is always carried: a later version may add
+  a key, a kind or a type, and nothing else. A reader on an older version — the EHOS
+  Console reading applications that run several versions of the library — keeps reading
+  what it knows and leaves what it does not. So a reader ignores a key it does not know
+  rather than refusing the document, and does not hold a newer document to the schema of
+  its own version: the schema describes the version it ships with, and closes each object
+  to say so. `test/conformance/graph_schema_test.exs` holds both
+  schemas to the last ones a change was allowed to remove from; such a change is
+  breaking, said in the changelog, and moves that baseline with it.
   """
 
   alias EhOsContract.{Graph, Model}
@@ -68,17 +87,68 @@ defmodule EhOsContract.Graph.Document do
   end
 
   @doc """
-  The document of `domain`: its graph of facts over `contracts`, leaving out those of
-  another domain, with the
+  The document of the process module `process` (`use EhOsContract.Process`): its graph
+  of facts under `nodes` and `relations` — the process with its correlation and
+  deadline, its stages in their order, the events its stages include, each with its
+  `stage`, the `contract` that declares it and `terminal` when it ends a run, those
+  contracts and their contexts, the external systems those events rest on
+  (`depends_on`), its promises with the events that open (`opens`),
+  fulfil (`fulfils`) or otherwise settle (`or_else`) each and the systems each waits on
+  through an earlier step (`waits_on`), and the actor
+  `accountable_for` it — with what it is: its `id:` as `process`, its `module`, the
+  domain it names, its `label` and `version`, and the document's `digest`.
+
+      EhOsContract.Graph.Document.process(Fulfilment.Processes.Order)
+      #=> %{"kind" => "process", "process" => "fulfilment.order", ...}
+
+  An event's node carries what the process says of it; its fields and the unit that
+  records it are in its contract's document, under the same id. The process module's
+  scenarios are not in it. Raises `ArgumentError` for a module that is not a process
+  module.
+  """
+  @spec process(module() | map()) :: map()
+  def process(process) do
+    model =
+      case Model.fetch(process) do
+        %{kind: :process} = model ->
+          model
+
+        %{kind: kind, module: module} ->
+          raise ArgumentError, "#{inspect(module)} is a #{kind}, not a process module"
+      end
+
+    facts = Graph.Facts.process(model)
+
+    seal(%{
+      "schema" => @schema,
+      "kind" => "process",
+      "process" => model.id,
+      "module" => Model.json_data(model.module),
+      "domain" => Model.json_data(model.domain),
+      "label" => model.label,
+      "version" => model.version,
+      "nodes" => Model.json_data(facts.nodes),
+      "relations" => Model.json_data(facts.relations)
+    })
+  end
+
+  @doc """
+  The document of `domain`: its graph of facts over `modules` — its contracts and its
+  process modules, leaving out those of another domain — with the
   domain's `name` — the prefix of every role and capability — `language`,
   `code_language`, the language its identifiers are written in, `time_zone` and
-  `version`, and the document's `digest`. The order of `contracts`
-  does not matter.
+  `version`, and the document's `digest`. A process module is a `process` node, with
+  an `includes` relation to each of the given contracts whose events it includes and
+  the actor `accountable_for` it; one left out of `modules` is not in the document.
+  The order of `modules` does not matter.
+
+      modules = EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
+      EhOsContract.Graph.Document.domain(Lending.Domain, modules)
   """
   @spec domain(module() | map(), [module() | map()]) :: map()
-  def domain(domain, contracts) do
+  def domain(domain, modules) do
     model = Model.fetch(domain)
-    facts = Graph.Facts.domain(model, contracts)
+    facts = Graph.Facts.domain(model, modules)
 
     seal(%{
       "schema" => @schema,
@@ -135,9 +205,9 @@ defmodule EhOsContract.Graph.Document do
   @doc """
   The id of a declaration: its kind, then what it is declared in — a contract's `id:`,
   or a domain's module — then the names that pick it out there —
-  `[:event, "rehmed.settlement", :visit_settled]` is
-  `"event:rehmed.settlement:visit_settled"`, `[:actor, Rehmed.Domain, :reception]` is
-  `"actor:Rehmed.Domain:reception"`.
+  `[:event, "lending.circulation", :copy_returned]` is
+  `"event:lending.circulation:copy_returned"`, `[:actor, Lending.Domain, :librarian]` is
+  `"actor:Lending.Domain:librarian"`.
   """
   @spec id([atom() | String.t()]) :: String.t()
   def id(parts), do: Enum.map_join(parts, ":", &part/1)

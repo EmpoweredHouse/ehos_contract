@@ -15,9 +15,9 @@ defmodule EhOsContract.DomainTest do
     @moduledoc false
     use EhOsContract.Domain, name: :clinic, language: :pl
 
-    context(:scheduling, "Umawianie", subdomain: :core)
+    context(:scheduling, "Scheduling", subdomain: :core)
 
-    context :settlement, "Rozliczenia" do
+    context :settlement, "Settlement" do
       subdomain(:supporting)
 
       term "Wizyta" do
@@ -27,22 +27,22 @@ defmodule EhOsContract.DomainTest do
         avoid("Seans")
       end
 
-      term "Rozliczenie" do
-        definition("Suma należności za wizytę")
+      term "Bill" do
+        definition("The sum owed for a visit")
       end
     end
 
-    actor(:reception, :human, "Recepcja")
-    actor(:payer_gateway, :system, "Bramka płatnika", backed_by: :payer_registry)
-    subject(:patient, "Pacjent")
-    value(:money, :integer, unit: :grosze, label: "Kwota")
+    actor(:reception, :human, "Reception")
+    actor(:payer_gateway, :system, "Payer gateway", backed_by: :payer_registry)
+    subject(:patient, "Patient")
+    value(:money, :integer, unit: :cents, label: "Amount")
 
     value :address do
       field(:street, :string)
       field(:city, :string)
     end
 
-    external(:payer_registry, "Rejestr płatnika", direction: :outbound)
+    external(:payer_registry, "Payer registry", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
 
     subdomain :core, "Core", type: :core
@@ -54,23 +54,23 @@ defmodule EhOsContract.DomainTest do
     use EhOsContract.Domain, name: :clinic, language: :pl
 
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
-    external(:payer_registry, "Rejestr płatnika", direction: :outbound)
+    external(:payer_registry, "Payer registry", direction: :outbound)
 
     value :address do
       field(:city, :string)
       field(:street, :string)
     end
 
-    value(:money, :integer, unit: :grosze, label: "Kwota")
-    subject(:patient, "Pacjent")
-    actor(:payer_gateway, :system, "Bramka płatnika", backed_by: :payer_registry)
-    actor(:reception, :human, "Recepcja")
+    value(:money, :integer, unit: :cents, label: "Amount")
+    subject(:patient, "Patient")
+    actor(:payer_gateway, :system, "Payer gateway", backed_by: :payer_registry)
+    actor(:reception, :human, "Reception")
 
-    context :settlement, "Rozliczenia" do
+    context :settlement, "Settlement" do
       subdomain(:supporting)
 
-      term "Rozliczenie" do
-        definition("Suma należności za wizytę")
+      term "Bill" do
+        definition("The sum owed for a visit")
       end
 
       term "Wizyta" do
@@ -81,7 +81,7 @@ defmodule EhOsContract.DomainTest do
       end
     end
 
-    context(:scheduling, "Umawianie", subdomain: :core)
+    context(:scheduling, "Scheduling", subdomain: :core)
 
     subdomain :core, "Core", type: :core
     subdomain :supporting, "Supporting", type: :supporting
@@ -91,9 +91,9 @@ defmodule EhOsContract.DomainTest do
     @moduledoc false
     use EhOsContract.Domain, name: :clinic, language: :pl
 
-    context(:scheduling, "Umawianie", subdomain: :core)
+    context(:scheduling, "Scheduling", subdomain: :core)
 
-    context :settlement, "Rozliczenia" do
+    context :settlement, "Settlement" do
       subdomain(:supporting)
 
       term "Wizyta" do
@@ -103,23 +103,23 @@ defmodule EhOsContract.DomainTest do
         avoid("Seans")
       end
 
-      term "Rozliczenie" do
-        definition("Suma należności za wizytę")
+      term "Bill" do
+        definition("The sum owed for a visit")
       end
     end
 
-    actor(:reception, :human, "Recepcja")
-    actor(:payer_gateway, :system, "Bramka płatnika", backed_by: :payer_registry)
-    subject(:patient, "Pacjent")
+    actor(:reception, :human, "Reception")
+    actor(:payer_gateway, :system, "Payer gateway", backed_by: :payer_registry)
+    subject(:patient, "Patient")
     # The only difference from `Ordered`: the unit.
-    value(:money, :integer, unit: :zlote, label: "Kwota")
+    value(:money, :integer, unit: :dollars, label: "Amount")
 
     value :address do
       field(:street, :string)
       field(:city, :string)
     end
 
-    external(:payer_registry, "Rejestr płatnika", direction: :outbound)
+    external(:payer_registry, "Payer registry", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
 
     subdomain :core, "Core", type: :core
@@ -157,7 +157,7 @@ defmodule EhOsContract.DomainTest do
                avoid: [%{text: "Seans", reason: nil}]
              }
 
-      assert [%{name: :money, type: :integer, unit: :grosze}, %{name: :address, fields: fields}] =
+      assert [%{name: :money, type: :integer, unit: :cents}, %{name: :address, fields: fields}] =
                model.values
 
       assert Enum.map(fields, & &1.name) == [:street, :city]
@@ -194,7 +194,7 @@ defmodule EhOsContract.DomainTest do
       Code.compile_string("""
       defmodule EhOsContract.DomainTest.English do
         use EhOsContract.Domain, name: :clinic, language: :en
-        context :scheduling, "Umawianie", subdomain: :core
+        context :scheduling, "Scheduling", subdomain: :core
 
         subdomain :core, "Core", type: :core
       end
@@ -203,7 +203,7 @@ defmodule EhOsContract.DomainTest do
       Code.compile_string("""
       defmodule EhOsContract.DomainTest.Polish do
         use EhOsContract.Domain, name: :clinic, language: :pl
-        context :scheduling, "Umawianie", subdomain: :core
+        context :scheduling, "Scheduling", subdomain: :core
 
         subdomain :core, "Core", type: :core
       end
@@ -215,6 +215,42 @@ defmodule EhOsContract.DomainTest do
       assert english.version != polish.version
       moved = for {key, digest} <- english.digests, polish.digests[key] != digest, do: key
       assert moved == ["domain:clinic"]
+    end
+
+    # Plan DD, V5 (#322): a label is a word, and so is the glossary.
+    test "does not move when a label or a term changes, and the words' digest does" do
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.Worded do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        context :scheduling, "Scheduling", subdomain: :core do
+          term "visit", definition: "A patient's meeting with a doctor."
+        end
+
+        subdomain :core, "Core", type: :core
+      end
+      """)
+
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.Reworded do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        context :scheduling, "Visit schedule", subdomain: :core do
+          term "visit", definition: "A patient's meeting with a doctor in the surgery."
+        end
+
+        subdomain :core, "Core", type: :core
+      end
+      """)
+
+      worded = Model.fetch(EhOsContract.DomainTest.Worded)
+      reworded = Model.fetch(EhOsContract.DomainTest.Reworded)
+
+      assert worded.version == reworded.version
+      assert worded.digests == reworded.digests
+
+      moved =
+        for {key, digest} <- worded.text_digests, reworded.text_digests[key] != digest, do: key
+
+      assert moved == ["context:scheduling"]
     end
 
     test "has one digest per declaration, keyed by kind and name" do

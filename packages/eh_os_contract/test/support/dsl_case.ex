@@ -92,7 +92,7 @@ defmodule EhOsContract.DslCase do
   @spec process_module(String.t(), String.t(), keyword()) :: String.t()
   def process_module(name, body, opts \\ []) do
     opts =
-      [id: "clinic.#{contract_name(name)}", domain: Clinic, label: "Wizyta"]
+      [id: "clinic.#{contract_name(name)}", domain: Clinic, label: "Visit"]
       |> Keyword.merge(opts)
       |> Enum.reject(fn {_key, value} -> value == :omit end)
 

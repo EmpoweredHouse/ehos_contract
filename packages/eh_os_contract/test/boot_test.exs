@@ -51,8 +51,8 @@ defmodule EhOsContract.BootTest do
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
 
     assert message =~
-             "storage is at version 1, and this release needs version 2: add a migration " <>
-               "calling EhOsContract.Migrations.up(version: 2)"
+             "storage is at version 1, and this release needs version 4: add a migration " <>
+               "calling EhOsContract.Migrations.up(version: 4)"
 
     assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
            "refused before anything is recorded"
@@ -64,10 +64,33 @@ defmodule EhOsContract.BootTest do
     assert none =~ "has no eh_os_contract storage in its current schema"
   end
 
-  # A node of this release restarting while a newer one rolls out, or code rolled back
-  # without its migration.
-  test "control: storage a newer release migrated lets the boot through" do
-    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '3'")
+  # Plan DD, P2h (#221): V03 removes columns this release no longer writes, and a newer
+  # version may remove one it does, so a node of an older release stops rather than
+  # failing on every append. A deploy stops the old nodes before it migrates.
+  test "storage a newer release migrated stops the boot, saying it is newer" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '5'")
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+
+    assert message =~
+             "storage is at version 5, newer than version 4, which this release of " <>
+               "eh_os_contract knows"
+
+    assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
+           "refused before anything is recorded"
+  end
+
+  # Before 0.3.0 the versions ran to 5 with another meaning; a database that kept one
+  # still has the column V03 removes, so it is not taken for this release's version 3.
+  test "storage migrated before 0.3.0 stops the boot, saying it cannot be upgraded" do
+    Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+    assert message =~ "records version 4, and it was migrated before 0.3.0"
+  end
+
+  test "control: storage at the release's version lets the boot through" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '4'")
     assert start_supervised!(EhOsContract)
   end
 

@@ -511,6 +511,12 @@ whether or not a sign-in has deleted its row yet. Otherwise, on a quiet deployme
 person for as long as nobody else signed in. The deletion at the next sign-in is a statement of its own, outside
 the new sign-in's transaction.
 
+*Amended, 17 October 2026, for eh-os D-113:* the absolute limit is the host's `sign_in: absolute_limit`, the
+installation's `EHOS_SIGN_IN_ABSOLUTE`, twelve hours when not given. Sign-in asks EHOS for `max_age` of that
+limit, and refuses a sign-in older than it: EHOS's limit may now be longer than the host's, and a sign-in the
+session refuses at once would send the browser back to EHOS for ever
+([eh-os#585](https://github.com/EmpoweredHouse/eh-os/issues/585)).
+
 ## Not decided here
 
 - **The client recorded in an application's decision rows** — G-3, later (Stage 9's "Deliberately later").
