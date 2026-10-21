@@ -1,0 +1,1 @@
+Merge of main (v0.8.0 release, #288 prose review) into pb/393-private-links: two conflicts in the auth package CHANGELOG and README, resolved by taking main wording without the private codes. No new private reference came with the merge. Gate EXIT=0.
