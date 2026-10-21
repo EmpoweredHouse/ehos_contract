@@ -2,8 +2,8 @@
 
 Verifies the credentials EHOS issues, for an application built on
 [EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract). It checks the signature locally, against keys it keeps in the
-application's own database, so the application goes on accepting credentials while EHOS is
-down, and after a restart while EHOS is down.
+application's own database, so the application keeps accepting credentials while EHOS is
+down, even after the application restarts.
 
 The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credential's actor may
 do, and this package is the implementation for EHOS's credentials. The engine does not depend on it.
@@ -81,10 +81,10 @@ EHOS reads it: YAML 1.2's core schema, no anchor, alias, tag or repeated key, va
 EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's reader or schema would
 refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
 is written. The
-rules EHOS checks beside its schema — names and ports unique in `serves`, the health port not among
-them, each name once in `needs.secrets` — are not repeated: EHOS refuses those when the manifest is
-deployed. The two of `sign_in` are
-checked here, since adding `sign_in` alone breaks them (below), once the schema has passed.
+rules EHOS checks beside its schema (names and ports unique in `serves`, the health port not among
+them, each name once in `needs.secrets`) are not repeated: EHOS refuses those when the manifest is
+deployed. The 2 rules for `sign_in` (below) are checked here, once the schema has passed, because adding
+`sign_in` alone breaks them.
 
 ```yaml
 schema: ehos.yaml/v1
@@ -251,13 +251,13 @@ cookie, decides when it ends.
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
 
-The child keeps EHOS's discovery document and keys, refetched every five minutes. It starts while EHOS is
-down, retrying after one second and doubling up to thirty. Every call to EHOS:
+The child keeps EHOS's discovery document and keys, refetched every 5 minutes. It starts while EHOS is
+down, retrying after 1 second and doubling up to 30 seconds. Every call to EHOS:
 
 - goes over https;
 - follows no redirect;
 - reads at most 64 KiB;
-- ends after ten seconds.
+- ends after 10 seconds.
 
 These limits match the ones on the key set. `EhOsContract.Auth.SignIn.provider/1` says whether a person can be
 signed in with what is held. It refuses, naming each thing that fails, a document that lacks any of these:
@@ -285,7 +285,7 @@ end
 ```
 
 - **The browser** holds a random token, and the table only its SHA-256.
-- **EHOS's tokens** — the refresh token, the ID token and every credential — are stored encrypted. The key is
+- **EHOS's tokens** (the refresh token, the ID token and every credential) are stored encrypted. The key is
   derived from `secret_key_base`, and each ciphertext is bound to its row and column, so a backup, a replica or
   a dump holds nothing that can be presented.
 - **Rotating `SECRET_KEY_BASE`** signs everybody out, as it already does through the cookie session.
@@ -315,8 +315,8 @@ end
 Req.get!("https://ledger.production.ehos.localhost/visits", auth: {:bearer, token})
 ```
 
-- **`GET /auth/ehos/sign-in?return_to=/visits/7`** sends the browser to EHOS, with PKCE and a nonce. While EHOS
-  cannot be signed in with, it answers 503.
+- **`GET /auth/ehos/sign-in?return_to=/visits/7`** sends the browser to EHOS, with PKCE and a nonce. While sign-in
+  through EHOS is unavailable, it answers 503.
 - **`GET /auth/ehos/callback`** is where EHOS returns. EHOS's `iss` is checked, and the code is exchanged with
   `private_key_jwt` only. Then:
   - the person gets a new session token, and the Plug session is renewed;
@@ -332,7 +332,7 @@ Req.get!("https://ledger.production.ehos.localhost/visits", auth: {:bearer, toke
 - **`Session.actor/2`** is the actor of the person's credential for this application, verified as a bearer
   credential is.
 
-**Renewal.** A credential lives ten minutes. When one is good for less than 30 seconds, `actor/2`, and the plug
+**Renewal.** A credential lives 10 minutes. When one is good for less than 30 seconds, `actor/2`, and the plug
 with `assign_actor: true`, renew it through EHOS with the session's refresh token (`Oidcc.Token.refresh/3`).
 Nothing renews unless a request asks.
 
@@ -354,22 +354,22 @@ or a page would hand it to the browser, which the session otherwise keeps EHOS's
 
 - **A name `applications:` does not have** raises `ArgumentError`.
 - **A person EHOS refuses there** (no role, or not in the sign-in's granted set: `invalid_target`) gets
-  `{:error, :refused}`. The refusal is remembered for ten minutes, a credential's lifetime, so EHOS is not asked
+  `{:error, :refused}`. The refusal is remembered for 10 minutes, a credential's lifetime, so EHOS is not asked
   again on every page. The refresh token is kept, and the session goes on for this application and every other.
 - **The other refusals** are `actor/2`'s: `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
 
 Why signing in and the session work this way is recorded in [`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/browser-session.md).
 
-**A person's key is `sub`.** The `sub` of a person signed in is their `id` in EHOS: it never
-changes, and it is the `id` the people API below answers for the same person. Store it, never the
-email, which can change and later be given to someone else.
+**A person's key is `sub`.** The `sub` of a signed-in person is their `id` in EHOS. It never
+changes, and the people API below returns the same `id` for the same person. Store it, never the
+email: an email can change and later be given to someone else.
 
 ## Reading the company's people
 
-A form that offers an employee, instead of a text field someone types a name into, reads EHOS's
+A form that lets someone pick an employee, instead of typing a name into a text field, reads EHOS's
 people as the application itself. The application asks for it in its
-`ehos.yaml/v3`; EHOS then gives its workload `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, whether
-or not it signs people in, and answers only once someone who manages people agrees, for that
+`ehos.yaml/v3`. EHOS then gives its workload `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, whether
+or not it signs people in. EHOS answers only after someone who manages people agrees, for that
 environment.
 
 ```yaml
@@ -397,15 +397,16 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Peopl
 # %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
 ```
 
-The process takes a credential of its own at EHOS's token endpoint with the client credentials
-grant, signed with the client key, keeps it for its ten minutes and takes another before it
-expires; callers that need one at once wait for one request, and a refusal or an outage is
-answered for five seconds without asking again. Nothing is fetched at start, so the host starts
-while EHOS is down. `list/1` takes `q:`, `state:` (`:invited`, `:joined`) and `limit:` (1 to
-500), or `after:` alone; an option EHOS would refuse raises `ArgumentError` before EHOS is asked. Store a person's
-`id`; show the email beside the name, which two people can share.
+The process takes its own credential at EHOS's token endpoint with the client credentials
+grant, signed with the client key. It keeps the credential for its 10 minutes and takes another
+before it expires. Callers that need one at the same time wait for a single request. After a
+refusal or an outage, the process gives the same answer for 5 seconds without asking EHOS again.
+Nothing is fetched at start, so the host starts while EHOS is down. `list/1` takes `q:`, `state:`
+(`:invited`, `:joined`) and `limit:` (1 to 500), or `after:` alone. An option EHOS would refuse
+raises `ArgumentError` before EHOS is asked. Store a person's `id`, and show the email beside the
+name, since 2 people can share a name.
 
-A call that answers no people says why, for the page to say it in words:
+A call that returns no people says why, so the page can explain it in words:
 
 | Error | When |
 | --- | --- |
@@ -415,8 +416,8 @@ A call that answers no people says why, for the page to say it in words:
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 600 calls a minute |
 | `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
 
-The list is never copied into the application: while EHOS cannot answer, the call fails and the
-page says so, and the rest of the application goes on.
+The list is never copied into the application. While EHOS cannot answer, the call fails, the
+page says so, and the rest of the application keeps working.
 
 ## A person granting a role
 
@@ -450,8 +451,8 @@ API it calls.
 ## Deciding, and recording every decision
 
 `EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
-that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2` alone — the
-capability in `cap`, a scoped value among the values in `scp` — and writes one row to
+that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2` alone (the
+capability in `cap`, a scoped value among the values in `scp`) and writes 1 row to
 `eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance: who, which capability, which contract and version, the scope value asked for, `allowed` or
 `refused`, and the reason. A scope value the table cannot hold (invalid UTF-8, a NUL), one past 256
 bytes, or one that starts `sha256:` is recorded as `sha256:` and its hex digest, so a crafted value is
@@ -476,7 +477,7 @@ call; the table carries no index beyond `decided_at` and `(subject, decided_at)`
 MyApp.Repo.query!("DELETE FROM eh_os_contract_auth_decisions WHERE decided_at < now() - interval '400 days'")
 ```
 
-keeping them as long as the application keeps its own log is the usual choice.
+A common choice is to keep them as long as the application keeps its own log.
 
 ## Over HTTP
 
@@ -513,7 +514,7 @@ end
 token = credential("u-anna", ["clinic.record_payment"])
 ```
 
-The engine cannot drive a host's door, so the host maps every capability its contracts declare to a
+The engine cannot call a host's entry points itself, so the host maps every capability its contracts declare to a
 function that calls its own entry point with a token. The check calls each with a credential that
 grants every other capability, and asserts a `refused` row with `missing_capability` and nothing new
 in the engine's log or `eh_os_contract_commands`. A declared capability without an entry fails it,
@@ -556,18 +557,18 @@ children = [
 ]
 ```
 
-`cacerts:` takes the certificates themselves (DER) instead of a file. That is all the package
-takes about the fetch. It does not take Req's options: the fetch **follows no redirect**, is not
-retried, reads at most 64 KB, and waits two seconds to connect and three for each part of the
+`cacerts:` takes the certificates themselves (DER) instead of a file. Those are the only fetch
+options the package accepts. It does not take Req's options: the fetch **follows no redirect**, is not
+retried, reads at most 64 KB, and waits 2 seconds to connect and 3 for each part of the
 answer, and Req has options that would undo each of these, or the check of the certificate. An
 option the package does not take fails the boot. A proxy or a client certificate is not supported.
 
-However long each part takes, a fetch that has not finished in five seconds is abandoned as a failed
+However long each part takes, a fetch that has not finished in 5 seconds is abandoned as a failed
 one, and the keys in force stay.
 
 Req still merges an application's own `config :req, default_options` into this request, under the
-package's options: what the package sets — the connection with its authority, the timeouts,
-retries and redirects — replaces the application's, and the rest reaches the fetch. A global
+package's options: what the package sets (the connection with its authority, the timeouts,
+retries and redirects) replaces the application's, and the rest reaches the fetch. A global
 `plug:` or `adapter:` replaces the network here too, `auth:` or `headers:` are sent to EHOS, and
 `finch:` makes every fetch fail, since the package always sets the connection. Keep those out of
 the global defaults.
@@ -591,9 +592,9 @@ above if it is not a public one.
 **The application in `audience` is a domain's name.** Every name the application publishes, and
 every contract id it stores, begins with its domain's `name:`, and EHOS lets an application publish
 only under the name it registered. So `audience` must be `<application>/<environment>` with both
-parts present, its application must equal the `name:` of one domain with contracts exactly
-(`audience: "my-shop/prod"` for `name: :"my-shop"`; a domain named `:my_shop` does not match, since
-EHOS never names an application with `_`, and the manifest generator refuses it too), and any other
+parts present. Its application part must equal exactly the `name:` of one domain with contracts:
+`audience: "my-shop/prod"` for `name: :"my-shop"`. A domain named `:my_shop` does not match, since
+EHOS never names an application with `_`, and the manifest generator refuses it too. Any other
 domain with contracts in the same application must declare no `publish`, since it would publish
 under a name that is not the application's. Otherwise `EhOsContract.Auth` refuses to start, naming
 what it found and how to fix it.
@@ -602,21 +603,21 @@ what it found and how to fix it.
 
 1. `current` moves to `previous`, and a new `current` is added;
 2. EHOS is rolled out. It signs with the new key, and the JWKS publishes both;
-3. after one credential lifetime, ten minutes, `previous` is removed.
+3. after 1 credential lifetime, 10 minutes, `previous` is removed.
 
 The application does nothing. A credential signed with the new key names a `kid` it has not seen,
-which triggers an early fetch, and the refresh every five minutes drops `previous` once the JWKS no
+which triggers an early fetch, and the refresh every 5 minutes drops `previous` once the JWKS no
 longer has it.
 
 **How the key store behaves** (`EhOsContract.Auth.Keys`):
 
 - at start it loads the last good key set from its table, then fetches the JWKS;
-- it fetches again every five minutes, so a key removed from the JWKS, a compromised one for
+- it fetches again every 5 minutes, so a key removed from the JWKS, a compromised one for
   instance, stops being trusted within that interval without a restart;
-- an unknown `kid` triggers an early fetch, at most once every thirty seconds;
+- an unknown `kid` triggers an early fetch, at most once every 30 seconds;
 - a failed fetch changes nothing: it is logged and the last good set stays in force. A key set with
   no Ed25519 key in it counts as a failed fetch, and so does a redirect, a body over 64 KB and more
-  than 16 keys — a rotation holds two;
+  than 16 keys (a rotation holds 2);
 - a successful fetch puts the keys in force first, then writes the table, and a table locked by a
   migration or `VACUUM FULL` is not waited for longer than a second: the write is logged as failed,
   and the next fetch writes it again;
@@ -638,8 +639,8 @@ A JWT, `alg: "Ed25519"` and nothing else, with `iss`, `sub`, `aud` (one string),
 ```
 
 The grants travel in the credential. The application stores none and asks EHOS about none. A
-credential whose `exp` is more than fifteen minutes away — EHOS's ten, and five for clocks that
-disagree — is refused as `:bad_signature`, whoever signed it, so a key that leaked cannot mint a
+credential whose `exp` is more than 15 minutes away (EHOS's 10, and 5 for clocks that
+disagree) is refused as `:bad_signature`, whoever signed it, so a key that leaked cannot mint a
 credential that lives for a year; so is one whose header carries `crit`. `exp`
 is measured by `EhOsContract.Clock`, so a test moves time with `EhOsContract.Clock.at/2`.
 

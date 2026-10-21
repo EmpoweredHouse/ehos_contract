@@ -31,7 +31,7 @@ absolute_limit` and `max_age` for eh-os D-113 (#343).
 100 years for durations (#193, in #358); OW1, `waits_on` on a promise (#355, in #359; the plugin
 `eh-os-contract-plugin-v0.9.0`); RL1 and XA1, docs on the relay and a seal and on a domain compiled in one
 project (#360 and #287, in #361; #287 stays open). v0.7.0 releases them (#362; the engine 0.7.0,
-`eh_os_contract_graph` 0.4.0, the migration note in #362's description). `main` is at 0.7.1-dev and 0.4.1-dev.
+`eh_os_contract_graph` 0.4.0, the migration note in #362's description). v0.8.0 releases eh-os D-112's `may_grant:` and `EhOsContract.Auth.Grants` (#398; the engine 0.8.0, `eh_os_contract_auth` 0.5.0). `main` is at 0.8.1-dev, 0.5.1-dev, and 0.4.1-dev for the graph and the dashboard.
 
 The applications moved to it on 18 October, each with `eh_os_contract.lock` committed and `mix
 eh_os_contract.schema --check` in its `mix precommit` and CI: ehos-tools' `ehos_app` template (PN1,

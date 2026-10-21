@@ -21,8 +21,8 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 ```
 
 - **A human actor is a role.** EHOS grants roles to people; the role of `:mechanic` in the domain `:shop` is
-  `shop.mechanic`, and a credential carries the capabilities its roles hold. Who is behind a credential is
-  EHOS's to know: the engine sees an opaque subject. [Authorization](../authorization.md) is how a credential
+  `shop.mechanic`, and a credential carries the capabilities its roles hold. Knowing who is behind a credential is
+EHOS's job; the engine sees an opaque subject. [Authorization](../authorization.md) is how a credential
   becomes an actor.
 - **A system actor is the application's own code**, a job or an import, acting as itself:
   `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential, and may do what the declarations
@@ -97,7 +97,7 @@ EhOsContract.erase(:customer, "c-17", actor: actor)
 ```
 
 It answers `{:ok, :erased}`, `{:ok, :no_data}` when no key was there for that id (a mistyped id, or nothing
-personal was ever written for it), or `{:ok, :already_erased}`. The first two append
+personal was ever written for it), or `{:ok, :already_erased}`. In the first 2 cases, `erase/3` appends
 `eh_os_contract.subject_erased`, with the subject's type and id and nothing personal; an erasure repeated
 appends nothing. From then on:
 
@@ -107,9 +107,9 @@ appends nothing. From then on:
 - a command whose events would carry the subject's personal data again is refused with
   `{:error, :subject_erased}`.
 
-Who may erase is the host's to decide: `erase/3` asks no `Authorizer`.
+The host decides who may erase: `erase/3` asks no `Authorizer`.
 
-Personal data stays where it can be erased. A field a run is told by (a `correlate` field) may not be
+Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
 personal ([`F4`](../contract.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../contract.md#refusals-f)), and a publication carries none
 ([`D11`](../contract.md#refusals-d)): a copy on a broker cannot be erased.
 
@@ -149,7 +149,7 @@ end
 The domain then generates a behaviour, `<Domain>.Values.Money`, and a module bound with
 `use <Domain>, value: :money` defines one function per invariant, named after it, that answers `true` or
 `false`. Dispatch holds every value of the type to them: a command, or a recorded event, carrying a value that
-breaks one is refused, the field named with `{:invariant, :not_negative}`; an event a decision returns with one
+breaks one is refused, the field named with `{:invariant, :not_negative}`; an event that a decision returns with such a value
 raises. What is read back from the log is never held to them, so an invariant declared today does not make
 yesterday's events unreadable. `use EhOsContract.ScenarioCase, domain: <Domain>` turns each example into a
 test.
@@ -167,7 +167,7 @@ entity :shop, "Shop", context: :workshop, identity: :shop_id
 It belongs to one context (required), and its `identity` is injected into its fields as a required,
 non-personal `:id`. `issued_by:` names the external system that gives the identity, when one does. An
 entity's fields may not be personal ([`D6`](../contract.md#refusals-d)). A contract naming an entity of another context depends on that
-context, which [the domain](domain.md) says how to declare.
+context. [The domain](domain.md) page shows how to declare that dependency.
 
 When a thing's lifecycle is decided by commands of this application, it is not an entity of the domain but a
 unit of a contract: an aggregate or a consistency boundary.
@@ -190,7 +190,7 @@ end
 application only sends to it) or `:bidirectional`. `unavailable_looks_like` and `expected_latency` are what an
 outage looks like to the business and how long an answer usually takes; pages print them.
 
-A contract uses an external in four ways:
+A contract uses an external in 4 ways:
 
 - an **effect** `calls:` it, `calls: {:sms_gateway, :send_text}`. Once an external declares an `operation`,
   every call to it names one ([`X4`](../contract.md#refusals-x));
@@ -199,7 +199,7 @@ A contract uses an external in four ways:
   tracking number;
 - a **system actor** is `backed_by:` it, when the system acts in the application.
 
-An external may also be an end of a directed relation, its other end a context. A name that is both a context
+An external may also be one end of a directed relation; the other end is then a context. A name that is both a context
 and an external does not compile ([`D1`](../contract.md#refusals-d)).
 
 ## An example
@@ -301,9 +301,9 @@ end
   longer which phone.
 - `Money` checks every amount dispatch sees: a quote of `-1` is refused before the decision runs.
 - The card terminal is `:inbound`: it backs the actor that records payments. The text gateway is `:outbound`:
-  the effect only sends to it, and since its effect is delivered after the transaction (`:at_least_once`,
-  the default for an effect), it names who makes a second delivery harmless: the gateway, given the event's
-  id.
+  the effect only sends to it. The effect is delivered after the transaction (`:at_least_once`,
+  the default for an effect), so it names who makes a second delivery harmless: the gateway, which receives
+  the event's id.
 
 ## What the compiler refuses
 
@@ -344,16 +344,16 @@ From [the rules](../rules.md):
   written after its subject is erased. Mark it personal, or give a code, a number or a choice a type of its
   own (an `:id`, an enum, a value).
 - **`value-without-implementation`** (warning): a value declares invariants and no module checks them, so
-  dispatch raises on every value of it. Add a module with `use <Domain>, value: <name>`. Said only once some
-  contract of the domain is implemented.
+  dispatch raises on every value of it. Add a module with `use <Domain>, value: <name>`. The check reports it only once
+  some contract of the domain is implemented.
 - **`owner-view-without-label`** (notice): a value, or a member of its enum written as a bare atom, has no
   label, so a business owner reading the model would see its name in the code. Write the member as
   `card: "Card"`, and give the value `label:`.
 - **`orphan-external-system`** (warning): no actor is backed by the external, no relation ends at it, no
   field or entity is issued by it, no effect calls it and no event depends on it.
 - **`operation-never-called`** (warning): an operation of an external is named in no effect's `calls:`.
-  Asked only of a system some effect calls; one no effect calls is `orphan-external-system`'s, when nothing
-  else uses it either.
+  Asked only of a system some effect calls. A system no effect calls is reported by
+  `orphan-external-system` instead, when nothing else uses it either.
 - **`external-direction-contradicted`** (warning): an external declared `direction: :outbound`, which only
   receives from the application, issues a field's value or an entity's identity, or backs an actor: both bring
   what the system says into the application. Declare it `:bidirectional` when it also answers. A call says

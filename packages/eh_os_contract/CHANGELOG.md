@@ -47,6 +47,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-21
+
 ### Added
 
 - **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
