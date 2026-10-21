@@ -132,7 +132,7 @@ defmodule EhOsContract.Auth.RenewalTest do
     assert {:ok, _session} = Sessions.fetch(context.name, context.token)
   end
 
-  # D-64: no transaction across the call. Seen from the database, while EHOS is answering.
+  # No transaction across the call to EHOS. Seen from the database, while EHOS is answering.
   test "no connection is idle in a transaction while EHOS is called", context do
     test = self()
 

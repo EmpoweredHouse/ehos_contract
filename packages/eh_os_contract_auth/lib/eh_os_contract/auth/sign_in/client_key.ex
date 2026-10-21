@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.SignIn.ClientKey do
   @moduledoc false
 
-  # The client's private key, as EHOS gives it (`eh-os` D-68): the file at
+  # The client's private key, as EHOS gives it: the file at
   # `EHOS_CLIENT_KEY_FILE` holds one Ed25519 JWK with exactly these members, and EHOS
   # checks every client assertion against the public half the deployment's status
   # names, by its `kid`. `oidcc` copies the key's `kid` into each assertion and signs
@@ -26,14 +26,14 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     if String.starts_with?(String.trim_leading(contents), "-----BEGIN") do
       refuse!(
         path,
-        "is a PEM; EHOS gives the client key as a JWK (eh-os D-68), and a PEM is not read"
+        "is a PEM; EHOS gives the client key as a JWK, and a PEM is not read"
       )
     end
 
     map =
       case Jason.decode(contents) do
         {:ok, map} when is_map(map) -> map
-        _other -> refuse!(path, "is not a JSON object, the one JWK eh-os D-68 says it holds")
+        _other -> refuse!(path, "is not a JSON object, the one JWK EHOS says it holds")
       end
 
     case map |> Map.keys() |> Enum.sort() do
@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
       members ->
         refuse!(
           path,
-          "must have exactly the members #{Enum.join(@members, ", ")} (eh-os D-68), " <>
+          "must have exactly the members EHOS gives (#{Enum.join(@members, ", ")}), " <>
             "and has #{Enum.join(members, ", ")}"
         )
     end
@@ -51,7 +51,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     for {member, value} <- @fixed, map[member] != value do
       refuse!(
         path,
-        "has #{member} #{inspect(map[member])}, and eh-os D-68 says #{inspect(value)}"
+        "has #{member} #{inspect(map[member])}, and EHOS gives #{inspect(value)}"
       )
     end
 
@@ -69,7 +69,7 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
     if map["kid"] != JOSE.JWK.thumbprint(jwk) do
       refuse!(
         path,
-        "has a kid that is not the RFC 7638 thumbprint of its public half (eh-os D-68)"
+        "has a kid that is not the RFC 7638 thumbprint of its public half, as EHOS gives it"
       )
     end
 
@@ -77,9 +77,9 @@ defmodule EhOsContract.Auth.SignIn.ClientKey do
   end
 
   @doc false
-  # RFC 7523's client assertion, as EHOS takes it at its token endpoint (`eh-os` D-81, D-112): the
-  # client as `iss` and `sub`, the endpoint as `aud`, and a minute to live, since EHOS keeps its
-  # `jti` until it expires and one request needs no more.
+  # RFC 7523's client assertion, as EHOS takes it at its token endpoint, for a sign-in and a
+  # grant: the client as `iss` and `sub`, the endpoint as `aud`, and a minute to live, since EHOS
+  # keeps its `jti` until it expires and one request needs no more.
   @spec assertion(JOSE.JWK.t(), String.t(), String.t()) :: String.t()
   def assertion(key, client_id, token_endpoint) do
     issued_at = System.os_time(:second)

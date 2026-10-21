@@ -16,8 +16,8 @@ defmodule EhOsContract.Bus.Message do
     (`EhOsContract.Bus`, "A message").
   """
 
-  # An integration event (v2 §16); its key is what makes two messages one fact
-  # (`eh-os` FM-08).
+  # An integration event (v2 §16); its key is what makes two messages one fact, so the same
+  # fact published again under a new id is still taken once.
 
   @enforce_keys [:id, :key, :name, :correlation_id, :payload]
   defstruct @enforce_keys

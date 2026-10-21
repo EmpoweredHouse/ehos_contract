@@ -71,14 +71,14 @@ below).
 
 The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
 console uses: dark by default, light when the system prefers it. Its tokens and fonts
-come from the `ehos_design` package of EmpoweredHouse's `ehos-tools` repository, a
+come from the `ehos_design` package, kept in a private EmpoweredHouse repository, a
 `:dev` dependency pinned in `mix.exs` to the commit tagged `ehos_design-v0.1.0`. `mix assets.build` imports the plain tokens,
 `priv/css/colors_and_type.css`, into the stylesheet and copies the fonts beside it.
 The built stylesheet and the fonts are committed under `priv/static/assets/`, so a host
 fetches nothing from that package; a new version of the design system reaches the
 dashboard by moving the pinned ref and rebuilding.
 
-`ehos-tools` is private, and a plain `mix deps.get` fetches every environment's
+That repository is private, and a plain `mix deps.get` fetches every environment's
 dependencies, this one included. Without access to it, fetch with
 `mix deps.get --only test`: the tests read only the committed build, and only
 `mix assets.build` needs the package.
@@ -98,7 +98,7 @@ runs in EHOS.
 `eh_os_contract_api/2` mounts read-only JSON routes in a scope of their own (its docs
 show the pipeline): what a client of the engine (a CI job, a renderer, a tool)
 reads without the dashboard. The EHOS Console does not call it: it takes each domain's graph
-document with the application's deployment (eh-os D-123).
+document with the application's deployment.
 
 ```elixir
 scope "/" do

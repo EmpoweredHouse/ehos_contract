@@ -2,9 +2,9 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   @shortdoc "Writes a release's release.json: the packages' versions and the interfaces they meet at"
 
   @moduledoc """
-  Writes `release.json` for a release of this repository (`eh-os` D-91, its `docs/releases.md`):
-  the engine's version, which the tag `vX.Y.Z` follows, the commit, each package's own version,
-  and the interfaces the packages produce and accept.
+  Writes `release.json` for a release of this repository, in the form EHOS's release procedure
+  gives it: the engine's version, which the tag `vX.Y.Z` follows, the commit, each package's own
+  version, and the interfaces the packages produce and accept.
 
       $ mix contract.release_file --commit <40 hex> --output _build/release.json
 
@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   serves) and `ehos.credential` (what `EhOsContract.Auth.verify/2` reads), are named here, and
   raised here when one breaks. `eh_os_contract.graph`, the `graph.v1` document
   `mix eh_os_contract.graph` writes, names its version in its own `schema`, and EHOS takes a
-  domain's with a deployment (`eh-os` D-123); its version here follows that `schema`.
+  domain's with a deployment; its version here follows that `schema`.
 
   ## Options
 
@@ -34,12 +34,12 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   @packages [:eh_os_contract, :eh_os_contract_auth, :eh_os_contract_web, :eh_os_contract_graph]
 
   # Raised by hand, beside a `**Breaking:**` line, when a change breaks one: neither carries its
-  # version on the wire (`eh-os` D-91).
+  # version on the wire.
   @api "eh_os_contract.api/v1"
   @credential "ehos.credential/v1"
 
   # The graph document names its own version, `eh_os_contract.graph.v1`
-  # (`EhOsContract.Graph.Document`), which the release names in D-91's form.
+  # (`EhOsContract.Graph.Document`), which the release names in its own form, `<name>/v<n>`.
   @graph "eh_os_contract.graph/v1"
 
   @impl Mix.Task

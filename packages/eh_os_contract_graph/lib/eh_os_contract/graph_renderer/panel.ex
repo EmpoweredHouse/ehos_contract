@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphRenderer.Panel do
   # The panel of a graph, a sidebar at the right of the window: what the selected node,
   # group or relation is, read from the `graph.v1` document it belongs to (plan E13b,
-  # batch 4: the points of the user's working plan for the Graph screen, in `PLAN.md`,
+  # batch 4: the points of the maintainer's working plan for the Graph screen
   # that a click answers, and the way it shows a field).
   #
   # Everything here is the document's: a node's own facts, and the joins over relations

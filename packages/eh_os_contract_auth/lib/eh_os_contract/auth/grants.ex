@@ -1,8 +1,8 @@
 defmodule EhOsContract.Auth.Grants do
-  # `eh-os` D-112: a person grants, through their application, a role a rule of their own role
-  # names, and EHOS checks it on their credential. The exchange and the routes are `eh-os`
-  # `docs/grants-api.md`; the grant is made in the person's request and never kept for later
-  # (EmpoweredHouse/eh-os#719). Issue EmpoweredHouse/eh-os#773.
+  # EHOS's design of grants: a person grants, through their application, a role a rule of their
+  # own role names, and EHOS checks it on their credential. The exchange and the routes are
+  # EHOS's grants API; the grant is made in the person's request and never kept for later, as
+  # agreed with EHOS.
   @moduledoc """
   A signed-in person grants or revokes, from the application's own page, a role their
   role here may give: an accountant invites a client's representative with the client

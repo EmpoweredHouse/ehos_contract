@@ -199,7 +199,7 @@ defmodule EhOsContract.Web.MixProject do
       # asset ships with any other Phoenix component library.
       {:esbuild, "~> 0.9", runtime: false},
       # The EmpoweredHouse design system's tokens and fonts, which `mix assets.build`
-      # reads from deps/ (eh-os D-72). Only there: the built stylesheet and the fonts
+      # reads from deps/. Only there: the built stylesheet and the fonts
       # are committed under priv/static/assets/, so a host fetches nothing from it,
       # and Hex leaves a `:dev` dependency out of the published requirements. The
       # ref is the commit tagged `ehos_design-v0.1.0`; a new version of the design

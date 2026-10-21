@@ -1,14 +1,14 @@
 defmodule EhOsContract.Auth.EhosYamlTest do
   @moduledoc """
-  EH2: `ehos.yaml` read as strictly as EHOS reads it (`eh-os` D-51), so the manifest
+  EH2: `ehos.yaml` read as strictly as EHOS reads it, so the manifest
   never carries a value from a file EHOS's checking page refuses.
 
   The corpus is one file per refusal, in `test/fixtures/ehos_yaml/refused/`. The
-  accepted files are the example of `eh-os` `docs/ehos-yaml.md` (at `f7b2330`) and
-  the `ehos.yaml` of `EmpoweredHouse/ehos-ledger` (at `341fc19`), unchanged, and a
-  made-up `ehos.yaml/v2` with `sign_in` (`eh-os` D-69), a made-up `ehos.yaml/v3` that
-  reads the company's people (`eh-os` D-81), and a made-up `ehos.yaml/v4` that seeds its
-  database and is given secrets (`eh-os` D-98, D-99).
+  accepted files are the example of EHOS's documentation of `ehos.yaml` and the
+  `ehos.yaml` of a real application, a ledger, both as they stood when copied
+  (the ledger's with its comment's link removed), and a made-up `ehos.yaml/v2` with
+  `sign_in`, a made-up `ehos.yaml/v3` that reads the company's people, and a made-up
+  `ehos.yaml/v4` that seeds its database and is given secrets.
   """
 
   use ExUnit.Case, async: true
@@ -51,7 +51,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     "version_as_number.yaml" => {"needs.database.version", 5, "must be a string"},
     "public_yes.yaml" => {"serves[0].public", 5, "must be true or false"},
     "application_ehos.yaml" => {"application", 2, "must not be ehos"},
-    # `eh-os` D-69: what v2 adds, by its schema and the two rules EHOS checks beside it.
+    # What v2 adds, by its schema and the two rules EHOS checks beside it.
     "sign_in_in_v1.yaml" => {"sign_in", 6, "is not a field of ehos.yaml/v1"},
     "sign_in_named_twice.yaml" => {"sign_in.applications", 7, "must list each value once"},
     "sign_in_without_public_web.yaml" =>
@@ -192,8 +192,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
 
   describe "the schema" do
     test "is EHOS's ehos.yaml/v1, byte for byte" do
-      # `eh-os` `priv/schemas/ehos.yaml/v1.json`, last changed in `eeb732a`, read at `f7b2330`;
-      # the same bytes as `ehos-ledger`'s `.ehos/ehos.yaml.v1.json`. A new hash here is a new copy
+      # EHOS's `priv/schemas/ehos.yaml/v1.json`, as read on 1 October 2026; the same bytes an
+      # application's `.ehos/ehos.yaml.v1.json` holds. A new hash here is a new copy
       # of EHOS's file, never an edit of this one.
       document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v1"))
 
@@ -204,8 +204,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
 
     test "is EHOS's ehos.yaml/v2, byte for byte" do
-      # `eh-os` `priv/schemas/ehos.yaml/v2.json`, added in `99e036b` (D-69), read at `2cd95cb`
-      # (2 October 2026), in no release yet. A new hash here is a new copy of EHOS's file.
+      # EHOS's `priv/schemas/ehos.yaml/v2.json`, the version that adds sign-in, as read on
+      # 2 October 2026, in no release yet. A new hash here is a new copy of EHOS's file.
       document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v2"))
 
       assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
@@ -215,8 +215,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
 
     test "is EHOS's ehos.yaml/v3, byte for byte" do
-      # `eh-os` `priv/schemas/ehos.yaml/v3.json`, added in `d758c33` (D-81), read at `8ae669f`
-      # (8 October 2026). A new hash here is a new copy of EHOS's file.
+      # EHOS's `priv/schemas/ehos.yaml/v3.json`, the version that reads the company's people, as
+      # read on 8 October 2026. A new hash here is a new copy of EHOS's file.
       document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v3"))
 
       assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
@@ -226,9 +226,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
 
     test "is EHOS's ehos.yaml/v4, byte for byte" do
-      # `eh-os` `priv/schemas/ehos.yaml/v4.json`, added in `aa0e23eb` (D-98), last changed in
-      # `de370ed9` (D-99), read at `eadd7112` (17 October 2026). A new hash here is a new copy of
-      # EHOS's file.
+      # EHOS's `priv/schemas/ehos.yaml/v4.json`, the version that adds a seed and secrets, as
+      # read on 17 October 2026. A new hash here is a new copy of EHOS's file.
       document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v4"))
 
       assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==

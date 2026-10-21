@@ -1,10 +1,10 @@
 defmodule EhOsContract.LogMetadataTest do
   @moduledoc """
-  What an application logs while the engine works carries that work's correlation identifier
-  (P-8) as the Logger's metadata `correlation_id` (#298): in a command's dispatch, in an effect,
-  delivered in the transaction or as a job, and in a process manager's reaction. Once the work is
-  done, what was there before is back, so a process that handles one event after another never
-  writes one's identifier on the next one's lines.
+  What an application logs while the engine works carries that work's correlation identifier, one
+  across every application it passes through, as the Logger's metadata `correlation_id` (#298): in
+  a command's dispatch, in an effect, delivered in the transaction or as a job, and in a process
+  manager's reaction. Once the work is done, what was there before is back, so a process that
+  handles one event after another never writes one's identifier on the next one's lines.
 
   `DispatchRig`'s audit, branch notice and first-deposit chase each log a line at debug level.
   """

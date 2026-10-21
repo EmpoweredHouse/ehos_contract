@@ -1,26 +1,25 @@
 defmodule EhOsContract.Auth.ManifestTest do
   @moduledoc """
   EH3: an application's `ehos.yaml` extended with what its contracts offer, into
-  EHOS's `ehos.manifest/v2` (`eh-os` D-52), without fields the receiver would reject.
+  EHOS's `ehos.manifest/v2`, without fields the receiver would reject.
 
-  `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of
-  `ehos-ledger`, unchanged: `eh-os` `test/support/fixtures/manifests/ledger.v2.json`,
-  last changed in `ff1388e`, read at `f7b2330`. EHOS deploys ledger with it (step 6c)
-  until this generator writes it. Its capabilities name the process the ledger's
-  contract declared; a contract declares none since plan DD, P2h (#221), so the test
-  reads that copy without them, a field EHOS keeps optional (eh-os#203).
+  `test/fixtures/manifests/ledger.v2.json` is EHOS's hand-written manifest of a real application,
+  a ledger, unchanged: a fixture of EHOS's own tests, as it stood on 1 October 2026. EHOS deploys
+  the ledger with it until this generator writes it. Its capabilities name the process the
+  ledger's contract declared; a contract declares none since plan DD, P2h (#221), so the test
+  reads that copy without them, a field EHOS keeps optional.
 
   `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand
   from `ehos_yaml/accepted/sign_in.yaml`, an `ehos.yaml/v2` that signs people in
-  (`eh-os` D-69, issue #83).
+  (issue #83).
 
   `test/fixtures/manifests/ledger_people.v3.json` is that ledger written by hand from
   `ehos_yaml/accepted/people.yaml`, an `ehos.yaml/v3` that reads the company's people
-  (`eh-os` D-81, issue #252).
+  (issue #252).
 
   `test/fixtures/manifests/ledger_secrets.v4.json` is that ledger written by hand from
   `ehos_yaml/accepted/secrets.yaml`, an `ehos.yaml/v4` that seeds its database and is given
-  secrets (`eh-os` D-98, D-99, issue #306).
+  secrets (issue #306).
   """
 
   use ExUnit.Case, async: true
@@ -119,7 +118,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
   end
 
-  # eh-os D-112: an office employee may grant a client; a visitor holds nothing, so is no role.
+  # A grant rule: an office employee may grant a client; a visitor holds nothing, so is no role.
   defmodule GrantDomain do
     @moduledoc false
     use EhOsContract.Domain, name: :"grant-rig", language: :en
@@ -265,7 +264,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  # Made up in the shape of `ehos-ledger`'s offers: a clerk records an entry, an auditor flags one.
+  # Made up in the shape of the ledger's offers: a clerk records an entry, an auditor flags one.
   defmodule Ledger do
     @moduledoc false
     use EhOsContract.Domain, name: :ledger, language: :en
@@ -341,7 +340,7 @@ defmodule EhOsContract.Auth.ManifestTest do
       assert manifest == Map.put(expected, "engine", @engine)
     end
 
-    # `{}` asks for the application's own sign-in only, and EHOS reads its presence (D-69).
+    # `{}` asks for the application's own sign-in only, and EHOS reads its presence.
     test "is kept when empty" do
       file = %{"schema" => "ehos.yaml/v2", "health" => @health, "sign_in" => %{}}
 
@@ -417,7 +416,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  describe "a role that may grant another, eh-os D-112" do
+  describe "a role that may grant another" do
     test "makes an ehos.manifest/v5 whose role carries the roles its actor may grant" do
       manifest = Manifest.build(@file_v1, [GrantDomain], [GrantWork])
 
@@ -571,7 +570,7 @@ defmodule EhOsContract.Auth.ManifestTest do
   end
 
   # Plan DD, P2h (#221): a contract declares no process, so no capability names one;
-  # EHOS keeps the field optional and reads it nowhere (eh-os#203). `Work` offers a
+  # EHOS keeps the field optional and reads it nowhere. `Work` offers a
   # command, a query and a recording.
   test "a capability names no process" do
     %{"offers" => %{"capabilities" => capabilities}} =

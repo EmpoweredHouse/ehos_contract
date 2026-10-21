@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.Testing do
-  # The check that every entry point refuses: `eh-os` D-34.
+  # The check that every entry point refuses, which EHOS asks of an application.
   @moduledoc """
   Credentials for a host's tests, and the check that every entry point refuses one
   without the capability.

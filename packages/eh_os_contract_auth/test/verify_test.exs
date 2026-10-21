@@ -1,8 +1,7 @@
 defmodule EhOsContract.Auth.VerifyTest do
   @moduledoc """
-  EA: what `EhOsContract.Auth.verify/2` accepts, and each reason it refuses with
-  (`eh-os` D-33, D-34). Every refusal has a control beside it that differs in the
-  one thing refused.
+  EA: what `EhOsContract.Auth.verify/2` accepts, and each reason it refuses with. Every refusal
+  has a control beside it that differs in the one thing refused.
   """
 
   use EhOsContract.Auth.KeyCase, async: false
@@ -168,10 +167,10 @@ defmodule EhOsContract.Auth.VerifyTest do
     end
   end
 
-  describe "the tokens sign-in brings (eh-os D-64)" do
+  describe "the tokens sign-in brings" do
     # An ID token is signed with the credentials' key and, for an application's own
     # client, carries its audience: only the missing `cap` tells it from a credential.
-    # D-64 makes that refusal a security property, so it is pinned here (S9 in
+    # EHOS's sign-in makes that refusal a security property, so it is pinned here (S9 in
     # docs/adr/browser-session.md).
     test "an ID token presented as a bearer credential is refused", %{pair: pair, keys: keys} do
       claims = %{
@@ -190,7 +189,7 @@ defmodule EhOsContract.Auth.VerifyTest do
     end
 
     # RFC 9068 §2.2: a credential issued through sign-in names the client it was
-    # issued to. The verifier ignores the claim; recording it is G-3's, later.
+    # issued to. The verifier ignores the claim; recording it is left to EHOS, later.
     test "a credential that names its client_id is accepted as it is", %{pair: pair, keys: keys} do
       token = credential(pair, %{"client_id" => "clinic-pages/test"})
 

@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.Keys do
-  # Keys kept in the application's own table: `eh-os` D-34. The thumbprint as `kid`: D-33.
+  # Keys kept in the application's own table, and the thumbprint as `kid`, as EHOS decided.
   @moduledoc """
   The public keys EHOS signs credentials with, as this application last saw them.
 

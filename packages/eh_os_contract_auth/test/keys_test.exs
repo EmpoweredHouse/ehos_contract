@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.KeysTest do
   @moduledoc """
-  EA: the key store's branches, each of the tests `eh-os` D-34 lists — a key
+  EA: the key store's branches, each of the tests EHOS's design asks for — a key
   removed from the JWKS is refused after the next refresh; a failed fetch keeps
   the last set; an unknown `kid` fetches at most once per interval; a first start
   without EHOS refuses with `:no_keys`; a restart without EHOS works on the keys in
@@ -122,7 +122,7 @@ defmodule EhOsContract.Auth.KeysTest do
 
     # #89: an address is taken only as every parser reads it, so the loopback exception cannot
     # be reached by one a browser or Node's URL reads as another host. The rule is EHOS's own
-    # (`Ehos.Credentials.check_issuer/1`, eh-os#118), with a path, since this is the key set's.
+    # (`Ehos.Credentials.check_issuer/1`), with a path, since this is the key set's.
     test "takes https, or plain http on loopback, only as every parser reads it" do
       for url <- [
             "https://ehos.example.com/.well-known/jwks.json",

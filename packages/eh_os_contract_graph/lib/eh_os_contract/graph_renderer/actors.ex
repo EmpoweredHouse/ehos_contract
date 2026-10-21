@@ -1,5 +1,5 @@
 defmodule EhOsContract.GraphRenderer.Actors do
-  # Point 2 of the user's working plan for the Graph screen, in `PLAN.md`: the domain's
+  # Point 2 of the maintainer's working plan for the Graph screen: the domain's
   # actors, which no picture draws, as a table beside the canvas.
   @moduledoc """
   The actors of a domain's `graph.v1` document as a table, people and systems apart:

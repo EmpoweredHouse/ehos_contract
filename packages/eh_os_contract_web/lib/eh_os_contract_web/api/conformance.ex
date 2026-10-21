@@ -6,7 +6,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   #
   # Both at once is a bad request: the report has exactly one of the two keys, and an
   # answer to either would leave the other question unanswered (plan DD, P2w, #259,
-  # agreed with EHOS in EmpoweredHouse/eh-os#297).
+  # agreed with EHOS).
   #
   # The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
   # the shape a consumer compares version to version is part of what the engine

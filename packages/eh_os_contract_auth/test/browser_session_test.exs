@@ -3,7 +3,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
   EB2b (#78): a browser signed in through EHOS and out again, through
   `EhOsContract.Auth.SignIn.Router` and `EhOsContract.Auth.Session`, against an EHOS
   played by `EhOsContract.Auth.FakeEhos` (S2, S6, S7, S8 in
-  docs/adr/browser-session.md, and `eh-os` D-68).
+  docs/adr/browser-session.md, and EHOS's rule for the addresses).
 
   The host is played here too: an encrypted cookie session, a body parser, the router
   forwarded at `/auth/ehos`, and a page behind the session plug. EHOS's authorization
@@ -78,7 +78,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert query["code_challenge_method"] == "S256"
       assert byte_size(query["code_challenge"]) == 43
       assert is_binary(query["nonce"]) and is_binary(query["state"])
-      # eh-os D-113: never older than this application's absolute limit, twelve hours here.
+      # Never older than this application's absolute limit, twelve hours here.
       assert query["max_age"] == "43200"
     end
 
@@ -192,7 +192,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert DateTime.diff(expires_at, DateTime.utc_now()) in 90..101
     end
 
-    # eh-os D-113: just inside the limit EHOS was asked as max_age, the sign-in stands.
+    # Just inside the limit EHOS was asked as max_age, the sign-in stands.
     test "a sign-in just inside the absolute limit is kept", context do
       browser =
         sign_in(context, "/", grant: %{"auth_time" => System.os_time(:second) - 43_200 + 120})
@@ -206,7 +206,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
             %{"sid" => ""},
             %{"sub" => ""},
             %{"auth_time" => 999_999_999_999_999},
-            # Past the absolute limit, which EHOS was asked as max_age (eh-os D-113): read, it
+            # Past the absolute limit, which EHOS was asked as max_age: read, it
             # would send the browser round and round EHOS.
             %{"auth_time" => System.os_time(:second) - 43_200 - 60},
             # Within the renewal margin: every request would renew it.
@@ -346,7 +346,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert "#{location.scheme}://#{location.host}#{location.path}" ==
                "https://ehos.test/oauth/end_session"
 
-      # eh-os D-68: exactly `https://<host>/`, which EHOS compares as a string.
+      # Exactly `https://<host>/`, which EHOS compares as a string.
       assert query["post_logout_redirect_uri"] == @address <> "/"
 
       assert %{"sub" => "u-anna"} =

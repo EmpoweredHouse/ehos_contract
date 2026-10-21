@@ -24,7 +24,7 @@ defmodule EhOsContract.Migrations.V01 do
   #
   # One per schema, not one per database. An advisory lock belongs to the whole
   # database, and EHOS keeps every application of an instance in one, each in a
-  # schema of its own (`eh-os` D-54): a single fixed key made all of them append one
+  # schema of its own: a single fixed key made all of them append one
   # after another (issue #51, v2 §10.2). Two integers are PostgreSQL's other key
   # space, apart from every single-integer key anybody takes. The key is computed
   # here and written into the SQL, so neither function resolves anything through a

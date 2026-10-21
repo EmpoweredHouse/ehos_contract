@@ -1,11 +1,12 @@
 name: Release
 
-# eh-os D-91 (its docs/releases.md): a tag `vX.Y.Z` on main publishes a GitHub release of this
-# repository. The tag follows the engine's version; every package keeps its own, and is released
-# at this tag when its version has no `-dev`. The notes are each released package's section of
-# its CHANGELOG.md, under `## <package> <version>`: the release's description when they fit in
-# one, and `notes.md`, attached, always. `release.json` beside them says what the packages produce
-# and accept and each one's version (`mix contract.release_file` in sandbox/).
+# The maintainers' release procedure, shared with EHOS's other repositories: a tag `vX.Y.Z` on
+# main publishes a GitHub release of this repository. The tag follows the engine's version; every
+# package keeps its own, and is released at this tag when its version has no `-dev`. The notes are
+# each released package's section of its CHANGELOG.md, under `## <package> <version>`: the
+# release's description when they fit in one, and `notes.md`, attached, always. `release.json`
+# beside them says what the packages produce and accept and each one's version
+# (`mix contract.release_file` in sandbox/).
 # Started by hand on a commit of main, the workflow writes what a release of it would publish
 # into its summary and publishes nothing: a package at `-dev` shows its `## [Unreleased]`, one
 # without shows its version's section. That is how the job is checked before a tag, and how a

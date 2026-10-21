@@ -2,7 +2,7 @@ defmodule EhOsContract.Auth.Migrations.V02 do
   @moduledoc false
 
   # One row per decision the `EhOsContract.Authorizer` makes about a credential's
-  # actor (`eh-os` D-34, FM-21): a refusal as carefully as an acceptance. The engine
+  # actor, as EHOS asks of an application: a refusal as carefully as an acceptance. The engine
   # writes nothing when it refuses, so this is the only record of a refusal.
   #
   # It records the authorization, not the command: a command allowed here may still

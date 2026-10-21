@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.SignInTest do
   @moduledoc """
   EB1 (#78): the sign-in child — what it refuses at boot, the client key in the shape
-  `eh-os` D-68 fixes, and how it keeps EHOS's discovery document and keys: fetched
+  EHOS gives it, and how it keeps EHOS's discovery document and keys: fetched
   over a transport that follows no redirect and reads a bounded body, retried while
   EHOS is down, and checked before any sign-in (S6 in docs/adr/browser-session.md).
   The sign-in itself is EB2's.
@@ -43,7 +43,7 @@ defmodule EhOsContract.Auth.SignInTest do
       assert config.client_id == "clinic/test"
       assert config.issuer == "https://ehos.test"
       assert config.redirect_uri == "https://clinic.test/auth/ehos/callback"
-      # Exactly the string EHOS compares (eh-os D-68).
+      # Exactly the string EHOS compares.
       assert config.post_logout_redirect_uri == "https://clinic.test/"
       assert config.applications == %{"ledger" => "https://ledger.test.ehos.test"}
 
@@ -86,7 +86,7 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/client_id must be/, fn -> SignIn.child_spec([]) end
     end
 
-    test "an address that is not exactly https://<host> is refused (eh-os D-68)" do
+    test "an address that is not exactly https://<host> is refused" do
       for address <- [
             "https://clinic.test/",
             "https://clinic.test/pages",
@@ -111,7 +111,7 @@ defmodule EhOsContract.Auth.SignInTest do
       end
     end
 
-    test "an application's address with a path or a trailing slash is refused (eh-os D-68)" do
+    test "an application's address with a path or a trailing slash is refused" do
       put_sign_in(applications: %{"ledger" => "https://ledger.test.ehos.test/"})
 
       assert_raise ArgumentError, ~r/address of "ledger" in applications must be/, fn ->
@@ -126,7 +126,7 @@ defmodule EhOsContract.Auth.SignInTest do
       refute error.message =~ "hunter2"
     end
 
-    # eh-os D-69: applications names the other applications. Under the own address,
+    # EHOS's rule: applications names the other applications. Under the own address,
     # Session.credential/3 would hand out this application's own credential as another's.
     test "an application at this application's own address is refused" do
       put_sign_in(applications: %{"ledger" => "https://clinic.test"})
@@ -152,7 +152,7 @@ defmodule EhOsContract.Auth.SignInTest do
       end
     end
 
-    # eh-os D-113: the installation's limit, EHOS_SIGN_IN_ABSOLUTE, as EHOS takes it.
+    # The installation's limit, EHOS_SIGN_IN_ABSOLUTE, as EHOS takes it.
     test "an absolute_limit that is not whole seconds from a minute to 366 days is refused" do
       for limit <- [59, 366 * 86_400 + 1, "2592000", 1.5] do
         put_sign_in(absolute_limit: limit)
@@ -224,7 +224,7 @@ defmodule EhOsContract.Auth.SignInTest do
     end
   end
 
-  describe "the client key file (eh-os D-68)" do
+  describe "the client key file" do
     test "a PEM is refused, and so is a file that is not one JSON object", %{dir: dir} do
       pem = Path.join(dir, "client.pem")
 
@@ -245,7 +245,7 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/cannot be read/, fn -> SignIn.child_spec([]) end
     end
 
-    test "a JWK without exactly D-68's members is refused", %{dir: dir} do
+    test "a JWK without exactly EHOS's members is refused", %{dir: dir} do
       for {members, opts} <- [
             {%{}, drop: ["use"]},
             {%{}, drop: ["kid"]},
@@ -561,7 +561,7 @@ defmodule EhOsContract.Auth.SignInTest do
       assert SignIn.client_context(name) == {:error, :ehos_unavailable}
     end
 
-    # eh-os D-68: EHOS checks an assertion only against the key its `kid` names.
+    # EHOS checks an assertion only against the key its `kid` names.
     test "a code exchange authenticates the client by its key alone, the assertion naming its kid",
          %{ehos: ehos, key: key} do
       name = start!(ehos)

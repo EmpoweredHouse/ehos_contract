@@ -140,7 +140,7 @@ defmodule EhOsContract.InboxTest do
     refute_received :runners_woken
   end
 
-  test "the same fact under a new message id is taken once (eh-os FM-08)" do
+  test "the same fact under a new message id is taken once" do
     first = message("o-1", 120)
     again = message("o-1", 120)
     assert first.id != again.id

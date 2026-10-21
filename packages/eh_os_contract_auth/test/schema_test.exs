@@ -28,7 +28,7 @@ end
 defmodule EhOsContract.Auth.SchemaTest do
   @moduledoc """
   Issue #51: **the package's tables in a schema other than `public`**, as EHOS gives
-  an application one (`eh-os` D-54, D-56). The schema belongs to an owner role that
+  an application one. The schema belongs to an owner role that
   runs the migrations and has no `CREATE` on `public`. The application runs as a
   second role with `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the schema's tables
   and `USAGE` on its sequences, by default privileges, and nothing else. Both reach
@@ -72,7 +72,7 @@ defmodule EhOsContract.Auth.SchemaTest do
       "CREATE ROLE #{app} LOGIN PASSWORD '#{password}'"
     ])
 
-    # What EHOS's operator and its grants Job do (D-54).
+    # What EHOS's operator and its grants Job do.
     admin!([
       "CREATE SCHEMA #{schema} AUTHORIZATION #{owner}",
       "GRANT USAGE ON SCHEMA #{schema} TO #{app}",

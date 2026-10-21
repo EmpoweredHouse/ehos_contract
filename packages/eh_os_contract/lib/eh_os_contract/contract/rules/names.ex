@@ -191,7 +191,7 @@ defmodule EhOsContract.Contract.Rules.Names do
 
   # A command, a query and a recorded event are capabilities, named `<domain>.<name>`
   # (D14), so a query may take neither a command's name nor that of an event an actor
-  # records: the manifest would offer one capability for both (`eh-os` D-73). Commands and
+  # records: the manifest would offer one capability for both. Commands and
   # events already share one namespace (`callback_namespace/1`). Unique across the whole
   # application is the Mix compiler's to check, since it sees every contract (L3).
   defp capability_namespace(d) do

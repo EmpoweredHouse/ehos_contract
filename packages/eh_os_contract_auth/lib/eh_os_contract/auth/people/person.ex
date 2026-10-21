@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.People.Person do
-  # The people API's person: `eh-os` D-80.
+  # The person of EHOS's people API.
   @moduledoc """
   A person as EHOS's people API answers them: `id`, which never changes
   and is the `sub` sign-in gives; `email`, which can; `name`, optional, which two people

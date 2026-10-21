@@ -1,5 +1,5 @@
 defmodule EhOsContract.StageOrder do
-  # Plan DD, O1 (#260), its definition agreed with EHOS in EmpoweredHouse/eh-os#297.
+  # Plan DD, O1 (#260), its definition agreed with EHOS.
   @moduledoc """
   Which runs of a process reached a later stage before an earlier one.
 

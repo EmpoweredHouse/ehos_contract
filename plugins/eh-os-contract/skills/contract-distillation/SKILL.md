@@ -14,20 +14,19 @@ engagement in this form: review its output before trusting it.
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
 at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
-`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
-`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `CLAUDE.md`, `docs/` and `sandbox/`
+are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
 a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
 from `sandbox/`, run the application's `mix precommit`.
 
 ## Where this sits, and where it does not
 
-`appunite/process-native-software` owns the validated Process Mapping methodology — its
-`Service Delivery/Process-Mapping-Playbook.md` and the `process-extraction` skill, which turn
-workshop material into a business-process map. **This skill does not compete with that.** It
+The Process Mapping methodology lives in its own repository, if your team has one: its playbook
+and the `process-extraction` skill, which turn workshop material into a business-process map. **This skill does not compete with that.** It
 re-reads the same material, or preferably `process-extraction`'s reviewed output, through a narrower
 lens: what a domain and its contracts need before anyone can write them. It produces neither a process map nor Elixir, but a
 document whoever writes the contract later starts from instead of eight hours of transcript.
-Nothing is written into `process-native-software` from here without asking first.
+Nothing is written into the methodology's repository from here without asking first.
 
 ## The domain comes first
 
@@ -55,7 +54,7 @@ belong in the vocabulary: flag it, do not add it.
 - **Contradictions are kept**, tagged by speaker, never resolved silently.
 - **This is an input, not a source of truth.** Nothing goes to a client or into a contract without a
   person reviewing it.
-- **Never write into `appunite/process-native-software`** without being asked.
+- **Never write into the methodology's repository** without being asked.
 
 ## Inputs
 
@@ -162,7 +161,7 @@ confidence of everything downstream depends on it.
 
 A Markdown document following [output-template.md](output-template.md): the domain first, then one
 section per process. Save it under the `docs/` of the repository you work in, named for the client and date,
-`docs/<client>-<yyyy-mm-dd>-distillation.md`, and say where; not in `process-native-software`'s
+`docs/<client>-<yyyy-mm-dd>-distillation.md`, and say where; not in the methodology repository's
 `output/`, which is that repository's pipeline.
 
 ## Quality check before finishing

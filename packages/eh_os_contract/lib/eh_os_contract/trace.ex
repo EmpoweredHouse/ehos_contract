@@ -501,7 +501,7 @@ defmodule EhOsContract.Trace do
   defp in_window?(nil, _deadline_at), do: false
   # An assertion with no `within` has no deadline, so it cannot be violated — any
   # occurrence satisfies it. Such an assertion is unfalsifiable, and that is
-  # recorded in PLAN.md as a candidate for an `info` in `eh_os_contract.check`.
+  # a candidate for an `info` in `eh_os_contract.check`.
   defp in_window?(_at, nil), do: true
   defp in_window?(at, deadline_at), do: DateTime.compare(at, deadline_at) != :gt
 

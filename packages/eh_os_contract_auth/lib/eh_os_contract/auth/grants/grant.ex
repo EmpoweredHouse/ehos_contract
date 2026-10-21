@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.Grants.Grant do
-  # The grant route's answer: `eh-os` `docs/grants-api.md`, "Granting a role" (D-112).
+  # The grant route's answer, as EHOS's grants API gives it for granting a role.
   @moduledoc """
   What EHOS answered a grant, for the page to say: who was granted the role, and what
   became of it.

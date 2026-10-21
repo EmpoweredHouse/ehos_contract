@@ -1,7 +1,7 @@
 defmodule EhOsContract.Relay do
   # At least once, never zero times: the notes of 1 October 2026 in v2 §16. An event of
   # newer code waits: plan W1. `publish/2` returns within seconds: a decision of
-  # 1 October 2026, recorded in `PLAN.md`.
+  # 1 October 2026.
   @moduledoc """
   What carries a `publish` out of the application: one ordered subscription over the
   log per publication, which hands what it reads to `EhOsContract.Bus`. The log is

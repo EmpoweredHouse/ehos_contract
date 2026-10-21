@@ -2,7 +2,7 @@ defmodule EhOsContract.Auth.AuthorizeTest do
   @moduledoc """
   EA: `EhOsContract.Auth` as the engine's `EhOsContract.Authorizer` — `check/2`'s
   answer, and one row per decision, a refusal as carefully as an acceptance
-  (`eh-os` D-34, FM-21).
+  (as EHOS asks of an application).
   """
 
   use ExUnit.Case, async: true

@@ -1,7 +1,7 @@
 /* The dashboard's own look, on the EmpoweredHouse design system
-   (docs/adr/dashboard-design-system.md, following eh-os D-42).
+   (docs/adr/dashboard-design-system.md, following the EHOS console's).
 
-   The design system's tokens come first, from the ehos_design package (eh-os D-72), which is a
+   The design system's tokens come first, from the ehos_design package, which is a
    dependency of the build only: this file refers to its custom properties and never defines one of
    the same name. What this file adds is named --eh-os-contract-*, and test/design_system_test.exs
    holds it to that prefix (and, where the package is fetched, to its token names).

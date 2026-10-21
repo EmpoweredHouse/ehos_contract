@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.EhOsContract.Manifest do
-  # The manifest's format: `eh-os` D-52.
+  # The manifest's format is EHOS's.
   @shortdoc "Writes the EHOS application manifest from ehos.yaml and the contracts"
 
   @moduledoc """

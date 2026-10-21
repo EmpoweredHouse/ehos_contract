@@ -2,8 +2,8 @@ defmodule EhOsContract.StageOrderTest do
   @moduledoc """
   Plan DD, O1 (#260): **the runs that reached a later stage before an earlier one**, on
   the invented `DispatchRig.AccountReview`, whose stages are a withdrawal and then the
-  auditor's confirmation of the balance. The rules are the ones agreed with EHOS in
-  EmpoweredHouse/eh-os#297: by position in the log, only stages a run reached, the period
+  auditor's confirmation of the balance. The rules are the ones agreed with EHOS:
+  by position in the log, only stages a run reached, the period
   not cutting a run, a stage entered by its first event.
   """
 

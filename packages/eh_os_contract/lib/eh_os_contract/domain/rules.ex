@@ -34,7 +34,7 @@ defmodule EhOsContract.Domain.Rules do
   # EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
   # system's is named in `by:` as a person's is.
   #
-  # **D4**, since eh-os D-112 (EmpoweredHouse/eh-os#729): an actor's `may_grant:` names the
+  # **D4**, as agreed with EHOS: an actor's `may_grant:` names the
   # other person actors of the domain whose role a person in it may grant through the
   # application, so only a person grants and is granted, never the actor itself, each once, and
   # never through rules that lead back to it: `a` granting `b` while `b` grants `a` lets a

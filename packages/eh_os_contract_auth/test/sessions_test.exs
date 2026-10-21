@@ -206,7 +206,7 @@ defmodule EhOsContract.Auth.SessionsTest do
     end
   end
 
-  describe "the absolute limit from auth_time, twelve hours unless configured (D-66, D-113)" do
+  describe "the absolute limit from auth_time, twelve hours unless configured" do
     # Every step under `EhOsContract.Clock`, at a time the real clock has not reached, so the test
     # also shows which clock is read.
     @now ~U[2030-01-01 12:00:00.000000Z]
@@ -246,7 +246,7 @@ defmodule EhOsContract.Auth.SessionsTest do
       assert column("subject") == ["u-bartek", "u-celina"]
     end
 
-    # eh-os D-113: the installation's limit, given as EHOS_SIGN_IN_ABSOLUTE, replaces twelve hours.
+    # The installation's limit, given as EHOS_SIGN_IN_ABSOLUTE, replaces twelve hours.
     test "is the configured absolute_limit when the installation sets one", %{name: name} do
       stop_supervised!(name)
       put_sign_in(absolute_limit: 30 * 86_400)

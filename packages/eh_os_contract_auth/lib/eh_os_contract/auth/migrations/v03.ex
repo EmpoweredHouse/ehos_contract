@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.Migrations.V03 do
   @moduledoc false
 
-  # A person signed in through EHOS (`eh-os` D-64, docs/adr/browser-session.md): one row per
+  # A person signed in through EHOS with OpenID Connect (docs/adr/browser-session.md): one row per
   # sign-in, and one per application the pages hold a credential for.
   #
   # The browser holds a random token; the row holds its SHA-256, so the table names no live
@@ -40,7 +40,7 @@ defmodule EhOsContract.Auth.Migrations.V03 do
       add :session_id, references(:eh_os_contract_auth_sessions, on_delete: :delete_all),
         primary_key: true
 
-      # The application's address, as EHOS takes it in `resource` (D-68); the client's own too.
+      # The application's address, as EHOS takes it in `resource`; the client's own too.
       add :resource, :text, primary_key: true
       add :token, :text
       add :expires_at, :utc_datetime_usec

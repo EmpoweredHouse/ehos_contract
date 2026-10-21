@@ -17,8 +17,8 @@ documentation.
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
 application built on EHOS enables. There, the engine's paths below are under `deps/eh_os_contract/`,
 at the version the application pins: `packages/eh_os_contract/docs/contract.md` is
-`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `PLAN.md`, `CLAUDE.md`, `docs/` and
-`sandbox/` are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+`deps/eh_os_contract/packages/eh_os_contract/docs/contract.md`. `CLAUDE.md`, `docs/` and `sandbox/`
+are eh-os-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
 a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
 from `sandbox/`, run the application's `mix precommit`.
 
@@ -113,8 +113,8 @@ rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 | A command renamed, or its `by:` changed | `removed` + `added`, or `changed` | Commands leave no payload in the log, so history is untouched — but a command a person may issue has a capability, `<domain>.<command>`, which EHOS grants to roles. A rename withdraws a grant every role has today; a changed `by:` changes who is given it. Host-visible: to the user first. |
 | A required field added to a command | `changed` | No history, but every caller — the host's code, an HTTP client — is refused until it sends the field. |
 | A `publish` changed | `changed` | Nothing refuses the edit, but a publication is another application's input: a changed field is a new versioned name, not an edit (`docs/adr/contract-v2.md` §7). A changed `idempotent_on:` changes the key of every message built after the deploy, so a fact published again after it — a batch retried across the deploy, a relay reset — can be taken once more under the new key; a redelivery of a message already sent keeps its key. |
-| A `publish` renamed or removed | `removed` (+ `added`) | Its relay's row is keyed by the declaration's name (`"<contract>:relay:<name>"`), not by `as:`. Renamed, a new relay starts at the head of the log, and what the old one had not yet published — behind an outage, or with no bus configured — never leaves; the old row stays. Removed and added back later, it finds the old row and publishes everything since. Removing it stops the event leaving for every subscriber in force: in EHOS that is a breaking change (`eh-os` C-4). |
-| A `subscribe "<name>.vN"` removed, or its policy | `removed` / `changed` | The inbox goes with the last policy that handles it, and so does `<name>.subscribe` unless a policy handles another version of the name; messages the transport keeps for the durable consumer wait unread until the grant is withdrawn. A field a subscriber stops reading changes nothing; one it starts reading must be in the publisher's version in force (`eh-os` C-3). |
+| A `publish` renamed or removed | `removed` (+ `added`) | Its relay's row is keyed by the declaration's name (`"<contract>:relay:<name>"`), not by `as:`. Renamed, a new relay starts at the head of the log, and what the old one had not yet published — behind an outage, or with no bus configured — never leaves; the old row stays. Removed and added back later, it finds the old row and publishes everything since. Removing it stops the event leaving for every subscriber in force: in EHOS that is a breaking change. |
+| A `subscribe "<name>.vN"` removed, or its policy | `removed` / `changed` | The inbox goes with the last policy that handles it, and so does `<name>.subscribe` unless a policy handles another version of the name; messages the transport keeps for the durable consumer wait unread until the grant is withdrawn. A field a subscriber stops reading changes nothing; one it starts reading must be in the publisher's version in force, as EHOS requires. |
 | A `subscribe "<name>.vN"` given another `as:` | `removed` + `added` | The inbox is keyed `"<contract>:inbox:<as>"`, its durable consumer's name and the `consumer` of its rows: a new `as:` is a new consumer, which gets only what is published after it subscribes, while what waited for the old one goes unread, and facts the old one took are taken again if they come again. Keep `as:` once the inbox has run. |
 
 ## Check the data before calling a change free
@@ -129,14 +129,13 @@ docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "sel
 Zero rows of the type means the change is still additive in fact, and `--forget TYPE` is what
 records it in the lock. Anything else is a decision for the
 user, with the count: a new event instead of a changed one, an optional field instead of a required
-one, or data work written down in `PLAN.md` before the change.
+one, or data work written down in the pull request before the change.
 
 **In an application, the development database proves nothing.** The log that matters is that of
 every environment the application is deployed to, production's first. Count the rows there, through
 whoever may read it, for the affected types alone (`where type in (...)`, which the log's index on
 `type` serves) rather than the whole log; until that count is known, treat the change as one that
-meets old rows, and write the decision and the data work into the pull request instead of
-`PLAN.md`.
+meets old rows, and write the decision and the data work into the pull request.
 
 ## Non-negotiables
 

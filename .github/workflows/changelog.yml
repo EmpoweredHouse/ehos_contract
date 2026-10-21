@@ -1,16 +1,17 @@
 name: Changelog
 
-# eh-os D-91: a change a user of a package can see gets a line under `## [Unreleased]` in that
-# package's CHANGELOG.md, in its own pull request, or the description says why not, on a line
-# `No changelog: <why>` (CONTRIBUTING.md, "Changelogs and releases"). A user is a host
-# application's developer, and a package's code is what a host gets of it, read from the `files:`
-# of its `mix.exs`: `lib/`, what it ships from `priv/`, the assets its static files are built from,
-# its `.formatter.exs` (the engine's exports the DSL's `locals_without_parens`), `mix.exs`, and the
-# engine's `docs/`, the DSL reference and rules a host writes contracts by, generated from the code
-# in part. A README, LICENSE and NOTICE ship too, but are prose and legal text, as the changelog
-# itself is; tests, `config/`, `dev/`, `sandbox/` and CI do not ship. The check does not judge
-# the line; it makes leaving one out deliberate. It reads the description too, so it runs again
-# on every edit of it, which ci.yml does not listen to.
+# The release procedure EHOS's repositories share: a change a user of a package can see gets a
+# line under `## [Unreleased]` in that package's CHANGELOG.md, in its own pull request, or the
+# description says why not, on a line `No changelog: <why>` (CONTRIBUTING.md, "Changelogs and
+# releases"). A user is a host application's developer, and a package's code is what a host gets
+# of it, read from the `files:` of its `mix.exs`: `lib/`, what it ships from `priv/`, the assets
+# its static files are built from, its `.formatter.exs` (the engine's exports the DSL's
+# `locals_without_parens`), `mix.exs`, and the engine's `docs/`, the DSL reference and rules a
+# host writes contracts by, generated from the code in part. A README, LICENSE and NOTICE ship
+# too, but are prose and legal text, as the changelog itself is; tests, `config/`, `dev/`,
+# `sandbox/` and CI do not ship. The check does not judge the line; it makes leaving one out
+# deliberate. It reads the description too, so it runs again on every edit of it, which ci.yml
+# does not listen to.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize, ready_for_review]

@@ -1,5 +1,5 @@
 # A workload that signs people in through EHOS and reads the company's people from it, as itself
-# (eh-os D-81).
+# (ehos.yaml/v3).
 schema: ehos.yaml/v3
 needs:
   people: read

@@ -29,7 +29,7 @@ defmodule EhOsContract.AppendLockTest do
   @moduledoc """
   **One append lock per log, not per database** (v2 §10.2, its note of 30 September
   2026). EHOS keeps every application of an instance in one database, each in a
-  schema of its own (`eh-os` D-54), and an advisory lock belongs to the whole
+  schema of its own, and an advisory lock belongs to the whole
   database: with one fixed key, every application there appended one after another.
 
   Two schemas in `EhOsContract.CommitRepo`'s database, each migrated as a host does.

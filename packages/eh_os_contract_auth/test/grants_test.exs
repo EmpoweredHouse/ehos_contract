@@ -1,10 +1,8 @@
 defmodule EhOsContract.Auth.GrantsTest do
   @moduledoc """
-  EmpoweredHouse/eh-os#773 (`eh-os` D-112): a signed-in person grants and revokes,
-  through the application, a role their rule lets them give. EHOS is
-  `EhOsContract.Auth.FakeEhos`, which exchanges a person's credential and serves the
-  grant routes as `eh-os`'s `docs/grants-api.md` describes them on
-  EmpoweredHouse/eh-os#754.
+  A signed-in person grants and revokes, through the application, a role their rule lets
+  them give. EHOS is `EhOsContract.Auth.FakeEhos`, which exchanges a person's credential
+  and serves the grant routes as EHOS's grants API describes them.
 
   Every test runs against committed data, in `EhOsContract.Auth.CommitRepo`'s database,
   as `EhOsContract.Auth.RenewalTest` does, since a stale credential is renewed under a
