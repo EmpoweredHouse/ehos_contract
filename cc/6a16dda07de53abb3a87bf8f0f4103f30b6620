@@ -1,0 +1,1 @@
+Release only: versions and changelog headings. Read as release notes: engine 0.8.0 (D-112's may_grant, Dependency exported, outage on the engine clock, English examples), auth 0.5.0 (manifest v5 grant rule, Grants client; EHOS versions named, 0.13.0 and 0.14.0). docs_test 28, auth mix check 370, sandbox release_file_test 5 pass.
