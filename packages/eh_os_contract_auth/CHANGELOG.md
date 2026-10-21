@@ -14,7 +14,8 @@ otherwise. A line for a breaking change, one a host has to act on when it upgrad
 `**Breaking:**`, under the subsection it belongs to.
 
 This package keeps its own version; the repository's tag, `vX.Y.Z`, is the engine's, and one tag
-releases every package at its own version. Between releases the version in `mix.exs` ends in `-dev`;
+releases each package whose version has left `-dev`, at its own version; the others stay unreleased at
+that tag, though `release.json` lists their versions. Between releases the version in `mix.exs` ends in `-dev`;
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
@@ -231,7 +232,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   two registered modules expose the same public domain name, `--domain` refuses the ambiguity and names both
   modules instead of silently taking the first scan result.
 
-- **The package** (contract v2 §16, D14; the credential's form and the key store as EHOS decided them). `EhOsContract.Auth.verify/1,2`
+- **The package** (contract v2 §16; the credential's form and the key store as EHOS decided them). `EhOsContract.Auth.verify/1,2`
   turns an EHOS credential — a JWT signed with Ed25519 — into an `EhOsContract.Actor`, or refuses
   it with `:expired`, `:unknown_key`, `:bad_signature`, `:wrong_audience`, `:wrong_issuer` or
   `:no_keys`. `EhOsContract.Auth` is a child for the application's supervision tree that keeps

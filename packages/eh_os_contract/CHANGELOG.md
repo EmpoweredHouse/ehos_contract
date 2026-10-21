@@ -37,8 +37,9 @@ its description, `No changelog: <why>`, and CI's Changelog check (`.github/workf
 fails it otherwise. A line for a breaking change, one a host has to act on when it upgrades, starts
 with `**Breaking:**`, under the subsection it belongs to.
 
-The repository's tag, `vX.Y.Z`, is this package's version, and one tag releases every package of the
-repository at its own version. Between releases the version in `mix.exs` ends in `-dev`; at a
+The repository's tag, `vX.Y.Z`, is this package's version, and one tag releases each package of the
+repository whose version has left `-dev`, at its own version; the others stay unreleased at that tag,
+though `release.json` lists their versions. Between releases the version in `mix.exs` ends in `-dev`; at a
 release, a package with lines under `## [Unreleased]` moves to its next version. Every release moves
 the engine, whose version the tag is: a release of other packages alone moves it by a patch from its
 last release, and that version's section says so under `### Changed` ("Released with

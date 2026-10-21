@@ -7,8 +7,9 @@ dated correction in place where a file says so, and the original text was never 
 it to learn why a mechanism exists, not what the code does today: for that, the packages' own docs
 (`packages/eh_os_contract/docs/`) and the code are the source.
 
-Four of the eight files predate the library's rename from `pns` (`PNS.*`); in them `PNS.X` means today's
-`EhOsContract.X`. Part of the record was written while the library was tested on client material that has since
+Four of the eight files predate the library's rename from `pns` (`PNS.*`). In them a module that survived the
+rename, `PNS.X`, is today's `EhOsContract.X`; some they name, such as `PNS.Auth` and `PNS.Command.permits?/3`,
+were removed and have no equivalent. Part of the record was written while the library was tested on client material that has since
 been removed from the repository; the clients are described rather than named, and their examples are kept
 only where they illustrate a decision.
 
