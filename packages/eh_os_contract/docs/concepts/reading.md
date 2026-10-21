@@ -136,17 +136,17 @@ defmodule Concepts.Reading.CopiesOut do
 end
 ```
 
-**When it is written** is its `delivery`:
+**When it is written.** The read model's `delivery` decides:
 
 - `:in_transaction`, when `delivery` is left out: dispatch projects the appended events inside the
   transaction that appends them, before it commits. A query reads the command's effect as soon as
-  dispatch returns, and a projection that raises rolls the command back with it. A read model of an
-  event of a sibling contract in another context has to say which it is ([`X10`](../contract.md#refusals-x)).
+  dispatch returns, and a projection that raises rolls the command back with it. A read model that
+  takes an event of a sibling contract in another context must declare its `delivery` ([`X10`](../contract.md#refusals-x)).
 - `:at_least_once`: a subscription reads the log in order after the commit, in batches, and moves its
   position in the same transaction as the rows it wrote, so each batch's rows are committed once. A
   callback may still run more than once (a batch that raises is run again), so keep it to writes in that
   transaction, or make what it does outside it idempotent. An event that
-  raises is retried, and after three attempts the subscription stops at it as `failing` rather than
+  raises is retried, and after 3 attempts the subscription stops at it as `failing` rather than
   skip it; `mix eh_os_contract.subscriptions` shows where each one stands, and moving past the event
   is a person's decision.
 
@@ -155,20 +155,20 @@ arrives in an inbox that only a policy takes ([`D12`](../contract.md#refusals-d)
 instead.
 
 **Rebuilding.** A read model's version is a digest of its declaration and of every event it takes.
-When it changes, its subscription is marked `stale` at the next boot, and one that defines `reset/0`
-is rebuilt there, unless the subscriptions are `:manual` (`config :eh_os_contract, subscriptions:`), as
+When it changes, its subscription is marked `stale` at the next boot. If the read model defines `reset/0`,
+it is rebuilt at that boot, unless the subscriptions are `:manual` (`config :eh_os_contract, subscriptions:`), as
 in tests: `reset/0` deletes everything it wrote, and the log is replayed into it. Without
 `reset/0` it stays `stale` and goes on taking new events over the old rows. `mix
 eh_os_contract.subscriptions --reset <contract id>:read_model:<name>` rebuilds one by hand.
 
 **Where a new one starts.** A new read model delivered `:at_least_once` starts at the beginning of the
 log and takes all of it. One delivered `:in_transaction` starts at the head, since dispatch projects
-it from then on; added to a log that already holds its events, it is rebuilt by hand.
+it from then on. If you add it to a log that already holds its events, rebuild it by hand.
 
 **Personal data.** A read model that projects a personal field must define `forget/2`, or the host
-does not boot. When a subject is erased (`EhOsContract.erase/3`), each such read model is handed the
-subject's type and id, and deletes or blanks what it keeps of them, inside the erasure's transaction
-when delivered `:in_transaction`, so index the column that holds the subject's id. An event replayed
+does not boot. When a subject is erased (`EhOsContract.erase/3`), each such read model receives the
+subject's type and id and deletes or blanks what it keeps of them. A read model delivered `:in_transaction`
+does this inside the erasure's transaction, so index the column that holds the subject's id. An event replayed
 after its subject was erased reads back with `%EhOsContract.Erased{}` in place of each personal field,
 which is why `copy_lent` above keeps a name only when it is a string.
 
@@ -213,8 +213,8 @@ defmodule Concepts.Reading.HolderOfCopy do
 end
 ```
 
-The engine holds the answer to the declaration: anything but rows of the read model, as many as
-`returns:` says, raises. Nothing is written: a read is not a fact.
+The engine checks the answer against the declaration: anything other than rows of the read model, in the number
+`returns:` declares, raises. Nothing is written: a read is not a fact.
 
 **A query's scenario** projects its `given` events through the read model's implementation, asks the
 query, and compares the answer with `answers`: exactly as many rows, each matching a different one on
@@ -232,9 +232,9 @@ EhOsContract.query(Loans, %Loans.Queries.LoansOfMember{member_id: member}, actor
 ```
 
 It answers `{:ok, rows}` (`{:ok, row_or_nil}` for `returns: :one`), or `{:error, reason}` when the
-actor may not ask or the parameters do not fit. A credential's actor is asked of the
+actor may not ask or the parameters do not fit. For an actor with a credential, the engine asks
 `EhOsContract.Authorizer` for the query's capability, `reading_example.loans_of_member` (the domain's
-name and the query's) as it would be for a command.
+name and the query's), as it would for a command.
 
 **Reading a write.** A read model delivered `:at_least_once` may not have taken an event yet when the
 command that appended it returns. Pass the receipt's position, and the query waits until the read

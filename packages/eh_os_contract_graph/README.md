@@ -4,15 +4,15 @@ Draws [EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/
 `graph.v1` documents in a Phoenix LiveView: a card per node, an arrow per relation, the overlay's numbers from the log on them, and a panel for what is clicked.
 
 The engine says what is in a contract or a domain; this package says how it is drawn. At run time it needs
-`phoenix_live_view` (and `phoenix`, which that needs anyway), and `boundary` and `esbuild` come with it as
-tools of its own build; it does not depend on the engine: a document is plain data, the same whether it
+`phoenix_live_view` (and `phoenix`, which that needs anyway). `boundary` and `esbuild` come with it as
+tools of its own build. It does not depend on the engine: a document is plain data, the same whether it
 comes from `EhOsContract.Graph.Document` in the same process or from `GET <mount>/graph/:contract` decoded.
 `eh_os_contract_web`'s dashboard draws with it, and so can the EHOS Console.
 
-**Work in progress.** An explorer moves through a domain's pictures (below); a canvas draws one. It draws seven views — a contract's full graph, a unit, an aggregate's lifecycle, a
-process module's stages and promises, a domain's context map and its system, several domains joined into a
-landscape — and, as a test bed, every node
-and relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's and where it comes from, a reaction's
+**Work in progress.** An explorer moves through a domain's pictures (below); a canvas draws one. It draws
+7 views (a contract's full graph, a unit, an aggregate's lifecycle, a process module's stages and promises,
+a domain's context map and its system, several domains joined into a landscape) and, as a test bed, every
+node and relation of a document. The panel says what is clicked, from the document alone: a command's fields and who may issue it, an event's fields and where it comes from, a reaction's
 rules, delivery and scenarios, a query's parameters and answers, a context's terms, an actor's role and
 what it may do, the scenarios behind an arrow.
 
@@ -27,8 +27,8 @@ From git, with the same `git:` and `sparse:` shape as the other packages of this
 ```
 
 A host of `eh_os_contract_web` needs none of this: the dashboard declares the dependency and carries the
-script and the stylesheet in its own. The two are made for each other — the script in the dashboard's bundle
-reads the markup this package renders — so update them together:
+script and the stylesheet in its own. The 2 packages are made for each other: the script in the
+dashboard's bundle reads the markup this package renders, so update them together:
 `mix deps.update eh_os_contract_web eh_os_contract_graph`.
 
 ## Exploring a domain
@@ -65,7 +65,7 @@ picture. An application reads its engine; a host with only the application's JSO
 ```
 
 `document` is a `graph.v1` document with string keys. `overlay`, optional, is an
-`eh_os_contract.graph_overlay.v1` of the same document; one whose `document_digest` is not the document's
+`eh_os_contract.graph_overlay.v1` of the same document. An overlay whose `document_digest` is not the document's
 `digest` is not drawn. `view` names which picture of the document is drawn
 (`EhOsContract.GraphRenderer.View`):
 
@@ -81,12 +81,12 @@ picture. An application reads its engine; a host with only the application's JSO
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
-sidebar at the right of the window, as tall as it and scrolled inside, one for the page: selecting in one
-canvas closes another's, and Escape closes it. It lies over the page, so opening it resizes no canvas. The
-reader drags its left edge to set its width, which the browser keeps; it opens
-`--eh-os-contract-graph-panel-width` wide, which a host may set. A name in the panel
+sidebar at the right of the window, as tall as the window and scrolled inside. There is 1 panel per page:
+selecting in one canvas closes another canvas's panel, and Escape closes it. It lies over the page, so opening
+it resizes no canvas. The reader drags its left edge to set its width, which the browser keeps. It opens at the
+width `--eh-os-contract-graph-panel-width`, which a host may set. A name in the panel
 selects that node, drawn or not. A canvas whose width changes is fitted to it again, unless the reader has
-zoomed or panned it; while a pan or a zoom lasts, the graph is a layer of its own, moved without being
+zoomed or panned it. While a pan or a zoom lasts, the graph is a layer of its own, moved without being
 painted again.
 A domain's actors, which no view draws, are a table of their own, each row selecting its actor in a canvas
 of the same document:
@@ -109,10 +109,10 @@ It is drawn on the EmpoweredHouse design system's tokens (`--surface-*`, `--bord
 which the host defines, so it follows the host's theme.
 
 Nothing it loads or sets needs more than a Content-Security-Policy of `default-src 'self'`: no `style`
-attribute, no inline `<style>`, no `eval`. Positions and sizes live in constructed stylesheets; what moves
-on every frame — the zoom, the panel's edge while it is dragged — is a Web Animation, because WebKit styles the
+attribute, no inline `<style>`, no `eval`. Positions and sizes live in constructed stylesheets. What moves
+on every frame (the zoom, the panel's edge while it is dragged) is a Web Animation, because WebKit styles the
 whole page again whenever a stylesheet changes, and Safari stuttered while a stylesheet was written every
-frame. The one
+frame. The only
 style anything sets is d3-zoom's tap highlight on the canvas, on a touch device, through the CSSOM, which the
 policy allows.
 
@@ -134,14 +134,14 @@ the applications it sees together, from the domain documents each submitted with
 
 ## Using it
 
-Drag to pan; Ctrl or ⌘ with the wheel, or a trackpad's pinch, to zoom; the wheel alone scrolls the page. A
-click on a card, a group's title, a label or an arrow selects it and opens its panel; a second click, or the panel's close
+Drag to pan. Use Ctrl or ⌘ with the wheel, or a trackpad's pinch, to zoom; the wheel alone scrolls the page. A
+click on a card, a group's title, a label or an arrow selects it and opens its panel. A second click, or the panel's close
 button, clears it.
 
 ## Developing it
 
-The script and the stylesheet are built by `mix assets.build` — esbuild, a downloaded binary, no Node —
-and committed under `priv/static/`. The two libraries the script carries, dagre and d3-zoom, are vendored
+The script and the stylesheet are built by `mix assets.build` (esbuild, a downloaded binary, no Node)
+and committed under `priv/static/`. The 2 libraries the script carries, dagre and d3-zoom, are vendored
 under `assets/vendor/`; `NOTICE` says what each is, its licence and how it was taken.
 
 Each change to the drawing layer is looked at in a browser, under `default-src 'self'`: the prototype's

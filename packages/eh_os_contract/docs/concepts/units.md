@@ -6,7 +6,7 @@ boundary over a query of the log, the domain services both may call) and the mod
 <!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service, contract.aggregate.event.upcast; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
 
 A **unit** is what a command is sent to. It holds the rules that must stay true, reads what it has
-decided before, and answers each command with events or a refusal. The engine knows two kinds:
+decided before, and answers each command with events or a refusal. The engine knows 2 kinds:
 
 - an **aggregate** decides over one stream: the events that carry its identity, and nothing else;
 - a **dynamic consistency boundary** (`dcb`) decides over a query of the log: its own events, and
@@ -149,7 +149,7 @@ that hold for it alone. `identity` names the fields that tell one from another, 
 injects them into its state, its commands and its events, so `workshop_id` is in every one of them
 without being declared there. `identity :booking_id, generated: :uuid` lets the library give a new one
 its identity, a UUIDv7, when a command declared `creates: true` arrives without it. Such a command is
-refused when it brings an identity of its own (`{field, :generated}`), and without an idempotency key
+refused when it brings its own identity (`{field, :generated}`) or when it has no idempotency key
 (`{:error, :idempotency_key_required}`), since a retry would otherwise create a second unit.
 
 - **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
@@ -218,8 +218,8 @@ rule without examples does not compile ([`S9`](../contract.md#refusals-s)).
 ## The code that decides
 
 A contract names no implementation. A module binds to one declaration with `use <Contract>,
-aggregate: :name`, `dcb: :name` or `domain_service: :name`, and gets the generated behaviour, the
-unit's commands, events and `State` by their short names (a boundary's consulted events too) and
+aggregate: :name`, `dcb: :name` or `domain_service: :name`. The module gets: the generated behaviour; the
+unit's commands, events and `State` by their short names (for a boundary, its consulted events too); and
 `emit/1` and `reject/1`:
 
 ```elixir
@@ -272,7 +272,7 @@ end
   raise on data. Keep a catch-all, when one is needed, exactly `def evolve(state, _), do: state`, so
   dispatch reads and decodes only the events the other clauses name.
 - **The decision is pure.** It reads the command, its `__meta__` (the actor, `occurred_at`), the
-  state and the domain services, and nothing else: on a conflict dispatch decides again, up to three
+  state and the domain services, and nothing else: on a conflict dispatch decides again, up to 3
   times, and a scenario gives a decision only events and a command.
 - **A refusal is a business answer; anything else is a defect.** `reject/1` makes `{:error,
   %EhOsContract.Rejection{}}` naming the rule, writes a `rejected` row and appends nothing. An
@@ -414,7 +414,7 @@ The full table is in [the guide](../contract.md). The refusals a unit meets most
   `where:` ([`A4`](../contract.md#refusals-a));
 - an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
   ask the process owner for;
-- a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t)–[`T4`](../contract.md#refusals-t));
+- a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t) to [`T4`](../contract.md#refusals-t));
 - an event above version 1 without a step from each version below it ([`U1`](../contract.md#refusals-u));
 - in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
   kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
@@ -445,7 +445,7 @@ From [its rules](../rules.md):
   events are only `recorded_by:`. The core is where the business decides; a unit that only records keeps a log.
   Its page says "Records only", in any context, so a reader sees which units decide nothing.
 - `core-command-never-refuses` (notice): a command of a core context rejects nothing, so no rule of
-  its unit refuses a request; only its fields' types and values can. A command only a policy or a
-  process manager issues, with no `by:`, is left out, since it follows from an event already decided. Either the command has a rule not declared yet, or it records a
-  fact, which an event `recorded_by:` an actor says more plainly; some core commands legitimately
-  always succeed.
+  its unit refuses a request; only its fields' types and values can. The check skips a command that only a
+  policy or a process manager issues, with no `by:`: it follows from an event already decided. Either the
+  command has a rule not declared yet, or it records a fact, and an event `recorded_by:` an actor says that
+  more plainly. Some core commands legitimately always succeed.
