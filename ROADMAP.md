@@ -41,8 +41,9 @@ code of conduct, notice, issue templates) are added. Issue and plan citations in
 dashboard's asset build stops needing a private dependency, and CI builds each package as Hex would and runs the
 suite on the oldest and newest supported Elixir and OTP.
 
-**PB7.** A secret scan of the final tree; the repository's GitHub settings, private vulnerability reporting
-among them (`SECURITY.md` relies on it) and actions pinned by SHA; the open issues that describe a security
+**PB7.** A secret scan of the final tree; the repository's GitHub settings, among them private vulnerability
+reporting (`SECURITY.md` relies on it), reported content sent to the maintainers (Moderation options →
+Reported content, which `CODE_OF_CONDUCT.md` relies on) and actions pinned by SHA; the open issues that describe a security
 weakness triaged before they become public; then the packages on Hex in dependency order, and the
 applications moved to them.
 
