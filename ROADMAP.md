@@ -13,7 +13,7 @@ with the options they beat, its review and its pull requests; this file holds on
   `eh_os_contract_web` 0.4.0 (v0.5.0). Applications install them from git. `main` is at the next patch's `-dev`
   of each.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
-  Hex.
+  Hex. Next is PB6.
 - **Open questions for the maintainers:** whether the design record keeps the people it names and its links
   into private repositories (#379); whether the graph's overlays, which read the whole log on each request, get
   a default window or a cache (raised in the review of #311).
@@ -29,13 +29,9 @@ Issues labelled [`publication`](https://github.com/EmpoweredHouse/eh-os-contract
 | PB3 | English in the packages, their tests and the skills; no client named in published docs | #375 | ☑ #376, #378, #380–#384 |
 | PB4 | The client material moves to a private repository | #386 | ☑ #387, #388 |
 | PB4b | The sandbox fills its development log with drift on the invented case studies | #389 | ☑ #390 |
-| PB5 | The repository reads for someone outside the team | #393 | ◐ |
+| PB5 | The repository reads for someone outside the team | #393 | ☑ #394, #395, #396 |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
-
-**PB5.** The working plan leaves the tree for this file; the maintainers' Claude Code setup becomes opt-in; links
-into private repositories and their decision codes become what they meant; the community files (security policy,
-code of conduct, notice, issue templates) are added. Issue and plan citations in code comments wait for PB7.
 
 **PB6.** The packages' `mix.exs` stop depending on each other by `path:` or `git:` when published, the
 dashboard's asset build stops needing a private dependency, and CI builds each package as Hex would and runs the
