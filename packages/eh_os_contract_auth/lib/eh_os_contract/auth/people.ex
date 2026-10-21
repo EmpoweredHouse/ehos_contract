@@ -93,8 +93,6 @@ defmodule EhOsContract.Auth.People do
   @renew_before_seconds 60
   # How long a refusal or an outage of the token endpoint is answered without asking again.
   @failure_kept_ms 5_000
-  # EHOS keeps an assertion's `jti` until it expires: a minute is enough for one request.
-  @assertion_lifetime_seconds 60
   # EHOS's bound on `q`, in bytes (`eh-os` `docs/people-api.md`).
   @max_q_bytes 2048
   # EHOS lists the invited and the joined to an application; the disabled only to a manager.
@@ -503,27 +501,8 @@ defmodule EhOsContract.Auth.People do
     if error == "unauthorized_client", do: {:error, :not_asked}, else: {:error, :unavailable}
   end
 
-  defp assertion(config) do
-    issued_at = System.os_time(:second)
-
-    claims = %{
-      "iss" => config.client_id,
-      "sub" => config.client_id,
-      "aud" => config.token_endpoint,
-      "jti" => Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false),
-      "iat" => issued_at,
-      "exp" => issued_at + @assertion_lifetime_seconds
-    }
-
-    %{"kid" => kid} = config.client_key.fields
-
-    {_modules, token} =
-      config.client_key
-      |> JOSE.JWT.sign(%{"alg" => "Ed25519", "kid" => kid}, claims)
-      |> JOSE.JWS.compact()
-
-    token
-  end
+  defp assertion(config),
+    do: ClientKey.assertion(config.client_key, config.client_id, config.token_endpoint)
 
   # How long a credential lives is measured on a clock no adjustment moves.
   defp now, do: System.monotonic_time(:second)

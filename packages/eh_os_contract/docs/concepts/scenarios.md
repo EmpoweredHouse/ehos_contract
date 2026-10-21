@@ -17,7 +17,7 @@ when    one trigger                   (a command, an event a reaction handles, o
 then    what follows                  (events, a rejection, commands issued, a timer, rows answered)
 ```
 
-A scenario is no stub and no mock: it calls the implementation's own callbacks, with the structs the contract
+A scenario uses no stubs or mocks: it calls the implementation's own callbacks, with the structs the contract
 generates, and holds what they return to the declaration as dispatch would.
 
 ## An example
@@ -152,8 +152,8 @@ The test that runs every scenario of the contract is one line, in a test module 
 use EhOsContract.ScenarioCase, contract: Concepts.Scenarios.Contracts.Loans
 ```
 
-Each scenario becomes an ExUnit test named after its description. The implementation of the scenario's
-target is the module of the contract's application bound to it; `implementations:` names the modules instead,
+Each scenario becomes an ExUnit test named after its description. The scenario runs the module
+of the contract's application that is bound to its target; `implementations:` names the modules instead,
 for a contract compiled outside an application. A target with no implementation fails its scenario: a
 contract without code is legal, a test of one is not.
 
@@ -166,7 +166,7 @@ A scenario has exactly one trigger ([`S1`](../contract.md#refusals-s)):
   manager also one of its own timers, `on :reminder_due`.
 - **`query`**: a query of the contract, with its parameters as the data.
 
-The trigger names its target when one declaration takes it. When several take one event, `target` says
+When only 1 declaration takes the trigger, the trigger identifies the target. When several take one event, `target` says
 which ([`S1`](../contract.md#refusals-s)): in the example `copy_lent` is handled by the policy and projected by the read model, so the
 policy's scenario names the policy. An effect and a read model are never a target ([`S6`](../contract.md#refusals-s)): an effect's outcome is
 outside the log, and a read model is shown by the scenario of a query that reads it.
@@ -187,7 +187,7 @@ Which outcomes a scenario may state depends on its target ([`S6`](../contract.md
 What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../contract.md#refusals-s)), `rejected` a
 rule it `rejects:` ([`S4`](../contract.md#refusals-s)), and an outcome the declaration cannot produce does not compile ([`S6`](../contract.md#refusals-s)). Its data
 names declared fields of the right type, with every required one in a `given` or the trigger ([`S3`](../contract.md#refusals-s)), and fits
-the domain's values ([`X9`](../contract.md#refusals-x)). The unit's identity is the exception: left out, it is the scenario's own.
+the domain's values ([`X9`](../contract.md#refusals-x)). The unit's identity is the exception: when the data leaves it out, the scenario uses its own.
 
 `illustrates:` names the rules a reaction's or a query's scenario shows: a constraint of the policy, process
 manager or query, or an invariant of the process manager ([`S10`](../contract.md#refusals-s)). A command's scenario shows its rules with
@@ -195,8 +195,8 @@ manager or query, or an invariant of the process manager ([`S10`](../contract.md
 
 ## How a scenario runs
 
-**A command.** The unit's state starts from its defaults with the scenario's identity, folds every `given`
-through the implementation's `evolve/2`, and the command's callback decides. A unit with a lifecycle is first
+**A command.** The unit's state starts from its defaults with the scenario's identity, every `given` is folded
+into it through the implementation's `evolve/2`, and then the command's callback decides. A unit with a lifecycle is first
 placed in the status its givens leave it in; a command whose `from:` does not admit that status is refused on
 its `or_rejects:` before the callback is called, as dispatch refuses it. In the example, "a returned copy is
 not returned twice" passes without `return_copy` checking anything: the copy is `returned`, outside
@@ -211,15 +211,16 @@ passes only on a rejection on exactly that rule.
 **A reaction.** A policy's callback is called with the event; a process manager's state folds its givens
 first, and the reaction's or the timer's callback is called with it. The commands it `issues` are compared as
 events are, as a subsequence, and a command outside the reaction's `issues:` fails. A process manager's
-`state` is the run after the step, as the engine keeps it (the delivered event folded after the reaction
-decided, and after a timer the state as it was), compared on the fields it names. A step the engine would not
+`state` is compared, on the fields it names, with the run as the engine keeps it after the step. After an
+event, that is the state with the event folded in after the reaction decided; after a timer, it is the state
+unchanged. A step the engine would not
 take holds no state: a given before the run starts, or a trigger after it ended, fails the scenario, and so
-do events naming two runs in their correlation fields.
+do events naming 2 runs in their correlation fields.
 
 **A query.** Every `given` is projected through the read model's implementation, the query is asked with the
 trigger's data, and its answer must have **exactly as many rows** as `answers`, each matching a different row
 on the fields it names, in any order. Unlike events, an extra row fails: the givens decide the whole answer,
-and what is left out is often what the scenario is about. The projection writes the application's tables, so
+and what is left out is the point of many scenarios. The projection writes the application's tables, so
 it runs in a transaction of the configured repo that is rolled back, and the test checks out an Ecto sandbox
 connection when the repo's pool is the sandbox.
 
@@ -234,17 +235,17 @@ into a test, and `use EhOsContract.ScenarioCase, domain:` every example of a dom
 ## Beyond the cases someone wrote
 
 A scenario tests the case its author thought of. `use EhOsContract.PropertyCase, contract:` tries a unit's code
-on hundreds of histories the contract allows, made from it by `EhOsContract.Generators`: `evolve/2` folds each
-one, also with a person's data erased; each command, issued in a status its `from:` admits, decides only events
-its `emits` names, of the command's identity, values that fit and an order the lifecycle allows, or a refusal on
-one of its `rejects:`; and, when the implementation says what each invariant means with
-`holds?(invariant, state)`, every invariant holds after each command it decides. A failure comes with the
+on hundreds of histories the contract allows, which `EhOsContract.Generators` builds from the contract. It checks
+3 things. `evolve/2` folds each history, also with a person's data erased. Each command, issued in a status its
+`from:` admits, decides either a refusal on one of its `rejects:` or only events its `emits` names, with the
+command's identity, values that fit and an order the lifecycle allows. When the implementation says what each
+invariant means with `holds?(invariant, state)`, every invariant holds after each command it decides. A failure comes with the
 shortest history or list of commands that shows it: a visit reopened while in progress, a correction booked on
 a settlement not yet closed. It needs StreamData, usually as a test dependency.
 
 ## After deploy
 
-Scenarios stay useful once the code runs. The conformance report counts, for each scenario whose trigger is a
+After deploy, the conformance report reads the scenarios too. The conformance report counts, for each scenario whose trigger is a
 command, whether the log has seen it happen (that command decided with the scenario's given types in the
 stream, and the expected types emitted or the same rule refused), and lists the decisions no scenario
 describes. Both are matched by event types, never by data. A decision no scenario describes is a question for
@@ -265,8 +266,8 @@ warning of [the check](../rules.md):
 - **`transition-without-scenario`** (warning): no scenario takes a declared transition of a lifecycle. Add a
   command's scenario whose givens leave the unit in the transition's `from` status and which expects its
   event; a `rejected` scenario decides nothing and does not count. A transition from several statuses needs a
-  scenario from each; one on an event no command emits, or from a status no command's `from:` admits, is
-  left out.
+  scenario from each; the check skips a transition on an event no command emits, or from a status no
+  command's `from:` admits.
 - **`in-transaction-policy-fan-out`** (warning): a scenario shows a policy delivered `:in_transaction`
   issuing more than one command. See [reactions](reactions.md).
 

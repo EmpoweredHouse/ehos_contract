@@ -24,14 +24,23 @@ and the `ehos-dev:release` skill makes one.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
 ### Added
 
 - **The manifest carries a role's grant rule** (eh-os D-112, EmpoweredHouse/eh-os#729). A role whose actor has
   `may_grant:` carries `may_grant`, the roles it may grant, and the manifest is then `ehos.manifest/v5`,
-  which an EHOS from the release after 0.12.0 accepts. A domain without a rule keeps the version and the
+  which EHOS accepts from 0.13.0 on. A domain without a rule keeps the version and the
   digests it had. A rule naming an actor that holds no capability, and so is no role, or a rule on such an
   actor, is refused with what to change, and so is, for a domain given as a map, what the domain's `D4` would
   refuse. `EhOsContract.Auth.Manifest.schemas/0` lists `ehos.manifest/v5`.
+- **A signed-in person grants and revokes a role their rule lets them give** (eh-os D-112,
+  EmpoweredHouse/eh-os#773). `EhOsContract.Auth.Grants.grant/3` and `revoke/4`, from the person's request,
+  exchange their credential for one to EHOS as the sign-in's client and call EHOS's grant routes, which EHOS
+  serves from 0.14.0 on. A grant answers an `EhOsContract.Auth.Grants.Grant`: the person's
+  id, whether they were invited or have joined, whether the role was bound now or before, and whether a link was
+  mailed; a refusal answers EHOS's code. Nothing is configured beyond sign-in, no credential is kept, and nothing
+  is retried.
 
 ### Changed
 

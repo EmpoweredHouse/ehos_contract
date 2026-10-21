@@ -5,7 +5,7 @@ same log, and another application gets it only when it is published, into an inb
 
 <!-- covers: entities contract.consumes, contract.publish, contract.subscribe; rules in-transaction-across-contexts -->
 
-There are two distances, and they work differently:
+There are 2 distances, and they work differently:
 
 | Where the other contract is | It takes the event by | Where the event is | Who may react |
 | --- | --- | --- | --- |
@@ -20,14 +20,14 @@ read; another application's log is not this one's, and its events leave it only 
 `consumes` names a sibling contract of the same domain and the events this contract takes from it. Once
 consumed, an event is named by its name alone everywhere in the contract (a policy `handles:` it, a process
 manager `starts_on` it, a boundary `consults` it, a stage `include`s it), and `as: [old: :new]` renames one that
-would clash with a local name. The sibling's own declaration is what the event is: `consumes` declares no
+would clash with a local name. The sibling's declaration defines the event: `consumes` declares no
 fields, and the compiler reads the sibling as it is compiled now, so a change to the sibling's event reaches
 every contract that consumes it at the next compile. The reference is
 [`consumes`](../dsl/contract-consumes.md).
 
 The contract names the sibling's module without a compile dependency, and the Mix compiler
 (`compile.eh_os_contract`) checks the link instead: the sibling is a compiled contract of the same domain, and
-declares every event named ([`X5`](../contract.md#refusals-x)). A field this contract relies on to tell one run or one boundary from
+declares every event named ([`X5`](../contract.md#refusals-x)). The compiler also checks that a field this contract relies on to tell one run or one boundary from
 another (a `correlate` field, a boundary's `match:`) exists in the sibling's event with the same type, and is
 neither optional nor personal ([`X6`](../contract.md#refusals-x)).
 
@@ -37,11 +37,11 @@ A sibling may be in the same context or in another one, and that changes what th
 
 A policy or a read model left without `delivery` runs `:in_transaction`, inside the dispatch that records the
 event. For a
-sibling of the same context that is usually right: one step of the business, committed once. For a sibling
+sibling of the same context that is usually the right choice: one step of the business, committed once. For a sibling
 of **another context** it means the two contexts commit together, and the reaction's failure rolls the other
 context's fact back: a person's command in one context fails because something in another one did. So a
-policy or a read model that takes an event of a sibling of another context has to declare its delivery, and
-one that does not, does not compile ([`X10`](../contract.md#refusals-x)). Usually it is `:at_least_once`: a policy then names its
+policy or a read model that takes an event of a sibling of another context has to declare its delivery, or
+the contract does not compile ([`X10`](../contract.md#refusals-x)). Usually that delivery is `:at_least_once`: a policy then names its
 `idempotency`, a read model none. An effect and a process manager are left alone, since undeclared they run
 `:at_least_once` already. How each delivery fails is on [the reactions page](reactions.md).
 
@@ -125,9 +125,9 @@ end
 policy :release_hold, "A lent copy is no longer held", handles: :copy_lent, issues: :release_hold
 ```
 
-**The event never enters the subscriber's log.** It arrives in an inbox (`EhOsContract.Inbox`): in one
-transaction the inbox writes its row and runs each policy that handles the event, whose commands are
-dispatched as a policy's always are, and only after that commits does it acknowledge the message. A read
+**The event never enters the subscriber's log.** It arrives in an inbox (`EhOsContract.Inbox`). In one
+transaction, the inbox writes its row and runs each policy that handles the event; the policy's commands are
+dispatched as a policy's always are. Only after that transaction commits does the inbox acknowledge the message. A read
 model, an effect and a process manager read the log, where the event never is, so a contract in which one of
 them takes a received event does not compile ([`D12`](../contract.md#refusals-d)); they react to what the policy's command records
 instead. The policy's `delivery` changes nothing for a received event: the inbox runs it in the transaction
@@ -146,12 +146,13 @@ that writes its row.
   history, asked of its owner, not of the bus.
 
 A contract that subscribes asks for the capability `<name>.subscribe` of the published name without its
-version, `between_example.loan.opened.subscribe`, which the platform grants and the transport delivers by.
+version, `between_example.loan.opened.subscribe`. The platform grants this capability, and the transport delivers the event
+according to it.
 The reference is [`subscribe`](../dsl/contract-subscribe.md).
 
 ## An example
 
-One application lends copies and bills for them: two contexts, two contracts, one log. The loans contract
+One application lends copies and bills for them: 2 contexts and 2 contracts that share 1 log. The loans contract
 publishes the loan; billing consumes the same event as a sibling, from another context, and so declares its
 delivery.
 

@@ -6,11 +6,12 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (20 October 2026)
+## Where things stand (21 October 2026)
 
-- **Released:** v0.7.0, with the engine 0.7.0 and `eh_os_contract_graph` 0.4.0; the latest `eh_os_contract_web`
-  is 0.4.0 (v0.5.0) and `eh_os_contract_auth` 0.4.0 (v0.6.1). Applications install them from git. `main` is at
-  the next patch's `-dev` of each.
+- **Released:** v0.8.0, with the engine 0.8.0 and `eh_os_contract_auth` 0.5.0 (who may grant which role, and a
+  person granting it through the application); the latest `eh_os_contract_graph` is 0.4.0 (v0.7.0) and
+  `eh_os_contract_web` 0.4.0 (v0.5.0). Applications install them from git. `main` is at the next patch's `-dev`
+  of each.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex.
 - **Open questions for the maintainers:** whether the design record keeps the people it names and its links
