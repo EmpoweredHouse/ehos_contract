@@ -1,0 +1,1 @@
+Fix-up from CodeRabbit on #396, Markdown only, reviewed by hand against release.yml and the changelog: tags release only packages off -dev; PNS.X mapping qualified; D14 dropped. Gate EXIT=0.
