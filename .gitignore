@@ -17,3 +17,5 @@ erl_crash.dump
 *.beam
 sandbox/config/*.secret.exs
 .elixir_ls/
+# A maintainer's own Claude Code settings (CONTRIBUTING.md, "Working with Claude Code").
+.claude/settings.local.json

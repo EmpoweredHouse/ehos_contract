@@ -20,5 +20,5 @@ The commands run and what they printed, with the gate's exit code (`mix check` i
 
 ## Review
 
-What each review found and what happened to each finding (`ehos-dev:pre-pr-review`, `.claude/review.md`), or that
+What each review found and what happened to each finding (what to look at: `.claude/review.md`), or that
 the change is documentation only.

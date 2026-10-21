@@ -12,8 +12,9 @@ covered by the note. Then
 `git notes --ref=review add -m '<what each review found and what happened to each finding>' HEAD`
 (`-f` replaces a note already on that commit). Notes stay local: `refs/notes/review` is not pushed.
 
-A Claude Code hook (`.claude/settings.json`) refuses `gh pr create` (and its alias `gh pr new`)
-until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a new commit,
+On a maintainer's machine, a Claude Code hook (in `.claude/settings.team.json`, copied into
+`.claude/settings.local.json`; `CONTRIBUTING.md`, "Working with Claude Code") refuses `gh pr create`
+(and its alias `gh pr new`) until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a new commit,
 amend or rebase leaves the new `HEAD` without one. The hook is a reminder for this workflow, not
 access control. It reads the `HEAD` of the directory the command runs in — the one a leading
 `cd <dir> &&` names, else the session's working directory, so a worktree is checked as itself and
@@ -25,7 +26,7 @@ to the steps is what makes the note mean something.
 
 ## Documentation alone
 
-Markdown that no part of `mix check` reads and that sets no rule a review follows: `PLAN.md`, the
+Markdown that no part of `mix check` reads and that sets no rule a review follows: `ROADMAP.md`, the
 root `README.md`, and `docs/` except `docs/adr/contract-v2.md`. The gate reads more than it seems
 to:
 
@@ -38,7 +39,7 @@ to:
 - `eh_os_contract.docs --check` and `eh_os_contract.rules --check` compare the generated
   `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` with the code.
 
-Everything else is reviewed: anything not Markdown (`.claude/settings.json` and its hook,
+Everything else is reviewed: anything not Markdown (`.claude/settings.team.json` and its hook,
 `.claude/launch.json`, which runs commands), and what sets the rules a review checks against:
 `CLAUDE.md`, `CONTRIBUTING.md`, `.claude/skills/` (`review-pr` above all) and this file.
 
@@ -53,8 +54,8 @@ indexes.
 ## The checks
 
 `docker compose up -d && cd sandbox && mix ecto.setup`, then `mix check` in `sandbox/`, with its own
-exit code. Compare the `eh_os_contract.check` counts with the last ones recorded in `PLAN.md`'s
-handoff and explain every new line.
+exit code. Compare the `eh_os_contract.check` counts with the sandbox's pinned in
+`sandbox/test/e10_outputs_test.exs` and the engine's on `main`, and explain every new line.
 
 ## Verifying for real
 
@@ -67,8 +68,8 @@ repository writes the reverse check of a fix down.
 
 A GitHub issue, titled by the problem, naming the pull request whose review found it; when that
 pull request belongs to a stage of a programme, the issue takes the programme's labels. A note in
-the pull request alone is lost once it is merged (decided under
-[ehos-tools#98](https://github.com/EmpoweredHouse/ehos-tools/issues/98), 12 October 2026).
+the pull request alone is lost once it is merged (the maintainers' decision of 12 October 2026, for
+EHOS's repositories alike).
 
 ## The pull request
 
@@ -81,8 +82,7 @@ each finding, or says the change is documentation only.
 ## Before a fix
 
 A finding whose fix changes a shape a host sees (configuration, a public function, a status, a
-reason) goes to the user before it is fixed, as `PLAN.md`'s strategy says of every host-visible
-shape.
+reason) goes to the maintainers before it is fixed, as every host-visible shape does.
 
 ## What reviews of this repository keep finding
 

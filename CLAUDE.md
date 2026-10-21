@@ -40,12 +40,11 @@ invented domain, `UniversalityGate`, lives in
 `packages/eh_os_contract/test/support/` and says so in its first line.
 
 The clients' material the library was first developed against, and a test set copied from it for drawing the
-graph, left for the private repository
-`EmpoweredHouse/eh-os-contract-cases` in the publication programme's PB4 (#386). It runs there as a host of its
-own on these packages, fetched from git; nothing of it comes back here.
+graph, left for a private repository of the maintainers in the publication programme's PB4 (#386). It runs
+there as a host of its own on these packages, fetched from git; nothing of it comes back here.
 
 Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
-the code has the new name; the old one remains only in `docs/adr/` and in `PLAN.md`'s history, where `PNS.X`
+the code has the new name; the old one remains only in `docs/adr/` and in the archived working plan, where `PNS.X`
 means today's `EhOsContract.X`.
 
 ## Before you change anything
@@ -53,8 +52,8 @@ means today's `EhOsContract.X`.
 | What | Where |
 | --- | --- |
 | How work is planned, recorded and reviewed, for a person and an assistant alike: where each thing lives, from an idea to `main`, how to follow a line of code back to its reason | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-| The programmes, their stages and **their status** | [`PLAN.md`](PLAN.md), the "Postęp" table |
-| A stage's scope, decisions, review and pull requests | its GitHub issue (labels `dd`, `wave-<n>`); how to run a stage through one: the `ehos-dev:stage-issue` skill (`CONTRIBUTING.md`, "From an idea to `main`") |
+| The programmes, their stages and **their status** | [`ROADMAP.md`](ROADMAP.md) |
+| A stage's scope, decisions, review and pull requests | its GitHub issue (labels `publication`; `dd`, `wave-<n>` before it); how to run a stage through one: `CONTRIBUTING.md`, "From an idea to `main`", and the maintainers' `ehos-dev:stage-issue` skill |
 | What this repository is, the gate, the structure | [`README.md`](README.md) |
 | **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
@@ -65,14 +64,14 @@ means today's `EhOsContract.X`.
 | Code shapes, schemas, pitfalls, libraries: the `notes §N` comments cite | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | What each decision beat, rejected alternatives | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 
-`PLAN.md` is long and written for an assistant that needs the whole context in one file; its entries before
-6 October 2026 are in Polish and are not translated. Read the handoff at its top, then the programme you work on.
+Read `ROADMAP.md`'s "Where things stand", then the issue of the stage you work on. The working plan the
+maintainers kept until 20 October 2026 is archived outside this repository; the issues carry what it decided.
 
-**`docs/adr/` holds assumptions, and is deliberately behind the code.** When `docs/adr/` and `PLAN.md` differ,
-`PLAN.md` is newer. Where a correction goes:
+**`docs/adr/` holds assumptions, and is deliberately behind the code.** When `docs/adr/` and a stage's issue
+differ, the issue is newer. Where a correction goes:
 
 - **An implementation detail**: `docs/adr/technology-notes.md`, in place, in one commit.
-- **What writing the code taught about a stage**: its issue. `PLAN.md` changes only its status.
+- **What writing the code taught about a stage**: its issue. `ROADMAP.md` changes only its status.
 - **An assumption that turned out wrong, or a rule of the contract a stage changes**: a **dated amendment** in
   `docs/adr/`, never a silent rewrite, ending with the link to the stage's issue. These files are worth keeping
   only because they can be compared with what actually happened; rewritten to match today's code, they measure
@@ -185,7 +184,7 @@ environment on each command, since an assignment in front of one applies to that
 
 ## Language
 
-**Everything in this repository and on GitHub is in English**: code, comments, docs, `PLAN.md`'s new entries,
+**Everything in this repository and on GitHub is in English**: code, comments, docs, `ROADMAP.md`,
 commit messages, issues, pull requests. We may talk in Polish; what we leave behind is English, because the
 project will be international.
 
@@ -197,8 +196,7 @@ the packages' tests are there on purpose, to test a second language and non-ASCI
 comment, doc or name. The engine writes its own sentences in English; a client's labels appear in its output as the
 client wrote them.
 
-History is not rewritten: `PLAN.md` before 6 October 2026 and the first twelve commit messages stay in
-Polish.
+History is not rewritten: the first twelve commit messages stay in Polish.
 
 Polish text in strings has its own pitfalls, each of which has already cost a broken build or a false "done":
 
@@ -230,7 +228,7 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   them the package has no documentation and `dialyzer` nothing to check. How: the
   [`write-docs`](.claude/skills/write-docs/SKILL.md) skill. Each package's gate holds the mechanics
   (`test/doc_coverage_test.exs`, `docs --warnings-as-errors`).
-- **A code never stands alone in prose.** In `PLAN.md`, `docs/adr/`, a pull request or a commit, the meaning
+- **A code never stands alone in prose.** In `ROADMAP.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
   (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule
   as the rest. Compiler messages and tests keep their codes; the message says the
@@ -244,9 +242,8 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   `**Moves a verdict:**` when it can move a verdict of the engine's. Otherwise the description says why on a line
   `No changelog: <why>`; `.github/workflows/changelog.yml` fails a pull request with neither. What a host sees is
   a package's public API, its Mix tasks, what it writes, what it verifies and what the dashboard reports. Versions
-  stay `-dev` between releases, and a release is made as eh-os's
-  [`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md) says, with the
-  `ehos-dev:release` skill (`CONTRIBUTING.md`, "Changelogs and releases").
+  stay `-dev` between releases, and a release is made by the maintainers with the `ehos-dev:release` skill
+  (`CONTRIBUTING.md`, "Changelogs and releases").
 - **Do not rely on word splitting in shell scripts.** The shell is zsh, which does **not** split unquoted
   expansions: `for x in $LIST` runs once with the whole list as one argument. Once that handed `git cherry-pick`
   seven SHAs as one argument, and the `git commit --amend` after it rewrote the wrong commit. Loop over SHAs

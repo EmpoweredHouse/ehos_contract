@@ -1,10 +1,10 @@
 ---
 name: Programme stage
-about: One stage of a planned programme (see PLAN.md and the ehos-dev:stage-issue skill)
+about: One stage of a planned programme (see ROADMAP.md and CONTRIBUTING.md)
 labels: []
 ---
 
-Stage <code> of the <programme> programme, wave <n>. Status and order: the programme's table in `PLAN.md` ("Postęp" for the DD programme).
+Stage <code> of the <programme> programme, wave <n>. Status and order: the programme's table in `ROADMAP.md`.
 
 ## In short
 

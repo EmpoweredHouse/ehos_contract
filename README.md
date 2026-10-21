@@ -52,9 +52,7 @@ it — another application's event never enters the receiver's log. A generated 
 The library ships one bus, `EhOsContract.Bus.Local`, for tests and a single node, and depends on no broker. The
 adapter for a real one (NATS JetStream) belongs to EHOS, the platform the applications run on.
 
-Next is the DD programme — domain-driven design checked by code: each rule of the model that can be written
-down gets something that checks it. Its stages are the GitHub issues labelled
-[`dd`](https://github.com/EmpoweredHouse/eh-os-contract/issues?q=label%3Add).
+Where the library is going, and what is being worked on now, is in [`ROADMAP.md`](ROADMAP.md).
 
 ## The question the conformance half answers
 
@@ -318,8 +316,14 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 
 ## Status
 
-A working prototype, not a released library — nothing here has shipped to a real client yet.
+Before 1.0. Versions are released as tags of this repository (`vX.Y.Z`, the packages' `CHANGELOG.md`s say what
+each changed), and applications install the packages from git; publishing on Hex is being prepared
+([`ROADMAP.md`](ROADMAP.md)). Until 1.0 a minor version may break, and its changelog says how to upgrade.
+
 The full test suite runs in CI on every pull request that changes code once it is ready for review — a draft
-waits until it is marked ready (see the badge above); one that changes only the team's working documents skips
-it. Licensed under
-[Apache 2.0](LICENSE).
+waits until it is marked ready (see the badge above); one that changes only `README.md`, `CLAUDE.md`,
+`ROADMAP.md` or `docs/` (except the one page a test compiles) skips it.
+
+- **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md), and the [code of conduct](CODE_OF_CONDUCT.md).
+- **A security problem:** report it privately, as [`SECURITY.md`](SECURITY.md) says, not in an issue.
+- **Licence:** [Apache 2.0](LICENSE), with the third-party software the packages bundle in [`NOTICE`](NOTICE).

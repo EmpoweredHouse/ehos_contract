@@ -1,8 +1,8 @@
 # Contributing
 
 How work is planned, recorded and reviewed in this repository, for a person joining it. An assistant working
-here follows the same scheme; `CLAUDE.md`, the skills in `.claude/skills/` and those of the `ehos-dev` plugin
-("Changelogs and releases") give it the details.
+here follows the same scheme; `CLAUDE.md` and the skills in `.claude/skills/` give it the details, and the
+maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 
 ## Where the work is recorded
 
@@ -11,7 +11,7 @@ stale, so each place links to the next instead.
 
 | Place | The question it answers | When it changes |
 | --- | --- | --- |
-| `PLAN.md` | Where are we, and what comes next? The programmes, their waves, each stage's status in the "Postęp" table, a short paragraph per stage, the link to its issue | When a stage starts or ends |
+| [`ROADMAP.md`](ROADMAP.md) | Where are we, and what comes next? The programmes, each stage's status, a short paragraph per stage being planned, the link to its issue | When a stage starts or ends |
 | A GitHub issue | Why and how was this stage done? In short for anyone, then the technical detail, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed by the pull request that says `Closes #N`, or by hand after its closing comment |
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
 | A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
@@ -19,9 +19,10 @@ stale, so each place links to the next instead.
 | The code and its tests | What the library does | — |
 | `packages/eh_os_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
 
-`PLAN.md` is written for an assistant that needs the whole context in one file; it is long, and its history
-before 6 October 2026 is in Polish. A person starts from the issues: the labels `dd` and `wave-<n>` list the
-current programme's stages.
+`ROADMAP.md` is short on purpose: the reasons are in the issues, whose labels list each programme's stages
+(`publication` for the current one, `dd` and `wave-<n>` for the one before it). The working plan the
+maintainers kept until 20 October 2026, long and partly in Polish, is archived outside this repository; the
+issues carry what it decided.
 
 A decision belongs in `docs/adr/` when someone reading the library in six months would misunderstand it
 without it — a rule of the contract, the shape of an identifier other stages build on. A decision about how a
@@ -29,15 +30,16 @@ stage was carried out stays in its issue.
 
 ## From an idea to `main`
 
-1. **The stage's paragraph in `PLAN.md`** says, in a few lines, what it changes and what it depends on. A stage
+1. **The stage's paragraph in `ROADMAP.md`** says, in a few lines, what it changes and what it depends on. A stage
    not yet started may be rewritten; one already done is not.
 2. **An issue** from the "Programme stage" template, with the programme's label and, where there are waves,
-   the wave's: `dd` and `wave-0` … `wave-5` for the DD programme ("domain-driven design checked by code").
+   the wave's: `publication` for the publication programme, `dd` and `wave-0` … `wave-6` for the DD
+   programme ("domain-driven design checked by code") before it.
    The template applies none, so that a stage of another programme, which gets a label of its own and the same
    waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
-3. **A branch** named after the issue: `dd/165-contract-id`.
+3. **A branch** named after the programme and the issue: `pb/393-community`, `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
 5. **Decisions go on the issue as comments when they are made**, with the options that lost and why. One that
@@ -48,25 +50,23 @@ stage was carried out stays in its issue.
    dependency bump. A check (`.github/workflows/pr-links-issue.yml`) fails a pull request that says none of
    them; it does not decide which one is right. A change a host can see has its line in the package's
    `CHANGELOG.md`, or the description says why not on a line `No changelog: <why>` (below).
-7. **Before it is opened**, the author reviews it (the `ehos-dev:pre-pr-review` skill, with this repository's
-   part in `.claude/review.md`), and `mix check` in
-   `sandbox/` passes (`README.md`, "Working on it").
-8. **When it is merged**, `PLAN.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
+7. **Before it is opened**, the author reviews it (what to look at is in `.claude/review.md`, and the
+   maintainers run the `ehos-dev:pre-pr-review` skill on it), and `mix check` in `sandbox/` passes
+   (`README.md`, "Working on it").
+8. **When it is merged**, `ROADMAP.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
-   when it upgrades. No "co wyszło" section is added to `PLAN.md`. Stages finished before 6 October 2026 keep
-   theirs; their issues are closed ones that link the pull request and the section.
-9. **When a wave or a programme closes**, nothing more is written: the user decides whether it is released
-   ("Changelogs and releases"), and the next wave's stages start from the "Postęp" table.
+   when it upgrades.
+9. **When a wave or a programme closes**, nothing more is written: the maintainers decide whether it is
+   released ("Changelogs and releases"), and the next stages start from `ROADMAP.md`.
 
 The `ehos-dev:stage-issue` skill is the same procedure for an assistant, with how an issue is written. It comes
-from the `ehos-dev` plugin ("Changelogs and releases"), which eh-os, ehos-tools and eh-os-contract share, and
-reads this section and the one before it for what is this repository's.
+from the maintainers' `ehos-dev` plugin ("Working with Claude Code"), which reads this section and the one
+before it for what is this repository's.
 
 ## Changelogs and releases
 
 Each package keeps a `CHANGELOG.md`, written by hand for whoever uses the package — a host application's
-developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), as EHOS's other repositories do
-(eh-os D-91).
+developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
 
 - **Every change a user of a package can see gets a line under `## [Unreleased]` in that package's
   `CHANGELOG.md`, in its own pull request.** What a host sees is the package's public API, its Mix tasks, what it
@@ -86,12 +86,8 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
   version's heading and its first subsection, and no link references at the end.
 - **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it.
 
-How a release is made is written once, for the three repositories, in eh-os's
-[`docs/releases.md`](https://github.com/EmpoweredHouse/eh-os/blob/main/docs/releases.md); the `ehos-dev:release`
-skill makes one. The skill comes from the `ehos-dev` plugin, which ehos-tools publishes as a Claude Code
-marketplace and `.claude/settings.json` enables, pinned to its tag `ehos-dev-vX.Y.Z`; a new version is taken by
-moving that `ref`, and a session picks it up after `/reload-plugins` or a restart. On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store a
-credential with `gh auth setup-git`, since ehos-tools is private. In this repository:
+Releases are made by the maintainers, with the `ehos-dev:release` skill ("Working with Claude Code"), which
+follows the same procedure in this repository and EHOS's others. In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
   `eh_os_contract_auth` `~> 0.2.0` while the engine is at 0.4.0, and one shared number would break it.
@@ -111,10 +107,9 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
   publishes nothing.
 - **The pull request after the tag moves each released package to its next `-dev`.** It changes `mix.exs` and
   nothing a host sees, so its description says so on a line `No changelog: <why>`. While applications follow
-  this repository's `main` (ehos-tools' T-05), that is the next patch's `-dev`, not the next minor's, which
-  eh-os's `docs/releases.md` gives elsewhere: an application requires `~> 0.4.0` of the engine and
-  `~> 0.2.0` of the verifier, and `0.5.0-dev` or `0.3.0-dev` on `main` would refuse its next
-  `mix deps.update`, and every project `ehosctl` 0.2.0 generates.
+  this repository's `main` through git, that is the next patch's `-dev`, not the next minor's: an application
+  requires `~> 0.7.0` of the engine and `~> 0.4.0` of the verifier, and `0.8.0-dev` or `0.5.0-dev` on `main`
+  would refuse its next `mix deps.update`.
 - **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
   `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
   `write-docs` stay this repository's alone. The plugin is a directory of its own so that nothing else
@@ -127,11 +122,35 @@ credential with `gh auth setup-git`, since ehos-tools is private. In this reposi
   version by moving the `ref` in its `.claude/settings.json`, which `ehos_app`'s installer is to do. A
   skill it carries says, at its top, where its paths are in an application.
 
+## Working with Claude Code
+
+The repository works without any of this: `CLAUDE.md` and the skills in `.claude/skills/` are read by any
+Claude Code session opened here, and nothing the repository configures asks for a plugin or blocks a command.
+
+The maintainers add two things on their own machines, in `.claude/settings.local.json`, which git ignores:
+
+- the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
+  with EHOS's other repositories: `pre-pr-review`, `stage-issue` and `release`;
+- a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
+
+Both are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
+one who has one merges its keys in by hand, since Claude Code keeps its "always allow" rules in that file:
+
+```bash
+cp -n .claude/settings.team.json .claude/settings.local.json
+```
+
+Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
+
+ehos-tools is private, so the plugin needs a GitHub credential that can read it. On a machine without an SSH key,
+set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugin is
+taken by moving the `ref` in that file, and a session picks it up after `/reload-plugins` or a restart.
+
 ## Following a line back to its reason
 
 - From the code: `git blame` → the commit → `Part of #N` → the issue, with its decisions and pull requests.
 - From a code comment: a comment that cites a stage cites its issue too, `plan DD, ID1 (#165)`.
-- From `PLAN.md`: the "Issue" column of the progress table → the issue → its pull requests → the code.
+- From `ROADMAP.md`: a stage's issue → its pull requests → the code.
 
 ## Writing
 
