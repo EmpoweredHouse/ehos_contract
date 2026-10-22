@@ -30,6 +30,26 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   document whole. Who may see what is the host's to decide. A landscape read by the owner
   has no wire between its domains to draw.
 
+  **`link`** is where a landscape leads, on pages of the host's: a function of an
+  application's name, its domain's module and a contract's id, `nil` for the domain itself,
+  that answers a path or a URL, or `nil` where the host has no page for it. In the
+  `:landscape` view, the panel of a domain's box offers "Open this domain" and that of a
+  contract in it "Open this contract", each a plain link to what `link` answered:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Canvas}
+        id="landscape"
+        document={@landscape}
+        view={:landscape}
+        link={fn application, domain, contract ->
+          ~p"/apps/\#{application}/domains/\#{domain}?\#{[contract: contract || ""]}"
+        end}
+      />
+
+  Without `link`, or where it answers `nil` or anything but a path or an `http` or `https`
+  URL, the panel offers no link. The names come from the documents the landscape joins, so
+  the host escapes them as it builds the address, as `~p` does.
+
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
   `{:lifecycle, id}`, `:process`, `:context_map`, `:system`, `:landscape`, or `:all`, every node
@@ -111,6 +131,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   def update(assigns, socket) do
     socket = assign(socket, Map.take(assigns, [:id]))
     socket = assign(socket, :opener, Map.get(assigns, :open, socket.assigns[:opener]))
+    socket = assign(socket, :link, Map.get(assigns, :link, socket.assigns[:link]))
     source = Map.get_lazy(assigns, :document, fn -> Map.fetch!(socket.assigns, :source) end)
 
     audience =
@@ -199,22 +220,45 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     |> opens()
   end
 
-  # Where the selected card leads, when an explorer gave the canvas a way to open it
-  # (`EhOsContract.GraphRenderer.Explorer`): `%{target: component, here: place}`, and no
-  # way back to where the reader already is.
-  defp opens(%{assigns: %{opener: nil}} = socket), do: assign(socket, opens: nil)
-
+  # Where the selected card leads: inside the picture, when an explorer gave the canvas a
+  # way to open it (`EhOsContract.GraphRenderer.Explorer`), `%{target: component, here:
+  # place}`, with no way back to where the reader already is; out of a landscape, to the
+  # host's page `link` answers.
   defp opens(socket) do
-    %{opener: opener, document: document, picked: picked, selected: selected} = socket.assigns
+    %{document: document, picked: picked, selected: selected} = socket.assigns
 
     opens =
       with {type, %{kind: kind, facts: facts}} when type in [:node, :group] <- picked,
-           {place, label} when place != opener.here <- Places.destination(document, kind, facts),
-           do: %{id: selected, label: label, target: opener.target},
+           {place, label} <- Places.destination(document, kind, facts),
+           do: leads(socket.assigns, place, label, selected),
            else: (_ -> nil)
 
     assign(socket, opens: opens)
   end
+
+  defp leads(%{link: link}, {:outside, application, domain, contract}, label, _id)
+       when is_function(link, 3) do
+    if href = href(link.(application, domain, contract)), do: %{href: href, label: label}
+  end
+
+  defp leads(_assigns, {:outside, _application, _domain, _contract}, _label, _id), do: nil
+  defp leads(%{opener: nil}, _place, _label, _id), do: nil
+  defp leads(%{opener: %{here: place}}, place, _label, _id), do: nil
+
+  defp leads(%{opener: opener}, _place, label, id),
+    do: %{id: id, label: label, target: opener.target}
+
+  # What a host's `link` answered, when it is a path or a web address: never a
+  # `javascript:` one, which a name in a document could otherwise put in front of a reader.
+  defp href(href) when is_binary(href) and href != "" do
+    case URI.new(href) do
+      {:ok, %URI{scheme: nil}} -> href
+      {:ok, %URI{scheme: scheme}} -> if String.downcase(scheme) in ~w(http https), do: href
+      {:error, _part} -> nil
+    end
+  end
+
+  defp href(_other), do: nil
 
   # Focus is on a card or a group: an arrow has no neighbourhood of its own to draw.
   defp focusable?(view, id), do: match?({kind, _} when kind in [:node, :group], element(view, id))

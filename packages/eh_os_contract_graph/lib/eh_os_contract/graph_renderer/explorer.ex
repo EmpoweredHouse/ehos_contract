@@ -2,7 +2,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   # Plan DD, stage G1 (#297): one canvas with two viewpoints, the user's decisions of
   # 15 October — the renderer holds the navigation, so any host draws what the dashboard
   # draws, and a host gives it a loader the explorer calls in the background. The EHOS
-  # Console draws only the landscape, from the domain documents of each deployment.
+  # Console draws the landscape from the domain documents of each deployment, and opens a
+  # deployment's domain from it here, at the contract the reader chose (#404).
   @moduledoc """
   An application's contracts as one canvas the reader moves through: the component a host
   renders to show a domain's graph, with its documents from a loader
@@ -35,6 +36,26 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   The reader's switch holds until the page is left: a host rendering the explorer again
   does not set it back, so `audience` is read when the explorer starts, and anything but
   `:engineering` or `:owner` there raises an `ArgumentError`.
+
+  **Where it starts** is `at`: the domain's system, `:domain`, when it is left out; a
+  contract by its id, `{:contract, "lending.circulation"}`; a process module by its id,
+  `{:process, "fulfilment.order"}`; or the list of process modules, `:processes`. A host
+  that opens the explorer from a contract drawn elsewhere, say the landscape's
+  (`EhOsContract.GraphRenderer.Canvas`, its `link`), starts it there:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Explorer}
+        id="graph"
+        domain="Lending.Domain"
+        loader={MyAppWeb.GraphLoader}
+        at={{:contract, "lending.circulation"}}
+      />
+
+  The explorer goes there once the domain's document has arrived and names it, and the
+  path leads back up from it. A contract or a process module the domain's document does
+  not name, and anything else given as `at`, starts at the domain: never a crash, and
+  nothing loaded that the domain does not name. Like `audience`, `at` is read when the
+  explorer starts; a host rendering it again with another does not move the reader.
 
   **Two viewpoints**, as tabs over the canvas, share a path ("Lending.Domain ›
   lending.circulation › loan") that goes back up:
@@ -82,8 +103,28 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       |> assign(Map.take(assigns, [:id, :domain]))
       |> assign(:loader, loader(Map.fetch!(assigns, :loader)))
       |> assign_new(:audience, fn -> Audience.cast(Map.get(assigns, :audience, :engineering)) end)
+      |> assign_new(:start, fn -> start(Map.get(assigns, :at)) end)
 
-    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter()}
+    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter() |> started()}
+  end
+
+  # Where the host asked the explorer to start, as a place; the domain for anything else.
+  # Below the domain it waits for the domain's document, which says whether it holds it.
+  defp start({kind, id}) when kind in [:contract, :process] and is_binary(id), do: {kind, id}
+  defp start(:processes), do: :processes
+  defp start(_domain_or_unknown), do: nil
+
+  # Goes where the explorer was asked to start, once the domain's document says whether it
+  # is there; a place it does not hold, or a document that failed, leaves the reader at the
+  # domain.
+  defp started(%{assigns: %{start: nil}} = socket), do: socket
+
+  defp started(socket) do
+    case socket.assigns.documents[Places.ref(:domain, socket.assigns.domain)] do
+      {:ok, _document} -> socket |> assign(start: nil) |> go(socket.assigns.start)
+      {:error, _reason} -> assign(socket, start: nil)
+      _loading -> socket
+    end
   end
 
   defp loader({module, opts}) when is_atom(module), do: {module, opts}
@@ -134,8 +175,10 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     socket = assign(socket, documents: Map.put(socket.assigns.documents, ref, document(result)))
 
     # The place's own document arrived: what it draws decides whether its log is wanted. A
-    # failure is retried only when the reader comes back to it.
-    if ref == ref(socket), do: {:noreply, logged(socket)}, else: {:noreply, derive(socket)}
+    # failure is retried only when the reader comes back to it. The domain's says whether
+    # the place the explorer was asked to start at is there.
+    socket = if ref == ref(socket), do: logged(socket), else: derive(socket)
+    {:noreply, started(socket)}
   end
 
   def handle_async({:overlay, ref}, result, socket) do

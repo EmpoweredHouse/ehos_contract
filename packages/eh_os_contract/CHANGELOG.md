@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`mix eh_os_contract.graph --output-dir DIR` writes every document of the application in one run** (#404):
+  each domain's, contract's and process module's `graph.v1` document, as `domain.<name>.json`,
+  `contract.<id>.json` and `process.<id>.json`, each the bytes `--output` writes for it, so a pipeline sending
+  them with a deployment boots the project once. It refuses a directory that holds anything, and goes alone.
+
 ## [0.8.1] - 2026-10-22
 
 ### Changed

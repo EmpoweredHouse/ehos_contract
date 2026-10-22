@@ -11,6 +11,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
       mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
       mix eh_os_contract.graph --domain lending --output lending.json
+      mix eh_os_contract.graph --output-dir graph
 
   `--contract` names a contract by its `id:`, `--process` a process module by its
   `id:`; a process module may share its id with a contract, so they are two options.
@@ -21,6 +22,14 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   compare with `diff`. A document holds every fact of its
   contract or domain, whatever a renderer draws of them; the pictures are the
   renderer's (`eh_os_contract_graph`), which the dashboard mounts.
+
+  `--output-dir` writes every document of the application in one run, into a directory
+  that does not exist yet or is empty: each domain's as `domain.<name>.json`, each
+  contract's as `contract.<id>.json` and each process module's as `process.<id>.json`,
+  each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
+  so it boots the project once rather than once per document. It writes no overlay, and
+  refuses a directory that holds anything, so a document of a contract removed since an
+  earlier run is never sent with the rest.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
   every label of a document is written in the client's language. Without it the
@@ -48,7 +57,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
           domain: :string,
           overlay: :boolean,
           since: :string,
-          output: :string
+          output: :string,
+          output_dir: :string
         ]
       )
 
@@ -62,6 +72,12 @@ defmodule Mix.Tasks.EhOsContract.Graph do
             "--domain a domain's; pass one of them"
         )
 
+      opts[:output_dir] && Enum.any?([:contract, :process, :domain, :overlay, :output], &opts[&1]) ->
+        Mix.raise(
+          "--output-dir writes every document of the application, and no overlay; " <>
+            "pass it alone"
+        )
+
       opts[:since] && !opts[:overlay] ->
         Mix.raise(
           "the document is the declarations unless --overlay; --since applies to --overlay"
@@ -71,7 +87,57 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         :ok
     end
 
-    if opts[:output], do: write(opts), else: logs_to_stderr(fn -> write(opts) end)
+    cond do
+      opts[:output_dir] -> write_all(opts[:output_dir])
+      opts[:output] -> write(opts)
+      true -> logs_to_stderr(fn -> write(opts) end)
+    end
+  end
+
+  # Every domain's, contract's and process module's document, each in a file of its own.
+  defp write_all(dir) do
+    alias EhOsContract.Graph.Document
+
+    case File.ls(dir) do
+      {:ok, []} ->
+        :ok
+
+      {:ok, _files} ->
+        Mix.raise("#{dir} holds files already; --output-dir writes into an empty one")
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        Mix.raise("cannot read #{dir}: #{:file.format_error(reason)}")
+    end
+
+    Mix.Task.run("compile")
+    Application.load(:eh_os_contract)
+    EhOsContract.Registry.load!()
+
+    contracts = EhOsContract.Registry.contracts()
+    processes = EhOsContract.Registry.processes()
+    named = &(&1 |> EhOsContract.Model.fetch() |> Map.fetch!(&2))
+
+    documents =
+      for(
+        d <- EhOsContract.Registry.domains(),
+        do: {"domain.#{named.(d, :name)}", Document.domain(d, contracts ++ processes)}
+      ) ++
+        for(c <- contracts, do: {"contract.#{named.(c, :id)}", Document.contract(c)}) ++
+        for(p <- processes, do: {"process.#{named.(p, :id)}", Document.process(p)})
+
+    File.mkdir_p!(dir)
+
+    for {name, document} <- documents do
+      File.write!(
+        Path.join(dir, name <> ".json"),
+        Document.encode(document, pretty: true) <> "\n"
+      )
+    end
+
+    Mix.shell().info("written: #{length(documents)} documents in #{dir}")
   end
 
   defp write(opts) do

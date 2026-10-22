@@ -229,6 +229,76 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     end
   end
 
+  describe "a host's link out of the landscape" do
+    import Phoenix.ConnTest, only: [build_conn: 0]
+
+    @endpoint EhOsContract.GraphRenderer.TestEndpoint
+
+    # A host's page per domain of an application, and a contract in it; and links a host
+    # could get wrong. Public, since the test LiveView calls them.
+    def to_page(application, domain, nil), do: "/apps/#{application}/domains/#{domain}"
+
+    def to_page(application, domain, contract),
+      do: "/apps/#{application}/domains/#{domain}?contract=#{contract}"
+
+    def contracts_only(_application, _domain, contract), do: contract && "/c/#{contract}"
+    def script(_application, _domain, _contract), do: "javascript:alert(1)"
+    def shouted_script(_application, _domain, _contract), do: "JavaScript:alert(1)"
+    def not_an_address(_application, _domain, _contract), do: :not_an_address
+    def elsewhere(_application, _domain, _contract), do: "https://console.example/x"
+
+    defp drawn(link) do
+      {:ok, view, _html} =
+        live_isolated(build_conn(), EhOsContract.GraphRenderer.TestLive,
+          session: %{"document" => landscape(), "view" => :landscape, "link" => link}
+        )
+
+      view
+    end
+
+    defp offered(view, selector) do
+      view |> element(selector) |> render_click()
+
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(".ehg-panel a.ehg-open")
+      |> Enum.map(&{LazyHTML.attribute(&1, "href") |> hd(), LazyHTML.text(&1)})
+    end
+
+    @box ~s([data-ehg-group="1/domain:Ledger.Domain"] button.ehg-group-title)
+    @card ~s(button[data-ehg-node="1/contract:ledger.bookkeeping"])
+
+    test "a domain's box and a contract in it open the host's page of that domain" do
+      view = drawn({__MODULE__, :to_page})
+
+      assert offered(view, @box) == [{"/apps/ledger/domains/Ledger.Domain", "Open this domain →"}]
+
+      assert offered(view, @card) == [
+               {"/apps/ledger/domains/Ledger.Domain?contract=ledger.bookkeeping",
+                "Open this contract →"}
+             ]
+
+      # A publication is between the domains, and leads to none of them.
+      assert offered(view, ~s(button[data-ehg-node="#{@issued}"])) == []
+      refute has_element?(view, "[style]")
+    end
+
+    test "offers nothing without a link, where the host has no page, or for an address that is not one" do
+      assert offered(drawn(nil), @box) == []
+      refute has_element?(drawn(nil), "button.ehg-open")
+
+      assert offered(drawn({__MODULE__, :contracts_only}), @box) == []
+      assert offered(drawn({__MODULE__, :script}), @card) == []
+      assert offered(drawn({__MODULE__, :shouted_script}), @card) == []
+      assert offered(drawn({__MODULE__, :not_an_address}), @card) == []
+
+      assert offered(drawn({__MODULE__, :elsewhere}), @card) == [
+               {"https://console.example/x", "Open this contract →"}
+             ]
+    end
+  end
+
   test "the canvas draws it, the publication's card between the two boxes" do
     html =
       render_component(Canvas, id: "landscape", document: landscape(), view: :landscape)

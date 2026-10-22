@@ -8,8 +8,8 @@ end
 
 defmodule EhOsContract.GraphRenderer.TestLive do
   @moduledoc false
-  # A LiveView that renders the component over the document, the overlay, the view and the
-  # audience its session names, as a host would; `{:overlay, _}`, `{:document, _}` and
+  # A LiveView that renders the component over the document, the overlay, the view, the
+  # audience and the link its session names, as a host would; `{:overlay, _}`, `{:document, _}` and
   # `{:audience, _}` change them, as a host's render would.
   use Phoenix.LiveView
 
@@ -21,8 +21,13 @@ defmodule EhOsContract.GraphRenderer.TestLive do
          document: document,
          overlay: session["overlay"],
          view: session["view"] || :all,
-         audience: session["audience"] || :engineering
+         audience: session["audience"] || :engineering,
+         link: host_link(session["link"])
        )}
+
+  # A session holds no function: the host's link is named by its module and function.
+  defp host_link({module, function}), do: &apply(module, function, [&1, &2, &3])
+  defp host_link(nil), do: nil
 
   @impl true
   def handle_info({:overlay, overlay}, socket), do: {:noreply, assign(socket, overlay: overlay)}
@@ -43,6 +48,7 @@ defmodule EhOsContract.GraphRenderer.TestLive do
       overlay={@overlay}
       view={@view}
       audience={@audience}
+      link={@link}
     />
     """
   end
@@ -109,7 +115,8 @@ end
 defmodule EhOsContract.GraphRenderer.ExplorerLive do
   @moduledoc false
   # A LiveView that renders the explorer over the fixture loader, as a host would, starting
-  # where its session's `audience` says; `:render` renders it again, as a host's would.
+  # where its session's `audience` and `at` say; `:render` renders it again, as a host's
+  # would.
   use Phoenix.LiveView
 
   @impl true
@@ -120,6 +127,7 @@ defmodule EhOsContract.GraphRenderer.ExplorerLive do
          opts: session["opts"] || [],
          domain: session["domain"] || "Fulfilment.Domain",
          audience: session["audience"] || :engineering,
+         at: session["at"],
          renders: 0
        )}
 
@@ -135,6 +143,7 @@ defmodule EhOsContract.GraphRenderer.ExplorerLive do
       domain={@domain}
       loader={{EhOsContract.GraphRenderer.FixtureLoader, @opts}}
       audience={@audience}
+      at={@at}
       renders={@renders}
     />
     """

@@ -21,6 +21,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A landscape leads to a host's page of each domain** (#404): `EhOsContract.GraphRenderer.Canvas` takes a
+  `link`, a function of an application's name, its domain's module and a contract's id (`nil` for the domain)
+  answering a path or a URL. In the `:landscape` view, the panel of a domain's box offers "Open this domain"
+  and that of a contract in it "Open this contract", a plain link to that address. Without `link`, or where it
+  answers `nil` or anything but a path or an `http` or `https` URL, the panel is as it was.
+- **The explorer starts where the host says** (#404): `EhOsContract.GraphRenderer.Explorer` takes `at`,
+  `{:contract, id}`, `{:process, id}` or `:processes`, and goes there once the domain's document names it. A
+  place the domain does not name, or anything else, starts at the domain, as before.
+
 ## [0.5.0] - 2026-10-22
 
 ### Added

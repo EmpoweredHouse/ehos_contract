@@ -70,6 +70,51 @@ defmodule EhOsContract.GraphTaskTest do
            )
   end
 
+  @tag :tmp_dir
+  test "--output-dir writes every domain's, contract's and process module's document at once",
+       %{tmp_dir: dir} do
+    out = Path.join(dir, "graph")
+    task(~w(--output-dir #{out}))
+
+    one = Path.join(dir, "one.json")
+
+    expected =
+      Enum.map(EhOsContract.Registry.domains(), &{"domain", EhOsContract.Model.fetch(&1).name}) ++
+        Enum.map(
+          EhOsContract.Registry.contracts(),
+          &{"contract", EhOsContract.Model.fetch(&1).id}
+        ) ++
+        Enum.map(EhOsContract.Registry.processes(), &{"process", EhOsContract.Model.fetch(&1).id})
+
+    assert Enum.sort(File.ls!(out)) ==
+             Enum.sort(for {kind, name} <- expected, do: "#{kind}.#{name}.json")
+
+    # Each file holds the bytes the task writes for that document alone.
+    for {kind, name} <- expected do
+      task(["--#{kind}", "#{name}", "--output", one])
+
+      assert File.read!(Path.join(out, "#{kind}.#{name}.json")) == File.read!(one),
+             "#{kind}.#{name}"
+    end
+
+    assert "process.dispatch_rig.account_review.json" in File.ls!(out)
+    assert_received {:mix_shell, :info, ["written: " <> _]}
+  end
+
+  @tag :tmp_dir
+  test "--output-dir refuses a directory that holds anything, and goes alone", %{tmp_dir: dir} do
+    File.write!(Path.join(dir, "contract.removed.json"), "{}")
+
+    assert_raise Mix.Error, ~r/holds files already/, fn -> task(~w(--output-dir #{dir})) end
+    assert File.ls!(dir) == ["contract.removed.json"]
+
+    for other <- [~w(--contract dispatch_rig.ledger), ~w(--overlay), ~w(--output x.json)] do
+      assert_raise Mix.Error, ~r/pass it alone/, fn ->
+        task(~w(--output-dir #{Path.join(dir, "new")}) ++ other)
+      end
+    end
+  end
+
   test "refuses two documents at once, a period without the log, and what names nothing" do
     assert_raise Mix.Error, ~r/pass one of them/, fn ->
       task(~w(--contract dispatch_rig.ledger --domain dispatch_rig))
