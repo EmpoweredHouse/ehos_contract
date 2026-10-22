@@ -261,13 +261,24 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   # What a host's `link` answered, when it is a path or a web address: never a
   # `javascript:` one, which a name in a document could otherwise put in front of a reader,
-  # nor `//host/…`, which leaves the host's site while it reads as a path.
+  # nor `//host/…`, which leaves the host's site while it reads as a path, nor a web
+  # address without a host, `https:evil.example`, which a browser reads as one.
   defp href(href) when is_binary(href) and href != "" do
     case URI.new(href) do
-      {:ok, %URI{scheme: nil, host: nil}} -> href
-      {:ok, %URI{scheme: nil}} -> nil
-      {:ok, %URI{scheme: scheme}} -> if String.downcase(scheme) in ~w(http https), do: href
-      {:error, _part} -> nil
+      {:ok, %URI{scheme: nil, host: nil}} ->
+        href
+
+      {:ok, %URI{scheme: nil}} ->
+        nil
+
+      {:ok, %URI{scheme: scheme, host: host}} when is_binary(host) and host != "" ->
+        if String.downcase(scheme) in ~w(http https), do: href
+
+      {:ok, _no_host} ->
+        nil
+
+      {:error, _part} ->
+        nil
     end
   end
 

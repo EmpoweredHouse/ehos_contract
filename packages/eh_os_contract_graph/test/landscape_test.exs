@@ -247,6 +247,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     def not_an_address(_application, _domain, _contract), do: :not_an_address
     def elsewhere(_application, _domain, _contract), do: "https://console.example/x"
     def off_site(_application, _domain, _contract), do: "//evil.example/x"
+    def hostless(_application, _domain, _contract), do: "https:evil.example"
     def raising(_application, _domain, _contract), do: raise("no such application")
 
     defp drawn(link) do
@@ -302,6 +303,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       assert offered(drawn({__MODULE__, :shouted_script}), @card) == []
       assert offered(drawn({__MODULE__, :not_an_address}), @card) == []
       assert offered(drawn({__MODULE__, :off_site}), @card) == []
+      assert offered(drawn({__MODULE__, :hostless}), @card) == []
 
       assert offered(drawn({__MODULE__, :elsewhere}), @card) == [
                {"https://console.example/x", "Open this contract →"}
