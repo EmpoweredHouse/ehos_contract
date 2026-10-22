@@ -169,10 +169,28 @@ other. Without `version`, the newest value, and setting a new one rolls the work
 version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
 `database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
 
+**Hosts outside the installation, from `ehos.yaml/v5`**, which makes an `ehos.manifest/v6`:
+
+```yaml
+schema: ehos.yaml/v5
+needs:
+  egress:
+    - host: registry.example.org      # port 443 when left out
+    - host: mail.example.net
+      port: 587
+```
+
+Each host is a DNS name in lowercase, never an address or a pattern such as `*.example.org`, and the manifest
+carries the list as written, a port left out left out. The hosts are part of the application's authority in
+EHOS: a deployment that adds, removes or changes one asks for `ehos.application.register`, as a new role does.
+EHOS also refuses, at deploy, a host under a name only a network inside answers, such as `*.svc.cluster.local`,
+and a host and port named twice, which this task leaves to it.
+
 **A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
 roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
-whatever the version of `ehos.yaml`. A domain without a rule keeps its manifest's version and digests. An
+whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, rule or none. A
+domain without a rule keeps its manifest's version and digests. An
 actor a rule names, and one that has a rule, has to hold a capability, or it is no role and the task says so.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves

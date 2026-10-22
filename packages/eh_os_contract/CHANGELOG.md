@@ -48,6 +48,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- `docs/authorization.md` names the manifest versions `eh_os_contract_auth` writes as they are: `ehos.manifest/v2`
+  to `v6`, `v6` for an `ehos.yaml/v5`, which may name the hosts outside the installation the application
+  reaches; it said `v2` to `v4`.
+
 ## [0.9.0] - 2026-10-22
 
 ### Added
