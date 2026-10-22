@@ -83,7 +83,9 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     render_async(view)
 
     assert "event:fulfilment.warehouse:picked" in cards(view)
-    # The log's numbers follow the document.
+    # The log's numbers follow the document: the explorer asks for them once the document
+    # has arrived, so a second wait.
+    render_async(view)
     assert view |> page() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() > 0
 
     open(view, "event:fulfilment.warehouse:picked")
