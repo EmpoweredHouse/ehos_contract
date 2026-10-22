@@ -21,6 +21,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **A domain with nothing on the wire has its box in the landscape** (EmpoweredHouse/eh-os#900): the `:landscape`
+  view draws a box for every domain `EhOsContract.GraphRenderer.Landscape.join/1` is given, where it drew none
+  for a domain whose contracts publish and subscribe to nothing. Such a box holds no card and its title says how
+  many contracts the domain has ("ledger · ledger · 2 contracts"); its panel offers "Open this domain" as any
+  box's does, so a landscape of applications that are not yet joined to one another is no longer empty.
+
 ## [0.6.0] - 2026-10-22
 
 ### Added

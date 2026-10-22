@@ -21,6 +21,14 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
 
   defp ids(list), do: list |> Enum.map(& &1.id) |> Enum.sort()
 
+  # The ledger with nothing on the wire: no publication, nothing it publishes or subscribes to.
+  defp quiet_ledger do
+    Fixtures.document("domain.ledger")
+    |> put_in(["nodes", "publication"], [])
+    |> put_in(["relations", "publishes"], [])
+    |> put_in(["relations", "subscribed_by"], [])
+  end
+
   test "joins a publication and its subscriber across applications into one card with an arrow on each side" do
     view = View.build(landscape(), :landscape)
 
@@ -56,6 +64,29 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
 
     assert {subscriptions.group, subscriptions.label} ==
              {"0/domain:Billing.Domain", "Subscriptions"}
+  end
+
+  test "draws a domain with nothing on the wire as an empty box, saying how many contracts it has" do
+    joined =
+      Landscape.join([
+        {"billing", Fixtures.document("domain.billing")},
+        {"ledger", quiet_ledger()}
+      ])
+
+    view = View.build(joined, :landscape)
+    titles = Map.new(view.groups, &{&1.id, &1.title})
+
+    assert titles["1/domain:Ledger.Domain"] == "ledger · ledger · 2 contracts"
+    assert titles["0/domain:Billing.Domain"] == "billing · billing · 1 more contract"
+    assert Enum.filter(view.nodes, &(&1.group == "1/domain:Ledger.Domain")) == []
+  end
+
+  test "a landscape of one domain with nothing on the wire is its box alone" do
+    view = View.build(Landscape.join([{"ledger", quiet_ledger()}]), :landscape)
+
+    assert [%{id: "0/domain:Ledger.Domain", title: "ledger · ledger · 2 contracts"}] = view.groups
+    assert view.nodes == []
+    assert view.relations == []
   end
 
   test "says a name nobody in the set publishes comes from outside it, and no other" do
@@ -250,10 +281,10 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     def hostless(_application, _domain, _contract), do: "https:evil.example"
     def raising(_application, _domain, _contract), do: raise("no such application")
 
-    defp drawn(link) do
+    defp drawn(link, document \\ landscape()) do
       {:ok, view, _html} =
         live_isolated(build_conn(), EhOsContract.GraphRenderer.TestLive,
-          session: %{"document" => landscape(), "view" => :landscape, "link" => link}
+          session: %{"document" => document, "view" => :landscape, "link" => link}
         )
 
       view
@@ -285,6 +316,13 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       # A publication is between the domains, and leads to none of them.
       assert offered(view, ~s(button[data-ehg-node="#{@issued}"])) == []
       refute has_element?(view, "[style]")
+    end
+
+    test "an empty box opens the host's page of its domain" do
+      view = drawn({__MODULE__, :to_page}, Landscape.join([{"ledger", quiet_ledger()}]))
+      box = ~s([data-ehg-group="0/domain:Ledger.Domain"] button.ehg-group-title)
+
+      assert offered(view, box) == [{"/apps/ledger/domains/Ledger.Domain", "Open this domain →"}]
     end
 
     test "offers nothing where the host's link raises, and the page goes on" do
@@ -319,5 +357,18 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     assert Enum.count(LazyHTML.query(html, ~s([data-ehg-node="#{@issued}"]))) == 1
     assert Enum.count(LazyHTML.query(html, "[data-ehg-group]")) == 2
     assert Enum.count(LazyHTML.query(html, "[style]")) == 0
+  end
+
+  test "the canvas draws a domain with nothing on the wire as its box" do
+    html =
+      render_component(Canvas,
+        id: "landscape",
+        document: Landscape.join([{"ledger", quiet_ledger()}]),
+        view: :landscape
+      )
+      |> LazyHTML.from_fragment()
+
+    assert Enum.count(LazyHTML.query(html, ~s([data-ehg-group="0/domain:Ledger.Domain"]))) == 1
+    assert Enum.count(LazyHTML.query(html, "[data-ehg-node]")) == 0
   end
 end

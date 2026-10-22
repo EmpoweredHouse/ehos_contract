@@ -347,11 +347,12 @@ export const EhOsContractGraph = {
       height: el.offsetHeight,
     }))
     // A group with cards in it is as large as dagre makes it around them, so it is not measured; one with none
-    // is laid out as a card of its own, as large as its title.
+    // is laid out as a card of its own, as large as its title. offsetWidth rounds a sub-pixel width down, and a
+    // title one fraction of a pixel wider than its box is cut short, so the box takes the next whole pixel.
     const filled = new Set(cards.map(({ group }) => group))
     const groups = boxes.map((el) => {
       const id = el.dataset.ehgGroup
-      return filled.has(id) ? { id, filled: true } : { id, filled: false, width: el.offsetWidth, height: el.offsetHeight }
+      return filled.has(id) ? { id, filled: true } : { id, filled: false, width: el.offsetWidth + 1, height: el.offsetHeight }
     })
     const labels = [...viewport.querySelectorAll("[data-ehg-relation]")].map((el) => ({
       el,
@@ -387,8 +388,9 @@ export const EhOsContractGraph = {
   },
 
   lay(direction, groups, cards, labels) {
-    // A view with nothing in it: dagre would size an empty graph as -Infinity.
-    if (!cards.length) {
+    // A view with nothing in it: dagre would size an empty graph as -Infinity. Boxes alone, a landscape's
+    // domains with nothing on the wire, are laid out as cards are.
+    if (!cards.length && !groups.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`)
       this.sizeSheet.replaceSync("")
       this.tall = null

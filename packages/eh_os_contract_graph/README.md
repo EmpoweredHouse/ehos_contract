@@ -78,7 +78,7 @@ or process module rather than at the domain.
 | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with their contracts, those that end a run, its promises with their windows; with its overlay, its runs, how often each event happened and each promise's verdicts |
 | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
 | `:system` | a domain | its contracts in their contexts and what flows between them, and its process modules with the contracts whose events each includes and their runs |
-| `:landscape` | a landscape (below) | several domains, each a box of its contracts that publish or subscribe, and a card per name on the wire between them |
+| `:landscape` | a landscape (below) | several domains, each a box of its contracts that publish or subscribe, empty where none does, and a card per name on the wire between them |
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
@@ -128,7 +128,8 @@ two sides by that name into one landscape, which the canvas draws with `view={:l
 landscape = EhOsContract.GraphRenderer.Landscape.join([{"billing", billing}, {"ledger", ledger}])
 ```
 
-A box per domain holds its contracts that publish or subscribe, and says how many others it has; between the
+A box per domain holds its contracts that publish or subscribe, and says how many others it has; a domain with
+nothing on the wire has its box all the same, empty and saying how many contracts it has. Between the
 boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
 subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
 the applications it sees together, from the domain documents each submitted with its deployment.
