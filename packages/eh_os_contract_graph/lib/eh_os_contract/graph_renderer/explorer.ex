@@ -204,12 +204,14 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def handle_event("go", %{"to" => to}, socket) when is_binary(to) do
     case place(to) do
       nil -> {:noreply, socket}
-      place -> {:noreply, socket |> moved() |> go(place)}
+      place -> {:noreply, socket |> go(place) |> moved(socket)}
     end
   end
 
   def handle_event("lens", %{"to" => lens}, socket) when lens in ~w(graph lifecycle map),
-    do: {:noreply, socket |> moved() |> assign(lens: String.to_existing_atom(lens)) |> enter()}
+    do:
+      {:noreply,
+       socket |> assign(lens: String.to_existing_atom(lens)) |> enter() |> moved(socket)}
 
   def handle_event("audience", %{"to" => audience}, socket)
       when audience in ~w(engineering owner),
@@ -220,7 +222,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     with document when document != nil <- socket.assigns.document,
          {kind, node} <- node(document, id),
          {place, _words} <- Places.destination(document, kind, node) do
-      {:noreply, socket |> moved() |> go(place)}
+      {:noreply, socket |> go(place) |> moved(socket)}
     else
       _ -> {:noreply, socket}
     end
@@ -230,9 +232,14 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   # rather than crashing the host's page.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
-  # The reader moved before the domain's document arrived: where they went wins over where
-  # the host asked the explorer to start.
-  defp moved(socket), do: assign(socket, start: nil)
+  # The reader moved before the domain's document arrived — to another place, or another
+  # lens on it: where they went wins over where the host asked the explorer to start. A
+  # click that left them where they were does not.
+  defp moved(socket, before) do
+    if {socket.assigns.place, socket.assigns.lens} == {before.assigns.place, before.assigns.lens},
+      do: socket,
+      else: assign(socket, start: nil)
+  end
 
   # A place the domain holds, and nothing else: a contract or a process module its document
   # names, a unit of a contract already drawn. Anything a page could not have offered is

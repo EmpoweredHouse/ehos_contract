@@ -210,7 +210,7 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     test "asks the log of nothing but the place it starts at" do
       start_at(%{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [notify: self()]})
 
-      assert_received {:overlay, {:contract, "fulfilment.warehouse"}}
+      assert_receive {:overlay, {:contract, "fulfilment.warehouse"}}
       refute_received {:overlay, _}
     end
 
@@ -221,12 +221,29 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
         )
 
       assert_receive {:held, loader}
+      # The tab the reader is already on moves nothing; the other one does.
+      view |> element(".ehg-tab", "Structure") |> render_click()
       view |> element(".ehg-tab", "Processes") |> render_click()
       send(loader, :go)
       render_async(view)
       render_async(view)
 
       assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+    end
+
+    test "holds through a click that leaves the reader where they were" do
+      {:ok, view, _html} =
+        live_isolated(build_conn(), ExplorerLive,
+          session: %{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [hold: self()]}
+        )
+
+      assert_receive {:held, loader}
+      view |> element(".ehg-tab", "Structure") |> render_click()
+      send(loader, :go)
+      render_async(view)
+      render_async(view)
+
+      assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.warehouse"
     end
 
     test "is read when it starts: a host rendering it again does not move the reader" do
