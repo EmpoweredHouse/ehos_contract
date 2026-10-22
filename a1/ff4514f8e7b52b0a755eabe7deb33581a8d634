@@ -1,0 +1,1 @@
+Review comment on #405 (CodeRabbit): an http(s) address without a host was offered as a link. Fixed: an http(s) address must now name its host. A test fails without the fix. Self-reviewed, 5 lines in href/1. Graph package mix check on OTP 27: exit 0, 202 tests. This change touches only the graph package; the full sandbox gate passed on the previous commit.
