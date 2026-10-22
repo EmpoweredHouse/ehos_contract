@@ -158,6 +158,105 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     assert "contract:fulfilment.warehouse" in cards(view)
   end
 
+  describe "where it starts" do
+    # The place is loaded once the domain's document has arrived: a second wait.
+    defp start_at(session) do
+      view = start(session)
+      render_async(view)
+      view
+    end
+
+    test "at a contract the host names, with the path back up to the domain" do
+      view = start_at(%{"at" => {:contract, "fulfilment.warehouse"}})
+
+      assert "command:fulfilment.warehouse:confirm_pick" in cards(view)
+      assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.warehouse"
+      assert text(page(view), ".ehg-tab.is-current") =~ "Structure"
+
+      view |> element(".ehg-path button", "fulfilment") |> render_click()
+      assert "contract:fulfilment.warehouse" in cards(view)
+    end
+
+    test "at a process module, in the processes' viewpoint, or at their list" do
+      view = start_at(%{"at" => {:process, "fulfilment.order"}})
+
+      assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+      assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.order"
+
+      view = start_at(%{"at" => :processes})
+      assert has_element?(view, ".ehg-places button", "fulfilment.order")
+    end
+
+    test "at the domain for a place the domain does not name, or anything else, loading nothing of it" do
+      for at <- [{:contract, "none.such"}, {:process, "none.such"}, {:unit, "a", "b"}, "x", 7] do
+        view = start_at(%{"at" => at, "opts" => [notify: self()]})
+
+        assert "contract:fulfilment.warehouse" in cards(view), inspect(at)
+        assert_received {:loaded, {:domain, "Fulfilment.Domain"}}
+        refute_received {:loaded, _}
+      end
+    end
+
+    test "at the domain when the domain's document could not be loaded, and the reader stays there" do
+      {:ok, agent} = Agent.start_link(fn -> [{:domain, "Fulfilment.Domain"}] end)
+
+      view =
+        start_at(%{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [fail_once: agent]})
+
+      assert has_element?(view, ".ehg-failed")
+      assert text(page(view), ".ehg-path [aria-current]") =~ "Fulfilment.Domain"
+    end
+
+    test "asks the log of nothing but the place it starts at" do
+      start_at(%{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [notify: self()]})
+
+      assert_receive {:overlay, {:contract, "fulfilment.warehouse"}}
+      refute_received {:overlay, _}
+    end
+
+    test "gives way to where the reader went before the domain's document arrived" do
+      {:ok, view, _html} =
+        live_isolated(build_conn(), ExplorerLive,
+          session: %{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [hold: self()]}
+        )
+
+      assert_receive {:held, loader}
+      # The tab the reader is already on moves nothing; the other one does.
+      view |> element(".ehg-tab", "Structure") |> render_click()
+      view |> element(".ehg-tab", "Processes") |> render_click()
+      send(loader, :go)
+      render_async(view)
+      render_async(view)
+
+      assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+    end
+
+    test "holds through a click that leaves the reader where they were" do
+      {:ok, view, _html} =
+        live_isolated(build_conn(), ExplorerLive,
+          session: %{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [hold: self()]}
+        )
+
+      assert_receive {:held, loader}
+      view |> element(".ehg-tab", "Structure") |> render_click()
+      send(loader, :go)
+      render_async(view)
+      render_async(view)
+
+      assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.warehouse"
+    end
+
+    test "is read when it starts: a host rendering it again does not move the reader" do
+      view = start_at(%{"at" => {:contract, "fulfilment.warehouse"}})
+      view |> element(".ehg-path button", "fulfilment") |> render_click()
+
+      send(view.pid, :render)
+      render_async(view)
+
+      assert "contract:fulfilment.warehouse" in cards(view)
+    end
+  end
+
   test "a place the domain does not hold is never loaded" do
     view = start(%{"opts" => [notify: self()]})
     view |> with_target("#explorer") |> render_click("go", %{"to" => "contract\u001Fnone.such"})

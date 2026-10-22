@@ -50,7 +50,8 @@ leads: a contract or a process of the map, a unit of a contract, an event's unit
 The host gives it a loader, `EhOsContract.GraphRenderer.Loader`: `document/2` and `overlay/2` of a domain, a
 contract or a process module, which the explorer calls in the background the first time the reader enters a
 picture. An application reads its engine; a host with only the application's JSON API reads
-`GET <mount>/graph/…`.
+`GET <mount>/graph/…`. `at={{:contract, "lending.circulation"}}`, or `{:process, id}`, starts it at that contract
+or process module rather than at the domain.
 
 ## Drawing a document
 
@@ -131,6 +132,22 @@ A box per domain holds its contracts that publish or subscribe, and says how man
 boxes, a card per name on the wire, with an arrow from each contract that publishes it and to each that
 subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
 the applications it sees together, from the domain documents each submitted with its deployment.
+
+A host with a page per domain gives the canvas a `link`, a function of the application's name, the domain's
+module and a contract's id (`nil` for the domain), and the panel of a box, or of a contract in it, offers a link
+to that page, where the host may render the explorer at that contract:
+
+```heex
+<.live_component
+  module={EhOsContract.GraphRenderer.Canvas}
+  id="landscape"
+  document={@landscape}
+  view={:landscape}
+  link={fn application, domain, contract ->
+    ~p"/apps/#{application}/domains/#{domain}?#{[contract: contract || ""]}"
+  end}
+/>
+```
 
 ## Using it
 

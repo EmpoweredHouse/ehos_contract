@@ -2,7 +2,8 @@ defmodule EhOsContract.GraphRenderer.Places do
   # Where the explorer can go, and where a card leads: plan DD, stage G1 (#297), the two
   # viewpoints of the user's decision of 15 October. A place of the structure is the
   # domain's system, a contract's full graph, or one of its units; a place of the processes
-  # is their list, or one process module's picture.
+  # is their list, or one process module's picture. A landscape's box and the contracts in it
+  # lead out of the landscape, to a page of the host's (#404).
   @moduledoc false
 
   @type t ::
@@ -11,6 +12,9 @@ defmodule EhOsContract.GraphRenderer.Places do
           | {:unit, String.t(), String.t()}
           | :processes
           | {:process, String.t()}
+
+  @typedoc "Where a landscape's box or a contract in it leads: the host's page of that domain."
+  @type outside :: {:outside, application :: String.t(), domain :: String.t(), String.t() | nil}
 
   @doc "The document a place is drawn from, as a loader names it; none for the list of processes."
   @spec ref(t(), String.t()) :: EhOsContract.GraphRenderer.Loader.ref() | nil
@@ -30,9 +34,25 @@ defmodule EhOsContract.GraphRenderer.Places do
   Where the card of `kind` and `node`, drawn from `document`, leads, with the words of the
   button that goes there; nil where it leads nowhere it is not already. A contract or a
   process of the domain's map opens it; a unit of a contract opens it; an event opens the
-  unit or the contract it is declared in.
+  unit or the contract it is declared in. A landscape's box opens its domain, and a contract
+  in it that contract, outside the landscape: on the host's page, when it has one.
   """
-  @spec destination(map(), String.t(), map()) :: {t(), String.t()} | nil
+  @spec destination(map(), String.t(), map()) :: {t() | outside(), String.t()} | nil
+  def destination(%{"kind" => "landscape"}, "domain", %{"application" => a, "domain" => d})
+      when is_binary(a) and is_binary(d),
+      do: {{:outside, a, d, nil}, "Open this domain"}
+
+  def destination(%{"kind" => "landscape"} = document, "contract", %{"in" => box, "name" => id})
+      when is_binary(id) do
+    case Enum.find(get_in(document, ["nodes", "domain"]) || [], &(&1["id"] == box)) do
+      %{"application" => a, "domain" => d} when is_binary(a) and is_binary(d) ->
+        {{:outside, a, d, id}, "Open this contract"}
+
+      _none ->
+        nil
+    end
+  end
+
   def destination(%{"kind" => "domain"}, "contract", %{"name" => id}),
     do: {{:contract, id}, "Open this contract"}
 

@@ -50,7 +50,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   attr :open, :map,
     default: nil,
-    doc: "`%{id: id, label: words, target: target}`: a button that opens where the element leads"
+    doc:
+      "`%{id: id, label: words, target: target}`: a button that opens where the element leads; " <>
+        "`%{href: address, label: words}`: a link to a host's page of it"
 
   attr :audience, :atom, default: :engineering, doc: "who reads it: `:engineering` or `:owner`"
 
@@ -143,8 +145,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
           </button>
           <p :if={@name} class="ehg-panel-name">{@name}</p>
         </header>
+        <a :if={@ctx.open[:href]} class="ehg-open" href={@ctx.open.href}>{@ctx.open.label} →</a>
         <button
-          :if={@ctx.open}
+          :if={@ctx.open[:target]}
           type="button"
           class="ehg-open"
           phx-click="open"

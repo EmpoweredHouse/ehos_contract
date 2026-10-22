@@ -1072,8 +1072,9 @@
   cursor: pointer;
 }
 
-/* The panel's way to where the selected card leads. */
+/* The panel's way to where the selected card leads: a button, or a link to a host's page. */
 .ehg-panel .ehg-open {
+  display: inline-block;
   margin: 0 0 10px;
   padding: 3px 9px;
   border: 1px solid var(--border-strong, var(--border-soft));
@@ -1081,5 +1082,6 @@
   background: none;
   color: var(--text-primary);
   font: inherit;
+  text-decoration: none;
   cursor: pointer;
 }

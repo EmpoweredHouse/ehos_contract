@@ -114,6 +114,7 @@ of its domain, and with `--overlay` what the log says over it
     mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
     mix eh_os_contract.graph --process fulfilment.order --overlay --output order.json
     mix eh_os_contract.graph --domain lending --output lending.json
+    mix eh_os_contract.graph --output-dir graph
 
 `--contract` names a contract by its `id:`, `--process` a process module by its
 `id:`; a process module may share its id with a contract, so they are two options.
@@ -124,6 +125,15 @@ bytes are the ones the API serves, every object's keys in order, so two of them
 compare with `diff`. A document holds every fact of its
 contract or domain, whatever a renderer draws of them; the pictures are the
 renderer's (`eh_os_contract_graph`), which the dashboard mounts.
+
+`--output-dir` writes every document of the application in one run, into a directory
+that does not exist yet or is empty: each domain's as `domain.<module>.json`
+(`domain.Lending.Domain.json`), each contract's as `contract.<id>.json` and each process
+module's as `process.<id>.json`, named as the renderer's loader names them,
+each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
+so it boots the project once rather than once per document. It writes no overlay, and
+refuses a directory that holds anything, so a document of a contract removed since an
+earlier run is never sent with the rest.
 
 Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
 every label of a document is written in the client's language. Without it the

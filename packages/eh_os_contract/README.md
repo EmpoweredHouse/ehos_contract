@@ -256,7 +256,7 @@ credential becomes one, is in [`docs/authorization.md`](docs/authorization.md).
 ```
 mix eh_os_contract.check          whole-program checks over the contracts and their implementations
 mix eh_os_contract.report         the conformance report for a period: the four questions, one page
-mix eh_os_contract.graph          a contract, a process or a domain as a graph.v1 document, and the log over it
+mix eh_os_contract.graph          a contract, a process or a domain as a graph.v1 document, every one at once, or the log over one
 mix eh_os_contract.view           the domain as a tree: contexts, contracts, units, consumers and processes
 mix eh_os_contract.glossary       the domain's ubiquitous language
 mix eh_os_contract.pages          the domain, its contracts and processes as Markdown pages, one per element

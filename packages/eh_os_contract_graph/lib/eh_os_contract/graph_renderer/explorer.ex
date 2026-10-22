@@ -2,7 +2,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   # Plan DD, stage G1 (#297): one canvas with two viewpoints, the user's decisions of
   # 15 October — the renderer holds the navigation, so any host draws what the dashboard
   # draws, and a host gives it a loader the explorer calls in the background. The EHOS
-  # Console draws only the landscape, from the domain documents of each deployment.
+  # Console draws the landscape from the domain documents of each deployment, and opens a
+  # deployment's domain from it here, at the contract the reader chose (#404).
   @moduledoc """
   An application's contracts as one canvas the reader moves through: the component a host
   renders to show a domain's graph, with its documents from a loader
@@ -35,6 +36,26 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   The reader's switch holds until the page is left: a host rendering the explorer again
   does not set it back, so `audience` is read when the explorer starts, and anything but
   `:engineering` or `:owner` there raises an `ArgumentError`.
+
+  **Where it starts** is `at`: the domain's system, `:domain`, when it is left out; a
+  contract by its id, `{:contract, "lending.circulation"}`; a process module by its id,
+  `{:process, "fulfilment.order"}`; or the list of process modules, `:processes`. A host
+  that opens the explorer from a contract drawn elsewhere, say the landscape's
+  (`EhOsContract.GraphRenderer.Canvas`, its `link`), starts it there:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Explorer}
+        id="graph"
+        domain="Lending.Domain"
+        loader={MyAppWeb.GraphLoader}
+        at={{:contract, "lending.circulation"}}
+      />
+
+  The explorer goes there once the domain's document has arrived and names it, and the
+  path leads back up from it. A contract or a process module the domain's document does
+  not name, and anything else given as `at`, starts at the domain: never a crash, and
+  nothing loaded that the domain does not name. Like `audience`, `at` is read when the
+  explorer starts; a host rendering it again with another does not move the reader.
 
   **Two viewpoints**, as tabs over the canvas, share a path ("Lending.Domain ›
   lending.circulation › loan") that goes back up:
@@ -82,8 +103,28 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       |> assign(Map.take(assigns, [:id, :domain]))
       |> assign(:loader, loader(Map.fetch!(assigns, :loader)))
       |> assign_new(:audience, fn -> Audience.cast(Map.get(assigns, :audience, :engineering)) end)
+      |> assign_new(:start, fn -> start(Map.get(assigns, :at)) end)
 
-    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter()}
+    {:ok, socket |> load(Places.ref(:domain, socket.assigns.domain)) |> enter() |> started()}
+  end
+
+  # Where the host asked the explorer to start, as a place; the domain for anything else.
+  # Below the domain it waits for the domain's document, which says whether it holds it.
+  defp start({kind, id}) when kind in [:contract, :process] and is_binary(id), do: {kind, id}
+  defp start(:processes), do: :processes
+  defp start(_domain_or_unknown), do: nil
+
+  # Goes where the explorer was asked to start, once the domain's document says whether it
+  # is there; a place it does not hold, or a document that failed, leaves the reader at the
+  # domain.
+  defp started(%{assigns: %{start: nil}} = socket), do: socket
+
+  defp started(socket) do
+    case socket.assigns.documents[Places.ref(:domain, socket.assigns.domain)] do
+      {:ok, _document} -> socket |> assign(start: nil) |> go(socket.assigns.start)
+      {:error, _reason} -> assign(socket, start: nil)
+      _loading -> socket
+    end
   end
 
   defp loader({module, opts}) when is_atom(module), do: {module, opts}
@@ -134,7 +175,10 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     socket = assign(socket, documents: Map.put(socket.assigns.documents, ref, document(result)))
 
     # The place's own document arrived: what it draws decides whether its log is wanted. A
-    # failure is retried only when the reader comes back to it.
+    # failure is retried only when the reader comes back to it. The domain's says whether
+    # the place the explorer was asked to start at is there, before the domain's own log is
+    # asked for a picture the reader would not see.
+    socket = started(socket)
     if ref == ref(socket), do: {:noreply, logged(socket)}, else: {:noreply, derive(socket)}
   end
 
@@ -160,12 +204,14 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def handle_event("go", %{"to" => to}, socket) when is_binary(to) do
     case place(to) do
       nil -> {:noreply, socket}
-      place -> {:noreply, go(socket, place)}
+      place -> {:noreply, socket |> go(place) |> moved(socket)}
     end
   end
 
   def handle_event("lens", %{"to" => lens}, socket) when lens in ~w(graph lifecycle map),
-    do: {:noreply, socket |> assign(lens: String.to_existing_atom(lens)) |> enter()}
+    do:
+      {:noreply,
+       socket |> assign(lens: String.to_existing_atom(lens)) |> enter() |> moved(socket)}
 
   def handle_event("audience", %{"to" => audience}, socket)
       when audience in ~w(engineering owner),
@@ -176,7 +222,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     with document when document != nil <- socket.assigns.document,
          {kind, node} <- node(document, id),
          {place, _words} <- Places.destination(document, kind, node) do
-      {:noreply, go(socket, place)}
+      {:noreply, socket |> go(place) |> moved(socket)}
     else
       _ -> {:noreply, socket}
     end
@@ -185,6 +231,15 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   # An event the page does not send — another name, or without what it needs — is ignored
   # rather than crashing the host's page.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # The reader moved before the domain's document arrived — to another place, or another
+  # lens on it: where they went wins over where the host asked the explorer to start. A
+  # click that left them where they were does not.
+  defp moved(socket, before) do
+    if {socket.assigns.place, socket.assigns.lens} == {before.assigns.place, before.assigns.lens},
+      do: socket,
+      else: assign(socket, start: nil)
+  end
 
   # A place the domain holds, and nothing else: a contract or a process module its document
   # names, a unit of a contract already drawn. Anything a page could not have offered is
@@ -204,7 +259,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     end
   end
 
-  defp holds?(socket, {kind, id}) do
+  defp holds?(socket, {kind, id}) when kind in [:contract, :process] do
     case socket.assigns.documents[Places.ref(:domain, socket.assigns.domain)] do
       {:ok, document} ->
         Enum.any?(get_in(document, ["nodes", to_string(kind)]) || [], &(&1["name"] == id))
@@ -213,6 +268,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         false
     end
   end
+
+  # Anything else a card could lead to — out of a landscape, say — is no place of a domain.
+  defp holds?(_socket, _place), do: false
 
   # A place as the page sends it back: what `key/1` wrote.
   defp place("domain"), do: :domain
