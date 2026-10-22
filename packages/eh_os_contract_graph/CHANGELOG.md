@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-22
+
 ### Added
 
 - **The package carries the schema of the `graph.v1` format it draws**, at
