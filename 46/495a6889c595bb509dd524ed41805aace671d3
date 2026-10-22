@@ -1,0 +1,25 @@
+Two reviews in parallel on origin/main..0232659a, one for correctness and one for security and performance, then a second round on the fixes.
+
+Round 1, correctness:
+1. A start overrode the reader's own move made before the domain's document arrived. Fixed (55389ec9), with a test that fails without the fix.
+2. The domain's overlay was requested on the way to the start place. Fixed (55389ec9), with a test that fails without the fix.
+3. A host's link that raises crashed the host's page. Fixed (88f07fa6): no link is offered. Test fails without the fix.
+4. A protocol-relative //host was accepted (also found by the security review). Fixed (88f07fa6): a scheme-less address must name no host. Test fails without the fix.
+5. An {:outside, ...} place reaching holds?/2 raised. Fixed (55389ec9) with a catch-all clause.
+6. --output-dir with --since gave the wrong first error. Fixed (a0573328), tested.
+7. Domain files were named by name, while the loader names a domain by its module. Fixed (a0573328): domain.<Module>.json.
+8. write_all duplicated write's loading and encoding. Fixed (a0573328): shared load/1 and encoded/1.
+9. The summary-line assertion could match the wrong message. Fixed (a0573328).
+
+Round 1, security and performance:
+1. //host was accepted. Fixed (same as correctness 4).
+2. link is called on every selection and every render. The doc now says to keep it cheap and pure (88f07fa6).
+3. A malformed domain document crashes the explorer. No change needed: View.build already crashes on such a document with or without `at`, which is unchanged since before this change, and EHOS validates documents against the schema before keeping them.
+4. Two domains sharing a name: moot, because domain files are now named by module, which is unique.
+
+Round 2, on the fixes:
+1. A click on the current tab before the domain arrived dropped the start. Fixed (this commit): the start is dropped only when the place or lens changed. Test fails without the fix.
+2. The overlay test did not wait. Fixed (this commit): assert_receive.
+Notes left as they are: a throw or exit from link is not caught (the doc says "raises"); https:host is accepted as an https URL, by design.
+
+Gate: mix check in sandbox/ on OTP 27.1.2, exit 0. check counts are 0/3/7 in the sandbox and 0/83/78 in the engine, unchanged. Graph package mix check exit 0 after round 2. On OTP 28, sandbox/test/graph_overlay_test.exs fails to compile (JSV.build! in a module attribute holds a reference). That is unrelated to this change; CI runs 27.2.
