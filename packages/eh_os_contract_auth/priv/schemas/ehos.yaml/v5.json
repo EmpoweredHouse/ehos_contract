@@ -192,7 +192,7 @@
       ],
       "properties": {
         "host": {
-          "description": "The host's DNS name, in lowercase: labels of letters, digits and dashes, separated by dots, ending in a label of letters, as `registry.example.org`. Never an address, and never a pattern such as `*.example.org`: the proxy admits names, and checks this one in the TLS handshake as well as in the request. Never a name that cannot be outside the installation either: one under a name reserved for a network inside or for no network (`local`, `localhost`, `localdomain`, `internal`, `intranet`, `private`, `svc`, `arpa`, `invalid`, `test`, `example`, `onion`, `alt`, `home`, `corp`, `lan`), which EHOS refuses beside this schema,, such as a cluster's `*.svc.cluster.local`.",
+          "description": "The host's DNS name, in lowercase: labels of letters, digits and dashes, separated by dots, ending in a label of letters, as `registry.example.org`. Never an address, and never a pattern such as `*.example.org`: the proxy admits names, and checks this one in the TLS handshake as well as in the request. Never a name that cannot be outside the installation either: one under a name reserved for a network inside or for no network (`local`, `localhost`, `localdomain`, `internal`, `intranet`, `private`, `svc`, `arpa`, `invalid`, `test`, `example`, `onion`, `alt`, `home`, `corp`, `lan`), which EHOS refuses beside this schema, such as a cluster's `*.svc.cluster.local`.",
           "type": "string",
           "maxLength": 253,
           "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"

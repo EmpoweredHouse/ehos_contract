@@ -274,7 +274,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v5"))
 
       assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
-               "77965787eb3f9f121e3cb636406606ffde1b52e9842dbc7b1157bf1cbfbfc8d2"
+               "e4da79614e5f0aaa0720db2735b5f75c2bd8c75f6f5a0c157bde2426a4750c64"
 
       assert Jason.decode!(document)["title"] == "ehos.yaml/v5"
     end
