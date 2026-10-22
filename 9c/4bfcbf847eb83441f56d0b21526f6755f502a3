@@ -1,0 +1,1 @@
+Next -dev after v0.9.0: two version strings. Plus one test wait: the explorer's processes test failed once in CI (#406's check) because the overlay is requested after the document arrives. 300 runs of the test and 60 runs of the suite were green locally before and after; the second render_async is the same fix #404's own tests use. Graph explorer tests pass.
