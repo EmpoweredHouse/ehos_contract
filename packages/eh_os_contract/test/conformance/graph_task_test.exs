@@ -77,28 +77,35 @@ defmodule EhOsContract.GraphTaskTest do
     task(~w(--output-dir #{out}))
 
     one = Path.join(dir, "one.json")
+    model = &EhOsContract.Model.fetch/1
 
+    # The file each document is in, and the options that write it alone.
     expected =
-      Enum.map(EhOsContract.Registry.domains(), &{"domain", EhOsContract.Model.fetch(&1).name}) ++
+      Enum.map(
+        EhOsContract.Registry.domains(),
+        &{"domain.#{inspect(&1)}.json", ["--domain", "#{model.(&1).name}"]}
+      ) ++
         Enum.map(
           EhOsContract.Registry.contracts(),
-          &{"contract", EhOsContract.Model.fetch(&1).id}
+          &{"contract.#{model.(&1).id}.json", ["--contract", model.(&1).id]}
         ) ++
-        Enum.map(EhOsContract.Registry.processes(), &{"process", EhOsContract.Model.fetch(&1).id})
+        Enum.map(
+          EhOsContract.Registry.processes(),
+          &{"process.#{model.(&1).id}.json", ["--process", model.(&1).id]}
+        )
 
-    assert Enum.sort(File.ls!(out)) ==
-             Enum.sort(for {kind, name} <- expected, do: "#{kind}.#{name}.json")
+    assert_received {:mix_shell, :info, ["written: " <> summary]}
+    assert summary == "#{length(expected)} documents in #{out}"
+    assert Enum.sort(File.ls!(out)) == Enum.sort(Enum.map(expected, &elem(&1, 0)))
 
     # Each file holds the bytes the task writes for that document alone.
-    for {kind, name} <- expected do
-      task(["--#{kind}", "#{name}", "--output", one])
-
-      assert File.read!(Path.join(out, "#{kind}.#{name}.json")) == File.read!(one),
-             "#{kind}.#{name}"
+    for {file, options} <- expected do
+      task(options ++ ["--output", one])
+      assert File.read!(Path.join(out, file)) == File.read!(one), file
     end
 
+    assert "domain.DispatchRig.Domain.json" in File.ls!(out)
     assert "process.dispatch_rig.account_review.json" in File.ls!(out)
-    assert_received {:mix_shell, :info, ["written: " <> _]}
   end
 
   @tag :tmp_dir
@@ -108,7 +115,12 @@ defmodule EhOsContract.GraphTaskTest do
     assert_raise Mix.Error, ~r/holds files already/, fn -> task(~w(--output-dir #{dir})) end
     assert File.ls!(dir) == ["contract.removed.json"]
 
-    for other <- [~w(--contract dispatch_rig.ledger), ~w(--overlay), ~w(--output x.json)] do
+    for other <- [
+          ~w(--contract dispatch_rig.ledger),
+          ~w(--overlay),
+          ~w(--since 2026-01-01T00:00:00Z),
+          ~w(--output x.json)
+        ] do
       assert_raise Mix.Error, ~r/pass it alone/, fn ->
         task(~w(--output-dir #{Path.join(dir, "new")}) ++ other)
       end

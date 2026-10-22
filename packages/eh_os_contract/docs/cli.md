@@ -127,8 +127,9 @@ contract or domain, whatever a renderer draws of them; the pictures are the
 renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
 `--output-dir` writes every document of the application in one run, into a directory
-that does not exist yet or is empty: each domain's as `domain.<name>.json`, each
-contract's as `contract.<id>.json` and each process module's as `process.<id>.json`,
+that does not exist yet or is empty: each domain's as `domain.<module>.json`
+(`domain.Lending.Domain.json`), each contract's as `contract.<id>.json` and each process
+module's as `process.<id>.json`, named as the renderer's loader names them,
 each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
 so it boots the project once rather than once per document. It writes no overlay, and
 refuses a directory that holds anything, so a document of a contract removed since an

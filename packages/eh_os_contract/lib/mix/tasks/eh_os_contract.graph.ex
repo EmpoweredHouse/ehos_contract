@@ -24,8 +24,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   renderer's (`eh_os_contract_graph`), which the dashboard mounts.
 
   `--output-dir` writes every document of the application in one run, into a directory
-  that does not exist yet or is empty: each domain's as `domain.<name>.json`, each
-  contract's as `contract.<id>.json` and each process module's as `process.<id>.json`,
+  that does not exist yet or is empty: each domain's as `domain.<module>.json`
+  (`domain.Lending.Domain.json`), each contract's as `contract.<id>.json` and each process
+  module's as `process.<id>.json`, named as the renderer's loader names them,
   each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
   so it boots the project once rather than once per document. It writes no overlay, and
   refuses a directory that holds anything, so a document of a contract removed since an
@@ -72,7 +73,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
             "--domain a domain's; pass one of them"
         )
 
-      opts[:output_dir] && Enum.any?([:contract, :process, :domain, :overlay, :output], &opts[&1]) ->
+      opts[:output_dir] &&
+          Enum.any?([:contract, :process, :domain, :overlay, :since, :output], &opts[&1]) ->
         Mix.raise(
           "--output-dir writes every document of the application, and no overlay; " <>
             "pass it alone"
@@ -112,29 +114,20 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         Mix.raise("cannot read #{dir}: #{:file.format_error(reason)}")
     end
 
-    Mix.Task.run("compile")
-    Application.load(:eh_os_contract)
-    EhOsContract.Registry.load!()
-
+    load(overlay: false)
     contracts = EhOsContract.Registry.contracts()
     processes = EhOsContract.Registry.processes()
-    named = &(&1 |> EhOsContract.Model.fetch() |> Map.fetch!(&2))
 
+    # Each named as a loader names it: a domain by its module, the others by their ids.
     documents =
-      for(
-        d <- EhOsContract.Registry.domains(),
-        do: {"domain.#{named.(d, :name)}", Document.domain(d, contracts ++ processes)}
-      ) ++
-        for(c <- contracts, do: {"contract.#{named.(c, :id)}", Document.contract(c)}) ++
-        for(p <- processes, do: {"process.#{named.(p, :id)}", Document.process(p)})
+      Enum.map(EhOsContract.Registry.domains(), &Document.domain(&1, contracts ++ processes)) ++
+        Enum.map(contracts, &Document.contract/1) ++ Enum.map(processes, &Document.process/1)
 
     File.mkdir_p!(dir)
 
-    for {name, document} <- documents do
-      File.write!(
-        Path.join(dir, name <> ".json"),
-        Document.encode(document, pretty: true) <> "\n"
-      )
+    for document <- documents do
+      name = "#{document["kind"]}.#{document[document["kind"]]}.json"
+      File.write!(Path.join(dir, name), encoded(document))
     end
 
     Mix.shell().info("written: #{length(documents)} documents in #{dir}")
@@ -143,14 +136,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   defp write(opts) do
     alias EhOsContract.Graph.{Document, Overlay}
 
-    if opts[:overlay] do
-      Mix.Task.run("app.start")
-    else
-      Mix.Task.run("compile")
-      Application.load(:eh_os_contract)
-    end
-
-    EhOsContract.Registry.load!()
+    load(overlay: opts[:overlay])
 
     period = [since: since(opts)]
     modules = EhOsContract.Registry.contracts() ++ EhOsContract.Registry.processes()
@@ -179,8 +165,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
             else: Document.domain(domain, modules)
       end
 
-    emit_output(Document.encode(document, pretty: true) <> "\n", opts)
+    emit_output(encoded(document), opts)
   end
+
+  # The project's registry: compiled, or started where the log is read.
+  defp load(overlay: overlay?) do
+    if overlay? do
+      Mix.Task.run("app.start")
+    else
+      Mix.Task.run("compile")
+      Application.load(:eh_os_contract)
+    end
+
+    EhOsContract.Registry.load!()
+  end
+
+  defp encoded(document), do: EhOsContract.Graph.Document.encode(document, pretty: true) <> "\n"
 
   # Runs `fun` with the default log handler writing to stderr rather than stdout, and
   # puts it back after: a host's application logs as it starts (a relay with no bus, a
