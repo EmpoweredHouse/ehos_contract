@@ -176,9 +176,10 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
     # The place's own document arrived: what it draws decides whether its log is wanted. A
     # failure is retried only when the reader comes back to it. The domain's says whether
-    # the place the explorer was asked to start at is there.
-    socket = if ref == ref(socket), do: logged(socket), else: derive(socket)
-    {:noreply, started(socket)}
+    # the place the explorer was asked to start at is there, before the domain's own log is
+    # asked for a picture the reader would not see.
+    socket = started(socket)
+    if ref == ref(socket), do: {:noreply, logged(socket)}, else: {:noreply, derive(socket)}
   end
 
   def handle_async({:overlay, ref}, result, socket) do
@@ -203,12 +204,12 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def handle_event("go", %{"to" => to}, socket) when is_binary(to) do
     case place(to) do
       nil -> {:noreply, socket}
-      place -> {:noreply, go(socket, place)}
+      place -> {:noreply, socket |> moved() |> go(place)}
     end
   end
 
   def handle_event("lens", %{"to" => lens}, socket) when lens in ~w(graph lifecycle map),
-    do: {:noreply, socket |> assign(lens: String.to_existing_atom(lens)) |> enter()}
+    do: {:noreply, socket |> moved() |> assign(lens: String.to_existing_atom(lens)) |> enter()}
 
   def handle_event("audience", %{"to" => audience}, socket)
       when audience in ~w(engineering owner),
@@ -219,7 +220,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     with document when document != nil <- socket.assigns.document,
          {kind, node} <- node(document, id),
          {place, _words} <- Places.destination(document, kind, node) do
-      {:noreply, go(socket, place)}
+      {:noreply, socket |> moved() |> go(place)}
     else
       _ -> {:noreply, socket}
     end
@@ -228,6 +229,10 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   # An event the page does not send — another name, or without what it needs — is ignored
   # rather than crashing the host's page.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # The reader moved before the domain's document arrived: where they went wins over where
+  # the host asked the explorer to start.
+  defp moved(socket), do: assign(socket, start: nil)
 
   # A place the domain holds, and nothing else: a contract or a process module its document
   # names, a unit of a contract already drawn. Anything a page could not have offered is
@@ -247,7 +252,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     end
   end
 
-  defp holds?(socket, {kind, id}) do
+  defp holds?(socket, {kind, id}) when kind in [:contract, :process] do
     case socket.assigns.documents[Places.ref(:domain, socket.assigns.domain)] do
       {:ok, document} ->
         Enum.any?(get_in(document, ["nodes", to_string(kind)]) || [], &(&1["name"] == id))
@@ -256,6 +261,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         false
     end
   end
+
+  # Anything else a card could lead to — out of a landscape, say — is no place of a domain.
+  defp holds?(_socket, _place), do: false
 
   # A place as the page sends it back: what `key/1` wrote.
   defp place("domain"), do: :domain

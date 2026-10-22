@@ -207,6 +207,28 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
       assert text(page(view), ".ehg-path [aria-current]") =~ "Fulfilment.Domain"
     end
 
+    test "asks the log of nothing but the place it starts at" do
+      start_at(%{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [notify: self()]})
+
+      assert_received {:overlay, {:contract, "fulfilment.warehouse"}}
+      refute_received {:overlay, _}
+    end
+
+    test "gives way to where the reader went before the domain's document arrived" do
+      {:ok, view, _html} =
+        live_isolated(build_conn(), ExplorerLive,
+          session: %{"at" => {:contract, "fulfilment.warehouse"}, "opts" => [hold: self()]}
+        )
+
+      assert_receive {:held, loader}
+      view |> element(".ehg-tab", "Processes") |> render_click()
+      send(loader, :go)
+      render_async(view)
+      render_async(view)
+
+      assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+    end
+
     test "is read when it starts: a host rendering it again does not move the reader" do
       view = start_at(%{"at" => {:contract, "fulfilment.warehouse"}})
       view |> element(".ehg-path button", "fulfilment") |> render_click()
