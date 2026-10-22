@@ -28,8 +28,12 @@ defmodule EhOsContract.GraphRenderer do
   # #400: a host that checks the documents it is sent reads the schema from the package it
   # draws them with, rather than keeping a copy.
   @doc """
-  Where the JSON Schema of the `graph.v1` format this package draws is: the same as the
-  engine's `priv/schema/graph.v1.json`.
+  Where the JSON Schema of the `graph.v1` format this package draws is, whose `$id` is
+  `urn:eh-os-contract:schema:graph.v1`: the same file as `EhOsContract.Graph.Document.schema_path/0`
+  returns for a host that has the engine. A host that checks the documents it is sent
+  validates them against it with a JSON Schema validator:
+
+      schema = EhOsContract.GraphRenderer.schema_path() |> File.read!() |> JSON.decode!()
   """
   @spec schema_path() :: Path.t()
   def schema_path, do: Application.app_dir(:eh_os_contract_graph, "priv/schema/graph.v1.json")

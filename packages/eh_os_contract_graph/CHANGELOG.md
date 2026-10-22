@@ -24,8 +24,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Added
 
 - **The package carries the schema of the `graph.v1` format it draws**, at
-  `EhOsContract.GraphRenderer.schema_path/0`, the same as the engine's, so a host that checks the
-  documents it is sent no longer keeps a copy of its own (#400).
+  `EhOsContract.GraphRenderer.schema_path/0`, the same file as the engine's
+  `EhOsContract.Graph.Document.schema_path/0`, so a host that checks the documents it is sent no
+  longer keeps a copy of its own (#400).
 
 ## [0.4.0] - 2026-10-17
 

@@ -64,6 +64,7 @@ jobs:
             eh_os_contract_graph:
               - 'packages/eh_os_contract_graph/lib/**'
               - 'packages/eh_os_contract_graph/priv/static/**'
+              - 'packages/eh_os_contract_graph/priv/schema/**'
               - 'packages/eh_os_contract_graph/assets/**'
               - 'packages/eh_os_contract_graph/.formatter.exs'
               - 'packages/eh_os_contract_graph/mix.exs'
