@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-22
+
 ### Added
 
 - **`mix eh_os_contract.graph --output-dir DIR` writes every document of the application in one run** (#404):

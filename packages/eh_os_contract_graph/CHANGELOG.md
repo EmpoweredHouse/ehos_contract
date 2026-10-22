@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-22
+
 ### Added
 
 - **A landscape leads to a host's page of each domain** (#404): `EhOsContract.GraphRenderer.Canvas` takes a
