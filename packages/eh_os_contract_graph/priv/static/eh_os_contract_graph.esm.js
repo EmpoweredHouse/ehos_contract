@@ -4679,7 +4679,7 @@ var EhOsContractGraph = {
     }
   },
   lay(direction, groups, cards, labels) {
-    if (!cards.length) {
+    if (!cards.length && !groups.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`);
       this.sizeSheet.replaceSync("");
       this.tall = null;

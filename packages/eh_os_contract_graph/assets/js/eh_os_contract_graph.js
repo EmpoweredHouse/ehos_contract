@@ -387,8 +387,9 @@ export const EhOsContractGraph = {
   },
 
   lay(direction, groups, cards, labels) {
-    // A view with nothing in it: dagre would size an empty graph as -Infinity.
-    if (!cards.length) {
+    // A view with nothing in it: dagre would size an empty graph as -Infinity. Boxes alone, a landscape's
+    // domains with nothing on the wire, are laid out as cards are.
+    if (!cards.length && !groups.length) {
       this.layoutSheet.replaceSync(`${this.scope} .ehg-viewport { visibility: visible }`)
       this.sizeSheet.replaceSync("")
       this.tall = null
