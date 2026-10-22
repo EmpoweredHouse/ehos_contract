@@ -1,0 +1,1 @@
+Release PR: versions and changelog headings only (4 files). Reviewed as a host upgrading reads it: the 0.6.0 and 0.9.0 sections hold #404's lines, the dates are today's, and auth and web stay at -dev. No code changed, so the gate's result for #405's code stands; the release job checks the versions against mix.exs.
