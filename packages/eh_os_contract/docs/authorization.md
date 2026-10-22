@@ -67,9 +67,9 @@ sequenceDiagram
 ```
 
 1. **Deployment.** The application sends EHOS a manifest with its capabilities and roles, derived from
-   its contracts, beside what its `ehos.yaml` says it needs: `ehos.manifest/v2`, `v3` or `v4`, by
-   the version of its `ehos.yaml`, or `v5` when an actor's `may_grant:` says which roles a person in it
-   may grant, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
+   its contracts, beside what its `ehos.yaml` says it needs: `ehos.manifest/v2`, `v3`, `v4` or `v6`, by
+   the version of its `ehos.yaml`, or, before `ehos.yaml/v5`, `v5` when an actor's `may_grant:` says which
+   roles a person in it may grant, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
    `eh_os_contract_auth` writes.
 2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
    optionally with scope values ("warehouse 7").
@@ -369,5 +369,5 @@ higher, banking-grade level, and would be EHOS's decision.
 | Authorization in `dispatch/3`, `query/3` and `record/3`, scope checks, the row check | built (E6) |
 | `EhOsContract.Plug` | built (E6) |
 | Verifying EHOS credentials, keeping keys, the audit row, the bearer-token plug, the test helper | built (EA), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
-| The manifest EHOS reads, `ehos.manifest/v2` to `v4` from `ehos.yaml` and the contracts | built (E10, EH), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
+| The manifest EHOS reads, `ehos.manifest/v2` to `v6` from `ehos.yaml` and the contracts | built (E10, EH), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
 | Sign-in for a frontend's users | EHOS, not designed yet |

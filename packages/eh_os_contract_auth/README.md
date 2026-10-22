@@ -67,9 +67,11 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, or `v4` for an
-`ehos.yaml/v4` (which may name a seed and secrets): the application's `ehos.yaml`, which says what the workload needs, extended with what its contracts
-offer. In CI, beside the image:
+EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, `v4` for an
+`ehos.yaml/v4` (which may name a seed and secrets), `v5` when a role may grant another, or `v6` for
+an `ehos.yaml/v5` (which may name the hosts outside the installation it reaches): the application's
+`ehos.yaml`, which says what the workload needs, extended with what its contracts offer. In CI,
+beside the image:
 
 ```bash
 mix eh_os_contract.manifest --output ehos.manifest.json
@@ -167,11 +169,29 @@ other. Without `version`, the newest value, and setting a new one rolls the work
 version through every setting. A name EHOS gives every workload or the runtime reads (`ehos_*`,
 `database_*`, `phx_*`, `secret_key_base`, `path` and the like) is refused.
 
+**Hosts outside the installation, from `ehos.yaml/v5`**, which makes an `ehos.manifest/v6`:
+
+```yaml
+schema: ehos.yaml/v5
+needs:
+  egress:
+    - host: registry.example.org      # port 443 when left out
+    - host: mail.example.net
+      port: 587
+```
+
+Each host is a DNS name in lowercase, never an address or a pattern such as `*.example.org`, and the manifest
+carries the list as written: a port left out stays left out. The hosts are part of the application's authority in
+EHOS: a deployment that adds, removes or changes one asks for `ehos.application.register`, as a new role does.
+EHOS also refuses, at deploy, a host under a name only a network inside answers, such as `*.svc.cluster.local`,
+and a host and port named twice, which this task leaves to it.
+
 **A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
 roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
-whatever the version of `ehos.yaml`. A domain without a rule keeps its manifest's version and digests. An
-actor a rule names, and one that has a rule, has to hold a capability, or it is no role and the task says so.
+whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, rule or none. A
+domain without a rule keeps its manifest's version and digests. An actor a rule names, and one that has a
+rule, has to hold a capability, or it is no role and the task says so.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
 with any edit, so a new label would ask for `ehos.application.register` at every deploy. yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries

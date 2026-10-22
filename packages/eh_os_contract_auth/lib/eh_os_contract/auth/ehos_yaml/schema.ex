@@ -4,8 +4,9 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # `priv/schemas/` is EHOS's file byte for byte, a quotation, not a second definition:
   # `ehos.yaml/v1` as read on 1 October 2026, the same bytes EHOS's application template puts in
   # an application's `.ehos/`, `ehos.yaml/v2` (sign-in) as read on 2 October, `ehos.yaml/v3` (the
-  # company's people) on 8 October, and `ehos.yaml/v4` (a seed and secrets) on 17 October 2026.
-  # A test pins each SHA-256;
+  # company's people) on 8 October, `ehos.yaml/v4` (a seed and secrets) on 17 October, and
+  # `ehos.yaml/v5` (the hosts outside the installation it reaches) on 22 October 2026, before
+  # EHOS released it. A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #
@@ -18,7 +19,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     "ehos.yaml/v1" => "v1.json",
     "ehos.yaml/v2" => "v2.json",
     "ehos.yaml/v3" => "v3.json",
-    "ehos.yaml/v4" => "v4.json"
+    "ehos.yaml/v4" => "v4.json",
+    "ehos.yaml/v5" => "v5.json"
   }
   @dir Path.expand("../../../../priv/schemas/ehos.yaml", __DIR__)
 
@@ -27,6 +29,12 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   @schemas Map.new(@versions, fn {version, file} ->
              {version, @dir |> Path.join(file) |> File.read!() |> Jason.decode!()}
            end)
+
+  # A pattern is an ECMA-262 regular expression, where `$` ends the text, but JSV compiles it with
+  # PCRE, where `$` also matches before a final line break, so `^[a-z]+$` would take `"ledger\\n"`.
+  # EHOS writes each such `$` as `\\z` before JSV builds the schema, and so does this copy; the
+  # file, and the schema a reason quotes, stay as written.
+  @built Map.new(@schemas, fn {version, schema} -> {version, __MODULE__.Ecma.schema(schema)} end)
 
   # What failed inside a value is reported there; these report it again at every value around it.
   @enclosing [:properties, :items, :additionalProperties, :"$ref", :allOf]
@@ -78,8 +86,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
        [error(["schema"], "is required: it names the version of ehos.yaml the file is in")]}
 
   # JSV's built schema holds compiled patterns, which a module attribute cannot, so it is built at
-  # each read, in under a millisecond.
-  defp root(version), do: JSV.build!(Map.fetch!(@schemas, version))
+  # each read, in under a millisecond, from the schema with its patterns' `$` read as EHOS reads it.
+  defp root(version), do: JSV.build!(Map.fetch!(@built, version))
 
   defp reasons(unit, data, schema) do
     path = from_pointer(unit.instanceLocation, data)

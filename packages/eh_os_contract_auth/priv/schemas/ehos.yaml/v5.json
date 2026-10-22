@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ehos.yaml/v5",
+  "description": "What a workload needs in order to run, as its developer states it (D-51). A released version is frozen: this file is never edited, and any change is a new version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "health"
+  ],
+  "properties": {
+    "schema": {
+      "description": "The version of this format the file is written in. A file without it is refused, never guessed at.",
+      "const": "ehos.yaml/v5"
+    },
+    "application": {
+      "description": "Which of the project's contract domains this image is: lowercase letters, digits and dashes, starting with a letter and not ending with a dash, and not `ehos`. Only a project whose contracts declare more than one domain names it; otherwise the generator takes the name from the one domain.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "not": {
+        "const": "ehos"
+      }
+    },
+    "needs": {
+      "description": "What the workload needs from the environment it runs in. A workload may need nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "description": "A PostgreSQL schema of its own, on the resource its environment binds it to (D-54).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "engine"
+          ],
+          "properties": {
+            "engine": {
+              "description": "The database engine.",
+              "enum": [
+                "postgres"
+              ]
+            },
+            "version": {
+              "description": "The PostgreSQL major version: `16` for exactly 16, `>= 16` for 16 or later. Without it, any version the resource runs.",
+              "type": "string",
+              "pattern": "^(>= ?)?[1-9][0-9]{0,2}$"
+            },
+            "migrate": {
+              "description": "The command and its arguments, run before the workload starts, as the schema's owner. Without it, no migration runs.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            },
+            "seed": {
+              "description": "The command and its arguments that fill the schema with data to try the workload on, run after the migration, as the schema's owner, in an ephemeral environment only and never in production (D-98). It runs at every start of the workload, so it must be idempotent. `EHOS_SEED_PROFILE` names the profile of the template the environment was made from, when it names one. Without it, nothing is seeded.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          }
+        },
+        "people": {
+          "description": "Present when the workload reads the company's people from EHOS, by itself, through EHOS's API (D-81): `read` is the only value. The reading waits until someone who manages people agrees, and the workload is given the key it identifies itself with, whether or not it signs people in.",
+          "enum": [
+            "read"
+          ]
+        },
+        "secrets": {
+          "description": "The secrets the workload is given, each as an environment variable named after it in upper case: `smtp_password` becomes `SMTP_PASSWORD` (D-99). People set each value per environment, or as a template's default for its ephemeral environments; a deployment is refused while a secret it names has none there. Each name once.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/secret"
+          }
+        },
+        "egress": {
+          "description": "The hosts outside the installation the workload reaches, each over TLS on its port, through a proxy of its own that admits only these names (D-135). Every other connection outside the installation is refused. The list is part of the application's authority: a deployment that adds, removes or changes a host needs `ehos.application.register`. It holds in every environment the application runs in. Each host and port once.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/egress"
+          }
+        }
+      }
+    },
+    "serves": {
+      "description": "Each endpoint that listens, public or not. A workload may listen on nothing but its health port. Names and ports are unique, and no port is the health port: EHOS checks these beside the schema.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/serve"
+      }
+    },
+    "sign_in": {
+      "description": "Present when the workload signs people in through EHOS (D-64, D-69): `{}` for its own application only, `applications` for the others its pages get credentials for. It needs an entry `web` that is public, where sign-in returns (D-68): EHOS checks this beside the schema.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "applications": {
+          "description": "The other applications its pages get credentials for, by name, each once and not its own. An application's side agrees before any credential for it is issued (D-64).",
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/application"
+          }
+        }
+      }
+    },
+    "health": {
+      "description": "Where EHOS probes the workload. EHOS never starts a workload it cannot probe, and never exposes this port.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port",
+        "ready",
+        "live"
+      ],
+      "properties": {
+        "port": {
+          "description": "The port EHOS probes on. It is never exposed, and no entry of `serves` may use it.",
+          "$ref": "#/$defs/port"
+        },
+        "ready": {
+          "description": "The HTTP path, starting with a slash, that answers 2xx once the workload can serve.",
+          "$ref": "#/$defs/path"
+        },
+        "live": {
+          "description": "The HTTP path, starting with a slash, that answers 2xx while the workload is not stuck.",
+          "$ref": "#/$defs/path"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "secret": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "description": "The secret's name: a lowercase word of at most 63 letters, digits and underscores, starting with a letter, and not one EHOS gives every workload or the runtime reads or sets in every container (`ehos_*`, `database_*`, `phx_*`, `otel_*`, `pg*`, `release_*`, `erl_*`, `elixir_*`, `ld_*`, `lc_*`, `kubernetes_*`, `secret_key_base`, `path`, `home`, `hostname`, `lang`, `shell`, `user`, `tmpdir`).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,62}$",
+          "not": {
+            "anyOf": [
+              {
+                "pattern": "^(ehos_|database_|phx_|otel_|pg|release_|erl_|elixir_|ld_|lc_|kubernetes_)"
+              },
+              {
+                "enum": [
+                  "secret_key_base",
+                  "path",
+                  "home",
+                  "hostname",
+                  "lang",
+                  "shell",
+                  "user",
+                  "tmpdir"
+                ]
+              }
+            ]
+          }
+        },
+        "version": {
+          "description": "The version the workload is given, kept through every rotation (FM-25). Without it, the newest, and a rotation gives the workload the new one.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "egress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host"
+      ],
+      "properties": {
+        "host": {
+          "description": "The host's DNS name, in lowercase: labels of letters, digits and dashes, separated by dots, ending in a label of letters, as `registry.example.org`. Never an address, and never a pattern such as `*.example.org`: the proxy admits names, and checks this one in the TLS handshake as well as in the request. Never a name that cannot be outside the installation either: one under a name reserved for a network inside or for no network (`local`, `localhost`, `localdomain`, `internal`, `intranet`, `private`, `svc`, `arpa`, `invalid`, `test`, `example`, `onion`, `alt`, `home`, `corp`, `lan`), which EHOS refuses beside this schema, such as a cluster's `*.svc.cluster.local`.",
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+        },
+        "port": {
+          "description": "The TCP port the host is reached on, over TLS.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 443
+        }
+      }
+    },
+    "serve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "port"
+      ],
+      "properties": {
+        "name": {
+          "description": "The endpoint's name, which is also a Kubernetes port name: lowercase letters, digits and single dashes, starting with a letter, at most 15 characters. `web` gets the application's own host; any other public one gets `<application>-<name>` (D-55).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15,
+          "pattern": "^[a-z](-?[a-z0-9])*$"
+        },
+        "port": {
+          "$ref": "#/$defs/port"
+        },
+        "public": {
+          "description": "Whether the endpoint asks to be reachable from outside the installation. A request: EHOS decides whether to expose it.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "port": {
+      "description": "A TCP port the workload listens on, from 1024 to 65535.",
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^/[!-~]*$"
+    },
+    "application": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "not": {
+        "const": "ehos"
+      }
+    }
+  }
+}

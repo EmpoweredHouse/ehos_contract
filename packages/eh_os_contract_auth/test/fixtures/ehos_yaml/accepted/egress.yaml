@@ -1,0 +1,19 @@
+# A workload that reaches two hosts outside the installation, one on the port left out, 443, and
+# one on its own port (ehos.yaml/v5).
+schema: ehos.yaml/v5
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+  egress:
+    - host: registry.example.org
+    - host: mail.example.net
+      port: 587
+serves:
+  - name: web
+    port: 4000
+    public: true
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

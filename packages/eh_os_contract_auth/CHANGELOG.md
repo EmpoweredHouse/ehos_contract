@@ -24,6 +24,21 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`ehos.yaml/v5` and `ehos.manifest/v6`**, as agreed with EHOS. `mix eh_os_contract.manifest` reads an
+  `ehos.yaml/v5`, EHOS's file copied byte for byte, whose `needs.egress` names the hosts outside the installation
+  the workload reaches, and writes an `ehos.manifest/v6` for it, whether or not a role may grant another, with
+  the hosts as written. An older file makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`,
+  and so what a release produces, now ends with `ehos.manifest/v6`, which only an EHOS that accepts it deploys.
+
+### Fixed
+
+- **A value of `ehos.yaml` that ends in a line break is refused**, in every version, as EHOS refuses it: an
+  application named `ledger` and a newline, a probe path, a secret's, an endpoint's or a host's name. A pattern's
+  `$` in EHOS's schema ends the text, and the validator read it as PCRE does, where it matches before a final
+  line break; the generator then wrote a manifest EHOS refused at deploy.
+
 ## [0.5.0] - 2026-10-21
 
 ### Added
