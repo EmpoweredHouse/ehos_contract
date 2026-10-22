@@ -4,8 +4,9 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # `priv/schemas/` is EHOS's file byte for byte, a quotation, not a second definition:
   # `ehos.yaml/v1` as read on 1 October 2026, the same bytes EHOS's application template puts in
   # an application's `.ehos/`, `ehos.yaml/v2` (sign-in) as read on 2 October, `ehos.yaml/v3` (the
-  # company's people) on 8 October, and `ehos.yaml/v4` (a seed and secrets) on 17 October 2026.
-  # A test pins each SHA-256;
+  # company's people) on 8 October, `ehos.yaml/v4` (a seed and secrets) on 17 October, and
+  # `ehos.yaml/v5` (the hosts outside the installation it reaches) on 22 October 2026, before
+  # EHOS released it. A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #
@@ -18,7 +19,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     "ehos.yaml/v1" => "v1.json",
     "ehos.yaml/v2" => "v2.json",
     "ehos.yaml/v3" => "v3.json",
-    "ehos.yaml/v4" => "v4.json"
+    "ehos.yaml/v4" => "v4.json",
+    "ehos.yaml/v5" => "v5.json"
   }
   @dir Path.expand("../../../../priv/schemas/ehos.yaml", __DIR__)
 
