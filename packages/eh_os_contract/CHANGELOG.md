@@ -48,6 +48,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-22
+
+### Changed
+
+- Released with eh_os_contract_graph 0.5.0; nothing in the engine changed.
+
 ## [0.8.0] - 2026-10-21
 
 ### Added
