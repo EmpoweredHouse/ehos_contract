@@ -72,7 +72,8 @@ defmodule EhOsContract.GraphRenderer.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_graph/CHANGELOG.md"
       },
-      files: ~w(lib priv/static .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
+      files:
+        ~w(lib priv/static priv/schema .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
     ]
   end
 

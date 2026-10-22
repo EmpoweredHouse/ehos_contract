@@ -24,4 +24,13 @@ defmodule EhOsContract.GraphRenderer do
   """
 
   use Boundary, deps: [], exports: [Actors, Canvas, Explorer, Landscape, Loader, View]
+
+  # #400: a host that checks the documents it is sent reads the schema from the package it
+  # draws them with, rather than keeping a copy.
+  @doc """
+  Where the JSON Schema of the `graph.v1` format this package draws is: the same as the
+  engine's `priv/schema/graph.v1.json`.
+  """
+  @spec schema_path() :: Path.t()
+  def schema_path, do: Application.app_dir(:eh_os_contract_graph, "priv/schema/graph.v1.json")
 end
