@@ -213,6 +213,20 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       end
     end
 
+    # JSV's `$` would match before a final line break; EHOS reads the schema's as ending the text.
+    test "refuses a word or a path that ends in a line break, as EHOS does" do
+      host = "schema: ehos.yaml/v5\nneeds:\n  egress:\n    - host: \"registry.example.org\\n\"\n"
+      assert {:error, [%{path: "needs.egress[0].host"}]} = EhosYaml.read(host <> @health)
+
+      for version <- ["ehos.yaml/v1", "ehos.yaml/v5"] do
+        application = "schema: #{version}\napplication: \"ledger\\n\"\n" <> @health
+        assert {:error, [%{path: "application"}]} = EhosYaml.read(application)
+
+        ready = "schema: #{version}\nhealth:\n  port: 4001\n  ready: \"/r\\n\"\n  live: /l\n"
+        assert {:error, [%{path: "health.ready"}]} = EhosYaml.read(ready)
+      end
+    end
+
     test "refuses an address or a pattern for a host" do
       for host <- ["192.0.2.1", "*.example.org"] do
         text = "schema: ehos.yaml/v5\nneeds:\n  egress:\n    - host: \"#{host}\"\n" <> @health

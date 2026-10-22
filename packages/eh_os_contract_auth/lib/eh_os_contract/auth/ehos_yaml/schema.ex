@@ -30,6 +30,12 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
              {version, @dir |> Path.join(file) |> File.read!() |> Jason.decode!()}
            end)
 
+  # A pattern is an ECMA-262 regular expression, where `$` ends the text, but JSV compiles it with
+  # PCRE, where `$` also matches before a final line break, so `^[a-z]+$` would take `"ledger\\n"`.
+  # EHOS writes each such `$` as `\\z` before JSV builds the schema, and so does this copy; the
+  # file, and the schema a reason quotes, stay as written.
+  @built Map.new(@schemas, fn {version, schema} -> {version, __MODULE__.Ecma.schema(schema)} end)
+
   # What failed inside a value is reported there; these report it again at every value around it.
   @enclosing [:properties, :items, :additionalProperties, :"$ref", :allOf]
 
@@ -80,8 +86,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
        [error(["schema"], "is required: it names the version of ehos.yaml the file is in")]}
 
   # JSV's built schema holds compiled patterns, which a module attribute cannot, so it is built at
-  # each read, in under a millisecond.
-  defp root(version), do: JSV.build!(Map.fetch!(@schemas, version))
+  # each read, in under a millisecond, from the schema with its patterns' `$` read as EHOS reads it.
+  defp root(version), do: JSV.build!(Map.fetch!(@built, version))
 
   defp reasons(unit, data, schema) do
     path = from_pointer(unit.instanceLocation, data)
