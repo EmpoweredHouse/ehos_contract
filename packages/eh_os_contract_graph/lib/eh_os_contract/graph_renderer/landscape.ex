@@ -32,9 +32,9 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   the contracts that publish or subscribe; the title says how many other contracts the
   domain has, which the landscape leaves out; a domain with nothing on the wire has a box
   all the same, holding none and saying how many contracts it has. Between the boxes, a
-  card per name on the wire. Two domains of one application that pass a publication between them are joined
-  just as two applications are. A name some document subscribes to and none of the set
-  publishes is still drawn, as coming from outside the set.
+  card per name on the wire. Two domains of one application that pass a publication
+  between them are joined just as two applications are. A name some document subscribes
+  to and none of the set publishes is still drawn, as coming from outside the set.
 
   The landscape is a document of this package, of `"kind" => "landscape"`, not a
   `graph.v1` document: the engine does not write it, and nothing but `Canvas` and
