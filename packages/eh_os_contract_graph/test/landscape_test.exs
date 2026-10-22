@@ -246,6 +246,8 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     def shouted_script(_application, _domain, _contract), do: "JavaScript:alert(1)"
     def not_an_address(_application, _domain, _contract), do: :not_an_address
     def elsewhere(_application, _domain, _contract), do: "https://console.example/x"
+    def off_site(_application, _domain, _contract), do: "//evil.example/x"
+    def raising(_application, _domain, _contract), do: raise("no such application")
 
     defp drawn(link) do
       {:ok, view, _html} =
@@ -284,6 +286,13 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       refute has_element?(view, "[style]")
     end
 
+    test "offers nothing where the host's link raises, and the page goes on" do
+      view = drawn({__MODULE__, :raising})
+
+      assert offered(view, @card) == []
+      assert has_element?(view, ".ehg-panel")
+    end
+
     test "offers nothing without a link, where the host has no page, or for an address that is not one" do
       assert offered(drawn(nil), @box) == []
       refute has_element?(drawn(nil), "button.ehg-open")
@@ -292,6 +301,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       assert offered(drawn({__MODULE__, :script}), @card) == []
       assert offered(drawn({__MODULE__, :shouted_script}), @card) == []
       assert offered(drawn({__MODULE__, :not_an_address}), @card) == []
+      assert offered(drawn({__MODULE__, :off_site}), @card) == []
 
       assert offered(drawn({__MODULE__, :elsewhere}), @card) == [
                {"https://console.example/x", "Open this contract →"}

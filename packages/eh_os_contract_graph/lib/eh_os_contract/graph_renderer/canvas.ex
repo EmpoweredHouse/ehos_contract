@@ -46,9 +46,12 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         end}
       />
 
-  Without `link`, or where it answers `nil` or anything but a path or an `http` or `https`
-  URL, the panel offers no link. The names come from the documents the landscape joins, so
-  the host escapes them as it builds the address, as `~p` does.
+  Without `link`, or where it answers `nil`, raises, or answers anything but a path or an
+  `http` or `https` URL that parses as one (`//host/…` and an unescaped space are not), the
+  panel offers no link. The names come from the documents the landscape joins, so the host
+  escapes them as it builds the address, as `~p` does. `link` is called whenever a box or a
+  contract is selected and whenever the host renders the canvas while one is, so it builds
+  an address and looks nothing up.
 
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
@@ -238,7 +241,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
 
   defp leads(%{link: link}, {:outside, application, domain, contract}, label, _id)
        when is_function(link, 3) do
-    if href = href(link.(application, domain, contract)), do: %{href: href, label: label}
+    if href = href(called(link, [application, domain, contract])), do: %{href: href, label: label}
   end
 
   defp leads(_assigns, {:outside, _application, _domain, _contract}, _label, _id), do: nil
@@ -248,11 +251,21 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   defp leads(%{opener: opener}, _place, label, id),
     do: %{id: id, label: label, target: opener.target}
 
+  # The host's `link` over names from other applications' documents: one it cannot answer
+  # for, by raising, offers no link rather than crashing the page.
+  defp called(link, args) do
+    apply(link, args)
+  rescue
+    _error -> nil
+  end
+
   # What a host's `link` answered, when it is a path or a web address: never a
-  # `javascript:` one, which a name in a document could otherwise put in front of a reader.
+  # `javascript:` one, which a name in a document could otherwise put in front of a reader,
+  # nor `//host/…`, which leaves the host's site while it reads as a path.
   defp href(href) when is_binary(href) and href != "" do
     case URI.new(href) do
-      {:ok, %URI{scheme: nil}} -> href
+      {:ok, %URI{scheme: nil, host: nil}} -> href
+      {:ok, %URI{scheme: nil}} -> nil
       {:ok, %URI{scheme: scheme}} -> if String.downcase(scheme) in ~w(http https), do: href
       {:error, _part} -> nil
     end
