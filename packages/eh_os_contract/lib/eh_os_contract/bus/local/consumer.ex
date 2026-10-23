@@ -63,6 +63,7 @@ defmodule EhOsContract.Bus.Local.Consumer do
 
     verdict =
       try do
+        %Message{} = raw
         message = %Message{raw | payload: Jason.decode!(raw.payload)}
 
         case state.consumer.handler.(message) do

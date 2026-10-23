@@ -34,9 +34,12 @@ defmodule EhOsContract.DslWrappersTest do
     Model.fetch(Module.concat(__MODULE__, name))
   end
 
+  # The file of a location is a charlist up to Spark 2.7.3 and a string after it; the test
+  # holds which file, not how Spark spells it, read as `EhOsContract.DslCase` reads it.
   defp refused(name, body) do
     error = compile_error(domain(name, body), "#{Macro.underscore(name)}.ex")
-    {Exception.message(error), error.location}
+    anno = error.location
+    {Exception.message(error), anno && Keyword.put(anno, :file, to_string(:erl_anno.file(anno)))}
   end
 
   describe "a declaration with options beside its block" do
@@ -114,7 +117,7 @@ defmodule EhOsContract.DslWrappersTest do
 
       assert context =~ "defined in unknown_context_option.ex:4"
       assert context =~ "unknown options [:subdomian]"
-      assert context_at[:file] == ~c"unknown_context_option.ex"
+      assert context_at[:file] == "unknown_context_option.ex"
       assert context_at[:location] == 4
     end
 
@@ -166,7 +169,7 @@ defmodule EhOsContract.DslWrappersTest do
       assert message =~
                "is translated into :pl, which is the language it is written in (rule_in_wrapped.ex:8)"
 
-      assert at[:file] == ~c"rule_in_wrapped.ex"
+      assert at[:file] == "rule_in_wrapped.ex"
       assert at[:location] == 5
     end
 

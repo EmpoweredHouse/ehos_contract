@@ -487,10 +487,8 @@ defmodule EhOsContract.Trace do
   end
 
   # An assertion with no `within` never reaches this — it cannot be violated, so there is
-  # nothing for a suspension to take the place of.
-  @spec suspended?([DateTime.t()], DateTime.t(), DateTime.t() | nil) :: boolean()
-  defp suspended?(_outages, _from_at, nil), do: false
-
+  # nothing for a suspension to take the place of: `pending?/2` holds it first.
+  @spec suspended?([DateTime.t()], DateTime.t(), DateTime.t()) :: boolean()
   defp suspended?(outages, from_at, deadline_at) do
     Enum.any?(outages, fn at ->
       DateTime.compare(at, from_at) != :lt and DateTime.compare(at, deadline_at) != :gt

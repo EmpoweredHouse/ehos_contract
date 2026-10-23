@@ -7,8 +7,6 @@ defmodule EhOsContract.LogMetadata do
   # identifier on the next one's lines.
   @moduledoc false
 
-  require Logger
-
   @doc """
   Runs `fun` with the Logger's `correlation_id` set to `correlation_id`, and puts back the value
   before it, or none, however `fun` ends. The identifier is written as the log keeps it, in lower
