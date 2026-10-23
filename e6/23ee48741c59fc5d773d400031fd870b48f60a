@@ -1,0 +1,40 @@
+## Review
+
+Three rounds in all. The first was on a draft in `ehos_app`, EmpoweredHouse/ehos-tools#427; it moved here on the user's decision (comment on that issue). Then two rounds here, each with a correctness and a security-and-performance review.
+
+**On the ehos_app draft (correctness, then security and performance)**
+
+These were taken into this code:
+- `ehos_app` is development-only in a generated project, so the plugin would be missing in production. Fixed by moving it here.
+- A plain `http` URL was sent to the proxy in forward mode, in the clear. Fixed: `https` only.
+- A redirect kept the first hop's proxy. Fixed: the step takes back its own proxy before deciding.
+- `:finch` raised only in production. Fixed: refused at attach and in the step.
+- A bracketed IPv6 address with a port in `NO_PROXY` was not read. Fixed.
+
+**Round 1 here**
+
+Fixed (4a8ecc6d, 3a412701):
+- Mint 1.10.1 in the locks, with three advisories.
+- An HTTP/2-only request bypassed the proxy silently.
+- A redirect left `connect_options: []`, which gave the hop a pool of its own.
+- The step's capture was local.
+- Docs claimed to read `NO_PROXY` "as curl reads it", gave the wrong reason it is no Req default, and left out:
+  - a caller's own proxy kept on an `http` hop;
+  - retries;
+  - "attach after steps that change the URL";
+  - the cost of the Finch pool lookup.
+- The README cited a record code.
+- The test servers could spin after their test.
+- Tests were missing for https-to-http, leaving `NO_PROXY`, and HTTP/2.
+
+No change needed:
+- **CIDR in `NO_PROXY`:** EHOS writes none, and the docs now say a range names nothing.
+- **A misconfigured `EHOS_EGRESS_PROXY` raises:** it fails closed and is documented.
+- **A bracketed IPv6 proxy address is refused:** EHOS writes a name.
+- **`attach/1` refuses `:finch` even unproxied:** Req would raise later anyway.
+
+**Round 2 here**
+
+Fixed (e623ee48):
+- The HTTP/2 check ignored Req's deprecated `:protocol` and raised on `protocols: nil`.
+- It ran only where a proxy was given, so development never showed it. It now runs for every `https` request.
