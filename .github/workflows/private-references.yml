@@ -10,8 +10,6 @@ name: private-references
 # Left out on purpose, each until the stage that decides it:
 # - docs/adr/: the dated design record, which #379 settles in one pass;
 # - the auth package's ehos.yaml schemas, SHA-pinned to EHOS's own copies;
-# - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE, and the
-#   comment in ci.yml that explains it), which the Hex readiness stage settles;
 # - .claude/settings.team.json, which names the maintainers' plugin and is meant to;
 # - this file, which holds the pattern.
 on:
@@ -38,10 +36,6 @@ jobs:
           if git grep -n -P 'EmpoweredHouse/(eh-os(?!-contract)|ehos-tools|ehos-ledger|appunite-equipment)\b|\bD-\d{2,3}\b|\bT-\d{2}\b|eh-os#|\bFM-\d+|PLAN\.md|~/Projects' -- . \
               ':!docs/adr' \
               ':!packages/eh_os_contract_auth/priv/schemas' \
-              ':!packages/eh_os_contract_web/mix.exs' \
-              ':!packages/eh_os_contract_web/mix.lock' \
-              ':!packages/eh_os_contract_web/NOTICE' \
-              ':!.github/workflows/ci.yml' \
               ':!.claude/settings.team.json' \
               ':!.github/workflows/private-references.yml'; then
             echo "::error::A link, a decision code or a path above points into a private repository. Say what it meant instead: a pull request or issue of this repository, or the meaning in words."

@@ -18,6 +18,15 @@
 > all of it was deleted. A refresh is now a move of the pinned ref and a rebuild. The second "Bad" under
 > Consequences no longer holds: both repositories read the same package.
 
+> **23 October 2026, issue #421 — a copy again.** The package lives in a private repository, so once this
+> repository is public a plain `mix deps.get` in the dashboard failed for anyone outside the team, and the
+> CSS built from it shipped under no stated licence. The dashboard carries the package's
+> `colors_and_type.css` again, without its comments, in `assets/vendor/ehos_design/`; `NOTICE` says it is
+> Empowered House's and distributed under Apache-2.0. The fonts stay committed where they were and
+> `mix assets.build` no longer copies them. The built stylesheet did not change. A refresh is a new copy of
+> that one file and a rebuild; the 28 September machinery (`SOURCE.md`, the hash test, the skill) does not
+> come back, and `test/design_system_test.exs` holds the build to the copy's tokens.
+
 ## The problem
 
 `packages/eh_os_contract_web` ships its own look: GitHub-like colours in `--eh-os-contract-*` properties,

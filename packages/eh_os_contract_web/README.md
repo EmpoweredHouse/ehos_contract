@@ -72,7 +72,7 @@ below).
 The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
 console uses: dark by default, light when the system prefers it. Its tokens are a copy
 of `colors_and_type.css` from the design system's `ehos_design` package (version 0.1.0),
-in `assets/vendor/ehos_design/`, and `mix assets.build` imports them into the
+with its comments removed, in `assets/vendor/ehos_design/`, and `mix assets.build` imports them into the
 stylesheet. The built stylesheet and the fonts are committed under
 `priv/static/assets/`, so a host fetches nothing; a new version of the design system
 reaches the dashboard by replacing the copy and rebuilding. `NOTICE` says where each

@@ -121,11 +121,9 @@ jobs:
         working-directory: packages/eh_os_contract
         run: mix deps.get
 
-      # `--only test`, as in ci.yml: the dashboard's `:dev` dependency is in a private
-      # repository this job has no credentials for, and the docs build under MIX_ENV=test.
       - name: Install dashboard foundation deps
         working-directory: packages/eh_os_contract_web
-        run: mix deps.get --only test
+        run: mix deps.get
 
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth

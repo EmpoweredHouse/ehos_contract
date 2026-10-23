@@ -5,10 +5,10 @@ This product includes software developed by third parties.
 
 ## The EmpoweredHouse design system's tokens
 
-`assets/vendor/ehos_design/colors_and_type.css` is an unmodified copy of
-`priv/css/colors_and_type.css` from version 0.1.0 of `ehos_design`, the EmpoweredHouse
-design system, and `priv/static/assets/app.css` is built from it. It is Copyright 2026
-Empowered House PSA and is distributed under the Apache License, Version 2.0, as the
+`priv/static/assets/app.css` carries the tokens of `ehos_design` 0.1.0, the EmpoweredHouse
+design system: its `priv/css/colors_and_type.css`, kept with its comments removed in this
+package's repository at `assets/vendor/ehos_design/colors_and_type.css`. They are Copyright
+2026 Empowered House PSA and are distributed under the Apache License, Version 2.0, as the
 rest of this package is.
 
 ## Albert Sans and JetBrains Mono
