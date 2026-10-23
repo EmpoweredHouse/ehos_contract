@@ -8,13 +8,27 @@ defmodule EhOsContract.Report.Sentence do
   of its application or in a message, reaches for these so that its words say what the
   report says, and keep saying it when the engine adds a qualification to an answer.
 
-  Each function takes a part of what `EhOsContract.Conformance.report/2` returns:
+  Each function takes a part of what `EhOsContract.Conformance.report/2` returns. A
+  process module's report holds its process, with the promises it makes:
 
-      report = EhOsContract.Conformance.report(Lending.Contracts.Circulation, [])
+      alias EhOsContract.Report.Sentence
+
+      report = EhOsContract.Conformance.report(Lending.Processes.LateFee, [])
 
       for process <- report.processes, promise <- process.promises do
         [Sentence.rule(promise), Sentence.verdict(promise) | Sentence.qualifications(promise)]
       end
+
+  | Part of the report | Sentences |
+  | --- | --- |
+  | `report.deployment` | `process_deployment/1`; a change in it, `change/2` and `declarations_changed/1` |
+  | a process: `report.processes` | `accountable/1` of its `accountable`, `runs_in_period/2` of its `runs` and `correlate`, `declaration/1` of each of its `declarations`, `duration/1`, `out_of_order/1` |
+  | a promise: a process's `promises` | `rule/1`, `verdict/1`, `qualifications/1`, or `outcome/1` for all three in one |
+  | a contract's `activity` | `activity/1`, or `no_activity/0` |
+  | a contract's `paths` | `step/1` of each `untraversed`, `step_in_flight/1` of each `in_flight`, `step_failing/1` of each `failing`; `no_steps/0`, `all_steps_carried_out/0` |
+  | a contract's `lifecycles` | `transition/1` of each `untraversed` and `pending`, `transition_undeclared/1` of each `undeclared`; `no_aggregates/0`, `all_transitions_taken/0` |
+  | a contract's `scenarios` | `scenarios_observed/1`, `outcome_undeclared/1` of each `undeclared_outcomes` |
+  | a contract's `drift` | `drift/1` of each, or `no_drift/0` |
 
   A string carries no leading whitespace and no bullet; what is a list stays a list,
   since the medium decides what a list looks like. The engine's words are English, and a
@@ -235,7 +249,7 @@ defmodule EhOsContract.Report.Sentence do
     ["Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."]
   end
 
-  @doc "A confirmed process declaration, as a sentence."
+  @doc "A process's confirmed declaration, as a sentence. The one a process declares today is its `deadline`."
   @spec declaration(map()) :: String.t()
   def declaration(%{key: :deadline, value: value}),
     do: "Deadline: #{amount(value)} from the start."
@@ -358,21 +372,21 @@ defmodule EhOsContract.Report.Sentence do
       "Activity in this period: #{plural(events, "event", "events")}, " <>
         "#{plural(commands, "command", "commands")}."
 
-  @doc "The sentences that stand in for a section with nothing in it."
+  @doc "What stands in for a contract's activity when nothing happened in the period."
   @spec no_activity() :: String.t()
   def no_activity,
     do: "The agreed steps cannot be judged: this contract recorded no event in this period."
 
-  @doc false
+  @doc "What stands in for the steps of a contract that declares none."
   @spec no_steps() :: String.t()
   def no_steps, do: "The contract declares no steps."
 
-  @doc false
+  @doc "What stands in for the steps not taken when every declared step was taken."
   @spec all_steps_carried_out() :: String.t()
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
   @doc """
-  A transition of an aggregate's lifecycle (plan LC3): the status it leaves, the event
+  A transition of an aggregate's lifecycle: the status it leaves, the event
   that moves it, the status it enters. An aggregate with no status yet is at its start.
   """
   @spec transition(map()) :: String.t()
@@ -390,12 +404,12 @@ defmodule EhOsContract.Report.Sentence do
   def transition_undeclared(%{from: from, event: event, count: count}),
     do: "#{name(event)} in #{name(from)} — the status stayed  (#{count}x)"
 
-  @doc false
+  @doc "What stands in for the lifecycles of a contract with no aggregate that declares one."
   @spec no_aggregates() :: String.t()
   def no_aggregates,
     do: "The declared transitions cannot be judged: no aggregate had an event in this period."
 
-  @doc false
+  @doc "What stands in for the transitions not taken when every declared one was taken."
   @spec all_transitions_taken() :: String.t()
   def all_transitions_taken, do: "All declared transitions were taken in this period."
 
@@ -435,7 +449,7 @@ defmodule EhOsContract.Report.Sentence do
 
   def outcome_undeclared(o), do: "#{name(o.command)} → refused: #{o.rejected}"
 
-  @doc false
+  @doc "What stands in for the drift when nothing happened outside what the contract declares."
   @spec no_drift() :: String.t()
   def no_drift, do: "None: nothing happened outside the agreement."
 
