@@ -152,6 +152,38 @@ defmodule EhOsContract.Auth.EgressTest do
       refute_received {:connect, _target}
     end
 
+    test "takes back the proxy it set when a hop goes to http, and gives one when it leaves NO_PROXY",
+         c do
+      System.put_env("EHOS_EGRESS_PROXY", "127.0.0.1:#{c.proxy}")
+      System.put_env("NO_PROXY", "localhost")
+      proxied = Egress.put_proxy(Req.new(url: "https://registry.test/"))
+      assert proxied.options.connect_options[:proxy] == {:http, "127.0.0.1", c.proxy, []}
+
+      # A redirect runs the steps again on the request that was sent, with another URL.
+      to_http = Egress.put_proxy(%{proxied | url: URI.parse("http://registry.test/")})
+      refute Map.has_key?(to_http.options, :connect_options)
+
+      direct = Egress.put_proxy(Req.new(url: "https://localhost/"))
+      refute Map.has_key?(direct.options, :connect_options)
+
+      out = Egress.put_proxy(%{direct | url: URI.parse("https://registry.test/")})
+      assert out.options.connect_options[:proxy] == {:http, "127.0.0.1", c.proxy, []}
+    end
+
+    test "refuses a request to be proxied that speaks HTTP/2 alone", c do
+      System.put_env("EHOS_EGRESS_PROXY", "127.0.0.1:#{c.proxy}")
+
+      request =
+        Req.new(url: "https://registry.test/", connect_options: [protocols: [:http2]])
+
+      assert_raise ArgumentError, ~r/HTTP\/2 alone/, fn -> Egress.put_proxy(request) end
+
+      both =
+        Req.new(url: "https://registry.test/", connect_options: [protocols: [:http1, :http2]])
+
+      assert Egress.put_proxy(both).options.connect_options[:proxy]
+    end
+
     test "refuses a request with its own Finch pool, which Req cannot give a proxy" do
       assert_raise ArgumentError, ~r/its own :finch pool/, fn ->
         [url: "https://registry.test/", finch: SomeFinch] |> Req.new() |> Egress.attach()
@@ -222,15 +254,21 @@ defmodule EhOsContract.Auth.EgressTest do
     %{cacerts: client[:cacerts], server: port}
   end
 
+  # Until the test that opened it ends, and its listening socket with it.
   defp serve(listen) do
-    with {:ok, socket} <- :ssl.transport_accept(listen),
-         {:ok, socket} <- :ssl.handshake(socket, 5_000),
-         {:ok, request} <- :ssl.recv(socket, 0, 5_000) do
-      :ssl.send(socket, answer(request, listen))
-      :ssl.close(socket)
-    end
+    case :ssl.transport_accept(listen) do
+      {:ok, socket} ->
+        with {:ok, socket} <- :ssl.handshake(socket, 5_000),
+             {:ok, request} <- :ssl.recv(socket, 0, 5_000) do
+          :ssl.send(socket, answer(request, listen))
+          :ssl.close(socket)
+        end
 
-    serve(listen)
+        serve(listen)
+
+      {:error, _closed} ->
+        :ok
+    end
   end
 
   # `/moved` sends the client to the same server by the name `localhost`.
@@ -258,7 +296,13 @@ defmodule EhOsContract.Auth.EgressTest do
   end
 
   defp tunnel(listen, server, test) do
-    {:ok, client} = :gen_tcp.accept(listen)
+    case :gen_tcp.accept(listen) do
+      {:ok, client} -> open(client, listen, server, test)
+      {:error, _closed} -> :ok
+    end
+  end
+
+  defp open(client, listen, server, test) do
     {:ok, request} = read_head(client, "")
     ["CONNECT " <> target | _] = String.split(request, " HTTP/")
     send(test, {:connect, target})

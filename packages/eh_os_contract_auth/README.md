@@ -227,7 +227,7 @@ children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 EHOS lets an application reach a host outside the installation only when its `ehos.yaml` names
 it (`ehos.yaml/v5`, `needs.egress`), and only through a proxy of the application's own, whose
 address it gives as `EHOS_EGRESS_PROXY`, with `HTTPS_PROXY` and `NO_PROXY` beside it; every other
-way out is refused (EHOS's D-135). Req reads none of them, so the client that calls such a host
+way out is refused. Req reads none of them, so the client that calls such a host
 attaches `EhOsContract.Auth.Egress`:
 
 ```elixir
@@ -240,7 +240,7 @@ An `https` call then goes through a `CONNECT` tunnel to the proxy, TLS verified 
 host's own name as without it. A host `NO_PROXY` names, such as EHOS or another application, and
 a plain `http` URL go directly, a redirect is decided again for the host it leads to, and without
 `EHOS_EGRESS_PROXY` (in development and tests) the plugin does nothing. It is not a default for
-every Req call: the package's own calls to EHOS would be sent to the proxy, which refuses them.
+every Req call, since Req's defaults hold options and cannot carry a step that decides per host.
 A client that is not Req is given `EHOS_EGRESS_PROXY` as an HTTP proxy it tunnels through, or
 reads `HTTPS_PROXY` and `NO_PROXY` itself.
 

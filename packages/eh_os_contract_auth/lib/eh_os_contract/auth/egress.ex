@@ -23,16 +23,25 @@ defmodule EhOsContract.Auth.Egress do
     * where the variable is not set: in development, in tests, or where the application names no
       host.
 
-  Each redirect is decided again, for the host it leads to. A proxy the caller set in
-  `connect_options` is the caller's, and kept.
+  Each redirect and each retry is decided again, for the host it goes to. Attach the plugin after
+  any step of your own that changes a request's URL, so that it decides on the URL that is sent.
+
+  A proxy the caller set in `connect_options` is the caller's, and kept on every hop, a plain
+  `http` one included, which then goes to that proxy in the clear.
 
   The plugin is attached to the clients that call outside, never made a default for every Req
-  call: this package calls EHOS with Req, and Req's defaults cannot carry a step that leaves a
-  host in `NO_PROXY` direct.
+  call: Req's defaults hold options, not steps, so one could not leave a host in `NO_PROXY` direct.
+  Each proxied call looks up Req's Finch pool for its options, a call to Req's supervisor, which is
+  nothing beside a call outside the installation, and would matter only for many calls a second.
 
-  A request given its own Finch pool (`:finch`) cannot be given a proxy, since Req takes either
-  that or `connect_options`: `attach/1` raises for one, and so does a request that gains one after
-  it. So does a request when `EHOS_EGRESS_PROXY` is not `host:port`, which EHOS never writes.
+  Raises `ArgumentError`:
+
+    * for a request given its own Finch pool (`:finch`), which Req cannot give a proxy, at
+      `attach/1` or when the request gains one after it;
+    * for a request to be proxied that speaks HTTP/2 alone (`connect_options: [protocols:
+      [:http2]]`), which Mint opens without the proxy, and so could reach the host directly in
+      development and never in production;
+    * when `EHOS_EGRESS_PROXY` is not `host:port`, which EHOS never writes.
   """
 
   @step :ehos_egress
@@ -45,10 +54,12 @@ defmodule EhOsContract.Auth.Egress do
   @spec attach(Req.Request.t()) :: Req.Request.t()
   def attach(%Req.Request{} = request) do
     finch!(request)
-    Req.Request.append_request_steps(request, [{@step, &put_proxy/1}])
+    Req.Request.append_request_steps(request, [{@step, &__MODULE__.put_proxy/1}])
   end
 
   @doc false
+  # The step `attach/1` adds: public so that a request keeps a remote capture, which a code
+  # upgrade does not leave stale.
   @spec put_proxy(Req.Request.t()) :: Req.Request.t()
   def put_proxy(%Req.Request{} = request) do
     finch!(request)
@@ -62,6 +73,8 @@ defmodule EhOsContract.Auth.Egress do
         if Keyword.has_key?(connect, :proxy) do
           request
         else
+          http1!(connect)
+
           request
           |> Req.Request.put_option(:connect_options, Keyword.put(connect, :proxy, proxy))
           |> Req.Request.put_private(@step, true)
@@ -78,11 +91,25 @@ defmodule EhOsContract.Auth.Egress do
     if Req.Request.get_private(request, @step) do
       connect = Req.Request.get_option(request, :connect_options, [])
 
-      request
-      |> Req.Request.put_option(:connect_options, Keyword.delete(connect, :proxy))
-      |> Req.Request.put_private(@step, false)
+      # Without a proxy, an empty list would still give the hop a pool of its own.
+      request =
+        case Keyword.delete(connect, :proxy) do
+          [] -> Req.Request.delete_option(request, :connect_options)
+          connect -> Req.Request.put_option(request, :connect_options, connect)
+        end
+
+      Req.Request.put_private(request, @step, false)
     else
       request
+    end
+  end
+
+  # Mint goes through a proxy over HTTP/1 alone; HTTP/2 alone connects directly.
+  defp http1!(connect) do
+    unless :http1 in Keyword.get(connect, :protocols, [:http1]) do
+      raise ArgumentError,
+            "EhOsContract.Auth.Egress cannot send a request that speaks HTTP/2 alone through " <>
+              "the proxy; allow :http1 in its connect_options' :protocols"
     end
   end
 
@@ -99,9 +126,10 @@ defmodule EhOsContract.Auth.Egress do
   goes directly: `EHOS_EGRESS_PROXY` unset or empty, or `host` named by `NO_PROXY` (or
   `no_proxy`).
 
-  `NO_PROXY` is read as curl reads what EHOS writes in it: `*` names every host; an entry names
+  `NO_PROXY`, or `no_proxy` when it is not set, is read for what EHOS writes in it: an entry names
   that host and every name under it, with or without a leading dot; a bracketed IPv6 address is
-  read without its brackets; an entry's port is not compared. A range (`10.0.0.0/8`) names nothing.
+  read without its brackets; an entry's port is not compared; `*` names every host. A range
+  (`10.0.0.0/8`) names nothing, though curl reads one.
 
       iex> EhOsContract.Auth.Egress.proxy("registry.example.org", %{"EHOS_EGRESS_PROXY" => "egress:3128"})
       {:http, "egress", 3128, []}
