@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-23
+
 ### Changed
 
 - `docs/authorization.md` names the manifest versions `eh_os_contract_auth` writes as they are: `ehos.manifest/v2`
