@@ -113,17 +113,20 @@ defmodule EhOsContract.Auth.MixProject do
 
   # By version alone when built for Hex or installed from it, by path beside the engine in
   # this repository, and over git otherwise. Why each: `packages/eh_os_contract_web/mix.exs`.
-  defp eh_os_contract_dep do
+  defp eh_os_contract_dep, do: sibling(:eh_os_contract, @eh_os_contract_requirement)
+
+  # The same as `packages/eh_os_contract_web/mix.exs`'s, which an application installing both
+  # needs: two packages declaring the engine differently make Mix refuse them.
+  defp sibling(app, requirement) do
     cond do
       hex?() ->
-        {:eh_os_contract, @eh_os_contract_requirement}
+        {app, requirement}
 
-      File.exists?(Path.expand("../eh_os_contract/mix.exs", __DIR__)) ->
-        {:eh_os_contract, @eh_os_contract_requirement, path: "../eh_os_contract"}
+      File.exists?(Path.expand("../#{app}/mix.exs", __DIR__)) ->
+        {app, requirement, path: "../#{app}"}
 
       true ->
-        {:eh_os_contract, @eh_os_contract_requirement,
-         git: @git_url, sparse: "packages/eh_os_contract"}
+        {app, requirement, git: @git_url, sparse: "packages/#{app}"}
     end
   end
 
