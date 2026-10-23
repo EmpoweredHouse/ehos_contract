@@ -35,7 +35,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   installation (#415): where EHOS gives `EHOS_EGRESS_PROXY`, an `https` call goes through the application's
   proxy, TLS still verified against the host's own name; a host `NO_PROXY` names, such as EHOS or another
   application, and a plain `http` URL go directly; each redirect is decided again; without the variable it does
-  nothing. A request with its own `:finch` pool is refused, since Req cannot give it a proxy.
+  nothing. A request with its own `:finch` pool is refused, since Req cannot give it a proxy, and so is an `https`
+  request that speaks HTTP/2 alone, which Mint would open without the proxy.
+- **Requires Mint 1.11**, past GHSA-gvrc-75rc-7gj9, GHSA-q95c-ccq6-j5j6 and GHSA-9x8p-qrf4-jq7g, since the plugin
+  points it at servers outside the installation.
 
 ### Fixed
 

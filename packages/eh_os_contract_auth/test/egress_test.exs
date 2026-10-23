@@ -170,13 +170,22 @@ defmodule EhOsContract.Auth.EgressTest do
       assert out.options.connect_options[:proxy] == {:http, "127.0.0.1", c.proxy, []}
     end
 
-    test "refuses a request to be proxied that speaks HTTP/2 alone", c do
+    test "refuses an https request that speaks HTTP/2 alone, with or without a proxy", c do
+      for options <- [[protocols: [:http2]], [protocol: :http2]] do
+        request = Req.new(url: "https://registry.test/", connect_options: options)
+        assert_raise ArgumentError, ~r/HTTP\/2 alone/, fn -> Egress.put_proxy(request) end
+      end
+
       System.put_env("EHOS_EGRESS_PROXY", "127.0.0.1:#{c.proxy}")
 
       request =
         Req.new(url: "https://registry.test/", connect_options: [protocols: [:http2]])
 
       assert_raise ArgumentError, ~r/HTTP\/2 alone/, fn -> Egress.put_proxy(request) end
+
+      # Req's default where the key is there but empty.
+      unset = Req.new(url: "https://registry.test/", connect_options: [protocols: nil])
+      assert Egress.put_proxy(unset).options.connect_options[:proxy]
 
       both =
         Req.new(url: "https://registry.test/", connect_options: [protocols: [:http1, :http2]])

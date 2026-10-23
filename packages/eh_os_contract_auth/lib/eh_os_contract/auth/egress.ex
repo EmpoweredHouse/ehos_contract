@@ -31,16 +31,17 @@ defmodule EhOsContract.Auth.Egress do
 
   The plugin is attached to the clients that call outside, never made a default for every Req
   call: Req's defaults hold options, not steps, so one could not leave a host in `NO_PROXY` direct.
-  Each proxied call looks up Req's Finch pool for its options, a call to Req's supervisor, which is
-  nothing beside a call outside the installation, and would matter only for many calls a second.
+  Each proxied call starts Req's Finch pool for its options, a call to Req's supervisor that finds
+  it started, which is nothing beside a call outside the installation, and would matter only for
+  many calls a second.
 
   Raises `ArgumentError`:
 
     * for a request given its own Finch pool (`:finch`), which Req cannot give a proxy, at
       `attach/1` or when the request gains one after it;
-    * for a request to be proxied that speaks HTTP/2 alone (`connect_options: [protocols:
-      [:http2]]`), which Mint opens without the proxy, and so could reach the host directly in
-      development and never in production;
+    * for an `https` request that speaks HTTP/2 alone (`connect_options: [protocols: [:http2]]`),
+      which Mint would open without the proxy: refused wherever it goes, so that development
+      refuses what production would;
     * when `EHOS_EGRESS_PROXY` is not `host:port`, which EHOS never writes.
   """
 
@@ -64,17 +65,17 @@ defmodule EhOsContract.Auth.Egress do
   def put_proxy(%Req.Request{} = request) do
     finch!(request)
     request = undo(request)
+    connect = Req.Request.get_option(request, :connect_options, [])
+    https? = request.url.scheme == "https"
+    # Wherever the call goes, so that development refuses what production would.
+    if https?, do: http1!(connect)
     env = Map.new(~w(EHOS_EGRESS_PROXY NO_PROXY no_proxy), &{&1, System.get_env(&1)})
 
-    case request.url.scheme == "https" && proxy(request.url.host, env) do
+    case https? && proxy(request.url.host, env) do
       proxy when is_tuple(proxy) ->
-        connect = Req.Request.get_option(request, :connect_options, [])
-
         if Keyword.has_key?(connect, :proxy) do
           request
         else
-          http1!(connect)
-
           request
           |> Req.Request.put_option(:connect_options, Keyword.put(connect, :proxy, proxy))
           |> Req.Request.put_private(@step, true)
@@ -104,9 +105,17 @@ defmodule EhOsContract.Auth.Egress do
     end
   end
 
-  # Mint goes through a proxy over HTTP/1 alone; HTTP/2 alone connects directly.
+  # Mint goes through a proxy over HTTP/1 alone; HTTP/2 alone connects directly. The protocols
+  # as Req 0.7 reads them: `:protocols`, the deprecated `:protocol`, or HTTP/1.
   defp http1!(connect) do
-    unless :http1 in Keyword.get(connect, :protocols, [:http1]) do
+    protocols =
+      cond do
+        protocols = connect[:protocols] -> protocols
+        protocol = connect[:protocol] -> [protocol]
+        true -> [:http1]
+      end
+
+    unless :http1 in protocols do
       raise ArgumentError,
             "EhOsContract.Auth.Egress cannot send a request that speaks HTTP/2 alone through " <>
               "the proxy; allow :http1 in its connect_options' :protocols"
