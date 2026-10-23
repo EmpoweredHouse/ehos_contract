@@ -134,6 +134,9 @@ defmodule EhOsContract.Auth.MixProject do
       {:joken, "~> 2.7"},
       # The key set is fetched over HTTP, by the small fetcher EHOS's design chose.
       {:req, "~> 0.7"},
+      # Req's HTTP client, at least the release past three advisories, since
+      # `EhOsContract.Auth.Egress` points it at servers outside the installation (#415).
+      {:mint, "~> 1.11"},
       {:boundary, "~> 0.10", runtime: false},
       # `mix docs`, which `mix check` runs to hold the references in the docs.
       {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},

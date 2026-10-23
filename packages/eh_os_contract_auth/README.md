@@ -199,8 +199,9 @@ neither.
 
 ## Configuration from EHOS's environment
 
-EHOS starts the workload with its settings in the environment, and the package reads no
-variable itself. `config/runtime.exs` and the supervision tree map them:
+EHOS starts the workload with its settings in the environment, and the package reads none of
+them itself, but for the proxy below, which it reads at each call. `config/runtime.exs` and the
+supervision tree map them:
 
 ```elixir
 # config/runtime.exs
@@ -220,6 +221,28 @@ children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 `EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, `EHOS_SIGN_IN_APPLICATIONS` and
 `EHOS_SIGN_IN_ABSOLUTE` are for signing people in to the application in a browser, through EHOS:
 "Signing people in" below.
+
+## Calling a host outside the installation
+
+EHOS lets an application reach a host outside the installation only when its `ehos.yaml` names
+it (`ehos.yaml/v5`, `needs.egress`), and only through a proxy of the application's own, whose
+address it gives as `EHOS_EGRESS_PROXY`, with `HTTPS_PROXY` and `NO_PROXY` beside it; every other
+way out is refused. Req reads none of them, so the client that calls such a host
+attaches `EhOsContract.Auth.Egress`:
+
+```elixir
+Req.new(base_url: "https://registry.example.org")
+|> EhOsContract.Auth.Egress.attach()
+|> Req.get!(url: "/companies/123")
+```
+
+An `https` call then goes through a `CONNECT` tunnel to the proxy, TLS verified against the
+host's own name as without it. A host `NO_PROXY` names, such as EHOS or another application, and
+a plain `http` URL go directly, a redirect is decided again for the host it leads to, and without
+`EHOS_EGRESS_PROXY` (in development and tests) the plugin does nothing. It is not a default for
+every Req call, since Req's defaults hold options and cannot carry a step that decides per host.
+A client that is not Req is given `EHOS_EGRESS_PROXY` as an HTTP proxy it tunnels through, or
+reads `HTTPS_PROXY` and `NO_PROXY` itself.
 
 ## Signing people in
 
