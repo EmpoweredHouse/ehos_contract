@@ -1,5 +1,5 @@
 defmodule EhOsContract.Auth.Egress do
-  # EHOS D-135, and its plan's step 5 (#415).
+  # Built to EHOS's design for an application's calls out of the installation (#415).
   @moduledoc """
   Calls to a host outside the installation, through the proxy EHOS gives the application.
 
