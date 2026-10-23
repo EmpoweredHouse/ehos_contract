@@ -54,9 +54,9 @@ jobs:
 
     # The oldest Elixir and OTP the packages support and the newest released. The
     # floor is Elixir 1.18 (each `mix.exs`) and OTP 27, which `oidcc` in the credential
-    # verifier needs. Code is formatted, and the locks are resolved, as the oldest
-    # pair has them: the newest formats a few lines differently, and runs the suite
-    # on the newest Spark 2.x a host can resolve as well.
+    # verifier needs. Code is formatted as the oldest pair formats it: the newest
+    # formats a few lines differently. On a pull request the newest also runs the suite
+    # on the newest Spark the engine's range admits.
     strategy:
       fail-fast: false
       matrix:
@@ -198,10 +198,9 @@ jobs:
         working-directory: packages/eh_os_contract_graph
         run: mix deps.get
 
-      # The newest pair only: the formatter of the oldest is the one the repository
-      # follows, and Spark is resolved to its newest 2.x, which `~> 2.7 and >= 2.7.3`
-      # lets a host have. Nothing here is committed.
-      - name: Format as the newest Elixir does, and take the newest Spark
+      # The newest pair only. The repository follows the oldest pair's formatter, so the
+      # newest formats first. Nothing here is committed.
+      - name: Format as the newest Elixir does
         if: ${{ matrix.name == 'newest' }}
         # The environment the dependencies were fetched for: in `:dev` the dashboard
         # would also ask for its private `:dev` dependency.
@@ -210,6 +209,18 @@ jobs:
         run: |
           for project in sandbox packages/*/; do
             (cd "$project" && mix format)
+          done
+
+      # The newest Spark the engine's range lets a host resolve, which no lock holds.
+      # Only on a pull request: an unlocked dependency runs its code during the build,
+      # and a pull request's caches stay in its own scope, where `main`'s, which every
+      # pull request restores, would not; `main`'s caches keep matching their keys.
+      - name: Take the newest Spark the engine admits
+        if: ${{ matrix.name == 'newest' && github.event_name == 'pull_request' }}
+        env:
+          MIX_ENV: test
+        run: |
+          for project in sandbox packages/*/; do
             if grep -q '"spark"' "$project/mix.lock"; then
               (cd "$project" && mix deps.update spark --only test)
             fi
