@@ -35,11 +35,11 @@ defmodule EhOsContract.DslWrappersTest do
   end
 
   # The file of a location is a charlist up to Spark 2.7.3 and a string after it; the test
-  # holds which file, not how Spark spells it.
+  # holds which file, not how Spark spells it, read as `EhOsContract.DslCase` reads it.
   defp refused(name, body) do
     error = compile_error(domain(name, body), "#{Macro.underscore(name)}.ex")
-    location = error.location && Keyword.update(error.location, :file, nil, &to_string/1)
-    {Exception.message(error), location}
+    anno = error.location
+    {Exception.message(error), anno && Keyword.put(anno, :file, to_string(:erl_anno.file(anno)))}
   end
 
   describe "a declaration with options beside its block" do
