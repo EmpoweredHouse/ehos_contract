@@ -152,6 +152,35 @@ defmodule EhOsContract.Auth.EgressTest do
       refute_received {:connect, _target}
     end
 
+    test "decides again when Req tries a request again", c do
+      System.put_env("EHOS_EGRESS_PROXY", "127.0.0.1:#{c.proxy}")
+
+      # The first attempt goes through the proxy; before the second, NO_PROXY comes to name the host.
+      again = fn
+        _request, %Req.Response{status: 503} ->
+          System.put_env("NO_PROXY", "localhost")
+          true
+
+        _request, _answered ->
+          false
+      end
+
+      assert %Req.Response{status: 200, body: "reached"} =
+               [
+                 url: "https://localhost:#{c.server}/once",
+                 retry: again,
+                 retry_delay: 0,
+                 max_retries: 1,
+                 connect_options: [transport_opts: [cacerts: c.cacerts]]
+               ]
+               |> Req.new()
+               |> Egress.attach()
+               |> Req.get!()
+
+      assert_received {:connect, "localhost:" <> _port}
+      refute_received {:connect, _target}
+    end
+
     test "takes back the proxy it set when a hop goes to http, and gives one when it leaves NO_PROXY",
          c do
       System.put_env("EHOS_EGRESS_PROXY", "127.0.0.1:#{c.proxy}")
@@ -259,21 +288,21 @@ defmodule EhOsContract.Auth.EgressTest do
       :ssl.listen(0, server ++ [:binary, ip: {127, 0, 0, 1}, active: false, reuseaddr: true])
 
     {:ok, {_ip, port}} = :ssl.sockname(listen)
-    start_supervised!({Task, fn -> serve(listen) end}, id: :tls_server)
+    start_supervised!({Task, fn -> serve(listen, 0) end}, id: :tls_server)
     %{cacerts: client[:cacerts], server: port}
   end
 
   # Until the test that opened it ends, and its listening socket with it.
-  defp serve(listen) do
+  defp serve(listen, served) do
     case :ssl.transport_accept(listen) do
       {:ok, socket} ->
         with {:ok, socket} <- :ssl.handshake(socket, 5_000),
              {:ok, request} <- :ssl.recv(socket, 0, 5_000) do
-          :ssl.send(socket, answer(request, listen))
+          :ssl.send(socket, answer(request, listen, served))
           :ssl.close(socket)
         end
 
-        serve(listen)
+        serve(listen, served + 1)
 
       {:error, _closed} ->
         :ok
@@ -281,14 +310,18 @@ defmodule EhOsContract.Auth.EgressTest do
   end
 
   # `/moved` sends the client to the same server by the name `localhost`.
-  defp answer("GET /moved" <> _rest, listen) do
+  # `/once` is unavailable the first time the server answers, so that the client tries again.
+  defp answer("GET /once" <> _rest, _listen, 0),
+    do: "HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+
+  defp answer("GET /moved" <> _rest, listen, _served) do
     {:ok, {_ip, port}} = :ssl.sockname(listen)
 
     "HTTP/1.1 302 Found\r\nlocation: https://localhost:#{port}/\r\ncontent-length: 0\r\n" <>
       "connection: close\r\n\r\n"
   end
 
-  defp answer(_request, _listen),
+  defp answer(_request, _listen, _served),
     do: "HTTP/1.1 200 OK\r\ncontent-length: 7\r\nconnection: close\r\n\r\nreached"
 
   # A CONNECT proxy that tells the test each tunnel it was asked for, and opens every one to the
