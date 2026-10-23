@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-23
+
 ### Changed
 
 - **A domain with nothing on the wire has its box in the landscape** (EmpoweredHouse/eh-os#900): the `:landscape`

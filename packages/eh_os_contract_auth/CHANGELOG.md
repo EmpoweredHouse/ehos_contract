@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-23
+
 ### Added
 
 - **`ehos.yaml/v5` and `ehos.manifest/v6`**, as agreed with EHOS. `mix eh_os_contract.manifest` reads an
