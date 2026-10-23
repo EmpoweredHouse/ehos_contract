@@ -33,6 +33,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **`esbuild` is no longer a host's dependency** (#421). Only `mix assets.build` runs it, in this package's own
   development, and its output is committed.
 
+### Fixed
+
+- **The dashboard draws the graph as `eh_os_contract_graph` 0.7.0 does.** Its bundled script and stylesheet were
+  built from the renderer as it stood on 16 October, so three of its later changes were missing here: a landscape
+  of domains with nothing on the wire lay its empty boxes on top of one another, an empty box's title could be cut
+  short by a fraction of a pixel, and a panel's link to a host's page was styled as plain text.
+
 ## [0.4.0] - 2026-10-16
 
 ### Added
