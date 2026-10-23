@@ -964,7 +964,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
     # A domain with nothing on the wire has a box all the same, holding no card, so an
     # application that sent its domain's document is drawn and its box opens its domain
-    # (eh-os#900).
+    # (#412).
     held = MapSet.new(contracts, & &1.group)
 
     groups =

@@ -13,8 +13,6 @@ defmodule EhOsContract.LogMetadataTest do
 
   import ExUnit.CaptureLog
 
-  require Logger
-
   alias DispatchRig.Ledger
   alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
   alias DispatchRig.Ledger.Events.InterestRecorded

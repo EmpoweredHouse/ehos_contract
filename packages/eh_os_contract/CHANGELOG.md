@@ -56,6 +56,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **Spark may be any 2.x from 2.7.3** (#421), where it had to be a 2.7 patch from 2.7.3: a host that uses a newer
+  Spark, as Ash's releases bring, resolves with the engine.
 - **`EhOsContract.Dispatcher` is no longer documented** (#421): what a host calls is `EhOsContract.dispatch/3`,
   `record/3`, `query/3` and `call/3`. What dispatch checks, in which order, and how it handles a conflict and a
   failure is now on `EhOsContract.dispatch/3`, and the types are `t:EhOsContract.refusal/0`, `t:EhOsContract.problem/0`

@@ -4,6 +4,9 @@ defmodule EhOsContract.Auth.MixProject do
   @version "0.6.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
+  # The engine's versions this package works with, passed in every mode below, so that
+  # beside it in this repository Mix holds its version to this as well.
+  @eh_os_contract_requirement "~> 0.9.1"
   @description "Verifies EHOS credentials and authorizes EhOsContract commands, recordings and queries."
 
   @moduledoc """
@@ -108,14 +111,30 @@ defmodule EhOsContract.Auth.MixProject do
   defp lib_module?(module, _metadata),
     do: String.starts_with?(to_string(module.module_info(:compile)[:source]), @lib)
 
-  # A path when the engine sits beside this package, and the same repository over
-  # git otherwise — the reason is in `packages/eh_os_contract_web/mix.exs`.
-  defp eh_os_contract_dep do
-    if File.exists?(Path.expand("../eh_os_contract/mix.exs", __DIR__)) do
-      {:eh_os_contract, path: "../eh_os_contract"}
-    else
-      {:eh_os_contract, git: @git_url, sparse: "packages/eh_os_contract"}
+  # By version alone when built for Hex or installed from it, by path beside the engine in
+  # this repository, and over git otherwise. Why each: `packages/eh_os_contract_web/mix.exs`.
+  defp eh_os_contract_dep, do: sibling(:eh_os_contract, @eh_os_contract_requirement)
+
+  # The same as `packages/eh_os_contract_web/mix.exs`'s, which an application installing both
+  # needs: two packages declaring the engine differently make Mix refuse them.
+  defp sibling(app, requirement) do
+    cond do
+      hex?() ->
+        {app, requirement}
+
+      File.exists?(Path.expand("../#{app}/mix.exs", __DIR__)) ->
+        {app, requirement, path: "../#{app}"}
+
+      true ->
+        {app, requirement, git: @git_url, sparse: "packages/#{app}"}
     end
+  end
+
+  # `mix hex.build` and `mix hex.publish` run with `EH_OS_CONTRACT_HEX=1`, and Hex unpacks
+  # `hex_metadata.config` beside the `mix.exs` of every package it installs.
+  defp hex? do
+    System.get_env("EH_OS_CONTRACT_HEX") == "1" or
+      File.exists?(Path.expand("hex_metadata.config", __DIR__))
   end
 
   defp deps do

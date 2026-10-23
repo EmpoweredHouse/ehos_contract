@@ -29,7 +29,7 @@ defmodule EhOsContract.UpcastTest do
 
   @officer Actor.credential("u-officer", [])
 
-  defp type(event \\ :demand_opened),
+  defp type(event),
     do: Enum.find(Model.fetch(Demands).events, &(&1.name == event)).type
 
   # A row of `event`, of the unit `unit`, as the code of `version` appended it: `fields`

@@ -18,7 +18,7 @@ defmodule EhOsContract.UnstorableBytesTest do
 
   @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
 
-  defp http(path, body, headers \\ []) do
+  defp http(path, body, headers) do
     headers
     |> Enum.reduce(
       conn(:post, path, Jason.encode!(body))
