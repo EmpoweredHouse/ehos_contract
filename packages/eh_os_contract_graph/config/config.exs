@@ -18,15 +18,18 @@ config :logger, level: :warning
 # not minified: the host minifies its bundle, and a diff of this one stays readable
 # where it is ours. The vendored libraries come in through relative imports, so no
 # NODE_PATH is needed.
-config :esbuild,
-  version: "0.25.0",
-  eh_os_contract_graph: [
-    args:
-      ~w(js/eh_os_contract_graph.js --bundle --format=esm --target=es2022 --outfile=../priv/static/eh_os_contract_graph.esm.js),
-    cd: Path.expand("../assets", __DIR__)
-  ],
-  eh_os_contract_graph_css: [
-    args:
-      ~w(css/eh_os_contract_graph.css --bundle --outfile=../priv/static/eh_os_contract_graph.css),
-    cd: Path.expand("../assets", __DIR__)
-  ]
+# `esbuild` is a `:dev` dependency, so it is configured only there.
+if config_env() == :dev do
+  config :esbuild,
+    version: "0.25.0",
+    eh_os_contract_graph: [
+      args:
+        ~w(js/eh_os_contract_graph.js --bundle --format=esm --target=es2022 --outfile=../priv/static/eh_os_contract_graph.esm.js),
+      cd: Path.expand("../assets", __DIR__)
+    ],
+    eh_os_contract_graph_css: [
+      args:
+        ~w(css/eh_os_contract_graph.css --bundle --outfile=../priv/static/eh_os_contract_graph.css),
+      cd: Path.expand("../assets", __DIR__)
+    ]
+end

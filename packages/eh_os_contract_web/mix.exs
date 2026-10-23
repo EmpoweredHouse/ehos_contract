@@ -4,6 +4,10 @@ defmodule EhOsContract.Web.MixProject do
   @version "0.4.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
+  # The siblings' versions this package works with, passed in every mode below, so that
+  # beside them in this repository Mix holds their versions to these as well.
+  @eh_os_contract_requirement "~> 0.9.1"
+  @eh_os_contract_graph_requirement "~> 0.7.0"
   @description "A mountable conformance dashboard for EhOsContract."
 
   @moduledoc """
@@ -122,28 +126,41 @@ defmodule EhOsContract.Web.MixProject do
   defp lib_module?(module, _metadata),
     do: String.starts_with?(to_string(module.module_info(:compile)[:source]), @lib)
 
-  # A path when the engine sits beside this package — inside its own repository —
-  # and the same repository over git otherwise. A consumer fetching this package
-  # with `sparse: "packages/eh_os_contract_web"` gets only this directory, so
-  # `../eh_os_contract` is not there, and a bare `path:` made every such
-  # `mix deps.get` fail with "Dependencies have diverged". The git form is the one
-  # a consumer declares for the engine itself, so the two converge; `mix.lock`
-  # pins the commit.
-  defp eh_os_contract_dep do
-    if File.exists?(Path.expand("../eh_os_contract/mix.exs", __DIR__)) do
-      {:eh_os_contract, path: "../eh_os_contract"}
-    else
-      {:eh_os_contract, git: @git_url, sparse: "packages/eh_os_contract"}
+  # The engine and the renderer are this repository's packages too, and where they come
+  # from depends on where this package is:
+  #
+  # - built for Hex, or installed from it: by version alone. Hex accepts no other kind of
+  #   dependency, and in an application that installed this package from Hex,
+  #   `../eh_os_contract` is the engine Hex installed beside it, which a `path:` would
+  #   declare a second time;
+  # - inside this repository: by path;
+  # - fetched over git with `sparse: "packages/eh_os_contract_web"`: over git as well. Only
+  #   this directory is there, so `../eh_os_contract` is not, and a bare `path:` made every
+  #   such `mix deps.get` fail with "Dependencies have diverged". The git form is the one a
+  #   consumer declares for the engine itself, so the two converge; `mix.lock` pins the commit.
+  defp eh_os_contract_dep, do: sibling(:eh_os_contract, @eh_os_contract_requirement)
+
+  defp eh_os_contract_graph_dep,
+    do: sibling(:eh_os_contract_graph, @eh_os_contract_graph_requirement)
+
+  defp sibling(app, requirement) do
+    cond do
+      hex?() ->
+        {app, requirement}
+
+      File.exists?(Path.expand("../#{app}/mix.exs", __DIR__)) ->
+        {app, requirement, path: "../#{app}"}
+
+      true ->
+        {app, requirement, git: @git_url, sparse: "packages/#{app}"}
     end
   end
 
-  # The renderer, the same way as the engine above.
-  defp eh_os_contract_graph_dep do
-    if File.exists?(Path.expand("../eh_os_contract_graph/mix.exs", __DIR__)) do
-      {:eh_os_contract_graph, path: "../eh_os_contract_graph"}
-    else
-      {:eh_os_contract_graph, git: @git_url, sparse: "packages/eh_os_contract_graph"}
-    end
+  # `mix hex.build` and `mix hex.publish` run with `EH_OS_CONTRACT_HEX=1`, and Hex unpacks
+  # `hex_metadata.config` beside the `mix.exs` of every package it installs.
+  defp hex? do
+    System.get_env("EH_OS_CONTRACT_HEX") == "1" or
+      File.exists?(Path.expand("hex_metadata.config", __DIR__))
   end
 
   defp deps do
@@ -179,7 +196,7 @@ defmodule EhOsContract.Web.MixProject do
       # package never needs it: only whoever edits the JS itself runs
       # `mix assets.build` and commits the result, the same way a compiled
       # asset ships with any other Phoenix component library.
-      {:esbuild, "~> 0.9", runtime: false}
+      {:esbuild, "~> 0.9", only: :dev, runtime: false}
     ]
   end
 end

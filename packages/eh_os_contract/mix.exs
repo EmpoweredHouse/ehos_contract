@@ -147,6 +147,85 @@ defmodule EhOsContract.MixProject do
         ],
         "DSL reference": ~r{docs/dsl/}
       ],
+      # Hexdocs lists the modules in these groups, in this order, rather than in one
+      # alphabetical column. Mix tasks get their own section from ExDoc.
+      groups_for_modules: [
+        "Writing a contract": [
+          EhOsContract.Domain,
+          EhOsContract.Domain.Dsl,
+          EhOsContract.Contract,
+          EhOsContract.Contract.Dsl,
+          EhOsContract.Process,
+          EhOsContract.Process.Dsl,
+          EhOsContract.Implementation,
+          EhOsContract.Rejection
+        ],
+        "Dispatch and queries": [
+          EhOsContract,
+          EhOsContract.Actor,
+          EhOsContract.Authorizer,
+          EhOsContract.Authorizer.Default,
+          EhOsContract.Authorizer.Request,
+          EhOsContract.Supplier,
+          EhOsContract.Supplier.Request,
+          EhOsContract.Entities,
+          EhOsContract.Receipt,
+          EhOsContract.Meta,
+          EhOsContract.Clock,
+          EhOsContract.Plug
+        ],
+        "The log": [
+          EhOsContract.Event,
+          EhOsContract.EventRun,
+          EhOsContract.Store,
+          EhOsContract.Store.Postgres,
+          EhOsContract.Key,
+          EhOsContract.Migrations,
+          EhOsContract.NewerSchemaError
+        ],
+        "Delivery and other applications": [
+          EhOsContract.EffectJob,
+          EhOsContract.TimerJob,
+          EhOsContract.Relay,
+          EhOsContract.Inbox,
+          EhOsContract.Bus,
+          EhOsContract.Bus.Local,
+          EhOsContract.Bus.Message
+        ],
+        "Personal data": [
+          EhOsContract.Personal,
+          EhOsContract.Vault,
+          EhOsContract.Vault.Local,
+          EhOsContract.Erased
+        ],
+        Conformance: [
+          EhOsContract.Conformance,
+          EhOsContract.Conformance.Wire,
+          EhOsContract.Report,
+          EhOsContract.Report.Sentence,
+          EhOsContract.Trace,
+          EhOsContract.StageOrder,
+          EhOsContract.Dependency,
+          EhOsContract.Deployment
+        ],
+        "The model and its documents": [
+          EhOsContract.Model,
+          EhOsContract.Registry,
+          EhOsContract.Graph.Document,
+          EhOsContract.Graph.Overlay,
+          EhOsContract.OpenAPI,
+          EhOsContract.AsyncAPI
+        ],
+        Testing: [
+          EhOsContract.ScenarioCase,
+          EhOsContract.PropertyCase,
+          EhOsContract.Generators,
+          EhOsContract.Testing,
+          EhOsContract.Store.Suite,
+          EhOsContract.Bus.Suite
+        ],
+        Configuration: [EhOsContract.Config]
+      ],
       # The changelog names what a release removed, and the names resolve nowhere
       # after it, as they should.
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
@@ -205,9 +284,10 @@ defmodule EhOsContract.MixProject do
       # host has StreamData, usually as a test dependency.
       {:stream_data, "~> 1.1", optional: true},
       {:boundary, "~> 0.10", runtime: false},
-      # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
-      # error locations, formatter export, digest stability under `boundary`.
-      {:spark, "~> 2.7.3"},
+      # The v2 DSL engine (v2 §2). From the patch E3 tested its properties on (error
+      # locations, formatter export, digest stability under `boundary`), and any later 2.x,
+      # which a host on Ash needs; CI also runs the suite on the newest.
+      {:spark, "~> 2.7 and >= 2.7.3"},
       # Spark's formatter task rewrites `.formatter.exs` through it. Only where that
       # task runs.
       {:sourceror, "~> 1.12", only: [:dev, :test], runtime: false},

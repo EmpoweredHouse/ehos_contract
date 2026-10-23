@@ -52,17 +52,20 @@ config :logger, level: :warning
 # `js/app.js` + `css/app.css` would land at `assets/js/app.js` and
 # `assets/css/app.css`, not the flat `assets/app.js`/`assets/app.css` the
 # layout links to.
-config :esbuild,
-  version: "0.25.0",
-  eh_os_contract_web: [
-    args: ~w(js/app.js --bundle --minify --target=es2022 --outdir=../priv/static/assets),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-  ],
-  # The fonts are not an input: they are committed where the built stylesheet's
-  # relative url()s point, priv/static/assets/fonts/, and --external keeps esbuild
-  # from resolving (and failing on) those urls.
-  eh_os_contract_web_css: [
-    args: ~w(css/app.css --bundle --minify --external:*.woff2 --outdir=../priv/static/assets),
-    cd: Path.expand("../assets", __DIR__)
-  ]
+# `esbuild` is a `:dev` dependency, so it is configured only there.
+if config_env() == :dev do
+  config :esbuild,
+    version: "0.25.0",
+    eh_os_contract_web: [
+      args: ~w(js/app.js --bundle --minify --target=es2022 --outdir=../priv/static/assets),
+      cd: Path.expand("../assets", __DIR__),
+      env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+    ],
+    # The fonts are not an input: they are committed where the built stylesheet's
+    # relative url()s point, priv/static/assets/fonts/, and --external keeps esbuild
+    # from resolving (and failing on) those urls.
+    eh_os_contract_web_css: [
+      args: ~w(css/app.css --bundle --minify --external:*.woff2 --outdir=../priv/static/assets),
+      cd: Path.expand("../assets", __DIR__)
+    ]
+end

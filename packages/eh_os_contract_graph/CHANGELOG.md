@@ -21,11 +21,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **`esbuild` is no longer a host's dependency** (#421). Only `mix assets.build` runs it, in this package's own
+  development, and its output is committed.
+
 ## [0.7.0] - 2026-10-23
 
 ### Changed
 
-- **A domain with nothing on the wire has its box in the landscape** (EmpoweredHouse/eh-os#900): the `:landscape`
+- **A domain with nothing on the wire has its box in the landscape** (#412): the `:landscape`
   view draws a box for every domain `EhOsContract.GraphRenderer.Landscape.join/1` is given, where it drew none
   for a domain whose contracts publish and subscribe to nothing. Such a box holds no card and its title says how
   many contracts the domain has ("ledger · ledger · 2 contracts"); its panel offers "Open this domain" as any

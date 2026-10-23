@@ -6,17 +6,21 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (21 October 2026)
+## Where things stand (23 October 2026)
 
-- **Released:** v0.8.0, with the engine 0.8.0 and `eh_os_contract_auth` 0.5.0 (who may grant which role, and a
-  person granting it through the application); the latest `eh_os_contract_graph` is 0.4.0 (v0.7.0) and
-  `eh_os_contract_web` 0.4.0 (v0.5.0). Applications install them from git. `main` is at the next patch's `-dev`
-  of each.
+- **Released:** v0.9.1, with the engine 0.9.1, `eh_os_contract_auth` 0.6.0 (calls to hosts outside the
+  installation, through the proxy EHOS gives an application) and `eh_os_contract_graph` 0.7.0 (a domain with
+  nothing on the wire has its box in the landscape). v0.9.0 wrote every graph document of an application in one
+  run. The latest `eh_os_contract_web` is 0.4.0 (v0.5.0). Applications install them from git. `main` is at the
+  next patch's `-dev` of each.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
-  Hex. Next is PB6.
-- **Open questions for the maintainers:** whether the design record keeps the people it names and its links
-  into private repositories (#379); whether the graph's overlays, which read the whole log on each request, get
-  a default window or a cache (raised in the review of #311).
+  Hex. PB6 is in progress (#421).
+- **Open questions for the maintainers:**
+  - the library's name before its first Hex release, since a name on Hex is permanent;
+  - whether `eh_os_contract_auth` is published under the library's name;
+  - whether the design record keeps the people it names and its links into private repositories (#379);
+  - whether the graph's overlays, which read the whole log on each request, get a default window or a cache
+    (raised in the review of #311).
 
 ## The publication programme (from 18 October 2026)
 
@@ -30,7 +34,7 @@ Issues labelled [`publication`](https://github.com/EmpoweredHouse/eh-os-contract
 | PB4 | The client material moves to a private repository | #386 | ☑ #387, #388 |
 | PB4b | The sandbox fills its development log with drift on the invented case studies | #389 | ☑ #390 |
 | PB5 | The repository reads for someone outside the team | #393 | ☑ #394, #395, #396 |
-| PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | — | ☐ |
+| PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | #421 | ◐ |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
 
 **PB6.** The packages' `mix.exs` stop depending on each other by `path:` or `git:` when published, the

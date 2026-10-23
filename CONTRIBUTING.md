@@ -85,6 +85,18 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
   only the subsections `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`, prose only between a
   version's heading and its first subsection, and no link references at the end.
 - **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it.
+- **A package that depends on another of this repository's names the version it needs** in its `mix.exs`
+  (`@eh_os_contract_requirement` in the dashboard and the verifier, `@eh_os_contract_graph_requirement` in the
+  dashboard), and Mix holds the sibling to it even by path. A pull request that makes a package use something
+  its sibling has not released yet raises the requirement to the sibling's `-dev` version, `~> 0.9.2-dev` (a
+  plain `~> 0.9.2` refuses `0.9.2-dev`), and the release turns it into `~> 0.9.2`. A release that moves a
+  sibling to a new minor raises every requirement on it in the same pull request, or nothing resolves:
+  `0.10.0` does not satisfy `~> 0.9.1`.
+- **A package is built for Hex with `EH_OS_CONTRACT_HEX=1` on the command line** of `mix hex.build` or
+  `mix hex.publish`, which then see its siblings by version rather than by path; installed from Hex, the
+  package finds the same by the `hex_metadata.config` beside its `mix.exs`. Left exported in a shell, the
+  variable makes the sandbox and the packages look for the siblings on Hex. CI's `hex-build` job builds and
+  reads all four that way.
 
 Releases are made by the maintainers, with the `ehos-dev:release` skill ("Working with Claude Code"), which
 follows the same procedure in this repository and EHOS's others. In this repository:

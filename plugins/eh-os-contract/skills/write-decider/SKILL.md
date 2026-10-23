@@ -91,7 +91,7 @@ result to their types); and constants. **Nothing else**: no `Repo`, no HTTP, no
 `DateTime.utc_now/0`, no process dictionary, no ETS. The reasons are mechanical, not stylistic:
 
 - **Dispatch may decide more than once.** On a stream or boundary conflict it rolls back, reads
-  again and decides again, up to three times (`EhOsContract.Dispatcher`, "Conflicts"). A side
+  again and decides again, up to three times (`EhOsContract.dispatch/3`, "Conflicts"). A side
   effect in a decision happens up to three times and is never rolled back with the append.
 - **A scenario is the decision's test**, and it gives only events and a command
   (`EhOsContract.ScenarioCase`). A decision that reads the database is not what its scenarios test.

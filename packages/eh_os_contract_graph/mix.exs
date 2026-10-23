@@ -120,7 +120,7 @@ defmodule EhOsContract.GraphRenderer.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       # Builds assets/ into the bundle committed under priv/static/, as in
       # packages/eh_os_contract_web: a downloaded binary, run by whoever edits the JS.
-      {:esbuild, "~> 0.9", runtime: false}
+      {:esbuild, "~> 0.9", only: :dev, runtime: false}
     ]
   end
 end

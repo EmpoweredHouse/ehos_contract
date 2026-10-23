@@ -135,7 +135,7 @@ defmodule EhOsContract.Check do
   end
 
   # What dispatch looks an implementation up for: every unit, every consumer, and
-  # every query, which `EhOsContract.Dispatcher.query/3` answers through its module;
+  # every query, which `EhOsContract.query/3` answers through its module;
   # and every domain service, which a decision calls through the contract.
   defp implemented_findings(%{model: model, at: at}) do
     wanted =

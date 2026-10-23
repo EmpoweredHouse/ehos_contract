@@ -51,7 +51,7 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 This is the decision the kind leaves open, and it is about the log, not about speed.
 
 **`:in_transaction`** (the default for a policy and a read model, within one context) runs inside the dispatch that
-appended the event (`EhOsContract.Dispatcher`, step 7): read models project, then policies react,
+appended the event (`EhOsContract.dispatch/3`, step 7): read models project, then policies react,
 then effects act. What a policy issues is dispatched at once, in the same transaction.
 
 - An exception in the reaction, or the `{:error, _}` of an effect delivered `:in_transaction` —

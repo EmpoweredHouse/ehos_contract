@@ -1,10 +1,40 @@
 defmodule EhOsContract.Report.Sentence do
-  # The sentences a conformance report is made of, without any of its layout.
-  #
-  # One question, one answer, one wording — whatever medium it is printed in.
-  # `EhOsContract.Report` wraps these in indentation and line breaks; a dashboard wraps them in
-  # HTML. Neither owns the words.
-  #
+  @moduledoc """
+  The sentences a conformance report is made of, without its layout: one wording for
+  each answer, whatever it is printed in.
+
+  `EhOsContract.Report.render/1` sets them as text, and the dashboard
+  (`eh_os_contract_web`) as HTML. A host that shows conformance its own way, on a page
+  of its application or in a message, reaches for these so that its words say what the
+  report says, and keep saying it when the engine adds a qualification to an answer.
+
+  Each function takes a part of what `EhOsContract.Conformance.report/2` returns. A
+  process module's report holds its process, with the promises it makes:
+
+      alias EhOsContract.Report.Sentence
+
+      report = EhOsContract.Conformance.report(Lending.Processes.LateFee, [])
+
+      for process <- report.processes, promise <- process.promises do
+        [Sentence.rule(promise), Sentence.verdict(promise) | Sentence.qualifications(promise)]
+      end
+
+  | Part of the report | Sentences |
+  | --- | --- |
+  | `report.deployment` | `process_deployment/1`; a change in it, `change/2` and `declarations_changed/1` |
+  | a process: `report.processes` | `accountable/1` of its `accountable`, `runs_in_period/2` of its `runs` and `correlate`, `declaration/1` of each of its `declarations`, `duration/1`, `out_of_order/1` |
+  | a promise: a process's `promises` | `rule/1`, `verdict/1`, `qualifications/1`, or `outcome/1` for all three in one |
+  | a contract's `activity` | `activity/1`, or `no_activity/0` |
+  | a contract's `paths` | `step/1` of each `untraversed`, `step_in_flight/1` of each `in_flight`, `step_failing/1` of each `failing`; `no_steps/0`, `all_steps_carried_out/0` |
+  | a contract's `lifecycles` | `transition/1` of each `untraversed` and `pending`, `transition_undeclared/1` of each `undeclared`; `no_aggregates/0`, `all_transitions_taken/0` |
+  | a contract's `scenarios` | `scenarios_observed/1`, `outcome_undeclared/1` of each `undeclared_outcomes` |
+  | a contract's `drift` | `drift/1` of each, or `no_drift/0` |
+
+  A string carries no leading whitespace and no bullet; what is a list stays a list,
+  since the medium decides what a list looks like. The engine's words are English, and a
+  contract's labels come through as the contract wrote them.
+  """
+
   # ## Why this module exists
   #
   # The dashboard used to carry its own copy, with a comment saying the duplication
@@ -23,16 +53,12 @@ defmodule EhOsContract.Report.Sentence do
   # A run suspended by an external outage therefore read on screen exactly like an
   # ordinary one. Two renderers of one fact, drifting silently, is the thing this
   # product detects for a living — so it does not get to live inside it.
-  #
-  # Returned strings carry no leading whitespace and no bullet. Anything that is a
-  # list stays a list, because a medium decides what a list looks like.
-  @moduledoc false
 
   @doc """
-  What the promise says, as a sentence a process owner can be read.
-
-  A promise has no `label`, so a technical name is all there would otherwise be — and a report saying `month_opens_or_is_blocked` does not meet
-  the "readable without explanation" criterion.
+  What the promise says, as a sentence its process owner reads: the event it starts
+  from, the window, the event that has to follow and the one that may come instead,
+  each by its label. A promise has no label of its own, so without this sentence a
+  report could name it only as the code does, `month_opens_or_is_blocked`.
   """
   @spec rule(map()) :: String.t()
   def rule(a) do
@@ -223,7 +249,7 @@ defmodule EhOsContract.Report.Sentence do
     ["Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."]
   end
 
-  @doc "A confirmed process declaration, as a sentence."
+  @doc "A process's confirmed declaration, as a sentence. The one a process declares today is its `deadline`."
   @spec declaration(map()) :: String.t()
   def declaration(%{key: :deadline, value: value}),
     do: "Deadline: #{amount(value)} from the start."
@@ -266,7 +292,7 @@ defmodule EhOsContract.Report.Sentence do
   @doc """
   A step, by its business labels. The technical names are for whoever writes code.
 
-  A step (`EhOsContract.Paths`) goes from a command to its event, or from an
+  A step of a declared path goes from a command to its event, or from an
   event through a consumer to a command, and says which consumer: `"Deposited →
   Flag the account for review (via: Flag an account on a large deposit)"`. An
   effect's step ends at the effect.
@@ -346,21 +372,21 @@ defmodule EhOsContract.Report.Sentence do
       "Activity in this period: #{plural(events, "event", "events")}, " <>
         "#{plural(commands, "command", "commands")}."
 
-  @doc "The sentences that stand in for a section with nothing in it."
+  @doc "What stands in for a contract's activity when nothing happened in the period."
   @spec no_activity() :: String.t()
   def no_activity,
     do: "The agreed steps cannot be judged: this contract recorded no event in this period."
 
-  @doc false
+  @doc "What stands in for the steps of a contract that declares none."
   @spec no_steps() :: String.t()
   def no_steps, do: "The contract declares no steps."
 
-  @doc false
+  @doc "What stands in for the steps not taken when every declared step was taken."
   @spec all_steps_carried_out() :: String.t()
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
   @doc """
-  A transition of an aggregate's lifecycle (plan LC3): the status it leaves, the event
+  A transition of an aggregate's lifecycle: the status it leaves, the event
   that moves it, the status it enters. An aggregate with no status yet is at its start.
   """
   @spec transition(map()) :: String.t()
@@ -378,12 +404,12 @@ defmodule EhOsContract.Report.Sentence do
   def transition_undeclared(%{from: from, event: event, count: count}),
     do: "#{name(event)} in #{name(from)} — the status stayed  (#{count}x)"
 
-  @doc false
+  @doc "What stands in for the lifecycles of a contract with no aggregate that declares one."
   @spec no_aggregates() :: String.t()
   def no_aggregates,
     do: "The declared transitions cannot be judged: no aggregate had an event in this period."
 
-  @doc false
+  @doc "What stands in for the transitions not taken when every declared one was taken."
   @spec all_transitions_taken() :: String.t()
   def all_transitions_taken, do: "All declared transitions were taken in this period."
 
@@ -402,8 +428,7 @@ defmodule EhOsContract.Report.Sentence do
     do: "#{name(from)} → #{name(to)}  (#{e.count}x)"
 
   @doc """
-  How many of a v2 contract's command scenarios the log saw happen
-  (`EhOsContract.Coverage`).
+  How many of a contract's command scenarios the log saw happen.
   """
   @spec scenarios_observed(map()) :: String.t()
   def scenarios_observed(%{declared: 0}),
@@ -424,7 +449,7 @@ defmodule EhOsContract.Report.Sentence do
 
   def outcome_undeclared(o), do: "#{name(o.command)} → refused: #{o.rejected}"
 
-  @doc false
+  @doc "What stands in for the drift when nothing happened outside what the contract declares."
   @spec no_drift() :: String.t()
   def no_drift, do: "None: nothing happened outside the agreement."
 

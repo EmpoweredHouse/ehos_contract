@@ -1,0 +1,50 @@
+name: private-references
+
+# The repository is to become public, and the private repositories it grew beside
+# (EHOS, its tools, the clients' material) are not. A link into one of them, a
+# decision code of theirs (D-135, T-07, FM-3), the archived working plan or a path
+# on a maintainer's machine leads a reader nowhere, and some of them say more than
+# they should. #393 rewrote every one outside the design record; three came back
+# in the next week's pull requests. This check fails a pull request that adds one.
+#
+# Left out on purpose, each until the stage that decides it:
+# - docs/adr/: the dated design record, which #379 settles in one pass;
+# - the auth package's ehos.yaml schemas, SHA-pinned to EHOS's own copies;
+# - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE, and the
+#   comment in ci.yml that explains it), which the Hex readiness stage settles;
+# - .claude/settings.team.json, which names the maintainers' plugin and is meant to;
+# - this file, which holds the pattern.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  private-references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      # `-P`: the pattern needs a lookahead, so that this repository's own name,
+      # eh-os-contract, is not a reference to EHOS's.
+      - name: No reference into a private repository
+        run: |
+          if git grep -n -P 'EmpoweredHouse/(eh-os(?!-contract)|ehos-tools|ehos-ledger|appunite-equipment)\b|\bD-\d{2,3}\b|\bT-\d{2}\b|eh-os#|\bFM-\d+|PLAN\.md|~/Projects' -- . \
+              ':!docs/adr' \
+              ':!packages/eh_os_contract_auth/priv/schemas' \
+              ':!packages/eh_os_contract_web/mix.exs' \
+              ':!packages/eh_os_contract_web/mix.lock' \
+              ':!packages/eh_os_contract_web/NOTICE' \
+              ':!.github/workflows/ci.yml' \
+              ':!.claude/settings.team.json' \
+              ':!.github/workflows/private-references.yml'; then
+            echo "::error::A link, a decision code or a path above points into a private repository. Say what it meant instead: a pull request or issue of this repository, or the meaning in words."
+            exit 1
+          fi
+          echo "No reference into a private repository."
