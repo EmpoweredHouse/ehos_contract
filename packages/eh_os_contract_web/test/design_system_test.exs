@@ -1,9 +1,9 @@
 defmodule EhOsContract.Web.DesignSystemTest do
   @moduledoc """
-  The dashboard is styled from the EmpoweredHouse design system, whose tokens and fonts
-  `mix assets.build` takes from the `ehos_design` package, and loads nothing from
-  another origin (docs/adr/dashboard-design-system.md). The package is a dependency of the
-  build only, so these checks read what the build committed, not the package.
+  The dashboard is styled from the EmpoweredHouse design system, whose tokens are copied
+  from `ehos_design` into `assets/vendor/` and imported by `mix assets.build`, and loads
+  nothing from another origin (docs/adr/dashboard-design-system.md). These checks read the
+  copy and what the build committed.
   """
 
   use EhOsContract.Web.TestHost.DataCase, async: false
@@ -22,10 +22,7 @@ defmodule EhOsContract.Web.DesignSystemTest do
   # The graph renderer's stylesheet, which the build imports into the dashboard's (plan E13b).
   @renderer Application.app_dir(:eh_os_contract_graph, "priv/static/eh_os_contract_graph.css")
   @fonts Path.join(@root, "priv/static/assets/fonts")
-  @package_tokens Path.join(
-                    @root,
-                    "deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css"
-                  )
+  @package_tokens Path.join(@root, "assets/vendor/ehos_design/colors_and_type.css")
 
   # The custom properties a stylesheet defines: `--name:` at the start of a declaration.
   defp defined_properties(css) do
@@ -44,9 +41,8 @@ defmodule EhOsContract.Web.DesignSystemTest do
     )
   end
 
-  test "the styles take the design system's tokens from the ehos_design package" do
-    assert File.read!(@layer) =~
-             ~s(@import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";)
+  test "the styles take the design system's tokens from the copy of ehos_design" do
+    assert File.read!(@layer) =~ ~s(@import "../vendor/ehos_design/colors_and_type.css";)
   end
 
   test "the dashboard's styles, as written or as built, name no other origin" do
@@ -62,7 +58,7 @@ defmodule EhOsContract.Web.DesignSystemTest do
   end
 
   test "every token the dashboard's styles and scripts read is one the build defines" do
-    # A new version of ehos_design that renames a token breaks nothing loudly: CSS falls back to
+    # A new copy of ehos_design that renames a token breaks nothing loudly: CSS falls back to
     # nothing. This is where the rename shows.
     defined = @built |> File.read!() |> defined_properties()
 
@@ -80,8 +76,8 @@ defmodule EhOsContract.Web.DesignSystemTest do
   end
 
   test "the dashboard's styles refer to the design system's tokens and never redefine one" do
-    # The package is not read here, so the check is by name: the layer defines only names under
-    # its own prefix, which the design system does not use.
+    # By name: the layer defines only names under its own prefix, which the design system does
+    # not use.
     layer = @layer |> File.read!() |> defined_properties()
 
     assert MapSet.size(design_system_properties()) > 50
@@ -110,28 +106,24 @@ defmodule EhOsContract.Web.DesignSystemTest do
       assert ["font/woff2" <> _] = Plug.Conn.get_resp_header(response, "content-type")
     end
 
-    # `mix assets.build` only adds: a font a new ehos_design drops would stay here, served and
-    # shipped, and so would anything else that came along with the fonts.
+    # Nothing but the fonts the styles name and their licences is served and shipped from here.
     licences = ["OFL-albert-sans.txt", "OFL-jetbrains-mono.txt"]
     assert Enum.sort(File.ls!(@fonts)) == Enum.sort(licences ++ Enum.map(urls, &Path.basename/1))
   end
 
-  # The package is a `:dev` dependency, so it is here only where someone fetched it — never in
-  # CI. Where it is, this catches a `ref:` moved without `mix assets.build`, and a layer that
-  # takes one of its names.
-  if File.exists?(@package_tokens) do
-    test "the build carries every token of the fetched ehos_design, and the layer takes none" do
-      package = @package_tokens |> File.read!() |> defined_properties()
-      built = @built |> File.read!() |> defined_properties()
-      layer = @layer |> File.read!() |> defined_properties()
+  # Catches a new copy of the tokens committed without `mix assets.build`, and a layer that
+  # takes one of their names.
+  test "the build carries every token of the copied ehos_design, and the layer takes none" do
+    package = @package_tokens |> File.read!() |> defined_properties()
+    built = @built |> File.read!() |> defined_properties()
+    layer = @layer |> File.read!() |> defined_properties()
 
-      assert MapSet.size(package) > 50
+    assert MapSet.size(package) > 50
 
-      assert MapSet.difference(package, built) |> Enum.sort() == [],
-             "the built stylesheet lacks tokens of ehos_design; run `mix assets.build`"
+    assert MapSet.difference(package, built) |> Enum.sort() == [],
+           "the built stylesheet lacks tokens of ehos_design; run `mix assets.build`"
 
-      assert MapSet.intersection(package, layer) |> Enum.sort() == []
-    end
+    assert MapSet.intersection(package, layer) |> Enum.sort() == []
   end
 
   test "the page loads its styles and scripts from the package's own assets" do

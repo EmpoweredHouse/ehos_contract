@@ -1,8 +1,8 @@
 /* The dashboard's own look, on the EmpoweredHouse design system
    (docs/adr/dashboard-design-system.md, following the EHOS console's).
 
-   The design system's tokens come first, from the ehos_design package, which is a
-   dependency of the build only: this file refers to its custom properties and never defines one of
+   The design system's tokens come first, from ehos_design, copied unchanged into assets/vendor/
+   (NOTICE says from where): this file refers to its custom properties and never defines one of
    the same name. What this file adds is named --eh-os-contract-*, and test/design_system_test.exs
    holds it to that prefix (and, where the package is fetched, to its token names).
 
@@ -10,7 +10,7 @@
    the host's own layout for these routes), so tag selectors cannot leak anywhere else. */
 
 /* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
-@import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";
+@import "../vendor/ehos_design/colors_and_type.css";
 
 /* The graph renderer's cards, arrows and panel (plan E13b), from the package beside this one. It defines
    only --eh-os-contract-graph-* and reads the tokens above. */

@@ -69,27 +69,9 @@ defmodule EhOsContract.Web.MixProject do
       ],
       # Run by whoever edits assets/js/app.js or assets/css/app.css; the
       # committed output under priv/static/ is what everyone else —
-      # including `mix check` — uses. The fonts are copied from
-      # `ehos_design` beside the built stylesheet, whose relative url()s
-      # name them there.
-      "assets.build": [
-        "esbuild eh_os_contract_web",
-        "esbuild eh_os_contract_web_css",
-        fn _args ->
-          fonts =
-            Path.expand(
-              "deps/ehos_design/packages/ehos_design/priv/static/ehos_design/fonts",
-              __DIR__
-            )
-
-          target = Path.expand("priv/static/assets/fonts", __DIR__)
-          File.mkdir_p!(target)
-
-          for name <- File.ls!(fonts), Path.extname(name) in [".woff2", ".txt"] do
-            File.cp!(Path.join(fonts, name), Path.join(target, name))
-          end
-        end
-      ]
+      # including `mix check` — uses. The fonts are committed where the built
+      # stylesheet's relative url()s name them, priv/static/assets/fonts/.
+      "assets.build": ["esbuild eh_os_contract_web", "esbuild eh_os_contract_web_css"]
     ]
   end
 
@@ -197,19 +179,7 @@ defmodule EhOsContract.Web.MixProject do
       # package never needs it: only whoever edits the JS itself runs
       # `mix assets.build` and commits the result, the same way a compiled
       # asset ships with any other Phoenix component library.
-      {:esbuild, "~> 0.9", runtime: false},
-      # The EmpoweredHouse design system's tokens and fonts, which `mix assets.build`
-      # reads from deps/. Only there: the built stylesheet and the fonts
-      # are committed under priv/static/assets/, so a host fetches nothing from it,
-      # and Hex leaves a `:dev` dependency out of the published requirements. The
-      # ref is the commit tagged `ehos_design-v0.1.0`; a new version of the design
-      # system reaches the dashboard by moving it and rebuilding.
-      {:ehos_design, "~> 0.1.0",
-       github: "EmpoweredHouse/ehos-tools",
-       sparse: "packages/ehos_design",
-       ref: "a65b9c86d920b5566f1c085b2286a44da77505c9",
-       only: :dev,
-       runtime: false}
+      {:esbuild, "~> 0.9", runtime: false}
     ]
   end
 end

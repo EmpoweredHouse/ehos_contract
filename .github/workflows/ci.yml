@@ -166,12 +166,9 @@ jobs:
         working-directory: packages/eh_os_contract
         run: mix deps.get
 
-      # `--only test`: the dashboard's `:dev` dependency, ehos_design, lives in the
-      # private EmpoweredHouse/ehos-tools, which this job has no credentials for. Only
-      # `mix assets.build` reads it, and its output is committed, so the gate never needs it.
       - name: Install dashboard foundation deps
         working-directory: packages/eh_os_contract_web
-        run: mix deps.get --only test
+        run: mix deps.get
 
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth

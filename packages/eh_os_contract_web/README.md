@@ -70,18 +70,13 @@ below).
 ## Looks
 
 The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
-console uses: dark by default, light when the system prefers it. Its tokens and fonts
-come from the `ehos_design` package, kept in a private EmpoweredHouse repository, a
-`:dev` dependency pinned in `mix.exs` to the commit tagged `ehos_design-v0.1.0`. `mix assets.build` imports the plain tokens,
-`priv/css/colors_and_type.css`, into the stylesheet and copies the fonts beside it.
-The built stylesheet and the fonts are committed under `priv/static/assets/`, so a host
-fetches nothing from that package; a new version of the design system reaches the
-dashboard by moving the pinned ref and rebuilding.
-
-That repository is private, and a plain `mix deps.get` fetches every environment's
-dependencies, this one included. Without access to it, fetch with
-`mix deps.get --only test`: the tests read only the committed build, and only
-`mix assets.build` needs the package.
+console uses: dark by default, light when the system prefers it. Its tokens are a copy
+of `colors_and_type.css` from the design system's `ehos_design` package (version 0.1.0),
+in `assets/vendor/ehos_design/`, and `mix assets.build` imports them into the
+stylesheet. The built stylesheet and the fonts are committed under
+`priv/static/assets/`, so a host fetches nothing; a new version of the design system
+reaches the dashboard by replacing the copy and rebuilding. `NOTICE` says where each
+comes from and under which licence.
 
 A host cannot restyle it or pin its theme yet. The dashboard's root layout replaces
 the host's for these routes and loads only this package's stylesheet, so neither a
