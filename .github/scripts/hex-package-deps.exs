@@ -16,7 +16,9 @@ unless File.exists?(Path.join(dir, "hex_metadata.config")) do
   System.halt(1)
 end
 
+# A host reads a dependency's `mix.exs` in `:prod`, whatever its own environment.
 Mix.start()
+Mix.env(:prod)
 Code.require_file(mix_exs)
 
 local =
