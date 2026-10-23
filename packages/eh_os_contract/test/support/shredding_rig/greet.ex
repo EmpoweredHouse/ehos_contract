@@ -18,7 +18,7 @@ defmodule ShreddingRig.Greet do
   def joined(%Joined{name: "Throw" <> _ = name}), do: throw({:deliver, name})
 
   def joined(%Joined{name: "Spawn" <> _ = name}) do
-    pid = spawn_link(fn -> Map.fetch!(%{name: name}, :phone) end)
+    pid = spawn_link(fn -> raise(KeyError, key: :phone, term: %{name: name}) end)
     ref = Process.monitor(pid)
 
     receive do
@@ -27,7 +27,7 @@ defmodule ShreddingRig.Greet do
   end
 
   def joined(%Joined{name: "Link" <> _ = name}) do
-    Task.async(fn -> Map.fetch!(%{name: name}, :phone) end) |> Task.await()
+    Task.async(fn -> raise(KeyError, key: :phone, term: %{name: name}) end) |> Task.await()
   end
 
   def joined(_joined), do: :ok
