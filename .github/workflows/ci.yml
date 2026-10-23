@@ -52,14 +52,31 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
 
+    # The oldest Elixir and OTP the packages support and the newest released. The
+    # floor is Elixir 1.18 (each `mix.exs`) and OTP 27, which `oidcc` in the credential
+    # verifier needs. Code is formatted, and the locks are resolved, as the oldest
+    # pair has them: the newest formats a few lines differently, and runs the suite
+    # on the newest Spark 2.x a host can resolve as well.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: oldest
+            otp: "27.2"
+            elixir: "1.18.4"
+          - name: newest
+            otp: "29"
+            elixir: "1.20"
+    name: check (${{ matrix.name }})
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
         id: beam
         with:
-          otp-version: "27.2"
-          elixir-version: "1.18.4"
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
 
       # Same file a developer runs locally (CLAUDE.md's documented gate) —
       # one Postgres definition, not a second one duplicated into this
@@ -76,7 +93,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sandbox/deps
-          key: sandbox-deps-${{ runner.os }}-${{ hashFiles('sandbox/mix.lock') }}
+          key: sandbox-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('sandbox/mix.lock') }}
 
       # The engine is a path dependency, but package_test/1 in sandbox/mix.exs runs
       # `mix check` with `cd: "packages/eh_os_contract"` as a fully separate Mix
@@ -87,7 +104,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: packages/eh_os_contract/deps
-          key: eh-os-contract-core-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+          key: eh-os-contract-core-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
 
       # The dashboard package, same shape
       # as the engine above: a path dependency whose own gate runs as a
@@ -96,7 +113,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: packages/eh_os_contract_web/deps
-          key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+          key: eh-os-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
       # The credential verifier (v2 stage EA), same shape: its gate runs as a
       # separate Mix project via package_test_auth/1 in sandbox/mix.exs.
@@ -104,7 +121,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: packages/eh_os_contract_auth/deps
-          key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+          key: eh-os-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       # The graph renderer (plan E13b), same shape: its gate runs as a separate Mix
       # project via package_test_graph/1 in sandbox/mix.exs.
@@ -112,7 +129,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: packages/eh_os_contract_graph/deps
-          key: eh-os-contract-graph-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+          key: eh-os-contract-graph-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
       # Compiled dependencies, one cache per project. Without it every run
       # compiled ecto, postgrex, oban, plug and the rest from scratch four times
@@ -180,6 +197,23 @@ jobs:
       - name: Install graph renderer deps
         working-directory: packages/eh_os_contract_graph
         run: mix deps.get
+
+      # The newest pair only: the formatter of the oldest is the one the repository
+      # follows, and Spark is resolved to its newest 2.x, which `~> 2.7 and >= 2.7.3`
+      # lets a host have. Nothing here is committed.
+      - name: Format as the newest Elixir does, and take the newest Spark
+        if: ${{ matrix.name == 'newest' }}
+        # The environment the dependencies were fetched for: in `:dev` the dashboard
+        # would also ask for its private `:dev` dependency.
+        env:
+          MIX_ENV: test
+        run: |
+          for project in sandbox packages/*/; do
+            (cd "$project" && mix format)
+            if grep -q '"spark"' "$project/mix.lock"; then
+              (cd "$project" && mix deps.update spark --only test)
+            fi
+          done
 
       # No `mix ecto.setup` before this: `mix check` runs under MIX_ENV=test
       # (`cli/0`'s `preferred_envs`), and both the host's and the engine's own
