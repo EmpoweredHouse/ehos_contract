@@ -21,6 +21,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **`esbuild` is no longer a host's dependency** (#421). Only `mix assets.build` runs it, in this package's own
+  development, and its output is committed.
+
 ## [0.7.0] - 2026-10-23
 
 ### Changed

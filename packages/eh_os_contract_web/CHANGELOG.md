@@ -25,6 +25,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The engine is required at `~> 0.9.1` and the graph renderer at `~> 0.7.0`** (#421), however they are fetched:
+  by version from Hex, and also when this package comes from git or a path, where Mix now holds their versions to
+  these. A host with an older engine or renderer is refused at `mix deps.get`.
+- **`esbuild` is no longer a host's dependency** (#421). Only `mix assets.build` runs it, in this package's own
+  development, and its output is committed.
+
 ## [0.4.0] - 2026-10-16
 
 ### Added

@@ -48,6 +48,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Spark may be any 2.x from 2.7** (#421), where it had to be 2.7.3 or a later 2.7 patch: a host that uses a newer
+  Spark, as Ash's releases bring, resolves with the engine.
+
 ## [0.9.1] - 2026-10-23
 
 ### Changed

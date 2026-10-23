@@ -199,3 +199,32 @@ jobs:
       - name: mix check
         working-directory: sandbox
         run: mix check
+
+  # Each package as Hex would build it, and as an application would read it once
+  # installed: `mix hex.build` refuses a dependency that is not a Hex package and a
+  # file `files:` names that is missing, and hex-package-deps.exs reads the unpacked
+  # `mix.exs` beside the engine it would find in an application's deps/. Nothing is
+  # compiled or fetched: hex.build reads only the project's configuration.
+  hex-build:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      - name: Build and read each package
+        env:
+          EH_OS_CONTRACT_HEX: "1"
+        run: |
+          out="$RUNNER_TEMP/hex"
+          for package in eh_os_contract eh_os_contract_graph eh_os_contract_auth eh_os_contract_web; do
+            (cd "packages/$package" && mix hex.build --unpack --output "$out/$package")
+          done
+          for package in eh_os_contract eh_os_contract_graph eh_os_contract_auth eh_os_contract_web; do
+            (cd "$out" && env -u EH_OS_CONTRACT_HEX elixir "$GITHUB_WORKSPACE/.github/scripts/hex-package-deps.exs" "$out/$package")
+          done

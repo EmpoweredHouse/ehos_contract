@@ -205,9 +205,9 @@ defmodule EhOsContract.MixProject do
       # host has StreamData, usually as a test dependency.
       {:stream_data, "~> 1.1", optional: true},
       {:boundary, "~> 0.10", runtime: false},
-      # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
-      # error locations, formatter export, digest stability under `boundary`.
-      {:spark, "~> 2.7.3"},
+      # The v2 DSL engine (v2 §2). `mix.lock` holds the version the suite runs on; the range
+      # is what a host resolves against, and a host on Ash needs the newer releases of 2.x.
+      {:spark, "~> 2.7"},
       # Spark's formatter task rewrites `.formatter.exs` through it. Only where that
       # task runs.
       {:sourceror, "~> 1.12", only: [:dev, :test], runtime: false},
