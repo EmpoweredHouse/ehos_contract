@@ -48,6 +48,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **`EhOsContract.Dispatcher` is no longer documented** (#421): what a host calls is `EhOsContract.dispatch/3`,
+  `record/3`, `query/3` and `call/3`. What dispatch checks, in which order, and how it handles a conflict and a
+  failure is now on `EhOsContract.dispatch/3`, and the types are `t:EhOsContract.refusal/0`, `t:EhOsContract.problem/0`
+  and `t:EhOsContract.call/0`. `EhOsContract.Dispatcher.refusal()` still names the same type.
+- **`EhOsContract.Report.Sentence` is public** (#421): the sentences of a conformance report without its layout,
+  which the dashboard renders as HTML, for a host that shows conformance its own way.
+- **Hexdocs lists the modules in groups** (#421): writing a contract, dispatch and queries, the log, delivery,
+  personal data, conformance, the model and its documents, testing and configuration.
+
 ## [0.9.1] - 2026-10-23
 
 ### Changed

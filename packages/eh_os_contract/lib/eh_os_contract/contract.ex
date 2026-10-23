@@ -40,7 +40,7 @@ defmodule EhOsContract.Contract do
   data; and it generates a struct for every command, event, state, row and query and
   a behaviour for everything code implements. Code binds to
   it with `use Contract, aggregate: :name` (`EhOsContract.Implementation`), and
-  `EhOsContract.dispatch/3` runs a command through it (`EhOsContract.Dispatcher`).
+  `EhOsContract.dispatch/3` runs a command through it.
   """
 
   use Spark.Dsl,
