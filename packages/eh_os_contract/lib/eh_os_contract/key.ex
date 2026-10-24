@@ -81,7 +81,9 @@ defmodule EhOsContract.Key do
 
   # Whether a declared field is a tag of every event that carries it: a required,
   # non-personal field of the built-in type `:id` (v2 §10.4). A unit's identity is
-  # injected as such fields, so it is always among them. A consistency boundary finds
+  # injected as such fields, or (#435) as fields of a domain value resting on `:id`,
+  # which count once the domain's `values` are given, as the append gives them; so it
+  # is always among them at the append. A consistency boundary finds
   # what it consults by these tags, so its `match:` names only such fields (A4, X6);
   # the rule and the append read this one predicate. Since E9c the append also counts
   # a field typed by a domain value of `:id`, which A4, at compile time and without
