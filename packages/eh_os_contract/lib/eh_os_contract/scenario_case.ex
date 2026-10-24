@@ -867,13 +867,14 @@ defmodule EhOsContract.ScenarioCase do
   end
 
   # What the scenario gives a correlation field, cast to its type. One it does not
-  # give is "scenario" when it is an :id, as an identity is; any other type has no
-  # value a runner could make up.
+  # give is "scenario" when it is an :id or a domain value resting on one, as an
+  # identity is (#435); any other type has no value a runner could make up.
   defp correlated(%{name: name, type: type}, identity, domain) do
-    case {identity.(name), type} do
-      {nil, :id} -> @stream
-      {value, _} -> cast(type, value, domain)
-    end
+    value = identity.(name)
+
+    if value == nil and EhOsContract.Key.base_type(type, domain) == :id,
+      do: @stream,
+      else: cast(type, value, domain)
   end
 
   defp unwrap!({:ok, commands}, _trigger) when is_list(commands), do: commands

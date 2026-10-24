@@ -35,6 +35,12 @@ defmodule ValueRig.DrawerDecider do
     do: emit(%DrawerOpened{till_id: c.till_id, shift_id: c.shift_id})
 end
 
+defmodule ValueRig.DrawerWatch do
+  @moduledoc "**Invented.** `ValueRig.Till`'s process manager `:drawer_watch`, which only keeps its run."
+
+  use ValueRig.Till, process_manager: :drawer_watch
+end
+
 defmodule ValueRig.Payments do
   @moduledoc """
   **Invented.** A read model that keeps nothing: the query over it is here for its
