@@ -90,6 +90,16 @@ defmodule EhOsContract.PagesTest do
       assert pages["values/window.md"] =~ ~s|Broken by: `%{from: "2026-02-01", to: "2026-01-31"}`|
     end
 
+    # #435: a unit keyed by a value is listed once, not with every command and event
+    # that carries its identity.
+    test "a value that keys a unit lists the unit, not each of its messages", %{pages: pages} do
+      shift = pages["values/shift.md"]
+
+      assert shift =~ "- aggregate [`drawer`](../till/till/aggregates/drawer.md) of ValueRig.Till"
+      refute shift =~ "open_drawer"
+      refute shift =~ "drawer_opened"
+    end
+
     test "a command links its unit, its events and its fields' values", %{pages: pages} do
       pay_in = pages["till/till/commands/pay_in.md"]
 
