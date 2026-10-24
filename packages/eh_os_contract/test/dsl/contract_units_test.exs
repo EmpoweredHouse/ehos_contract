@@ -318,8 +318,9 @@ defmodule EhOsContract.ContractUnitsTest do
       assert_refused(
         source,
         "identity_positional.ex",
-        "and got {:id, :visit}; a field of it typed as another unit's or an entity's number is " <>
-          "written `identity visit_id: {:id, :visit}`",
+        "and got {:id, :visit}; a field of it typed as another unit's or an entity's number, " <>
+          "or by a domain value, is written in the list of its fields: " <>
+          "`identity visit_id: {:id, :visit}`",
         5
       )
     end

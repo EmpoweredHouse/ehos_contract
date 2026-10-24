@@ -33,6 +33,9 @@ defmodule EhOsContract.Contract.Links.Domain do
   #   scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   # - **F8**, the part that needs the domain: a field a run or a process manager's
   #   record is told by, typed by a domain value, is of one resting on `:id`.
+  # - **F1**, the part that needs the domain (#435): a unit's identity field typed by a
+  #   domain value names a value of the domain (X3) resting on `:id`, since its value
+  #   is part of the unit's stream and of the tags a boundary matches on.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
   #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
@@ -77,6 +80,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       personal_values(c),
       upcast_values(c),
       correlation_values(c),
+      identity_values(c),
       externals(c),
       scopes(c),
       namespaces(c)
@@ -291,6 +295,43 @@ defmodule EhOsContract.Contract.Links.Domain do
       {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}, " <>
          "which rests on #{rests_on(base, values)}; correlate only on an identifier, an :id of " <>
          "at most 255 bytes, as match: does", Links.at(field)}
+    end
+  end
+
+  # --- F1: a unit's identity typed by a domain value (#435) ----------------------------
+
+  defp identity_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for unit <- d.units,
+        {field, type} <- unit.identity_types,
+        is_atom(type),
+        type not in @built_in,
+        problem <- identity_value_problems(type, domain, values) do
+      {problem.(
+         "#{unit.kind} #{inspect(unit.name)}: identity #{inspect(field)}: #{inspect(type)}"
+       ), Links.at(unit)}
+    end
+  end
+
+  # Each problem takes where it is, so that its message starts with its code.
+  defp identity_value_problems(type, domain, values) do
+    cond do
+      not Map.has_key?(values, type) ->
+        [
+          &("X3: #{&1} is neither a built-in type nor a value of #{inspect(domain.module)}; " <>
+              suggest(type, Map.keys(values)))
+        ]
+
+      (base = Key.base_type(type, values)) != :id ->
+        [
+          &("F1: #{&1} rests on #{rests_on(base, values)}; a unit's identity is part of its " <>
+              "stream's key and of the tags a boundary matches on, so a domain value typing it " <>
+              "rests on :id")
+        ]
+
+      true ->
+        []
     end
   end
 

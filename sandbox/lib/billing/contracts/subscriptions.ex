@@ -110,7 +110,7 @@ defmodule Billing.Contracts.Subscriptions do
   end
 
   aggregate :invoice, "Invoice" do
-    identity [:subscription_id, :period_id]
+    identity [:subscription_id, period_id: :billing_period]
 
     state do
       field :lines, {:list, :id}, default: []

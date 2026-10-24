@@ -622,6 +622,60 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # #435: a key named by a domain value, so that the value's invariants hold it.
+  describe "F1 and X3: an identity field typed by a domain value rests on :id" do
+    test "a value of another type, or none of the domain, is refused at the unit" do
+      body =
+        String.replace(
+          @body,
+          "identity :visit_id\n",
+          "identity [:visit_id, fee: :money, carer: :contact, period: :perod_id]\n"
+        )
+
+      violations = links("LinksIdentityValue", body)
+
+      assert assert_linked(
+               violations,
+               "F1: aggregate :visit: identity :fee: :money rests on :integer",
+               "links_identity_value.ex",
+               4
+             ) =~ "so a domain value typing it rests on :id"
+
+      assert assert_linked(
+               violations,
+               "F1: aggregate :visit: identity :carer: :contact rests on fields of its own",
+               "links_identity_value.ex"
+             )
+
+      assert assert_linked(
+               violations,
+               "X3: aggregate :visit: identity :period: :perod_id is neither a built-in type " <>
+                 "nor a value of EhOsContract.Fixtures.LinksClinic",
+               "links_identity_value.ex"
+             ) =~ ":period_id"
+
+      assert length(violations) == 3
+    end
+
+    test "control: a value resting on :id types the key, and its events are tagged by it" do
+      body =
+        String.replace(
+          @body,
+          "identity :visit_id\n",
+          "identity [:visit_id, period: :period_id]\n"
+        )
+
+      assert links("LinksIdentityValueRight", body) == []
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.LinksIdentityValueRight)
+      event = Enum.find(model.events, &(&1.name == :payment_recorded))
+      field = Enum.find(event.fields, &(&1.name == :period))
+      values = EhOsContract.Codec.values(@domain)
+
+      assert %{type: :period_id} = field
+      assert EhOsContract.Key.tag_field?(field, values)
+    end
+  end
+
   # Plan DD, V1 (#333): what a step does to a field of a domain value.
   describe "U3 and U4: an event's steps against the domain's values" do
     defp stepped(steps) do

@@ -48,6 +48,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A unit's identity field may be typed by a domain value resting on `:id`** (#435): `identity [:company_id,
+  period_id: :period]`. Dispatch holds the key to the value's invariants as it holds any field, so a command or
+  a recorded event keyed by a month "2026-13" is refused with `{:period_id, {:invariant, name}}` where it was
+  appended before. Until now an identity was `:id` or `{:id, name}` only, and a value's invariant never held a
+  unit's key. A unit that changes its identity's type from `:id` to such a value keeps its streams, tags and
+  `eh_os_contract.lock`; only new commands are checked. A value that does not rest on `:id` is refused (`F1`),
+  and so is a value in a generated identity. `EhOsContract.PropertyCase` and `EhOsContract.Generators.history/3`
+  draw such a key from the value's `satisfied_by:` examples, as they draw any field of it.
+
 ## [0.10.0] - 2026-10-24
 
 ### Added

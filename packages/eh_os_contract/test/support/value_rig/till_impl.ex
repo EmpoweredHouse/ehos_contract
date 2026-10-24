@@ -22,6 +22,19 @@ defmodule ValueRig.TillDecider do
   def short_change(%ShortChange{till_id: id}, _state), do: emit(%PaidIn{till_id: id, amount: 0})
 end
 
+defmodule ValueRig.DrawerDecider do
+  @moduledoc """
+  **Invented.** The decider of `ValueRig.Till`'s drawer: it opens the drawer it is
+  asked for.
+  """
+
+  use ValueRig.Till, aggregate: :drawer
+
+  @impl true
+  def open_drawer(%OpenDrawer{} = c, _state),
+    do: emit(%DrawerOpened{till_id: c.till_id, shift_id: c.shift_id})
+end
+
 defmodule ValueRig.Payments do
   @moduledoc """
   **Invented.** A read model that keeps nothing: the query over it is here for its

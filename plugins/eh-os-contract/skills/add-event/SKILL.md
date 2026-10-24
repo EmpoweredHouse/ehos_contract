@@ -82,7 +82,10 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 - **`:string` is text a person typed.** A code, a number or a choice has a type of its own; a
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
   log as written after its subject is erased.
-- **The unit's identity is injected**: do not declare it again (`F6`).
+- **The unit's identity is injected**: do not declare it again (`F6`). A key with rules of its own —
+  a month, a year, a fiscal period — is typed there by its domain value, `identity [:company_id,
+  period_id: :period]`, not left a bare `:id` while other fields type it `:period`: dispatch holds the
+  key to the value's invariants only when the identity says so. The value rests on `:id` (`F1`).
 - **Every `correlate` field of a process module that includes it is in the event** (`X6`; the
   unit's identity counts), required, not `personal:`, and the same kind of identifier as in the
   module's other events.

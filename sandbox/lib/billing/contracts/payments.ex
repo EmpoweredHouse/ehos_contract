@@ -21,7 +21,7 @@ defmodule Billing.Contracts.Payments do
   consumes Billing.Contracts.Subscriptions, :issued
 
   aggregate :payment, "Payment" do
-    identity [:subscription_id, :period_id]
+    identity [:subscription_id, period_id: :billing_period]
 
     state do
       field :requested, :boolean, default: false
