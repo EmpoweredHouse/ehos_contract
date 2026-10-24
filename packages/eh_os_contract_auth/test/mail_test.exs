@@ -78,12 +78,7 @@ defmodule EhOsContract.Auth.MailTest do
         set(ehos, %{expired_once: true})
         answer(conn, 401, %{"error" => "unauthorized"})
 
-      # As EHOS's parser answers a large body under a credential it no longer accepts, or one past
-      # what it reads under any: before the route, in Phoenix's own shape.
-      state.answer == :too_large_once and not state.expired_once ->
-        set(ehos, %{expired_once: true})
-        answer(conn, 413, %{"errors" => %{"detail" => "Request Entity Too Large"}})
-
+      # As EHOS's parser answers, before the route, in Phoenix's own shape.
       state.answer in [413, 400] ->
         answer(conn, state.answer, %{"errors" => %{"detail" => "Bad Request"}})
 
@@ -100,7 +95,7 @@ defmodule EhOsContract.Auth.MailTest do
     end
   end
 
-  defp mail(conn, answer, body) when answer in [:sent, :expired, :too_large_once] do
+  defp mail(conn, answer, body) when answer in [:sent, :expired] do
     messages =
       body["to"]
       |> Enum.with_index()
@@ -228,15 +223,15 @@ defmodule EhOsContract.Auth.MailTest do
       assert length(ehos(ehos, :bodies)) == 1
     end
 
-    test "takes a new credential once when EHOS answers a large body 413, as after its keys rotate",
+    test "keeps its credential when EHOS answers 413, which the people's calls go on with",
          %{ehos: ehos} do
-      set(ehos, %{answer: :too_large_once})
       server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+      assert {:ok, [_]} = Mail.deliver(message)
 
-      assert {:ok, [_]} =
-               Mail.deliver(server: server, to: [{:person, @ada}], subject: "s", text: "t")
-
-      assert ehos(ehos, :tokens) == ["credential-1", "credential-2"]
+      set(ehos, %{answer: 413})
+      assert {:error, {:invalid, [_]}} = Mail.deliver(message)
+      assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
     test "refuses, before asking EHOS, what is not a message", %{ehos: ehos} do
@@ -262,6 +257,9 @@ defmodule EhOsContract.Auth.MailTest do
             Keyword.put(ok, :attachments, [Map.put(file, :path, "/etc/passwd")]),
             Keyword.put(ok, :cc, [{:person, @ada}]),
             ok ++ [to: [{:person, @ada}]],
+            [server: server] ++ ok,
+            Keyword.put(ok, :to, [{:person, @ada} | {:address, "secret@example.org"}]),
+            Keyword.put(ok, :references, ["<a@b>" | "<c@d>"]),
             Keyword.put(ok, :attachments, [Map.put(file, :filename, <<0xE9>>)])
           ] do
         assert_raise ArgumentError, fn -> Mail.deliver([server: server] ++ message) end

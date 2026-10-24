@@ -92,9 +92,6 @@ defmodule EhOsContract.Auth.Mail do
 
   # EHOS gives the relay two minutes for a call's messages; the answer comes after them.
   @deadline 150_000
-  # EHOS reads a large body only with a credential it accepts, and answers 413 to one it no longer
-  # does, as after its keys rotate, before it can answer 401: both take a new credential.
-  @renew_on [401, 413]
   @keys [:to, :subject, :text, :html, :reply_to, :in_reply_to, :references, :attachments]
   @attachment_keys [:filename, :content_type, :content, :inline, :content_id]
   @refusals %{
@@ -145,10 +142,13 @@ defmodule EhOsContract.Auth.Mail do
   @spec deliver([option()]) :: {:ok, [Result.t()]} | {:error, reason()}
   def deliver(message) do
     unless Keyword.keyword?(message), do: bad!("a keyword list")
+    keys = Keyword.keys(message)
+    if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
+
     {server, message} = Keyword.pop(message, :server, Workload)
     body = message |> body!() |> Jason.encode_to_iodata!()
 
-    case Workload.request(server, :post, "/api/v1/mail", body, @deadline, @renew_on) do
+    case Workload.request(server, :post, "/api/v1/mail", body, @deadline, shared: true) do
       {:ok, {200, _headers, body}} ->
         results(body)
 
@@ -167,25 +167,21 @@ defmodule EhOsContract.Auth.Mail do
   ## The request
 
   defp body!(message) do
-    keys = Keyword.keys(message)
-
-    case keys -- @keys do
+    case Keyword.keys(message) -- @keys do
       [] -> :ok
       extra -> bad!("no #{inspect(extra)}")
     end
-
-    if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
 
     for key <- [:to, :subject, :text], not Keyword.has_key?(message, key) do
       bad!("#{key}:")
     end
 
     Map.new(message, fn
-      {:to, to} when is_list(to) and to != [] -> {"to", Enum.map(to, &recipient!/1)}
+      {:to, to} when to != [] -> {"to", to |> list!(:to) |> Enum.map(&recipient!/1)}
       {:reply_to, reply_to} -> {"reply_to", recipient!(reply_to)}
       {key, value} when key in [:subject, :text, :html] -> {to_string(key), string!(key, value)}
       {key, ids} when key in [:in_reply_to, :references] -> {to_string(key), ids!(key, ids)}
-      {:attachments, files} when is_list(files) -> {"attachments", Enum.map(files, &file!/1)}
+      {:attachments, files} -> {"attachments", files |> list!(:attachments) |> Enum.map(&file!/1)}
       {key, _value} -> bad!("#{key}: as documented")
     end)
   end
@@ -200,11 +196,17 @@ defmodule EhOsContract.Auth.Mail do
 
   defp string!(key, value), do: if(text?(value), do: value, else: bad!("#{key}: as a string"))
 
-  defp ids!(key, ids) when is_list(ids) do
-    if Enum.all?(ids, &text?/1), do: ids, else: bad!("#{key}: as a list of message ids")
+  defp ids!(key, ids) do
+    if Enum.all?(list!(ids, key), &text?/1),
+      do: ids,
+      else: bad!("#{key}: as a list of message ids")
   end
 
-  defp ids!(key, _ids), do: bad!("#{key}: as a list of message ids")
+  # A proper list: `Enum` would raise on an improper one with its tail, a recipient perhaps, in the
+  # stack trace's arguments.
+  defp list!(list, key) do
+    if is_list(list) and not List.improper?(list), do: list, else: bad!("#{key}: as a list")
+  end
 
   defp file!(%{filename: name, content_type: type, content: content} = file)
        when is_binary(content) do
@@ -266,6 +268,8 @@ defmodule EhOsContract.Auth.Mail do
       status == 403 and error == "beyond_agreement" -> {:error, {:beyond_agreement, reasons}}
       status == 422 and error == "invalid" -> {:error, {:invalid, reasons}}
       # Answered before the route: a body past what EHOS reads, or text it does not store.
+      # A 413 is also EHOS's answer to a large body under a credential it no longer accepts, as
+      # after its keys rotate, before it can answer 401 (EmpoweredHouse/eh-os#980).
       status == 413 -> {:error, {:invalid, ["the message is larger than EHOS reads"]}}
       status == 400 -> {:error, {:invalid, ["the message holds text EHOS does not take"]}}
       reason = @refusals[{status, error}] -> {:error, reason}

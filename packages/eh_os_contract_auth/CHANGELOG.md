@@ -38,8 +38,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **Breaking:** **the people client's process is registered as `EhOsContract.Auth.Workload`** (#436),
   whichever child starts it. A host that passes `server: EhOsContract.Auth.People`, or looks the
-  process up by that name, drops it or names `EhOsContract.Auth.Workload`; one that lists both
-  children keeps only the second.
+  process up by that name, drops it or names `EhOsContract.Auth.Workload`. Both children have
+  that id, so a supervisor given both refuses to start: list one.
 - **`:not_asked` from `EhOsContract.Auth.People`** now means the deployment asks for neither the
   people nor mail: one that asks for mail alone is given a credential, and the people API answers
   `:not_agreed` (#436, eh-os D-140).
