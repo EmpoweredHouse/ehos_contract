@@ -57,7 +57,8 @@ them: the sandbox runs it without `--warnings-as-errors`. The sandbox's counts a
 `sandbox/test/e10_outputs_test.exs`, with what each comes from, so a new sandbox line fails that test and
 its pull request re-pins it; the engine's counts are pinned nowhere, so compare them with `main`'s (the
 gate prints both). Every new line needs a sentence from its author —
-"expected, because…" or a fix. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
+"expected, because…" or a fix — and so does a line that disappears: a value newly declared
+`code: true` silences `free-text-not-personal` for every field of it, and has to earn that. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
 hide a mistake:
 
 | Rule | Ask |
