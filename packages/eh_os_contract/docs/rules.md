@@ -236,6 +236,20 @@ since its outcome is outside the log and no scenario can name it (S6). A warning
 invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
 invariant holds, and a reaction is also checked on the log by the conformance report.
 
+## `recording-without-scenario`
+
+**warning**
+
+No scenario records an event its `recorded_by:` actors record.
+
+The event is written into the log by an actor, a person or an integration, with no command to
+decide it, and the contract shows it only as a `given` of what follows. A scenario that records
+it, `record :collected, %{…}` with one of those actors, is what shows who may write it and what
+it appends; one with `rejected:` shows the data a value's invariant refuses. For an integration
+that is the part that matters most: what the outside system may write into the log. A warning,
+as `reaction-without-scenario` is: `EhOsContract.record/3` still holds every recording to its
+declaration.
+
 ## `transition-without-scenario`
 
 **warning**

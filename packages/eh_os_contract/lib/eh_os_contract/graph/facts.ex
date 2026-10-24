@@ -80,8 +80,9 @@ defmodule EhOsContract.Graph.Facts do
 
   @doc """
   The facts of `contract`: `%{nodes: %{kind => [node]}, relations: %{type =>
-  [relation]}, scenarios: %{target kind => [scenario]}}`, every kind, type and
-  target kind present, empty or not. Its own declarations are scoped to the
+  [relation]}, scenarios: %{group => [scenario]}}`, every kind, type and
+  group present, empty or not: a group is a target kind, or `record` for the
+  scenarios that record an event of a unit. Its own declarations are scoped to the
   contract, the domain's — actors, externals, publications, values, entities,
   subjects, contexts — to the domain, and only those its declarations name are in
   it.
@@ -568,14 +569,17 @@ defmodule EhOsContract.Graph.Facts do
     groups = [aggregate: :unit, dcb: :unit, policy: :policy, process_manager: :process_manager]
     groups = groups ++ [query: :query]
 
+    # A recording's scenario is about its unit, and a group of its own, since it has
+    # no command a unit's scenario always carries (issue #430).
     for s <- model.scenarios,
-        group = groups[s.target.kind],
-        reduce: Map.new([:unit, :policy, :process_manager, :query], &{&1, []}) do
+        about = groups[s.target.kind],
+        group = if(s.trigger.kind == :record, do: :record, else: about),
+        reduce: Map.new([:unit, :record, :policy, :process_manager, :query], &{&1, []}) do
       acc ->
         base = %{
           id: Document.id([:scenario, c, s.description]),
           description: s.description,
-          target: id(group, c, s.target.name)
+          target: id(about, c, s.target.name)
         }
 
         {shape, covers} = scenario(group, s, model, find)
@@ -614,6 +618,36 @@ defmodule EhOsContract.Graph.Facts do
        given_entities: if(entities != [], do: entities),
        rejected: rule
      ), covers}
+  end
+
+  # A recording's (issue #430): who records which event after which events, and that it
+  # is appended, or the invariant of a domain value its data breaks. It covers the
+  # actor's arrow to the event.
+  defp scenario(:record, s, model, find) do
+    c = model.id
+    event = id(:event, c, s.trigger.name)
+    actor = s.actor && id(:actor, model.domain, s.actor)
+
+    rejected =
+      with invariant when invariant != nil <- s.rejected,
+           %{fields: fields} <- Enum.find(model.events, &(&1.name == s.trigger.name)),
+           values = EhOsContract.Codec.values(model.domain),
+           value when value != nil <-
+             EhOsContract.Contract.Links.Scenarios.refusing_value(fields, invariant, values) do
+        %{value: id(:value, model.domain, value), invariant: Atom.to_string(invariant)}
+      else
+        _ -> nil
+      end
+
+    {with_attrs(
+       %{
+         given: happened(c, s.given),
+         record: %{event: event, data: s.trigger.data},
+         expect: happened(c, s.expect)
+       },
+       actor: actor,
+       rejected: rejected
+     ), [actor && find.(:may_record, actor, event, [])]}
   end
 
   # A policy's: the event delivered and the commands it issues. It covers the event's

@@ -1,10 +1,11 @@
 defmodule EhOsContract.Contract.Rules.Scenarios do
   # S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
   #
-  # - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
-  #   it resolves to the declaration that answers it. No two scenarios have the same
-  #   description, which is what names each one. A command belongs to one unit;
-  #   an event may be handled by several reactions, and then `target` names the one.
+  # - **S1.** A scenario has exactly one trigger — `command`, `on`, `query` or `record`
+  #   — and it resolves to the declaration that answers it. No two scenarios have the
+  #   same description, which is what names each one. A command belongs to one unit;
+  #   an event may be handled by several reactions, and then `target` names the one;
+  #   an event recorded (issue #430) is one its unit declares `recorded_by:`.
   # - **S2.** `given` events are ones the target keeps its state from: a unit's own
   #   events, and for a boundary also the events it consults; a process manager's
   #   triggers; for a query, the events the read model it reads projects. A policy
@@ -18,7 +19,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   before it, since a log never holds a later event before an earlier one, and no
   #   undated given comes before a dated one (plan DD, S2, #251).
   # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
-  # - **S5.** `expect` names events in the command's `emits:`.
+  #   A recording's names an invariant of a domain value, which only the domain knows
+  #   (`EhOsContract.Contract.Links.Scenarios`).
+  # - **S5.** `expect` names events in the command's `emits:`; after a recording, the
+  #   event recorded, since nothing is decided and nothing else is appended.
   # - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
   #   `expect` or by `rejected`, not both. An event delivered to a policy is followed
   #   by what it `issues`; to a process manager, by what it `issues`, `sets`,
@@ -30,9 +34,12 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   many, one row or `nil` when it returns one, each row naming fields of the read
   #   model it reads. An effect's outcome is outside the log, so an effect is no
   #   scenario's target; neither is a read model on its own, which a scenario reaches
-  #   through a query, as ESDM's read model scenario does.
-  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one;
-  #   `as:`, the person issuing it (plan DD, A1, #247), only beside an `actor`.
+  #   through a query, as ESDM's read model scenario does. A recording is followed by
+  #   `expect` or by `rejected`, not both, as a command is.
+  # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command and a
+  #   recording have one; a recording's is required, and in the event's `recorded_by:`,
+  #   since who may write a fact into the log is what its scenario shows. `as:`, the
+  #   person issuing a command (plan DD, A1, #247), only beside an `actor`.
   # - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
   #   successor of architecture §18's gate, kept an error although ESDM makes it a
   #   warning — and so is every constraint of a command, by a scenario of that command
@@ -218,7 +225,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     case triggers do
       [] ->
-        [{"S1: #{where} has no trigger; give it one command, on or query", scenario}]
+        [{"S1: #{where} has no trigger; give it one command, on, query or record", scenario}]
 
       [_, _ | _] = many ->
         [
@@ -263,9 +270,15 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp illustrated(where, %{illustrates: [_ | _]} = scenario, kind, _target)
        when kind in [:aggregate, :dcb] do
+    whose =
+      case scenario.trigger do
+        [%{kind: :record}] -> "a recording's scenario shows the value's invariant"
+        _command -> "a command's scenario shows the rules"
+      end
+
     [
-      {"S10: #{where} names rules in illustrates:, but a command's scenario shows the rules " <>
-         "it is refused on with `rejected`", scenario}
+      {"S10: #{where} names rules in illustrates:, but #{whose} it is refused on with " <>
+         "`rejected`", scenario}
     ]
   end
 
@@ -322,6 +335,12 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     for q <- d.queries, q.name == name, do: {:query, q}
   end
 
+  defp candidates(%Dsl.Trigger{kind: :record, name: name}, d) do
+    for unit <- d.units,
+        Enum.any?(unit.events, &(&1.name == name and &1.recorded_by != [])),
+        do: {unit.kind, unit}
+  end
+
   defp unresolved(%Dsl.Trigger{kind: :command, name: name}),
     do: "#{inspect(name)} is not a command of this contract"
 
@@ -330,6 +349,9 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   defp unresolved(%Dsl.Trigger{kind: :query, name: name}),
     do: "#{inspect(name)} is not a query of this contract"
+
+  defp unresolved(%Dsl.Trigger{kind: :record, name: name}),
+    do: "#{inspect(name)} is not an event of this contract that an actor records (recorded_by:)"
 
   defp triggers(pm) do
     Enum.map(pm.starts_on, & &1.event) ++
@@ -348,30 +370,52 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   # --- S2–S7, once the target is known ----------------------------------------------
 
+  # Issue #430: an event an actor records, with no decision — what it may write into
+  # the log, or the value's invariant its data breaks.
+  defp fits(where, scenario, %Dsl.Trigger{kind: :record} = trigger, kind, unit, d)
+       when kind in [:aggregate, :dcb] do
+    event = Enum.find(unit.events, &(&1.name == trigger.name))
+    where = "#{where} (#{kind(kind)} #{inspect(unit.name)})"
+
+    recorded =
+      data(where, trigger, "event #{inspect(event.name)}", event.fields, unit, required: true)
+
+    expected =
+      Enum.flat_map(scenario.expect, fn expect ->
+        if expect.event == event.name do
+          data(where, expect, "event #{inspect(event.name)}", event.fields, unit, required: false)
+        else
+          [
+            {"S5: #{where}: expects #{inspect(expect.event)}, and a recording appends only the " <>
+               "event it records, #{inspect(event.name)}", expect}
+          ]
+        end
+      end)
+
+    outcome =
+      case {scenario.expect, scenario.rejected} do
+        {[], nil} ->
+          [{"S6: #{where}: after a recording, expect the event or say it is rejected", scenario}]
+
+        {[_ | _], rejected} when rejected != nil ->
+          [{"S6: #{where}: a recording either appends or is rejected; not both", scenario}]
+
+        _ ->
+          []
+      end
+
+    foreign =
+      reactions_only(where, scenario, "a recording") ++
+        no_state(where, scenario) ++ recorder(where, scenario, event)
+
+    unit_givens(where, scenario, unit, d) ++ recorded ++ expected ++ outcome ++ foreign
+  end
+
   defp fits(where, scenario, trigger, kind, unit, d) when kind in [:aggregate, :dcb] do
     command = Enum.find(unit.commands, &(&1.name == trigger.name))
     events = Map.new(unit.events, &{&1.name, &1})
-    consulted = MapSet.new(unit.consults, & &1.event)
     where = "#{where} (#{kind(kind)} #{inspect(unit.name)})"
-
-    givens =
-      Enum.flat_map(scenario.given, fn given ->
-        cond do
-          Map.has_key?(events, given.event) ->
-            data(where, given, "event #{inspect(given.event)}", events[given.event].fields, unit,
-              required: true
-            )
-
-          MapSet.member?(consulted, given.event) ->
-            event_data(where, given, given.event, d)
-
-          true ->
-            [
-              {"S2: #{where}: given #{inspect(given.event)} is neither an event of the unit nor " <>
-                 "one it consults", given}
-            ]
-        end
-      end)
+    givens = unit_givens(where, scenario, unit, d)
 
     command_data =
       data(where, trigger, "command #{inspect(command.name)}", command.fields, unit,
@@ -568,6 +612,30 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     ]
   end
 
+  # A unit's givens: its own events, and for a boundary the events it consults.
+  defp unit_givens(where, scenario, unit, d) do
+    events = Map.new(unit.events, &{&1.name, &1})
+    consulted = MapSet.new(unit.consults, & &1.event)
+
+    Enum.flat_map(scenario.given, fn given ->
+      cond do
+        Map.has_key?(events, given.event) ->
+          data(where, given, "event #{inspect(given.event)}", events[given.event].fields, unit,
+            required: true
+          )
+
+        MapSet.member?(consulted, given.event) ->
+          event_data(where, given, given.event, d)
+
+        true ->
+          [
+            {"S2: #{where}: given #{inspect(given.event)} is neither an event of the unit nor " <>
+               "one it consults", given}
+          ]
+      end
+    end)
+  end
+
   # The data of an event a scenario gives — delivered by `on`, or given — when this
   # contract declares its fields: a local event's, whose unit's identity the scenario
   # fills in, or a received one's. A sibling's fields are the sibling's (X9).
@@ -676,13 +744,33 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
       ]
   end
 
+  # Issue #430: who records the event is what a recording's scenario shows, so it is
+  # named, and among those the event's `recorded_by:` names.
+  defp recorder(where, %{as: as} = scenario, _event) when is_binary(as),
+    do: [{"S7: #{where}: only a command's scenario names a person with as:", scenario}]
+
+  defp recorder(where, %{actor: nil} = scenario, event),
+    do: [
+      {"S7: #{where}: a recording names who records it with actor:, one of " <>
+         "#{inspect(event.recorded_by)}", scenario}
+    ]
+
+  defp recorder(where, scenario, event) do
+    if scenario.actor in event.recorded_by,
+      do: [],
+      else: [
+        {"S7: #{where}: actor #{inspect(scenario.actor)} is not among who may record " <>
+           "#{inspect(event.name)}, #{inspect(event.recorded_by)}", scenario}
+      ]
+  end
+
   defp no_actor(where, %{actor: nil, as: as} = scenario) when is_binary(as),
     do: [{"S7: #{where}: only a command's scenario names a person with as:", scenario}]
 
   defp no_actor(_where, %{actor: nil}), do: []
 
   defp no_actor(where, scenario),
-    do: [{"S7: #{where}: only a command's scenario names an actor", scenario}]
+    do: [{"S7: #{where}: only a command's or a recording's scenario names an actor", scenario}]
 
   # The rows a query answers: as many as it returns, each naming fields of the row.
   defp answers(where, answers, query, read_model) do
@@ -833,11 +921,13 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   # --- S8 -----------------------------------------------------------------------------
 
-  # Per unit: two units may each have an invariant of the same name.
+  # Per unit: two units may each have an invariant of the same name. A recording is
+  # refused on a value's invariant, never on its unit's.
   defp covered(d) do
     rejected =
       for scenario <- d.scenarios,
           scenario.rejected != nil,
+          [%{kind: :command}] <- [scenario.trigger],
           {_kind, unit} <- List.wrap(target(scenario, d)),
           into: MapSet.new(),
           do: {unit.name, scenario.rejected}

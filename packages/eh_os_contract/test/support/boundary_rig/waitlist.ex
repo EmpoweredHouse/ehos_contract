@@ -55,4 +55,18 @@ defmodule BoundaryRig.Waitlist do
     command :leave_waitlist
     rejected :still_waiting
   end
+
+  scenario "the timetable reminds a student on the list" do
+    actor :timetable
+    given :waitlist_joined, %{course_id: "course-math", student_id: "student-anna"}
+    record :waitlist_reminded
+    expect :waitlist_reminded
+  end
+
+  scenario "the registrar notes a place confirmed by phone" do
+    actor :registrar
+    given :waitlist_joined, %{course_id: "course-math", student_id: "student-anna"}
+    record :place_confirmed
+    expect :place_confirmed
+  end
 end

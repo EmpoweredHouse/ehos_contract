@@ -113,10 +113,13 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   step 1).
 - **A scenario shows it.** A decided event: `expect :new_event` in a scenario of the command that
   emits it, with data from a real case (`S5` refuses an `expect` outside the command's `emits:`). A
-  recorded event has no command to expect it from: it appears as a `given` in its unit's scenarios,
-  or as the `on` trigger of a reaction's scenario, and a test records it with
-  `EhOsContract.record/3` as an actor in its `recorded_by:`. `S3` refuses data of undeclared fields
-  either way.
+  recorded event has no command to expect it from: a scenario records it, `record :collected, %{…}`
+  with an `actor` from its `recorded_by:` (`S7` refuses one outside it, or none), and `expect`s it,
+  or is `rejected` on the invariant of a domain value its data breaks (`S4`) — for an integration,
+  that is what the outside system may write into the log. Beyond that it appears as a `given` in its
+  unit's scenarios, or as the `on` trigger of a reaction's scenario. `S3` refuses data of undeclared
+  fields either way, and `check` warns of a recorded event no scenario records
+  (`recording-without-scenario`).
 - **Leaving the application** is a separate declaration, `publish :name, as: "<domain>.<name>.v1",
   from: :event, fields: [...]` — a versioned name with the fields that cross, and no personal ones
   (`D11`), as `Billing.Contracts.Subscriptions` publishes the issued invoice. Not every event.
@@ -130,8 +133,10 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
    data marked.
 5. Place it: its unit; if it belongs to a run, the stage of the process module that includes it, and
    that module's `ends_on` if it ends the run.
-6. Decided: add it to the command's `emits:` and to a scenario's `expect`. Recorded: use it as a
-   scenario's `given` or `on`, and test `EhOsContract.record/3` with an actor from `recorded_by:`.
+6. Decided: add it to the command's `emits:` and to a scenario's `expect`. Recorded: a scenario that
+   `record`s it with an actor from `recorded_by:` and `expect`s it, and one `rejected` on each value
+   invariant its data can break that the material names; then use it as a `given` or `on` where
+   what follows depends on it.
 7. Compile. Every refusal starts with its code; `packages/eh_os_contract/docs/contract.md`, "What will not compile", says
    what each means.
 8. Run the gate from `sandbox/` and read any new `check` line naming the event

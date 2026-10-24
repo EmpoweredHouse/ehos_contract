@@ -1448,6 +1448,26 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
+  # An event an actor records, with no command to decide it: what it appends, or the
+  # value's invariant its data breaks.
+  defp scenario(%{scenario: %{"type" => "record"}} = assigns) do
+    ~H"""
+    <article class="ehg-scenario">
+      <p class="ehg-scenario-title">{@scenario["description"]}</p>
+      <.happened title="Given" list={@scenario["given"] || []} ctx={@ctx} />
+      <p class="ehg-step">When</p>
+      <p :if={@scenario["actor"]}><.ref id={@scenario["actor"]} ctx={@ctx} /> records</p>
+      <.with_data id={@scenario["record"]["event"]} data={@scenario["record"]["data"]} ctx={@ctx} />
+      <p class="ehg-step">Then</p>
+      <p :if={@scenario["rejected"]} class="ehg-refused">
+        refused: breaks {broken(@scenario["rejected"], @ctx)} of
+        <.ref id={@scenario["rejected"]["value"]} ctx={@ctx} />
+      </p>
+      <.with_data :for={e <- @scenario["expect"] || []} id={e["event"]} data={e["data"]} ctx={@ctx} />
+    </article>
+    """
+  end
+
   defp scenario(%{scenario: %{"type" => "policy"}} = assigns) do
     ~H"""
     <article class="ehg-scenario">
@@ -1565,6 +1585,17 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <% end %>
     </dl>
     """
+  end
+
+  # The invariant a recording breaks, by its label for the owner and its name in the
+  # code, from the value's node; its name alone when the node does not have it.
+  defp broken(%{"value" => value, "invariant" => name}, ctx) do
+    invariants = (Lookup.node(ctx.lookup, value) || %{})["invariants"] || []
+
+    case Enum.find(invariants, &(&1["name"] == name)) do
+      %{"label" => label} when not ctx.code? -> label
+      _ -> name
+    end
   end
 
   # A manager's scenarios by what triggers them, in the order they first appear: as a run

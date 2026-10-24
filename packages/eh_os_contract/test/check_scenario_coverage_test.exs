@@ -57,7 +57,37 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
       "coverage_visits.ex"
     )
 
+    compile(
+      contract("CoverageNotes", """
+        aggregate :visit, "Visit" do
+          identity :visit_id
+          event :noted, "Noted", recorded_by: :reception
+          event :called, "Called", recorded_by: :reception
+        end
+
+        scenario "reception notes a visit" do
+          actor :reception
+          record :noted
+          expect :noted
+        end
+      """),
+      "coverage_notes.ex"
+    )
+
     :ok
+  end
+
+  test "an event an actor records that no scenario records, at its declaration (issue #430)" do
+    found =
+      for %Finding{rule: "recording-without-scenario"} = f <-
+            Completeness.findings([EhOsContract.Fixtures.CoverageNotes]),
+          do: {f.message, Finding.place(f)}
+
+    assert [
+             {"event :called of EhOsContract.Fixtures.CoverageNotes is recorded by " <>
+                "[:reception], and no scenario records it, so nothing shows what they may " <>
+                "write into the log", {"coverage_notes.ex", 7}}
+           ] = found
   end
 
   test "an uncovered policy, process manager and query, each at its declaration" do

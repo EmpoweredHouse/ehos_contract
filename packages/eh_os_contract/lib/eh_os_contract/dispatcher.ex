@@ -647,6 +647,19 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # Issue #430: what `record/3` asks of a recording before it reads the log, the two
+  # checks apart, for `EhOsContract.ScenarioCase` to ask them as it does. Apart, because a
+  # scenario asks no `EhOsContract.Authorizer` about a person, and `record/3` always asks.
+  @doc false
+  @spec record_permitted(Model.t(), map(), Actor.t()) :: :ok | {:error, refusal()}
+  def record_permitted(model, declaration, %Actor{} = actor),
+    do: permit_record(model, declaration, actor)
+
+  @doc false
+  @spec record_fits(Model.t(), map(), struct()) :: :ok | {:error, refusal()}
+  def record_fits(model, declaration, event),
+    do: valid(declaration.fields, event, Codec.values(model.domain), model.domain)
+
   # --- the transaction -----------------------------------------------------------------
 
   defp run(job, repo) do

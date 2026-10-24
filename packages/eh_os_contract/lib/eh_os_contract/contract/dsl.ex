@@ -1124,6 +1124,16 @@ defmodule EhOsContract.Contract.Dsl do
     schema: @trigger_schema
   }
 
+  # Issue #430: what an actor of `recorded_by:` writes into the log, without a decision.
+  @scenario_record %Spark.Dsl.Entity{
+    name: :record,
+    describe: "The event the scenario's actor records, as `EhOsContract.record/3` does.",
+    target: Trigger,
+    args: [:name, {:optional, :data}],
+    auto_set_fields: [kind: :record],
+    schema: @trigger_schema
+  }
+
   @expect %Spark.Dsl.Entity{
     name: :expect,
     describe: "An event the trigger produces.",
@@ -1199,7 +1209,7 @@ defmodule EhOsContract.Contract.Dsl do
     entities: [
       given: [@given],
       given_entities: [@given_entity],
-      trigger: [@scenario_command, @scenario_on, @scenario_query],
+      trigger: [@scenario_command, @scenario_on, @scenario_query, @scenario_record],
       expect: [@expect],
       issues: [@issues],
       sets: [@sets],
@@ -1213,14 +1223,19 @@ defmodule EhOsContract.Contract.Dsl do
         type: :atom,
         doc: "The unit or reaction the case is about, when the trigger does not say which."
       ],
-      actor: [type: :atom, doc: "The actor who issues the command."],
+      actor: [type: :atom, doc: "The actor who issues the command, or records the event."],
       as: [
         type: :string,
         doc:
           "The person issuing the command, as their credential's subject; beside `actor:`, for a " <>
             "command whose `actor_is` names who must issue it."
       ],
-      rejected: [type: :atom, doc: "The invariant the command is refused on."],
+      rejected: [
+        type: :atom,
+        doc:
+          "The invariant the command is refused on; for a recording, the invariant of a " <>
+            "domain value its data breaks."
+      ],
       illustrates: [
         type: {:wrap_list, :atom},
         default: [],

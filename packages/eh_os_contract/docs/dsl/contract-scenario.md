@@ -23,13 +23,13 @@ Given events, a trigger, and what follows: an example the process owner reads.
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `target` | `atom` |  |  | The unit or reaction the case is about, when the trigger does not say which. |
-| `actor` | `atom` |  |  | The actor who issues the command. |
+| `actor` | `atom` |  |  | The actor who issues the command, or records the event. |
 | `as` | `String.t` |  |  | The person issuing the command, as their credential's subject; beside `actor:`, for a command whose `actor_is` names who must issue it. |
-| `rejected` | `atom` |  |  | The invariant the command is refused on. |
+| `rejected` | `atom` |  |  | The invariant the command is refused on; for a recording, the invariant of a domain value its data breaks. |
 | `illustrates` | `atom \| list(atom)` |  | `[]` | The rules this case shows: a constraint of the policy, process manager or query, or an invariant of the process manager. |
 | `ended` | `boolean` |  | `false` | Whether the process manager ends. |
 
-Inside it: [`given`](#contract-scenario-given), [`given_entity`](#contract-scenario-given_entity), [`command`](#contract-scenario-command), [`on`](#contract-scenario-on), [`query`](#contract-scenario-query), [`expect`](#contract-scenario-expect), [`issues`](#contract-scenario-issues), [`sets`](#contract-scenario-sets), [`cancels`](#contract-scenario-cancels), [`answers`](#contract-scenario-answers), [`state`](#contract-scenario-state).
+Inside it: [`given`](#contract-scenario-given), [`given_entity`](#contract-scenario-given_entity), [`command`](#contract-scenario-command), [`on`](#contract-scenario-on), [`query`](#contract-scenario-query), [`record`](#contract-scenario-record), [`expect`](#contract-scenario-expect), [`issues`](#contract-scenario-issues), [`sets`](#contract-scenario-sets), [`cancels`](#contract-scenario-cancels), [`answers`](#contract-scenario-answers), [`state`](#contract-scenario-state).
 
 <a id="contract-scenario-given"></a>
 
@@ -118,6 +118,24 @@ query name, data \\ %{}
 ```
 
 The query the scenario asks.
+
+**Arguments**
+
+| Name | Type | Required | Default | Docs |
+|------|------|----------|---------|------|
+| `name` | `atom` | yes |  | What is triggered. |
+| `data` | `map` |  | `%{}` | Its fields. |
+
+
+<a id="contract-scenario-record"></a>
+
+## scenario.record
+
+```elixir
+record name, data \\ %{}
+```
+
+The event the scenario's actor records, as `EhOsContract.record/3` does.
 
 **Arguments**
 

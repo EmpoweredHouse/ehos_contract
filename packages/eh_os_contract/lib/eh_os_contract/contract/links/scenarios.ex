@@ -16,6 +16,9 @@ defmodule EhOsContract.Contract.Links.Scenarios do
   #   where S3 requires one (a `given` and the trigger, not what is expected or
   #   issued), each value of its type. The sibling's identity is filled in by
   #   `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
+  #
+  # And **S4, the part that needs the domain** (issue #430): a recording's `rejected`
+  # names an invariant of a domain value the recorded event's fields hold.
   @moduledoc false
 
   alias EhOsContract.Model
@@ -35,7 +38,72 @@ defmodule EhOsContract.Contract.Links.Scenarios do
         {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
       end
 
-    scenarios ++ rule_examples(c, values)
+    scenarios ++ refused_recordings(c, values) ++ rule_examples(c, values)
+  end
+
+  # S4, the part that needs the domain (issue #430): a recording is refused only on an
+  # invariant of a domain value its fields hold, at any depth, since nothing decides it.
+  defp refused_recordings(%{domain: nil}, _values), do: []
+
+  defp refused_recordings(c, values) do
+    for {%{trigger: %{kind: :record, name: name}, rejected: rejected} = model, declaration} <-
+          Enum.zip(c.model.scenarios, c.declarations.scenarios),
+        rejected != nil,
+        event = Enum.find(c.model.events, &(&1.name == name)),
+        held =
+          event.fields
+          |> Enum.map(& &1.type)
+          |> held(values)
+          |> Enum.flat_map(&Enum.map(Map.get(values[&1], :invariants, []), fn i -> i.name end))
+          |> Enum.uniq(),
+        rejected not in held do
+      {"S4: scenario #{inspect(model.description)}: rejected #{inspect(rejected)} is no " <>
+         "invariant of a domain value event #{inspect(name)} holds; a recording is refused " <>
+         "only on one, and its fields hold #{inspect(held)}", Links.at(declaration)}
+    end
+  end
+
+  @doc false
+  # The domain values `types` hold, at any depth, each once: a value shared by many fields,
+  # or one that holds itself, is walked once. What a value is made of comes before it, and
+  # the fields in their order, as dispatch asks a value's invariants (`EhOsContract.Codec`).
+  @spec held([term()], map()) :: [atom()]
+  def held(types, values) do
+    {_seen, order} = Enum.reduce(types, {MapSet.new(), []}, &walk(&1, values, &2))
+    Enum.reverse(order)
+  end
+
+  defp walk({:list, inner}, values, acc), do: walk(inner, values, acc)
+
+  defp walk(type, values, {seen, order} = acc) when is_atom(type) and is_map_key(values, type) do
+    if MapSet.member?(seen, type) do
+      acc
+    else
+      parts =
+        case Map.fetch!(values, type) do
+          %{type: nil, fields: fields} -> Enum.map(fields, & &1.type)
+          %{type: inner} -> [inner]
+        end
+
+      {seen, order} = Enum.reduce(parts, {MapSet.put(seen, type), order}, &walk(&1, values, &2))
+      {seen, [type | order]}
+    end
+  end
+
+  defp walk(_type, _values, acc), do: acc
+
+  @doc false
+  # The domain value `fields` hold that a recording refused on `invariant` breaks: the
+  # first, in the order dispatch asks them, that declares it; nil when none does. S4 makes
+  # sure one does. The graph and the owner's pages name it.
+  @spec refusing_value([map()], atom(), map()) :: atom() | nil
+  def refusing_value(fields, invariant, values) do
+    fields
+    |> Enum.map(& &1.type)
+    |> held(values)
+    |> Enum.find(fn v ->
+      Enum.any?(Map.get(values[v], :invariants, []), &(&1.name == invariant))
+    end)
   end
 
   defp rule_examples(c, values) do
@@ -67,10 +135,17 @@ defmodule EhOsContract.Contract.Links.Scenarios do
 
     trigger =
       case {model.trigger, declaration.trigger} do
-        {%{kind: :command} = t, [at]} -> [command(c, t.name, t.data, at, true)]
-        {%{kind: :on} = t, [at]} -> [event(c, system, t.name, t.data, at, true)]
-        {%{kind: :query} = t, [at]} -> [params(c, t.name, t.data, at)]
-        _ -> []
+        {%{kind: :command} = t, [at]} ->
+          [command(c, t.name, t.data, at, true)]
+
+        {%{kind: kind} = t, [at]} when kind in [:on, :record] ->
+          [event(c, system, t.name, t.data, at, true)]
+
+        {%{kind: :query} = t, [at]} ->
+          [params(c, t.name, t.data, at)]
+
+        _ ->
+          []
       end
 
     answered =

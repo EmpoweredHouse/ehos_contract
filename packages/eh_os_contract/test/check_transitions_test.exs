@@ -122,4 +122,52 @@ defmodule EhOsContract.CheckTransitionsTest do
     refute Enum.any?(messages, &(&1 =~ "from :lent to :closed"))
     refute Enum.any?(messages, &(&1 =~ ":noted"))
   end
+
+  # Issue #430's review: an event a command emits and an actor also records. Only the
+  # command's scenario shows the implementation taking the transition; a recording decides
+  # nothing.
+  test "a recording of an event a command also emits takes no transition" do
+    compile(
+      contract("TransitionRecorded", """
+        aggregate :ticket, "Ticket" do
+          identity :ticket_id
+
+          lifecycle do
+            status :open, "Open"
+            status :closed, "Closed", final: true
+
+            initial :open, on: :opened
+            transition :open, :closed, :closed
+          end
+
+          command :open_ticket, "Open", by: :reception, emits: :opened
+          command :close_ticket, "Close", by: :reception, emits: :closed
+
+          event :opened, "Opened"
+          event :closed, "Closed", recorded_by: :reception
+        end
+
+        scenario "a ticket is opened" do
+          command :open_ticket
+          expect :opened
+        end
+
+        scenario "reception notes a ticket closed" do
+          actor :reception
+          given :opened
+          record :closed
+          expect :closed
+        end
+      """),
+      "transition_recorded.ex"
+    )
+
+    messages =
+      for %Finding{rule: "transition-without-scenario"} = f <-
+            Completeness.findings([EhOsContract.Fixtures.TransitionRecorded]),
+          do: f.message
+
+    assert [message] = messages
+    assert message =~ "moves from :open to :closed on :closed"
+  end
 end

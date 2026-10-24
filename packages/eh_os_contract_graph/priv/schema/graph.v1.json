@@ -453,6 +453,13 @@
                 "$ref": "#/$defs/scenario_unit"
               }
             },
+            "record": {
+              "type": "array",
+              "description": "A unit's scenarios that record an event of it rather than issue a command; a document from before they could is without it.",
+              "items": {
+                "$ref": "#/$defs/scenario_record"
+              }
+            },
             "policy": {
               "type": "array",
               "items": {
@@ -4181,6 +4188,84 @@
         "rejected": {
           "type": "string",
           "description": "The id of the rule it is refused on."
+        }
+      }
+    },
+    "scenario_record": {
+      "type": "object",
+      "description": "A recording's: the event an actor records after the events given, appended as recorded or refused on an invariant of a domain value its data breaks.",
+      "required": [
+        "id",
+        "description",
+        "target",
+        "covers",
+        "given",
+        "record",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The id of the unit the event belongs to."
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ids of the relations it exercises, which the engine computes."
+        },
+        "actor": {
+          "type": "string",
+          "description": "The id of the actor who records it."
+        },
+        "given": {
+          "$ref": "#/$defs/happened"
+        },
+        "record": {
+          "type": "object",
+          "required": [
+            "event",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "event": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/$defs/data"
+            }
+          }
+        },
+        "expect": {
+          "$ref": "#/$defs/happened"
+        },
+        "rejected": {
+          "type": "object",
+          "description": "The invariant of a domain value the recording is refused on.",
+          "required": [
+            "value",
+            "invariant"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "value": {
+              "type": "string",
+              "description": "The id of the value's node."
+            },
+            "invariant": {
+              "type": "string",
+              "description": "The invariant's name, among the value's invariants."
+            }
+          }
         }
       }
     },

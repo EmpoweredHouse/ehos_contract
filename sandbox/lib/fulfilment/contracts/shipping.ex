@@ -107,4 +107,12 @@ defmodule Fulfilment.Contracts.Shipping do
     command :dispatch_parcel, %{order_id: "order-1"}
     rejected :dispatched_once_when_booked
   end
+
+  scenario "the carrier records a parcel delivered" do
+    actor :carrier_integration
+    given :booked, %{order_id: "order-1", service: :parcel, weight_grams: 1_200}
+    given :dispatched
+    record :delivered
+    expect :delivered, %{order_id: "order-1"}
+  end
 end

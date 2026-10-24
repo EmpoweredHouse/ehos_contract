@@ -97,4 +97,18 @@ defmodule Billing.Contracts.Payments do
     command :write_off_payment
     rejected :only_an_unpaid_payment_is_written_off
   end
+
+  scenario "the gateway records a payment it collected" do
+    actor :gateway_integration
+    given :requested, @requested
+    record :collected, %{amount: 2_200}
+    expect :collected, %{amount: 2_200}
+  end
+
+  scenario "the gateway cannot record a negative amount collected" do
+    actor :gateway_integration
+    given :requested, @requested
+    record :collected, %{amount: -1}
+    rejected :not_negative
+  end
 end

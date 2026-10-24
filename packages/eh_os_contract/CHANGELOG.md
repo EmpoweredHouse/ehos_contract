@@ -48,6 +48,20 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A scenario can record an event** (#430): `record :collected, %{…}` with the `actor` who records it shows
+  what an actor of the event's `recorded_by:` may write into the log, `expect`ing the event or `rejected` on the
+  invariant of a domain value its data breaks. `EhOsContract.ScenarioCase` holds it to what `EhOsContract.record/3`
+  checks before it reads the log, and runs no implementation. The compiler requires the `actor`, among the
+  event's `recorded_by:` (S7), expects only the event recorded (S5), and a `rejected` naming an invariant of a
+  value the event's fields hold (S4). A graph document carries such scenarios in a new `record` group of its
+  `scenarios`, with its own `scenario_record` shape in `graph.v1`, and the exported model a scenario's trigger of
+  kind `record` beside `command`, `on` and `query`.
+- **`mix eh_os_contract.check` warns of an event an actor records that no scenario records**
+  (`recording-without-scenario`, #430). A new warning only: no verdict moves, but a host running
+  `check --warnings-as-errors` with a `recorded_by:` event turns red until it adds a scenario that records it.
+
 ## [0.10.0] - 2026-10-24
 
 ### Added

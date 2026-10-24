@@ -152,6 +152,42 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
         end)
       end)
 
+  @gateway "actor:Billing.Domain:gateway_integration"
+  @collected "event:billing.payments:collected"
+  @payment "unit:billing.payments:payment"
+
+  @doc """
+  Billing's payments with the scenarios that record what the gateway collected, as the
+  engine writes them since a scenario can record an event (issue #430): one appended,
+  one refused on the invariant of the amount's value.
+  """
+  def payments_recorded do
+    recording = fn description, amount, outcome ->
+      Map.merge(
+        %{
+          "id" => "scenario:billing.payments:#{description}",
+          "description" => description,
+          "target" => @payment,
+          "covers" => ["may_record:#{@gateway}:#{@collected}"],
+          "actor" => @gateway,
+          "given" => [],
+          "record" => %{"event" => @collected, "data" => %{"amount" => amount}},
+          "expect" => []
+        },
+        outcome
+      )
+    end
+
+    put_in(document("billing.payments"), ["scenarios", "record"], [
+      recording.("the gateway records a payment it collected", 2_200, %{
+        "expect" => [%{"event" => @collected, "data" => %{"amount" => 2_200}}]
+      }),
+      recording.("the gateway cannot record a negative amount collected", -1, %{
+        "rejected" => %{"value" => "value:Billing.Domain:money", "invariant" => "not_negative"}
+      })
+    ])
+  end
+
   @doc """
   Every fixture document by its name, and the variants above, for the tests that go over
   every element of every document.
@@ -162,7 +198,8 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
         [
           {"process.fulfilment.order, with its other way", order_with_other_way()},
           {"lending.circulation, with its variants", circulation_variant()},
-          {"domain.fulfilment, with its patterns", fulfilment_variant()}
+          {"domain.fulfilment, with its patterns", fulfilment_variant()},
+          {"billing.payments, with its recordings", payments_recorded()}
         ]
 
   @doc "Every node and every relation of `document`, flat."

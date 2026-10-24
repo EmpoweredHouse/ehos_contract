@@ -224,6 +224,26 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     end
   end
 
+  # Issue #430: a scenario that records an event says who records it, and what is
+  # appended or the value's invariant it breaks.
+  describe "a recording's scenario" do
+    @may_record "may_record:actor:Billing.Domain:gateway_integration:event:billing.payments:collected"
+
+    test "the actor's arrow to the event names who records what, and the invariant broken" do
+      text = open(Fixtures.payments_recorded(), @may_record)
+
+      assert text =~ "the gateway records a payment it collected"
+      assert text =~ "When Payment gateway integration actor records Payment collected event"
+      assert text =~ "the gateway cannot record a negative amount collected"
+      assert text =~ "refused: breaks not_negative of"
+    end
+
+    test "the owner reads the invariant by its label" do
+      text = open(Fixtures.payments_recorded(), @may_record, :all, nil, :owner)
+      assert text =~ "refused: breaks An amount is not negative of"
+    end
+  end
+
   # What a command's decision reads, the one person who may issue it, and a scenario's
   # rows, person and moments, as `graph.v1` has them since main's plan DD (T2a, A1,
   # S2): lending's loan reads the membership card, the warehouse's pick list is confirmed
