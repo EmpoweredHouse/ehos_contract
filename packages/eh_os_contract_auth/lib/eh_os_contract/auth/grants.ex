@@ -65,7 +65,7 @@ defmodule EhOsContract.Auth.Grants do
     * `:not_found`: `revoke/4` of a binding that is not there, or an environment removed;
     * `:rate_limited`: EHOS's limit on its token endpoint or its grant routes. Each call
       exchanges once, and EHOS takes at most 60 token requests a minute from the
-      application's client, `EhOsContract.Auth.People`'s included: offer the grant only to
+      application's client, `EhOsContract.Auth.Workload`'s included: offer the grant only to
       people whose role may give one;
     * `:signed_out`, `:renewal_busy`: the session's, as `EhOsContract.Auth.Session.actor/2`
       answers them. `:renewal_busy` also when the person's credential has too few seconds

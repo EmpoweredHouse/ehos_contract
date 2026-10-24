@@ -12,7 +12,7 @@ Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContra
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
 front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
 `EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
-company's people, `EhOsContract.Auth.Grants` for a person granting a role their rule lets them give,
+company's people, `EhOsContract.Auth.Mail` for sending mail through EHOS, `EhOsContract.Auth.Grants` for a person granting a role their rule lets them give,
 and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
@@ -424,14 +424,19 @@ needs:
 ```elixir
 # config/runtime.exs, beside issuer:
 config :eh_os_contract_auth,
-  people: [
+  workload: [
     client_id: System.fetch_env!("EHOS_CLIENT_ID"),
     client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE")
   ]
 
 # the supervision tree; cacertfile: as for EhOsContract.Auth
-children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.People]
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Workload]
 ```
+
+`EhOsContract.Auth.Workload` holds the application's own credential, which reading the people and
+[sending mail](#sending-mail) share. `config :eh_os_contract_auth, :people` and
+`EhOsContract.Auth.People` as the child are its older names, and still start it, registered as
+`EhOsContract.Auth.Workload`.
 
 ```elixir
 {:ok, %{people: people, next: next}} = EhOsContract.Auth.People.list(q: "ad", limit: 50)
@@ -440,7 +445,7 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Peopl
 # %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
 ```
 
-The process takes its own credential at EHOS's token endpoint with the client credentials
+The workload process takes its own credential at EHOS's token endpoint with the client credentials
 grant, signed with the client key. It keeps the credential for its 10 minutes and takes another
 before it expires. Callers that need one at the same time wait for a single request. After a
 refusal or an outage, the process gives the same answer for 5 seconds without asking EHOS again.
@@ -455,12 +460,76 @@ A call that returns no people says why, so the page can explain it in words:
 | --- | --- |
 | `:not_agreed` | No people manager has agreed for this environment, or the agreement was withdrawn |
 | `:not_found` | `get/2` of an id that is no one's |
-| `:not_asked` | The deployment does not ask `needs.people: read` |
+| `:not_asked` | The deployment asks for neither the people nor mail; one that asks for mail alone is `:not_agreed` |
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 600 calls a minute |
 | `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
 
 The list is never copied into the application. While EHOS cannot answer, the call fails, the
 page says so, and the rest of the application keeps working.
+
+## Sending mail
+
+An application tells a person that a document waits for their approval by sending mail through
+EHOS, as itself, over the company's relay. Its `ehos.yaml/v6` asks for it, at one of two levels:
+`internal`, to people in EHOS's directory by their id, or `external`, to any address as well. It
+may also name the domains where it receives the answers. EHOS then gives its workload
+`EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, and sends only after someone who holds
+`ehos.mail.manage` agrees, for that environment, at a level no wider than the one asked for.
+
+```yaml
+schema: ehos.yaml/v6
+needs:
+  mail:
+    level: internal
+    reply_domains: [reply.office.example.org]
+```
+
+The configuration and the child are `EhOsContract.Auth.Workload`'s, as for
+[reading the people](#reading-the-companys-people).
+
+```elixir
+{:ok, results} =
+  EhOsContract.Auth.Mail.deliver(
+    to: [{:person, person_id}],                 # at external, {:address, "a@example.org"} too
+    subject: "A document waits for your approval",
+    text: "Open it at https://office.example.org/d/42.",
+    html: ~s(<p>Open it <a href="https://office.example.org/d/42">here</a>.</p>),
+    reply_to: {:address, "t-42@reply.office.example.org"},
+    attachments: [%{filename: "approval.pdf", content_type: "application/pdf", content: pdf}]
+  )
+# [%EhOsContract.Auth.Mail.Result{to: {:person, "6f1c…"}, sent?: true,
+#   message_id: "<…@office.example.org>", relay_response: "2.0.0 OK …", reason: nil}]
+```
+
+Each recipient gets a message of its own, from the installation's sending address under the
+application's name, and a `Result` in the order given. `sent?: true` means the relay took the
+message, not that it was delivered: a bounce goes to the installation's sending address, which EHOS
+does not read. Keep `message_id` to tie what you learn later to the message. `in_reply_to:` and
+`references:` take message ids, so a mail program threads the messages. An attachment with
+`inline: true` and a `content_id:` is an image the HTML shows as `<img src="cid:…">`. EHOS cleans
+the HTML of scripts and forms, and refuses executables, scripts and encrypted archives. EHOS's
+`docs/mail-api.md` has every limit.
+
+A call that sends nothing says why:
+
+| Error | When |
+| --- | --- |
+| `:not_agreed` | No mail agreement is in force for this environment, or the deployment no longer asks for mail |
+| `{:beyond_agreement, reasons}` | A recipient or the reply address the agreement does not allow, a person disabled, or an id that names no one |
+| `{:invalid, reasons}` | EHOS does not send the message as it is, each reason naming the value, such as `to[1]`, or the body is larger than EHOS reads |
+| `:not_asked` | The deployment asks for neither mail nor people |
+| `:rate_limited` | EHOS's limits: 60 credentials a minute, 60 calls a minute |
+| `:too_many_messages` | The application has sent the 1000 messages it may send today |
+| `:mail_disabled` | The installation sends no mail |
+| `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
+
+An option `deliver/1` does not take, or a string that is not UTF-8, raises `ArgumentError` before
+EHOS is asked, naming the option and never its value. A call is retried only once, with a new
+credential when EHOS refuses the one it sent, before anything is sent, and answers within three
+minutes. A call cut off on
+the way may have sent some messages already, so trying again is the application's choice. EHOS
+receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
+which it reads itself.
 
 ## A person granting a role
 

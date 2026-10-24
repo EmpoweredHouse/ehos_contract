@@ -24,11 +24,34 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **Sending mail through EHOS** (#436). `EhOsContract.Auth.Mail.deliver/1` sends a
+  message to people in EHOS's directory by their id, or, under an `external` agreement, to any
+  address, with HTML and attachments, as the application itself. It answers each recipient's
+  `EhOsContract.Auth.Mail.Result`, or why nothing was sent.
+- **`EhOsContract.Auth.Workload`**, the process that holds the application's own credential at
+  EHOS, which reading the people and sending mail share, configured by
+  `config :eh_os_contract_auth, :workload`.
+
 ### Changed
 
+- **Breaking:** **the people client's process is registered as `EhOsContract.Auth.Workload`** (#436),
+  whichever child starts it. A host that passes `server: EhOsContract.Auth.People`, or looks the
+  process up by that name, drops it or names `EhOsContract.Auth.Workload`. Both children have
+  that id, so a supervisor given both refuses to start: list one.
+- **`:not_asked` from `EhOsContract.Auth.People`** now means the deployment asks for neither the
+  people nor mail: one that asks for mail alone is given a credential, and the people API answers
+  `:not_agreed` (#436).
 - **Breaking:** **the engine is required at `~> 0.9.1`** (#421), however it is fetched: by version from Hex, and also when this
   package comes from git or a path, where Mix now holds the engine's version to it. A host whose engine is older
   than 0.9.1 is refused at `mix deps.get`.
+
+### Deprecated
+
+- **`config :eh_os_contract_auth, :people` and `EhOsContract.Auth.People` as a child** (#436): they
+  still start `EhOsContract.Auth.Workload`, and `:people` logs a warning at boot; name the child
+  and `:workload` instead. Setting both `:workload` and `:people` is refused at boot.
 
 ## [0.6.0] - 2026-10-23
 

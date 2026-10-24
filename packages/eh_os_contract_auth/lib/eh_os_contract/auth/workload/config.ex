@@ -1,7 +1,7 @@
-defmodule EhOsContract.Auth.People.Config do
+defmodule EhOsContract.Auth.Workload.Config do
   @moduledoc false
 
-  # What `EhOsContract.Auth.People` holds of its configuration. The client key is the secret
+  # What `EhOsContract.Auth.Workload` holds of its configuration. The client key is the secret
   # every assertion is signed with, so it is left out of every inspection, a crash report's
   # included.
 
