@@ -710,8 +710,22 @@ defmodule EhOsContract.ContractLinksDomainTest do
       assert length(violations) == 1
     end
 
+    test "a value made of fields is refused, saying so" do
+      violations = links("LinksConsultsContact", consulting(":contact"))
+
+      assert assert_linked(
+               violations,
+               "A4: dcb :visit_period consults :payment_recorded matching :period, which the " <>
+                 "event carries as :contact, resting on fields of its own",
+               "links_consults_contact.ex"
+             )
+    end
+
     test "control: a value resting on :id is a tag the boundary finds its events by" do
       assert links("LinksConsultsPeriod", consulting(":period_id")) == []
+
+      # An entity's identifier is an :id as the domain keeps it.
+      assert links("LinksConsultsClinicRef", consulting(":clinic_ref")) == []
     end
   end
 
