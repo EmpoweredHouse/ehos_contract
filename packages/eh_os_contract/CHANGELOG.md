@@ -62,6 +62,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `record/3`, `query/3` and `call/3`. What dispatch checks, in which order, and how it handles a conflict and a
   failure is now on `EhOsContract.dispatch/3`, and the types are `t:EhOsContract.refusal/0`, `t:EhOsContract.problem/0`
   and `t:EhOsContract.call/0`. `EhOsContract.Dispatcher.refusal()` still names the same type.
+- `docs/authorization.md` names `ehos.manifest/v7`, which `eh_os_contract_auth` writes for an `ehos.yaml/v6`
+  that asks to send mail through EHOS (#429).
 - **Hexdocs lists the modules in groups** (#421): writing a contract, dispatch and queries, the log, delivery,
   personal data, conformance, the model and its documents, testing and configuration.
 

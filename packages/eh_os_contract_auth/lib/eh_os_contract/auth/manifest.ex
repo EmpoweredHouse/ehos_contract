@@ -2,17 +2,18 @@ defmodule EhOsContract.Auth.Manifest do
   # The manifest's format is EHOS's, and so is each thing it added over time: `sign_in`;
   # `needs.people` with `ehos.manifest/v3`; `needs.database.seed` and `needs.secrets` with
   # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; `needs.egress` with
-  # `ehos.manifest/v6`; a capability naming its
+  # `ehos.manifest/v6`; `needs.mail` with `ehos.manifest/v7`; a capability naming its
   # declaration's kind; scope values on a binding; and `contracts` left out, so that an edit to a
   # contract does not change EHOS's authority digest.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v6` for an `ehos.yaml/v5`, `ehos.manifest/v5` for an older file when a role may
-  grant another, and otherwise `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an
-  `ehos.yaml/v3`, and `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be
-  `ehos.yaml/v3`, v4 is v3 whose `ehos_yaml` may be `ehos.yaml/v4`, v5 is v4 whose roles may
-  carry `may_grant`, v6 is v5 whose `ehos_yaml` may be `ehos.yaml/v5`, and EHOS refuses a
-  manifest that names a file newer than its own version.
+  `ehos.manifest/v7` for an `ehos.yaml/v6`, `ehos.manifest/v6` for an `ehos.yaml/v5`,
+  `ehos.manifest/v5` for an older file when a role may grant another, and otherwise
+  `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and
+  `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is v3
+  whose `ehos_yaml` may be `ehos.yaml/v4`, v5 is v4 whose roles may carry `may_grant`, v6 is v5
+  whose `ehos_yaml` may be `ehos.yaml/v5`, v7 is v6 whose `ehos_yaml` may be `ehos.yaml/v6`, and
+  EHOS refuses a manifest that names a file newer than its own version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
@@ -23,7 +24,9 @@ defmodule EhOsContract.Auth.Manifest do
   the command EHOS runs to seed an ephemeral environment, and `needs.secrets`, the secrets the
   workload is given; from `ehos.yaml/v5`, `needs.egress`, the hosts outside the installation the
   workload reaches, a port left out included as left out. EHOS counts the hosts in the
-  manifest's authority, which it computes itself. The generator adds:
+  manifest's authority, which it computes itself. From `ehos.yaml/v6`, `needs.mail`, how far the
+  workload asks to send mail through EHOS and the domains it reads the answers at. The generator
+  adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
       takes it from there; a domain without contracts is not counted. A project with
@@ -58,7 +61,7 @@ defmodule EhOsContract.Auth.Manifest do
   @max_application 63
 
   @doc """
-  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5` or `v6` document from an `ehos.yaml` already read by
+  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5`, `v6` or `v7` document from an `ehos.yaml` already read by
   `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the registered
   contracts.
 
@@ -105,9 +108,10 @@ defmodule EhOsContract.Auth.Manifest do
   produces, and what an EHOS has to accept for every manifest it writes to be deployed.
 
       iex> EhOsContract.Auth.Manifest.schemas()
-      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6"]
+      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6", "ehos.manifest/v7"]
 
-  `build/3` writes `ehos.manifest/v6` for an `ehos.yaml/v5`, whether or not a role may grant
+  `build/3` writes `ehos.manifest/v7` for an `ehos.yaml/v6` and `ehos.manifest/v6` for an
+  `ehos.yaml/v5`, whether or not a role may grant
   another; for an older file `ehos.manifest/v5` when a role may grant another, and otherwise
   `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3` and
   `ehos.manifest/v2` for an older one.
@@ -119,15 +123,17 @@ defmodule EhOsContract.Auth.Manifest do
       "ehos.manifest/v3",
       "ehos.manifest/v4",
       "ehos.manifest/v5",
-      "ehos.manifest/v6"
+      "ehos.manifest/v6",
+      "ehos.manifest/v7"
     ]
 
   # EHOS's rule: a manifest keeps the meaning it had when EHOS accepted it, so the version that
   # can carry `needs.people` is a new one, and so is the one that can carry a seed or secrets,
   # and the one whose roles may grant others, which takes every
   # `ehos.yaml` v4 does, and the one that can carry the hosts outside the installation, which
-  # takes a role that may grant too; an older file, and a domain without a rule, keep their older
-  # manifest.
+  # takes a role that may grant too, and the one that can carry mail; an older file, and a domain
+  # without a rule, keep their older manifest.
+  defp manifest_schema("ehos.yaml/v6", _offers), do: "ehos.manifest/v7"
   defp manifest_schema("ehos.yaml/v5", _offers), do: "ehos.manifest/v6"
 
   defp manifest_schema(ehos_yaml, %{"roles" => roles}) do

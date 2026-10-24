@@ -4,8 +4,9 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
 
   @moduledoc """
   Writes `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, `v4` for an `ehos.yaml/v4`, `v5` when a
-  role may grant another, or `v6` for an `ehos.yaml/v5`, the application's `ehos.yaml` extended
-  with what its contracts offer, for EHOS to deploy with the image.
+  role may grant another, `v6` for an `ehos.yaml/v5`, or `v7` for an `ehos.yaml/v6`, the
+  application's `ehos.yaml` extended with what its contracts offer, for EHOS to deploy with the
+  image.
 
       mix eh_os_contract.manifest --output ehos.manifest.json
       mix eh_os_contract.manifest --ehos-yaml deploy/ehos.yaml --output ehos.manifest.json

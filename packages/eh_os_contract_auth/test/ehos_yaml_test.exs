@@ -8,7 +8,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
   `ehos.yaml` of a real application, a ledger, both as they stood when copied
   (the ledger's with its comment's link removed), and a made-up `ehos.yaml/v2` with
   `sign_in`, a made-up `ehos.yaml/v3` that reads the company's people, a made-up
-  `ehos.yaml/v4` that seeds its database and is given secrets, and a made-up `ehos.yaml/v5` that
+  `ehos.yaml/v4` that seeds its database and is given secrets, a made-up `ehos.yaml/v6` that
+  sends mail to any address, and a made-up `ehos.yaml/v5` that
   reaches two hosts outside the installation.
   """
 
@@ -43,7 +44,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       {"schema", nil, "is required: it names the version of ehos.yaml the file is in"},
     "unknown_version.yaml" =>
       {"schema", 1,
-       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3, ehos.yaml/v4, ehos.yaml/v5; "ehos.yaml/v9" is not one)},
+       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3, ehos.yaml/v4, ehos.yaml/v5, ehos.yaml/v6; "ehos.yaml/v9" is not one)},
     "no_health.yaml" => {"health", nil, "is required"},
     "database_without_engine.yaml" => {"needs.database.engine", 3, "is required"},
     "unknown_key.yaml" => {"replicas", 6, "is not a field of ehos.yaml/v1"},
@@ -235,6 +236,40 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  describe "ehos.yaml/v6" do
+    test "reads needs.mail as written, the domains in their order" do
+      text = File.read!(Path.join([@fixtures, "accepted", "mail.yaml"]))
+
+      assert {:ok, %{"schema" => "ehos.yaml/v6", "needs" => needs}} = EhosYaml.read(text)
+
+      assert needs["mail"] == %{
+               "level" => "external",
+               "reply_domains" => ["reply.office.example.org", "answers.example.net"]
+             }
+    end
+
+    test "takes mail only from v6 on" do
+      for version <- ["ehos.yaml/v5", "ehos.yaml/v1"] do
+        text = "schema: #{version}\nneeds:\n  mail:\n    level: internal\n" <> @health
+        assert {:error, [%{path: path}]} = EhosYaml.read(text)
+        assert path in ["needs", "needs.mail"]
+      end
+    end
+
+    test "refuses a level it does not name, and a reply domain that is an address or a pattern" do
+      text = "schema: ehos.yaml/v6\nneeds:\n  mail:\n    level: everyone\n" <> @health
+      assert {:error, [%{path: "needs.mail.level"}]} = EhosYaml.read(text)
+
+      for domain <- ["192.0.2.1", "*.example.org", "reply.example.org\\n"] do
+        text =
+          "schema: ehos.yaml/v6\nneeds:\n  mail:\n    level: internal\n" <>
+            "    reply_domains: [\"#{domain}\"]\n" <> @health
+
+        assert {:error, [%{path: "needs.mail.reply_domains[0]"}]} = EhosYaml.read(text)
+      end
+    end
+  end
+
   describe "the schema" do
     test "is EHOS's ehos.yaml/v1, byte for byte" do
       # EHOS's `priv/schemas/ehos.yaml/v1.json`, as read on 1 October 2026; the same bytes an
@@ -293,13 +328,25 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       assert Jason.decode!(document)["title"] == "ehos.yaml/v5"
     end
 
-    test "are v1 to v5" do
+    test "is EHOS's ehos.yaml/v6, byte for byte" do
+      # EHOS's `priv/schemas/ehos.yaml/v6.json`, the version that asks to send mail through EHOS,
+      # as EHOS 0.20.0 releases it on 24 October 2026. EHOS freezes it from that release on.
+      document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v6"))
+
+      assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
+               "0ac21ec2094458fc35129c23ef52625999d7d192373154a9d43b0b8198b5faf0"
+
+      assert Jason.decode!(document)["title"] == "ehos.yaml/v6"
+    end
+
+    test "are v1 to v6" do
       assert EhosYaml.versions() == [
                "ehos.yaml/v1",
                "ehos.yaml/v2",
                "ehos.yaml/v3",
                "ehos.yaml/v4",
-               "ehos.yaml/v5"
+               "ehos.yaml/v5",
+               "ehos.yaml/v6"
              ]
     end
 

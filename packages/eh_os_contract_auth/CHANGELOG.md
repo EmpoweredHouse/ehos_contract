@@ -26,6 +26,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **`ehos.yaml/v6` and `ehos.manifest/v7`** (#429), as EHOS 0.20.0 releases them.
+  `mix eh_os_contract.manifest` reads an `ehos.yaml/v6`, EHOS's file copied byte for byte, whose
+  `needs.mail` asks to send mail through EHOS, to the company's people (`internal`) or to any address
+  (`external`), with the domains where the answers arrive. It writes an `ehos.manifest/v7` for it,
+  with `needs.mail` as written, whether or not a role may grant another; an older file makes the
+  manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release produces,
+  now ends with `ehos.manifest/v7`, which only an EHOS from 0.20.0 deploys.
+
 - **Sending mail through EHOS** (#436). `EhOsContract.Auth.Mail.deliver/1` sends a
   message to people in EHOS's directory by their id, or, under an `external` agreement, to any
   address, with HTML and attachments, as the application itself. It answers each recipient's
