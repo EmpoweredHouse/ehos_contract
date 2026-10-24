@@ -261,6 +261,11 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{invariants: []} = value),
     do: value |> Map.delete(:invariants) |> digest_form()
 
+  # `code:` only says what `check` reports, as `code_language` does, so a value declared
+  # a code allows what it allowed before and hashes as it did (#431).
+  defp digest_form(%{code: true} = value),
+    do: value |> Map.delete(:code) |> digest_form()
+
   # Plan EP5b: an actor without responsibilities hashes as before it could have them.
   defp digest_form(%{responsibilities: []} = actor),
     do: actor |> Map.delete(:responsibilities) |> digest_form()
