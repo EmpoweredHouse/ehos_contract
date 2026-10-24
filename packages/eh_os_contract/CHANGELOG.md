@@ -58,6 +58,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `eh_os_contract.lock`; only new commands are checked. A value that does not rest on `:id` is refused (`F1`),
   and so is a value in a generated identity. `EhOsContract.PropertyCase` and `EhOsContract.Generators.history/3`
   draw such a key from the value's `satisfied_by:` examples, as they draw any field of it.
+- **A boundary may `match:` a local event's field typed by a domain value resting on `:id`** (#435), as the
+  append already tags the event with it and as a sibling's event already allowed (`X6`). A contract that
+  matched one used to be refused at compile time (`A4`); now it compiles, and only a value resting on another
+  type is refused, against the domain.
 
 ## [0.10.0] - 2026-10-24
 

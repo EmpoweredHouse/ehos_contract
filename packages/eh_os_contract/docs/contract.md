@@ -422,7 +422,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
-| `A4` | L2 | a boundary consulting nothing; consulting an event neither local nor consumed, or one received from another application; a consult without `match:` or `where:`; `match:` naming a field twice, or on a field outside the boundary's identity, or one a local event lacks as a required, non-personal `:id` |
+| `A4` | L2, L3 | a boundary consulting nothing; consulting an event neither local nor consumed, or one received from another application; a consult without `match:` or `where:`; `match:` naming a field twice, or on a field outside the boundary's identity, or one a local event lacks as a required, non-personal `:id` or domain value; a matched field of a local event typed by a domain value that does not rest on `:id` (L3) |
 | `A5` | L2 | a unit or a process manager declaring `state` twice |
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |

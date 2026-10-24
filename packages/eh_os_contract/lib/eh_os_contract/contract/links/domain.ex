@@ -36,6 +36,10 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **F1**, the part that needs the domain (#435): a unit's identity field typed by a
   #   domain value names a value of the domain (X3) resting on `:id`, since its value
   #   is part of the unit's stream and of the tags a boundary matches on.
+  # - **A4**, the part that needs the domain (#435): a field a boundary's `match:` names
+  #   in a local event it consults, typed by a domain value, is of one resting on `:id`,
+  #   since only such a field tags an appended event, and the boundary finds what it
+  #   consults by its tags.
   # - **D11.** A `publish` is named under the application's namespace, the domain's
   #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
@@ -81,6 +85,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       upcast_values(c),
       correlation_values(c),
       identity_values(c),
+      consulted_values(c),
       externals(c),
       scopes(c),
       namespaces(c)
@@ -311,6 +316,32 @@ defmodule EhOsContract.Contract.Links.Domain do
       {problem.(
          "#{unit.kind} #{inspect(unit.name)}: identity #{inspect(field)}: #{inspect(type)}"
        ), Links.at(unit)}
+    end
+  end
+
+  # --- A4: what a boundary matches in a local event, typed by a domain value (#435) ----
+
+  # L2 let a field of a value through, not knowing what the value rests on. A value
+  # the domain does not declare is X3's, and an identity typed by one is F1's.
+  defp consulted_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+    events = for u <- d.units, e <- u.events, into: %{}, do: {e.name, {u, e}}
+
+    for unit <- d.units,
+        unit.kind == :dcb,
+        consults <- unit.consults,
+        {owner, event} <- List.wrap(events[consults.event]),
+        name <- Enum.uniq(consults.match),
+        name not in owner.identity,
+        field = Enum.find(event.fields, &(&1.name == name)),
+        field != nil,
+        is_atom(field.type),
+        Map.has_key?(values, field.type),
+        (base = Key.base_type(field.type, values)) != :id do
+      {"A4: dcb #{inspect(unit.name)} consults #{inspect(event.name)} matching " <>
+         "#{inspect(name)}, which the event carries as #{inspect(field.type)}, resting on " <>
+         "#{rests_on(base, values)}; only an :id, or a domain value resting on one, tags an " <>
+         "appended event, so the boundary could never find one", Links.at(consults)}
     end
   end
 

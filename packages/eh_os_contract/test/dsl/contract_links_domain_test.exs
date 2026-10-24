@@ -676,6 +676,45 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # #435: a boundary matching a local event's field of a domain value, which tags the
+  # appended event only when the value rests on :id.
+  describe "A4: a field a boundary matches, of a domain value, rests on :id" do
+    defp consulting(field) do
+      @body
+      |> String.replace(
+        "field :clinic_id, {:id, :clinic}\n",
+        "field :clinic_id, {:id, :clinic}\n        field :period, #{field}\n",
+        global: false
+      )
+      |> Kernel.<>("""
+        dcb :visit_period, "A visit's period" do
+          identity [:period]
+          consults :payment_recorded, match: :period
+          command :close_visit_period, "Close a visit's period", by: :reception,
+            emits: :visit_period_closed
+          event :visit_period_closed, "Visit's period closed"
+        end
+      """)
+    end
+
+    test "a value of another type is refused at the consult" do
+      violations = links("LinksConsultsMoney", consulting(":money"))
+
+      assert assert_linked(
+               violations,
+               "A4: dcb :visit_period consults :payment_recorded matching :period, which the " <>
+                 "event carries as :money, resting on :integer",
+               "links_consults_money.ex"
+             ) =~ "only an :id, or a domain value resting on one, tags an appended event"
+
+      assert length(violations) == 1
+    end
+
+    test "control: a value resting on :id is a tag the boundary finds its events by" do
+      assert links("LinksConsultsPeriod", consulting(":period_id")) == []
+    end
+  end
+
   # Plan DD, V1 (#333): what a step does to a field of a domain value.
   describe "U3 and U4: an event's steps against the domain's values" do
     defp stepped(steps) do

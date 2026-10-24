@@ -87,7 +87,8 @@ defmodule EhOsContract.Key do
   # what it consults by these tags, so its `match:` names only such fields (A4, X6);
   # the rule and the append read this one predicate. Since E9c the append also counts
   # a field typed by a domain value of `:id`, which A4, at compile time and without
-  # the domain, cannot see: it refuses a local `match:` on one, conservatively.
+  # the domain, cannot see: it lets a local `match:` on one through, and the rules
+  # between modules refuse it when the value does not rest on `:id` (#435).
   @doc false
   #
   # With the domain's `values` (`EhOsContract.Codec.values/1`), a field typed by a
