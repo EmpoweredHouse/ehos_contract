@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-24
+
 ### Added
 
 - **`EhOsContract.Report.Sentence` is public** (#421): the sentences of a conformance report without its layout,

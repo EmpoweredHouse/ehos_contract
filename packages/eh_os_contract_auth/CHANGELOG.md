@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-24
+
 ### Added
 
 - **`ehos.yaml/v6` and `ehos.manifest/v7`** (#429), as EHOS 0.20.0 releases them.
@@ -51,9 +53,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **`:not_asked` from `EhOsContract.Auth.People`** now means the deployment asks for neither the
   people nor mail: one that asks for mail alone is given a credential, and the people API answers
   `:not_agreed` (#436).
-- **Breaking:** **the engine is required at `~> 0.9.1`** (#421), however it is fetched: by version from Hex, and also when this
+- **Breaking:** **the engine is required at `~> 0.10.0`** (#421), however it is fetched: by version from Hex, and also when this
   package comes from git or a path, where Mix now holds the engine's version to it. A host whose engine is older
-  than 0.9.1 is refused at `mix deps.get`.
+  than 0.10.0 is refused at `mix deps.get`.
 
 ### Deprecated
 
