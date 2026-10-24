@@ -24,11 +24,27 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **Sending mail through EHOS** (#436, eh-os D-140). `EhOsContract.Auth.Mail.deliver/1` sends a
+  message to people in EHOS's directory by their id, or, under an `external` agreement, to any
+  address, with HTML and attachments, as the application itself. It answers each recipient's
+  `EhOsContract.Auth.Mail.Result`, or why nothing was sent.
+- **`EhOsContract.Auth.Workload`**, the process that holds the application's own credential at
+  EHOS, which reading the people and sending mail share, configured by
+  `config :eh_os_contract_auth, :workload`.
+
 ### Changed
 
 - **Breaking:** **the engine is required at `~> 0.9.1`** (#421), however it is fetched: by version from Hex, and also when this
   package comes from git or a path, where Mix now holds the engine's version to it. A host whose engine is older
   than 0.9.1 is refused at `mix deps.get`.
+
+### Deprecated
+
+- **`config :eh_os_contract_auth, :people` and `EhOsContract.Auth.People` as a child** (#436): they
+  still start `EhOsContract.Auth.Workload`; name it and `:workload` instead. Setting both
+  `:workload` and `:people` is refused at boot.
 
 ## [0.6.0] - 2026-10-23
 
