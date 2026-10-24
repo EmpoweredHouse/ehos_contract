@@ -1,0 +1,4 @@
+Reviews of origin/main..4ec106d1 (#432).
+Correctness: (1) value coverage taken from the first declaration of a name only, order-dependent verdict with mixed types - fixed in 4ec106d1, coverage intersected over every declaration, test fails without it; (2) a value aliasing another value does not cover the base word - skipped, values typed with values are a separate question, noted in the PR; (3) a value name holding another context term exempts it - no change, that is the design (the value is the domain word).
+Security and performance: none; one nit, the value set rebuilt per name in a mix task - no change, milliseconds, not a hot path.
+Gate: sandbox mix check on OTP 27.1.2 EXIT=0; sandbox eh_os_contract.check 0/3/7, identical output before and after.
