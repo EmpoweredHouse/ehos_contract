@@ -24,6 +24,9 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_egress.v6.json` is that ledger written by hand from
   `ehos_yaml/accepted/egress.yaml`, an `ehos.yaml/v5` that reaches two hosts outside the
   installation (issue #408).
+
+  `test/fixtures/manifests/ledger_mail.v7.json` is that ledger written by hand from
+  `ehos_yaml/accepted/mail.yaml`, an `ehos.yaml/v6` that sends mail to any address (issue #429).
   """
 
   use ExUnit.Case, async: true
@@ -420,6 +423,27 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "needs.mail, from ehos.yaml/v6" do
+    test "makes an ehos.manifest/v7, carried as written, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_mail.v7.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest = Manifest.build(ehos_yaml!("ehos_yaml/accepted/mail.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # EHOS refuses a v2 to v6 that names an ehos.yaml/v6: none ever read mail.
+    test "is the only thing that makes a v7, and makes one whether or not a role may grant" do
+      file = %{"schema" => "ehos.yaml/v6", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v7"
+      assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v7"
+    end
+  end
+
   describe "needs.egress, from ehos.yaml/v5" do
     test "makes an ehos.manifest/v6, carried as written, as the one written by hand" do
       expected =
@@ -469,7 +493,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
     # EHOS's v5 takes every ehos.yaml v4 does; an ehos.yaml/v5 makes a v6, which takes a rule too.
     test "is v5 whatever the version of ehos.yaml before v5" do
-      for version <- EhosYaml.versions() -- ["ehos.yaml/v5"] do
+      for version <- EhosYaml.versions() -- ["ehos.yaml/v5", "ehos.yaml/v6"] do
         file = %{"schema" => version, "health" => @health}
 
         assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v5",

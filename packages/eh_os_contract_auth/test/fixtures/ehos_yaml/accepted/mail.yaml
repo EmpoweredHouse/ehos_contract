@@ -1,0 +1,18 @@
+# A workload that sends mail through EHOS to any address, and reads the answers at two domains of
+# its own (ehos.yaml/v6).
+schema: ehos.yaml/v6
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+  mail:
+    level: external
+    reply_domains: [reply.office.example.org, answers.example.net]
+serves:
+  - name: web
+    port: 4000
+    public: true
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

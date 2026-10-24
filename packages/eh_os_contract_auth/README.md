@@ -68,8 +68,9 @@ EhOsContract.Auth.verify(token)
 ## Generating the EHOS application manifest
 
 EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, `v4` for an
-`ehos.yaml/v4` (which may name a seed and secrets), `v5` when a role may grant another, or `v6` for
-an `ehos.yaml/v5` (which may name the hosts outside the installation it reaches): the application's
+`ehos.yaml/v4` (which may name a seed and secrets), `v5` when a role may grant another, `v6` for
+an `ehos.yaml/v5` (which may name the hosts outside the installation it reaches), or `v7` for an
+`ehos.yaml/v6` (which may ask to send mail through EHOS): the application's
 `ehos.yaml`, which says what the workload needs, extended with what its contracts offer. In CI,
 beside the image:
 
@@ -186,10 +187,24 @@ EHOS: a deployment that adds, removes or changes one asks for `ehos.application.
 EHOS also refuses, at deploy, a host under a name only a network inside answers, such as `*.svc.cluster.local`,
 and a host and port named twice, which this task leaves to it.
 
+**Mail sent through EHOS, from `ehos.yaml/v6`**, which makes an `ehos.manifest/v7`:
+
+```yaml
+schema: ehos.yaml/v6
+needs:
+  mail:
+    level: internal                     # or external, to any address as well
+    reply_domains: [reply.office.example.org]
+```
+
+The manifest carries `needs.mail` as written. Asking grants nothing: EHOS sends only once someone
+agrees, per environment, and [Sending mail](#sending-mail) says how the application sends.
+
 **A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
 roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
-whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, rule or none. A
+whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, and an
+`ehos.yaml/v6` an `ehos.manifest/v7`, rule or none. A
 domain without a rule keeps its manifest's version and digests. An actor a rule names, and one that has a
 rule, has to hold a capability, or it is no role and the task says so.
 
