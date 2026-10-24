@@ -445,8 +445,9 @@ defmodule EhOsContract.Check.Catalog do
       term itself in a context written in that language — stands in the name: "Visit" covers
       `visit_id`, "Settlement date" covers `settlement_date` and not `date`. Names of commands and
       events are not read, since their verbs are inflected ("closed") where a term is not ("Close"),
-      nor words of one or two letters (`id`, `at`). The words at the top are the ones the glossary
-      most needs, or the ones the code should not use.
+      nor words of one or two letters (`id`, `at`), nor the words of a field that name the value of
+      the domain it is typed with. The words at the top are the ones the glossary most needs, or the
+      ones the code should not use.
       """
     },
     %{
@@ -460,7 +461,9 @@ defmodule EhOsContract.Check.Catalog do
       language: either the word means something here too, and the context's glossary should say what,
       or the name borrows the other context's meaning. One finding per name of a contract. A field
       typed `{:id, entity}`, or named like the identity of another context's unit (`visit_id`), is
-      not read: it refers to that declaration, under its name.
+      not read: it refers to that declaration, under its name. Nor are the words of a field that
+      name the value of the domain it is typed with: `office_nip` of type `:nip` says "nip" as that
+      value's word, which every context using the value shares.
       """
     },
     %{

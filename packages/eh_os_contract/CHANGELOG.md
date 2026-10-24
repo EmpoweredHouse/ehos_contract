@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **A field typed with a value of the domain says the value's name as the value's own word** (#432): in
+  `mix eh_os_contract.check`, `term-of-another-context` no longer warns, and `word-without-term` no longer lists
+  the word, when the word is the name of the value the field is typed with. A context whose field `:office_nip`
+  has the type `value :nip` need not copy the term "NIP" another context defines; the rest of the name is still
+  read.
+
 ## [0.10.0] - 2026-10-24
 
 ### Added

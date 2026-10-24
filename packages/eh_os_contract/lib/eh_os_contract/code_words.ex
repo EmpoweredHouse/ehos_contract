@@ -8,7 +8,9 @@ defmodule EhOsContract.CodeWords do
   # that is not a letter or a digit, so `:visit_closed_at` is `visit`, `closed`, `at`,
   # and a term matches a name when its words stand in the name next to each other, in
   # order: "Settlement date" is in `:settlement_date_set`, not in `:date_of_settlement`.
-  # Inflected forms are not matched, as `label-with-avoided-term` matches none.
+  # Inflected forms are not matched, as `label-with-avoided-term` matches none. A field
+  # typed with a value of the domain says the value's name as the value's own word, not as a
+  # term: the value is the domain's, shared by every context that uses it.
   #
   # The glossary's page and the two rules of `mix eh_os_contract.check` read the same
   # names, so the page lists what the rules judged.
@@ -19,8 +21,8 @@ defmodule EhOsContract.CodeWords do
 
   @typedoc """
   A name of a contract: what it names, its kind, the name, its words, where it was
-  written, and whether it names a thing (`true`: a unit, a read model, a field) or an
-  action (a command, an event).
+  written, whether it names a thing (`true`: a unit, a read model, a field) or an
+  action (a command, an event), and the type names a field is given.
   """
   @type name :: %{
           what: String.t(),
@@ -28,7 +30,8 @@ defmodule EhOsContract.CodeWords do
           name: atom(),
           words: [String.t()],
           at: term(),
-          thing?: boolean()
+          thing?: boolean(),
+          types: [atom()]
         }
 
   @doc """
@@ -109,7 +112,9 @@ defmodule EhOsContract.CodeWords do
           kind == :state or kind == :command or kind == :row or match?({:event, _}, kind),
           field <- fields,
           not match?({:id, _}, field.type) do
-        name("field #{inspect(field.name)} of #{where}", :field, field.name, field)
+        "field #{inspect(field.name)} of #{where}"
+        |> name(:field, field.name, field)
+        |> Map.put(:types, EhOsContract.References.type_names(field.type))
       end
 
     units ++ read_models ++ actions ++ fields
@@ -122,8 +127,23 @@ defmodule EhOsContract.CodeWords do
       name: name,
       words: words(name),
       at: Links.at(declaration),
-      thing?: kind not in [:command, :event]
+      thing?: kind not in [:command, :event],
+      types: []
     }
+  end
+
+  @doc """
+  The positions of a name's words that the values of the domain `model` its field is
+  typed with cover: a field `:office_nip` of type `:nip` says "nip" as that value's word,
+  whichever context's glossary has a term for it.
+  """
+  @spec value_coverage(name(), map()) :: MapSet.t(non_neg_integer())
+  def value_coverage(name, model) do
+    values = MapSet.new(Map.get(model, :values, []), & &1.name)
+
+    for type <- name.types, MapSet.member?(values, type), reduce: MapSet.new() do
+      covered -> MapSet.union(covered, covers(name.words, words(type)))
+    end
   end
 
   @doc """
