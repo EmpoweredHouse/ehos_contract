@@ -26,7 +26,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
-- **Sending mail through EHOS** (#436, eh-os D-140). `EhOsContract.Auth.Mail.deliver/1` sends a
+- **Sending mail through EHOS** (#436). `EhOsContract.Auth.Mail.deliver/1` sends a
   message to people in EHOS's directory by their id, or, under an `external` agreement, to any
   address, with HTML and attachments, as the application itself. It answers each recipient's
   `EhOsContract.Auth.Mail.Result`, or why nothing was sent.
@@ -42,7 +42,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   that id, so a supervisor given both refuses to start: list one.
 - **`:not_asked` from `EhOsContract.Auth.People`** now means the deployment asks for neither the
   people nor mail: one that asks for mail alone is given a credential, and the people API answers
-  `:not_agreed` (#436, eh-os D-140).
+  `:not_agreed` (#436).
 - **Breaking:** **the engine is required at `~> 0.9.1`** (#421), however it is fetched: by version from Hex, and also when this
   package comes from git or a path, where Mix now holds the engine's version to it. A host whose engine is older
   than 0.9.1 is refused at `mix deps.get`.

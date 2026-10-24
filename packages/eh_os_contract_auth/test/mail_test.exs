@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.MailTest do
   @moduledoc """
-  #436: the application sends mail through EHOS as itself (eh-os D-140). The fake EHOS here
+  #436: the application sends mail through EHOS as itself. The fake EHOS here
   answers as EHOS's `EhosWeb.MailController` does on its `main` of 24 October 2026: 200
   `{"messages": [...]}`, one per recipient, or a refusal `{"error", "message", "reasons"}`.
   The credential is `EhOsContract.Auth.Workload`'s, whose renewal `people_test.exs` covers.

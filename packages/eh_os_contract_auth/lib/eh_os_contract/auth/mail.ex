@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.Mail do
   # As agreed with EHOS: the application sends mail through EHOS as itself, over the company's
-  # relay, as far as a mail agreement for its environment allows (eh-os D-140). The mail API is
+  # relay, as far as a mail agreement for its environment allows. The mail API is
   # EHOS's `docs/mail-api.md`. Issue #436.
   @moduledoc """
   Mail the application sends through EHOS, as itself, to the company's people or to any
@@ -269,7 +269,8 @@ defmodule EhOsContract.Auth.Mail do
       status == 422 and error == "invalid" -> {:error, {:invalid, reasons}}
       # Answered before the route: a body past what EHOS reads, or text it does not store.
       # A 413 is also EHOS's answer to a large body under a credential it no longer accepts, as
-      # after its keys rotate, before it can answer 401 (EmpoweredHouse/eh-os#980).
+      # after its keys rotate, before it can answer 401: EHOS's to answer 401 there, as #436
+      # says.
       status == 413 -> {:error, {:invalid, ["the message is larger than EHOS reads"]}}
       status == 400 -> {:error, {:invalid, ["the message holds text EHOS does not take"]}}
       reason = @refusals[{status, error}] -> {:error, reason}

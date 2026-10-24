@@ -474,8 +474,7 @@ EHOS, as itself, over the company's relay. Its `ehos.yaml/v6` asks for it, at on
 `internal`, to people in EHOS's directory by their id, or `external`, to any address as well. It
 may also name the domains where it receives the answers. EHOS then gives its workload
 `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE`, and sends only after someone who holds
-`ehos.mail.manage` agrees, for that environment, at a level no wider than the one asked for (eh-os
-D-140).
+`ehos.mail.manage` agrees, for that environment, at a level no wider than the one asked for.
 
 ```yaml
 schema: ehos.yaml/v6

@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.Workload do
   # As agreed with EHOS: the application calls EHOS's API as itself, with OAuth's client
-  # credentials grant and `private_key_jwt`, for the people directory (#252) and for mail (eh-os
-  # D-140, #436). One credential serves both, as EHOS gives the workload one client key.
+  # credentials grant and `private_key_jwt`, for the people directory (#252) and for mail (#436).
+  # One credential serves both, as EHOS gives the workload one client key.
   @moduledoc """
   The application's own credential at EHOS, which `EhOsContract.Auth.People` reads the
   company's people with and `EhOsContract.Auth.Mail` sends mail with.
