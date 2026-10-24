@@ -330,7 +330,7 @@ defmodule EhOsContract.DomainRulesTest do
                "D3: value :note has unit :cents, and a unit counts only an :integer or a :decimal"
     end
 
-    test "a code that is not text, or that no invariant pins, is refused; control: an alias of one" do
+    test "a code that is not text, or that no invariant pins, is refused; control: codes by alias" do
       message =
         refused("CodeWithoutForm", """
           value :count, :integer, code: true
@@ -341,6 +341,13 @@ defmodule EhOsContract.DomainRulesTest do
           end
 
           value :office_nip, :nip
+          value :branch_nip, :nip, code: true
+
+          value :checked, :string do
+            invariant :ten_digits, "Ten digits", violated_by: ["1"], satisfied_by: ["1234567890"]
+          end
+
+          value :tax_no, :checked, code: true
         """)
 
       assert message =~
@@ -348,11 +355,12 @@ defmodule EhOsContract.DomainRulesTest do
                  "(code_without_form.ex:4)"
 
       assert message =~
-               "D3: value :free is a code and declares no invariant, so nothing holds it to a " <>
-                 "form; declare the invariants that do, or leave it free text (code_without_form.ex:5)"
+               "D3: value :free is a code and neither it nor a value it names declares an " <>
+                 "invariant, so nothing holds it to a form; declare the invariants that do, or " <>
+                 "leave it free text (code_without_form.ex:5)"
 
-      refute message =~ ":nip"
-      refute message =~ ":office_nip"
+      for name <- [":nip", ":office_nip", ":branch_nip", ":checked", ":tax_no"],
+          do: refute(message =~ "value #{name} ")
     end
 
     test "an unknown type, a malformed enum and a repeated member are refused" do
