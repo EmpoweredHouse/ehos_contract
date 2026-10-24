@@ -20,8 +20,9 @@ from `sandbox/`, run the application's `mix precommit`.
 ## The decision this closes
 
 The client's ordinary code and the code a contract governs live in the same application, and that
-is fine: `boundary` makes a module that reaches where it should not a compile error. What `boundary`
-does not say is *which kind of code you are about to write*. Guessing wrong costs in both
+is fine: where the project compiles with `boundary`, a module that reaches where it should not is a
+compile error, and where it does not, the contexts' public modules and the domain's relations keep
+them apart. Neither says *which kind of code you are about to write*. Guessing wrong costs in both
 directions: contract ceremony around a plain write, or a rule, a reaction or a promise the
 conformance report never sees because it looked like "just a field update".
 
@@ -108,8 +109,14 @@ Pick by what the business says, not by what the code will look like:
 
 - **The library knows nothing about companies or business entities.** If the answer implies the
   engine needs to know "which client this is" as a structured field, it is not contract territory.
-- **Every new module declares `use Boundary`**, with `deps` and `exports` named, even empty ones.
-  Contexts are siblings, not a hierarchy (`CLAUDE.md`).
+- **Contexts are siblings, not a hierarchy.** A context is reached through its public module's
+  functions, never through another context's schemas or tables, and a context of a contract only
+  the way the domain's `relation` allows, which the engine holds (`X11`–`X13`).
+- **Where the project's `compilers` in `mix.exs` include `:boundary`, every new module declares
+  `use Boundary`**, with `deps` and `exports` named, even empty ones: eh-os-contract's own
+  repository and its `sandbox/` do (`CLAUDE.md`), as does an application that set it up. Where they
+  do not, as in an application `ehos_app` generates, a new module declares none: without the
+  compiler it checks nothing and reads as if it did. Its absence there is not a finding.
 - **No new DSL word to make an action feel more rigorous.** If none fits, say so and ask; a new word
   goes to the user with an example.
 
@@ -124,9 +131,10 @@ Pick by what the business says, not by what the code will look like:
    declaration: the contract of the context (`sandbox/lib/*/contracts/`), the domain, and
    `mix eh_os_contract.check` — a `declaration-without-implementation` or
    `contract-without-implementation` line means "declared, not built", not "missing".
-4. **Plain code** → scaffold it after an existing sibling context, with `exports: []` and a narrow
-   public function, not an exported schema. **Internal signal** → the same, named and documented as
-   untracked. **A declaration** → the skill in the table.
+4. **Plain code** → scaffold it after an existing sibling context, with a narrow public function,
+   not an exported schema (and `exports: []` where the project compiles with `boundary`).
+   **Internal signal** → the same, named and documented as untracked. **A declaration** → the
+   skill in the table.
 5. **Record the answers** in the new module's moduledoc, one line per question that applied, so the
    next reader does not run this triage again.
 
