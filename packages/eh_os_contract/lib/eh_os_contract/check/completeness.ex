@@ -806,12 +806,12 @@ defmodule EhOsContract.Check.Completeness do
       for c <- contracts,
           c.model.context == context,
           %{thing?: true} = name <- EhOsContract.CodeWords.names(c),
-          do: {name.words, EhOsContract.CodeWords.value_coverage(name, model)}
+          do: name
 
     names
-    |> Enum.uniq_by(&elem(&1, 0))
-    |> Enum.flat_map(fn {words, valued} ->
-      covered = MapSet.union(own_coverage(terms, words), valued)
+    |> Enum.group_by(& &1.words)
+    |> Enum.flat_map(fn {words, all} ->
+      covered = MapSet.union(own_coverage(terms, words), value_coverage(all, model))
 
       for {word, position} <- Enum.with_index(words),
           not MapSet.member?(covered, position),
@@ -847,7 +847,7 @@ defmodule EhOsContract.Check.Completeness do
         covered =
           MapSet.union(
             own_coverage(own, first.words),
-            EhOsContract.CodeWords.value_coverage(first, model)
+            value_coverage(all, model)
           ),
         {sequence, others} <- elsewhere(by_context, c.model.context, first.words),
         not MapSet.subset?(EhOsContract.CodeWords.covers(first.words, sequence), covered) do
@@ -873,6 +873,14 @@ defmodule EhOsContract.Check.Completeness do
 
   defp reference?(identities, name, own) do
     Enum.any?(identities, fn {id, context} -> id == name and context != own end)
+  end
+
+  # The positions a value covers in every declaration of one name: a name typed with the
+  # value in one declaration and with `:string` in another borrows the word in the second.
+  defp value_coverage(declarations, model) do
+    declarations
+    |> Enum.map(&EhOsContract.CodeWords.value_coverage(&1, model))
+    |> Enum.reduce(&MapSet.intersection/2)
   end
 
   defp own_coverage(own, words) do

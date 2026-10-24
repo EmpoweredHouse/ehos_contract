@@ -175,10 +175,12 @@ defmodule EhOsContract.CheckCodeWordsTest do
             field :visit_code, :visit_code, label: "Kod wizyty"
             field :visit_code_list, {:list, :visit_code}, label: "Kody wizyt"
             field :visit_ref_code, :code, label: "Kod"
+            field :extra_visit_code, :visit_code, label: "Dodatkowy kod"
           end
 
           event :visit_charged, "Wizyta obciążona" do
             field :visit_code, :visit_code, label: "Kod wizyty"
+            field :extra_visit_code, :string, label: "Dodatkowy kod"
           end
         end
       end
@@ -189,12 +191,20 @@ defmodule EhOsContract.CheckCodeWordsTest do
     findings = Completeness.findings([EhOsContract.CheckCodeWordsTest.ValuedPayers])
 
     # `visit_code` and `visit_code_list` say "visit" as the value `:visit_code`'s word, in a
-    # list too. Control: `visit_ref_code` is typed `:code`, which covers `code` only.
+    # list too. Control: `visit_ref_code` is typed `:code`, which covers `code` only, and
+    # `extra_visit_code` is typed `:string` in the event, whatever the command, declared
+    # first, types it with.
     assert [
+             "EhOsContract.CheckCodeWordsTest.ValuedPayers: field :extra_visit_code (in 2 " <>
+               ~s|declarations) says "visit", the word in code of "Wizyta" of :scheduling, | <>
+               "which context :payers has no term for",
              "EhOsContract.CheckCodeWordsTest.ValuedPayers: field :visit_ref_code of command " <>
                ~s|:charge_visit says "visit", the word in code of "Wizyta" of :scheduling, | <>
                "which context :payers has no term for"
-           ] = for(%Finding{rule: "term-of-another-context"} = f <- findings, do: f.message)
+           ] =
+             Enum.sort(
+               for(%Finding{rule: "term-of-another-context"} = f <- findings, do: f.message)
+             )
 
     assert [message] =
              for(
@@ -203,8 +213,7 @@ defmodule EhOsContract.CheckCodeWordsTest do
                do: m
              )
 
-    assert message =~ "most used first: list (1), ref (1), visit (1)"
-    refute message =~ "code ("
+    assert message =~ "most used first: visit (2), code (1), extra (1), list (1), ref (1)"
   end
 
   test "an empty sequence of words covers nothing" do
