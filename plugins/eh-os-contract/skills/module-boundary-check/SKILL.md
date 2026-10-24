@@ -112,11 +112,13 @@ Pick by what the business says, not by what the code will look like:
 - **Contexts are siblings, not a hierarchy.** A context is reached through its public module's
   functions, never through another context's schemas or tables, and a context of a contract only
   the way the domain's `relation` allows, which the engine holds (`X11`–`X13`).
-- **Where the project's `compilers` in `mix.exs` include `:boundary`, every new module declares
-  `use Boundary`**, with `deps` and `exports` named, even empty ones: eh-os-contract's own
-  repository and its `sandbox/` do (`CLAUDE.md`), as does an application that set it up. Where they
-  do not, as in an application `ehos_app` generates, a new module declares none: without the
-  compiler it checks nothing and reads as if it did. Its absence there is not a finding.
+- **Where the project's `compilers` in `mix.exs` include `:boundary`, every new context module
+  declares `use Boundary`**, with `deps` and `exports` named, even empty ones, and a module under it
+  joins that boundary, named in its `exports` only if code outside the boundary calls it
+  (`sandbox/lib/lending/circulation.ex`): eh-os-contract's own repository and its `sandbox/` do
+  (`CLAUDE.md`), as does an application that set it up. Where they do not, as in an application
+  `ehos_app` generates, no module declares one: without the compiler it checks nothing and reads as
+  if it did. Its absence there is not a finding.
 - **No new DSL word to make an action feel more rigorous.** If none fits, say so and ask; a new word
   goes to the user with an example.
 
