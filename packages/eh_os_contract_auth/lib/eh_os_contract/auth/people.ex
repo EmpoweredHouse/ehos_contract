@@ -47,8 +47,8 @@ defmodule EhOsContract.Auth.People do
     * `:not_agreed`: EHOS refuses the reading. No people manager has agreed for this
       environment, or the agreement was withdrawn, or the deployment no longer asks;
     * `:not_found`: `get/2` of an id that is no one's;
-    * `:not_asked`: EHOS refuses the client the grant: its deployment does not ask
-      `needs.people: read`;
+    * `:not_asked`: EHOS refuses the client the grant: its deployment asks for neither
+      the people nor mail. One that asks for mail alone is `:not_agreed`;
     * `:rate_limited`: EHOS's limit on the token endpoint or the people API;
     * `:unavailable`: EHOS cannot be reached, fails, or answers what it never answers.
       The rest of the application goes on; only the list waits for EHOS, which keeps

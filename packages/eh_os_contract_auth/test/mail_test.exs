@@ -48,6 +48,17 @@ defmodule EhOsContract.Auth.MailTest do
   ## EHOS, as far as the mail client reaches it
 
   defp serve(ehos, %{request_path: "/oauth/token"} = conn) do
+    if ehos(ehos, :answer) == :not_asked,
+      do: answer(conn, 400, %{"error" => "unauthorized_client"}),
+      else: token(ehos, conn)
+  end
+
+  defp serve(ehos, %{method: "POST", request_path: "/api/v1/mail"} = conn),
+    do: mail_api(ehos, conn)
+
+  defp serve(_ehos, conn), do: answer(conn, 404, %{"error" => "not_found"})
+
+  defp token(ehos, conn) do
     token =
       Agent.get_and_update(ehos, fn state ->
         token = "credential-#{length(state.tokens) + 1}"
@@ -57,7 +68,7 @@ defmodule EhOsContract.Auth.MailTest do
     Req.Test.json(conn, %{"access_token" => token, "token_type" => "Bearer", "expires_in" => 600})
   end
 
-  defp serve(ehos, %{method: "POST", request_path: "/api/v1/mail"} = conn) do
+  defp mail_api(ehos, conn) do
     {:ok, body, conn} = Plug.Conn.read_body(conn, length: 20_000_000)
     state = Agent.get(ehos, & &1)
     token = conn |> Plug.Conn.get_req_header("authorization") |> List.first()
@@ -65,6 +76,18 @@ defmodule EhOsContract.Auth.MailTest do
     cond do
       state.answer == :expired and not state.expired_once ->
         set(ehos, %{expired_once: true})
+        answer(conn, 401, %{"error" => "unauthorized"})
+
+      # As EHOS's parser answers a large body under a credential it no longer accepts, or one past
+      # what it reads under any: before the route, in Phoenix's own shape.
+      state.answer == :too_large_once and not state.expired_once ->
+        set(ehos, %{expired_once: true})
+        answer(conn, 413, %{"errors" => %{"detail" => "Request Entity Too Large"}})
+
+      state.answer in [413, 400] ->
+        answer(conn, state.answer, %{"errors" => %{"detail" => "Bad Request"}})
+
+      state.answer == :always_401 ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
       token != "Bearer " <> List.last(state.tokens) ->
@@ -77,9 +100,7 @@ defmodule EhOsContract.Auth.MailTest do
     end
   end
 
-  defp serve(_ehos, conn), do: answer(conn, 404, %{"error" => "not_found"})
-
-  defp mail(conn, answer, body) when answer in [:sent, :expired] do
+  defp mail(conn, answer, body) when answer in [:sent, :expired, :too_large_once] do
     messages =
       body["to"]
       |> Enum.with_index()
@@ -207,6 +228,17 @@ defmodule EhOsContract.Auth.MailTest do
       assert length(ehos(ehos, :bodies)) == 1
     end
 
+    test "takes a new credential once when EHOS answers a large body 413, as after its keys rotate",
+         %{ehos: ehos} do
+      set(ehos, %{answer: :too_large_once})
+      server = start!(ehos)
+
+      assert {:ok, [_]} =
+               Mail.deliver(server: server, to: [{:person, @ada}], subject: "s", text: "t")
+
+      assert ehos(ehos, :tokens) == ["credential-1", "credential-2"]
+    end
+
     test "refuses, before asking EHOS, what is not a message", %{ehos: ehos} do
       server = start!(ehos)
       ok = [to: [{:person, @ada}], subject: "s", text: "t"]
@@ -228,9 +260,25 @@ defmodule EhOsContract.Auth.MailTest do
             Keyword.put(ok, :attachments, [Map.delete(file, :content)]),
             Keyword.put(ok, :attachments, [Map.put(file, :inline, "yes")]),
             Keyword.put(ok, :attachments, [Map.put(file, :path, "/etc/passwd")]),
-            Keyword.put(ok, :cc, [{:person, @ada}])
+            Keyword.put(ok, :cc, [{:person, @ada}]),
+            ok ++ [to: [{:person, @ada}]],
+            Keyword.put(ok, :attachments, [Map.put(file, :filename, <<0xE9>>)])
           ] do
         assert_raise ArgumentError, fn -> Mail.deliver([server: server] ++ message) end
+      end
+
+      assert_raise ArgumentError, fn -> Mail.deliver(Map.new(ok)) end
+
+      # A string JSON cannot carry is refused by its option's name: its value, a body or an
+      # address, never reaches the message, nor a crash report.
+      for {key, value} <- [text: "caf" <> <<0xE9>> <> " secret", to: [{:address, <<0xE9>>}]] do
+        error =
+          assert_raise ArgumentError, fn ->
+            Mail.deliver([server: server] ++ Keyword.put(ok, key, value))
+          end
+
+        refute error.message =~ "secret"
+        refute error.message =~ <<0xE9>>
       end
 
       assert ehos(ehos, :tokens) == []
@@ -244,12 +292,13 @@ defmodule EhOsContract.Auth.MailTest do
 
       for {answer, reason} <- [
             {{403, "not_agreed"}, :not_agreed},
-            {{403, "forbidden"}, :not_agreed},
             {{403, "beyond_agreement"}, {:beyond_agreement, ["to[0]: no"]}},
             {{422, "invalid"}, {:invalid, ["to[0]: no"]}},
             {{429, "too_many_calls"}, :rate_limited},
             {{429, "too_many_messages"}, :too_many_messages},
-            {{503, "mail_disabled"}, :mail_disabled}
+            {{503, "mail_disabled"}, :mail_disabled},
+            {413, {:invalid, ["the message is larger than EHOS reads"]}},
+            {400, {:invalid, ["the message holds text EHOS does not take"]}}
           ] do
         set(ehos, %{answer: answer})
         assert Mail.deliver(message) == {:error, reason}
@@ -260,11 +309,21 @@ defmodule EhOsContract.Auth.MailTest do
       server = start!(ehos)
       message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
 
-      for answer <- [:garbage, {500, "oops"}, {404, "not_found"}] do
+      for answer <- [:garbage, {500, "oops"}, {404, "not_found"}, {403, "forbidden"}, :always_401] do
         set(ehos, %{answer: answer})
         log = capture_log(fn -> assert Mail.deliver(message) == {:error, :unavailable} end)
         assert log =~ "EHOS's mail API answered"
       end
+    end
+
+    test "a deployment that asks for no mail is refused the credential, :not_asked", %{ehos: ehos} do
+      set(ehos, %{answer: :not_asked})
+      server = start!(ehos)
+
+      capture_log(fn ->
+        assert Mail.deliver(server: server, to: [{:person, @ada}], subject: "s", text: "t") ==
+                 {:error, :not_asked}
+      end)
     end
 
     test "a process that is not running is :unavailable, not an exit" do

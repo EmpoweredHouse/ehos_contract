@@ -84,20 +84,36 @@ defmodule EhOsContract.Auth.Workload do
 
   @doc false
   # A request to EHOS's API with the credential, and once more with a new one when EHOS answers
-  # 401: a second 401 is answered as it came. `body` is JSON to send, or nil. The caller reads the
-  # status in its own words; what the transport did is `{:error, {:unreachable, reason}}`.
-  @spec request(GenServer.server(), :get | :post, String.t(), iodata() | nil, pos_integer()) ::
-          {:ok, answer()} | {:error, reason() | {:unreachable, term()}}
-  def request(server, method, path, body, timeout) do
+  # one of `renew_on`, 401 by default: a second refusal is answered as it came. `body` is JSON to
+  # send, or nil. Both attempts share `timeout`. The caller reads the status in its own words; what
+  # the transport did is `{:error, {:unreachable, reason}}`.
+  @spec request(
+          GenServer.server(),
+          :get | :post,
+          String.t(),
+          iodata() | nil,
+          pos_integer(),
+          [non_neg_integer()]
+        ) :: {:ok, answer()} | {:error, reason() | {:unreachable, term()}}
+  def request(server, method, path, body, timeout, renew_on \\ [401]) do
+    started = System.monotonic_time(:millisecond)
+
     with {:ok, credential} <- credential(server, nil) do
       case send_request(credential, method, path, body, timeout) do
-        {:ok, {401, _headers, _body}} ->
-          with {:ok, renewed} <- credential(server, credential.id) do
-            send_request(renewed, method, path, body, timeout)
+        {:ok, {status, _headers, _body}} = answer ->
+          if status in renew_on do
+            left = timeout - (System.monotonic_time(:millisecond) - started)
+
+            with true <- left > 0 || answer,
+                 {:ok, renewed} <- credential(server, credential.id) do
+              send_request(renewed, method, path, body, left)
+            end
+          else
+            answer
           end
 
-        answer ->
-          answer
+        error ->
+          error
       end
     end
   end
@@ -372,6 +388,11 @@ defmodule EhOsContract.Auth.Workload do
         {:workload, keyword!(:workload, workload)}
 
       {nil, people} ->
+        Logger.warning(
+          "config :eh_os_contract_auth, :people is deprecated; name it :workload, the same " <>
+            "configuration, which sending mail shares"
+        )
+
         {:people, keyword!(:people, people)}
 
       {_workload, _people} ->

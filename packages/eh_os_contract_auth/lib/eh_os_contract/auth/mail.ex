@@ -48,9 +48,10 @@ defmodule EhOsContract.Auth.Mail do
       bytes, which this module encodes; with `inline: true` and a `content_id`, an image
       the HTML shows as `<img src="cid:…">`. At most 20, 10 MB together.
 
-  An option this module does not take, or a value of the wrong type, raises
-  `ArgumentError` before EHOS is asked. What EHOS checks of the content, the limits
-  above included, comes back as `{:error, {:invalid, reasons}}`.
+  An option this module does not take, a value of the wrong type, or a string that is
+  not UTF-8 raises `ArgumentError` before EHOS is asked, naming the option and never its
+  value. What EHOS checks of the content, the limits above included, comes back as
+  `{:error, {:invalid, reasons}}`, a body larger than EHOS reads too.
 
   **The answer** is one `EhOsContract.Auth.Mail.Result` per recipient, in the order
   given: whether the company's relay took the message, its `message_id`, and the relay's
@@ -75,11 +76,13 @@ defmodule EhOsContract.Auth.Mail do
   Each reason in `reasons` is EHOS's sentence, naming the value it is about, such as
   `"to[1]: …"`.
 
-  A call is never retried but once with a new credential when EHOS answers 401, before
-  it sends anything: EHOS sends each recipient's message before it answers, so a call
-  repeated after a timeout can send some messages twice. Retrying is the application's
-  choice. A call waits up to two minutes and a half, EHOS's two for the relay and a
-  margin. It never raises or exits for what EHOS does, the process not running included.
+  A call is never retried but once with a new credential when EHOS refuses the one it
+  sent, before it sends anything: EHOS sends each recipient's message before it answers,
+  so a call repeated after a timeout can send some messages twice. Retrying is the
+  application's choice. Both attempts share two minutes and a half, EHOS's two for the
+  relay and a margin, and each may first wait up to twelve seconds for a credential: a
+  call answers within three minutes. It never raises or exits for what EHOS does, the
+  process not running included.
   """
 
   require Logger
@@ -89,10 +92,12 @@ defmodule EhOsContract.Auth.Mail do
 
   # EHOS gives the relay two minutes for a call's messages; the answer comes after them.
   @deadline 150_000
+  # EHOS reads a large body only with a credential it accepts, and answers 413 to one it no longer
+  # does, as after its keys rotate, before it can answer 401: both take a new credential.
+  @renew_on [401, 413]
   @keys [:to, :subject, :text, :html, :reply_to, :in_reply_to, :references, :attachments]
   @attachment_keys [:filename, :content_type, :content, :inline, :content_id]
   @refusals %{
-    {403, "forbidden"} => :not_agreed,
     {403, "not_agreed"} => :not_agreed,
     {429, "too_many_messages"} => :too_many_messages,
     {503, "mail_disabled"} => :mail_disabled
@@ -138,11 +143,12 @@ defmodule EhOsContract.Auth.Mail do
   option it does not take, as documented in `t:option/0`.
   """
   @spec deliver([option()]) :: {:ok, [Result.t()]} | {:error, reason()}
-  def deliver(message) when is_list(message) do
+  def deliver(message) do
+    unless Keyword.keyword?(message), do: bad!("a keyword list")
     {server, message} = Keyword.pop(message, :server, Workload)
     body = message |> body!() |> Jason.encode_to_iodata!()
 
-    case Workload.request(server, :post, "/api/v1/mail", body, @deadline) do
+    case Workload.request(server, :post, "/api/v1/mail", body, @deadline, @renew_on) do
       {:ok, {200, _headers, body}} ->
         results(body)
 
@@ -161,12 +167,14 @@ defmodule EhOsContract.Auth.Mail do
   ## The request
 
   defp body!(message) do
-    unless Keyword.keyword?(message), do: bad!("a keyword list")
+    keys = Keyword.keys(message)
 
-    case Keyword.keys(message) -- @keys do
+    case keys -- @keys do
       [] -> :ok
       extra -> bad!("no #{inspect(extra)}")
     end
+
+    if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
 
     for key <- [:to, :subject, :text], not Keyword.has_key?(message, key) do
       bad!("#{key}:")
@@ -182,21 +190,27 @@ defmodule EhOsContract.Auth.Mail do
     end)
   end
 
-  defp recipient!({:person, id}) when is_binary(id), do: %{"person" => id}
-  defp recipient!({:address, address}) when is_binary(address), do: %{"address" => address}
+  defp recipient!({kind, value}) when kind in [:person, :address] do
+    if text?(value),
+      do: %{to_string(kind) => value},
+      else: bad!("recipients as {:person, id} or {:address, address}")
+  end
+
   defp recipient!(_other), do: bad!("recipients as {:person, id} or {:address, address}")
 
-  defp string!(_key, value) when is_binary(value), do: value
-  defp string!(key, _value), do: bad!("#{key}: as a string")
+  defp string!(key, value), do: if(text?(value), do: value, else: bad!("#{key}: as a string"))
 
   defp ids!(key, ids) when is_list(ids) do
-    if Enum.all?(ids, &is_binary/1), do: ids, else: bad!("#{key}: as a list of message ids")
+    if Enum.all?(ids, &text?/1), do: ids, else: bad!("#{key}: as a list of message ids")
   end
 
   defp ids!(key, _ids), do: bad!("#{key}: as a list of message ids")
 
   defp file!(%{filename: name, content_type: type, content: content} = file)
-       when is_binary(name) and is_binary(type) and is_binary(content) do
+       when is_binary(content) do
+    unless text?(name) and text?(type),
+      do: bad!("an attachment's filename: and content_type: as strings")
+
     case Map.keys(file) -- @attachment_keys do
       [] -> :ok
       extra -> bad!("no #{inspect(extra)} in an attachment")
@@ -205,7 +219,7 @@ defmodule EhOsContract.Auth.Mail do
     inline = Map.get(file, :inline, false)
     content_id = Map.get(file, :content_id)
 
-    unless is_boolean(inline) and (is_nil(content_id) or is_binary(content_id)),
+    unless is_boolean(inline) and (is_nil(content_id) or text?(content_id)),
       do: bad!("an attachment's inline: as a boolean and content_id: as a string")
 
     %{"filename" => name, "content_type" => type, "content" => Base.encode64(content)}
@@ -215,6 +229,10 @@ defmodule EhOsContract.Auth.Mail do
 
   defp file!(_other),
     do: bad!("attachments as maps with filename:, content_type: and content:")
+
+  # A string JSON can carry: anything else would raise in the encoder, with the value in its
+  # message, which may be a person's address or a message's body.
+  defp text?(value), do: is_binary(value) and String.valid?(value)
 
   defp bad!(what) do
     raise ArgumentError,
@@ -247,6 +265,9 @@ defmodule EhOsContract.Auth.Mail do
     cond do
       status == 403 and error == "beyond_agreement" -> {:error, {:beyond_agreement, reasons}}
       status == 422 and error == "invalid" -> {:error, {:invalid, reasons}}
+      # Answered before the route: a body past what EHOS reads, or text it does not store.
+      status == 413 -> {:error, {:invalid, ["the message is larger than EHOS reads"]}}
+      status == 400 -> {:error, {:invalid, ["the message holds text EHOS does not take"]}}
       reason = @refusals[{status, error}] -> {:error, reason}
       status == 429 -> {:error, :rate_limited}
       true -> unexpected("status #{status}")

@@ -435,7 +435,8 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Workl
 
 `EhOsContract.Auth.Workload` holds the application's own credential, which reading the people and
 [sending mail](#sending-mail) share. `config :eh_os_contract_auth, :people` and
-`EhOsContract.Auth.People` as the child are its older names, and still start it.
+`EhOsContract.Auth.People` as the child are its older names, and still start it, registered as
+`EhOsContract.Auth.Workload`.
 
 ```elixir
 {:ok, %{people: people, next: next}} = EhOsContract.Auth.People.list(q: "ad", limit: 50)
@@ -459,7 +460,7 @@ A call that returns no people says why, so the page can explain it in words:
 | --- | --- |
 | `:not_agreed` | No people manager has agreed for this environment, or the agreement was withdrawn |
 | `:not_found` | `get/2` of an id that is no one's |
-| `:not_asked` | The deployment does not ask `needs.people: read` |
+| `:not_asked` | The deployment asks for neither the people nor mail; one that asks for mail alone is `:not_agreed` |
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 600 calls a minute |
 | `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
 
@@ -516,15 +517,17 @@ A call that sends nothing says why:
 | --- | --- |
 | `:not_agreed` | No mail agreement is in force for this environment, or the deployment no longer asks for mail |
 | `{:beyond_agreement, reasons}` | A recipient or the reply address the agreement does not allow, a person disabled, or an id that names no one |
-| `{:invalid, reasons}` | EHOS does not send the message as it is, each reason naming the value, such as `to[1]` |
+| `{:invalid, reasons}` | EHOS does not send the message as it is, each reason naming the value, such as `to[1]`, or the body is larger than EHOS reads |
 | `:not_asked` | The deployment asks for neither mail nor people |
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 60 calls a minute |
 | `:too_many_messages` | The application has sent the 1000 messages it may send today |
 | `:mail_disabled` | The installation sends no mail |
 | `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
 
-An option `deliver/1` does not take raises `ArgumentError` before EHOS is asked. A call is retried
-only once, with a new credential when EHOS answers 401, before anything is sent. A call cut off on
+An option `deliver/1` does not take, or a string that is not UTF-8, raises `ArgumentError` before
+EHOS is asked, naming the option and never its value. A call is retried only once, with a new
+credential when EHOS refuses the one it sent, before anything is sent, and answers within three
+minutes. A call cut off on
 the way may have sent some messages already, so trying again is the application's choice. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
 which it reads itself.
