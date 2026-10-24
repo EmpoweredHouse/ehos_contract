@@ -1,0 +1,1 @@
+Documentation only (plugin skill Markdown, not read by mix check). Addresses the CodeRabbit comment on PR 444: use Boundary scoped to the context module, as sandbox/lib/lending/circulation.ex and the other context modules under sandbox/lib do. Checked with grep for use Boundary under sandbox/lib.
