@@ -197,8 +197,11 @@ needs:
     reply_domains: [reply.office.example.org]
 ```
 
-The manifest carries `needs.mail` as written. Asking grants nothing: EHOS sends only once someone
-agrees, per environment, and [Sending mail](#sending-mail) says how the application sends.
+The manifest carries `needs.mail` as written. Each reply domain is a DNS name in lowercase, never an
+address or a pattern; EHOS also refuses, at deploy, a domain named twice and one only a network inside
+answers, such as `*.svc.cluster.local`, which this task leaves to it. Asking grants nothing: EHOS sends
+only once someone agrees, per environment, and [Sending mail](#sending-mail) says how the application
+sends.
 
 **A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the

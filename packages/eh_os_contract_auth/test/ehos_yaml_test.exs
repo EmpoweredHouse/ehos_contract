@@ -260,7 +260,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       text = "schema: ehos.yaml/v6\nneeds:\n  mail:\n    level: everyone\n" <> @health
       assert {:error, [%{path: "needs.mail.level"}]} = EhosYaml.read(text)
 
-      for domain <- ["192.0.2.1", "*.example.org"] do
+      for domain <- ["192.0.2.1", "*.example.org", "reply.example.org\\n"] do
         text =
           "schema: ehos.yaml/v6\nneeds:\n  mail:\n    level: internal\n" <>
             "    reply_domains: [\"#{domain}\"]\n" <> @health
