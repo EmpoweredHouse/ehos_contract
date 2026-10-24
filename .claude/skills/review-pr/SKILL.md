@@ -66,7 +66,7 @@ hide a mistake:
 | `emits-never-produced` | Is the declaration wider than the decision, or does the code return an event around `emit/1`? |
 | `competing-in-transaction-consumers` | Does one reaction depend on the other's order? Then it should react to what the other decides. |
 | `in-transaction-policy-fan-out` | Every other append waits for the whole list. Should it be `:at_least_once`? |
-| `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own? |
+| `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own (a value `code: true`)? And a value newly declared `code: true`: do its invariants really pin a form, and does the code identify no person? |
 | `unverified-declaration` | Is the change relying on an `unverified: true` number as if it were confirmed? |
 | `consults-without-match` | A boundary reading every event of a type conflicts under load. |
 | `backward-edge` | A new one on a real process module is an ordering mistake in its stages or an undeclared loop. |

@@ -81,7 +81,11 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   holds every value to. A new field uses a value, never an integer named `_minor`.
 - **`:string` is text a person typed.** A code, a number or a choice has a type of its own; a
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
-  log as written after its subject is erased.
+  log as written after its subject is erased. A code written as text — a tax number, a currency, an
+  invoice number — is a value declared `code: true` with the invariants that pin its form
+  (`value :nip, :string, code: true do invariant :valid_check_digit, … end`); one with no invariant
+  does not compile (`D3`). A code that identifies a person — a national id number, a sole trader's
+  tax number — is still `personal:`: `code: true` says the text has a form, not that it is about nobody.
 - **The unit's identity is injected**: do not declare it again (`F6`).
 - **Every `correlate` field of a process module that includes it is in the event** (`X6`; the
   unit's identity counts), required, not `personal:`, and the same kind of identifier as in the

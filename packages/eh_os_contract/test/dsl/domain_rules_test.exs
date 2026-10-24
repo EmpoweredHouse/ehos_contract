@@ -330,6 +330,31 @@ defmodule EhOsContract.DomainRulesTest do
                "D3: value :note has unit :cents, and a unit counts only an :integer or a :decimal"
     end
 
+    test "a code that is not text, or that no invariant pins, is refused; control: an alias of one" do
+      message =
+        refused("CodeWithoutForm", """
+          value :count, :integer, code: true
+          value :free, :string, code: true
+
+          value :nip, :string, code: true do
+            invariant :ten_digits, "Ten digits", violated_by: ["1"], satisfied_by: ["1234567890"]
+          end
+
+          value :office_nip, :nip
+        """)
+
+      assert message =~
+               "D3: value :count is a code, and a code is text: a :string, or a value that is one " <>
+                 "(code_without_form.ex:4)"
+
+      assert message =~
+               "D3: value :free is a code and declares no invariant, so nothing holds it to a " <>
+                 "form; declare the invariants that do, or leave it free text (code_without_form.ex:5)"
+
+      refute message =~ ":nip"
+      refute message =~ ":office_nip"
+    end
+
     test "an unknown type, a malformed enum and a repeated member are refused" do
       message =
         refused("BadTypes", """

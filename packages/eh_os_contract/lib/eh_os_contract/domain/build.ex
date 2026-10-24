@@ -197,6 +197,8 @@ defmodule EhOsContract.Domain.Build do
 
   defp built(:relation, relation), do: pairs(relation)
   defp built(:entity, entity), do: identified(entity)
+  # `code:` is in the model only where a value is one, so no other value's digest moves.
+  defp built(:value, %{code: false} = value), do: Map.delete(value, :code)
   defp built(_kind, declaration), do: declaration
 
   # Plan N1: an entity's identity is a field the library injects, as it injects a

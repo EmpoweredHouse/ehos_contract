@@ -82,6 +82,7 @@ defmodule EhOsContract.Domain.Dsl do
       :label,
       :context,
       :source,
+      code: false,
       fields: [],
       invariants: [],
       __spark_metadata__: nil
@@ -329,6 +330,14 @@ defmodule EhOsContract.Domain.Dsl do
       name: [type: :atom, required: true, doc: "The value's name, used as a field type."],
       type: [type: :any, doc: "The built-in type, when the value is not a set of fields."],
       unit: [type: :atom, doc: "What a number counts, e.g. `:cents`."],
+      code: [
+        type: :boolean,
+        default: false,
+        doc:
+          "Whether the value is a code, not text a person typed: a value that is text and whose " <>
+            "invariants pin its form, e.g. a tax number. A field of it is not free text to " <>
+            "`free-text-not-personal`."
+      ],
       label: [type: :string, doc: "What the business calls it."],
       context: [type: :atom, doc: "The context the value belongs to."],
       source: [type: :string, doc: "Where the value comes from in the material."]

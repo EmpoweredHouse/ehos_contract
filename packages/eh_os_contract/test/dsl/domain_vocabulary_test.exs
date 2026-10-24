@@ -28,7 +28,7 @@ defmodule EhOsContract.DomainVocabularyTest do
              # Plan EP5b: what an actor answers for, named prose.
              [:actor, :responsibility] => [:name, :label, :source],
              [:subject] => [:name, :label, :source],
-             [:value] => [:name, :type, :unit, :label, :context, :source],
+             [:value] => [:name, :type, :unit, :code, :label, :context, :source],
              [:value, :field] => @field,
              [:value, :invariant] => [:name, :label, :violated_by, :satisfied_by, :source],
              # Plan EM2: ESDM's entity; plan N1: its identity, injected, and who issues it.

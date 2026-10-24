@@ -9,7 +9,8 @@ defmodule EhOsContract.Check.Contracts do
   #   react to inside the emitting transaction.
   # - `in-transaction-across-contexts` — a reaction declared `:in_transaction` on an
   #   event of a sibling contract of another context (plan DD, X1).
-  # - `free-text-not-personal` — a `:string` field of an event not marked personal.
+  # - `free-text-not-personal` — a `:string` field of an event not marked personal,
+  #   unless a value that is a code holds it.
   # - `emits-never-produced` — an event a command `emits:` that no `emit/1` of its
   #   implementation names.
   #
@@ -215,7 +216,8 @@ defmodule EhOsContract.Check.Contracts do
   # `:string` is text a person typed,
   # and unless it is personal, it stays in the log verbatim even after its subject
   # is erased (v2 §14). Text is text in a list too, behind a domain value that is
-  # text, and in a field of a domain value; the finding names the path to it.
+  # text, and in a field of a domain value; the finding names the path to it. A value
+  # declared `code: true` is not: D3 holds it to invariants that pin its form (#431).
   defp free_text(%{model: model} = c) do
     values = if c.domain, do: Map.new(c.domain.values, &{&1.name, &1}), else: %{}
 
@@ -244,6 +246,9 @@ defmodule EhOsContract.Check.Contracts do
 
   defp text_paths(name, values, path, seen) when is_atom(name) do
     case Map.get(values, name) do
+      %{code: true} ->
+        []
+
       %{fields: [_ | _] = fields} ->
         if MapSet.member?(seen, name),
           do: [],

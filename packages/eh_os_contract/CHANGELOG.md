@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A value may be declared a code, `code: true`** (#431): text whose invariants pin its form, such as a tax
+  number or a currency, `value :nip, :string, code: true do invariant :valid_check_digit, … end`.
+  `free-text-not-personal` no longer reports a field of such a value, or of a value or a list naming it, as
+  free text, so the notice keeps to text a person typed. A code that is not text, or that declares no
+  invariant, does not compile (`D3`).
+
 ## [0.10.0] - 2026-10-24
 
 ### Added

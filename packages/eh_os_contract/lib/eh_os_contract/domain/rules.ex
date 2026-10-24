@@ -450,6 +450,26 @@ defmodule EhOsContract.Domain.Rules do
         []
       end
 
+    # A code says its form is pinned, so it is text with invariants that pin it; an
+    # alias of a code is one already, and needs no `code:` of its own.
+    code =
+      cond do
+        not value.code ->
+          []
+
+        not text?(value.type, aliases, MapSet.new()) ->
+          [{"#{where} is a code, and a code is text: a :string, or a value that is one", value}]
+
+        value.invariants == [] ->
+          [
+            {"#{where} is a code and declares no invariant, so nothing holds it to a form; " <>
+               "declare the invariants that do, or leave it free text", value}
+          ]
+
+        true ->
+          []
+      end
+
     context =
       if value.context && not MapSet.member?(contexts, value.context) do
         [
@@ -479,7 +499,7 @@ defmodule EhOsContract.Domain.Rules do
         for field <- duplicates(value.fields, & &1.name),
             do: {"#{where} declares field #{inspect(field.name)} twice", field}
 
-    one_of ++ unit ++ context ++ types ++ fields ++ field_names
+    one_of ++ unit ++ code ++ context ++ types ++ fields ++ field_names
   end
 
   # A number counts something whether it is written as :integer or as a value that
@@ -493,6 +513,15 @@ defmodule EhOsContract.Domain.Rules do
   end
 
   defp numeric?(_type, _aliases, _seen), do: false
+
+  defp text?(:string, _aliases, _seen), do: true
+
+  defp text?(name, aliases, seen) when is_atom(name) and name != nil do
+    not MapSet.member?(seen, name) and
+      text?(Map.get(aliases, name), aliases, MapSet.put(seen, name))
+  end
+
+  defp text?(_type, _aliases, _seen), do: false
 
   # --- D6: an entity, and every field that names one --------------------------------
 

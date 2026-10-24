@@ -24,6 +24,7 @@ A value type: one built-in type with an optional unit, or a set of fields.
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `unit` | `atom` |  |  | What a number counts, e.g. `:cents`. |
+| `code` | `boolean` |  | `false` | Whether the value is a code, not text a person typed: a value that is text and whose invariants pin its form, e.g. a tax number. A field of it is not free text to `free-text-not-personal`. |
 | `label` | `String.t` |  |  | What the business calls it. |
 | `context` | `atom` |  |  | The context the value belongs to. |
 | `source` | `String.t` |  |  | Where the value comes from in the material. |
