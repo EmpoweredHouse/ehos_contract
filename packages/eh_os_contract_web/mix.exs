@@ -1,7 +1,7 @@
 defmodule EhOsContract.Web.MixProject do
   use Mix.Project
 
-  @version "0.5.0"
+  @version "0.5.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   # The siblings' versions this package works with, passed in every mode below, so that
