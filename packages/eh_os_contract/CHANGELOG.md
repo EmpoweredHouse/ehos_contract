@@ -61,12 +61,22 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **`mix eh_os_contract.check` warns of an event an actor records that no scenario records**
   (`recording-without-scenario`, #430). A new warning only: no verdict moves, but a host running
   `check --warnings-as-errors` with a `recorded_by:` event turns red until it adds a scenario that records it.
+- **A value may be declared a code, `code: true`** (#431): text whose invariants pin its form, such as a tax
+  number, `value :nip, :string, code: true do invariant :valid_check_digit, … end`.
+  `free-text-not-personal` no longer reports a field of such a value, or of a value or a list naming it, as
+  free text, so the notice keeps to text a person typed. A code that is not text, or that neither declares an
+  invariant nor names a value that does, does not compile (`D3`). Declaring it moves no domain's version.
 
 ### Changed
 
 - `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
   `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
   decision emitting one event per item with a `for`.
+- **A field typed with a value of the domain says the value's name as the value's own word** (#432): in
+  `mix eh_os_contract.check`, `term-of-another-context` no longer warns, and `word-without-term` no longer lists
+  the word, when the word is the name of the value the field is typed with. A context whose field `:office_nip`
+  has the type `value :nip` need not copy the term "NIP" another context defines; the rest of the name is still
+  read.
 
 ## [0.10.0] - 2026-10-24
 

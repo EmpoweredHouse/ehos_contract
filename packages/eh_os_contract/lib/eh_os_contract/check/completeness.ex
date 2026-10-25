@@ -802,7 +802,7 @@ defmodule EhOsContract.Check.Completeness do
   defp words_without_terms(model, declared, contracts) do
     for context <- model.contexts,
         terms = EhOsContract.CodeWords.terms(model, context.name),
-        tally = untermed(contracts, context.name, terms),
+        tally = untermed(model, contracts, context.name, terms),
         tally != [] do
       {shown, rest} = Enum.split(tally, @shown_words)
       listed = Enum.map_join(shown, ", ", fn {word, count} -> "#{word} (#{count})" end)
@@ -819,19 +819,20 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  # Each word of the context's names of things that no term covers, with how many
-  # distinct names use it, most used first and then alphabetically.
-  defp untermed(contracts, context, terms) do
+  # Each word of the context's names of things that no term covers, nor a value of the
+  # domain the field is typed with, with how many distinct names use it, most used first
+  # and then alphabetically.
+  defp untermed(model, contracts, context, terms) do
     names =
       for c <- contracts,
           c.model.context == context,
           %{thing?: true} = name <- EhOsContract.CodeWords.names(c),
-          uniq: true,
-          do: name.words
+          do: name
 
     names
-    |> Enum.flat_map(fn words ->
-      covered = own_coverage(terms, words)
+    |> Enum.group_by(& &1.words)
+    |> Enum.flat_map(fn {words, all} ->
+      covered = MapSet.union(own_coverage(terms, words), value_coverage(all, model))
 
       for {word, position} <- Enum.with_index(words),
           not MapSet.member?(covered, position),
@@ -848,8 +849,10 @@ defmodule EhOsContract.Check.Completeness do
   # terms cover is its own, as "Member" is of both lending contexts that have it, and
   # so is one inside a longer term of its own (a term "Member card" covers "Member"). A field named like the
   # identity of a unit of another context refers to that unit, as a field typed
-  # `{:id, entity}` refers to an entity, and is not read. One finding per name of a
-  # contract, at its first declaration.
+  # `{:id, entity}` refers to an entity, and is not read. A field typed with a value of the
+  # domain says the value's name as the value's own word (#432): a context using the
+  # value `:nip` need not copy the term "NIP" of the context that defines it. One finding
+  # per name of a contract, at its first declaration.
   defp terms_of_other_contexts(model, contracts) do
     by_context = Map.new(model.contexts, &{&1.name, EhOsContract.CodeWords.terms(model, &1.name)})
 
@@ -862,7 +865,11 @@ defmodule EhOsContract.Check.Completeness do
         {{kind, name}, [first | _] = all} <-
           Enum.group_by(Enum.filter(names, & &1.thing?), &{&1.kind, &1.name}),
         not (kind == :field and reference?(identities, name, c.model.context)),
-        covered = own_coverage(own, first.words),
+        covered =
+          MapSet.union(
+            own_coverage(own, first.words),
+            value_coverage(all, model)
+          ),
         {sequence, others} <- elsewhere(by_context, c.model.context, first.words),
         not MapSet.subset?(EhOsContract.CodeWords.covers(first.words, sequence), covered) do
       where =
@@ -887,6 +894,14 @@ defmodule EhOsContract.Check.Completeness do
 
   defp reference?(identities, name, own) do
     Enum.any?(identities, fn {id, context} -> id == name and context != own end)
+  end
+
+  # The positions a value covers in every declaration of one name: a name typed with the
+  # value in one declaration and with `:string` in another borrows the word in the second.
+  defp value_coverage(declarations, model) do
+    declarations
+    |> Enum.map(&EhOsContract.CodeWords.value_coverage(&1, model))
+    |> Enum.reduce(&MapSet.intersection/2)
   end
 
   defp own_coverage(own, words) do

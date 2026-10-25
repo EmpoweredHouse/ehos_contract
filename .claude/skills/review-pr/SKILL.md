@@ -57,7 +57,8 @@ them: the sandbox runs it without `--warnings-as-errors`. The sandbox's counts a
 `sandbox/test/e10_outputs_test.exs`, with what each comes from, so a new sandbox line fails that test and
 its pull request re-pins it; the engine's counts are pinned nowhere, so compare them with `main`'s (the
 gate prints both). Every new line needs a sentence from its author —
-"expected, because…" or a fix. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
+"expected, because…" or a fix — and so does a line that disappears: a value newly declared
+`code: true` silences `free-text-not-personal` for every field of it, and has to earn that. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
 hide a mistake:
 
 | Rule | Ask |
@@ -66,7 +67,7 @@ hide a mistake:
 | `emits-never-produced` | Is the declaration wider than the decision, or does the code return an event around `emit/1`? |
 | `competing-in-transaction-consumers` | Does one reaction depend on the other's order? Then it should react to what the other decides. |
 | `in-transaction-policy-fan-out` | Every other append waits for the whole list. Should it be `:at_least_once`? |
-| `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own? |
+| `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own (a value `code: true`)? And a value newly declared `code: true`: do its invariants really pin a form, and does the code identify no person? |
 | `unverified-declaration` | Is the change relying on an `unverified: true` number as if it were confirmed? |
 | `consults-without-match` | A boundary reading every event of a type conflicts under load. |
 | `backward-edge` | A new one on a real process module is an ordering mistake in its stages or an undeclared loop. |

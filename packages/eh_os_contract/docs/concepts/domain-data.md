@@ -342,7 +342,8 @@ From [the rules](../rules.md):
 - **`free-text-not-personal`** (notice): a `:string` field of an event, or text inside a list or a value of
   one, is not `personal:`. Text is what a person typed, and unless it is personal it stays in the log as
   written after its subject is erased. Mark it personal, or give a code, a number or a choice a type of its
-  own (an `:id`, an enum, a value).
+  own: an `:id`, an enum, or a value declared `code: true`, whose invariants, or those of a value it names, pin
+  its form. A code that identifies a person, such as a national id number, is still marked personal.
 - **`value-without-implementation`** (warning): a value declares invariants and no module checks them, so
   dispatch raises on every value of it. Add a module with `use <Domain>, value: <name>`. The check reports it only once
   some contract of the domain is implemented.
