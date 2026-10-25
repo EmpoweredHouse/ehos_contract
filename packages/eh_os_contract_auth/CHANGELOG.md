@@ -24,6 +24,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`EhOsContract.Auth.Testing.sign_in/3` and `sign_out/1`**: a host's test signs a browser in without EHOS
+  and puts the returned token in its session under `EhOsContract.Auth.Session.session_key/0`, so a page
+  behind `EhOsContract.Auth.Session` is tested through the real plug, `Session.actor/2` included, and
+  signed out again. Without an `EhOsContract.Auth.SignIn` child, a stand-in that never calls EHOS takes its
+  name for the rest of the run, so a test that starts a sign-in child of its own gives it another `name:`.
+  The stand-in cannot renew: past the credential's ten minutes, or for another application's credential,
+  the session answers `:ehos_unavailable`. `use EhOsContract.Auth.Testing` imports both, so a test module
+  defining its own `sign_in/2`, `sign_in/3` or `sign_out/1` beside it renames it or imports with `only:`.
+
 ## [0.7.0] - 2026-10-24
 
 ### Added
