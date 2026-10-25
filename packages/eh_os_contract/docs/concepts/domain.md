@@ -90,7 +90,9 @@ read models and fields) both ways:
   and no term of its own context covers it. Either the word means something here too and the glossary should
   say what, or the name borrows the other context's meaning. One finding per name. The check skips a field typed
   `{:id, entity}` or named like the identity of another context's unit (`loan_id`): it refers to that
-  declaration under its name.
+  declaration under its name. Neither rule reads the words of a field that name the value it is typed with:
+  a field `:office_nip` of type `:nip` says "nip" as the value's word, shared by every context that uses the
+  value, so no context has to copy another's term for it.
 
 ## Relations between contexts
 
