@@ -175,8 +175,10 @@ every event it `consults`, folded in the log's order. Two things differ:
    that breaks one is refused when it is read, and with it every decision folding that stream.
 5. Put `use EhOsContract.ScenarioCase, contract: <Contract>` in a test module, if the contract has
    none, and run it. Every scenario of the unit is a test of this module.
-6. Give the module its place in `boundary`: under the context module that owns it, as its siblings
-   are (`sandbox/lib/lending/circulation.ex`), and never reaching another context's tables.
+6. Put the module under the context that owns it, as its siblings are, never reaching another
+   context's tables. Where the project compiles with `boundary`, that place is its context module's
+   `use Boundary` (`sandbox/lib/lending/circulation.ex`); where it does not, as in an application
+   `ehos_app` generates, there is no `use Boundary` to add (`module-boundary-check`).
 7. Run the gate from `sandbox/` (`CLAUDE.md`, "The gate") and read any new `emits-never-produced` line.
 8. If a clause encodes an assumption nobody stated — a partial payment refused rather than modelled
    — say so in the moduledoc. That clause is where the
