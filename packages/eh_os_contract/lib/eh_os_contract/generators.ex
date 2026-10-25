@@ -162,10 +162,16 @@ if Code.ensure_loaded?(StreamData) do
                 "they have #{inspect(known)}"
       end
 
+      # Drawn by the identity's type, as the state declares it: a key typed by a domain
+      # value (#435) is one of the value's examples, as any field of it is.
       identity =
         fixed_map(
-          for field <- unit.identity,
-              do: {field, Keyword.get_lazy(fixed, field, fn -> id() end) |> generator()}
+          for field <- unit.identity do
+            declared = Enum.find(unit.state.fields, &(&1.name == field))
+
+            {field,
+             Keyword.get_lazy(fixed, field, fn -> field(declared, values) end) |> generator()}
+          end
         )
 
       bind(identity, fn identity ->
@@ -300,6 +306,12 @@ if Code.ensure_loaded?(StreamData) do
           :ok
       end
     end
+
+    # A value of a declared field, by its type: `EhOsContract.PropertyCase` draws a unit's
+    # identity typed by a domain value (#435) with it.
+    @doc false
+    @spec value_of(map(), map()) :: StreamData.t(term())
+    def value_of(field, values), do: field(field, values)
 
     defp has_field?(declaration, field), do: Enum.any?(declaration.fields, &(&1.name == field))
 

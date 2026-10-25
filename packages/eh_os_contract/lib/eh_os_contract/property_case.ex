@@ -47,7 +47,16 @@ if Code.ensure_loaded?(StreamData) do
     import ExUnit.Assertions
     import StreamData
 
-    alias EhOsContract.{Decision, Generators, Lifecycle, Meta, Model, Rejection, ScenarioCase}
+    alias EhOsContract.{
+      Codec,
+      Decision,
+      Generators,
+      Lifecycle,
+      Meta,
+      Model,
+      Rejection,
+      ScenarioCase
+    }
 
     @epoch ~U[2026-01-01 09:00:00Z]
     @max_walk 10
@@ -293,10 +302,10 @@ if Code.ensure_loaded?(StreamData) do
     def decisions(contract, unit, command) do
       model = Model.fetch(contract)
       declaration = Enum.find(model.commands, &(&1.name == command and &1.unit == unit))
-      identity = Enum.find(model.units, &(&1.name == unit)).identity
+      identity = identity_of(model, Enum.find(model.units, &(&1.name == unit)))
 
       if Map.get(declaration, :creates) do
-        bind(identity_of(identity), fn ids ->
+        bind(identity, fn ids ->
           contract
           |> Generators.command(command)
           |> map(&struct!(&1, ids))
@@ -304,7 +313,7 @@ if Code.ensure_loaded?(StreamData) do
           |> map(fn {command, rows} -> {[], command, rows} end)
         end)
       else
-        bind(identity_of(identity), fn ids ->
+        bind(identity, fn ids ->
           fixed = Enum.to_list(ids)
 
           bind(Generators.history(contract, unit, fields: fixed), fn events ->
@@ -388,14 +397,14 @@ if Code.ensure_loaded?(StreamData) do
     @spec walks(module(), atom()) :: StreamData.t([{struct(), map()}])
     def walks(contract, unit) do
       model = Model.fetch(contract)
-      identity = Enum.find(model.units, &(&1.name == unit)).identity
+      identity = identity_of(model, Enum.find(model.units, &(&1.name == unit)))
 
       {creating, others} =
         model.commands
         |> Enum.filter(&(&1.unit == unit))
         |> Enum.split_with(&Map.get(&1, :creates, false))
 
-      bind(identity_of(identity), fn ids ->
+      bind(identity, fn ids ->
         fixed = Enum.to_list(ids)
 
         start =
@@ -480,8 +489,19 @@ if Code.ensure_loaded?(StreamData) do
       end
     end
 
-    defp identity_of(fields) do
-      fixed_map(for f <- fields, do: {f, string(:alphanumeric, min_length: 1, max_length: 16)})
+    # A plain identifier is short, so a key of several stays far from its bound; a key
+    # typed by a domain value (#435) is one of the value's examples.
+    defp identity_of(model, unit) do
+      values = Codec.values(model.domain)
+
+      fixed_map(
+        for name <- unit.identity do
+          case Enum.find(unit.state.fields, &(&1.name == name)) do
+            %{type: :id} -> {name, string(:alphanumeric, min_length: 1, max_length: 16)}
+            declared -> {name, Generators.value_of(declared, values)}
+          end
+        end
+      )
     end
 
     defp state_module(model, unit),

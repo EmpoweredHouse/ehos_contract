@@ -183,7 +183,8 @@ A `dcb` declares what it reads with `consults`:
 
 - `consults :seat_taken, match: :workshop_id` reads every `seat_taken` whose `workshop_id` is the
   boundary's. `match:` names fields of the boundary's identity, and every event of this contract
-  consulted that way has to carry them as a required, non-personal `:id` ([`A4`](../contract.md#refusals-a)).
+  consulted that way has to carry them as a required, non-personal `:id`, or a domain value resting on
+  one, such as a period named "2026-07" ([`A4`](../contract.md#refusals-a)).
 - `consults :enrolment_closed, where: "enrolment closed for every course"` reads every event of that
   type, whoever it is about, with the criterion in prose. Use it only when no field can say it
   (`consults-without-match`, below).

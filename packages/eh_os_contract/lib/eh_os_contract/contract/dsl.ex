@@ -78,8 +78,9 @@ defmodule EhOsContract.Contract.Dsl do
             description:
               "identity takes one option beside its fields, `generated: :uuid`, and got " <>
                 Macro.to_string(opts) <>
-                "; a field of it typed as another unit's or an entity's number is written " <>
-                "`identity visit_id: {:id, :visit}`"
+                "; a field of it typed as another unit's or an entity's number, or by a domain " <>
+                "value, is written in the list of its fields: `identity visit_id: {:id, :visit}`, " <>
+                "`identity [:company_id, period_id: :period]`"
       end
     end
   end
@@ -127,9 +128,10 @@ defmodule EhOsContract.Contract.Dsl do
                 [identity_types: %{}, __spark_metadata__: nil]
 
     # `identity [:period_id, company_id: {:id, :client}]` (plan DD, L3 (#286)): an identity
-    # field may be typed, as another unit's or an entity's number. The names stay a list
-    # in `identity`, which everything reads, and the types go to `identity_types`, which
-    # only the build and the rules about types read.
+    # field may be typed, as another unit's or an entity's number, or, since #435, by a
+    # domain value resting on `:id`, whose invariants then hold the key. The names stay a
+    # list in `identity`, which everything reads, and the types go to `identity_types`,
+    # which only the build and the rules about types read.
     @doc false
     @spec split_identity(%__MODULE__{}) :: {:ok, %__MODULE__{}}
     def split_identity(%__MODULE__{identity: identity} = unit) do
@@ -642,7 +644,8 @@ defmodule EhOsContract.Contract.Dsl do
         required: true,
         doc:
           "The fields that identify one aggregate; injected into its state, commands and events. " <>
-            "Each is an `:id`, or another unit's or an entity's when typed: " <>
+            "Each is an `:id`, or another unit's or an entity's when typed, or a domain value " <>
+            "resting on `:id`, whose invariants dispatch holds the key to: " <>
             "`identity visit_id: {:id, :visit}`."
       ],
       generated: [
@@ -671,8 +674,9 @@ defmodule EhOsContract.Contract.Dsl do
         required: true,
         doc:
           "The fields that identify one boundary; injected into its state, commands and events. " <>
-            "Each is an `:id`, or another unit's or an entity's when typed: " <>
-            "`identity [:period_id, company_id: {:id, :client}]`."
+            "Each is an `:id`, or another unit's or an entity's when typed, or a domain value " <>
+            "resting on `:id`, whose invariants dispatch holds the key to: " <>
+            "`identity [company_id: {:id, :client}, period_id: :period]`."
       ],
       source: [type: :string, doc: "Where the boundary comes from in the material."]
     ]

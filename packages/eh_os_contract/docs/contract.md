@@ -119,6 +119,12 @@ end
   plain `:id`; `mix eh_os_contract.check` counts a reference to another context's unit as one into that
   context, against the context map, and the pages link the field to the unit. A command never `reads:` a
   unit, whose state is its events ([`A8`](#refusals-a)).
+- **A key with rules of its own is typed by a domain value.** A unit keyed by a month, a year or a fiscal
+  period names the value in its identity, `identity [:company_id, period_id: :period]`, and dispatch holds
+  the key to the value's invariants as it holds any field: a command or a recorded event whose key breaks
+  one is refused with `{:period_id, {:invariant, name}}` before any stream is read. The value rests on
+  `:id`, since the key names the stream and tags the unit's events ([`F1`](#refusals-f)); a generated
+  identity is a UUID and takes no value.
 - **An aggregate may declare its lifecycle**: the statuses its decisions depend on, in the client's words,
   the `initial` one each first event starts it in, and the `transition`s events make between them, for example
   `transition :booked, :patient_arrived, :in_progress`. A transition names an event type and nothing about
@@ -396,7 +402,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case; an identity field typed otherwise than `:id` or `{:id, name}`, or typed `{:id, name}` in a generated identity |
+| `F1` | L2, L3 | a field named twice in one struct, starting with `__`, or otherwise not snake_case; an identity field typed by a built-in type other than `:id`, or typed `{:id, name}` or by a domain value in a generated identity; an identity field typed by a domain value that does not rest on `:id` (L3) |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, repeats one, or labels one blank; a domain service function without `returns`, or with a malformed return type |
 | `F3` | L2 | `default:` on a field outside a `state`, including a domain value's field |
 | `F4` | L2 | an `optional:` or `personal:` event field that the `correlate` of a process manager handling the event names |
@@ -416,7 +422,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
-| `A4` | L2 | a boundary consulting nothing; consulting an event neither local nor consumed, or one received from another application; a consult without `match:` or `where:`; `match:` naming a field twice, or on a field outside the boundary's identity, or one a local event lacks as a required, non-personal `:id` |
+| `A4` | L2, L3 | a boundary consulting nothing; consulting an event neither local nor consumed, or one received from another application; a consult without `match:` or `where:`; `match:` naming a field twice, or on a field outside the boundary's identity, or one a local event lacks as a required, non-personal `:id` or domain value; a matched field of a local event typed by a domain value that does not rest on `:id` (L3) |
 | `A5` | L2 | a unit or a process manager declaring `state` twice |
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
@@ -537,7 +543,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | --- | --- | --- |
 | `X1` | L3 | a contract's or a process module's `domain:` naming a module that is not a compiled domain, or a contract's `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:` or a scenario's `actor` naming no actor of the domain, or an actor of another context; a process module's `accountable` naming no actor of the domain (of any context, since the module crosses them); a command with `actor_is` whose `by:` names no `:human` actor; its scenario by a person without `as`; `as` beside a `:system` actor, or on a command without `actor_is` |
-| `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts compiled in the same project (a domain's contracts compile in one project), or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
+| `X3` | L3 | a field, identity or return type that is neither built in nor a value of the domain; `{:id, name}` naming neither an entity of the domain nor a unit of its contracts compiled in the same project (a domain's contracts compile in one project), or more than one of them, in a field, an identity or a domain service's result; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some; a process module's promise whose `waits_on` names no external of the domain, one its `eventually` or `or_else` already depends on, or one no contract the process includes depends on or calls; a process module's scenario with an `outage` of no external the promise's `eventually` or `or_else` depends on or the promise `waits_on` |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare; a process module's `include:` naming the same, or an event the contract receives from another application or consumes from a sibling rather than declares |
 | `X6` | L3 | a sibling event's field that a process manager's `correlate` (on an event it handles) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal; a process module's `correlate` field missing in an included event, optional or personal there, not an `:id`, or another identifier than in the other included events |

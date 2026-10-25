@@ -710,14 +710,20 @@ defmodule EhOsContract.Pages do
   defp value_type(site, v),
     do: if(v.type, do: row(["Type: ", type_link(site, v.type)]), else: "A value with fields.")
 
-  # Every declaration with a field of the type, and every value or entity with one.
+  # Every declaration with a field of the type, and every value or entity with one. A
+  # unit keyed by the value (#435) is listed once, not with each of its commands and
+  # events, which carry its identity.
   defp used_by(site, name) do
     aliases =
       for v <- site.domain.values,
           mentions?(v.type, name),
           do: bullet(["value ", link(named(site, v), value_path(v.name))])
 
-    section("Used by", aliases ++ holders(site, &mentions?(&1.type, name)), & &1)
+    section(
+      "Used by",
+      aliases ++ holders(site, &mentions?(&1.type, name), :identity_once),
+      & &1
+    )
   end
 
   # Every declaration, value and entity with a field `wanted` says yes to. With

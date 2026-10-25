@@ -45,7 +45,7 @@ defmodule EhOsContract.ContractFieldsTest do
     end
 
     # Plan DD, L3 (#286): an identity field may be typed as another unit's number.
-    test "an identity field typed otherwise than :id or {:id, name} is refused, at the unit" do
+    test "an identity field typed by a built-in type other than :id is refused, at the unit" do
       message =
         refuse_contract("IdentityTypes", """
           aggregate :visit, "Visit" do
@@ -57,27 +57,34 @@ defmodule EhOsContract.ContractFieldsTest do
 
       assert message =~
                "F1: aggregate :visit: identity :clinic_id is :string; an identity field is an " <>
-                 ":id, or {:id, name} for another unit's or an entity's number (identity_types.ex:4)"
+                 ":id, {:id, name} for another unit's or an entity's number, or a domain value " <>
+                 "resting on :id (identity_types.ex:4)"
 
       assert message =~
-               "identity :generated is :uuid; an identity field is an :id, or {:id, name} for " <>
-                 "another unit's or an entity's number; to have the library generate it, write " <>
-                 "`identity :name, generated: :uuid`"
+               "identity :generated is :uuid; an identity field is an :id, {:id, name} for " <>
+                 "another unit's or an entity's number, or a domain value resting on :id; to have " <>
+                 "the library generate it, write `identity :name, generated: :uuid`"
     end
 
-    test "a generated identity typed as another's number is refused" do
-      message =
-        refuse_contract("IdentityGeneratedRef", """
-          aggregate :visit, "Visit" do
-            identity [visit_id: {:id, :booking}], generated: :uuid
-            command :open_visit, "Opening a visit", by: :reception, emits: :visit_opened, creates: true
-            event :visit_opened, "Visit opened"
-          end
-        """)
+    test "a generated identity typed as another's number or by a domain value is refused" do
+      for {name, type} <- [
+            {"IdentityGeneratedRef", "{:id, :booking}"},
+            {"IdentityGeneratedValue", ":period"}
+          ] do
+        message =
+          refuse_contract(name, """
+            aggregate :visit, "Visit" do
+              identity [visit_id: #{type}], generated: :uuid
+              command :open_visit, "Opening a visit", by: :reception, emits: :visit_opened, creates: true
+              event :visit_opened, "Visit opened"
+            end
+          """)
 
-      assert message =~
-               "F1: aggregate :visit: identity :visit_id is {:id, :booking}, and the library " <>
-                 "generates the identity: a new one is no other unit's or entity's number"
+        assert message =~
+                 "F1: aggregate :visit: identity :visit_id is #{type}, and the library " <>
+                   "generates the identity: a new one is a UUID, no other unit's or entity's " <>
+                   "number and no domain value's"
+      end
     end
 
     test "control: a typed identity is injected as an :id that refers to what it names" do
@@ -100,6 +107,31 @@ defmodule EhOsContract.ContractFieldsTest do
         assert [%{name: :period_id, type: :id} = period, %{name: :visit_id} = visit] = fields
         refute Map.has_key?(period, :refers_to)
         assert %{type: :id, refers_to: :visit} = visit
+      end
+    end
+
+    # #435: a key named by a domain value is held to the value's invariants, as any field.
+    test "control: an identity typed by a domain value is injected with the value's type" do
+      compile_contract("IdentityValue", """
+        aggregate :accounting_month, "Accounting month" do
+          identity [:company_id, period_id: :period]
+          command :open_month, "Open a month", by: :reception, emits: :month_opened
+          event :month_opened, "Month opened"
+        end
+      """)
+
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.IdentityValue)
+      [unit] = model.units
+      [command] = model.commands
+      [event] = model.events
+
+      assert unit.identity == [:company_id, :period_id]
+
+      for fields <- [unit.state.fields, command.fields, event.fields] do
+        assert [%{name: :company_id, type: :id}, %{name: :period_id, type: :period} = period] =
+                 fields
+
+        refute Map.has_key?(period, :refers_to)
       end
     end
 

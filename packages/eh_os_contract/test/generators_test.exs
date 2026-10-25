@@ -185,6 +185,13 @@ defmodule EhOsContract.GeneratorsTest do
       end
     end
 
+    # #435: a key typed by a domain value keeps the value's invariants in a history too.
+    property "an identity typed by a domain value is one of the value's examples" do
+      check all(events <- Generators.history(ValueRig.Till, :drawer, max_length: 3)) do
+        assert Enum.all?(events, &(&1.shift_id == "2026-01-31"))
+      end
+    end
+
     test "fields: naming what no event of the unit has is refused" do
       assert_raise ArgumentError, ~r/which no event of unit :visit has/, fn ->
         Generators.history(LifecycleRig.Visits, :visit, fields: [room: "12"])

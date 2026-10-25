@@ -32,6 +32,14 @@ defmodule ValueRig.Domain do
       satisfied_by: [%{from: "2026-01-01", to: "2026-01-01"}]
   end
 
+  # A shift is named by its day, and the name keys a drawer, so a key is held to an
+  # invariant too (#435).
+  value :shift, :id do
+    invariant :named_by_day, "A shift is a day written YYYY-MM-DD",
+      violated_by: ["2026-13-01", "Monday"],
+      satisfied_by: ["2026-01-31"]
+  end
+
   value :payment do
     field :amount, :amount
     field :note, :string, optional: true

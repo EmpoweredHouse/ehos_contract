@@ -25,6 +25,15 @@ defmodule ValueRig.Fee do
   def capped(fee), do: fee <= 1000
 end
 
+defmodule ValueRig.Shift do
+  @moduledoc "**Invented.** The check of `ValueRig.Domain`'s value `:shift`."
+
+  use ValueRig.Domain, value: :shift
+
+  @impl true
+  def named_by_day(shift), do: match?({:ok, _}, Date.from_iso8601(shift))
+end
+
 defmodule ValueRig.Window do
   @moduledoc "**Invented.** The check of `ValueRig.Domain`'s value `:window`."
 
