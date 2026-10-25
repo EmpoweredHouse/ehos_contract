@@ -195,7 +195,8 @@ it. What was published before is asked of its owner, the application that publis
    against, and a rule without one is prose alone (`prose-without-scenario`). An effect has no
    scenario (`S6`): its constraints stay prose, and its test is yours.
 5. Bind the module (`use <Contract>, policy: :name`), compile, and add what `I2` asks for. `issue/1`
-   takes command struct literals within the declaration's `issues:` (`I4`, `I6`). Each callback's
+   takes command struct literals within the declaration's `issues:`, one, a list of them, or a `for`
+   producing them; a `for` with `into:` or `reduce:` is refused (`I4`, `I6`). Each callback's
    generated doc (`b <Contract>.Policies.<Name>.<event>` in IEx) lists what it may issue, the rules it
    keeps with the scenarios that illustrate them, and its scenarios (plan EP3); a rule it names is
    not restated in the module's moduledoc.

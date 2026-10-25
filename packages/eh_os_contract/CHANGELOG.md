@@ -62,6 +62,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   (`recording-without-scenario`, #430). A new warning only: no verdict moves, but a host running
   `check --warnings-as-errors` with a `recorded_by:` event turns red until it adds a scenario that records it.
 
+### Changed
+
+- `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
+  `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
+  decision emitting one event per item with a `for`.
+
 ## [0.10.0] - 2026-10-24
 
 ### Added
