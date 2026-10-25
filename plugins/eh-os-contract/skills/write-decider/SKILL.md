@@ -72,8 +72,10 @@ compile"), so do not spend attention on it:
 - `I2` — a command's callback is missing, or the function an event's `upcast from: n, function:
   :name` names (the error shows the clause to add);
 - `I3` — `evolve/2` has no clause for an event its state is kept from, and no catch-all;
-- `I4` — `emit/1` given anything but struct literals, or an event the enclosing command does not
-  emit (outside a command callback, one no command of the unit emits);
+- `I4` — `emit/1` given something other than a struct literal, a list of them, or a `for` producing
+  them (one event per item of the data is `emit(for item <- items, do: %Event{...})`; a `for` with
+  `into:` or `reduce:` is refused), or an event the enclosing command does not emit (outside a
+  command callback, one no command of the unit emits);
 - `I5` — `reject/1` given anything but an atom literal the command `rejects:`;
 - `I7` — `issue/1` in a unit;
 - `X8` — two modules implementing one unit.
