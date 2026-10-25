@@ -119,6 +119,18 @@ defmodule EhOsContract.DispatchRecordQueryTest do
              ) == {:error, :not_declared}
     end
 
+    # Issue #430's review: a recording's scenario judges a person apart from the
+    # authorizer, and nothing a host passes as `actor:` reaches that path.
+    test "an actor that is no EhOsContract.Actor is refused before anything is checked" do
+      for actor <- [:person, nil] do
+        assert_raise ArgumentError, ~r/takes `actor:`, an EhOsContract.Actor/, fn ->
+          EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"}, actor: actor)
+        end
+      end
+
+      assert length(log()) == 3
+    end
+
     test "an event a command emits is not recorded" do
       assert_raise ArgumentError, ~r/only an event declaring recorded_by: is recorded/, fn ->
         EhOsContract.record(

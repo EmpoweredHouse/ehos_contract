@@ -109,13 +109,21 @@ defmodule EhOsContract.GraphDocumentTest do
     issued = for i <- s["issues"] || [], do: i["command"]
     trigger = s["trigger"] || %{}
 
+    # A recording is refused on a value's invariant, which names the value (issue #430).
+    rejected =
+      case s["rejected"] do
+        %{"value" => value} -> value
+        rule -> rule
+      end
+
     happened ++
       issued ++
       Enum.reject(
         [
           s["actor"],
-          s["rejected"],
+          rejected,
           s["command"]["command"],
+          s["record"]["event"],
           s["event"]["event"],
           trigger["event"],
           trigger["timer"]
@@ -331,6 +339,37 @@ defmodule EhOsContract.GraphDocumentTest do
         node(Document.contract(DispatchRig.Ledger), "unit", "unit:dispatch_rig.ledger:account")
 
       refute Map.has_key?(account, "records_only")
+    end
+
+    # Issue #430: a recording has no command, which a unit's scenario always carries, so
+    # it is a group of its own; it is about its unit and covers the actor's arrow.
+    test "a recording's scenario is about its unit, and is refused on a value's invariant" do
+      d = Document.contract(ValueRig.Till)
+      assert {:ok, _} = JSV.validate(d, @schema)
+      assert d["scenarios"]["unit"] == []
+
+      [counted, nothing] = d["scenarios"]["record"]
+
+      record =
+        relation(d, "may_record", "actor:ValueRig.Domain:counter", "event:value_rig.till:counted")
+
+      assert %{
+               "target" => "unit:value_rig.till:till",
+               "actor" => "actor:ValueRig.Domain:counter",
+               "record" => %{
+                 "event" => "event:value_rig.till:counted",
+                 "data" => %{"amount" => 250}
+               },
+               "expect" => [%{"event" => "event:value_rig.till:counted"}],
+               "covers" => [covered]
+             } = counted
+
+      assert covered == record["id"]
+
+      assert nothing["rejected"] == %{
+               "value" => "value:ValueRig.Domain:amount",
+               "invariant" => "positive"
+             }
     end
 
     test "a process manager's relations carry the way in they act on" do

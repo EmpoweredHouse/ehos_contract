@@ -270,7 +270,9 @@ defmodule EhOsContract.Contract.Doc do
 
   defp refused_in(model, kind, unit, command, rule) do
     model.scenarios
+    # A recording is refused on a value's invariant, never on its unit's (issue #430).
     |> Enum.filter(&(&1.target == %{kind: kind, name: unit.name} and &1.rejected == rule.name))
+    |> Enum.filter(&(&1.trigger.kind == :command))
     |> Enum.filter(&(command == nil or &1.trigger.name == command.name))
     |> Enum.map(& &1.description)
     |> shown("refused in")

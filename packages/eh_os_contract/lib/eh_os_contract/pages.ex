@@ -1055,6 +1055,17 @@ defmodule EhOsContract.Pages do
             &(&1.name == name)
           )
 
+        # Issue #430: what a recording of `event` is refused on, an invariant of a domain
+        # value its fields hold, the one dispatch would name.
+        {:value_rules, event} ->
+          values = Map.new(site.domain.values, &{&1.name, &1})
+          fields = Enum.find(model.events, &(&1.name == event)).fields
+
+          with value when value != nil <-
+                 EhOsContract.Contract.Links.Scenarios.refusing_value(fields, name, values) do
+            Enum.find(Map.get(values[value], :invariants, []), &(&1.name == name))
+          end
+
         :timers ->
           Enum.find(timers(model), &(&1.name == name))
 
@@ -1101,11 +1112,12 @@ defmodule EhOsContract.Pages do
     say = &said(site, model, &1, &2)
     given = Enum.map(s.given, &say.(:events, &1.event))
     trigger = "#{s.trigger.kind} #{say.(:triggers, s.trigger.name)}"
+    rules = if s.trigger.kind == :record, do: {:value_rules, s.trigger.name}, else: :rules
 
     # What a process manager's scenario says of its timers and its end, too.
     outcome =
       [
-        if(s.rejected, do: "rejected on #{say.(:rules, s.rejected)}"),
+        if(s.rejected, do: "rejected on #{say.(rules, s.rejected)}"),
         if(s.expect != [],
           do: "expects #{Enum.map_join(s.expect, ", ", &say.(:events, &1.event))}"
         ),

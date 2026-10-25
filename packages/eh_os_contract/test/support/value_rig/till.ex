@@ -77,4 +77,16 @@ defmodule ValueRig.Till do
       rule :nothing_of_one, "One cent halves into nothing", examples: [{[1], nil}]
     end
   end
+
+  scenario "the counting machine records what it counted" do
+    actor :counter
+    record :counted, %{till_id: "till-1", amount: 250}
+    expect :counted, %{till_id: "till-1", amount: 250}
+  end
+
+  scenario "the counting machine records no amount of nothing" do
+    actor :counter
+    record :counted, %{amount: 0}
+    rejected :positive
+  end
 end

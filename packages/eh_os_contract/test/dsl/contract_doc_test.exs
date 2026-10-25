@@ -137,6 +137,30 @@ defmodule EhOsContract.ContractDocTest do
              ~s|- constraint `positive` — "The amount is positive" — refused in "zero amount — refused"|
   end
 
+  # Issue #430's review: a recording is refused on a value's invariant, so one named like
+  # the unit's shows nothing of the unit's.
+  test "a recording refused on a name the unit's invariant shares is not where it is refused" do
+    body =
+      @body
+      |> String.replace(
+        ~s|event :cancelled, "Cancelled"|,
+        ~s|event :cancelled, "Cancelled"\n      event :counted, "Counted", recorded_by: :till|
+      )
+      |> Kernel.<>("""
+
+        scenario "counted below zero" do
+          actor :till
+          record :counted
+          rejected :paid_in_full
+        end
+      """)
+
+    model = compile_contract("DocRecorded", body)
+
+    assert Doc.callback(model, :aggregate, :visit, :close) =~
+             ~s|— refused in "unpaid — cancellation refused"\n|
+  end
+
   test "a policy's callback: the event, where it comes from, what it issues, each rule's rung",
        %{model: model} do
     assert Doc.callback(model, :policy, :remind_on_arrival, :arrived) == """

@@ -110,6 +110,8 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],
         [:scenario, :query] => [:name, :data],
+        # Issue #430: an event an actor of its `recorded_by:` records.
+        [:scenario, :record] => [:name, :data],
         [:scenario, :expect] => [:event, :data],
         [:scenario, :issues] => [:command, :data],
         [:scenario, :sets] => [:timer],

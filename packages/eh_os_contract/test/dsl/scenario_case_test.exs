@@ -458,4 +458,69 @@ defmodule EhOsContract.ScenarioCaseTest do
                  "EhOsContract.Fixtures.Scenarios has 2 implementations"
     end
   end
+
+  describe "a recording (issue #430)" do
+    # A scenario of `contract`, or one made from it by `change`: the failures below are
+    # the passing scenarios of the invented rigs, told something else.
+    defp recording(contract, description, change \\ & &1) do
+      scenario = Enum.find(Model.fetch(contract).scenarios, &(&1.description == description))
+      fn -> ScenarioCase.run(contract, change.(scenario), []) end
+    end
+
+    defp refused(contract, description, change),
+      do: assert_raise(ExUnit.AssertionError, recording(contract, description, change)).message
+
+    @counted "the counting machine records what it counted"
+    @nothing "the counting machine records no amount of nothing"
+    @reminded "the timetable reminds a student on the list"
+
+    test "runs no implementation, by a :system actor or a person, appended or refused" do
+      assert recording(ValueRig.Till, @counted).()
+      assert recording(ValueRig.Till, @nothing).()
+      assert recording(BoundaryRig.Waitlist, @reminded).()
+      assert recording(BoundaryRig.Waitlist, "the registrar notes a place confirmed by phone").()
+    end
+
+    test "what record/3 refuses, or appends, fails a scenario that says otherwise" do
+      appended = &%{&1 | rejected: nil, expect: [%{event: :counted, data: %{}}]}
+
+      assert refused(ValueRig.Till, @nothing, appended) ==
+               "expected :counter recording :counted to be appended, and it was refused: " <>
+                 "{:error, {:invalid, [amount: {:invariant, :positive}]}}"
+
+      assert refused(ValueRig.Till, @counted, &%{&1 | expect: [], rejected: :positive}) ==
+               "expected :counter recording :counted to be refused on :positive, and it " <>
+                 "returned :ok"
+
+      assert refused(
+               ValueRig.Till,
+               @counted,
+               &%{&1 | expect: [%{(&1.expect |> hd()) | data: %{amount: 251}}]}
+             ) =~
+               "the scenario requires these events to appear among those produced"
+
+      # The rig's unit has a generated identity, so a command has to have created it.
+      assert refused(BoundaryRig.Waitlist, @reminded, &%{&1 | given: []}) ==
+               "expected :timetable recording :waitlist_reminded to be appended, and it was " <>
+                 "refused: {:error, :not_created}"
+
+      # Another entry's join creates no stream for this one (the review of #430).
+      another = fn s ->
+        %{
+          s
+          | given: [%{hd(s.given) | data: Map.put(hd(s.given).data, :entry_id, "entry-a")}],
+            trigger: %{s.trigger | data: %{entry_id: "entry-b"}}
+        }
+      end
+
+      assert refused(BoundaryRig.Waitlist, @reminded, another) ==
+               "expected :timetable recording :waitlist_reminded to be appended, and it was " <>
+                 "refused: {:error, :not_created}"
+
+      # An actor the domain declares no `:system` actor is refused as record/3 refuses it.
+      assert refused(BoundaryRig.Waitlist, @reminded, &%{&1 | actor: :scheduler}) ==
+               "expected :scheduler recording :waitlist_reminded to be appended, and it was " <>
+                 "refused: {:error, :not_declared}"
+    end
+  end
 end

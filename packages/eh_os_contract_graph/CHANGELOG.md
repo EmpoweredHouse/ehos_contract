@@ -21,6 +21,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A scenario that records an event is drawn** (#430): on the arrow from the actor who may record it, the panel
+  says who records which event after which events, and what is appended or the invariant of a domain value the
+  recording breaks, by its label for the owner. It reads the `record` group of a `graph.v1` document's
+  `scenarios`; a document without it draws as before.
+
 ## [0.7.1] - 2026-10-24
 
 ### Changed

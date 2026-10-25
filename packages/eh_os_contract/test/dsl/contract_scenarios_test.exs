@@ -57,7 +57,7 @@ defmodule EhOsContract.ContractScenariosTest do
         """)
 
       assert message =~
-               ~s|S1: scenario "without a trigger" has no trigger; give it one command, on or query | <>
+               ~s|S1: scenario "without a trigger" has no trigger; give it one command, on, query or record | <>
                  "(trigger_wrong.ex:30)"
 
       assert message =~
@@ -574,7 +574,7 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S7: scenario "reception reminds" (policy :remind_on_close): only a command's | <>
-                 "scenario names an actor (actor_wrong.ex:38)"
+                 "or a recording's scenario names an actor (actor_wrong.ex:38)"
     end
 
     test "a person named with as: without an actor, and on a reaction (plan DD, A1, #247)" do
@@ -613,6 +613,176 @@ defmodule EhOsContract.ContractScenariosTest do
                    actor :manager
                    command :close
                    expect :closed
+                 end
+               """).scenarios
+    end
+  end
+
+  describe "a recording's scenario (issue #430)" do
+    @recorded """
+      aggregate :payment, "Payment" do
+        identity :payment_id
+        invariant :paid_once, "Paid once"
+
+        command :request, "Request", by: :clerk, emits: :requested, rejects: :paid_once
+
+        event :requested, "Requested"
+
+        event :collected, "Collected", recorded_by: :gateway do
+          field :amount, :integer
+        end
+      end
+
+      scenario "requested twice" do
+        given :requested
+        command :request
+        rejected :paid_once
+      end
+    """
+
+    test "a recording of an event no actor records, and one of no event, are refused (S1)" do
+      message =
+        refuse_contract("RecordUnresolved", """
+        #{@recorded}
+          scenario "recording a decided event" do
+            actor :gateway
+            record :requested
+            expect :requested
+          end
+        """)
+
+      assert message =~
+               ~s|S1: scenario "recording a decided event": :requested is not an event of this | <>
+                 "contract that an actor records (recorded_by:)"
+    end
+
+    test "an actor missing or outside recorded_by:, and a person named with as:, are refused (S7)" do
+      message =
+        refuse_contract("RecordActor", """
+        #{@recorded}
+          scenario "nobody records" do
+            record :collected, %{amount: 1}
+            expect :collected
+          end
+
+          scenario "the clerk records" do
+            actor :clerk
+            record :collected, %{amount: 1}
+            expect :collected
+          end
+
+          scenario "a person records" do
+            actor :gateway
+            as "gateway-1"
+            record :collected, %{amount: 1}
+            expect :collected
+          end
+        """)
+
+      assert message =~
+               ~s|S7: scenario "nobody records" (aggregate :payment): a recording names who | <>
+                 "records it with actor:, one of [:gateway]"
+
+      assert message =~
+               ~s|S7: scenario "the clerk records" (aggregate :payment): actor :clerk is not | <>
+                 "among who may record :collected, [:gateway]"
+
+      assert message =~
+               ~s|S7: scenario "a person records" (aggregate :payment): only a command's | <>
+                 "scenario names a person with as:"
+    end
+
+    test "illustrates: on a recording is refused, naming what shows its refusal (S10)" do
+      message =
+        refuse_contract("RecordIllustrates", """
+        #{@recorded}
+          scenario "the gateway records, illustrating" do
+            actor :gateway
+            illustrates :paid_once
+            record :collected, %{amount: 1}
+            expect :collected
+          end
+        """)
+
+      assert message =~
+               ~s|S10: scenario "the gateway records, illustrating" names rules in | <>
+                 "illustrates:, but a recording's scenario shows the value's invariant it is " <>
+                 "refused on with `rejected`"
+    end
+
+    test "another event expected, no outcome, both outcomes and missing data are refused" do
+      message =
+        refuse_contract("RecordOutcome", """
+        #{@recorded}
+          scenario "records another" do
+            actor :gateway
+            record :collected, %{amount: 1}
+            expect :requested
+          end
+
+          scenario "records into nothing" do
+            actor :gateway
+            record :collected, %{amount: 1}
+          end
+
+          scenario "records and is refused" do
+            actor :gateway
+            record :collected, %{amount: 1}
+            expect :collected
+            rejected :not_negative
+          end
+
+          scenario "records without its data" do
+            actor :gateway
+            record :collected
+            expect :collected
+          end
+        """)
+
+      assert message =~
+               ~s|S5: scenario "records another" (aggregate :payment): expects :requested, and a | <>
+                 "recording appends only the event it records, :collected"
+
+      assert message =~
+               ~s|S6: scenario "records into nothing" (aggregate :payment): after a recording, | <>
+                 "expect the event or say it is rejected"
+
+      assert message =~
+               ~s|S6: scenario "records and is refused" (aggregate :payment): a recording either | <>
+                 "appends or is rejected; not both"
+
+      assert message =~
+               ~s|S3: scenario "records without its data" (aggregate :payment): event | <>
+                 ":collected needs :amount"
+    end
+
+    test "a recording's rejected covers no invariant of its unit (S8)" do
+      [before, _scenario] = String.split(@recorded, "\n  scenario ", parts: 2)
+
+      message =
+        refuse_contract("RecordNotCovering", """
+        #{before}
+          scenario "refused on the unit's invariant" do
+            actor :gateway
+            record :collected, %{amount: 1}
+            rejected :paid_once
+          end
+        """)
+
+      assert message =~
+               "S8: invariant :paid_once of aggregate :payment has no scenario in which a " <>
+                 "command is rejected on it"
+    end
+
+    test "control: a recording by an actor of recorded_by: compiles, with its trigger" do
+      assert [_, %{actor: :gateway, trigger: %{kind: :record, name: :collected}}] =
+               compile_contract("RecordRight", """
+               #{@recorded}
+                 scenario "the gateway records" do
+                   actor :gateway
+                   given :requested
+                   record :collected, %{amount: 1}
+                   expect :collected, %{amount: 1}
                  end
                """).scenarios
     end

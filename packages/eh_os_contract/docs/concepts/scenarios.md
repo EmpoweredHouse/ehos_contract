@@ -3,7 +3,7 @@
 What a scenario is, what it can say about a command, a reaction and a query, how
 `EhOsContract.ScenarioCase` runs it against the implementation, and which declarations need one.
 
-<!-- covers: entities contract.scenario; rules reaction-without-scenario, prose-without-scenario, transition-without-scenario -->
+<!-- covers: entities contract.scenario; rules reaction-without-scenario, prose-without-scenario, transition-without-scenario, recording-without-scenario -->
 
 A rule written as a label ("a copy is returned once") tells whoever writes the code what to keep, and
 nothing shows the code keeps it. A **scenario** is the case that does: events that already happened, one
@@ -13,7 +13,7 @@ applies.
 
 ```
 given   what already happened         (events)
-when    one trigger                   (a command, an event a reaction handles, or a query)
+when    one trigger                   (a command, an event a reaction handles, a query, or an event recorded)
 then    what follows                  (events, a rejection, commands issued, a timer, rows answered)
 ```
 
@@ -78,6 +78,10 @@ defmodule Concepts.Scenarios.Contracts.Loans do
     command :release_hold, "Release the hold", emits: :hold_released
 
     event :hold_released, "Hold released"
+
+    event :hold_placed, "Hold placed at the counter", recorded_by: :librarian do
+      field :member_id, :id
+    end
   end
 
   policy :release_on_lending, "Release the hold on a copy that is lent",
@@ -127,6 +131,12 @@ defmodule Concepts.Scenarios.Contracts.Loans do
     query :open_loans_of_member, %{member_id: "m-1"}
     answers [%{loan_id: "l-2"}]
   end
+
+  scenario "the librarian notes a hold placed at the counter" do
+    actor :librarian
+    record :hold_placed, %{copy_id: "c-2", member_id: "m-1"}
+    expect :hold_placed, %{member_id: "m-1"}
+  end
 end
 
 defmodule Concepts.Scenarios.Loan do
@@ -165,13 +175,18 @@ A scenario has exactly one trigger ([`S1`](../contract.md#refusals-s)):
 - **`on`**: an event delivered to the reaction that handles it: a policy or a process manager; for a process
   manager also one of its own timers, `on :reminder_due`.
 - **`query`**: a query of the contract, with its parameters as the data.
+- **`record`**: an event its unit declares `recorded_by:`, written into the log by an actor without a
+  decision, as `EhOsContract.record/3` writes it: a person's observation, or what an integration was
+  told by an outside system.
 
 When only 1 declaration takes the trigger, the trigger identifies the target. When several take one event, `target` says
 which ([`S1`](../contract.md#refusals-s)): in the example `copy_lent` is handled by the policy and projected by the read model, so the
 policy's scenario names the policy. An effect and a read model are never a target ([`S6`](../contract.md#refusals-s)): an effect's outcome is
 outside the log, and a read model is shown by the scenario of a query that reads it.
 
-`actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../contract.md#refusals-s)).
+`actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../contract.md#refusals-s)). A
+recording's scenario always names who records the event, among its `recorded_by:`
+([`S7`](../contract.md#refusals-s)): who may write a fact into the log is what such a scenario shows.
 
 ## What follows
 
@@ -183,9 +198,12 @@ Which outcomes a scenario may state depends on its target ([`S6`](../contract.md
 | a policy | none ([`S2`](../contract.md#refusals-s)) | `issues` the commands it issues |
 | a process manager | the events it handles | `issues`, `sets` and `cancels` a timer, `ended: true`; `state` its run holds after the step |
 | a query | events its read model projects | `answers` the rows, or for a query that returns one, the row |
+| a unit's event recorded | the unit's own events, or a boundary's consulted ones | `expect` the event recorded, or `rejected` with an invariant of a domain value its data breaks (exactly one of the two) |
 
 What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../contract.md#refusals-s)), `rejected` a
-rule it `rejects:` ([`S4`](../contract.md#refusals-s)), and an outcome the declaration cannot produce does not compile ([`S6`](../contract.md#refusals-s)). Its data
+rule it `rejects:` ([`S4`](../contract.md#refusals-s)), and an outcome the declaration cannot produce does not compile ([`S6`](../contract.md#refusals-s)).
+After a recording, `expect` names only the event recorded ([`S5`](../contract.md#refusals-s)), and `rejected` an invariant of a domain
+value its fields hold ([`S4`](../contract.md#refusals-s)), since nothing decides a recording and nothing else refuses it. Its data
 names declared fields of the right type, with every required one in a `given` or the trigger ([`S3`](../contract.md#refusals-s)), and fits
 the domain's values ([`X9`](../contract.md#refusals-x)). The unit's identity is the exception: when the data leaves it out, the scenario uses its own.
 
@@ -216,6 +234,14 @@ event, that is the state with the event folded in after the reaction decided; af
 unchanged. A step the engine would not
 take holds no state: a given before the run starts, or a trigger after it ended, fails the scenario, and so
 do events naming 2 runs in their correlation fields.
+
+**A recording.** No implementation runs, since nothing decides it. The event is held to what
+`EhOsContract.record/3` holds it to before it reads the log: a `:system` actor records it only when its
+`recorded_by:` names the actor, a person's credential is the authorizer's to judge and not the scenario's, and
+the data fits its fields' types and the invariants of their domain values. An aggregate whose identity the
+library gives is recorded only for one a command created, so its recording's scenario needs a `given`. The
+event recorded is then the one event appended, compared with `expect` as a command's events are; `rejected`
+passes only on that value's invariant.
 
 **A query.** Every `given` is projected through the read model's implementation, the query is asked with the
 trigger's data, and its answer must have **exactly as many rows** as `answers`, each matching a different row
@@ -268,6 +294,9 @@ warning of [the check](../rules.md):
   event; a `rejected` scenario decides nothing and does not count. A transition from several statuses needs a
   scenario from each; the check skips a transition on an event no command emits, or from a status no
   command's `from:` admits.
+- **`recording-without-scenario`** (warning): no scenario records an event its `recorded_by:` actors record.
+  Add one that records it, by one of those actors, with what it appends or the value's invariant it breaks:
+  for an integration, what the outside system may write into the log.
 - **`in-transaction-policy-fan-out`** (warning): a scenario shows a policy delivered `:in_transaction`
   issuing more than one command. See [reactions](reactions.md).
 

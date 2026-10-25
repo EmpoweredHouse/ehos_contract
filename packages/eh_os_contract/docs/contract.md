@@ -146,7 +146,8 @@ end
   decide and record, such as a register of equipment or of rooms, needs no process.
 - **A scenario is a test the contract carries**: given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
-  an ExUnit test against the implementation:
+  an ExUnit test against the implementation; a scenario that records an event, which nothing decides, runs
+  none, and is held to what `EhOsContract.record/3` checks:
 
   ```elixir
   use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
@@ -501,16 +502,16 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description; a process module's scenario judging no promise, several, or one the module does not make |
+| `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, an event nothing handles, or a recording of an event no actor records (`recorded_by:`); several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description; a process module's scenario judging no promise, several, or one the module does not make |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy; in a process module, a `given` of an event the process does not include |
 | `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted); an `at:` that is no ISO 8601 timestamp with an offset, or a given's earlier than the given before it; a given without `at:` before one with it |
-| `S4` | L2 | `rejected` naming what the command does not `rejects:` |
-| `S5` | L2 | `expect` naming an event outside the command's `emits:` |
-| `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a `state` said twice, or of anything but a process manager; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
-| `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command; an `as` without an `actor`, or on a scenario whose trigger is not a command |
+| `S4` | L2, L3 | `rejected` naming what the command does not `rejects:`; a recording's naming no invariant of a domain value the event's fields hold (L3) |
+| `S5` | L2 | `expect` naming an event outside the command's `emits:`; after a recording, any event but the one recorded |
+| `S6` | L2 | an outcome unfit for the target: a command or a recording without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a `state` said twice, or of anything but a process manager; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
+| `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is neither a command nor a recording; a recording without an `actor`, or with one outside the event's `recorded_by:`; an `as` without an `actor`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
-| `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
+| `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's or a recording's scenario, which shows its rules with `rejected` |
 | `S11` | L2 | a process module's scenario without a `verdict:` or with one outside `:satisfied`, `:violated`, `:pending`, `:suspended`; `via:` on another verdict than `:satisfied`, outside `:eventually` and `:or_else`, or `:or_else` for a promise without one; `:violated` or `:suspended` for a promise without `within`, or `:suspended` without an `outage`; no given of the promise's `from`; a given or an outage after the moment of judgement |
 | `S12` | L2 | a scenario of a command that `reads:` an entity without a `given_entity` of it; a `given_entity` of an entity the command does not read, or in a scenario of anything else |
 

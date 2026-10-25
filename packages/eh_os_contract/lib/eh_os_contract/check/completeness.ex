@@ -62,6 +62,7 @@ defmodule EhOsContract.Check.Completeness do
       prefixed_event_names(c),
       consults_without_match(c),
       without_scenario(c),
+      recordings_without_scenario(c),
       unillustrated(c),
       untaken_transitions(c),
       core_commands_never_refusing(c),
@@ -323,6 +324,24 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
+  # Issue #430: an event an actor records that no scenario records, so nothing in the
+  # contract shows who writes it into the log, or what is refused.
+  defp recordings_without_scenario(%{model: model} = c) do
+    recorded =
+      MapSet.new(for %{trigger: %{kind: :record, name: name}} <- model.scenarios, do: name)
+
+    for %{recorded_by: [_ | _]} = event <- model.events,
+        not MapSet.member?(recorded, event.name) do
+      Finding.new(
+        "recording-without-scenario",
+        "event #{inspect(event.name)} of #{inspect(model.module)} is recorded by " <>
+          "#{inspect(event.recorded_by)}, and no scenario records it, so nothing shows what " <>
+          "they may write into the log",
+        at(Rules.local_events(c.declarations), event.name)
+      )
+    end
+  end
+
   # The ladder's first step up (plan EP2): a rule of a policy, a process manager or a
   # query that no scenario of that declaration `illustrates:`, so it is prose alone. An
   # effect's constraint is left out, as `without_scenario/1` leaves out the effect: no
@@ -394,11 +413,13 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  # Every `{from, event, to}` some command's scenario of `unit` takes, as a map's keys.
+  # Every `{from, event, to}` some command's scenario of `unit` takes, as a map's keys. A
+  # recording decides nothing, so it shows no implementation taking one (issue #430).
   defp taken(model, unit, lifecycle) do
     streams =
       for scenario <- model.scenarios,
           scenario.target == %{kind: unit.kind, name: unit.name},
+          scenario.trigger.kind == :command,
           do:
             Enum.map(scenario.given, &{&1.event, false}) ++
               Enum.map(scenario.expect, &{&1.event, true})

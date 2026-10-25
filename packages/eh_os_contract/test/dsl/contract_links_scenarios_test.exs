@@ -18,9 +18,20 @@ defmodule EhOsContract.ContractLinksScenariosTest do
 
         context :settlement, "Settlement", subdomain: :core
         actor :reception, :human, "Reception"
+        actor :terminal, :system, "Payment terminal"
 
         value :money, :integer, unit: :cents
         value :status, {:enum, [:active, :expired]}
+
+        value :charge, :integer, unit: :cents do
+          invariant :not_negative, "A charge is not negative",
+            violated_by: [-1],
+            satisfied_by: [0]
+        end
+
+        value :receipt do
+          field :charges, {:list, :charge}
+        end
 
         entity :service, "Service", context: :settlement, identity: :service_id do
           field :reported_to_registry, :boolean
@@ -354,6 +365,96 @@ defmodule EhOsContract.ContractLinksScenariosTest do
           ] do
         assert_linked(violations, problem, "scn_entity_wrong.ex")
       end
+    end
+  end
+
+  describe "a recording refused on a value's invariant (S4, issue #430)" do
+    # The scenario at line 13.
+    defp recording(name, rejected) do
+      {"#{Macro.underscore(name)}.ex",
+       """
+       defmodule #{inspect(Module.concat(@fixtures, name))} do
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
+
+         aggregate :visit, "Visit" do
+           identity :visit_id
+
+           event :charged, "Charged", recorded_by: :terminal do
+             field :receipt, :receipt
+             field :status, :status
+           end
+         end
+
+         scenario "a charge below zero" do
+           actor :terminal
+           record :charged, %{receipt: %{charges: [-1]}, status: :active}
+           rejected #{inspect(rejected)}
+         end
+       end
+       """}
+    end
+
+    test "control: an invariant of a value the event holds, at any depth, passes" do
+      assert links([recording("ScnRecordRight", :not_negative)]) == []
+    end
+
+    test "a name no value of the event's fields declares" do
+      violations = links([recording("ScnRecordWrong", :paid_in_full)])
+
+      assert assert_linked(violations, "rejected :paid_in_full", "scn_record_wrong.ex", 13) =~
+               ~s|S4: scenario "a charge below zero": rejected :paid_in_full is no invariant of a | <>
+                 "domain value event :charged holds; a recording is refused only on one, and its " <>
+                 "fields hold [:not_negative]"
+
+      assert length(violations) == 1
+    end
+
+    # The review of #430: each value once, a value shared at every depth too (2^30 paths
+    # here, one walk), and what a value is made of before the value, as dispatch asks
+    # them (`EhOsContract.Codec`), so the value named is the one dispatch refuses on.
+    @tag timeout: 5_000
+    test "the values a recording's fields hold, each once, the parts first" do
+      layered =
+        Map.new(0..29, fn i ->
+          next = :"layer_#{i + 1}"
+          {:"layer_#{i}", %{type: nil, fields: [%{type: next}, %{type: {:list, next}}]}}
+        end)
+        |> Map.put(:layer_30, %{type: :integer})
+
+      held = EhOsContract.Contract.Links.Scenarios.held([:layer_0], layered)
+
+      assert length(held) == 31
+      assert hd(held) == :layer_30 and List.last(held) == :layer_0
+
+      itself = %{
+        node: %{type: nil, fields: [%{type: :node}, %{type: :amount}]},
+        amount: %{type: :integer}
+      }
+
+      assert EhOsContract.Contract.Links.Scenarios.held([:node, :string], itself) ==
+               [:amount, :node]
+    end
+
+    test "the value a recording is refused on is one its fields hold, the innermost first" do
+      positive = [%{name: :positive}]
+
+      values = %{
+        outer: %{type: :inner, invariants: positive},
+        inner: %{type: :integer, invariants: positive},
+        elsewhere: %{type: :integer, invariants: positive}
+      }
+
+      assert EhOsContract.Contract.Links.Scenarios.refusing_value(
+               [%{type: :outer}],
+               :positive,
+               values
+             ) == :inner
+
+      assert EhOsContract.Contract.Links.Scenarios.refusing_value(
+               [%{type: :string}],
+               :positive,
+               values
+             ) == nil
     end
   end
 end

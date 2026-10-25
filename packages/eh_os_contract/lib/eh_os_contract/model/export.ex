@@ -71,7 +71,7 @@ defmodule EhOsContract.Model.Export do
   defp redact_trigger(%{kind: :command} = trigger, model, values),
     do: redact_named(trigger, :name, model.commands, values)
 
-  defp redact_trigger(%{kind: :on} = trigger, model, values),
+  defp redact_trigger(%{kind: kind} = trigger, model, values) when kind in [:on, :record],
     do: redact_event(trigger, :name, model, values)
 
   defp redact_trigger(%{kind: :query} = trigger, model, values),

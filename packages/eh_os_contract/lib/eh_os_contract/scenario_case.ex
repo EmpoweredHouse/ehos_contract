@@ -36,6 +36,16 @@ defmodule EhOsContract.ScenarioCase do
   declaration: an event the command does not emit fails the scenario, whatever it
   expects.
 
+  **A recording's scenario** — `record :collected, %{…}`, with the `actor` who
+  records it — runs no implementation, since nothing decides it: the event is held to
+  what `EhOsContract.record/3` holds it to before it reads the log. A `:system` actor
+  records it only when the event's `recorded_by:` names it, a person's credential is
+  the authorizer's and not the scenario's, and the data fits its fields' types and the
+  invariants of their domain values, which run against the domain's implementation.
+  It then expects the event recorded, or `rejected:` names the invariant of a domain
+  value it breaks. An aggregate whose identity the library gives is recorded only for
+  one a command created, so its recording's scenario gives at least one event.
+
   **A query's scenario** (ESDM's read model scenario) projects every `given`
   through the implementation of the read model the query reads, asks the query with
   the trigger's data as its parameters, and compares what it answers with
@@ -395,10 +405,22 @@ defmodule EhOsContract.ScenarioCase do
   @doc """
   Runs one scenario of `contract` against its implementation, and asserts what the
   scenario says. `implementations`, when given, is where the implementation is
-  looked for instead of the contract's application.
+  looked for instead of the contract's application. A recording's scenario runs no
+  implementation, and asks its domain values' invariants of the modules bound to them
+  with `use <Domain>, value:`, as dispatch does, whatever `implementations` says.
   """
   @spec run(module(), map(), [module()] | nil) :: true
-  def run(contract, scenario, implementations \\ nil) do
+  def run(contract, scenario, implementations \\ nil)
+
+  # Issue #430: nothing decides a recording, so no implementation runs.
+  def run(contract, %{trigger: %{kind: :record}} = scenario, _implementations) do
+    model = Model.fetch(contract)
+    given_times = Rules.Scenarios.moments(scenario.given)
+    now = if given_times == [], do: @epoch, else: DateTime.add(List.last(given_times), 60)
+    recorded(model, scenario, identity(scenario), now)
+  end
+
+  def run(contract, scenario, implementations) do
     model = Model.fetch(contract)
     implementation = implementation!(model, scenario.target, implementations)
     identity = identity(scenario)
@@ -564,6 +586,87 @@ defmodule EhOsContract.ScenarioCase do
 
   defp run(model, scenario, impl, identity, givens, now, _found),
     do: run(model, scenario, impl, identity, givens, now)
+
+  # Issue #430: a recording is refused, or not, by what `EhOsContract.record/3` asks before
+  # it reads the log — who records, and whether the data fits its types and its values'
+  # invariants — and an aggregate whose identity the library gives is recorded only for
+  # one a command created, so only after a given of the same stream. What it appends is
+  # the event recorded, and nothing else.
+  defp recorded(model, scenario, identity, now) do
+    name = scenario.trigger.name
+    declaration = Enum.find(model.events, &(&1.name == name))
+    unit = Enum.find(model.units, &(&1.name == declaration.unit))
+    event = message(model, :event, name, scenario.trigger.data, identity, now, scenario.actor)
+
+    # In `record/3`'s order: the actor and the data, then whether the unit exists.
+    result =
+      with :ok <- recorder_permitted(model, declaration, scenario.actor),
+           :ok <- EhOsContract.Dispatcher.record_fits(model, declaration, event) do
+        if Map.get(unit, :generated) && not created?(model, unit, scenario, identity),
+          do: {:error, :not_created},
+          else: :ok
+      end
+
+    who = "#{inspect(scenario.actor)} recording #{inspect(name)}"
+
+    case {scenario.rejected, result} do
+      {nil, :ok} ->
+        subsequence!(expected(model, :event, scenario.expect, & &1.event), :event, [{name, event}])
+
+      {nil, refused} ->
+        flunk("expected #{who} to be appended, and it was refused: #{inspect(refused)}")
+
+      {invariant, {:error, {:invalid, problems}}} ->
+        assert Enum.any?(problems, &match?({_field, {:invariant, ^invariant}}, &1)),
+               "expected #{who} to be refused on #{inspect(invariant)}, and it was refused on " <>
+                 inspect(problems)
+
+      {invariant, other} ->
+        flunk(
+          "expected #{who} to be refused on #{inspect(invariant)}, and it returned " <>
+            inspect(other)
+        )
+    end
+  end
+
+  # Whether a given is an event of the stream the recording appends to: its identity, as
+  # `message/7` fills it in, is the recording's.
+  defp created?(model, unit, scenario, identity) do
+    own = for e <- model.events, e.unit == unit.name, into: MapSet.new(), do: e.name
+
+    stream = fn data ->
+      Enum.map(unit.identity, &(Map.get(data, &1) || identity.(&1) || @stream))
+    end
+
+    recorded = stream.(scenario.trigger.data)
+
+    Enum.any?(scenario.given, &(&1.event in own and stream.(&1.data) == recorded))
+  end
+
+  # Whether the actor a recording's scenario names may record it, as `record/3` asks: a
+  # person's credential is the `EhOsContract.Authorizer`'s, which no scenario can ask, and
+  # its role is in `recorded_by:` already (S7); anyone else by name, refused when the
+  # domain declares no such `:system` actor.
+  defp recorder_permitted(model, declaration, name) do
+    domain = model.domain
+
+    actors =
+      if Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0),
+        do: domain.__eh_os_contract_model__().actors,
+        else: []
+
+    case Enum.find(actors, &(&1.name == name)) do
+      %{kind: :human} ->
+        :ok
+
+      _system ->
+        EhOsContract.Dispatcher.record_permitted(
+          model,
+          declaration,
+          EhOsContract.Actor.system(name)
+        )
+    end
+  end
 
   # Plan DD, T2a (#240): a command that reads entities is decided with their rows, as
   # dispatch decides it: each the scenario's `given_entity` of that entity whose identity

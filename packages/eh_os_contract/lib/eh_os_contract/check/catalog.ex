@@ -280,6 +280,21 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "recording-without-scenario",
+      level: :warn,
+      esdm: nil,
+      summary: "No scenario records an event its `recorded_by:` actors record.",
+      text: """
+      The event is written into the log by an actor, a person or an integration, with no command to
+      decide it, and the contract shows it only as a `given` of what follows. A scenario that records
+      it, `record :collected, %{…}` with one of those actors, is what shows who may write it and what
+      it appends; one with `rejected:` shows the data a value's invariant refuses. For an integration
+      that is the part that matters most: what the outside system may write into the log. A warning,
+      as `reaction-without-scenario` is: `EhOsContract.record/3` still holds every recording to its
+      declaration.
+      """
+    },
+    %{
       id: "transition-without-scenario",
       level: :warn,
       esdm: nil,

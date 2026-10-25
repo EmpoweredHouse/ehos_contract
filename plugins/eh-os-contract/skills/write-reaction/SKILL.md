@@ -37,6 +37,8 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 - An effect is the only kind that may touch the world outside the database. When the world's answer
   matters to the process, the effect records it as an event (`EhOsContract.record/3`, as its
   `:system` actor, whose events declare `recorded_by:`), and the rest of the process reacts to that.
+  A scenario that `record`s the event with that actor shows what the effect may write into the log
+  (`add-event`); the effect's call itself is outside the log, so no scenario runs it.
 - A read model is the client's state, projected. It holds no decision: a rule about what may happen
   belongs to a unit's invariant, never to a projection someone reads before deciding.
 - An event of a sibling contract is taken through `consumes Sibling, [:event]` (K1, X5). An event of
