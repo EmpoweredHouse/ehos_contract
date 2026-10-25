@@ -57,7 +57,8 @@ defmodule EhOsContract.Auth.Testing do
 
   import ExUnit.Assertions
 
-  alias EhOsContract.Auth.{Keys, SignIn, Testing}
+  alias EhOsContract.Auth.{Keys, SignIn}
+  alias EhOsContract.Auth.Testing.SignIn, as: StandIn
   alias EhOsContract.Auth.SignIn.Sessions
 
   @key {__MODULE__, :key}
@@ -96,10 +97,17 @@ defmodule EhOsContract.Auth.Testing do
         |> get("/visits/7")
 
   When no `EhOsContract.Auth.SignIn` runs under the name, a stand-in is started there
-  once per test run: it holds a client made for the test and never calls EHOS. A
-  running child is used as it is. The credential lives ten minutes from
-  `EhOsContract.Clock.now/0`; a test that moves the clock past that meets a renewal the
-  stand-in cannot make, and the session answers `:ehos_unavailable`.
+  once per test run: it holds a client made for the test and never calls EHOS, and it
+  keeps the name until the run ends. So a test that starts a sign-in child of its own
+  gives it another `name:`, and passes that name here as `sign_in:` to sign in through
+  it; a running child is used as it is.
+
+  The credential is for this application alone, and lives ten minutes from
+  `EhOsContract.Clock.now/0`. Through the stand-in, a credential that must be renewed,
+  because the test moved the clock past those ten minutes, and
+  `EhOsContract.Auth.Session.credential/3` for another application, answer
+  `:ehos_unavailable`: renewing is EHOS's. Through a running child, renewing calls the
+  EHOS it is configured with.
 
   `opts`: `scopes:`, as `credential/3` takes them; `sign_in:`, the child's name
   (`EhOsContract.Auth.SignIn` by default); `keys:`, the key process. Raises as
@@ -109,7 +117,7 @@ defmodule EhOsContract.Auth.Testing do
   def sign_in(subject, capabilities, opts \\ []) do
     opts = Keyword.validate!(opts, scopes: %{}, sign_in: SignIn, keys: Keys)
     {token, expires_at} = signed(subject, capabilities, opts[:scopes], keys: opts[:keys])
-    :ok = Testing.SignIn.ensure_started(opts[:sign_in])
+    :ok = StandIn.ensure_started(opts[:sign_in])
     unique = fn -> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false) end
 
     {:ok, browser_token} =

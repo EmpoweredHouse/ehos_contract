@@ -675,11 +675,13 @@ conn =
 ```
 
 `sign_in/3` writes the session row a sign-in through EHOS writes, with a credential `credential/3`
-issued, and the session plug lets the request through with that credential's actor; after
-`sign_out/1` it treats the browser as signed out. When no `EhOsContract.Auth.SignIn` child runs, a
-stand-in that never calls EHOS takes its name, so the test configuration needs no `sign_in:`. The
-credential lives ten minutes: a test that moves `EhOsContract.Clock` past that meets a renewal the
-stand-in cannot make, and the session answers 503.
+issued. The session plug lets the request through, and `EhOsContract.Auth.Session.actor/2` answers
+that credential's actor; after `sign_out/1` the browser is signed out. When no
+`EhOsContract.Auth.SignIn` child runs, a stand-in that never calls EHOS takes its name for the rest
+of the run, so the test configuration needs no `sign_in:`, and a test that starts a child of its own
+names it and passes `sign_in: name`. The stand-in cannot renew: a test that moves
+`EhOsContract.Clock` past the credential's ten minutes, or asks `Session.credential/3` for another
+application, gets `:ehos_unavailable`, and the plug answers 503.
 
 ## Where the keys come from, and what to configure at integration
 

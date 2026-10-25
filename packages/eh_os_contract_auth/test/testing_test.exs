@@ -119,6 +119,25 @@ defmodule EhOsContract.Auth.TestingSignInTest do
     assert page(context, second).assigns.eh_os_contract_session.subject == "u-bob"
   end
 
+  test "browsers signed in at once, while the stand-in starts, all find it", context do
+    tokens =
+      1..20
+      |> Enum.map(fn i ->
+        Task.async(fn -> Testing.sign_in("u-#{i}", [], opts(context)) end)
+      end)
+      |> Task.await_many()
+
+    assert length(Enum.uniq(tokens)) == 20
+  end
+
+  test "asked to refresh, the stand-in answers that EHOS is unavailable, and keeps its sessions",
+       context do
+    token = Testing.sign_in("u-anna", [], opts(context))
+
+    assert SignIn.refresh(context.sign_in) == {:error, :ehos_unavailable}
+    assert page(context, token).assigns.eh_os_contract_session.subject == "u-anna"
+  end
+
   test "past the credential's ten minutes, the stand-in cannot renew it", context do
     token = Testing.sign_in("u-anna", [], opts(context))
     later = DateTime.add(EhOsContract.Clock.now(), 11 * 60)

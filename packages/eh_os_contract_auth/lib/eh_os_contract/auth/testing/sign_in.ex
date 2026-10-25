@@ -10,22 +10,35 @@ defmodule EhOsContract.Auth.Testing.SignIn do
 
   use GenServer
 
-  alias EhOsContract.Auth.SignIn
+  alias EhOsContract.Auth.{Keys, SignIn}
   alias EhOsContract.Auth.SignIn.{Cipher, Http}
 
   @placeholder_address "https://application.test"
 
   @doc false
-  # Starts the stub under `name`, unless something already runs there; either way, `name` answers
-  # `SignIn.config/1` when this returns.
+  # Starts the stand-in under `name`, unless something already runs there; either way, `name`
+  # answers `SignIn.config/1` when this returns. Only where test keys may be pinned.
   @spec ensure_started(atom()) :: :ok
   def ensure_started(name) do
+    unless Keys.test_trust?() do
+      raise ArgumentError,
+            "a stand-in for EhOsContract.Auth.SignIn is for tests only. Set config " <>
+              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
+    end
+
+    # A name is registered before `init/1` has made its table, so a test that finds it taken by a
+    # stand-in still starting waits for it: a call is answered only once `init/1` has returned.
     if Process.whereis(name) do
+      if :ets.whereis(name) == :undefined, do: :sys.get_state(name)
       :ok
     else
       case GenServer.start(__MODULE__, name, name: name) do
-        {:ok, _pid} -> :ok
-        {:error, {:already_started, _pid}} -> :ok
+        {:ok, _pid} ->
+          :ok
+
+        {:error, {:already_started, pid}} ->
+          _state = :sys.get_state(pid)
+          :ok
       end
     end
   end
@@ -39,7 +52,7 @@ defmodule EhOsContract.Auth.Testing.SignIn do
 
     config = %SignIn{
       name: name,
-      issuer: Application.get_env(:eh_os_contract_auth, :issuer, "https://ehos.test"),
+      issuer: Application.fetch_env!(:eh_os_contract_auth, :issuer),
       client_id: "eh-os-contract-auth-test",
       client_key: JOSE.JWK.generate_key({:okp, :Ed25519}),
       address: address,
@@ -57,4 +70,9 @@ defmodule EhOsContract.Auth.Testing.SignIn do
     true = :ets.insert(name, {:config, config})
     {:ok, name}
   end
+
+  # `SignIn.refresh/2` asked of the stand-in: there is no EHOS to fetch from, and the stand-in
+  # stays, with the key every session written so far is sealed with.
+  @impl GenServer
+  def handle_call(:refresh, _from, name), do: {:reply, {:error, :ehos_unavailable}, name}
 end
