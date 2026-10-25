@@ -72,8 +72,10 @@ compile"), so do not spend attention on it:
 - `I2` — a command's callback is missing, or the function an event's `upcast from: n, function:
   :name` names (the error shows the clause to add);
 - `I3` — `evolve/2` has no clause for an event its state is kept from, and no catch-all;
-- `I4` — `emit/1` given anything but struct literals, or an event the enclosing command does not
-  emit (outside a command callback, one no command of the unit emits);
+- `I4` — `emit/1` given something other than a struct literal, a list of them, or a `for` producing
+  them (one event per item of the data is `emit(for item <- items, do: %Event{...})`; a `for` with
+  `into:` or `reduce:` is refused), or an event the enclosing command does not emit (outside a
+  command callback, one no command of the unit emits);
 - `I5` — `reject/1` given anything but an atom literal the command `rejects:`;
 - `I7` — `issue/1` in a unit;
 - `X8` — two modules implementing one unit.
@@ -175,8 +177,10 @@ every event it `consults`, folded in the log's order. Two things differ:
    that breaks one is refused when it is read, and with it every decision folding that stream.
 5. Put `use EhOsContract.ScenarioCase, contract: <Contract>` in a test module, if the contract has
    none, and run it. Every scenario of the unit is a test of this module.
-6. Give the module its place in `boundary`: under the context module that owns it, as its siblings
-   are (`sandbox/lib/lending/circulation.ex`), and never reaching another context's tables.
+6. Put the module under the context that owns it, as its siblings are, never reaching another
+   context's tables. Where the project compiles with `boundary`, that place is its context module's
+   `use Boundary` (`sandbox/lib/lending/circulation.ex`); where it does not, as in an application
+   `ehos_app` generates, there is no `use Boundary` to add (`module-boundary-check`).
 7. Run the gate from `sandbox/` (`CLAUDE.md`, "The gate") and read any new `emits-never-produced` line.
 8. If a clause encodes an assumption nobody stated — a partial payment refused rather than modelled
    — say so in the moduledoc. That clause is where the

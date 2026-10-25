@@ -369,5 +369,5 @@ higher, banking-grade level, and would be EHOS's decision.
 | Authorization in `dispatch/3`, `query/3` and `record/3`, scope checks, the row check | built (E6) |
 | `EhOsContract.Plug` | built (E6) |
 | Verifying EHOS credentials, keeping keys, the audit row, the bearer-token plug, the test helper | built (EA), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
-| The manifest EHOS reads, `ehos.manifest/v2` to `v6` from `ehos.yaml` and the contracts | built (E10, EH), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
+| The manifest EHOS reads, `ehos.manifest/v2` to `v7` from `ehos.yaml` and the contracts | built (E10, EH), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
 | Sign-in for a frontend's users | EHOS, not designed yet |

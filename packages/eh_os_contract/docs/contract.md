@@ -339,10 +339,10 @@ defmodule Lending.Loan do
 end
 ```
 
-`emit/1` takes the literal structs a command may produce, and refuses at compile time one outside its
-`emits:`; `reject/1` names one of its `rejects:`. Implementations point at the contract, never the other
-way round, so changing the code never recompiles the contract, and the engine finds them in the running
-binary (`config :eh_os_contract, applications: [...]`).
+`emit/1` takes the literal structs a command may produce (one, a list of them, or a `for` producing
+them), and refuses at compile time one outside its `emits:`; `reject/1` names one of its `rejects:`.
+Implementations point at the contract, never the other way round, so changing the code never recompiles
+the contract, and the engine finds them in the running binary (`config :eh_os_contract, applications: [...]`).
 
 A unit whose events all declare `recorded_by:` and whose state is only its identity has nothing to
 implement: no command reaches it, and an integration records its events with `EhOsContract.record/3`. A
@@ -558,7 +558,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `I1` | L4 | `use` with an unknown kind, no declaration or several, or naming one that does not exist, is of another kind, or is a value without invariants; a module binding a second declaration |
 | `I2` | L4 | a callback the declaration needs and the module does not define |
 | `I3` | L4 | `evolve` without a clause for an event its state is kept from, and no unguarded catch-all |
-| `I4` | L4 | `emit` or `issue` given anything but struct literals (a list, or a `for` without `into:`/`reduce:`); `emit` of an event the enclosing command, or outside a command any command of the unit, does not emit |
+| `I4` | L4 | `emit` or `issue` given something other than a struct literal, a list of them, or a `for` producing them (one with `into:` or `reduce:` produces something else); `emit` of an event the enclosing command, or outside a command any command of the unit, does not emit |
 | `I5` | L4 | `reject` given no atom literal, or one the enclosing command (outside one, any command of the unit) does not `rejects:` |
 | `I6` | L4 | `issue` of a command outside the `issues:` of the enclosing reaction, or outside a reaction of any |
 | `I7` | L4 | a macro where its kind does not allow it: `emit` and `reject` outside a unit, `issue` outside a policy or process manager |
