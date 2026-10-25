@@ -137,6 +137,85 @@ defmodule EhOsContract.CheckCodeWordsTest do
            ] = found("term-of-another-context")
   end
 
+  # #432: a value of the domain is its shared word. A field typed with it says the value's
+  # name as the value's own, so a context using it need not copy another context's term.
+  test "a field typed with a value of the domain says the value's words as its own" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCodeWordsTest.Valued do
+        use EhOsContract.Domain, name: :code_words_valued, language: :pl
+
+        subdomain :core, "Rdzeń", type: :core
+
+        context :scheduling, "Umawianie", subdomain: :core do
+          term "Wizyta", definition: "Zarezerwowany termin" do
+            translation :en, "Visit", definition: "A held slot"
+          end
+        end
+
+        context :payers, "Płatnicy", subdomain: :core do
+          term "Płatnik", definition: "Kto płaci za wizytę" do
+            translation :en, "Payer", definition: "Who pays for a visit"
+          end
+        end
+
+        actor :reception, :human, "Recepcja"
+        value :visit_code, :string, label: "Kod wizyty"
+        value :code, :string, label: "Kod"
+      end
+
+      defmodule EhOsContract.CheckCodeWordsTest.ValuedPayers do
+        use EhOsContract.Contract, domain: EhOsContract.CheckCodeWordsTest.Valued,
+          context: :payers, id: "code_words_valued.payers"
+
+        aggregate :payer, "Płatnik" do
+          identity :payer_id
+
+          command :charge_visit, "Obciąż płatnika", by: :reception, emits: :visit_charged do
+            field :visit_code, :visit_code, label: "Kod wizyty"
+            field :visit_code_list, {:list, :visit_code}, label: "Kody wizyt"
+            field :visit_ref_code, :code, label: "Kod"
+            field :extra_visit_code, :visit_code, label: "Dodatkowy kod"
+          end
+
+          event :visit_charged, "Wizyta obciążona" do
+            field :visit_code, :visit_code, label: "Kod wizyty"
+            field :extra_visit_code, :string, label: "Dodatkowy kod"
+          end
+        end
+      end
+      """,
+      "valued.ex"
+    )
+
+    findings = Completeness.findings([EhOsContract.CheckCodeWordsTest.ValuedPayers])
+
+    # `visit_code` and `visit_code_list` say "visit" as the value `:visit_code`'s word, in a
+    # list too. Control: `visit_ref_code` is typed `:code`, which covers `code` only, and
+    # `extra_visit_code` is typed `:string` in the event, whatever the command, declared
+    # first, types it with.
+    assert [
+             "EhOsContract.CheckCodeWordsTest.ValuedPayers: field :extra_visit_code (in 2 " <>
+               ~s|declarations) says "visit", the word in code of "Wizyta" of :scheduling, | <>
+               "which context :payers has no term for",
+             "EhOsContract.CheckCodeWordsTest.ValuedPayers: field :visit_ref_code of command " <>
+               ~s|:charge_visit says "visit", the word in code of "Wizyta" of :scheduling, | <>
+               "which context :payers has no term for"
+           ] =
+             Enum.sort(
+               for(%Finding{rule: "term-of-another-context"} = f <- findings, do: f.message)
+             )
+
+    assert [message] =
+             for(
+               %Finding{rule: "word-without-term", message: m} <- findings,
+               m =~ "context :payers",
+               do: m
+             )
+
+    assert message =~ "most used first: visit (2), code (1), extra (1), list (1), ref (1)"
+  end
+
   test "an empty sequence of words covers nothing" do
     assert EhOsContract.CodeWords.covers(["visit", "id"], []) == MapSet.new()
 

@@ -29,6 +29,7 @@ spark_locals_without_parens = [
   calls: 1,
   cancels: 1,
   cancels: 2,
+  code: 1,
   command: 1,
   command: 2,
   command: 3,

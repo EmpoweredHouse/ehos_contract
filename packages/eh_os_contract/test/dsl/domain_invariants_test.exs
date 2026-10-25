@@ -77,6 +77,25 @@ defmodule EhOsContract.DomainInvariantsTest do
                Digest.hash(Map.drop(money, [:invariants, :label, :source]))
     end
 
+    test "a value declared a code hashes as it did, and says so in the model" do
+      nip = fn name, option ->
+        compile_domain(name, """
+          value :nip, :string#{option} do
+            invariant :ten_digits, "Ten digits", violated_by: ["1"], satisfied_by: ["1234567890"]
+          end
+        """)
+        |> Model.fetch()
+      end
+
+      text = nip.("NipText", "")
+      code = nip.("NipCode", ", code: true")
+
+      assert text.version == code.version
+      assert text.digests["value:nip"] == code.digests["value:nip"]
+      assert [%{code: true}] = code.values
+      refute Map.has_key?(hd(text.values), :code)
+    end
+
     # Plan DD, V5 (#322): an example is data, so a field of it called `description` is not
     # a word, and editing it is a change of the agreement.
     test "an invariant's examples are data, whatever their fields are called" do
