@@ -141,6 +141,16 @@ defmodule EhOsContract.Auth.Testing do
   Signs out the browser `sign_in/3` signed in: its session is deleted, and
   `EhOsContract.Auth.Session` then treats the browser as signed out — a redirect to sign
   in for a page, 401 for anything else. Signing out twice is not an error.
+
+      token = sign_in("u-anna", ["clinic.record_payment"])
+      :ok = sign_out(token)
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{EhOsContract.Auth.Session.session_key() => token})
+        |> get("/visits/7")
+
+      assert redirected_to(conn) =~ "/auth/ehos/sign-in"
   """
   @spec sign_out(String.t()) :: :ok
   def sign_out(browser_token), do: Sessions.delete(browser_token)
