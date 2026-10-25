@@ -6,12 +6,12 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (23 October 2026)
+## Where things stand (24 October 2026)
 
-- **Released:** v0.9.1, with the engine 0.9.1, `eh_os_contract_auth` 0.6.0 (calls to hosts outside the
-  installation, through the proxy EHOS gives an application) and `eh_os_contract_graph` 0.7.0 (a domain with
-  nothing on the wire has its box in the landscape). v0.9.0 wrote every graph document of an application in one
-  run. The latest `eh_os_contract_web` is 0.4.0 (v0.5.0). Applications install them from git. `main` is at the
+- **Released:** v0.10.0, with the engine 0.10.0 (the report's sentences public, any Spark 2.x from 2.7.3),
+  `eh_os_contract_auth` 0.7.0 (sending mail through EHOS, and the `ehos.yaml/v6` that asks for it),
+  `eh_os_contract_graph` 0.7.1 and `eh_os_contract_web` 0.5.0 (the graph drawn as the renderer draws it, and no
+  `esbuild` for a host). Applications install them from git. `main` is at the
   next patch's `-dev` of each.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
