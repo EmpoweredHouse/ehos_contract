@@ -267,7 +267,14 @@ end
 - **One callback per command**, `(command, state)`, answering with `emit/1`: the literal structs of
   events the command `emits:`, or `reject/1` with an invariant or constraint it `rejects:`. The
   workshop's `call_off` needs no refusal of its own: dispatch refuses it outside `:open` before it
-  runs.
+  runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
+  producing them; one with `into:` or `reduce:` produces something else, and does not compile
+  ([`I4`](../contract.md#refusals-i)). A command seating a whole group at once would read:
+
+  ```elixir
+  def seat_group(%SeatGroup{workshop_id: workshop, attendee_ids: attendees}, _state),
+    do: emit(for attendee <- attendees, do: %SeatTaken{workshop_id: workshop, attendee_id: attendee})
+  ```
 - **`evolve/2`** folds each event into the state, only when the unit declares a state beyond its
   identity. It runs over every event the stream will ever hold, so it only folds: no decision, no
   raise on data. Keep a catch-all, when one is needed, exactly `def evolve(state, _), do: state`, so
