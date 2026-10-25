@@ -1,0 +1,1 @@
+Documentation-only fix-up 7ad03fd3 (ADR prose: meaning before A4), from CodeRabbit on #449; the diff is docs/adr/contract-v2.md only; contract_examples_test and docs_test: 38 tests, 0 failures. Builds on the review of c960045e.
