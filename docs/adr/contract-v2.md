@@ -1377,10 +1377,11 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > like any field, before a stream is read. The value rests on `:id` (F1, checked against the domain), so the
   > stream id, the tags and the lock's record of every event are what they were with a plain `:id`, and a
   > generated identity, a UUID, takes none. What the log already holds is never held to an invariant, so a bad
-  > key written before still reads; it can only take no new command. For the same case A4 no longer refuses a
-  > local `match:` on an ordinary field of such a value, which the append tags and a sibling's event already
-  > could be matched on (X6): it lets the field through without the domain, and the rules between modules
-  > refuse it only when the value does not rest on `:id`.
+  > key written before still reads; it can only take no new command. For the same case, a boundary's `match:`
+  > on an ordinary field of such a value in a local event it consults is no longer refused at compile time
+  > (A4): the append tags the event with it, and a sibling's event could already be matched on it (X6). The
+  > field passes without the domain, and the rules between modules refuse it only when the value does not
+  > rest on `:id`.
   > ([#435](https://github.com/EmpoweredHouse/eh-os-contract/issues/435))
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
