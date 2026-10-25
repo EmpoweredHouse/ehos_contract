@@ -200,7 +200,7 @@ defmodule EhOsContract.CheckContractsTest do
            ) == []
   end
 
-  test "free text inside a list, a value that is text, and a value's field is free text too" do
+  test "free text in a list, behind a value and in a value's field; control: a code and its alias" do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Notes do
@@ -210,6 +210,12 @@ defmodule EhOsContract.CheckContractsTest do
         actor :reception, :human, "Front desk"
         value :remark, :string
         value :again, :remark
+
+        value :nip, :string, code: true do
+          invariant :ten_digits, "Ten digits", violated_by: ["1"], satisfied_by: ["1234567890"]
+        end
+
+        value :office_nip, :nip
 
         value :contact do
           field :note, :string
@@ -231,6 +237,9 @@ defmodule EhOsContract.CheckContractsTest do
             field :remark, :again
             field :contact, :contact
             field :count, :integer
+            field :nip, :nip
+            field :office_nip, :office_nip
+            field :nips, {:list, :nip}
           end
         end
       end

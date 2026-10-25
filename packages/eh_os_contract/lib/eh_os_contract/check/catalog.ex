@@ -184,7 +184,9 @@ defmodule EhOsContract.Check.Catalog do
       text: """
       `:string` is text a person typed. Unless it is marked `personal:` it is not sealed with its
       subject's key and stays in the log as written after the subject is erased. A code, a
-      number or a choice has a type of its own.
+      number or a choice has a type of its own: an `:id`, an enum, or a value declared
+      `code: true` whose invariants pin its form, e.g. a tax number. A code that identifies a
+      person, such as a national id number, is personal all the same, and is marked `personal:`.
       """
     },
     %{

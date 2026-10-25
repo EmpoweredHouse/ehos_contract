@@ -349,8 +349,8 @@ defmodule EhOsContract.Domain.Rules do
     subjects = MapSet.new(for %Subject{name: name} <- entities, do: name)
 
     aliases = Map.new(values, &{&1.name, &1.type})
-    shape = Enum.flat_map(values, &value_shape(&1, names, contexts, aliases))
     by_name = Map.new(values, &{&1.name, &1})
+    shape = Enum.flat_map(values, &value_shape(&1, names, contexts, aliases, by_name))
     options = Enum.flat_map(values, &field_options(&1, subjects, by_name))
     shape ++ options ++ cycles(values, names)
   end
@@ -425,7 +425,7 @@ defmodule EhOsContract.Domain.Rules do
     default ++ subject ++ personal ++ nested
   end
 
-  defp value_shape(value, names, contexts, aliases) do
+  defp value_shape(value, names, contexts, aliases, values) do
     where = "D3: value #{inspect(value.name)}"
 
     one_of =
@@ -448,6 +448,28 @@ defmodule EhOsContract.Domain.Rules do
         ]
       else
         []
+      end
+
+    # A code says its form is pinned, so it is text with an invariant: its own, or one
+    # of a value it names, which dispatch holds it to as well (D9 gives each one a value
+    # it refuses). An alias of a code is one already, and needs no `code:` of its own.
+    code =
+      cond do
+        not value.code ->
+          []
+
+        not text?(value.type, aliases, MapSet.new()) ->
+          [{"#{where} is a code, and a code is text: a :string, or a value that is one", value}]
+
+        not pinned?(value.name, values, MapSet.new()) ->
+          [
+            {"#{where} is a code and neither it nor a value it names declares an invariant, so " <>
+               "nothing holds it to a form; declare the invariants that do, or leave it free text",
+             value}
+          ]
+
+        true ->
+          []
       end
 
     context =
@@ -479,7 +501,7 @@ defmodule EhOsContract.Domain.Rules do
         for field <- duplicates(value.fields, & &1.name),
             do: {"#{where} declares field #{inspect(field.name)} twice", field}
 
-    one_of ++ unit ++ context ++ types ++ fields ++ field_names
+    one_of ++ unit ++ code ++ context ++ types ++ fields ++ field_names
   end
 
   # A number counts something whether it is written as :integer or as a value that
@@ -493,6 +515,28 @@ defmodule EhOsContract.Domain.Rules do
   end
 
   defp numeric?(_type, _aliases, _seen), do: false
+
+  defp text?(:string, _aliases, _seen), do: true
+
+  defp text?(name, aliases, seen) when is_atom(name) and name != nil do
+    not MapSet.member?(seen, name) and
+      text?(Map.get(aliases, name), aliases, MapSet.put(seen, name))
+  end
+
+  defp text?(_type, _aliases, _seen), do: false
+
+  defp pinned?(name, values, seen) when is_atom(name) and name != nil do
+    case Map.get(values, name) do
+      %Value{} = value ->
+        not MapSet.member?(seen, name) and
+          (value.invariants != [] or pinned?(value.type, values, MapSet.put(seen, name)))
+
+      nil ->
+        false
+    end
+  end
+
+  defp pinned?(_type, _values, _seen), do: false
 
   # --- D6: an entity, and every field that names one --------------------------------
 
