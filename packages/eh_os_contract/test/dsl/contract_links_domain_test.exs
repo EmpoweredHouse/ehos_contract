@@ -622,6 +622,113 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  # #435: a key named by a domain value, so that the value's invariants hold it.
+  describe "F1 and X3: an identity field typed by a domain value rests on :id" do
+    test "a value of another type, or none of the domain, is refused at the unit" do
+      body =
+        String.replace(
+          @body,
+          "identity :visit_id\n",
+          "identity [:visit_id, fee: :money, carer: :contact, period: :perod_id]\n"
+        )
+
+      violations = links("LinksIdentityValue", body)
+
+      assert assert_linked(
+               violations,
+               "F1: aggregate :visit: identity :fee: :money rests on :integer",
+               "links_identity_value.ex",
+               4
+             ) =~ "so a domain value typing it rests on :id"
+
+      assert assert_linked(
+               violations,
+               "F1: aggregate :visit: identity :carer: :contact rests on fields of its own",
+               "links_identity_value.ex"
+             )
+
+      assert assert_linked(
+               violations,
+               "X3: aggregate :visit: identity :period: :perod_id is neither a built-in type " <>
+                 "nor a value of EhOsContract.Fixtures.LinksClinic",
+               "links_identity_value.ex"
+             ) =~ ":period_id"
+
+      assert length(violations) == 3
+    end
+
+    test "control: a value resting on :id types the key, and its events are tagged by it" do
+      body =
+        String.replace(
+          @body,
+          "identity :visit_id\n",
+          "identity [:visit_id, period: :period_id]\n"
+        )
+
+      assert links("LinksIdentityValueRight", body) == []
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.LinksIdentityValueRight)
+      event = Enum.find(model.events, &(&1.name == :payment_recorded))
+      field = Enum.find(event.fields, &(&1.name == :period))
+      values = EhOsContract.Codec.values(@domain)
+
+      assert %{type: :period_id} = field
+      assert EhOsContract.Key.tag_field?(field, values)
+    end
+  end
+
+  # #435: a boundary matching a local event's field of a domain value, which tags the
+  # appended event only when the value rests on :id.
+  describe "A4: a field a boundary matches, of a domain value, rests on :id" do
+    defp consulting(field) do
+      @body
+      |> String.replace(
+        "field :clinic_id, {:id, :clinic}\n",
+        "field :clinic_id, {:id, :clinic}\n        field :period, #{field}\n",
+        global: false
+      )
+      |> Kernel.<>("""
+        dcb :visit_period, "A visit's period" do
+          identity [:period]
+          consults :payment_recorded, match: :period
+          command :close_visit_period, "Close a visit's period", by: :reception,
+            emits: :visit_period_closed
+          event :visit_period_closed, "Visit's period closed"
+        end
+      """)
+    end
+
+    test "a value of another type is refused at the consult" do
+      violations = links("LinksConsultsMoney", consulting(":money"))
+
+      assert assert_linked(
+               violations,
+               "A4: dcb :visit_period consults :payment_recorded matching :period, which the " <>
+                 "event carries as :money, resting on :integer",
+               "links_consults_money.ex"
+             ) =~ "only an :id, or a domain value resting on one, tags an appended event"
+
+      assert length(violations) == 1
+    end
+
+    test "a value made of fields is refused, saying so" do
+      violations = links("LinksConsultsContact", consulting(":contact"))
+
+      assert assert_linked(
+               violations,
+               "A4: dcb :visit_period consults :payment_recorded matching :period, which the " <>
+                 "event carries as :contact, resting on fields of its own",
+               "links_consults_contact.ex"
+             )
+    end
+
+    test "control: a value resting on :id is a tag the boundary finds its events by" do
+      assert links("LinksConsultsPeriod", consulting(":period_id")) == []
+
+      # An entity's identifier is an :id as the domain keeps it.
+      assert links("LinksConsultsClinicRef", consulting(":clinic_ref")) == []
+    end
+  end
+
   # Plan DD, V1 (#333): what a step does to a field of a domain value.
   describe "U3 and U4: an event's steps against the domain's values" do
     defp stepped(steps) do

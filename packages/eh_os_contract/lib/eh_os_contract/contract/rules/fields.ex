@@ -11,7 +11,10 @@ defmodule EhOsContract.Contract.Rules.Fields do
   #   edge it named. A unit's `identity` is held to the same, named once, since it is
   #   a field of the unit's state, commands and events. An identity field typed
   #   (plan DD, L3 (#286)) is an `:id` or `{:id, name}`, another unit's or an
-  #   entity's, and a generated identity, which is new, is no other's number.
+  #   entity's, or (#435) the name of a domain value, so that the value's invariants
+  #   hold the key; that the value exists and rests on `:id` is checked between
+  #   modules, where the domain is known (L3). A generated identity is a new UUID: no
+  #   other's number, and no value whose invariants it could not keep.
   # - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
   #   `{:enum, members}` with no member twice, the name of a domain value, or
   #   `{:id, name}`, the identifier of a domain entity or, since plan DD, L3 (#286), of a
@@ -231,15 +234,18 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
   defp identity_types(unit, where) do
     typed =
-      for {name, type} <- unit.identity_types, not identity_type?(type) do
-        {"#{where} #{inspect(name)} is #{inspect(type)}; an identity field is an :id, or " <>
-           "{:id, name} for another unit's or an entity's number#{generated_hint(name)}", unit}
+      for {name, type} <- unit.identity_types,
+          not identity_type?(type) or {name, type} == {:generated, :uuid} do
+        {"#{where} #{inspect(name)} is #{inspect(type)}; an identity field is an :id, " <>
+           "{:id, name} for another unit's or an entity's number, or a domain value resting " <>
+           "on :id#{generated_hint(name)}", unit}
       end
 
     generated =
-      for {name, {:id, _}} <- unit.identity_types, unit.generated != nil do
-        {"#{where} #{inspect(name)} is #{inspect(unit.identity_types[name])}, and the library " <>
-           "generates the identity: a new one is no other unit's or entity's number", unit}
+      for {name, type} <- unit.identity_types, type != :id, unit.generated != nil do
+        {"#{where} #{inspect(name)} is #{inspect(type)}, and the library generates the " <>
+           "identity: a new one is a UUID, no other unit's or entity's number and no domain " <>
+           "value's", unit}
       end
 
     typed ++ generated
@@ -247,6 +253,11 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
   defp identity_type?(:id), do: true
   defp identity_type?({:id, name}) when is_atom(name) and name not in [nil, true, false], do: true
+
+  # A domain value, by its name: any atom but a built-in type's.
+  defp identity_type?(name) when is_atom(name) and name not in [nil, true, false],
+    do: name not in @built_in
+
   defp identity_type?(_type), do: false
 
   # `identity visit_id: {:id, :visit}, generated: :uuid` is one keyword list to Elixir.

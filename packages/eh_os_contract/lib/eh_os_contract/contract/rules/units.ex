@@ -13,8 +13,10 @@ defmodule EhOsContract.Contract.Rules.Units do
   #   or `where:`; `match:` names fields of the boundary's identity, each once, which a local
   #   consulted event carries as required, non-personal `:id` fields — its unit's
   #   identity, or fields of its own. Only such fields are tags of an appended event,
-  #   and a boundary finds what it consults by its tags. For an event consumed from a
-  #   sibling contract the same is X6's, where the sibling is known.
+  #   and a boundary finds what it consults by its tags. A field typed by a domain value
+  #   is one when the value rests on `:id`, which only the domain can say: here it
+  #   passes, and the rules between modules hold it to that (A4 at L3, #435). For an
+  #   event consumed from a sibling contract the same is X6's, where the sibling is known.
   # - **A5.** A unit, or a process manager, declares its state at most once.
   # - **A8** (plan DD, T2a, #240). What a command `reads:` is named by a field of the
   #   command typed `{:id, entity}` and required: the decision gets the row, and a
@@ -32,6 +34,8 @@ defmodule EhOsContract.Contract.Rules.Units do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
+
+  @built_in EhOsContract.Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -358,8 +362,9 @@ defmodule EhOsContract.Contract.Rules.Units do
                   field in unit.identity,
                   field not in tagged do
                 {"A4: #{where} consults #{event} matching #{inspect(field)}, which the event " <>
-                   "does not carry as a required, non-personal :id field, so no appended " <>
-                   "#{event} is tagged with it and the boundary could never find one", consults}
+                   "does not carry as a required, non-personal :id field, or one of a domain " <>
+                   "value, so no appended #{event} is tagged with it and the boundary could " <>
+                   "never find one", consults}
               end
           end
 
@@ -371,15 +376,21 @@ defmodule EhOsContract.Contract.Rules.Units do
 
   defp consults(_unit, _d), do: []
 
-  # For each local event, the fields an append tags it with: its unit's identity, and
-  # its own required, non-personal fields of the built-in type `:id`.
+  # For each local event, the fields an append may tag it with: its unit's identity, and
+  # its own required, non-personal fields of the built-in type `:id`, or of a domain
+  # value, which is a tag when it rests on `:id` (checked between modules, #435).
   defp tagged_fields(d) do
     for unit <- d.units, event <- unit.events, into: %{} do
-      own = for f <- event.fields, EhOsContract.Key.tag_field?(f), do: f.name
+      own = for f <- event.fields, may_tag?(f), do: f.name
 
       {event.name, List.wrap(unit.identity) ++ own}
     end
   end
+
+  defp may_tag?(%{type: type, optional: false, personal: nil} = field) when is_atom(type),
+    do: EhOsContract.Key.tag_field?(field) or type not in @built_in
+
+  defp may_tag?(field), do: EhOsContract.Key.tag_field?(field)
 
   defp states(d) do
     units = for u <- d.units, do: {"#{u.kind} #{inspect(u.name)}", u.state}

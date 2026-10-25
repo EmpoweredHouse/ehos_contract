@@ -55,6 +55,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `free-text-not-personal` no longer reports a field of such a value, or of a value or a list naming it, as
   free text, so the notice keeps to text a person typed. A code that is not text, or that neither declares an
   invariant nor names a value that does, does not compile (`D3`). Declaring it moves no domain's version.
+- **A unit's identity field may be typed by a domain value resting on `:id`** (#435): `identity [:company_id,
+  period_id: :period]`. Dispatch holds the key to the value's invariants as it holds any field, so a command or
+  a recorded event keyed by a month "2026-13" is refused with `{:period_id, {:invariant, name}}` where it was
+  appended before. Until now an identity was `:id` or `{:id, name}` only, and a value's invariant never held a
+  unit's key. A unit that changes its identity's type from `:id` to such a value keeps its streams, tags and
+  `eh_os_contract.lock`; only new commands are checked. A value that does not rest on `:id` is refused (`F1`),
+  and so is a value in a generated identity. `EhOsContract.PropertyCase` and `EhOsContract.Generators.history/3`
+  draw such a key from the value's `satisfied_by:` examples, as they draw any field of it.
+- **A boundary may `match:` a local event's field typed by a domain value resting on `:id`** (#435), as the
+  append already tags the event with it and as a sibling's event already allowed (`X6`). A contract that
+  matched one used to be refused at compile time (`A4`); now it compiles, and only a value resting on another
+  type is refused, against the domain.
 
 ### Changed
 

@@ -176,9 +176,9 @@ defmodule EhOsContract.ContractUnitsTest do
 
       assert message =~
                "A4: dcb :payer_period consults :visit_marked matching :period_id, which the " <>
-                 "event does not carry as a required, non-personal :id field, so no appended " <>
-                 ":visit_marked is tagged with it and the boundary could never find one " <>
-                 "(consults_untagged.ex:17)"
+                 "event does not carry as a required, non-personal :id field, or one of a " <>
+                 "domain value, so no appended :visit_marked is tagged with it and the " <>
+                 "boundary could never find one (consults_untagged.ex:17)"
 
       refute message =~ "matching :payer_id"
     end
@@ -186,6 +186,13 @@ defmodule EhOsContract.ContractUnitsTest do
     test "control: the same match on required :id fields compiles" do
       assert %{units: [_visit, %{consults: [%{match: [:payer_id, :period_id]}]}]} =
                compile_contract("ConsultsTagged", consulting_visit_marked(":id"))
+    end
+
+    # #435: a field of a domain value tags an appended event when the value rests on
+    # :id, which only the domain can say; the rules between modules hold it to that.
+    test "control: a match on a field of a domain value compiles, for the domain to judge" do
+      assert %{units: [_visit, %{consults: [%{match: [:payer_id, :period_id]}]}]} =
+               compile_contract("ConsultsValue", consulting_visit_marked(":period"))
     end
 
     test "control: consulting a consumed event, by prose, compiles" do
@@ -318,8 +325,9 @@ defmodule EhOsContract.ContractUnitsTest do
       assert_refused(
         source,
         "identity_positional.ex",
-        "and got {:id, :visit}; a field of it typed as another unit's or an entity's number is " <>
-          "written `identity visit_id: {:id, :visit}`",
+        "and got {:id, :visit}; a field of it typed as another unit's or an entity's number, " <>
+          "or by a domain value, is written in the list of its fields: " <>
+          "`identity visit_id: {:id, :visit}`",
         5
       )
     end

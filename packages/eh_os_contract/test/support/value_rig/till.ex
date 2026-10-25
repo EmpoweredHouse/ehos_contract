@@ -6,7 +6,8 @@ defmodule ValueRig.Till do
   declares; `short_change` is a command whose implementation decides an event with an
   amount of nothing, which dispatch has to stop; the counting machine records what it
   counted. A query asks for payments above an amount, and the domain service halves
-  one.
+  one. A drawer is keyed by its till and its shift, a domain value, so opening one for
+  a shift that is no day is refused (#435), and a process manager watches it by both.
   """
 
   use EhOsContract.Contract, domain: ValueRig.Domain, context: :till, id: "value_rig.till"
@@ -33,6 +34,29 @@ defmodule ValueRig.Till do
     event :counted, "Counted", recorded_by: :counter do
       field :amount, :amount
     end
+  end
+
+  aggregate :drawer, "Drawer" do
+    identity [:till_id, shift_id: :shift]
+
+    command :open_drawer, "Open a drawer", by: :cashier, emits: :drawer_opened
+
+    event :drawer_opened, "Drawer opened"
+
+    event :drawer_counted, "Drawer counted", recorded_by: :counter
+  end
+
+  process_manager :drawer_watch, "Watch an open drawer" do
+    correlate [:till_id, :shift_id]
+    starts_on :drawer_opened
+    on :drawer_counted
+  end
+
+  # A run's key typed by a domain value, left to the scenario as an identity is (#435).
+  scenario "a drawer's watch starts on its till and shift" do
+    target :drawer_watch
+    on :drawer_opened, %{till_id: "t-1"}
+    state %{till_id: "t-1", shift_id: "scenario"}
   end
 
   read_model :payments, "Payments", projects: [:paid_in, :counted] do

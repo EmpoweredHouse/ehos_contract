@@ -21,6 +21,7 @@ defmodule EhOsContract.ValueInvariantsTest do
 
   @cashier Actor.credential("u-1", [
              "value_rig.pay_in",
+             "value_rig.open_drawer",
              "value_rig.short_change",
              "value_rig.payments_above"
            ])
@@ -95,6 +96,35 @@ defmodule EhOsContract.ValueInvariantsTest do
              {:error, {:invalid, [above: {:invariant, :positive}]}}
 
     assert EhOsContract.query(Till, %PaymentsAbove{above: 1}, actor: @cashier) == {:ok, []}
+  end
+
+  # #435: a unit's identity typed by a domain value is held to it as any field is.
+  describe "a key typed by a domain value" do
+    alias ValueRig.Till.Commands.OpenDrawer
+    alias ValueRig.Till.Events.DrawerCounted
+
+    test "that keeps its invariants names the stream, and tags its events" do
+      assert {:ok, _receipt} =
+               EhOsContract.dispatch(Till, %OpenDrawer{till_id: "t-1", shift_id: "2026-01-31"},
+                 actor: @cashier
+               )
+
+      assert [%{stream_id: "drawer:t-1|2026-01-31", tags: tags}] = log()
+      assert "shift_id:2026-01-31" in tags
+    end
+
+    test "that breaks one is refused in a command and a recorded event, before any stream" do
+      assert EhOsContract.dispatch(Till, %OpenDrawer{till_id: "t-1", shift_id: "2026-13-01"},
+               actor: @cashier
+             ) == {:error, {:invalid, [shift_id: {:invariant, :named_by_day}]}}
+
+      assert EhOsContract.record(Till, %DrawerCounted{till_id: "t-1", shift_id: "Monday"},
+               actor: Actor.system(:counter)
+             ) == {:error, {:invalid, [shift_id: {:invariant, :named_by_day}]}}
+
+      assert log() == []
+      assert rows() == []
+    end
   end
 
   test "a domain service's result that breaks an invariant raises" do

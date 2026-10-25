@@ -1369,6 +1369,20 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > month's boundary matches the events of the first client's monthly registry check on it. The value is still an
   > opaque identifier in the sense above — a month's name, not a person's number. A unit's identity stays a plain
   > `:id`, so the invariant holds where a field is typed by the value and not on an identity.
+  > **24 October 2026, issue #435 — an identity may be typed by such a value.** That last sentence left the key
+  > unchecked exactly where it matters most: a month's boundary keyed `[:company_id, :period_id]` decided and
+  > appended a month "2026-13", while every field elsewhere typed `:period` refused it, and a key in the log
+  > cannot be taken back. An identity field now takes a domain value as its type, `identity [:company_id,
+  > period_id: :period]`, as it takes `{:id, name}` since L3; dispatch holds the key to the value's invariants
+  > like any field, before a stream is read. The value rests on `:id` (F1, checked against the domain), so the
+  > stream id, the tags and the lock's record of every event are what they were with a plain `:id`, and a
+  > generated identity, a UUID, takes none. What the log already holds is never held to an invariant, so a bad
+  > key written before still reads; it can only take no new command. For the same case, a boundary's `match:`
+  > on an ordinary field of such a value in a local event it consults is no longer refused at compile time
+  > (A4): the append tags the event with it, and a sibling's event could already be matched on it (X6). The
+  > field passes without the domain, and the rules between modules refuse it only when the value does not
+  > rest on `:id`.
+  > ([#435](https://github.com/EmpoweredHouse/eh-os-contract/issues/435))
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
