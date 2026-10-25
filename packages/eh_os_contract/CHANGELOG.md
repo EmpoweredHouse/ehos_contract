@@ -53,6 +53,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
   `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
   decision emitting one event per item with a `for`.
+- **A field typed with a value of the domain says the value's name as the value's own word** (#432): in
+  `mix eh_os_contract.check`, `term-of-another-context` no longer warns, and `word-without-term` no longer lists
+  the word, when the word is the name of the value the field is typed with. A context whose field `:office_nip`
+  has the type `value :nip` need not copy the term "NIP" another context defines; the rest of the name is still
+  read.
 
 ## [0.10.0] - 2026-10-24
 
