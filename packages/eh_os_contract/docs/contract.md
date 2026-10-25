@@ -146,7 +146,8 @@ end
   decide and record, such as a register of equipment or of rooms, needs no process.
 - **A scenario is a test the contract carries**: given events, when a command, then events or a
   rejection. Every invariant needs a `rejected` scenario ([`S8`](#refusals-s)). `EhOsContract.ScenarioCase` turns each into
-  an ExUnit test against the implementation:
+  an ExUnit test against the implementation; a scenario that records an event, which nothing decides, runs
+  none, and is held to what `EhOsContract.record/3` checks:
 
   ```elixir
   use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
