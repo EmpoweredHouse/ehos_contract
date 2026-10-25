@@ -44,18 +44,25 @@ defmodule EhOsContract.Auth.Testing do
   and no network are needed. The claims are EHOS's — the configured `iss` and `aud`,
   ten minutes of life from `EhOsContract.Clock.now/0`.
 
-  Both run in the test process and read and write through the engine's repo, so
+  **A browser signed in.** `sign_in/3` writes a session for a page behind
+  `EhOsContract.Auth.Session`, as signing in through EHOS does, and returns the token
+  for the test's session; `sign_out/1` ends it. Without an `EhOsContract.Auth.SignIn`
+  child, a stand-in that never calls EHOS takes its name, so `config :eh_os_contract_auth,
+  sign_in:` is not needed in `config/test.exs`.
+
+  All of them run in the test process and read and write through the engine's repo, so
   they belong in a test that owns a sandbox connection, as any test of the host's
   that dispatches does.
   """
 
   import ExUnit.Assertions
 
-  alias EhOsContract.Auth.Keys
+  alias EhOsContract.Auth.{Keys, SignIn, Testing}
+  alias EhOsContract.Auth.SignIn.Sessions
 
   @key {__MODULE__, :key}
 
-  @doc "Imports `credential/3` and `assert_every_entry_refuses/3`."
+  @doc "Imports `credential/3`, `sign_in/3`, `sign_out/1` and `assert_every_entry_refuses/3`."
   defmacro __using__(_opts) do
     quote do
       import EhOsContract.Auth.Testing
@@ -70,35 +77,65 @@ defmodule EhOsContract.Auth.Testing do
   @spec credential(String.t(), [String.t()], EhOsContract.Actor.scopes(), keyword()) ::
           String.t()
   def credential(subject, capabilities, scopes \\ %{}, opts \\ []) do
-    {private, public} = key()
-    name = Keyword.get(opts, :keys, Keys)
-
-    unless Process.whereis(name) do
-      raise ArgumentError,
-            "#{inspect(name)} is not running, so the test key has nowhere to be trusted: start " <>
-              "EhOsContract.Auth in the application's supervision tree, after its repo"
-    end
-
-    kid = Keys.pin(public, name)
-    config = Application.get_all_env(:eh_os_contract_auth)
-    now = DateTime.to_unix(EhOsContract.Clock.now())
-
-    claims =
-      %{
-        "iss" => Keyword.fetch!(config, :issuer),
-        "aud" => Keyword.fetch!(config, :audience),
-        "sub" => subject,
-        "iat" => now,
-        "exp" => now + 600,
-        "jti" => Ecto.UUID.generate(),
-        "cap" => Enum.sort(capabilities)
-      }
-      |> then(&if scopes == %{}, do: &1, else: Map.put(&1, "scp", scopes))
-
-    signer = Joken.Signer.create("Ed25519", private, %{"kid" => kid})
-    {:ok, token, _claims} = Joken.encode_and_sign(claims, signer)
+    {token, _expires_at} = signed(subject, capabilities, scopes, opts)
     token
   end
+
+  @doc """
+  Signs a browser in as `subject`, holding `capabilities`, without EHOS: a session row
+  whose credential for this application `credential/3` issued, as a sign-in through EHOS
+  writes it. Returns the token the browser keeps; put it in the test's session under
+  `EhOsContract.Auth.Session.session_key/0`, and `EhOsContract.Auth.Session` lets the
+  request through, with the actor of that credential.
+
+      token = sign_in("u-anna", ["clinic.record_payment"])
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{EhOsContract.Auth.Session.session_key() => token})
+        |> get("/visits/7")
+
+  When no `EhOsContract.Auth.SignIn` runs under the name, a stand-in is started there
+  once per test run: it holds a client made for the test and never calls EHOS. A
+  running child is used as it is. The credential lives ten minutes from
+  `EhOsContract.Clock.now/0`; a test that moves the clock past that meets a renewal the
+  stand-in cannot make, and the session answers `:ehos_unavailable`.
+
+  `opts`: `scopes:`, as `credential/3` takes them; `sign_in:`, the child's name
+  (`EhOsContract.Auth.SignIn` by default); `keys:`, the key process. Raises as
+  `credential/3` does without the key process or `pin_keys: true`.
+  """
+  @spec sign_in(String.t(), [String.t()], keyword()) :: String.t()
+  def sign_in(subject, capabilities, opts \\ []) do
+    opts = Keyword.validate!(opts, scopes: %{}, sign_in: SignIn, keys: Keys)
+    {token, expires_at} = signed(subject, capabilities, opts[:scopes], keys: opts[:keys])
+    :ok = Testing.SignIn.ensure_started(opts[:sign_in])
+    unique = fn -> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false) end
+
+    {:ok, browser_token} =
+      Sessions.create(opts[:sign_in], %{
+        subject: subject,
+        sid: "test-sid-" <> unique.(),
+        auth_time: EhOsContract.Clock.now(),
+        refresh_token: "test-refresh-" <> unique.(),
+        id_token: "test-id-" <> unique.(),
+        credential: %{
+          resource: SignIn.config(opts[:sign_in]).address,
+          token: token,
+          expires_at: expires_at
+        }
+      })
+
+    browser_token
+  end
+
+  @doc """
+  Signs out the browser `sign_in/3` signed in: its session is deleted, and
+  `EhOsContract.Auth.Session` then treats the browser as signed out — a redirect to sign
+  in for a page, 401 for anything else. Signing out twice is not an error.
+  """
+  @spec sign_out(String.t()) :: :ok
+  def sign_out(browser_token), do: Sessions.delete(browser_token)
 
   @doc """
   Calls each entry point in `entries` — `%{capability => fn token -> … end}` — with a
@@ -163,6 +200,37 @@ defmodule EhOsContract.Auth.Testing do
     end
 
     :ok
+  end
+
+  defp signed(subject, capabilities, scopes, opts) do
+    {private, public} = key()
+    name = Keyword.get(opts, :keys, Keys)
+
+    unless Process.whereis(name) do
+      raise ArgumentError,
+            "#{inspect(name)} is not running, so the test key has nowhere to be trusted: start " <>
+              "EhOsContract.Auth in the application's supervision tree, after its repo"
+    end
+
+    kid = Keys.pin(public, name)
+    config = Application.get_all_env(:eh_os_contract_auth)
+    now = DateTime.to_unix(EhOsContract.Clock.now())
+
+    claims =
+      %{
+        "iss" => Keyword.fetch!(config, :issuer),
+        "aud" => Keyword.fetch!(config, :audience),
+        "sub" => subject,
+        "iat" => now,
+        "exp" => now + 600,
+        "jti" => Ecto.UUID.generate(),
+        "cap" => Enum.sort(capabilities)
+      }
+      |> then(&if scopes == %{}, do: &1, else: Map.put(&1, "scp", scopes))
+
+    signer = Joken.Signer.create("Ed25519", private, %{"kid" => kid})
+    {:ok, token, _claims} = Joken.encode_and_sign(claims, signer)
+    {token, DateTime.from_unix!(claims["exp"])}
   end
 
   defp engine_rows(repo) do

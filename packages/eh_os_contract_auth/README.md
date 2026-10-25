@@ -661,6 +661,26 @@ config :eh_os_contract_auth, pin_keys: true
 and raises anywhere else, so nothing in a running application can make it trust a key EHOS did not
 publish.
 
+A page behind `EhOsContract.Auth.Session` is tested with a browser signed in without EHOS:
+
+```elixir
+token = sign_in("u-anna", ["clinic.record_payment"])
+
+conn =
+  build_conn()
+  |> Plug.Test.init_test_session(%{EhOsContract.Auth.Session.session_key() => token})
+  |> get("/visits/7")
+
+:ok = sign_out(token)
+```
+
+`sign_in/3` writes the session row a sign-in through EHOS writes, with a credential `credential/3`
+issued, and the session plug lets the request through with that credential's actor; after
+`sign_out/1` it treats the browser as signed out. When no `EhOsContract.Auth.SignIn` child runs, a
+stand-in that never calls EHOS takes its name, so the test configuration needs no `sign_in:`. The
+credential lives ten minutes: a test that moves `EhOsContract.Clock` past that meets a renewal the
+stand-in cannot make, and the session answers 503.
+
 ## Where the keys come from, and what to configure at integration
 
 Nothing about the keys is delivered to the application or configured in it, except EHOS's
