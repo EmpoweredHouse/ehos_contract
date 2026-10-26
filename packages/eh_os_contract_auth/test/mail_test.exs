@@ -152,6 +152,7 @@ defmodule EhOsContract.Auth.MailTest do
                  subject: "A document waits for your approval",
                  text: "Open it.",
                  html: "<p>Open it.<img src=\"cid:logo\"></p>",
+                 verify_html: true,
                  reply_to: {:address, "t-42@reply.office.example.org"},
                  in_reply_to: ["<t-42-1@reply.office.example.org>"],
                  references: ["<t-42-1@reply.office.example.org>"],
@@ -187,6 +188,7 @@ defmodule EhOsContract.Auth.MailTest do
                  "subject" => "A document waits for your approval",
                  "text" => "Open it.",
                  "html" => "<p>Open it.<img src=\"cid:logo\"></p>",
+                 "verify_html" => true,
                  "reply_to" => %{"address" => "t-42@reply.office.example.org"},
                  "in_reply_to" => ["<t-42-1@reply.office.example.org>"],
                  "references" => ["<t-42-1@reply.office.example.org>"],
@@ -243,6 +245,17 @@ defmodule EhOsContract.Auth.MailTest do
       assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
+    test "sends verify_html: as given, and nothing of it when it is left out", %{ehos: ehos} do
+      server = start!(ehos)
+      ok = [to: [{:person, @ada}], subject: "s", text: "t", html: "<p>t</p>"]
+
+      assert {:ok, _} = Mail.deliver([server: server, verify_html: false] ++ ok)
+      assert {:ok, _} = Mail.deliver([server: server] ++ ok)
+
+      assert [%{"verify_html" => false}, without] = ehos(ehos, :bodies)
+      refute Map.has_key?(without, "verify_html")
+    end
+
     test "refuses, before asking EHOS, what is not a message", %{ehos: ehos} do
       server = start!(ehos)
       ok = [to: [{:person, @ada}], subject: "s", text: "t"]
@@ -257,6 +270,7 @@ defmodule EhOsContract.Auth.MailTest do
             Keyword.put(ok, :to, [{:group, "x"}]),
             Keyword.put(ok, :subject, :s),
             Keyword.put(ok, :html, 1),
+            Keyword.put(ok, :verify_html, "yes"),
             Keyword.put(ok, :reply_to, "a@b.c"),
             Keyword.put(ok, :in_reply_to, "<a@b>"),
             Keyword.put(ok, :references, [1]),

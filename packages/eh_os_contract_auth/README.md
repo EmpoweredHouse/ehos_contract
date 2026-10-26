@@ -535,8 +535,12 @@ application's name, and a `Result` in the order given. `sent?: true` means the r
 message, not that it was delivered: a bounce goes to the installation's sending address, which EHOS
 does not read. Keep `message_id` to tie what you learn later to the message. `in_reply_to:` and
 `references:` take message ids, so a mail program threads the messages. An attachment with
-`inline: true` and a `content_id:` is an image the HTML shows as `<img src="cid:…">`. EHOS cleans
-the HTML of scripts and forms, and refuses executables, scripts and encrypted archives. EHOS's
+`inline: true` and a `content_id:` is an image the HTML shows as `<img src="cid:…">`. EHOS sends
+the HTML as given, so escape every value the application puts into it, as HEEx does. With
+`verify_html: true` (EHOS 0.21.0 or later) EHOS refuses, rather than sends, HTML with a script, a
+form, a frame, an event attribute or an address whose scheme a message does not need: a backstop,
+not a sanitiser. EHOS always refuses attachments that are executables, scripts or encrypted
+archives. EHOS's
 `docs/mail-api.md` has every limit.
 
 A call that sends nothing says why, and one that may have sent some says so:
