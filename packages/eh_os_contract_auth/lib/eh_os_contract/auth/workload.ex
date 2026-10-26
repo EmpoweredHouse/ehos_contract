@@ -302,7 +302,7 @@ defmodule EhOsContract.Auth.Workload do
         token_refusal(status, body)
 
       {:error, reason} ->
-        Logger.warning("EHOS's token endpoint could not be reached: #{inspect(reason)}")
+        Logger.warning("EHOS's token endpoint could not be reached: #{Http.describe(reason)}")
         {:error, :unavailable}
     end
   end

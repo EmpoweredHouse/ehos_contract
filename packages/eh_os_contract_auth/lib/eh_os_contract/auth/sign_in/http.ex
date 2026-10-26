@@ -98,6 +98,22 @@ defmodule EhOsContract.Auth.SignIn.Http do
     end
   end
 
+  @doc false
+  # What a failed request was, for a log line, never the request: a transport's own reason, a TLS
+  # alert's name, or an exception's module alone, since an exception raised inside the request may
+  # carry its headers, the bearer token among them.
+  @spec describe(term()) :: String.t()
+  def describe(%Req.TransportError{reason: {:tls_alert, {alert, _text}}}) when is_atom(alert),
+    do: "tls_alert #{inspect(alert)}"
+
+  def describe(%{__exception__: true, reason: reason}) when is_atom(reason), do: inspect(reason)
+  def describe(%{__exception__: true, reason: {tag, _detail}}) when is_atom(tag), do: inspect(tag)
+  def describe(%{__exception__: true, __struct__: module}), do: inspect(module)
+  def describe({:not_https, url}) when is_binary(url), do: "not https: #{url}"
+  def describe({tag, _detail}) when is_atom(tag), do: inspect(tag)
+  def describe(reason) when is_atom(reason), do: inspect(reason)
+  def describe(_reason), do: "an error in the request"
+
   defp split({url, headers}), do: {to_string(url), headers(headers), nil}
 
   defp split({url, headers, content_type, body}) do

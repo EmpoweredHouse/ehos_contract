@@ -65,6 +65,7 @@ defmodule EhOsContract.Auth.People do
   require Logger
 
   alias EhOsContract.Auth.People.Person
+  alias EhOsContract.Auth.SignIn.Http
   alias EhOsContract.Auth.Workload
 
   @deadline 10_000
@@ -149,7 +150,7 @@ defmodule EhOsContract.Auth.People do
         refusal(status)
 
       {:error, {:unreachable, reason}} ->
-        Logger.warning("EHOS's people API could not be reached: #{inspect(reason)}")
+        Logger.warning("EHOS's people API could not be reached: #{Http.describe(reason)}")
         {:error, :unavailable}
 
       {:error, reason} ->

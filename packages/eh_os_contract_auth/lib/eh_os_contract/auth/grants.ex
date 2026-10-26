@@ -316,7 +316,7 @@ defmodule EhOsContract.Auth.Grants do
         exchange_refusal(status, body)
 
       {:error, reason} ->
-        Logger.warning("EHOS's token endpoint could not be reached: #{describe(reason)}")
+        Logger.warning("EHOS's token endpoint could not be reached: #{Http.describe(reason)}")
         {:error, :unavailable}
     end
   end
@@ -356,7 +356,7 @@ defmodule EhOsContract.Auth.Grants do
         refusal(status, error(body))
 
       {:error, reason} ->
-        Logger.warning("EHOS's grant routes could not be reached: #{describe(reason)}")
+        Logger.warning("EHOS's grant routes could not be reached: #{Http.describe(reason)}")
         {:error, :unavailable}
     end
   end
@@ -377,13 +377,6 @@ defmodule EhOsContract.Auth.Grants do
       _other -> nil
     end
   end
-
-  # What failed, never the request: a transport's own reason, or an exception's module alone, since
-  # an exception raised inside the request may carry its headers, the bearer token among them.
-  defp describe(%{__exception__: true, reason: reason}) when is_atom(reason), do: inspect(reason)
-  defp describe(%{__exception__: true, __struct__: module}), do: inspect(module)
-  defp describe(reason) when is_atom(reason), do: inspect(reason)
-  defp describe(_reason), do: "an error in the request"
 
   defp unexpected(what) do
     Logger.warning("EHOS's grant routes answered #{what}")

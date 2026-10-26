@@ -85,6 +85,15 @@ defmodule EhOsContract.Auth.MailTest do
       state.answer == :always_401 ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
+      # #451: an exception inside the request, holding its credential, as one may.
+      state.answer == :raise ->
+        raise "the request failed with authorization #{token}"
+
+      # #451: the connection, refused before anything is written, or cut off after.
+      match?({:transport, _reason}, state.answer) ->
+        {:transport, reason} = state.answer
+        Req.Test.transport_error(conn, reason)
+
       token != "Bearer " <> List.last(state.tokens) ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
@@ -303,15 +312,81 @@ defmodule EhOsContract.Auth.MailTest do
       end
     end
 
-    test "an answer EHOS never gives is :unavailable, and logged", %{ehos: ehos} do
+    # #451: EHOS refuses before it sends, so a refusal it never gives sent nothing.
+    test "a refusal EHOS never gives is :unavailable, nothing sent, and logged", %{ehos: ehos} do
       server = start!(ehos)
       message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
 
-      for answer <- [:garbage, {500, "oops"}, {404, "not_found"}, {403, "forbidden"}, :always_401] do
+      for answer <- [{404, "not_found"}, {403, "forbidden"}, :always_401] do
         set(ehos, %{answer: answer})
         log = capture_log(fn -> assert Mail.deliver(message) == {:error, :unavailable} end)
         assert log =~ "EHOS's mail API answered"
+        assert log =~ "nothing sent"
       end
+    end
+
+    # #451: a failure, a timeout a proxy answers, or a 200 EHOS never writes may come after EHOS
+    # sent some messages: retrying could send them twice.
+    test "a failure or an answer EHOS never writes is :outcome_unknown, and logged",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+
+      for answer <- [
+            :garbage,
+            {500, "oops"},
+            {502, "bad_gateway"},
+            {503, "unavailable"},
+            {408, "timeout"}
+          ] do
+        set(ehos, %{answer: answer})
+        log = capture_log(fn -> assert Mail.deliver(message) == {:error, :outcome_unknown} end)
+        assert log =~ "some messages may have been sent"
+      end
+    end
+
+    test "a name that does not resolve or a refused connection is :unavailable; the rest, :outcome_unknown",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+
+      for {reason, error} <- [
+            {:econnrefused, :unavailable},
+            {:nxdomain, :unavailable},
+            {:eaddrnotavail, :unavailable},
+            # A pooled connection, or a socket whose last acknowledgements were lost, reports these
+            # after the request was written.
+            {{:tls_alert, {:bad_record_mac, ~c"bad record mac"}}, :outcome_unknown},
+            {:ehostunreach, :outcome_unknown},
+            {:enetunreach, :outcome_unknown},
+            {:closed, :outcome_unknown},
+            {:timeout, :outcome_unknown},
+            {:econnreset, :outcome_unknown}
+          ] do
+        set(ehos, %{answer: {:transport, reason}})
+
+        log =
+          capture_log(fn -> assert Mail.deliver(message) == {:error, error}, inspect(reason) end)
+
+        tag = if is_tuple(reason), do: elem(reason, 0), else: reason
+        assert log =~ Atom.to_string(tag)
+      end
+    end
+
+    # #451: the log names what failed, never the request it failed in.
+    test "an exception inside the request is :outcome_unknown, and logs no credential",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      set(ehos, %{answer: :raise})
+
+      log =
+        capture_log(fn ->
+          assert Mail.deliver(server: server, to: [{:person, @ada}], subject: "s", text: "t") ==
+                   {:error, :outcome_unknown}
+        end)
+
+      assert log =~ "RuntimeError"
+      refute log =~ "credential-"
     end
 
     test "a deployment that asks for no mail is refused the credential, :not_asked", %{ehos: ehos} do

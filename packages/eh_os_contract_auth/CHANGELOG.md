@@ -35,6 +35,26 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the session answers `:ehos_unavailable`. `use EhOsContract.Auth.Testing` imports both, so a test module
   defining its own `sign_in/2`, `sign_in/3` or `sign_out/1` beside it renames it or imports with `only:`.
 
+### Changed
+
+- **Breaking:** `EhOsContract.Auth.Mail.deliver/1` answers `{:error, :outcome_unknown}` when some
+  messages may have been sent: any failure of the transport but those below, a timeout even while
+  connecting, a failed TLS handshake and an unreachable host included, a 5xx, a 408, or a 200 it
+  cannot read. `:unavailable` now means nothing was sent, so the call may be made again: no
+  credential, a name that does not resolve, a connection refused, an address that is not https, or
+  a refusal EHOS never gives.
+  Before, `:unavailable` meant either, and an application could not tell a retry that is safe from
+  one that mails someone twice. A host that matches every reason adds `:outcome_unknown`; one that
+  retried on `:unavailable` now retries only what was not sent (#451).
+
+### Security
+
+- The warnings `EhOsContract.Auth.Workload`, `EhOsContract.Auth.People` and
+  `EhOsContract.Auth.Mail` log when EHOS cannot be reached name only what failed: a transport's
+  reason, a TLS alert's name or an exception's module. They printed the whole exception, which,
+  raised inside the request, may hold its headers and the credential in them, as
+  `EhOsContract.Auth.Grants` already did not (#451).
+
 ## [0.7.0] - 2026-10-24
 
 ### Added
