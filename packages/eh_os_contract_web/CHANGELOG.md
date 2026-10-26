@@ -25,6 +25,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-26
+
+### Changed
+
+- **Breaking:** **the engine is required at `~> 0.11.0` and the graph renderer at `~> 0.8.0`**, however they are
+  fetched: by version from Hex, and also when this package comes from git or a path. A host with an older engine
+  or renderer is refused at `mix deps.get`. The dashboard draws what they add: a command's scenario refused on a
+  value's invariant (#458) and a scenario that records an event (#430).
+
 ## [0.5.0] - 2026-10-24
 
 ### Changed

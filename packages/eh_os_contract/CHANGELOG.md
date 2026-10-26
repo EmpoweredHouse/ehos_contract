@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-26
+
 ### Added
 
 - **A command's scenario can be `rejected` on an invariant of a domain value its data breaks** (#458): `command
@@ -56,15 +58,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   and a contract can now say so; S4 accepts the name when the command's fields hold a value that declares it,
   checked against the domain. `EhOsContract.ScenarioCase` holds the fields a scenario gives to their values'
   invariants before the lifecycle and the decision, as dispatch does (see the Breaking line under Changed). Such
-  a scenario covers no invariant of the unit (S8),
-  appears in no generated "refused in", and is not counted by the conformance report's scenario coverage,
-  since dispatch records no decision for it: no verdict moves. A graph document names the value and its
+  a scenario covers no invariant of the unit (S8), appears in no generated "refused in", and is not counted by
+  the conformance report's scenario coverage, since dispatch records no decision for it: no verdict moves. A graph document names the value and its
   invariant in a unit scenario's new, optional `rejected_on_value`, beside `rejected`. Where two values a
   command's or a recording's fields hold declare an invariant of one name, the graph and the owner's pages name
   the value whose invariant the scenario's data breaks, not the first declared; to tell, `mix
   eh_os_contract.graph`, `mix eh_os_contract.pages` and the dashboard's graph ask the domain's value checks of
   that data, as dispatch would, and name the first declared where the checks cannot be asked.
-
 - **A scenario can record an event** (#430): `record :collected, %{…}` with the `actor` who records it shows
   what an actor of the event's `recorded_by:` may write into the log, `expect`ing the event or `rejected` on the
   invariant of a domain value its data breaks. `EhOsContract.ScenarioCase` holds it to what `EhOsContract.record/3`
@@ -100,7 +100,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   A scenario whose data breaks an invariant of a domain value one of the command's fields holds, its identity
   included, and that expects events, failed only in dispatch and passed as a test; it now fails, naming the
   invariant. Give it data the value accepts, or say it is `rejected` on that invariant.
-
 - `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
   `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
   decision emitting one event per item with a `for`.
