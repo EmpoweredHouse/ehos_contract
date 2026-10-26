@@ -9,6 +9,7 @@ defmodule TipRig.Domain do
   context :till, "Till", subdomain: :core
 
   actor :cashier, :human, "Cashier"
+  actor :counter, :system, "Counting machine"
 
   value :amount, :integer do
     invariant :positive, "An amount is more than nothing", violated_by: [0], satisfied_by: [1]
@@ -16,6 +17,12 @@ defmodule TipRig.Domain do
 
   value :tip, :integer do
     invariant :positive, "A tip is more than nothing", violated_by: [0], satisfied_by: [1]
+  end
+
+  # A payment holds both, so the name alone does not tell which of its parts refuses it.
+  value :payment do
+    field :amount, :amount
+    field :tip, :tip, optional: true
   end
 
   subdomain :core, "Core", type: :core

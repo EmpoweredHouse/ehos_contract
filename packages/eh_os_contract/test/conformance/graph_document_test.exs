@@ -414,8 +414,26 @@ defmodule EhOsContract.GraphDocumentTest do
 
       assert named == %{
                "a tip of nothing is not paid in" => "value:TipRig.Domain:tip",
+               "a payment with a tip of nothing is not settled" => "value:TipRig.Domain:tip",
                "an amount of nothing is not paid in" => "value:TipRig.Domain:amount"
              }
+
+      [counted] =
+        for s <- d["scenarios"]["record"], s["rejected"], do: s["rejected"]["value"]
+
+      assert counted == "value:TipRig.Domain:tip"
+
+      # Without the domain's checks, the declarations alone decide: the first declared.
+      fields = Enum.find(Model.fetch(TipRig.Till).commands, &(&1.name == :pay_in)).fields
+      values = EhOsContract.Codec.values(TipRig.Domain)
+
+      assert EhOsContract.Contract.Links.Scenarios.refusing_value(
+               fields,
+               :positive,
+               values,
+               %{amount: 250, tip: 0},
+               nil
+             ) == :amount
     end
 
     test "a process manager's relations carry the way in they act on" do
