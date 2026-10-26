@@ -539,8 +539,8 @@ A call that sends nothing says why, and one that may have sent some says so:
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 60 calls a minute |
 | `:too_many_messages` | The application has sent the 1000 messages it may send today |
 | `:mail_disabled` | The installation sends no mail |
-| `:unavailable` | Nothing was sent: no credential, EHOS's name does not resolve, the connection was refused, or a refusal EHOS never gives. Safe to try again |
-| `:outcome_unknown` | Some messages may have been sent: the call timed out, even while connecting, or its connection failed once open, EHOS failed (a 5xx), or it answered 200 with what it never writes |
+| `:unavailable` | Nothing was sent: no credential, EHOS's name does not resolve, the connection was refused, its address is not https, or a refusal EHOS never gives. Safe to try again |
+| `:outcome_unknown` | Some messages may have been sent: any other failure of the transport, a timeout even while connecting, a failed TLS handshake and an unreachable host included; EHOS failed (a 5xx); or it answered 200 with what it never writes |
 
 An option `deliver/1` does not take, or a string that is not UTF-8, raises `ArgumentError` before
 EHOS is asked, naming the option and never its value. A call is retried only once, with a new

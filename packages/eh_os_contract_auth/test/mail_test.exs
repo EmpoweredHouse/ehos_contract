@@ -85,6 +85,10 @@ defmodule EhOsContract.Auth.MailTest do
       state.answer == :always_401 ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
+      # #451: an exception inside the request, holding its credential, as one may.
+      state.answer == :raise ->
+        raise "the request failed with authorization #{token}"
+
       # #451: the connection, refused before anything is written, or cut off after.
       match?({:transport, _reason}, state.answer) ->
         {:transport, reason} = state.answer
@@ -365,9 +369,24 @@ defmodule EhOsContract.Auth.MailTest do
           capture_log(fn -> assert Mail.deliver(message) == {:error, error}, inspect(reason) end)
 
         tag = if is_tuple(reason), do: elem(reason, 0), else: reason
-        assert log =~ inspect(tag)
-        refute log =~ "credential-"
+        assert log =~ Atom.to_string(tag)
       end
+    end
+
+    # #451: the log names what failed, never the request it failed in.
+    test "an exception inside the request is :outcome_unknown, and logs no credential",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      set(ehos, %{answer: :raise})
+
+      log =
+        capture_log(fn ->
+          assert Mail.deliver(server: server, to: [{:person, @ada}], subject: "s", text: "t") ==
+                   {:error, :outcome_unknown}
+        end)
+
+      assert log =~ "RuntimeError"
+      refute log =~ "credential-"
     end
 
     test "a deployment that asks for no mail is refused the credential, :not_asked", %{ehos: ehos} do

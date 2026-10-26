@@ -72,12 +72,13 @@ defmodule EhOsContract.Auth.Mail do
     * `:too_many_messages`: the application has sent the messages it may send today;
     * `:mail_disabled`: the installation sends no mail;
     * `:unavailable`: nothing was sent, and the call may be made again: there is no
-      credential, EHOS's name does not resolve, the connection was refused, or EHOS
-      answered a refusal it never gives.
+      credential, EHOS's name does not resolve, the connection was refused, its address
+      is not https, or EHOS answered a refusal it never gives.
 
   **`:outcome_unknown`** is the one error after which some messages may have been sent:
-  the call timed out, even while connecting, or its connection failed once open, EHOS
-  failed (a 5xx), or it answered 200 with what it never writes. EHOS sends each recipient's message before
+  any other failure of the transport, a timeout even while connecting, a failed TLS
+  handshake and an unreachable host included, since the client cannot tell them from one
+  after EHOS took the call; EHOS failing (a 5xx); or a 200 with what it never writes. EHOS sends each recipient's message before
   it answers and takes no idempotency key, so a call made again may send a message twice.
   Retry only where a second message does no harm.
 
@@ -95,6 +96,7 @@ defmodule EhOsContract.Auth.Mail do
   require Logger
 
   alias EhOsContract.Auth.Mail.Result
+  alias EhOsContract.Auth.SignIn.Http
   alias EhOsContract.Auth.Workload
 
   # EHOS gives the relay two minutes for a call's messages; the answer comes after them.
@@ -260,11 +262,14 @@ defmodule EhOsContract.Auth.Mail do
 
   defp unreachable(reason) do
     if not_written?(reason) do
-      Logger.warning("EHOS's mail API could not be reached, nothing sent: #{kind(reason)}")
+      Logger.warning(
+        "EHOS's mail API could not be reached, nothing sent: #{Http.describe(reason)}"
+      )
+
       {:error, :unavailable}
     else
       Logger.warning(
-        "EHOS's mail API was cut off, some messages may have been sent: #{kind(reason)}"
+        "EHOS's mail API was cut off, some messages may have been sent: #{Http.describe(reason)}"
       )
 
       {:error, :outcome_unknown}
@@ -274,15 +279,6 @@ defmodule EhOsContract.Auth.Mail do
   defp not_written?(%Req.TransportError{reason: reason}) when reason in @not_written, do: true
   defp not_written?({:not_https, _url}), do: true
   defp not_written?(_reason), do: false
-
-  # Only what kind of failure it was: an exception of the transport may hold the request's
-  # header, the credential in it.
-  defp kind(%Req.TransportError{reason: reason}) when is_atom(reason), do: inspect(reason)
-  defp kind(%Req.TransportError{reason: {tag, _detail}}) when is_atom(tag), do: inspect(tag)
-  defp kind(%{__exception__: true, __struct__: module}), do: inspect(module)
-  defp kind({tag, _detail}) when is_atom(tag), do: inspect(tag)
-  defp kind(reason) when is_atom(reason), do: inspect(reason)
-  defp kind(_reason), do: "an unknown failure"
 
   defp results(body) do
     with {:ok, %{"messages" => messages}} when is_list(messages) <- Jason.decode(body),
