@@ -79,7 +79,7 @@ mix eh_os_contract.manifest --output ehos.manifest.json
 # --ehos-yaml deploy/ehos.yaml when the file is not ehos.yaml in the project's directory
 ```
 
-Or the whole bundle EHOS takes with the image (eh-os D-146): the same manifest, every graph
+Or the whole bundle EHOS takes with the image: the same manifest, every graph
 document as `mix eh_os_contract.graph --output-dir` writes them, and `bundle.json`, which names
 each file with its size and SHA-256, into an empty directory:
 

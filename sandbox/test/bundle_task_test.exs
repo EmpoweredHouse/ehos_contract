@@ -1,5 +1,5 @@
 defmodule EhOsContractHost.BundleTaskTest do
-  # eh-os D-146 (EmpoweredHouse/eh-os-contract#456): a project with contracts gets the bundle
+  # #456: a project with contracts gets the bundle
   # EHOS takes, its manifest and every graph document named in bundle.json with their size and
   # SHA-256, each the bytes the two commands it runs write alone.
   use ExUnit.Case, async: false

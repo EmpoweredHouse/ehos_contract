@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.BundleTaskTest do
   @moduledoc """
-  eh-os D-146 (#456): `mix eh_os_contract.bundle` writes the manifest, the graph documents and
+  #456: `mix eh_os_contract.bundle` writes the manifest, the graph documents and
   `bundle.json`, which names each with its size and SHA-256, and writes nothing EHOS would refuse.
   This package's own application holds no contracts, so here a bundle is refused as its manifest
   is; the sandbox's test writes one. Not async: it runs Mix tasks.
@@ -139,7 +139,7 @@ defmodule EhOsContract.Auth.BundleTaskTest do
   describe "the schema" do
     test "is EHOS's ehos.bundle/v1, byte for byte" do
       # EHOS's `priv/schemas/ehos.bundle/v1.json`, as read on 26 October 2026, in no release
-      # yet (EmpoweredHouse/eh-os#1014). A new hash here is a new copy of EHOS's file, never an
+      # yet. A new hash here is a new copy of EHOS's file, never an
       # edit of this one.
       document = File.read!(Bundle.schema_file())
 
