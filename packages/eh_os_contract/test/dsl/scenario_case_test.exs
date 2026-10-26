@@ -558,6 +558,58 @@ defmodule EhOsContract.ScenarioCaseTest do
                  "{:ok,"
     end
 
+    # The review of #458: a name the command `rejects:` is its decision's, and S8 and the
+    # report count it so, though the value its data holds declares the same name. Data the
+    # value refuses never reaches that decision, so the scenario fails rather than show it.
+    test "a name the command rejects is passed only by its decision" do
+      compile(
+        """
+        defmodule EhOsContract.Fixtures.Collision do
+          use EhOsContract.Contract, domain: ValueRig.Domain, context: :till, id: "value_rig.collision"
+
+          aggregate :float, "Float" do
+            identity :float_id
+            invariant :positive, "A float is kept above nothing"
+
+            command :top_up, "Top up", by: :cashier, emits: :topped_up, rejects: :positive do
+              field :amount, :amount
+            end
+
+            event :topped_up, "Topped up"
+          end
+
+          scenario "an empty top-up" do
+            command :top_up, %{amount: 0}
+            rejected :positive
+          end
+        end
+
+        defmodule EhOsContract.Fixtures.CollisionFloat do
+          use EhOsContract.Fixtures.Collision, aggregate: :float
+
+          @impl true
+          def top_up(%TopUp{}, _state), do: reject(:positive)
+        end
+        """,
+        "collision.ex"
+      )
+
+      contract = EhOsContract.Fixtures.Collision
+      [scenario] = Model.fetch(contract).scenarios
+
+      message =
+        assert_raise(ExUnit.AssertionError, fn ->
+          ScenarioCase.run(contract, scenario, [EhOsContract.Fixtures.CollisionFloat])
+        end).message
+
+      assert message ==
+               "expected command :top_up to be rejected on :positive, and it returned " <>
+                 "{:error, {:invalid, [amount: {:invariant, :positive}]}}"
+
+      decided = %{scenario | trigger: %{scenario.trigger | data: %{amount: 5}}}
+      assert ScenarioCase.run(contract, decided, [EhOsContract.Fixtures.CollisionFloat])
+    end
+
     # A key the scenario leaves out is filled in with a placeholder of its own, which
     # no value's invariant is asked about.
     test "asks nothing of an identity the scenario leaves out" do

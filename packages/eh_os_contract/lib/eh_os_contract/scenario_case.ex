@@ -798,6 +798,7 @@ defmodule EhOsContract.ScenarioCase do
       end
 
     emits = declaration.emits
+    on_value? = scenario.rejected not in declaration.rejects
 
     case {scenario.rejected, result} do
       {nil, {:ok, events}} ->
@@ -824,7 +825,9 @@ defmodule EhOsContract.ScenarioCase do
       {invariant, {:refused_in, _status, invariant}} ->
         true
 
-      {invariant, {:error, {:invalid, problems}}} when invariant != nil ->
+      # A name the command `rejects:` is its decision's, even where a value it holds
+      # declares one too: S8 and the conformance report count it so.
+      {invariant, {:error, {:invalid, problems}}} when invariant != nil and on_value? ->
         assert Enum.any?(problems, &match?({_field, {:invariant, ^invariant}}, &1)),
                "expected command #{inspect(command)} to be rejected on #{inspect(invariant)}, " <>
                  "and it was refused for its data: #{inspect(problems)}"
