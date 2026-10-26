@@ -1,0 +1,1 @@
+Release PR: versions and changelog sections only. Checked by hand: each released package has a dated non-empty section, pins (auth and web on engine ~> 0.11.0, web on graph ~> 0.8.0) match the versions, nothing else names the old versions but ROADMAP (updated after a release). Gate EXIT=0 (OTP 27.1.2).
