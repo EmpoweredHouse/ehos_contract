@@ -48,6 +48,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
+  `eh_os_contract_auth`, which writes its documents with the manifest as the bundle EHOS takes (#456).
+
 ## [0.11.0] - 2026-10-26
 
 ### Added
@@ -100,8 +105,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   A scenario whose data breaks an invariant of a domain value one of the command's fields holds, its identity
   included, and that expects events, failed only in dispatch and passed as a test; it now fails, naming the
   invariant. Give it data the value accepts, or say it is `rejected` on that invariant.
-- `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
-  `eh_os_contract_auth`, which writes its documents with the manifest as the bundle EHOS takes (#456).
 - `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
   `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
   decision emitting one event per item with a `for`.
