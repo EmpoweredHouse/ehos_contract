@@ -32,8 +32,6 @@ defmodule EhOsContract.Auth.BundleTaskTest do
     path
   end
 
-  defp run(args), do: capture_io(fn -> Task.run(args) end)
-
   defp refused(args) do
     error = assert_raise Mix.Error, fn -> capture_io(fn -> Task.run(args) end) end
     error.message
@@ -97,22 +95,44 @@ defmodule EhOsContract.Auth.BundleTaskTest do
     test "names a path once, without regard to case", %{tmp_dir: dir} do
       File.write!(Path.join(dir, "ehos.manifest.json"), "{}")
       File.mkdir_p!(Path.join(dir, "graph"))
+      # Two files where case counts, one where it is ignored: the names are refused either way.
       File.write!(Path.join(dir, "graph/a.json"), "{}")
-      File.write!(Path.join(dir, "graph/b.json"), "{}")
+      File.write!(Path.join(dir, "graph/A.json"), "{}")
 
       assert {:error, [reason]} =
-               Bundle.index(dir, "ehos.manifest.json", ["graph/a.json", "graph/a.json"])
+               Bundle.index(dir, "ehos.manifest.json", ["graph/a.json", "graph/A.json"])
 
       assert reason =~ "name one file where case is ignored"
     end
 
-    test "keeps 512 documents at most, and 1 MiB each", %{tmp_dir: dir} do
+    test "keeps the graph documents to 32 MiB in all", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, "ehos.manifest.json"), "{}")
+      File.mkdir_p!(Path.join(dir, "graph"))
+      full = String.duplicate(" ", 1_048_576)
+      paths = for n <- 1..33, do: "graph/c#{n}.json"
+      for path <- paths, do: File.write!(Path.join(dir, path), full)
+
+      assert Bundle.index(dir, "ehos.manifest.json", paths) ==
+               {:error, ["the graph documents hold 34603008 bytes; EHOS takes at most 33554432"]}
+
+      assert {:ok, _index} = Bundle.index(dir, "ehos.manifest.json", Enum.take(paths, 32))
+    end
+
+    test "keeps 512 documents at most, and 1 MiB each, refused before any file is read", %{
+      tmp_dir: dir
+    } do
       File.write!(Path.join(dir, "ehos.manifest.json"), "{}")
       File.mkdir_p!(Path.join(dir, "graph"))
       File.write!(Path.join(dir, "graph/big.json"), String.duplicate(" ", 1_048_577))
 
-      assert {:error, [reason]} = Bundle.index(dir, "ehos.manifest.json", ["graph/big.json"])
-      assert reason =~ "/graph/0/bytes"
+      assert Bundle.index(dir, "ehos.manifest.json", ["graph/big.json"]) ==
+               {:error, ["graph/big.json is larger than the 1048576 bytes EHOS reads"]}
+
+      # None of these is there: their number alone refuses them.
+      many = for n <- 1..513, do: "graph/c#{n}.json"
+
+      assert Bundle.index(dir, "ehos.manifest.json", many) ==
+               {:error, ["the bundle holds 513 graph documents; EHOS takes at most 512"]}
     end
   end
 
@@ -124,7 +144,7 @@ defmodule EhOsContract.Auth.BundleTaskTest do
       document = File.read!(Bundle.schema_file())
 
       assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
-               "d79a1d01889a532804f85285ecf63233f73367c55092b28f27e66459145ddfa6"
+               "fa5e6770cbe09b19c5135174866c9153ee20b9fbf848d7c0e6188ef166095473"
 
       assert Jason.decode!(document)["title"] == "ehos.bundle/v1"
     end

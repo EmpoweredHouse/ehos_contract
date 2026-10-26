@@ -61,12 +61,13 @@ defmodule Mix.Tasks.EhOsContract.Bundle do
     dir = opts[:output_dir]
     created? = empty!(dir)
 
+    # A compilation or a start that fails exits rather than raises: each leaves nothing behind.
     try do
       write(dir, opts)
-    rescue
-      error ->
+    catch
+      kind, reason ->
         clear(dir, created?)
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
 
@@ -80,6 +81,14 @@ defmodule Mix.Tasks.EhOsContract.Bundle do
       Path.join(dir, @graph)
       |> File.ls!()
       |> Enum.map(&"#{@graph}/#{&1}")
+
+    # Where case is ignored, two documents whose names differ only in it are one file.
+    if length(graph) != documents(),
+      do:
+        Mix.raise(
+          "#{documents()} graph documents were written as #{length(graph)} files: two names " <>
+            "differ only in case, and #{dir} is on a file system that ignores it"
+        )
 
     case Bundle.index(dir, @manifest, graph) do
       {:ok, index} ->
@@ -98,6 +107,13 @@ defmodule Mix.Tasks.EhOsContract.Bundle do
     end
   end
 
+  # As `eh_os_contract.graph --output-dir` writes them: each domain's, contract's and process
+  # module's, from the registry it loaded.
+  defp documents,
+    do:
+      length(EhOsContract.Registry.domains()) + length(EhOsContract.Registry.contracts()) +
+        length(EhOsContract.Registry.processes())
+
   # Whether it is made here: an empty directory that was there is left, emptied, on a refusal.
   defp empty!(dir) do
     case File.ls(dir) do
@@ -115,10 +131,11 @@ defmodule Mix.Tasks.EhOsContract.Bundle do
     end
   end
 
-  # Only what this run wrote is there, since the directory was empty.
-  defp clear(dir, true = _created?), do: File.rm_rf(dir)
-
-  defp clear(dir, false = _created?) do
-    for name <- File.ls!(dir), do: File.rm_rf(Path.join(dir, name))
+  # Only what this run writes, by name, and the directory when this run made it and it is empty:
+  # whatever another process put there meanwhile stays.
+  defp clear(dir, created?) do
+    for name <- ["bundle.json", @manifest], do: File.rm(Path.join(dir, name))
+    File.rm_rf(Path.join(dir, @graph))
+    if created?, do: File.rmdir(dir)
   end
 end

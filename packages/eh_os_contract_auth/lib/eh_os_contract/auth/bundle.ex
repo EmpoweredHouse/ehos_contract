@@ -17,6 +17,8 @@ defmodule EhOsContract.Auth.Bundle do
   @external_resource @file_path
   @schema @file_path |> File.read!() |> Jason.decode!()
   @max_graph_bytes 33_554_432
+  @max_graph 512
+  @max_file 1_048_576
 
   @doc "The version of `bundle.json` this package writes."
   @spec version() :: String.t()
@@ -28,12 +30,35 @@ defmodule EhOsContract.Auth.Bundle do
 
   @doc """
   The index of the bundle in `dir`: its manifest at `manifest` and its graph documents at `graph`,
-  each a path relative to `dir`. `{:ok, index}` as `bundle.json` holds it, keys in the order EHOS
-  writes them, or `{:error, reasons}` for one EHOS would refuse.
+  each a path relative to `dir`. `{:ok, index}` as `bundle.json` holds it, keys in the order EHOS's
+  `docs/bundle.md` gives them, or `{:error, reasons}` for one EHOS would refuse.
   """
   @spec index(Path.t(), String.t(), [String.t()]) ::
           {:ok, Jason.OrderedObject.t()} | {:error, [String.t()]}
   def index(dir, manifest, graph) do
+    with :ok <- sized(dir, [manifest | graph]) do
+      described(dir, manifest, graph)
+    end
+  end
+
+  # What EHOS would refuse for its number or its size is refused before any file is read.
+  defp sized(_dir, paths) when length(paths) > @max_graph + 1,
+    do:
+      {:error,
+       ["the bundle holds #{length(paths) - 1} graph documents; EHOS takes at most #{@max_graph}"]}
+
+  defp sized(dir, paths) do
+    case Enum.filter(paths, &(File.stat!(Path.join(dir, &1)).size > @max_file)) do
+      [] ->
+        :ok
+
+      large ->
+        {:error,
+         for(path <- large, do: "#{path} is larger than the #{@max_file} bytes EHOS reads")}
+    end
+  end
+
+  defp described(dir, manifest, graph) do
     files = Enum.map([manifest | Enum.sort(graph)], &described(dir, &1))
     [manifest | graph] = files
 

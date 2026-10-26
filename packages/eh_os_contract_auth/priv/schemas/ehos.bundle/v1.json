@@ -18,7 +18,7 @@
       "$ref": "#/$defs/manifest"
     },
     "graph": {
-      "description": "Each graph document of the application, at most 512; empty for an application with no contracts.",
+      "description": "Each graph document of the application, at most 512. `mix eh_os_contract.bundle` writes at least its domain's; an index written otherwise may list none.",
       "type": "array",
       "maxItems": 512,
       "items": {
