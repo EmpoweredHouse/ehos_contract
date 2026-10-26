@@ -1055,14 +1055,20 @@ defmodule EhOsContract.Pages do
             &(&1.name == name)
           )
 
-        # Issue #430: what a recording of `event` is refused on, an invariant of a domain
-        # value its fields hold, the one dispatch would name.
-        {:value_rules, event} ->
+        # Issues #430 and #458: what a recording, or a command refused for its data, is
+        # refused on, an invariant of a domain value its fields hold, the one dispatch
+        # would name.
+        {:value_rules, fields, data} ->
           values = Map.new(site.domain.values, &{&1.name, &1})
-          fields = Enum.find(model.events, &(&1.name == event)).fields
 
           with value when value != nil <-
-                 EhOsContract.Contract.Links.Scenarios.refusing_value(fields, name, values) do
+                 EhOsContract.Contract.Links.Scenarios.refusing_value(
+                   fields,
+                   name,
+                   values,
+                   data,
+                   model.domain
+                 ) do
             Enum.find(Map.get(values[value], :invariants, []), &(&1.name == name))
           end
 
@@ -1112,7 +1118,22 @@ defmodule EhOsContract.Pages do
     say = &said(site, model, &1, &2)
     given = Enum.map(s.given, &say.(:events, &1.event))
     trigger = "#{s.trigger.kind} #{say.(:triggers, s.trigger.name)}"
-    rules = if s.trigger.kind == :record, do: {:value_rules, s.trigger.name}, else: :rules
+
+    rules =
+      case s.trigger do
+        %{kind: :record, name: event} ->
+          {:value_rules, Enum.find(model.events, &(&1.name == event)).fields, s.trigger.data}
+
+        %{kind: :command, name: name} ->
+          command = Enum.find(model.commands, &(&1.name == name))
+
+          if EhOsContract.Contract.Links.Scenarios.refused_on_value?(s, command),
+            do: {:value_rules, command.fields, s.trigger.data},
+            else: :rules
+
+        _other ->
+          :rules
+      end
 
     # What a process manager's scenario says of its timers and its end, too.
     outcome =

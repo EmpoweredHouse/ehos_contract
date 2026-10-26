@@ -17,8 +17,10 @@ defmodule EhOsContract.Contract.Links.Scenarios do
   #   issued), each value of its type. The sibling's identity is filled in by
   #   `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
   #
-  # And **S4, the part that needs the domain** (issue #430): a recording's `rejected`
-  # names an invariant of a domain value the recorded event's fields hold.
+  # And **S4, the part that needs the domain** (issues #430 and #458): a recording's
+  # `rejected` names an invariant of a domain value the recorded event's fields hold,
+  # and a command's, when it is none of the command's `rejects:`, one of a domain value
+  # the command's fields hold, its identity's included.
   @moduledoc false
 
   alias EhOsContract.Model
@@ -38,7 +40,10 @@ defmodule EhOsContract.Contract.Links.Scenarios do
         {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
       end
 
-    scenarios ++ refused_recordings(c, values) ++ rule_examples(c, values)
+    scenarios ++
+      refused_recordings(c, values) ++
+      refused_commands(c, values) ++
+      rule_examples(c, values)
   end
 
   # S4, the part that needs the domain (issue #430): a recording is refused only on an
@@ -50,18 +55,48 @@ defmodule EhOsContract.Contract.Links.Scenarios do
           Enum.zip(c.model.scenarios, c.declarations.scenarios),
         rejected != nil,
         event = Enum.find(c.model.events, &(&1.name == name)),
-        held =
-          event.fields
-          |> Enum.map(& &1.type)
-          |> held(values)
-          |> Enum.flat_map(&Enum.map(Map.get(values[&1], :invariants, []), fn i -> i.name end))
-          |> Enum.uniq(),
+        held = invariants_held(event.fields, values),
         rejected not in held do
       {"S4: scenario #{inspect(model.description)}: rejected #{inspect(rejected)} is no " <>
          "invariant of a domain value event #{inspect(name)} holds; a recording is refused " <>
          "only on one, and its fields hold #{inspect(held)}", Links.at(declaration)}
     end
   end
+
+  # Issue #458: dispatch refuses a command whose fields break an invariant of a domain
+  # value they hold, its identity's included, before anything decides it. The rules
+  # leave such a `rejected` here when the command's fields hold a domain value.
+  defp refused_commands(c, values) do
+    for {%{trigger: %{kind: :command, name: name}, rejected: rejected} = model, declaration} <-
+          Enum.zip(c.model.scenarios, c.declarations.scenarios),
+        rejected != nil,
+        command = Enum.find(c.model.commands, &(&1.name == name)),
+        rejected not in command.rejects,
+        held = invariants_held(command.fields, values),
+        rejected not in held do
+      {"S4: scenario #{inspect(model.description)}: rejected #{inspect(rejected)} is not " <>
+         "among what command #{inspect(name)} rejects, #{inspect(command.rejects)}, nor an " <>
+         "invariant of a domain value its fields hold, #{inspect(held)}", Links.at(declaration)}
+    end
+  end
+
+  defp invariants_held(fields, values) do
+    fields
+    |> Enum.map(& &1.type)
+    |> held(values)
+    |> Enum.flat_map(&Enum.map(Map.get(values[&1], :invariants, []), fn i -> i.name end))
+    |> Enum.uniq()
+  end
+
+  @doc false
+  # Whether a command's scenario is refused on an invariant of a domain value, before any
+  # decision, rather than on one of the command's `rejects:` (issue #458).
+  @spec refused_on_value?(map(), map()) :: boolean()
+  def refused_on_value?(%{trigger: %{kind: :command}, rejected: rejected}, command)
+      when rejected != nil,
+      do: rejected not in command.rejects
+
+  def refused_on_value?(_scenario, _command), do: false
 
   @doc false
   # The domain values `types` hold, at any depth, each once: a value shared by many fields,
@@ -105,6 +140,60 @@ defmodule EhOsContract.Contract.Links.Scenarios do
       Enum.any?(Map.get(values[v], :invariants, []), &(&1.name == invariant))
     end)
   end
+
+  @doc false
+  # The domain value a scenario's `data` breaks `invariant` of, among those `fields` hold:
+  # the one dispatch refuses on, found by walking the data as `EhOsContract.Codec` walks
+  # it — the given fields in order, what a value is made of before the value — and
+  # asking `domain`'s checks (the review of #458). Where nothing given breaks it, or the
+  # checks cannot be asked, as `refusing_value/3` finds it from the declarations alone.
+  @spec refusing_value([map()], atom(), map(), map(), module() | nil) :: atom() | nil
+  def refusing_value(fields, invariant, values, data, domain) do
+    broken =
+      Enum.find_value(fields, fn field ->
+        with true <- Map.has_key?(data, field.name),
+             {:ok, cast} <- Data.cast(field.type, Map.get(data, field.name), values),
+             {value, ^invariant} <- first_broken(field.type, cast, values, domain) do
+          value
+        else
+          _ -> nil
+        end
+      end)
+
+    broken || refusing_value(fields, invariant, values)
+  catch
+    _kind, _reason -> refusing_value(fields, invariant, values)
+  end
+
+  # The first value `data` breaks an invariant of, with that invariant, in the order
+  # `EhOsContract.Codec` asks them; nil when it breaks none.
+  defp first_broken(_type, nil, _values, _domain), do: nil
+
+  defp first_broken({:list, inner}, data, values, domain) when is_list(data),
+    do: Enum.find_value(data, &first_broken(inner, &1, values, domain))
+
+  defp first_broken(type, data, values, domain) when is_atom(type) and is_map_key(values, type) do
+    parts =
+      case Map.fetch!(values, type) do
+        %{type: nil, fields: fields} when is_map(data) ->
+          Enum.find_value(fields, &first_broken(&1.type, Map.get(data, &1.name), values, domain))
+
+        %{type: nil} ->
+          nil
+
+        %{type: inner} ->
+          first_broken(inner, data, values, domain)
+      end
+
+    cond do
+      parts -> parts
+      Map.get(values[type], :invariants, []) == [] -> nil
+      broken = EhOsContract.Value.violated(domain, type, data) -> {type, broken}
+      true -> nil
+    end
+  end
+
+  defp first_broken(_type, _data, _values, _domain), do: nil
 
   defp rule_examples(c, values) do
     for s <- c.declarations.domain_services,

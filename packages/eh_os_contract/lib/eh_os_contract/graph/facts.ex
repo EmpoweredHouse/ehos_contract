@@ -41,6 +41,7 @@ defmodule EhOsContract.Graph.Facts do
 
   alias EhOsContract.{Lifecycle, Model}
   alias EhOsContract.Graph.Document
+  alias EhOsContract.Contract.Links
 
   # A contract declares no process (plan DD, P2h, #221): a process's stages, promises and
   # who answers for it are a process module's document's (plan DD, P2e, #220).
@@ -155,7 +156,7 @@ defmodule EhOsContract.Graph.Facts do
       |> Map.merge(domain_nodes)
       |> group(@contract_kinds, Map.put(relations, :backed_by, backed), @contract_types)
 
-    Map.put(facts, :scenarios, scenarios(model, facts.relations))
+    Map.put(facts, :scenarios, scenarios(model, facts.relations, Model.fetch(contract).scenarios))
   end
 
   # The model and its domain with every example and default redacted, as
@@ -371,6 +372,21 @@ defmodule EhOsContract.Graph.Facts do
     end
   end
 
+  # The invariant of a domain value a recording's or a command's data breaks, as
+  # dispatch names it, from the fields of `declared`, the event or the command: the
+  # value held by the field whose data breaks it.
+  defp broken(model, declared, s) do
+    with invariant when invariant != nil <- s.rejected,
+         %{fields: fields} <- declared,
+         values = EhOsContract.Codec.values(model.domain),
+         value when value != nil <-
+           Links.Scenarios.refusing_value(fields, invariant, values, s.written_data, model.domain) do
+      %{value: id(:value, model.domain, value), invariant: Atom.to_string(invariant)}
+    else
+      _ -> nil
+    end
+  end
+
   # The rule a command is refused on: an invariant of its unit, or else a constraint of
   # its own.
   defp refusal(c, unit, command, rule) do
@@ -557,7 +573,7 @@ defmodule EhOsContract.Graph.Facts do
   # The scenarios, grouped by what they are about — a unit, a policy, a process
   # manager or a query; an effect and a read model are no scenario's target (S6) —
   # each with the ids of the relations it exercises. Their data is already redacted.
-  defp scenarios(model, relations) do
+  defp scenarios(model, relations, unredacted) do
     c = model.id
 
     find = fn type, from, to, attrs ->
@@ -571,7 +587,10 @@ defmodule EhOsContract.Graph.Facts do
 
     # A recording's scenario is about its unit, and a group of its own, since it has
     # no command a unit's scenario always carries (issue #430).
-    for s <- model.scenarios,
+    # Which value a scenario's data breaks is asked of the data as written, before the
+    # redaction masks a personal field (the review of #458); only the value's id leaves.
+    for {s, written} <- Enum.zip(model.scenarios, unredacted),
+        s = Map.put(s, :written_data, written.trigger.data),
         about = groups[s.target.kind],
         group = if(s.trigger.kind == :record, do: :record, else: about),
         reduce: Map.new([:unit, :record, :policy, :process_manager, :query], &{&1, []}) do
@@ -589,13 +608,20 @@ defmodule EhOsContract.Graph.Facts do
   end
 
   # A unit's: who issues which command after which events, and what it emits or the
-  # rule it is refused on. It covers the command's arrow to each expected event, or to
-  # that rule.
+  # rule it is refused on, or the invariant of a domain value its data breaks (issue
+  # #458). It covers the command's arrow to each expected event, or to that rule.
   defp scenario(:unit, s, model, find) do
     c = model.id
     command = id(:command, c, s.trigger.name)
     unit = Enum.find(model.units, &(&1.name == s.target.name))
-    rule = s.rejected && refusal(c, unit, s.trigger.name, s.rejected)
+    declared = Enum.find(model.commands, &(&1.name == s.trigger.name))
+
+    {rule, on_value} =
+      cond do
+        s.rejected == nil -> {nil, nil}
+        Links.Scenarios.refused_on_value?(s, declared) -> {nil, broken(model, declared, s)}
+        true -> {refusal(c, unit, s.trigger.name, s.rejected), nil}
+      end
 
     covers =
       for(e <- s.expect, do: find.(:emits, command, id(:event, c, e.event), [])) ++
@@ -616,7 +642,8 @@ defmodule EhOsContract.Graph.Facts do
        actor: s.actor && id(:actor, model.domain, s.actor),
        as: s[:as],
        given_entities: if(entities != [], do: entities),
-       rejected: rule
+       rejected: rule,
+       rejected_on_value: on_value
      ), covers}
   end
 
@@ -628,16 +655,7 @@ defmodule EhOsContract.Graph.Facts do
     event = id(:event, c, s.trigger.name)
     actor = s.actor && id(:actor, model.domain, s.actor)
 
-    rejected =
-      with invariant when invariant != nil <- s.rejected,
-           %{fields: fields} <- Enum.find(model.events, &(&1.name == s.trigger.name)),
-           values = EhOsContract.Codec.values(model.domain),
-           value when value != nil <-
-             EhOsContract.Contract.Links.Scenarios.refusing_value(fields, invariant, values) do
-        %{value: id(:value, model.domain, value), invariant: Atom.to_string(invariant)}
-      else
-        _ -> nil
-      end
+    rejected = broken(model, Enum.find(model.events, &(&1.name == s.trigger.name)), s)
 
     {with_attrs(
        %{

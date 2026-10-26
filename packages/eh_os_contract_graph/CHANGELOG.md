@@ -21,8 +21,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26
+
 ### Added
 
+- **A value's panel lists the scenarios its invariants refuse** (#458): a command's scenario refused before any
+  decision on the invariant of a domain value its data breaks, read from a unit scenario's new, optional
+  `rejected_on_value` in `graph.v1`, and a recording refused on one. Each says which invariant is broken, by its
+  label for the owner. A command's scenario refused so is never shown as one in which nothing is recorded.
 - **A scenario that records an event is drawn** (#430): on the arrow from the actor who may record it, the panel
   says who records which event after which events, and what is appended or the invariant of a domain value the
   recording breaks, by its label for the owner. It reads the `record` group of a `graph.v1` document's

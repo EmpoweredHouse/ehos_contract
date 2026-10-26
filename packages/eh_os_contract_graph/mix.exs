@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphRenderer.MixProject do
   use Mix.Project
 
-  @version "0.7.2-dev"
+  @version "0.8.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @description "Draws EhOsContract's graph.v1 documents in a LiveView: cards, arrows, panels."
 

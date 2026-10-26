@@ -189,6 +189,35 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
   end
 
   @doc """
+  Billing's payments with a scenario of a payment asked for a negative amount, refused
+  before any decision on the invariant of the amount's value, as the engine writes it
+  since a command's scenario can show that (issue #458).
+  """
+  def payments_refused_for_data do
+    update_in(document("billing.payments"), ["scenarios", "unit"], fn scenarios ->
+      scenarios ++
+        [
+          %{
+            "id" => "scenario:billing.payments:a negative payment is not asked for",
+            "description" => "a negative payment is not asked for",
+            "target" => @payment,
+            "covers" => [],
+            "given" => [],
+            "command" => %{
+              "command" => "command:billing.payments:request_payment",
+              "data" => %{"amount" => -1}
+            },
+            "expect" => [],
+            "rejected_on_value" => %{
+              "value" => "value:Billing.Domain:money",
+              "invariant" => "not_negative"
+            }
+          }
+        ]
+    end)
+  end
+
+  @doc """
   Every fixture document by its name, and the variants above, for the tests that go over
   every element of every document.
   """
@@ -199,7 +228,8 @@ defmodule EhOsContract.GraphRenderer.Fixtures do
           {"process.fulfilment.order, with its other way", order_with_other_way()},
           {"lending.circulation, with its variants", circulation_variant()},
           {"domain.fulfilment, with its patterns", fulfilment_variant()},
-          {"billing.payments, with its recordings", payments_recorded()}
+          {"billing.payments, with its recordings", payments_recorded()},
+          {"billing.payments, with a command refused for its data", payments_refused_for_data()}
         ]
 
   @doc "Every node and every relation of `document`, flat."

@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26
+
 ### Added
 
 - **`mix eh_os_contract.bundle --output-dir <dir>`** writes the bundle EHOS takes with an image
@@ -43,6 +45,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **Breaking:** **the engine is required at `~> 0.11.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
 - **Breaking:** `EhOsContract.Auth.Mail.deliver/1` answers `{:error, :outcome_unknown}` when some
   messages may have been sent: any failure of the transport but those below, a timeout even while
   connecting, a failed TLS handshake and an unreachable host included, a 5xx, a 408, or a 200 it

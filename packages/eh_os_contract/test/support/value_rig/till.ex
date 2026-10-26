@@ -7,7 +7,8 @@ defmodule ValueRig.Till do
   amount of nothing, which dispatch has to stop; the counting machine records what it
   counted. A query asks for payments above an amount, and the domain service halves
   one. A drawer is keyed by its till and its shift, a domain value, so opening one for
-  a shift that is no day is refused (#435), and a process manager watches it by both.
+  a shift that is no day is refused (#435), as its scenario shows (#458), and a process
+  manager watches it by both.
   """
 
   use EhOsContract.Contract, domain: ValueRig.Domain, context: :till, id: "value_rig.till"
@@ -57,6 +58,23 @@ defmodule ValueRig.Till do
     target :drawer_watch
     on :drawer_opened, %{till_id: "t-1"}
     state %{till_id: "t-1", shift_id: "scenario"}
+  end
+
+  # Refused before any decision on the invariant of a value the command's key holds, or
+  # one of its fields (#458).
+  scenario "a drawer is opened for a shift named by its day" do
+    command :open_drawer, %{till_id: "t-1", shift_id: "2026-10-26"}
+    expect :drawer_opened
+  end
+
+  scenario "a drawer is not opened for a shift that is no day" do
+    command :open_drawer, %{till_id: "t-1", shift_id: "2026-13-01"}
+    rejected :named_by_day
+  end
+
+  scenario "nothing is paid in" do
+    command :pay_in, %{till_id: "till-1", amount: 0}
+    rejected :positive
   end
 
   read_model :payments, "Payments", projects: [:paid_in, :counted] do

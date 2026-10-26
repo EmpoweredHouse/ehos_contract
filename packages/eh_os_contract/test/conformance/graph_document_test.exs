@@ -346,7 +346,6 @@ defmodule EhOsContract.GraphDocumentTest do
     test "a recording's scenario is about its unit, and is refused on a value's invariant" do
       d = Document.contract(ValueRig.Till)
       assert {:ok, _} = JSV.validate(d, @schema)
-      assert d["scenarios"]["unit"] == []
 
       [counted, nothing] = d["scenarios"]["record"]
 
@@ -370,6 +369,73 @@ defmodule EhOsContract.GraphDocumentTest do
                "value" => "value:ValueRig.Domain:amount",
                "invariant" => "positive"
              }
+    end
+
+    # Issue #458: a command refused for its data names the value's invariant, as a
+    # recording does, beside `rejected`, which an older reader takes for a rule's id. It
+    # covers no arrow to a rule: none refuses it.
+    test "a command refused on a value's invariant names the value, and no rule" do
+      d = Document.contract(ValueRig.Till)
+      assert {:ok, _} = JSV.validate(d, @schema)
+      scenarios = Map.new(d["scenarios"]["unit"], &{&1["description"], &1})
+
+      no_day = scenarios["a drawer is not opened for a shift that is no day"]
+
+      assert no_day["rejected_on_value"] == %{
+               "value" => "value:ValueRig.Domain:shift",
+               "invariant" => "named_by_day"
+             }
+
+      refute Map.has_key?(no_day, "rejected")
+      assert no_day["covers"] == []
+
+      assert scenarios["nothing is paid in"]["rejected_on_value"] == %{
+               "value" => "value:ValueRig.Domain:amount",
+               "invariant" => "positive"
+             }
+
+      refute Map.has_key?(
+               scenarios["a drawer is opened for a shift named by its day"],
+               "rejected_on_value"
+             )
+    end
+
+    # The review of #458: two values declare an invariant of the same name, and the data
+    # breaks the later field's, so the graph names that field's value, as dispatch refuses.
+    test "a command refused for its data names the value the data breaks" do
+      d = Document.contract(TipRig.Till)
+      assert {:ok, _} = JSV.validate(d, @schema)
+
+      named =
+        for s <- d["scenarios"]["unit"],
+            s["rejected_on_value"],
+            into: %{},
+            do: {s["description"], s["rejected_on_value"]["value"]}
+
+      assert named == %{
+               "a tip of nothing is not paid in" => "value:TipRig.Domain:tip",
+               "a payment with a tip of nothing is not settled" => "value:TipRig.Domain:tip",
+               "an amount of nothing is not paid in" => "value:TipRig.Domain:amount"
+             }
+
+      # The tip is personal, so the document masks it, and the value is still told from
+      # the data as written.
+      [counted] = for s <- d["scenarios"]["record"], s["rejected"], do: s
+
+      assert counted["record"]["data"]["tip"] == nil
+      assert counted["rejected"]["value"] == "value:TipRig.Domain:tip"
+
+      # Without the domain's checks, the declarations alone decide: the first declared.
+      fields = Enum.find(Model.fetch(TipRig.Till).commands, &(&1.name == :pay_in)).fields
+      values = EhOsContract.Codec.values(TipRig.Domain)
+
+      assert EhOsContract.Contract.Links.Scenarios.refusing_value(
+               fields,
+               :positive,
+               values,
+               %{amount: 250, tip: 0},
+               nil
+             ) == :amount
     end
 
     test "a process manager's relations carry the way in they act on" do

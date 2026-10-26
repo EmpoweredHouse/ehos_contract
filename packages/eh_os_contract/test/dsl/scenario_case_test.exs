@@ -523,4 +523,99 @@ defmodule EhOsContract.ScenarioCaseTest do
                  "refused: {:error, :not_declared}"
     end
   end
+
+  describe "a command refused for its data (issue #458)" do
+    # A scenario of the rig, or one made from it by `change`, run against its deciders.
+    defp ran(description, change \\ & &1) do
+      scenario = Enum.find(Model.fetch(ValueRig.Till).scenarios, &(&1.description == description))
+      fn -> ScenarioCase.run(ValueRig.Till, change.(scenario)) end
+    end
+
+    defp failed(description, change),
+      do: assert_raise(ExUnit.AssertionError, ran(description, change)).message
+
+    @no_day "a drawer is not opened for a shift that is no day"
+    @a_day "a drawer is opened for a shift named by its day"
+
+    test "is refused before any decision on a value's invariant its key or a field holds" do
+      assert ran(@no_day).()
+      assert ran("nothing is paid in").()
+    end
+
+    test "fails a scenario that says otherwise, naming what dispatch refuses" do
+      emitted = &%{&1 | rejected: nil, expect: [%{event: :drawer_opened, data: %{}}]}
+
+      assert failed(@no_day, emitted) ==
+               "expected command :open_drawer to emit events, and it returned " <>
+                 "{:error, {:invalid, [shift_id: {:invariant, :named_by_day}]}}"
+
+      assert failed(@no_day, &%{&1 | rejected: :positive}) ==
+               "expected command :open_drawer to be rejected on :positive, and it was refused " <>
+                 "for its data: [shift_id: {:invariant, :named_by_day}]"
+
+      assert failed(@a_day, &%{&1 | expect: [], rejected: :named_by_day}) =~
+               "expected command :open_drawer to be rejected on :named_by_day, and it returned " <>
+                 "{:ok,"
+    end
+
+    # The review of #458: a name the command `rejects:` is its decision's, and S8 and the
+    # report count it so, though the value its data holds declares the same name. Data the
+    # value refuses never reaches that decision, so the scenario fails rather than show it.
+    test "a name the command rejects is passed only by its decision" do
+      compile(
+        """
+        defmodule EhOsContract.Fixtures.Collision do
+          use EhOsContract.Contract, domain: ValueRig.Domain, context: :till, id: "value_rig.collision"
+
+          aggregate :float, "Float" do
+            identity :float_id
+            invariant :positive, "A float is kept above nothing"
+
+            command :top_up, "Top up", by: :cashier, emits: :topped_up, rejects: :positive do
+              field :amount, :amount
+            end
+
+            event :topped_up, "Topped up"
+          end
+
+          scenario "an empty top-up" do
+            command :top_up, %{amount: 0}
+            rejected :positive
+          end
+        end
+
+        defmodule EhOsContract.Fixtures.CollisionFloat do
+          use EhOsContract.Fixtures.Collision, aggregate: :float
+
+          @impl true
+          def top_up(%TopUp{}, _state), do: reject(:positive)
+        end
+        """,
+        "collision.ex"
+      )
+
+      contract = EhOsContract.Fixtures.Collision
+      [scenario] = Model.fetch(contract).scenarios
+
+      message =
+        assert_raise(ExUnit.AssertionError, fn ->
+          ScenarioCase.run(contract, scenario, [EhOsContract.Fixtures.CollisionFloat])
+        end).message
+
+      assert message ==
+               "expected command :top_up to be rejected on :positive, and it returned " <>
+                 "{:error, {:invalid, [amount: {:invariant, :positive}]}}"
+
+      decided = %{scenario | trigger: %{scenario.trigger | data: %{amount: 5}}}
+      assert ScenarioCase.run(contract, decided, [EhOsContract.Fixtures.CollisionFloat])
+    end
+
+    # A key the scenario leaves out is filled in with a placeholder of its own, which
+    # no value's invariant is asked about.
+    test "asks nothing of an identity the scenario leaves out" do
+      left_out = &%{&1 | trigger: %{&1.trigger | data: %{till_id: "t-1"}}}
+
+      assert ran(@a_day, left_out).()
+    end
+  end
 end

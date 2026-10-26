@@ -79,6 +79,11 @@ defmodule Billing.Contracts.Payments do
     expect :requested, %{amount: 2_200}
   end
 
+  scenario "a payment is not asked for a period that is no month" do
+    command :request_payment, %{@requested | period_id: "2026-13"}
+    rejected :named_by_month
+  end
+
   scenario "a payment is asked for once" do
     given :requested, @requested
     command :request_payment, %{amount: 2_200}
