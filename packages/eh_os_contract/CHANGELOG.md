@@ -48,6 +48,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
+  `eh_os_contract_auth`, which writes its documents with the manifest as the bundle EHOS takes (#456).
+
 ## [0.11.0] - 2026-10-26
 
 ### Added

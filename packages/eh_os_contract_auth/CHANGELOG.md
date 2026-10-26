@@ -24,6 +24,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`mix eh_os_contract.bundle --output-dir <dir>`** writes the bundle EHOS takes with an image:
+  `ehos.manifest.json` as `eh_os_contract.manifest` writes it, every graph document in `graph/` as
+  `eh_os_contract.graph --output-dir` writes them, and `bundle.json`, which names each file with
+  its size and SHA-256. It refuses a directory that holds anything, checks the index
+  against EHOS's schema of `ehos.bundle/v1`, carried unchanged in `priv/schemas/ehos.bundle/`, and
+  writes nothing EHOS would refuse (#456).
+
 ## [0.8.0] - 2026-10-26
 
 ### Added
