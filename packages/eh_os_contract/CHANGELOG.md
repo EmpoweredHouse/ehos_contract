@@ -50,6 +50,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **A command's scenario can be `rejected` on an invariant of a domain value its data breaks** (#458): `command
+  :open_month, %{period_id: "2026-13"}` followed by `rejected :named_by_month`, where the value types a field of
+  the command or, since #435, its unit's identity. Dispatch refuses such a command before anything decides it,
+  and a contract can now say so; S4 accepts the name when the command's fields hold a value that declares it,
+  checked against the domain. `EhOsContract.ScenarioCase` holds the fields a scenario gives to their values'
+  invariants before the lifecycle and the decision, as dispatch does, so a scenario that gives data dispatch
+  refuses and expects events now fails where it passed. Such a scenario covers no invariant of the unit (S8),
+  appears in no generated "refused in", and is not counted by the conformance report's scenario coverage,
+  since dispatch records no decision for it: no verdict moves. A graph document names the value and its
+  invariant in a unit scenario's new, optional `rejected_on_value`, beside `rejected`.
+
 - **A scenario can record an event** (#430): `record :collected, %{…}` with the `actor` who records it shows
   what an actor of the event's `recorded_by:` may write into the log, `expect`ing the event or `rejected` on the
   invariant of a domain value its data breaks. `EhOsContract.ScenarioCase` holds it to what `EhOsContract.record/3`

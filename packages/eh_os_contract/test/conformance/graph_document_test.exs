@@ -346,7 +346,6 @@ defmodule EhOsContract.GraphDocumentTest do
     test "a recording's scenario is about its unit, and is refused on a value's invariant" do
       d = Document.contract(ValueRig.Till)
       assert {:ok, _} = JSV.validate(d, @schema)
-      assert d["scenarios"]["unit"] == []
 
       [counted, nothing] = d["scenarios"]["record"]
 
@@ -370,6 +369,35 @@ defmodule EhOsContract.GraphDocumentTest do
                "value" => "value:ValueRig.Domain:amount",
                "invariant" => "positive"
              }
+    end
+
+    # Issue #458: a command refused for its data names the value's invariant, as a
+    # recording does, beside `rejected`, which an older reader takes for a rule's id. It
+    # covers no arrow to a rule: none refuses it.
+    test "a command refused on a value's invariant names the value, and no rule" do
+      d = Document.contract(ValueRig.Till)
+      assert {:ok, _} = JSV.validate(d, @schema)
+      scenarios = Map.new(d["scenarios"]["unit"], &{&1["description"], &1})
+
+      no_day = scenarios["a drawer is not opened for a shift that is no day"]
+
+      assert no_day["rejected_on_value"] == %{
+               "value" => "value:ValueRig.Domain:shift",
+               "invariant" => "named_by_day"
+             }
+
+      refute Map.has_key?(no_day, "rejected")
+      assert no_day["covers"] == []
+
+      assert scenarios["nothing is paid in"]["rejected_on_value"] == %{
+               "value" => "value:ValueRig.Domain:amount",
+               "invariant" => "positive"
+             }
+
+      refute Map.has_key?(
+               scenarios["a drawer is opened for a shift named by its day"],
+               "rejected_on_value"
+             )
     end
 
     test "a process manager's relations carry the way in they act on" do

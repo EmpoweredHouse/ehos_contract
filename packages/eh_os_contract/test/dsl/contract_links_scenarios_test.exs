@@ -457,4 +457,70 @@ defmodule EhOsContract.ContractLinksScenariosTest do
              ) == nil
     end
   end
+
+  describe "a command refused on a value's invariant (S4, issue #458)" do
+    # The scenario at line 18. The unit's invariant is named like the value's, and only
+    # `refund` is refused on it; `refunds` adds the scenario that shows it (S8).
+    defp charging(name, rejected, refunds \\ true) do
+      refund =
+        if refunds,
+          do:
+            ~s|scenario "a refund below zero" do\n    command :refund, %{}\n    rejected :not_negative\n  end|,
+          else: ""
+
+      {"#{Macro.underscore(name)}.ex",
+       """
+       defmodule #{inspect(Module.concat(@fixtures, name))} do
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement, id: "clinic.#{contract_name(name)}"
+
+         aggregate :visit, "Visit" do
+           identity :visit_id
+           invariant :not_negative, "A visit's balance is not negative"
+
+           command :charge, "Charge", by: :reception, emits: :charged do
+             field :receipt, :receipt
+           end
+
+           command :refund, "Refund", by: :reception, emits: :refunded, rejects: :not_negative
+
+           event :charged, "Charged"
+           event :refunded, "Refunded"
+         end
+
+         scenario "a charge below zero" do
+           command :charge, %{receipt: %{charges: [-1]}}
+           rejected #{inspect(rejected)}
+         end
+
+         #{refund}
+       end
+       """}
+    end
+
+    test "control: an invariant of a value the command's fields hold, at any depth, passes" do
+      assert links([charging("ScnCommandRight", :not_negative)]) == []
+    end
+
+    test "a name neither the command rejects nor any value of its fields declares" do
+      violations = links([charging("ScnCommandWrong", :paid_in_full)])
+
+      assert assert_linked(violations, "rejected :paid_in_full", "scn_command_wrong.ex", 18) =~
+               ~s|S4: scenario "a charge below zero": rejected :paid_in_full is not among what | <>
+                 "command :charge rejects, [], nor an invariant of a domain value its fields " <>
+                 "hold, [:not_negative]"
+
+      assert length(violations) == 1
+    end
+
+    test "S8: it shows no invariant of the unit named like the value's" do
+      {file, source} = charging("ScnCommandNotTheUnits", :not_negative, false)
+
+      assert_refused(
+        source,
+        file,
+        "S8: invariant :not_negative of aggregate :visit has no scenario in which a command " <>
+          "is rejected on it"
+      )
+    end
+  end
 end

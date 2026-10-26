@@ -668,6 +668,16 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
+  # What dispatch refuses in a command's data before deciding it: a value that breaks an
+  # invariant of the domain value it holds. Only of the fields the scenario gives, since
+  # an identity it leaves out is a placeholder of its own.
+  defp invalid(model, declaration, command, given) do
+    for {field, _problem} = problem <-
+          EhOsContract.Codec.problems(declaration.fields, command, domain(model), model.domain),
+        Map.has_key?(given, field),
+        do: problem
+  end
+
   # Plan DD, T2a (#240): a command that reads entities is decided with their rows, as
   # dispatch decides it: each the scenario's `given_entity` of that entity whose identity
   # is the value the command names, its fields cast as the host's row would be.
@@ -752,31 +762,39 @@ defmodule EhOsContract.ScenarioCase do
     decided =
       message(model, :command, command, scenario.trigger.data, identity, now, scenario.actor)
 
-    # As dispatch does (plan LC2): outside its `from:`, the command is refused on its
-    # `or_rejects:` before anything is folded or decided.
+    # As dispatch does: data that breaks an invariant of a domain value it holds is
+    # refused before anything is decided (issue #458), and outside its `from:` (plan
+    # LC2), the command is refused on its `or_rejects:` before anything is folded.
+    invalid = invalid(model, declaration, decided, scenario.trigger.data)
+
     result =
-      if Lifecycle.admits?(declaration, status) do
-        state =
-          fold_status(
-            unit,
-            impl,
-            struct(Module.concat(Model.module_for(model, kind, name), State), initial),
-            givens,
-            befores,
-            status
-          )
+      cond do
+        invalid != [] ->
+          {:error, {:invalid, invalid}}
 
-        # As dispatch does (plan DD, A1, #247): the person the scenario names with `as:`
-        # issues it only when the state names them; without `as:`, nobody is compared.
-        case not_the_person(declaration, state, Map.get(scenario, :as)) do
-          nil ->
-            apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
+        not Lifecycle.admits?(declaration, status) ->
+          {:refused_in, status, declaration.or_rejects}
 
-          invariant ->
-            {:error, %Rejection{invariant: invariant}}
-        end
-      else
-        {:refused_in, status, declaration.or_rejects}
+        true ->
+          state =
+            fold_status(
+              unit,
+              impl,
+              struct(Module.concat(Model.module_for(model, kind, name), State), initial),
+              givens,
+              befores,
+              status
+            )
+
+          # As dispatch does (plan DD, A1, #247): the person the scenario names with `as:`
+          # issues it only when the state names them; without `as:`, nobody is compared.
+          case not_the_person(declaration, state, Map.get(scenario, :as)) do
+            nil ->
+              apply(impl, command, [decided, state | reads(model, declaration, decided, scenario)])
+
+            invariant ->
+              {:error, %Rejection{invariant: invariant}}
+          end
       end
 
     emits = declaration.emits
@@ -805,6 +823,11 @@ defmodule EhOsContract.ScenarioCase do
 
       {invariant, {:refused_in, _status, invariant}} ->
         true
+
+      {invariant, {:error, {:invalid, problems}}} when invariant != nil ->
+        assert Enum.any?(problems, &match?({_field, {:invariant, ^invariant}}, &1)),
+               "expected command #{inspect(command)} to be rejected on #{inspect(invariant)}, " <>
+                 "and it was refused for its data: #{inspect(problems)}"
 
       {invariant, other} ->
         flunk(

@@ -30,6 +30,14 @@ defmodule EhOsContract.CoverageTest do
     assert %{declared: 2, observed: 0, never_observed: [@refused, @through]} = Coverage.of(Ledger)
   end
 
+  # Issue #458: dispatch refuses a command whose data breaks a value's invariant before
+  # anything decides it, and records no decision, so the log can never show such a
+  # scenario; counting it would report a path that can never be taken.
+  test "a command refused for its data, on a value's invariant, is not counted" do
+    assert %{declared: 1, never_observed: ["a drawer is opened for a shift named by its day"]} =
+             Coverage.of(ValueRig.Till)
+  end
+
   test "a withdrawal within the balance, after a deposit, is the scenario that goes through" do
     {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 100})
     {:ok, _} = dispatch(%Withdraw{account_id: "a-1", amount: 60})

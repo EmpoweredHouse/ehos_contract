@@ -18,8 +18,11 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   given's `at:` is an ISO 8601 timestamp with an offset, never earlier than the given
   #   before it, since a log never holds a later event before an earlier one, and no
   #   undated given comes before a dated one (plan DD, S2, #251).
-  # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
-  #   A recording's names an invariant of a domain value, which only the domain knows
+  # - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`,
+  #   or an invariant of a domain value the command's fields hold, its identity's
+  #   included, on which dispatch refuses it before any decision (issue #458). A
+  #   recording's names an invariant of a domain value. Only the domain knows a value's
+  #   invariants, so a command whose fields hold a domain value is checked there
   #   (`EhOsContract.Contract.Links.Scenarios`).
   # - **S5.** `expect` names events in the command's `emits:`; after a recording, the
   #   event recorded, since nothing is decided and nothing else is appended.
@@ -63,6 +66,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.{Data, Dsl, Rules}
+
+  @built_in EhOsContract.Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -442,6 +447,11 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
           []
 
         scenario.rejected in command.rejects ->
+          []
+
+        # Issue #458: maybe an invariant of a value its fields hold, which only the
+        # domain knows.
+        holds_value?(command, unit) ->
           []
 
         true ->
@@ -919,16 +929,32 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     end
   end
 
+  # Whether a command's fields, its identity's included, hold a domain value, whose
+  # invariants may refuse it (issue #458).
+  defp holds_value?(command, unit) do
+    command.fields
+    |> Enum.map(& &1.type)
+    |> Enum.concat(Map.values(unit.identity_types))
+    |> Enum.any?(&value_type?/1)
+  end
+
+  defp value_type?({:list, inner}), do: value_type?(inner)
+  defp value_type?(type) when is_atom(type), do: type not in @built_in
+  defp value_type?(_type), do: false
+
   # --- S8 -----------------------------------------------------------------------------
 
   # Per unit: two units may each have an invariant of the same name. A recording is
-  # refused on a value's invariant, never on its unit's.
+  # refused on a value's invariant, never on its unit's, and so is a command refused for
+  # its data, on none of its `rejects:` (issue #458).
   defp covered(d) do
     rejected =
       for scenario <- d.scenarios,
           scenario.rejected != nil,
-          [%{kind: :command}] <- [scenario.trigger],
+          [%{kind: :command, name: name}] <- [scenario.trigger],
           {_kind, unit} <- List.wrap(target(scenario, d)),
+          %{rejects: rejects} <- [Enum.find(unit.commands, &(&1.name == name))],
+          scenario.rejected in rejects,
           into: MapSet.new(),
           do: {unit.name, scenario.rejected}
 

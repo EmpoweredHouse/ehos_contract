@@ -649,6 +649,15 @@ defmodule EhOsContract.PagesTest do
       end
     end
 
+    # Issue #458: a command refused for its data names the value's invariant by its
+    # label, as a recording does, the one dispatch refuses on.
+    test "name the value's invariant a command's data breaks by its label" do
+      drawer = owner(ValueRig.Domain)["till/till/aggregates/drawer.md"]
+
+      assert drawer =~
+               "command Open a drawer; rejected on A shift is a day written YYYY-MM-DD"
+    end
+
     test "say nothing of the engineering: modules, versions, types, delivery, correlation" do
       for domain <- Registry.domains(), {path, text} <- owner(domain) do
         for word <- [

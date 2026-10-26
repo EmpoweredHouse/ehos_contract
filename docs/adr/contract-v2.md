@@ -945,6 +945,18 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > `{[argument, …], result}` with the function's arity, each value of its declared type (`nil` only where
   > optional), none given twice, since each names its test. **X9** reads those examples too, for the values of
   > domain types.
+  >
+  > *Amended 26 October 2026, issue #458: a command refused for its data.* S4 assumed a command is refused only
+  > by its decision, on what it `rejects:`. Since a field, and since #435 a unit's key, may be typed by a domain
+  > value, dispatch refuses a command whose data breaks the value's invariant before anything decides it, and no
+  > scenario could show it: a contract holding a month's key to "YYYY-MM" stayed silent about "2026-13". **S4**
+  > now also lets a command's `rejected` name an invariant of a domain value its fields hold, its identity's
+  > included, at any depth — as #430 let a recording's. A command none of whose fields holds a domain value is
+  > still refused at L2; one whose fields hold one is checked against the domain at L3. `ScenarioCase` holds the
+  > fields a scenario gives to their values' invariants before the lifecycle and the decision, in dispatch's
+  > order, so a scenario that gives data dispatch refuses and expects events now fails. Such a scenario counts
+  > toward no unit invariant (S8) and no conformance coverage: dispatch records no decision for it.
+  > ([#458](https://github.com/EmpoweredHouse/eh-os-contract/issues/458))
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

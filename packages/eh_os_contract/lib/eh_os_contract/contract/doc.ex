@@ -274,6 +274,10 @@ defmodule EhOsContract.Contract.Doc do
     |> Enum.filter(&(&1.target == %{kind: kind, name: unit.name} and &1.rejected == rule.name))
     |> Enum.filter(&(&1.trigger.kind == :command))
     |> Enum.filter(&(command == nil or &1.trigger.name == command.name))
+    # Nor is a command refused for its data, on a value's invariant (issue #458).
+    |> Enum.filter(
+      &(rule.name in Enum.find(model.commands, fn c -> c.name == &1.trigger.name end).rejects)
+    )
     |> Enum.map(& &1.description)
     |> shown("refused in")
   end

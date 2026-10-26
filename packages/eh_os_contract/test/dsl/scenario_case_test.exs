@@ -523,4 +523,47 @@ defmodule EhOsContract.ScenarioCaseTest do
                  "refused: {:error, :not_declared}"
     end
   end
+
+  describe "a command refused for its data (issue #458)" do
+    # A scenario of the rig, or one made from it by `change`, run against its deciders.
+    defp ran(description, change \\ & &1) do
+      scenario = Enum.find(Model.fetch(ValueRig.Till).scenarios, &(&1.description == description))
+      fn -> ScenarioCase.run(ValueRig.Till, change.(scenario)) end
+    end
+
+    defp failed(description, change),
+      do: assert_raise(ExUnit.AssertionError, ran(description, change)).message
+
+    @no_day "a drawer is not opened for a shift that is no day"
+    @a_day "a drawer is opened for a shift named by its day"
+
+    test "is refused before any decision on a value's invariant its key or a field holds" do
+      assert ran(@no_day).()
+      assert ran("nothing is paid in").()
+    end
+
+    test "fails a scenario that says otherwise, naming what dispatch refuses" do
+      emitted = &%{&1 | rejected: nil, expect: [%{event: :drawer_opened, data: %{}}]}
+
+      assert failed(@no_day, emitted) ==
+               "expected command :open_drawer to emit events, and it returned " <>
+                 "{:error, {:invalid, [shift_id: {:invariant, :named_by_day}]}}"
+
+      assert failed(@no_day, &%{&1 | rejected: :positive}) ==
+               "expected command :open_drawer to be rejected on :positive, and it was refused " <>
+                 "for its data: [shift_id: {:invariant, :named_by_day}]"
+
+      assert failed(@a_day, &%{&1 | expect: [], rejected: :named_by_day}) =~
+               "expected command :open_drawer to be rejected on :named_by_day, and it returned " <>
+                 "{:ok,"
+    end
+
+    # A key the scenario leaves out is filled in with a placeholder of its own, which
+    # no value's invariant is asked about.
+    test "asks nothing of an identity the scenario leaves out" do
+      left_out = &%{&1 | trigger: %{&1.trigger | data: %{till_id: "t-1"}}}
+
+      assert ran(@a_day, left_out).()
+    end
+  end
 end
