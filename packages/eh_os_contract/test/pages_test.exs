@@ -658,6 +658,15 @@ defmodule EhOsContract.PagesTest do
                "command Open a drawer; rejected on A shift is a day written YYYY-MM-DD"
     end
 
+    # The review of #458: two values declare a rule of one name, and the label is the one
+    # of the value whose rule the data breaks.
+    test "name the rule of the value the data breaks, where two share its name" do
+      index = owner(TipRig.Domain)["till/till/index.md"]
+
+      assert index =~ "command Pay in; rejected on A tip is more than nothing"
+      assert index =~ "command Pay in; rejected on An amount is more than nothing"
+    end
+
     test "say nothing of the engineering: modules, versions, types, delivery, correlation" do
       for domain <- Registry.domains(), {path, text} <- owner(domain) do
         for word <- [

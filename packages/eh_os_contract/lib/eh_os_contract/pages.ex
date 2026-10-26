@@ -1058,11 +1058,17 @@ defmodule EhOsContract.Pages do
         # Issues #430 and #458: what a recording, or a command refused for its data, is
         # refused on, an invariant of a domain value its fields hold, the one dispatch
         # would name.
-        {:value_rules, fields} ->
+        {:value_rules, fields, data} ->
           values = Map.new(site.domain.values, &{&1.name, &1})
 
           with value when value != nil <-
-                 EhOsContract.Contract.Links.Scenarios.refusing_value(fields, name, values) do
+                 EhOsContract.Contract.Links.Scenarios.refusing_value(
+                   fields,
+                   name,
+                   values,
+                   data,
+                   model.domain
+                 ) do
             Enum.find(Map.get(values[value], :invariants, []), &(&1.name == name))
           end
 
@@ -1116,13 +1122,13 @@ defmodule EhOsContract.Pages do
     rules =
       case s.trigger do
         %{kind: :record, name: event} ->
-          {:value_rules, Enum.find(model.events, &(&1.name == event)).fields}
+          {:value_rules, Enum.find(model.events, &(&1.name == event)).fields, s.trigger.data}
 
         %{kind: :command, name: name} ->
           command = Enum.find(model.commands, &(&1.name == name))
 
           if EhOsContract.Contract.Links.Scenarios.refused_on_value?(s, command),
-            do: {:value_rules, command.fields},
+            do: {:value_rules, command.fields, s.trigger.data},
             else: :rules
 
         _other ->
