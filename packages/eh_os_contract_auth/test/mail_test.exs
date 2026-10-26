@@ -328,14 +328,20 @@ defmodule EhOsContract.Auth.MailTest do
       server = start!(ehos)
       message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
 
-      for answer <- [:garbage, {500, "oops"}, {502, "bad_gateway"}, {408, "timeout"}] do
+      for answer <- [
+            :garbage,
+            {500, "oops"},
+            {502, "bad_gateway"},
+            {503, "unavailable"},
+            {408, "timeout"}
+          ] do
         set(ehos, %{answer: answer})
         log = capture_log(fn -> assert Mail.deliver(message) == {:error, :outcome_unknown} end)
         assert log =~ "some messages may have been sent"
       end
     end
 
-    test "a connection refused or never made is :unavailable; one cut off, :outcome_unknown",
+    test "a name that does not resolve or a refused connection is :unavailable; the rest, :outcome_unknown",
          %{ehos: ehos} do
       server = start!(ehos)
       message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
@@ -343,14 +349,24 @@ defmodule EhOsContract.Auth.MailTest do
       for {reason, error} <- [
             {:econnrefused, :unavailable},
             {:nxdomain, :unavailable},
-            {:ehostunreach, :unavailable},
-            {{:tls_alert, {:handshake_failure, ~c"handshake failure"}}, :unavailable},
+            {:eaddrnotavail, :unavailable},
+            # A pooled connection, or a socket whose last acknowledgements were lost, reports these
+            # after the request was written.
+            {{:tls_alert, {:bad_record_mac, ~c"bad record mac"}}, :outcome_unknown},
+            {:ehostunreach, :outcome_unknown},
+            {:enetunreach, :outcome_unknown},
             {:closed, :outcome_unknown},
             {:timeout, :outcome_unknown},
             {:econnreset, :outcome_unknown}
           ] do
         set(ehos, %{answer: {:transport, reason}})
-        capture_log(fn -> assert Mail.deliver(message) == {:error, error}, inspect(reason) end)
+
+        log =
+          capture_log(fn -> assert Mail.deliver(message) == {:error, error}, inspect(reason) end)
+
+        tag = if is_tuple(reason), do: elem(reason, 0), else: reason
+        assert log =~ inspect(tag)
+        refute log =~ "credential-"
       end
     end
 

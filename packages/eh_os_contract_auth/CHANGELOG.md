@@ -38,9 +38,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Changed
 
 - **Breaking:** `EhOsContract.Auth.Mail.deliver/1` answers `{:error, :outcome_unknown}` when some
-  messages may have been sent: a timeout or a connection cut off once EHOS may have taken the call,
+  messages may have been sent: a timeout, even while connecting, a connection that failed once open,
   a 5xx, a 408, or a 200 it cannot read. `:unavailable` now means nothing was sent, so the call may
-  be made again: no credential, a connection refused or never made, or a refusal EHOS never gives.
+  be made again: no credential, a name that does not resolve, a connection refused, or a refusal
+  EHOS never gives.
   Before, `:unavailable` meant either, and an application could not tell a retry that is safe from
   one that mails someone twice. A host that matches every reason adds `:outcome_unknown`; one that
   retried on `:unavailable` now retries only what was not sent (#451).

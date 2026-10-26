@@ -72,12 +72,12 @@ defmodule EhOsContract.Auth.Mail do
     * `:too_many_messages`: the application has sent the messages it may send today;
     * `:mail_disabled`: the installation sends no mail;
     * `:unavailable`: nothing was sent, and the call may be made again: there is no
-      credential, the connection to EHOS was refused or could not be made, or EHOS
+      credential, EHOS's name does not resolve, the connection was refused, or EHOS
       answered a refusal it never gives.
 
   **`:outcome_unknown`** is the one error after which some messages may have been sent:
-  the call timed out or was cut off once EHOS may have taken it, EHOS failed (a 5xx), or
-  it answered 200 with what it never writes. EHOS sends each recipient's message before
+  the call timed out, even while connecting, or its connection failed once open, EHOS
+  failed (a 5xx), or it answered 200 with what it never writes. EHOS sends each recipient's message before
   it answers and takes no idempotency key, so a call made again may send a message twice.
   Retry only where a second message does no harm.
 
@@ -86,8 +86,8 @@ defmodule EhOsContract.Auth.Mail do
 
   A call is never retried but once with a new credential when EHOS refuses the one it
   sent, before it sends anything. Retrying is the application's choice: after
-  `:unavailable` nothing was sent, after `:outcome_unknown` something may have been. Both attempts share two minutes and a half, EHOS's two for the
-  relay and a margin, and each may first wait up to twelve seconds for a credential: a
+  `:unavailable` nothing was sent, after `:outcome_unknown` something may have been.
+  Both attempts share two minutes and a half, EHOS's two for the relay and a margin, and each may first wait up to twelve seconds for a credential: a
   call answers within three minutes. It never raises or exits for what EHOS does, the
   process not running included.
   """
@@ -251,18 +251,20 @@ defmodule EhOsContract.Auth.Mail do
 
   ## The answer
 
-  # #451: a connection refused or never made, as a failed TLS handshake, wrote nothing to EHOS;
-  # anything later, a timeout, a reset or a closed connection, may have come after EHOS took the
-  # request and sent some messages.
-  @not_written [:econnrefused, :nxdomain, :ehostunreach, :enetunreach, :eaddrnotavail]
+  # #451: a name that does not resolve or a connection refused wrote nothing to EHOS. Anything
+  # else may have come after EHOS took the request and sent some messages: a timeout, which Req
+  # names the same while connecting; a reset or a close; a TLS alert or an unreachable host,
+  # which a pooled connection, or a socket whose last acknowledgements were lost, reports after
+  # the request was written.
+  @not_written [:econnrefused, :nxdomain, :eaddrnotavail]
 
   defp unreachable(reason) do
     if not_written?(reason) do
-      Logger.warning("EHOS's mail API could not be reached, nothing sent: #{inspect(reason)}")
+      Logger.warning("EHOS's mail API could not be reached, nothing sent: #{kind(reason)}")
       {:error, :unavailable}
     else
       Logger.warning(
-        "EHOS's mail API was cut off, some messages may have been sent: #{inspect(reason)}"
+        "EHOS's mail API was cut off, some messages may have been sent: #{kind(reason)}"
       )
 
       {:error, :outcome_unknown}
@@ -270,9 +272,17 @@ defmodule EhOsContract.Auth.Mail do
   end
 
   defp not_written?(%Req.TransportError{reason: reason}) when reason in @not_written, do: true
-  defp not_written?(%Req.TransportError{reason: {:tls_alert, _alert}}), do: true
   defp not_written?({:not_https, _url}), do: true
   defp not_written?(_reason), do: false
+
+  # Only what kind of failure it was: an exception of the transport may hold the request's
+  # header, the credential in it.
+  defp kind(%Req.TransportError{reason: reason}) when is_atom(reason), do: inspect(reason)
+  defp kind(%Req.TransportError{reason: {tag, _detail}}) when is_atom(tag), do: inspect(tag)
+  defp kind(%{__exception__: true, __struct__: module}), do: inspect(module)
+  defp kind({tag, _detail}) when is_atom(tag), do: inspect(tag)
+  defp kind(reason) when is_atom(reason), do: inspect(reason)
+  defp kind(_reason), do: "an unknown failure"
 
   defp results(body) do
     with {:ok, %{"messages" => messages}} when is_list(messages) <- Jason.decode(body),
