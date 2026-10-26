@@ -528,7 +528,7 @@ does not read. Keep `message_id` to tie what you learn later to the message. `in
 the HTML of scripts and forms, and refuses executables, scripts and encrypted archives. EHOS's
 `docs/mail-api.md` has every limit.
 
-A call that sends nothing says why:
+A call that sends nothing says why, and one that may have sent some says so:
 
 | Error | When |
 | --- | --- |
@@ -539,13 +539,15 @@ A call that sends nothing says why:
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 60 calls a minute |
 | `:too_many_messages` | The application has sent the 1000 messages it may send today |
 | `:mail_disabled` | The installation sends no mail |
-| `:unavailable` | EHOS cannot be reached, fails, or answers what it never answers |
+| `:unavailable` | Nothing was sent: no credential, the connection to EHOS refused or never made, or a refusal EHOS never gives. Safe to try again |
+| `:outcome_unknown` | Some messages may have been sent: the call timed out or was cut off once EHOS may have taken it, EHOS failed (a 5xx), or it answered 200 with what it never writes |
 
 An option `deliver/1` does not take, or a string that is not UTF-8, raises `ArgumentError` before
 EHOS is asked, naming the option and never its value. A call is retried only once, with a new
 credential when EHOS refuses the one it sent, before anything is sent, and answers within three
-minutes. A call cut off on
-the way may have sent some messages already, so trying again is the application's choice. EHOS
+minutes. EHOS sends each recipient's message before it answers and takes no idempotency key, so
+after `:outcome_unknown` a call made again may mail someone twice: retry it only where that does no
+harm, and retry `:unavailable` freely. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
 which it reads itself.
 

@@ -71,15 +71,22 @@ defmodule EhOsContract.Auth.Mail do
     * `:rate_limited`: EHOS's limit on calls a minute, or on the token endpoint;
     * `:too_many_messages`: the application has sent the messages it may send today;
     * `:mail_disabled`: the installation sends no mail;
-    * `:unavailable`: EHOS cannot be reached, fails, or answers what it never answers.
+    * `:unavailable`: nothing was sent, and the call may be made again: there is no
+      credential, the connection to EHOS was refused or could not be made, or EHOS
+      answered a refusal it never gives.
+
+  **`:outcome_unknown`** is the one error after which some messages may have been sent:
+  the call timed out or was cut off once EHOS may have taken it, EHOS failed (a 5xx), or
+  it answered 200 with what it never writes. EHOS sends each recipient's message before
+  it answers and takes no idempotency key, so a call made again may send a message twice.
+  Retry only where a second message does no harm.
 
   Each reason in `reasons` is EHOS's sentence, naming the value it is about, such as
   `"to[1]: …"`.
 
   A call is never retried but once with a new credential when EHOS refuses the one it
-  sent, before it sends anything: EHOS sends each recipient's message before it answers,
-  so a call repeated after a timeout can send some messages twice. Retrying is the
-  application's choice. Both attempts share two minutes and a half, EHOS's two for the
+  sent, before it sends anything. Retrying is the application's choice: after
+  `:unavailable` nothing was sent, after `:outcome_unknown` something may have been. Both attempts share two minutes and a half, EHOS's two for the
   relay and a margin, and each may first wait up to twelve seconds for a credential: a
   call answers within three minutes. It never raises or exits for what EHOS does, the
   process not running included.
@@ -112,7 +119,7 @@ defmodule EhOsContract.Auth.Mail do
           optional(:content_id) => String.t()
         }
 
-  @typedoc "Why a call sent nothing."
+  @typedoc "Why a call sent nothing, or, as `:outcome_unknown`, may have sent some messages."
   @type reason ::
           :not_agreed
           | {:beyond_agreement, [String.t()]}
@@ -122,6 +129,7 @@ defmodule EhOsContract.Auth.Mail do
           | :too_many_messages
           | :mail_disabled
           | :unavailable
+          | :outcome_unknown
 
   @typedoc "What `deliver/1` takes; `to:`, `subject:` and `text:` are required."
   @type option ::
@@ -156,8 +164,7 @@ defmodule EhOsContract.Auth.Mail do
         refusal(status, body)
 
       {:error, {:unreachable, reason}} ->
-        Logger.warning("EHOS's mail API could not be reached: #{inspect(reason)}")
-        {:error, :unavailable}
+        unreachable(reason)
 
       {:error, reason} ->
         {:error, reason}
@@ -244,13 +251,36 @@ defmodule EhOsContract.Auth.Mail do
 
   ## The answer
 
+  # #451: a connection refused or never made, as a failed TLS handshake, wrote nothing to EHOS;
+  # anything later, a timeout, a reset or a closed connection, may have come after EHOS took the
+  # request and sent some messages.
+  @not_written [:econnrefused, :nxdomain, :ehostunreach, :enetunreach, :eaddrnotavail]
+
+  defp unreachable(reason) do
+    if not_written?(reason) do
+      Logger.warning("EHOS's mail API could not be reached, nothing sent: #{inspect(reason)}")
+      {:error, :unavailable}
+    else
+      Logger.warning(
+        "EHOS's mail API was cut off, some messages may have been sent: #{inspect(reason)}"
+      )
+
+      {:error, :outcome_unknown}
+    end
+  end
+
+  defp not_written?(%Req.TransportError{reason: reason}) when reason in @not_written, do: true
+  defp not_written?(%Req.TransportError{reason: {:tls_alert, _alert}}), do: true
+  defp not_written?({:not_https, _url}), do: true
+  defp not_written?(_reason), do: false
+
   defp results(body) do
     with {:ok, %{"messages" => messages}} when is_list(messages) <- Jason.decode(body),
          results = Enum.map(messages, &Result.from_map/1),
          false <- Enum.member?(results, :error) do
       {:ok, Enum.map(results, fn {:ok, result} -> result end)}
     else
-      _other -> unexpected("a result it never writes")
+      _other -> unknown("a result it never writes")
     end
   end
 
@@ -275,7 +305,9 @@ defmodule EhOsContract.Auth.Mail do
       status == 400 -> {:error, {:invalid, ["the message holds text EHOS does not take"]}}
       reason = @refusals[{status, error}] -> {:error, reason}
       status == 429 -> {:error, :rate_limited}
-      true -> unexpected("status #{status}")
+      # EHOS refuses before it sends; a timeout a proxy answers, or a failure, may come after.
+      status in 400..499 and status != 408 -> unexpected("status #{status}")
+      true -> unknown("status #{status}")
     end
   end
 
@@ -283,7 +315,12 @@ defmodule EhOsContract.Auth.Mail do
   defp reasons(_reasons), do: []
 
   defp unexpected(what) do
-    Logger.warning("EHOS's mail API answered #{what}")
+    Logger.warning("EHOS's mail API answered #{what}, nothing sent")
     {:error, :unavailable}
+  end
+
+  defp unknown(what) do
+    Logger.warning("EHOS's mail API answered #{what}, some messages may have been sent")
+    {:error, :outcome_unknown}
   end
 end

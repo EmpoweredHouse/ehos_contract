@@ -85,6 +85,11 @@ defmodule EhOsContract.Auth.MailTest do
       state.answer == :always_401 ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
+      # #451: the connection, refused before anything is written, or cut off after.
+      match?({:transport, _reason}, state.answer) ->
+        {:transport, reason} = state.answer
+        Req.Test.transport_error(conn, reason)
+
       token != "Bearer " <> List.last(state.tokens) ->
         answer(conn, 401, %{"error" => "unauthorized"})
 
@@ -303,14 +308,49 @@ defmodule EhOsContract.Auth.MailTest do
       end
     end
 
-    test "an answer EHOS never gives is :unavailable, and logged", %{ehos: ehos} do
+    # #451: EHOS refuses before it sends, so a refusal it never gives sent nothing.
+    test "a refusal EHOS never gives is :unavailable, nothing sent, and logged", %{ehos: ehos} do
       server = start!(ehos)
       message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
 
-      for answer <- [:garbage, {500, "oops"}, {404, "not_found"}, {403, "forbidden"}, :always_401] do
+      for answer <- [{404, "not_found"}, {403, "forbidden"}, :always_401] do
         set(ehos, %{answer: answer})
         log = capture_log(fn -> assert Mail.deliver(message) == {:error, :unavailable} end)
         assert log =~ "EHOS's mail API answered"
+        assert log =~ "nothing sent"
+      end
+    end
+
+    # #451: a failure, a timeout a proxy answers, or a 200 EHOS never writes may come after EHOS
+    # sent some messages: retrying could send them twice.
+    test "a failure or an answer EHOS never writes is :outcome_unknown, and logged",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+
+      for answer <- [:garbage, {500, "oops"}, {502, "bad_gateway"}, {408, "timeout"}] do
+        set(ehos, %{answer: answer})
+        log = capture_log(fn -> assert Mail.deliver(message) == {:error, :outcome_unknown} end)
+        assert log =~ "some messages may have been sent"
+      end
+    end
+
+    test "a connection refused or never made is :unavailable; one cut off, :outcome_unknown",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+
+      for {reason, error} <- [
+            {:econnrefused, :unavailable},
+            {:nxdomain, :unavailable},
+            {:ehostunreach, :unavailable},
+            {{:tls_alert, {:handshake_failure, ~c"handshake failure"}}, :unavailable},
+            {:closed, :outcome_unknown},
+            {:timeout, :outcome_unknown},
+            {:econnreset, :outcome_unknown}
+          ] do
+        set(ehos, %{answer: {:transport, reason}})
+        capture_log(fn -> assert Mail.deliver(message) == {:error, error}, inspect(reason) end)
       end
     end
 
