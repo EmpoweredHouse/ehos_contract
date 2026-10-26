@@ -372,8 +372,6 @@ defmodule EhOsContract.Graph.Facts do
     end
   end
 
-  # The rule a command is refused on: an invariant of its unit, or else a constraint of
-  # its own.
   # The invariant of a domain value a recording's or a command's data breaks, as
   # dispatch names it, from the fields of `declared`, the event or the command.
   defp broken(model, declared, s) do
@@ -387,6 +385,8 @@ defmodule EhOsContract.Graph.Facts do
     end
   end
 
+  # The rule a command is refused on: an invariant of its unit, or else a constraint of
+  # its own.
   defp refusal(c, unit, command, rule) do
     if unit && Enum.any?(unit.invariants, &(&1.name == rule)),
       do: Document.id([:invariant, c, :unit, unit.name, rule]),
