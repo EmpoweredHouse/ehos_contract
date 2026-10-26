@@ -86,8 +86,9 @@ defmodule Mix.Tasks.EhOsContract.Bundle do
     if length(graph) != documents(),
       do:
         Mix.raise(
-          "#{documents()} graph documents were written as #{length(graph)} files: two names " <>
-            "differ only in case, and #{dir} is on a file system that ignores it"
+          "#{documents()} graph documents were written, and #{dir}/#{@graph} holds " <>
+            "#{length(graph)} files: two names may differ only in case on a file system that " <>
+            "ignores it, or something else wrote there during the run"
         )
 
     case Bundle.index(dir, @manifest, graph) do
