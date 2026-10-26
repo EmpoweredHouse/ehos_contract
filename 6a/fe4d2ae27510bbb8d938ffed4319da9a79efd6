@@ -1,0 +1,1 @@
+Fix-up for CodeRabbit on #461: graph told the broken value from redacted data. Fixed (reverse-checked with a personal tip in TipRig). Gate EXIT=0.
