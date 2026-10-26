@@ -373,12 +373,14 @@ defmodule EhOsContract.Graph.Facts do
   end
 
   # The invariant of a domain value a recording's or a command's data breaks, as
-  # dispatch names it, from the fields of `declared`, the event or the command.
+  # dispatch names it, from the fields of `declared`, the event or the command: the
+  # value held by the field whose data breaks it.
   defp broken(model, declared, s) do
     with invariant when invariant != nil <- s.rejected,
          %{fields: fields} <- declared,
          values = EhOsContract.Codec.values(model.domain),
-         value when value != nil <- Links.Scenarios.refusing_value(fields, invariant, values) do
+         value when value != nil <-
+           Links.Scenarios.refusing_value(fields, invariant, values, s.trigger.data, model.domain) do
       %{value: id(:value, model.domain, value), invariant: Atom.to_string(invariant)}
     else
       _ -> nil

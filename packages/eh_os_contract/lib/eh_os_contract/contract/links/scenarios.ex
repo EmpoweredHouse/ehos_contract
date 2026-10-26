@@ -141,6 +141,60 @@ defmodule EhOsContract.Contract.Links.Scenarios do
     end)
   end
 
+  @doc false
+  # The domain value a scenario's `data` breaks `invariant` of, among those `fields` hold:
+  # the value of the field whose data breaks it, where several given fields hold values
+  # declaring it, asked of `domain`'s checks as dispatch asks them (the review of #458);
+  # otherwise as `refusing_value/3` finds it. The graph and the owner's pages name it.
+  @spec refusing_value([map()], atom(), map(), map(), module() | nil) :: atom() | nil
+  def refusing_value(fields, invariant, values, data, domain),
+    do: refusing_value(breaking(fields, data, invariant, values, domain), invariant, values)
+
+  # The fields of the data that may break `invariant`: the one given field whose values
+  # declare it, or, where several do, those whose data the domain's checks refuse on
+  # it, as dispatch asks them (the review of #458). Every field where none is given.
+  defp breaking(fields, data, invariant, values, domain) do
+    given =
+      Enum.filter(
+        fields,
+        &(Map.has_key?(data, &1.name) and refusing_value([&1], invariant, values) != nil)
+      )
+
+    case given do
+      [] ->
+        fields
+
+      [_one] ->
+        given
+
+      several ->
+        failing = failing(several, data, invariant, values, domain)
+
+        case Enum.filter(several, &(&1.name in failing)) do
+          [] -> several
+          breaking -> breaking
+        end
+    end
+  end
+
+  # The fields whose data breaks `invariant`, cast as dispatch receives them; none where
+  # the domain's checks cannot be asked, as when the graph is drawn without them.
+  defp failing(fields, data, invariant, values, domain) do
+    cast =
+      Map.new(fields, fn field ->
+        case Data.cast(field.type, Map.get(data, field.name), values) do
+          {:ok, value} -> {field.name, value}
+          {:error, _problem} -> {field.name, nil}
+        end
+      end)
+
+    for {name, {:invariant, ^invariant}} <-
+          EhOsContract.Codec.problems(fields, cast, values, domain),
+        do: name
+  rescue
+    _error -> []
+  end
+
   defp rule_examples(c, values) do
     for s <- c.declarations.domain_services,
         f <- s.functions,

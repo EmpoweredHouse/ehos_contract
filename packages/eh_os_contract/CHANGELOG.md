@@ -59,7 +59,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   a scenario covers no invariant of the unit (S8),
   appears in no generated "refused in", and is not counted by the conformance report's scenario coverage,
   since dispatch records no decision for it: no verdict moves. A graph document names the value and its
-  invariant in a unit scenario's new, optional `rejected_on_value`, beside `rejected`.
+  invariant in a unit scenario's new, optional `rejected_on_value`, beside `rejected`. Where two values a
+  command's or a recording's fields hold declare an invariant of one name, the graph and the owner's pages name
+  the value whose invariant the scenario's data breaks, not the first declared.
 
 - **A scenario can record an event** (#430): `record :collected, %{…}` with the `actor` who records it shows
   what an actor of the event's `recorded_by:` may write into the log, `expect`ing the event or `rejected` on the
