@@ -26,6 +26,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- `EhOsContract.Auth.Mail.deliver/1` takes `verify_html: true`, which asks EHOS to refuse the
+  message's HTML, as `{:invalid, reasons}`, when it holds a script, a form, a frame, an event
+  attribute or an address whose scheme a message does not need, rather than send it; EHOS never
+  changes the HTML (#469).
+
 - **`mix eh_os_contract.bundle --output-dir <dir>`** writes the bundle EHOS takes with an image:
   `ehos.manifest.json` as `eh_os_contract.manifest` writes it, every graph document in `graph/` as
   `eh_os_contract.graph --output-dir` writes them, and `bundle.json`, which names each file with

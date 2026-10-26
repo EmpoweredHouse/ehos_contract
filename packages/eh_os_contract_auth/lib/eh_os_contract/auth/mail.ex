@@ -38,8 +38,12 @@ defmodule EhOsContract.Auth.Mail do
 
     * `to:`, 1 to 50 recipients, each `{:person, id}` or `{:address, address}`. Each gets
       a message of its own;
-    * `subject:` and `text:`, required; `html:`, which EHOS cleans of scripts, forms and
-      the like before it sends it;
+    * `subject:` and `text:`, required; `html:`, which EHOS sends as given, so what a
+      mail program shows of it is the mail program's to decide;
+    * `verify_html:`, `true` to have EHOS refuse the HTML, as `{:invalid, reasons}`, when
+      it holds what could run, submit or reach outside the web: a script, a form, a frame,
+      an event attribute, or an address whose scheme is not `http`, `https`, `mailto`,
+      `tel` or `cid`. EHOS never changes the HTML; `false`, the default, sends it unread;
     * `reply_to:`, a recipient: a person, an address in a reply domain the agreement
       covers, or, at `external`, any address;
     * `in_reply_to:` and `references:`, message ids such as `"<t-42@reply.example.org>"`,
@@ -101,7 +105,17 @@ defmodule EhOsContract.Auth.Mail do
 
   # EHOS gives the relay two minutes for a call's messages; the answer comes after them.
   @deadline 150_000
-  @keys [:to, :subject, :text, :html, :reply_to, :in_reply_to, :references, :attachments]
+  @keys [
+    :to,
+    :subject,
+    :text,
+    :html,
+    :verify_html,
+    :reply_to,
+    :in_reply_to,
+    :references,
+    :attachments
+  ]
   @attachment_keys [:filename, :content_type, :content, :inline, :content_id]
   @refusals %{
     {403, "not_agreed"} => :not_agreed,
@@ -139,6 +153,7 @@ defmodule EhOsContract.Auth.Mail do
           | {:subject, String.t()}
           | {:text, String.t()}
           | {:html, String.t()}
+          | {:verify_html, boolean()}
           | {:reply_to, recipient()}
           | {:in_reply_to, [String.t()]}
           | {:references, [String.t()]}
@@ -189,6 +204,7 @@ defmodule EhOsContract.Auth.Mail do
       {:to, to} when to != [] -> {"to", to |> list!(:to) |> Enum.map(&recipient!/1)}
       {:reply_to, reply_to} -> {"reply_to", recipient!(reply_to)}
       {key, value} when key in [:subject, :text, :html] -> {to_string(key), string!(key, value)}
+      {:verify_html, verify} when is_boolean(verify) -> {"verify_html", verify}
       {key, ids} when key in [:in_reply_to, :references] -> {to_string(key), ids!(key, ids)}
       {:attachments, files} -> {"attachments", files |> list!(:attachments) |> Enum.map(&file!/1)}
       {key, _value} -> bad!("#{key}: as documented")
@@ -248,7 +264,7 @@ defmodule EhOsContract.Auth.Mail do
   defp bad!(what) do
     raise ArgumentError,
           "deliver/1 takes #{what}: to: (recipients), subject:, text:, and optionally html:, " <>
-            "reply_to:, in_reply_to:, references: and attachments:"
+            "verify_html:, reply_to:, in_reply_to:, references: and attachments:"
   end
 
   ## The answer
