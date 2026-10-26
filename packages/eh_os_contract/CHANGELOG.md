@@ -55,8 +55,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the command or, since #435, its unit's identity. Dispatch refuses such a command before anything decides it,
   and a contract can now say so; S4 accepts the name when the command's fields hold a value that declares it,
   checked against the domain. `EhOsContract.ScenarioCase` holds the fields a scenario gives to their values'
-  invariants before the lifecycle and the decision, as dispatch does, so a scenario that gives data dispatch
-  refuses and expects events now fails where it passed. Such a scenario covers no invariant of the unit (S8),
+  invariants before the lifecycle and the decision, as dispatch does (see the Breaking line under Changed). Such
+  a scenario covers no invariant of the unit (S8),
   appears in no generated "refused in", and is not counted by the conformance report's scenario coverage,
   since dispatch records no decision for it: no verdict moves. A graph document names the value and its
   invariant in a unit scenario's new, optional `rejected_on_value`, beside `rejected`.
@@ -91,6 +91,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   type is refused, against the domain.
 
 ### Changed
+
+- **Breaking:** **A command's scenario is held to its values' invariants as dispatch holds the command** (#458).
+  A scenario whose data breaks an invariant of a domain value one of the command's fields holds, its identity
+  included, and that expects events, failed only in dispatch and passed as a test; it now fails, naming the
+  invariant. Give it data the value accepts, or say it is `rejected` on that invariant.
 
 - `docs/contract.md`'s row for `I4` says what `emit/1` and `issue/1` accept: a struct literal, a list of them, or a
   `for` producing them; it read as if a list or a `for` were refused (#434). `docs/concepts/units.md` shows a
