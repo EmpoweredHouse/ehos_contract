@@ -38,12 +38,15 @@ defmodule EhOsContract.Auth.Mail do
 
     * `to:`, 1 to 50 recipients, each `{:person, id}` or `{:address, address}`. Each gets
       a message of its own;
-    * `subject:` and `text:`, required; `html:`, which EHOS sends as given, so what a
-      mail program shows of it is the mail program's to decide;
+    * `subject:` and `text:`, required; `html:`, which EHOS sends as given. Escape every
+      value the application puts into it, a name or a title, as HEEx or
+      `Phoenix.HTML.html_escape/1` does: EHOS does not;
     * `verify_html:`, `true` to have EHOS refuse the HTML, as `{:invalid, reasons}`, when
-      it holds what could run, submit or reach outside the web: a script, a form, a frame,
-      an event attribute, or an address whose scheme is not `http`, `https`, `mailto`,
-      `tel` or `cid`. EHOS never changes the HTML; `false`, the default, sends it unread;
+      it holds a script, a form, a frame, an event attribute, or an address whose scheme
+      is not `http`, `https`, `mailto`, `tel` or `cid`. It is a backstop, not a sanitiser:
+      EHOS never changes the HTML, and a link or an image the application did not mean to
+      write passes it. Left out or `false`, EHOS sends the HTML unread. EHOS 0.21.0 or
+      later reads it; an earlier one ignores it and cleans the HTML itself;
     * `reply_to:`, a recipient: a person, an address in a reply domain the agreement
       covers, or, at `external`, any address;
     * `in_reply_to:` and `references:`, message ids such as `"<t-42@reply.example.org>"`,

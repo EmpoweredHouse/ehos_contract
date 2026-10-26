@@ -245,6 +245,17 @@ defmodule EhOsContract.Auth.MailTest do
       assert ehos(ehos, :tokens) == ["credential-1"]
     end
 
+    test "sends verify_html: as given, and nothing of it when it is left out", %{ehos: ehos} do
+      server = start!(ehos)
+      ok = [to: [{:person, @ada}], subject: "s", text: "t", html: "<p>t</p>"]
+
+      assert {:ok, _} = Mail.deliver([server: server, verify_html: false] ++ ok)
+      assert {:ok, _} = Mail.deliver([server: server] ++ ok)
+
+      assert [%{"verify_html" => false}, without] = ehos(ehos, :bodies)
+      refute Map.has_key?(without, "verify_html")
+    end
+
     test "refuses, before asking EHOS, what is not a message", %{ehos: ehos} do
       server = start!(ehos)
       ok = [to: [{:person, @ada}], subject: "s", text: "t"]
