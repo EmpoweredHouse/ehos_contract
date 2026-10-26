@@ -11,6 +11,8 @@ defmodule TipRig.Domain do
   actor :cashier, :human, "Cashier"
   actor :counter, :system, "Counting machine"
 
+  subject :customer, "Customer"
+
   value :amount, :integer do
     invariant :positive, "An amount is more than nothing", violated_by: [0], satisfied_by: [1]
   end

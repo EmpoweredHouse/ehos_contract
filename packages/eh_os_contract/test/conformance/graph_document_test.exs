@@ -418,10 +418,12 @@ defmodule EhOsContract.GraphDocumentTest do
                "an amount of nothing is not paid in" => "value:TipRig.Domain:amount"
              }
 
-      [counted] =
-        for s <- d["scenarios"]["record"], s["rejected"], do: s["rejected"]["value"]
+      # The tip is personal, so the document masks it, and the value is still told from
+      # the data as written.
+      [counted] = for s <- d["scenarios"]["record"], s["rejected"], do: s
 
-      assert counted == "value:TipRig.Domain:tip"
+      assert counted["record"]["data"]["tip"] == nil
+      assert counted["rejected"]["value"] == "value:TipRig.Domain:tip"
 
       # Without the domain's checks, the declarations alone decide: the first declared.
       fields = Enum.find(Model.fetch(TipRig.Till).commands, &(&1.name == :pay_in)).fields

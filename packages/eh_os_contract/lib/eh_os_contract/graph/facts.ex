@@ -156,7 +156,7 @@ defmodule EhOsContract.Graph.Facts do
       |> Map.merge(domain_nodes)
       |> group(@contract_kinds, Map.put(relations, :backed_by, backed), @contract_types)
 
-    Map.put(facts, :scenarios, scenarios(model, facts.relations))
+    Map.put(facts, :scenarios, scenarios(model, facts.relations, Model.fetch(contract).scenarios))
   end
 
   # The model and its domain with every example and default redacted, as
@@ -380,7 +380,7 @@ defmodule EhOsContract.Graph.Facts do
          %{fields: fields} <- declared,
          values = EhOsContract.Codec.values(model.domain),
          value when value != nil <-
-           Links.Scenarios.refusing_value(fields, invariant, values, s.trigger.data, model.domain) do
+           Links.Scenarios.refusing_value(fields, invariant, values, s.written_data, model.domain) do
       %{value: id(:value, model.domain, value), invariant: Atom.to_string(invariant)}
     else
       _ -> nil
@@ -573,7 +573,7 @@ defmodule EhOsContract.Graph.Facts do
   # The scenarios, grouped by what they are about — a unit, a policy, a process
   # manager or a query; an effect and a read model are no scenario's target (S6) —
   # each with the ids of the relations it exercises. Their data is already redacted.
-  defp scenarios(model, relations) do
+  defp scenarios(model, relations, unredacted) do
     c = model.id
 
     find = fn type, from, to, attrs ->
@@ -587,7 +587,10 @@ defmodule EhOsContract.Graph.Facts do
 
     # A recording's scenario is about its unit, and a group of its own, since it has
     # no command a unit's scenario always carries (issue #430).
-    for s <- model.scenarios,
+    # Which value a scenario's data breaks is asked of the data as written, before the
+    # redaction masks a personal field (the review of #458); only the value's id leaves.
+    for {s, written} <- Enum.zip(model.scenarios, unredacted),
+        s = Map.put(s, :written_data, written.trigger.data),
         about = groups[s.target.kind],
         group = if(s.trigger.kind == :record, do: :record, else: about),
         reduce: Map.new([:unit, :record, :policy, :process_manager, :query], &{&1, []}) do
