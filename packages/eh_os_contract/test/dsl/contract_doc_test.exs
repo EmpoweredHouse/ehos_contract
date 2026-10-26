@@ -161,6 +161,29 @@ defmodule EhOsContract.ContractDocTest do
              ~s|— refused in "unpaid — cancellation refused"\n|
   end
 
+  # Issue #458: a command refused for its data is refused on a value's invariant, so one
+  # named like the unit's shows nothing of the unit's either.
+  test "a command refused for its data on a name the unit's invariant shares is not where it is refused" do
+    body =
+      @body
+      |> String.replace(
+        ~s|event :cancelled, "Cancelled"|,
+        ~s|event :cancelled, "Cancelled"\n      command :tip, "Tip", by: :reception, emits: :paid do\n        field :amount, :tip\n      end|
+      )
+      |> Kernel.<>("""
+
+        scenario "a tip that breaks a tip's own rule" do
+          command :tip, %{amount: 1}
+          rejected :paid_in_full
+        end
+      """)
+
+    model = compile_contract("DocRefusedForData", body)
+
+    assert Doc.callback(model, :aggregate, :visit, :close) =~
+             ~s|— refused in "unpaid — cancellation refused"\n|
+  end
+
   test "a policy's callback: the event, where it comes from, what it issues, each rule's rung",
        %{model: model} do
     assert Doc.callback(model, :policy, :remind_on_arrival, :arrived) == """

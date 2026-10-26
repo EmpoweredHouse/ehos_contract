@@ -17,8 +17,10 @@ defmodule EhOsContract.Contract.Links.Scenarios do
   #   issued), each value of its type. The sibling's identity is filled in by
   #   `EhOsContract.ScenarioCase`, as a unit's own is, so it need not be given.
   #
-  # And **S4, the part that needs the domain** (issue #430): a recording's `rejected`
-  # names an invariant of a domain value the recorded event's fields hold.
+  # And **S4, the part that needs the domain** (issues #430 and #458): a recording's
+  # `rejected` names an invariant of a domain value the recorded event's fields hold,
+  # and a command's, when it is none of the command's `rejects:`, one of a domain value
+  # the command's fields hold, its identity's included.
   @moduledoc false
 
   alias EhOsContract.Model
@@ -38,7 +40,10 @@ defmodule EhOsContract.Contract.Links.Scenarios do
         {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
       end
 
-    scenarios ++ refused_recordings(c, values) ++ rule_examples(c, values)
+    scenarios ++
+      refused_recordings(c, values) ++
+      refused_commands(c, values) ++
+      rule_examples(c, values)
   end
 
   # S4, the part that needs the domain (issue #430): a recording is refused only on an
@@ -50,18 +55,48 @@ defmodule EhOsContract.Contract.Links.Scenarios do
           Enum.zip(c.model.scenarios, c.declarations.scenarios),
         rejected != nil,
         event = Enum.find(c.model.events, &(&1.name == name)),
-        held =
-          event.fields
-          |> Enum.map(& &1.type)
-          |> held(values)
-          |> Enum.flat_map(&Enum.map(Map.get(values[&1], :invariants, []), fn i -> i.name end))
-          |> Enum.uniq(),
+        held = invariants_held(event.fields, values),
         rejected not in held do
       {"S4: scenario #{inspect(model.description)}: rejected #{inspect(rejected)} is no " <>
          "invariant of a domain value event #{inspect(name)} holds; a recording is refused " <>
          "only on one, and its fields hold #{inspect(held)}", Links.at(declaration)}
     end
   end
+
+  # Issue #458: dispatch refuses a command whose fields break an invariant of a domain
+  # value they hold, its identity's included, before anything decides it. The rules
+  # leave such a `rejected` here when the command's fields hold a domain value.
+  defp refused_commands(c, values) do
+    for {%{trigger: %{kind: :command, name: name}, rejected: rejected} = model, declaration} <-
+          Enum.zip(c.model.scenarios, c.declarations.scenarios),
+        rejected != nil,
+        command = Enum.find(c.model.commands, &(&1.name == name)),
+        rejected not in command.rejects,
+        held = invariants_held(command.fields, values),
+        rejected not in held do
+      {"S4: scenario #{inspect(model.description)}: rejected #{inspect(rejected)} is not " <>
+         "among what command #{inspect(name)} rejects, #{inspect(command.rejects)}, nor an " <>
+         "invariant of a domain value its fields hold, #{inspect(held)}", Links.at(declaration)}
+    end
+  end
+
+  defp invariants_held(fields, values) do
+    fields
+    |> Enum.map(& &1.type)
+    |> held(values)
+    |> Enum.flat_map(&Enum.map(Map.get(values[&1], :invariants, []), fn i -> i.name end))
+    |> Enum.uniq()
+  end
+
+  @doc false
+  # Whether a command's scenario is refused on an invariant of a domain value, before any
+  # decision, rather than on one of the command's `rejects:` (issue #458).
+  @spec refused_on_value?(map(), map()) :: boolean()
+  def refused_on_value?(%{trigger: %{kind: :command}, rejected: rejected}, command)
+      when rejected != nil,
+      do: rejected not in command.rejects
+
+  def refused_on_value?(_scenario, _command), do: false
 
   @doc false
   # The domain values `types` hold, at any depth, each once: a value shared by many fields,

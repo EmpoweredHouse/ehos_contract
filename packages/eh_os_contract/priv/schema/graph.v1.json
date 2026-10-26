@@ -4188,6 +4188,25 @@
         "rejected": {
           "type": "string",
           "description": "The id of the rule it is refused on."
+        },
+        "rejected_on_value": {
+          "type": "object",
+          "description": "The invariant of a domain value the command's data breaks, on which it is refused before any decision.",
+          "required": [
+            "value",
+            "invariant"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "value": {
+              "type": "string",
+              "description": "The id of the value's node."
+            },
+            "invariant": {
+              "type": "string",
+              "description": "The invariant's name, among the value's invariants."
+            }
+          }
         }
       }
     },

@@ -244,6 +244,34 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     end
   end
 
+  # Issue #458: a command's scenario refused before any decision covers no arrow, so the
+  # value whose invariant refuses it lists it, naming the invariant broken; it is no
+  # scenario in which nothing is recorded.
+  describe "a command's scenario refused for its data" do
+    @money "value:Billing.Domain:money"
+
+    test "names the invariant broken and the value" do
+      text = open(Fixtures.payments_refused_for_data(), @money)
+
+      assert text =~ "Scenarios it refuses in · 1"
+      assert text =~ "a negative payment is not asked for"
+      assert text =~ "refused: breaks not_negative of"
+      refute text =~ "nothing is recorded"
+    end
+
+    test "a recording refused on the value's invariant is listed there too" do
+      text = open(Fixtures.payments_recorded(), @money)
+
+      assert text =~ "Scenarios it refuses in · 1"
+      assert text =~ "the gateway cannot record a negative amount collected"
+    end
+
+    test "the owner reads the invariant by its label" do
+      text = open(Fixtures.payments_refused_for_data(), @money, :all, nil, :owner)
+      assert text =~ "refused: breaks An amount is not negative of"
+    end
+  end
+
   # What a command's decision reads, the one person who may issue it, and a scenario's
   # rows, person and moments, as `graph.v1` has them since main's plan DD (T2a, A1,
   # S2): lending's loan reads the membership card, the warehouse's pick list is confirmed

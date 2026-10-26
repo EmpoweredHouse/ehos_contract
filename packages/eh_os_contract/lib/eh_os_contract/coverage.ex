@@ -10,8 +10,9 @@ defmodule EhOsContract.Coverage do
   # storing command payloads, and those are personal data.
   #
   # Only a scenario whose trigger is a command can be observed: a query leaves no row,
-  # and a scenario of a reaction is its own command's when the reaction issues one. The
-  # others are not counted either way.
+  # and a scenario of a reaction is its own command's when the reaction issues one. Nor
+  # does a command refused for its data, on a value's invariant, before any decision
+  # (issue #458). The others are not counted either way.
   #
   # **An outcome no scenario declares** is a decision of a command — accepted with the
   # types it emitted, or rejected on an invariant — that no scenario of that command
@@ -22,6 +23,7 @@ defmodule EhOsContract.Coverage do
   import Ecto.Query
 
   alias EhOsContract.{CommandRecord, Model}
+  alias EhOsContract.Contract.Links
 
   @typedoc "What the log says about a contract's scenarios."
   @type t :: %{
@@ -43,7 +45,9 @@ defmodule EhOsContract.Coverage do
     implementations = EhOsContract.Implementations.index(model.module).declarations
 
     scenarios =
-      for %{trigger: %{kind: :command}} = scenario <- model.scenarios,
+      for %{trigger: %{kind: :command, name: name}} = scenario <- model.scenarios,
+          command = Enum.find(model.commands, &(&1.name == name)),
+          not Links.Scenarios.refused_on_value?(scenario, command),
           do: expected(model, scenario, folded(model, implementations, scenario))
 
     observed = Enum.filter(scenarios, fn s -> Enum.any?(rows, &matches?(s, &1)) end)

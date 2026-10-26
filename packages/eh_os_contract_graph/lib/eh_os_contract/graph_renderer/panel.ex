@@ -907,6 +907,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
   end
 
   defp body(%{kind: "value"} = assigns) do
+    assigns = assign(assigns, refused: Lookup.refused_by(assigns.ctx.lookup, assigns.node["id"]))
+
     ~H"""
     <p :if={@node["context"]}>Of the context <.ref id={@node["context"]} ctx={@ctx} />.</p>
     <p :if={@node["type"] && value_words(@node, @ctx)}>{value_words(@node, @ctx)}</p>
@@ -924,6 +926,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
         </p>
       </div>
     </.part>
+    <.scenarios :if={@refused != []} title="Scenarios it refuses in" list={@refused} ctx={@ctx} />
     """
   end
 
@@ -1442,8 +1445,17 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <p :if={@scenario["rejected"]} class="ehg-refused">
         refused on <.ref id={@scenario["rejected"]} ctx={@ctx} />
       </p>
+      <p :if={@scenario["rejected_on_value"]} class="ehg-refused">
+        refused: breaks {broken(@scenario["rejected_on_value"], @ctx)} of
+        <.ref id={@scenario["rejected_on_value"]["value"]} ctx={@ctx} />
+      </p>
       <.with_data :for={e <- @scenario["expect"] || []} id={e["event"]} data={e["data"]} ctx={@ctx} />
-      <p :if={!@scenario["rejected"] and @scenario["expect"] in [nil, []]}>nothing is recorded</p>
+      <p :if={
+        !@scenario["rejected"] and !@scenario["rejected_on_value"] and
+          @scenario["expect"] in [nil, []]
+      }>
+        nothing is recorded
+      </p>
     </article>
     """
   end

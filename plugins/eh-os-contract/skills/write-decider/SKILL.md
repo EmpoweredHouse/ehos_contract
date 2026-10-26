@@ -121,6 +121,11 @@ the model, not in the module:
   fields do not fit their types or their values' invariants. Dispatch raises, appends nothing, and
   writes a `failed` row naming the decider. Do not catch it to turn it into a rejection, and do not
   return `{:error, reason}` of your own: only `reject/1` makes a rejection.
+- Data that breaks an invariant of a domain value one of the command's fields holds — its unit's key
+  too, when the identity is typed by a value — never reaches the decider: dispatch refuses it first,
+  `{:error, {:invalid, [{field, {:invariant, name}}]}}`, and writes no row. Do not check it again in
+  the callback. Show it with a scenario `rejected` on the value's invariant (`S4`), such as a period
+  that is no month refused on `:named_by_month`; it counts toward no invariant of the unit (`S8`).
 - A refusal the contract has no name for is a missing invariant or constraint. Declaring one needs a
   `rejected` scenario that shows it (`S8`), and that scenario is the case to ask the process owner
   for.

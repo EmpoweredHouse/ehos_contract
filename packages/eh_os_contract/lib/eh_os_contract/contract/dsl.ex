@@ -1237,8 +1237,9 @@ defmodule EhOsContract.Contract.Dsl do
       rejected: [
         type: :atom,
         doc:
-          "The invariant the command is refused on; for a recording, the invariant of a " <>
-            "domain value its data breaks."
+          "The invariant the command is refused on, or the invariant of a domain value its " <>
+            "data breaks, which refuses it before any decision; for a recording, the invariant " <>
+            "of a domain value its data breaks."
       ],
       illustrates: [
         type: {:wrap_list, :atom},

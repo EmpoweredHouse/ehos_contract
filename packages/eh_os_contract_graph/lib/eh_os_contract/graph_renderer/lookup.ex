@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphRenderer.Lookup do
   # The joins a panel makes over a `graph.v1` document: a node by its id, the relations
   # into and out of it, the nodes whose owner field names it, and the scenarios about it
-  # or covering one of its relations.
+  # or covering one of its relations, or refused on one of its invariants.
   #
   # Each is a join on ids and nothing more (plan E13, decision 2): who may issue a command
   # is the `may_issue` relations into it, what a reaction issues the relations out of it,
@@ -20,7 +20,8 @@ defmodule EhOsContract.GraphRenderer.Lookup do
             into: %{},
             out: %{},
             covering: %{},
-            about: %{}
+            about: %{},
+            refused_by: %{}
 
   @type t :: %__MODULE__{}
 
@@ -55,9 +56,19 @@ defmodule EhOsContract.GraphRenderer.Lookup do
             &Map.update(&2, &1, [scenario], fn s -> [scenario | s] end)
           )
         end),
-      about: Enum.group_by(scenarios, & &1["target"])
+      about: Enum.group_by(scenarios, & &1["target"]),
+      refused_by:
+        scenarios
+        |> Enum.filter(&refused_value/1)
+        |> Enum.group_by(&refused_value/1)
     }
   end
+
+  # The value a scenario's data breaks an invariant of: a recording's, or a command's
+  # refused before any decision (issue #458).
+  defp refused_value(%{"rejected_on_value" => %{"value" => value}}), do: value
+  defp refused_value(%{"type" => "record", "rejected" => %{"value" => value}}), do: value
+  defp refused_value(_scenario), do: nil
 
   @doc "What kind of document the joins are of: `\"contract\"`, `\"process\"`, `\"domain\"`, or nil."
   @spec of(t()) :: String.t() | nil
@@ -102,6 +113,10 @@ defmodule EhOsContract.GraphRenderer.Lookup do
   @doc "The scenarios whose `covers` names relation `id`, in the document's order."
   @spec covering(t(), String.t()) :: [map()]
   def covering(%__MODULE__{covering: covering}, id), do: Map.get(covering, id, [])
+
+  @doc "The scenarios refused on an invariant of the value `id`, in the document's order."
+  @spec refused_by(t(), String.t()) :: [map()]
+  def refused_by(%__MODULE__{refused_by: refused_by}, id), do: Map.get(refused_by, id, [])
 
   @doc "The scenarios whose `target` is `id`, in the document's order."
   @spec about(t(), String.t()) :: [map()]
