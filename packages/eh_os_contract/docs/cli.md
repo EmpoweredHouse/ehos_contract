@@ -134,6 +134,8 @@ each the bytes `--output` writes for it. It is what a pipeline sends with a depl
 so it boots the project once rather than once per document. It writes no overlay, and
 refuses a directory that holds anything, so a document of a contract removed since an
 earlier run is never sent with the rest.
+`mix eh_os_contract.bundle`, in `eh_os_contract_auth`, writes these documents with the
+manifest and an index of their digests, the bundle EHOS takes (eh-os D-146).
 
 Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
 every label of a document is written in the client's language. Without it the

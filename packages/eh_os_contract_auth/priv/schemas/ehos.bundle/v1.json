@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ehos.bundle/v1",
+  "description": "bundle.json, the index of a bundle: the files a deployment of one image takes, written together by one command beside that image (D-146). A released version is frozen: this file is never edited, and any change is a new version. Beside this schema, EHOS refuses a bundle whose graph documents hold more than 33554432 bytes in all, or that names a path twice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "manifest",
+    "graph"
+  ],
+  "properties": {
+    "schema": {
+      "description": "The version of this format the index is written in. An index without it is refused, never guessed at.",
+      "const": "ehos.bundle/v1"
+    },
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "graph": {
+      "description": "Each graph document of the application, at most 512; empty for an application with no contracts.",
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "$ref": "#/$defs/graph_document"
+      }
+    }
+  },
+  "$defs": {
+    "manifest": {
+      "description": "The application's manifest, as `mix eh_os_contract.manifest` writes it, at the bundle's root.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "description": "Where it is, relative to `bundle.json`.",
+          "const": "ehos.manifest.json"
+        },
+        "bytes": {
+          "$ref": "#/$defs/bytes"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "graph_document": {
+      "description": "A graph document of the application (D-123), as `mix eh_os_contract.graph --output-dir` writes it, in the bundle's `graph/` directory.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "description": "Where it is, relative to `bundle.json`: in `graph/`, named as the command names it.",
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^graph/[A-Za-z0-9][A-Za-z0-9._-]*\\.json$"
+        },
+        "bytes": {
+          "$ref": "#/$defs/bytes"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "bytes": {
+      "description": "Its size in bytes, at most 1 MiB, as EHOS reads a manifest and a graph document.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1048576
+    },
+    "sha256": {
+      "description": "The SHA-256 of its bytes, in lowercase hexadecimal.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
