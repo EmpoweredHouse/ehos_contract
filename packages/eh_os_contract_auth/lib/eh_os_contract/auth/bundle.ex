@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.Bundle do
   @moduledoc """
-  A bundle's index, `bundle.json` (eh-os D-146): the files a deployment of one image takes,
+  A bundle's index, `bundle.json`: the files a deployment of one image takes,
   written together by `mix eh_os_contract.bundle`, each named by its path, its size and its
   SHA-256. EHOS owns the format, and explains it in its `docs/bundle.md`.
 

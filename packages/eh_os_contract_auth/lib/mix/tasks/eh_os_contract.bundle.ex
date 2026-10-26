@@ -1,9 +1,9 @@
 defmodule Mix.Tasks.EhOsContract.Bundle do
-  # The bundle's format is EHOS's (eh-os D-146).
+  # The bundle's format is EHOS's.
   @shortdoc "Writes the files a deployment takes, with bundle.json, their index"
 
   @moduledoc """
-  Writes a bundle, the files EHOS takes with an image to deploy it (eh-os D-146), into a directory
+  Writes a bundle, the files EHOS takes with an image to deploy it, into a directory
   that does not exist yet or is empty:
 
       mix eh_os_contract.bundle --output-dir bundle

@@ -21,7 +21,7 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
   `application: <name>`. What the manifest holds is `EhOsContract.Auth.Manifest`'s.
 
   `mix eh_os_contract.bundle` writes this manifest with the application's graph documents
-  and an index of their digests, the bundle EHOS takes with the image (eh-os D-146).
+  and an index of their digests, the bundle EHOS takes with the image.
 
   EHOS keeps every manifest it is given, for good, and every key of `ehos.yaml` is in
   it as written: `ehos.yaml` must hold no secret, such as a password in a `migrate`
