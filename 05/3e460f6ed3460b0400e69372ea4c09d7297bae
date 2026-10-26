@@ -1,0 +1,1 @@
+Correctness: no blocking findings; fixed: tests for verify_html false and absent, README wording on attachments. Security: fixed: docs tell a host to escape values it puts into html and call verify_html a backstop; a Breaking line in Changed; the EHOS version that reads it. No value leaks into errors or logs.
