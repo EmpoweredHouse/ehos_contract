@@ -16,8 +16,12 @@ defmodule EhOsContract.Form do
            {:ok, _receipt} <- EhOsContract.dispatch(Billing.Contracts.Invoicing, command, actor: actor) do
         ...
       else
-        {:error, %Ecto.Changeset{} = changeset} -> assign(socket, :form, to_form(changeset))
-        {:error, reason} -> ...
+        {:error, %Ecto.Changeset{} = changeset} ->
+          assign(socket, :form, to_form(changeset))
+
+        {:error, reason} ->
+          changeset = EhOsContract.Form.refused(changeset, reason, at: [period_open: :period])
+          assign(socket, :form, to_form(changeset))
       end
 
   **What it reads** is what a form sends: every value as text, a field left blank
@@ -57,11 +61,18 @@ defmodule EhOsContract.Form do
   What the form has that the command does not, a search box or a picker's query, stays
   the application's: put it in another changeset, or read it from the params yourself.
 
+  **What dispatch refuses comes back to the form** through `refused/3`: a field's problem
+  at the field, and a rejection at the field the application names for its rule, or
+  above the fields.
+
   The changeset's data is the command's struct, so `Phoenix.HTML.FormData` names the form
   after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`.
   """
 
-  alias EhOsContract.{Codec, Model, Supplier}
+  alias EhOsContract.{Codec, Model, Rejection, Supplier}
+
+  # The key of an error that is the whole form's, not one field's.
+  @form_error :base
 
   @typedoc "A changeset `changeset/4` built, over the command's struct."
   @type t :: Ecto.Changeset.t()
@@ -135,6 +146,70 @@ defmodule EhOsContract.Form do
   def to_command(%Ecto.Changeset{} = changeset),
     do: {:error, %{changeset | action: :insert}}
 
+  @doc """
+  The changeset with what dispatch refused put back on it, for the form to show, with the
+  action `:insert`.
+
+    * `{:invalid, problems}`: each problem at its field, as `changeset/4` puts its own,
+      and an entity the host does not have (`:unknown`, a company id that names no
+      company) as `{"does not exist", validation: :unknown}`;
+    * an `EhOsContract.Rejection`, a rule of the unit or a constraint of the command that
+      refused it: `{"was refused", validation: :rejected, invariant: name}`, at the field
+      `at:` names for the rule, or at `:base`, the whole form's, when it names none. A
+      rule names no field, and the rejection carries none of the values, so which field
+      it is about is the application's to say;
+    * anything else, a capability the person lacks, an idempotency key, the host failing
+      to supply a field: the changeset unchanged but for its action. None of those is a
+      field's, and the page says it in its own words, from the reason it holds.
+
+  `opts`:
+
+    * `at:`, a keyword list from a rule's name to the field a rejection on it is shown
+      at: `at: [period_open: :period]`.
+
+  ```elixir
+  {:error, %EhOsContract.Rejection{invariant: :period_open}} = EhOsContract.dispatch(...)
+  changeset = EhOsContract.Form.refused(changeset, reason, at: [period_open: :period])
+  changeset.errors
+  #=> [period: {"was refused", [validation: :rejected, invariant: :period_open]}]
+  ```
+
+  Raises `ArgumentError` when `at:` names a field the command does not have.
+  """
+  @spec refused(t(), term(), keyword()) :: t()
+  def refused(%Ecto.Changeset{data: %command{}} = changeset, reason, opts \\ []) do
+    at = at!(command, Keyword.get(opts, :at, []))
+
+    reason
+    |> refusal_errors(at)
+    |> Enum.reduce(%{changeset | action: :insert}, fn {field, {message, keys}}, changeset ->
+      Ecto.Changeset.add_error(changeset, field, message, keys)
+    end)
+  end
+
+  defp refusal_errors({:invalid, problems}, _at) when is_list(problems),
+    do: for({field, problem} <- Enum.reverse(problems), do: {field, error(problem)})
+
+  defp refusal_errors(%Rejection{invariant: name}, at),
+    do: [
+      {Keyword.get(at, name, @form_error),
+       {"was refused", validation: :rejected, invariant: name}}
+    ]
+
+  defp refusal_errors(_not_a_field, _at), do: []
+
+  defp at!(command, at) do
+    known = command |> struct() |> Map.keys()
+
+    unless Keyword.keyword?(at) and Enum.all?(Keyword.values(at), &(&1 in known)) do
+      raise ArgumentError,
+            "at: takes a keyword list from a rule's name to a field of #{inspect(command)}, " <>
+              "not #{inspect(at)}"
+    end
+
+    at
+  end
+
   # One field, read as dispatch reads it: decoded from what the form sent, then held to its
   # domain value's invariants.
   defp read(field, params, values, domain) do
@@ -153,6 +228,10 @@ defmodule EhOsContract.Form do
   defp error(:required), do: {"can't be blank", validation: :required}
   defp error(:type), do: {"is invalid", validation: :type}
   defp error({:invariant, name}), do: {"is invalid", validation: :invariant, invariant: name}
+  defp error(:unknown), do: {"does not exist", validation: :unknown}
+  # The engine's, never a person's: a field the host supplies or the engine generates sent anyway.
+  defp error(problem) when problem in [:generated, :supplied],
+    do: {"is invalid", validation: problem}
 
   # What dispatch gives rather than the caller: the host's supplied fields, and a generated
   # identity of a unit the command creates.

@@ -153,6 +153,61 @@ defmodule EhOsContract.FormTest do
     end
   end
 
+  describe "refused/3" do
+    test "puts each of dispatch's field problems at its field, an unknown entity's too" do
+      changeset =
+        changeset(@sent)
+        |> Form.refused(
+          {:invalid,
+           [period: {:invariant, :written_as_month}, invoice_id: :unknown, lines: :type]}
+        )
+
+      assert changeset.action == :insert
+      refute changeset.valid?
+
+      assert changeset.errors == [
+               period: {"is invalid", [validation: :invariant, invariant: :written_as_month]},
+               invoice_id: {"does not exist", [validation: :unknown]},
+               lines: {"is invalid", [validation: :type]}
+             ]
+    end
+
+    test "puts a rejection at the field at: names for its rule, or on the whole form" do
+      rejection = %EhOsContract.Rejection{invariant: :period_open}
+
+      assert Form.refused(changeset(@sent), rejection, at: [period_open: :period]).errors == [
+               period: {"was refused", [validation: :rejected, invariant: :period_open]}
+             ]
+
+      assert Form.refused(changeset(@sent), rejection).errors == [
+               base: {"was refused", [validation: :rejected, invariant: :period_open]}
+             ]
+    end
+
+    test "leaves what is no field's to the page, the action set so the form shows it" do
+      for reason <- [:missing_capability, :idempotency_key_reused, {:not_supplied, :unavailable}] do
+        changeset = Form.refused(changeset(@sent), reason)
+
+        assert changeset.errors == []
+        assert changeset.action == :insert
+      end
+    end
+
+    test "keeps the errors the changeset already holds" do
+      changeset =
+        changeset(%{@sent | "lines" => "two"})
+        |> Form.refused(%EhOsContract.Rejection{invariant: :period_open})
+
+      assert Keyword.keys(changeset.errors) == [:base, :lines]
+    end
+
+    test "raises when at: names a field the command does not have" do
+      assert_raise ArgumentError, ~r/at: takes a keyword list/, fn ->
+        Form.refused(changeset(@sent), %EhOsContract.Rejection{invariant: :x}, at: [x: :customer])
+      end
+    end
+  end
+
   describe "what it refuses" do
     test "a module that is not a contract, or not one of its commands" do
       assert_raise ArgumentError, ~r/is not a contract/, fn ->

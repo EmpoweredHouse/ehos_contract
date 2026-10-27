@@ -61,7 +61,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   its own words. The identity of the unit an edit form changes comes from `data:`, never the
   params; a supplied field and a generated identity are left to dispatch. `Form.to_command/1`
   turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
-  and a command's constraints are not asked: they come back as dispatch's refusal.
+  and a command's constraints are not asked: they come back as dispatch's refusal, which
+  `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
+  at the field `at:` names for its rule, or on the whole form (`:base`).
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
