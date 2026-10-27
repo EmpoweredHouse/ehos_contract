@@ -146,6 +146,24 @@ defmodule EhOsContract.Auth.MailSenderTest do
       assert_received {:ehos_mail, _message}
     end
 
+    @tag capture_log: true
+    test "a message from a server the test did not start goes nowhere, not into its mailbox" do
+      test = self()
+
+      :proc_lib.spawn(fn ->
+        {:ok, _results} = Testing.Mail.deliver(@message)
+
+        receive do
+          {:ehos_mail, _message} -> send(test, :kept)
+        after
+          0 -> send(test, :not_kept)
+        end
+      end)
+
+      assert_receive :not_kept
+      refute_received {:ehos_mail, _message}
+    end
+
     test "a stub no call could answer is refused when it is made" do
       for stub <- [{:error}, {:error, "unavailable"}, {:error, {:invalid, "x"}}, :made] do
         assert_raise FunctionClauseError, fn -> stub_mail(stub) end

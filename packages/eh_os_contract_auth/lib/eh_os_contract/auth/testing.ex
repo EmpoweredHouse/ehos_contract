@@ -341,11 +341,17 @@ defmodule EhOsContract.Auth.Testing do
     :ok
   end
 
-  # The test's process: the first of the `$callers` chain, which started the rest, or this
-  # one when it started none.
+  # The test's process: the first of the `$callers` chain, which started the rest; this one
+  # when it names none and is not an OTP process, as a test's is not; or none, for a server
+  # the test did not start, whose mailbox would keep the message or log it whole.
   @doc false
-  @spec test_process() :: pid()
-  def test_process, do: List.last(Process.get(:"$callers", [])) || self()
+  @spec test_process() :: pid() | nil
+  def test_process do
+    case Process.get(:"$callers", []) do
+      [] -> if Process.get(:"$initial_call"), do: nil, else: self()
+      callers -> List.last(callers)
+    end
+  end
 
   # What a test stubbed under `name`: in this process, or in the first of its `$callers`
   # that stubbed it, a LiveView's or a task's test. Only where test keys may be pinned, as

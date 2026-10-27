@@ -14,7 +14,8 @@ defmodule EhOsContract.Auth.Testing.Mail do
 
   The message is the options `deliver/1` was given, as given, `server:` left out. It goes
   to the test's process, also from a process the test started, a LiveView's or a task's,
-  whatever the stub answers.
+  whatever the stub answers. A message from a server the test did not start, which names
+  no test among its `$callers`, goes nowhere: it is answered, and not told.
   """
 
   @behaviour EhOsContract.Auth.Mail.Sender
@@ -29,7 +30,9 @@ defmodule EhOsContract.Auth.Testing.Mail do
   def deliver(message) do
     answer = Testing.stubbed!(:mail, :sent)
     Mail.message!(message)
-    send(Testing.test_process(), {:ehos_mail, Keyword.delete(message, :server)})
+
+    if test = Testing.test_process(),
+      do: send(test, {:ehos_mail, Keyword.delete(message, :server)})
 
     case answer do
       :sent -> Local.deliver(message)
