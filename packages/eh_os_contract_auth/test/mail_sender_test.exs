@@ -121,10 +121,20 @@ defmodule EhOsContract.Auth.MailSenderTest do
   end
 
   describe "the tests' stand-in" do
-    @tag capture_log: true
     test "tells the test each message, and answers every one as taken until told otherwise" do
-      assert {:ok, [%Result{sent?: true}, %Result{sent?: true}]} =
-               Testing.Mail.deliver([{:server, :ignored} | @message])
+      level = Logger.level()
+      Logger.configure(level: :info)
+      on_exit(fn -> Logger.configure(level: level) end)
+
+      log =
+        capture_log([level: :info], fn ->
+          assert {:ok, [%Result{sent?: true} = ada, %Result{sent?: true}]} =
+                   Testing.Mail.deliver([{:server, :ignored} | @message])
+
+          assert ada.message_id =~ ~r/\A<[0-9a-f]{32}@local\.invalid>\z/
+        end)
+
+      assert log == ""
 
       assert_received {:ehos_mail, message}
       assert message == @message

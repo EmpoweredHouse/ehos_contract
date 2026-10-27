@@ -21,7 +21,7 @@ defmodule EhOsContract.Auth.Testing.Mail do
   @behaviour EhOsContract.Auth.Mail.Sender
 
   alias EhOsContract.Auth.Mail
-  alias EhOsContract.Auth.Mail.{Local, Result}
+  alias EhOsContract.Auth.Mail.Result
   alias EhOsContract.Auth.Testing
 
   @impl true
@@ -35,8 +35,14 @@ defmodule EhOsContract.Auth.Testing.Mail do
       do: send(test, {:ehos_mail, Keyword.delete(message, :server)})
 
     case answer do
-      :sent -> Local.deliver(message)
+      :sent -> {:ok, Enum.map(Keyword.fetch!(message, :to), &taken/1)}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # As `EhOsContract.Auth.Mail.Local` answers, without its log: the test is told instead.
+  defp taken(recipient) do
+    id = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+    %Result{to: recipient, sent?: true, message_id: "<#{id}@local.invalid>"}
   end
 end
