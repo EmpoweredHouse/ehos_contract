@@ -69,8 +69,9 @@ EhOsContract.Auth.verify(token)
 
 EHOS deploys an image with its `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, `v4` for an
 `ehos.yaml/v4` (which may name a seed and secrets), `v5` when a role may grant another, `v6` for
-an `ehos.yaml/v5` (which may name the hosts outside the installation it reaches), or `v7` for an
-`ehos.yaml/v6` (which may ask to send mail through EHOS): the application's
+an `ehos.yaml/v5` (which may name the hosts outside the installation it reaches), `v7` for an
+`ehos.yaml/v6` (which may ask to send mail through EHOS), or `v8` for an `ehos.yaml/v7` (which may
+ask for CPU and memory): the application's
 `ehos.yaml`, which says what the workload needs, extended with what its contracts offer. In CI,
 beside the image:
 
@@ -214,11 +215,26 @@ answers, such as `*.svc.cluster.local`, which this task leaves to it. Asking gra
 only once someone agrees, per environment, and [Sending mail](#sending-mail) says how the application
 sends.
 
+**The CPU and memory the workload asks for, from `ehos.yaml/v7`**, which makes an `ehos.manifest/v8`:
+
+```yaml
+schema: ehos.yaml/v7
+needs:
+  compute:
+    cpu: 500m                           # a request; EHOS sets no CPU limit
+    memory: 1Gi                         # the request, and the most each container may use
+```
+
+The manifest carries `needs.compute` as written, `1Gi` stays `1Gi`. EHOS gives the values to the serving
+container, the migration and the seed, and a key left out takes the environment's default. It is no part of the
+application's authority: changing it asks only for the right to deploy. EHOS also refuses, at deploy, a memory
+below 16Mi and a deployment that does not fit its environment's quota, which this task leaves to it.
+
 **A role that may grant another**: an actor's `may_grant:` in the domain,
 `actor :office_employee, :human, "Office employee", may_grant: [:client]`, gives its role `may_grant`, the
 roles a person holding it may grant through the application, and makes the manifest an `ehos.manifest/v5`,
-whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, and an
-`ehos.yaml/v6` an `ehos.manifest/v7`, rule or none. A
+whatever the version of `ehos.yaml` before v5; an `ehos.yaml/v5` makes an `ehos.manifest/v6`, an
+`ehos.yaml/v6` an `ehos.manifest/v7`, and an `ehos.yaml/v7` an `ehos.manifest/v8`, rule or none. A
 domain without a rule keeps its manifest's version and digests. An actor a rule names, and one that has a
 rule, has to hold a capability, or it is no role and the task says so.
 

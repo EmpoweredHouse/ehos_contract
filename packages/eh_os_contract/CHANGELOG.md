@@ -52,6 +52,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
   `eh_os_contract_auth`, which writes its documents with the manifest as the bundle EHOS takes (#456).
+- `docs/authorization.md` names `ehos.manifest/v8`, which `eh_os_contract_auth` writes for an `ehos.yaml/v7`
+  that asks for the CPU and memory its workload needs (#453).
 
 ## [0.11.0] - 2026-10-26
 

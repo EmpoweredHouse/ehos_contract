@@ -1,0 +1,18 @@
+# A workload that builds large reports, and so asks for half a core and 1 GiB of memory
+# (ehos.yaml/v7).
+schema: ehos.yaml/v7
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+  compute:
+    cpu: 500m
+    memory: 1Gi
+serves:
+  - name: web
+    port: 4000
+    public: true
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

@@ -26,6 +26,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **`ehos.yaml/v7` and `ehos.manifest/v8`** (#453), as EHOS 0.21.0 released them.
+  `mix eh_os_contract.manifest` reads an `ehos.yaml/v7`, EHOS's file copied byte for byte, whose
+  `needs.compute` asks for the CPU (`cpu`, a request) and memory (`memory`, the request and the
+  limit) the workload's containers need. It writes an `ehos.manifest/v8` for it, with
+  `needs.compute` as written, whether or not a role may grant another; an older file makes the
+  manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and so what a release produces,
+  now ends with `ehos.manifest/v8`, which only an EHOS from 0.21.0 deploys.
+
 - `EhOsContract.Auth.Mail.deliver/1` takes `verify_html: true`, which asks EHOS to refuse the
   message's HTML, as `{:invalid, reasons}`, when it holds a script, a form, a frame, an event
   attribute or an address whose scheme a message does not need, rather than send it; EHOS never
