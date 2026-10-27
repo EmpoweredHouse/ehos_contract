@@ -191,8 +191,8 @@ defmodule EhOsContract.Auth.Grants do
       when is_binary(person_id) and is_binary(role) and role != "" do
     person_id = String.downcase(person_id)
 
-    with true <- person_id =~ @id || {:error, :not_found},
-         true <- (String.valid?(role) and role =~ @role) || {:error, :unknown_role},
+    with true <- id?(person_id) || {:error, :not_found},
+         true <- role?(role) || {:error, :unknown_role},
          path = Enum.join([@grants, person_id, URI.encode(role, &URI.char_unreserved?/1)], "/"),
          {:ok, answer} <- call(session, opts, :delete, path, nil) do
       case answer do
@@ -234,6 +234,17 @@ defmodule EhOsContract.Auth.Grants do
               "config :eh_os_contract_auth, granter: takes a module, not #{inspect(other)}"
     end
   end
+
+  # What EHOS would refuse without being asked: an id that is no one's, a role that is not
+  # `<application>.<name>`. Also `EhOsContract.Auth.Grants.Local`'s, so development refuses
+  # them as a release does.
+  @doc false
+  @spec id?(String.t()) :: boolean()
+  def id?(person_id), do: String.downcase(person_id) =~ @id
+
+  @doc false
+  @spec role?(String.t()) :: boolean()
+  def role?(role), do: String.valid?(role) and role =~ @role
 
   # The grant's body, or `ArgumentError`: also how `EhOsContract.Auth.Grants.Local` holds a
   # host's call to what EHOS takes, so development fails where a release would.

@@ -186,6 +186,14 @@ defmodule EhOsContract.Auth.DirectoryTest do
       assert binding == grant.role_binding_id
     end
 
+    test "refuses what EHOS refuses without asking a person" do
+      assert Local.grant(%{}, email: "a@b.c", role: "client") == {:error, :unknown_role}
+      assert Local.revoke(%{}, "nobody", "clinic.client") == {:error, :not_found}
+
+      assert Local.revoke(%{}, Local.person_id("a@b.c"), "clinic/../x") ==
+               {:error, :unknown_role}
+    end
+
     test "raises where EHOS's would" do
       assert_raise ArgumentError, ~r/grant\/3 takes/, fn -> Local.grant(%{}, email: "") end
       assert_raise ArgumentError, ~r/revoke\/3 takes/, fn -> Local.revoke(%{}, 7, "x.y") end

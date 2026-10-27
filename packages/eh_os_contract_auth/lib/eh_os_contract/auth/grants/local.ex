@@ -12,8 +12,11 @@ defmodule EhOsContract.Auth.Grants.Local do
   application that keeps it keeps what it would keep from EHOS. A revocation answers the
   binding it would have removed.
 
-  It takes the arguments `EhOsContract.Auth.Grants` takes, and raises `ArgumentError` for
-  the ones EHOS's would raise for, so development fails where a release would.
+  It takes the arguments `EhOsContract.Auth.Grants` takes, raises `ArgumentError` for the
+  ones EHOS's would raise for, and refuses what EHOS refuses without a person's decision in
+  it: a role that is not `<application>.<name>` (`:unknown_role`), and a revocation of an
+  id that is no one's (`:not_found`). So development fails where a release would. A role
+  of the right form is granted whether or not the application declares it.
   """
 
   @behaviour EhOsContract.Auth.Grants.Granter
@@ -23,11 +26,16 @@ defmodule EhOsContract.Auth.Grants.Local do
 
   @impl true
   @doc "A grant of `role` to the person `email:` names, answered as made."
-  @spec grant(Plug.Conn.t() | map(), [Grants.grant_option()]) :: {:ok, Grant.t()}
+  @spec grant(Plug.Conn.t() | map(), [Grants.grant_option()]) ::
+          {:ok, Grant.t()} | {:error, :unknown_role}
   def grant(_session, grant) do
     %{"email" => email, "role" => role} = Grants.grant!(grant)
     person_id = person_id(email)
 
+    if Grants.role?(role), do: granted(email, role, person_id), else: {:error, :unknown_role}
+  end
+
+  defp granted(email, role, person_id) do
     {:ok,
      %Grant{
        person_id: person_id,
@@ -44,10 +52,14 @@ defmodule EhOsContract.Auth.Grants.Local do
   @doc "The binding of `role` to `person_id`, answered as removed."
   @spec revoke(Plug.Conn.t() | map(), String.t(), String.t()) ::
           {:ok, %{role_binding_id: String.t(), role: String.t()}}
+          | {:error, :not_found | :unknown_role}
   def revoke(_session, person_id, role)
       when is_binary(person_id) and is_binary(role) and role != "" do
-    person_id = String.downcase(person_id)
-    {:ok, %{role_binding_id: uuid([person_id, role]), role: role}}
+    cond do
+      not Grants.id?(person_id) -> {:error, :not_found}
+      not Grants.role?(role) -> {:error, :unknown_role}
+      true -> {:ok, %{role_binding_id: uuid([String.downcase(person_id), role]), role: role}}
+    end
   end
 
   def revoke(_session, _person_id, _role),
