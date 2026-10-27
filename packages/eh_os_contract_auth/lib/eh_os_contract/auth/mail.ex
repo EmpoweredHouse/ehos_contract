@@ -98,11 +98,25 @@ defmodule EhOsContract.Auth.Mail do
   Both attempts share two minutes and a half, EHOS's two for the relay and a margin, and each may first wait up to twelve seconds for a credential: a
   call answers within three minutes. It never raises or exits for what EHOS does, the
   process not running included.
+
+  **Another answer where EHOS gives none.** This module is EHOS's
+  `EhOsContract.Auth.Mail.Sender`. An application that asks `sender/0` instead gets the
+  one the configuration names, so development, a release started without EHOS and tests
+  send nothing:
+
+      # config/dev.exs
+      config :eh_os_contract_auth, mail_sender: EhOsContract.Auth.Mail.Local
+
+      # anywhere
+      EhOsContract.Auth.Mail.sender().deliver(to: [{:person, id}], subject: "…", text: "…")
   """
+
+  @behaviour EhOsContract.Auth.Mail.Sender
 
   require Logger
 
-  alias EhOsContract.Auth.Mail.Result
+  alias EhOsContract.Auth.Choice
+  alias EhOsContract.Auth.Mail.{Local, Result, Unconfigured}
   alias EhOsContract.Auth.SignIn.Http
   alias EhOsContract.Auth.Workload
 
@@ -167,14 +181,11 @@ defmodule EhOsContract.Auth.Mail do
   Sends the message to each recipient, through EHOS. Raises `ArgumentError` for an
   option it does not take, as documented in `t:option/0`.
   """
+  @impl true
   @spec deliver([option()]) :: {:ok, [Result.t()]} | {:error, reason()}
   def deliver(message) do
-    unless Keyword.keyword?(message), do: bad!("a keyword list")
-    keys = Keyword.keys(message)
-    if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
-
-    {server, message} = Keyword.pop(message, :server, Workload)
-    body = message |> body!() |> Jason.encode_to_iodata!()
+    body = message |> message!() |> Jason.encode_to_iodata!()
+    server = Keyword.get(message, :server, Workload)
 
     case Workload.request(server, :post, "/api/v1/mail", body, @deadline, shared: true) do
       {:ok, {200, _headers, body}} ->
@@ -191,7 +202,46 @@ defmodule EhOsContract.Auth.Mail do
     end
   end
 
+  @doc """
+  The `EhOsContract.Auth.Mail.Sender` the application asks, read at each call:
+  `config :eh_os_contract_auth, mail_sender:` when it is set. Otherwise this module when
+  the workload is configured (`workload:`, or `people:`), whose credential mail goes out
+  on, and `EhOsContract.Auth.Mail.Unconfigured` when it is not, so a release started
+  without EHOS's credentials answers `:unavailable` and never says it sent.
+
+  Raises `ArgumentError` when it names `EhOsContract.Auth.Mail.Local` or
+  `EhOsContract.Auth.Testing.Mail` while the workload is configured, which is a release
+  answering for EHOS, and when `mail_sender:` names anything but a module that implements
+  `EhOsContract.Auth.Mail.Sender`.
+  """
+  @spec sender() :: module()
+  def sender do
+    Choice.choose!(%{
+      key: :mail_sender,
+      behaviour: EhOsContract.Auth.Mail.Sender,
+      callbacks: [deliver: 1],
+      ehos?: Choice.workload?(),
+      ehos: __MODULE__,
+      unconfigured: Unconfigured,
+      stand_ins: [Local, EhOsContract.Auth.Testing.Mail],
+      configured: "`workload:` (or `people:`)"
+    })
+  end
+
   ## The request
+
+  # The body EHOS is sent, or `ArgumentError` as `deliver/1` raises it: also how
+  # `EhOsContract.Auth.Mail.Local` and `EhOsContract.Auth.Testing.Mail` hold a host's call to
+  # what EHOS takes, so development and tests fail where a release would.
+  @doc false
+  @spec message!(term()) :: %{String.t() => term()}
+  def message!(message) do
+    unless Keyword.keyword?(message), do: bad!("a keyword list")
+    keys = Keyword.keys(message)
+    if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
+
+    message |> Keyword.delete(:server) |> body!()
+  end
 
   defp body!(message) do
     case Keyword.keys(message) -- @keys do
