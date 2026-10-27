@@ -1,0 +1,18 @@
+Two reviews ran in parallel on `origin/main..HEAD` before the fixes: one for correctness, one for security and performance. Both read the diff by hand, not through `/code-review`, which would have reviewed another worktree. Neither found the refactor changing what `People.directory/0`, `Grants.granter/0` or `Mail.deliver/1` answer or raise.
+
+**Fixed**, each in its own commit with a test that fails on the old code (checked by restoring the old file and seeing only that test fail):
+
+- A message from a server the test did not start went to that server's own mailbox (both reviews). `Testing.Mail` sent `{:ehos_mail, message}` to the process itself when it named no test among its `$callers`. An application's GenServer or an inline job then kept the message, or logged it whole as an unexpected one, recipients and attachments included. An OTP process that names no test is now told nothing, and its message is still answered.
+- `Testing.Mail` checked each message twice, Base64-encoding the attachments both times, and logged a line naming `Local` in every test that sent mail (both reviews, low). It now builds its answer itself.
+- Docs:
+  - "the three stand-ins need `pin_keys:`" read as the Mox ones;
+  - `stub_mail/1` takes any atom, and only a Hammox mock refuses one `Mail` never answers;
+  - the README read as though a release with EHOS calls `Mail.deliver/1` directly.
+
+**Settled with the user:** a release with `sign_in:` and no workload may still use `Mail.Local` (security, low). The guard stays on the credential mail is sent with (`workload:`), as `People.Directory.Static`'s does, so a developer can sign in through EHOS while sending no mail.
+
+**Skipped:**
+
+- A direct call to `Mail.Local.deliver/1` is not guarded (security, low). The guard lives in `sender/0`, as it does for `Static` and `Grants.Local`, and a choice written in code is less likely to slip than a config line.
+- `Local` still Base64-encodes attachments only to check them (low). This is development only, and the cost is worth keeping one check shared with `deliver/1`.
+- `Local`'s log line grows with the recipients (informational). EHOS refuses more than 50 recipients, and the line lists only ids.
