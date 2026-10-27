@@ -410,9 +410,16 @@ defmodule EhOsContract.Codec do
   # `strings: true` also reads an integer or a boolean written as text, as a query
   # string carries every value, and only at the top level, where a query's
   # parameters are.
+  #
+  # `form: true` reads what an HTML form sends (#474): text at every level, as
+  # `strings: true` reads it; a field left blank, `""` or only whitespace, as absent; and a
+  # list as `inputs_for` sends one, a map keyed by the rows' indices, in their order. A
+  # key a form adds that the declaration does not name, `_persistent_id` or LiveView's
+  # `_unused_<name>`, is ignored, as every undeclared key is.
   @spec decode([field()], map(), values(), keyword()) :: {:ok, map()} | {:error, [problem()]}
   def decode(fields, external, values, opts \\ []) when is_map(external) do
-    strings = Keyword.get(opts, :strings, false)
+    form = Keyword.get(opts, :form, false)
+    strings = form or Keyword.get(opts, :strings, false)
     # A function that opens a seal, or none: `:opened` is the codec's own mark for a value a
     # seal held, never a caller's to give, since it lets any bytes in.
     open =
@@ -427,6 +434,7 @@ defmodule EhOsContract.Codec do
     {decoded, problems} =
       Enum.reduce(fields, {%{}, []}, fn field, {decoded, problems} ->
         raw = Map.get(external, Atom.to_string(field.name), Map.get(external, field.name))
+        raw = if form, do: from_form(field.type, raw, values), else: raw
         raw = if strings, do: from_text(field.type, raw, values), else: raw
 
         case decode_field(field, raw, fields, external, values, open, []) do
@@ -495,6 +503,73 @@ defmodule EhOsContract.Codec do
           {:halt, :error}
       end
     end)
+  end
+
+  # What a form sends, in the shape JSON would carry it: blank as absent, and a list of
+  # rows from its indices. The text in it stays text, for `from_text/3`.
+  defp from_form(_type, value, _values) when is_binary(value) do
+    if String.trim(value) == "", do: nil, else: value
+  end
+
+  defp from_form({:list, inner}, value, values) when is_map(value) and not is_struct(value) do
+    case rows(value) do
+      {:ok, rows} -> from_form({:list, inner}, rows, values)
+      :error -> value
+    end
+  end
+
+  defp from_form({:list, inner}, value, values) when is_list(value),
+    do: Enum.map(value, &from_form(inner, &1, values))
+
+  defp from_form(type, value, values)
+       when is_atom(type) and is_map_key(values, type) and is_map(value) and
+              not is_struct(value) do
+    case Map.fetch!(values, type) do
+      %{type: nil, fields: fields} ->
+        Enum.reduce(fields, value, fn field, converted ->
+          string_key = Atom.to_string(field.name)
+
+          cond do
+            Map.has_key?(converted, field.name) ->
+              Map.update!(converted, field.name, &from_form(field.type, &1, values))
+
+            Map.has_key?(converted, string_key) ->
+              Map.update!(converted, string_key, &from_form(field.type, &1, values))
+
+            true ->
+              converted
+          end
+        end)
+
+      %{type: inner} ->
+        from_form(inner, value, values)
+    end
+  end
+
+  defp from_form(type, value, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil} -> value
+      %{type: inner} -> from_form(inner, value, values)
+    end
+  end
+
+  defp from_form(_type, value, _values), do: value
+
+  # `inputs_for`'s rows, `%{"0" => row, "1" => row}`, in the order of their indices. A map
+  # with any other key is not a list of rows, and is left to fail as one.
+  defp rows(map) do
+    indexed =
+      Enum.reduce_while(map, [], fn {key, row}, acc ->
+        case key |> to_string() |> Integer.parse() do
+          {index, ""} when index >= 0 -> {:cont, [{index, row} | acc]}
+          _other -> {:halt, :error}
+        end
+      end)
+
+    case indexed do
+      :error -> :error
+      indexed -> {:ok, indexed |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+    end
   end
 
   defp from_text({:list, inner}, value, values) when is_list(value),

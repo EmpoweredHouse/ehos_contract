@@ -140,6 +140,88 @@ defmodule EhOsContract.CodecTest do
            ) == {:ok, %{counts: [1, 2], window: %{count: 3}}}
   end
 
+  describe "what a form sends (form: true)" do
+    @task %{
+      name: :task,
+      type: nil,
+      fields: [
+        %{name: :title, type: :string, optional: false},
+        %{name: :days, type: :integer, optional: true}
+      ]
+    }
+
+    @form_fields [
+      %{name: :visit_id, type: :id, optional: false},
+      %{name: :amount, type: :money, optional: false},
+      %{name: :method, type: :method, optional: false},
+      %{name: :paid, type: :boolean, optional: true},
+      %{name: :note, type: :string, optional: true},
+      %{name: :tasks, type: {:list, :task}, optional: true}
+    ]
+
+    defp form(params),
+      do: Codec.decode(@form_fields, params, Map.put(@values, :task, @task), form: true)
+
+    @sent %{
+      "visit_id" => "w-1",
+      "amount" => "20000",
+      "method" => "cash",
+      "paid" => "false",
+      "note" => ""
+    }
+
+    test "reads every value as the text a form sends, and a blank field as absent" do
+      assert form(@sent) ==
+               {:ok,
+                %{
+                  visit_id: "w-1",
+                  amount: 20_000,
+                  method: :cash,
+                  paid: false,
+                  note: nil,
+                  tasks: nil
+                }}
+
+      assert form(%{@sent | "visit_id" => "  ", "amount" => ""}) ==
+               {:error, [visit_id: :required, amount: :required]}
+
+      assert form(%{@sent | "amount" => "twenty"}) == {:error, [amount: :type]}
+      assert form(%{@sent | "method" => "cheque"}) == {:error, [method: :type]}
+    end
+
+    test "reads inputs_for's rows in the order of their indices, blanks inside them absent" do
+      tasks = %{
+        "10" => %{"title" => "Payroll", "days" => "", "_persistent_id" => "10"},
+        "2" => %{"title" => "VAT", "days" => "5", "_persistent_id" => "2"}
+      }
+
+      assert {:ok, %{tasks: [%{title: "VAT", days: 5}, %{title: "Payroll", days: nil}]}} =
+               form(Map.put(@sent, "tasks", tasks))
+
+      assert form(Map.put(@sent, "tasks", %{"0" => %{"title" => " ", "days" => "1"}})) ==
+               {:error, [tasks: :type]}
+
+      assert form(Map.put(@sent, "tasks", %{"first" => %{"title" => "VAT"}})) ==
+               {:error, [tasks: :type]}
+
+      assert {:ok, %{tasks: []}} = form(Map.put(@sent, "tasks", %{}))
+    end
+
+    test "ignores the keys a form adds that the declaration does not name" do
+      assert {:ok, %{note: nil}} =
+               form(Map.merge(@sent, %{"_unused_note" => "", "_target" => "x"}))
+    end
+
+    test "leaves JSON's reading as it was: an empty string is a value there" do
+      fields = [%{name: :note, type: :string, optional: false}]
+
+      assert Codec.decode(fields, %{"note" => ""}, @values) == {:ok, %{note: ""}}
+
+      assert Codec.decode(fields, %{"note" => ""}, @values, form: true) ==
+               {:error, [note: :required]}
+    end
+  end
+
   test "a field typed with a value the domain does not declare fits nothing" do
     assert Codec.problems([%{name: :x, type: :unknown}], %{x: 1}, @values) == [x: :type]
   end
