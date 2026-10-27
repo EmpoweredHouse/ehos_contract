@@ -221,6 +221,31 @@ defmodule EhOsContract.Auth.DirectoryTest do
       assert_received {:asked, [after: "3"]}
     end
 
+    defmodule Endless do
+      @behaviour EhOsContract.Auth.People.Directory
+
+      @impl true
+      def list([after: "same"] = _opts),
+        do: {:ok, %{people: [Pages.person(9)], next: "same"}}
+
+      def list(opts) do
+        if opts[:q] == "same",
+          do: {:ok, %{people: [Pages.person(8)], next: "same"}},
+          else: {:ok, %{people: [], next: "again"}}
+      end
+
+      @impl true
+      def get(_id), do: {:error, :not_found}
+    end
+
+    @tag capture_log: true
+    test "answers :unavailable for a page that leads nowhere, never reading for ever" do
+      for opts <- [[], [q: "same"]] do
+        task = Task.async(fn -> People.all([{:directory, Endless} | opts]) end)
+        assert Task.yield(task, 1_000) == {:ok, {:error, :unavailable}}
+      end
+    end
+
     test "answers :too_many past max:, never a list cut short" do
       assert People.all(directory: Pages, max: 2) == {:error, :too_many}
     end

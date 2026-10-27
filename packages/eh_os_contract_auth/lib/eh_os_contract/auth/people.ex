@@ -195,8 +195,13 @@ defmodule EhOsContract.Auth.People do
 
       {:ok, people} = EhOsContract.Auth.People.all(state: :joined)
 
-  Fails with the first page's reason when a page fails, and raises `ArgumentError` for
-  an option it does not take.
+  Fails with the reason of the page that failed, and with `:unavailable` when a page
+  answers no one and still names a next one, or names the page just read, which would
+  read for ever. Raises `ArgumentError` for an option it does not take.
+
+  It reads the pages one after another, up to 21 with the default `max:`, each a call
+  of `list/1`: when EHOS hangs, a call waits as `list/1` documents, so ask it outside a
+  request a person waits on.
   """
   @spec all([
           {:q, String.t()}
@@ -221,9 +226,19 @@ defmodule EhOsContract.Auth.People do
       read = [people | read]
 
       cond do
-        count > max -> {:error, :too_many}
-        is_nil(next) -> {:ok, read |> Enum.reverse() |> Enum.concat()}
-        true -> pages(directory, [after: next], max, read, count)
+        count > max ->
+          {:error, :too_many}
+
+        is_nil(next) ->
+          {:ok, read |> Enum.reverse() |> Enum.concat()}
+
+        # Neither moves the count towards `max`, so either would read for ever.
+        people == [] or next == opts[:after] ->
+          Logger.warning("#{inspect(directory)} answered a page that leads nowhere")
+          {:error, :unavailable}
+
+        true ->
+          pages(directory, [after: next], max, read, count)
       end
     end
   end
