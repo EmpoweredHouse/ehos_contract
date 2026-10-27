@@ -27,7 +27,11 @@ defmodule EhOsContract.Auth.DirectoryTypesTest do
       %{list_1: list, get_1: get} =
         Hammox.protect(unquote(directory), Directory, list: 1, get: 1)
 
-      for opts <- [[], [q: "ad", state: [:invited, :joined], limit: 50], [after: "c"]],
+      for opts <- [
+            [],
+            [q: "ad", state: [:invited, :joined], limit: 50],
+            [after: Base.url_encode64("after=c", padding: false)]
+          ],
           do: list.(opts)
 
       get.(@ada.id)

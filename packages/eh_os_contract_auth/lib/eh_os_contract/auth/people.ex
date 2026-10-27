@@ -276,6 +276,16 @@ defmodule EhOsContract.Auth.People do
     {:error, :unavailable}
   end
 
+  # The options `list/1` takes, or `ArgumentError` as it raises it: also how
+  # `EhOsContract.Auth.People.Directory.Static` holds a host's call to what EHOS takes, so
+  # development fails where a release would.
+  @doc false
+  @spec list_options!([list_option()]) :: :ok
+  def list_options!(opts) do
+    opts |> Keyword.delete(:server) |> query!()
+    :ok
+  end
+
   # A cursor is a value a page may have handed a browser: what it carries is held to the same
   # rules as the options, and it must carry EHOS's `after`.
   defp query!(after: cursor) when is_binary(cursor) do

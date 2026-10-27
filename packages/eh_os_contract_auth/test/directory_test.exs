@@ -112,7 +112,8 @@ defmodule EhOsContract.Auth.DirectoryTest do
       assert {:ok, %{people: []}} = Static.list([q: "gr"], people)
       assert {:ok, %{people: [%{state: :invited}]}} = Static.list([state: :invited], people)
       assert {:ok, %{people: [_, _]}} = Static.list([limit: 1], people)
-      assert {:ok, %{people: [], next: nil}} = Static.list([after: "cursor"], people)
+      cursor = Base.url_encode64("after=c&limit=50", padding: false)
+      assert {:ok, %{people: [], next: nil}} = Static.list([after: cursor], people)
     end
 
     test "nobody when the configuration lists nobody" do
@@ -122,6 +123,42 @@ defmodule EhOsContract.Auth.DirectoryTest do
     test "raises for an option EHOS's does not take, and for a person without an id" do
       assert_raise ArgumentError, ~r/list\/1 takes/, fn -> Static.list([page: 2], []) end
       assert_raise ArgumentError, ~r/id: and email:/, fn -> Static.list([], [%{email: "a"}]) end
+    end
+
+    test "raises where EHOS's raises, so development fails where a release would" do
+      for opts <- [
+            [state: :disabled],
+            [state: []],
+            [limit: 0],
+            [limit: 501],
+            [q: nil],
+            [after: "not a cursor"],
+            [after: Base.url_encode64("after=c", padding: false), q: "a"]
+          ] do
+        assert_raise ArgumentError, fn -> Static.list(opts, []) end
+      end
+    end
+
+    test "reads ids in lower case and orders emails in either case, as EHOS does" do
+      people = [
+        %{id: "6F1C-B", email: "Bob@example.com"},
+        %{id: "6f1c-a", email: "ann@example.com"}
+      ]
+
+      assert {:ok, %{id: "6f1c-b"}} = Static.get("6f1c-B", people)
+
+      assert {:ok, %{people: [%{email: "ann@example.com"}, %{email: "Bob@example.com"}]}} =
+               Static.list([], people)
+    end
+
+    test "refuses a person of another shape, without their values in the message" do
+      for person <- [
+            %{id: "a", email: "ada@example.com", state: "joined"},
+            %{id: "a", email: "ada@example.com", name: :ada}
+          ] do
+        error = assert_raise ArgumentError, fn -> Static.list([], [person]) end
+        refute error.message =~ "ada"
+      end
     end
   end
 
