@@ -77,6 +77,7 @@ defmodule EhOsContract.Auth.People do
 
   require Logger
 
+  alias EhOsContract.Auth.Choice
   alias EhOsContract.Auth.People.Directory.{Static, Unconfigured}
   alias EhOsContract.Auth.People.Person
   alias EhOsContract.Auth.SignIn.Http
@@ -174,40 +175,16 @@ defmodule EhOsContract.Auth.People do
   """
   @spec directory() :: module()
   def directory do
-    ehos? =
-      Application.get_env(:eh_os_contract_auth, :workload) != nil or
-        Application.get_env(:eh_os_contract_auth, :people) != nil
-
-    module =
-      case Application.get_env(:eh_os_contract_auth, :people_directory) do
-        nil ->
-          if ehos?, do: __MODULE__, else: Unconfigured
-
-        module when is_atom(module) and module not in [true, false] ->
-          if Code.ensure_loaded?(module) and
-               Enum.all?([list: 1, get: 1], fn {f, a} -> function_exported?(module, f, a) end),
-             do: module,
-             else:
-               raise(
-                 ArgumentError,
-                 "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, " <>
-                   "which does not implement EhOsContract.Auth.People.Directory"
-               )
-
-        other ->
-          raise ArgumentError,
-                "config :eh_os_contract_auth, people_directory: takes a module, not #{inspect(other)}"
-      end
-
-    # A stand-in where EHOS's credentials are configured is a release answering for EHOS: a
-    # list of people no one is, or "invited" for nobody.
-    if ehos? and module in [Static, EhOsContract.Auth.Testing.People] do
-      raise ArgumentError,
-            "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, a stand-in for " <>
-              "development or tests, where `workload:` (or `people:`) is configured too"
-    end
-
-    module
+    Choice.choose!(%{
+      key: :people_directory,
+      behaviour: EhOsContract.Auth.People.Directory,
+      callbacks: [list: 1, get: 1],
+      ehos?: Choice.workload?(),
+      ehos: __MODULE__,
+      unconfigured: Unconfigured,
+      stand_ins: [Static, EhOsContract.Auth.Testing.People],
+      configured: "`workload:` (or `people:`)"
+    })
   end
 
   @doc """
