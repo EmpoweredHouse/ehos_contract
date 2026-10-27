@@ -164,7 +164,7 @@ questions for each contract once there is something in the log. Every task, and 
 - [Introduction](introduction.md): what the library is for, and what it is not.
 - The concepts: [the domain](concepts/domain.md), [actors, personal data and values](concepts/domain-data.md),
   [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
-  [between contracts](concepts/between-contracts.md), [processes](concepts/process.md) and
+  [forms](concepts/forms.md), [between contracts](concepts/between-contracts.md), [processes](concepts/process.md) and
   [scenarios](concepts/scenarios.md).
 - With an assistant: the `eh-os-contract` Claude Code plugin, from this repository's marketplace, gives
   an application the skills for deciding where a feature lives, distilling a process into a domain and

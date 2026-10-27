@@ -67,6 +67,9 @@ defmodule EhOsContract.Form do
 
   The changeset's data is the command's struct, so `Phoenix.HTML.FormData` names the form
   after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`.
+
+  The rule behind it, from both sides, and a LiveView page that uses it:
+  [Forms](forms.md) (`docs/concepts/forms.md` in the package).
   """
 
   alias EhOsContract.{Codec, Model, Rejection, Supplier}

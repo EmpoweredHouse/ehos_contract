@@ -63,7 +63,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
   and a command's constraints are not asked: they come back as dispatch's refusal, which
   `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
-  at the field `at:` names for its rule, or on the whole form (`:base`).
+  at the field `at:` names for its rule, or on the whole form (`:base`). A new concept page,
+  `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
+  changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
