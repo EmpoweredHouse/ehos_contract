@@ -77,6 +77,16 @@ defmodule EhOsContract.Auth.DirectoryTest do
 
       Application.put_env(:eh_os_contract_auth, :granter, [Local])
       assert_raise ArgumentError, ~r/granter: takes a module/, &Grants.granter/0
+
+      for value <- [false, NoSuchModule, Local] do
+        Application.put_env(:eh_os_contract_auth, :people_directory, value)
+        assert_raise ArgumentError, ~r/people_directory:/, &People.directory/0
+      end
+
+      for value <- [true, NoSuchModule, Static] do
+        Application.put_env(:eh_os_contract_auth, :granter, value)
+        assert_raise ArgumentError, ~r/granter:/, &Grants.granter/0
+      end
     end
   end
 

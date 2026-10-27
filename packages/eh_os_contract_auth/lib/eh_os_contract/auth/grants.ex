@@ -216,7 +216,8 @@ defmodule EhOsContract.Auth.Grants do
   is not, so a release started without EHOS's credentials answers `:unavailable` and never
   says it invited.
 
-  Raises `ArgumentError` when `granter:` is not a module.
+  Raises `ArgumentError` when `granter:` names anything but a module that implements
+  `EhOsContract.Auth.Grants.Granter`.
   """
   @spec granter() :: module()
   def granter do
@@ -226,8 +227,16 @@ defmodule EhOsContract.Auth.Grants do
           do: __MODULE__,
           else: Unconfigured
 
-      module when is_atom(module) ->
-        module
+      module when is_atom(module) and module not in [true, false] ->
+        if Code.ensure_loaded?(module) and
+             Enum.all?([grant: 2, revoke: 3], fn {f, a} -> function_exported?(module, f, a) end),
+           do: module,
+           else:
+             raise(
+               ArgumentError,
+               "config :eh_os_contract_auth, granter: names #{inspect(module)}, " <>
+                 "which does not implement EhOsContract.Auth.Grants.Granter"
+             )
 
       other ->
         raise ArgumentError,

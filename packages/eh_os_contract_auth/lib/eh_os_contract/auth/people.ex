@@ -167,7 +167,8 @@ defmodule EhOsContract.Auth.People do
         config :eh_os_contract_auth, workload: [client_id: client_id, client_key_file: ...]
       end
 
-  Raises `ArgumentError` when `people_directory:` is not a module.
+  Raises `ArgumentError` when `people_directory:` names anything but a module that implements
+  `EhOsContract.Auth.People.Directory`.
   """
   @spec directory() :: module()
   def directory do
@@ -178,8 +179,16 @@ defmodule EhOsContract.Auth.People do
            do: __MODULE__,
            else: Unconfigured
 
-      module when is_atom(module) ->
-        module
+      module when is_atom(module) and module not in [true, false] ->
+        if Code.ensure_loaded?(module) and
+             Enum.all?([list: 1, get: 1], fn {f, a} -> function_exported?(module, f, a) end),
+           do: module,
+           else:
+             raise(
+               ArgumentError,
+               "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, " <>
+                 "which does not implement EhOsContract.Auth.People.Directory"
+             )
 
       other ->
         raise ArgumentError,
