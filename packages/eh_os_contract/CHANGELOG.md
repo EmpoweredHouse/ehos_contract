@@ -48,6 +48,20 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474).
+  `Form.changeset(contract, command, params, data: ...)` reads what an HTML form sends:
+  - every value as text, a blank field as absent, a select's text as an enum's member;
+  - each field held to the rules dispatch applies: required, of its declared type, and within
+    its domain value's invariants, asked of the domain.
+
+  Each problem is an error at its field, with the engine's reason in its keyword list
+  (`validation: :required | :type | :invariant`, and `invariant:`), so the application writes
+  its own words. The identity of the unit an edit form changes comes from `data:`, never the
+  params; a supplied field and a generated identity are left to dispatch. `Form.to_command/1`
+  turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
+  and a command's constraints are not asked: they come back as dispatch's refusal.
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
