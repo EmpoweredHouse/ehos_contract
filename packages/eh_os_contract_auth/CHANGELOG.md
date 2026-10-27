@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-27
+
 ### Added
 
 - **Mail where EHOS does not answer** (#477), as #475 did for people and grants: the behaviour
@@ -68,6 +70,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   writes nothing EHOS would refuse (#456).
 
 ### Changed
+
+- **Breaking:** **the engine is required at `~> 0.12.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
 
 - **Breaking:** EHOS 0.21.0 and later send `html:` as given, where earlier ones cleaned it of
   scripts and forms. A host that puts a value it did not write into its HTML escapes it, and may
