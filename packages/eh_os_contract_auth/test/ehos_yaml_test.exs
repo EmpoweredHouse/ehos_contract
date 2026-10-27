@@ -8,9 +8,9 @@ defmodule EhOsContract.Auth.EhosYamlTest do
   `ehos.yaml` of a real application, a ledger, both as they stood when copied
   (the ledger's with its comment's link removed), and a made-up `ehos.yaml/v2` with
   `sign_in`, a made-up `ehos.yaml/v3` that reads the company's people, a made-up
-  `ehos.yaml/v4` that seeds its database and is given secrets, a made-up `ehos.yaml/v6` that
-  sends mail to any address, a made-up `ehos.yaml/v7` that asks for half a core and 1 GiB, and a made-up `ehos.yaml/v5` that
-  reaches two hosts outside the installation.
+  `ehos.yaml/v4` that seeds its database and is given secrets, a made-up `ehos.yaml/v5` that
+  reaches two hosts outside the installation, a made-up `ehos.yaml/v6` that sends mail to any
+  address, and a made-up `ehos.yaml/v7` that asks for half a core and 1 GiB.
   """
 
   use ExUnit.Case, async: true
@@ -281,8 +281,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     test "takes compute only from v7 on" do
       for version <- ["ehos.yaml/v6", "ehos.yaml/v1"] do
         text = "schema: #{version}\nneeds:\n  compute:\n    memory: 1Gi\n" <> @health
-        assert {:error, [%{path: path}]} = EhosYaml.read(text)
-        assert path in ["needs", "needs.compute"]
+        assert {:error, [%{path: "needs.compute", message: message}]} = EhosYaml.read(text)
+        assert message == "is not a field of #{version}"
       end
     end
 

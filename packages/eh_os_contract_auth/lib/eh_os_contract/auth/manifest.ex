@@ -3,18 +3,20 @@ defmodule EhOsContract.Auth.Manifest do
   # `needs.people` with `ehos.manifest/v3`; `needs.database.seed` and `needs.secrets` with
   # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; `needs.egress` with
   # `ehos.manifest/v6`; `needs.mail` with `ehos.manifest/v7`; `needs.compute` with
-  # `ehos.manifest/v8`; a capability naming its declaration's kind; scope values on a binding; and `contracts` left out, so that an edit to a
-  # contract does not change EHOS's authority digest.
+  # `ehos.manifest/v8`; a capability naming its declaration's kind; scope values on a binding;
+  # and `contracts` left out, so that an edit to a contract does not change EHOS's authority
+  # digest.
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
   `ehos.manifest/v8` for an `ehos.yaml/v7`, `ehos.manifest/v7` for an `ehos.yaml/v6`,
-  `ehos.manifest/v6` for an `ehos.yaml/v5`,
-  `ehos.manifest/v5` for an older file when a role may grant another, and otherwise
+  `ehos.manifest/v6` for an `ehos.yaml/v5`, `ehos.manifest/v5` for an older file when a role may
+  grant another, and otherwise
   `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and
   `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is v3
   whose `ehos_yaml` may be `ehos.yaml/v4`, v5 is v4 whose roles may carry `may_grant`, v6 is v5
   whose `ehos_yaml` may be `ehos.yaml/v5`, v7 is v6 whose `ehos_yaml` may be `ehos.yaml/v6`, v8
-  is v7 whose `ehos_yaml` may be `ehos.yaml/v7`, and EHOS refuses a manifest that names a file newer than its own version.
+  is v7 whose `ehos_yaml` may be `ehos.yaml/v7`, and EHOS refuses a manifest that names a file
+  newer than its own version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
