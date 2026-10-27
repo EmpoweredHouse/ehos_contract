@@ -81,11 +81,24 @@ defmodule EhOsContract.Auth.Grants do
 
   Raises `ArgumentError` for an argument it does not take: a defect of the host's code,
   not something the person can change.
+
+  **Another answer where EHOS gives none.** This module is EHOS's
+  `EhOsContract.Auth.Grants.Granter`. A page that asks `granter/0` instead gets the one
+  the configuration names, so development, a release started without sign-in and tests
+  answer without EHOS:
+
+      # config/dev.exs
+      config :eh_os_contract_auth, granter: EhOsContract.Auth.Grants.Local
+
+      # a controller
+      EhOsContract.Auth.Grants.granter().grant(conn, email: email, role: "clinic.client")
   """
+
+  @behaviour EhOsContract.Auth.Grants.Granter
 
   require Logger
 
-  alias EhOsContract.Auth.Grants.Grant
+  alias EhOsContract.Auth.Grants.{Grant, Local, Unconfigured}
   alias EhOsContract.Auth.{Session, SignIn}
   alias EhOsContract.Auth.SignIn.{ClientKey, Http, Renewal}
 
@@ -148,6 +161,7 @@ defmodule EhOsContract.Auth.Grants do
   Grants `role` to the person `email:` names, for the person signed in in `session`,
   under their role's rule. See the module's doc for what it answers.
   """
+  @impl true
   @spec grant(Plug.Conn.t() | map(), [grant_option()], [option()]) ::
           {:ok, Grant.t()} | {:error, reason()}
   def grant(session, grant, opts \\ []) do
@@ -168,6 +182,7 @@ defmodule EhOsContract.Auth.Grants do
   included, and `{:error, :unknown_role}` for a role that is not `<application>.<name>`.
   Neither of those two is sent.
   """
+  @impl true
   @spec revoke(Plug.Conn.t() | map(), String.t(), String.t(), [option()]) ::
           {:ok, %{role_binding_id: String.t(), role: String.t()}} | {:error, reason()}
   def revoke(session, person_id, role, opts \\ [])
@@ -176,8 +191,8 @@ defmodule EhOsContract.Auth.Grants do
       when is_binary(person_id) and is_binary(role) and role != "" do
     person_id = String.downcase(person_id)
 
-    with true <- person_id =~ @id || {:error, :not_found},
-         true <- (String.valid?(role) and role =~ @role) || {:error, :unknown_role},
+    with true <- id?(person_id) || {:error, :not_found},
+         true <- role?(role) || {:error, :unknown_role},
          path = Enum.join([@grants, person_id, URI.encode(role, &URI.char_unreserved?/1)], "/"),
          {:ok, answer} <- call(session, opts, :delete, path, nil) do
       case answer do
@@ -194,7 +209,70 @@ defmodule EhOsContract.Auth.Grants do
   def revoke(_session, _person_id, _role, _opts),
     do: raise(ArgumentError, "revoke/4 takes the person's id and the role, each a string")
 
-  defp grant!(grant) do
+  @doc """
+  The `EhOsContract.Auth.Grants.Granter` a page asks, read at each call:
+  `config :eh_os_contract_auth, granter:` when it is set. Otherwise this module when
+  sign-in is configured (`sign_in:`), and `EhOsContract.Auth.Grants.Unconfigured` when it
+  is not, so a release started without EHOS's credentials answers `:unavailable` and never
+  says it invited.
+
+  Raises `ArgumentError` when it names `EhOsContract.Auth.Grants.Local` or `EhOsContract.Auth.Testing.Grants` while `sign_in:` is
+  configured, which is a release answering for EHOS, and when `granter:` names anything
+  but a module that implements
+  `EhOsContract.Auth.Grants.Granter`.
+  """
+  @spec granter() :: module()
+  def granter do
+    ehos? = Application.get_env(:eh_os_contract_auth, :sign_in) != nil
+
+    module =
+      case Application.get_env(:eh_os_contract_auth, :granter) do
+        nil ->
+          if ehos?, do: __MODULE__, else: Unconfigured
+
+        module when is_atom(module) and module not in [true, false] ->
+          if Code.ensure_loaded?(module) and
+               Enum.all?([grant: 2, revoke: 3], fn {f, a} -> function_exported?(module, f, a) end),
+             do: module,
+             else:
+               raise(
+                 ArgumentError,
+                 "config :eh_os_contract_auth, granter: names #{inspect(module)}, " <>
+                   "which does not implement EhOsContract.Auth.Grants.Granter"
+               )
+
+        other ->
+          raise ArgumentError,
+                "config :eh_os_contract_auth, granter: takes a module, not #{inspect(other)}"
+      end
+
+    # A stand-in where EHOS's credentials are configured is a release answering for EHOS: a
+    # list of people no one is, or "invited" for nobody.
+    if ehos? and module in [Local, EhOsContract.Auth.Testing.Grants] do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, granter: names #{inspect(module)}, a stand-in for " <>
+              "development or tests, where `sign_in:` is configured too"
+    end
+
+    module
+  end
+
+  # What EHOS would refuse without being asked: an id that is no one's, a role that is not
+  # `<application>.<name>`. Also `EhOsContract.Auth.Grants.Local`'s, so development refuses
+  # them as a release does.
+  @doc false
+  @spec id?(String.t()) :: boolean()
+  def id?(person_id), do: String.downcase(person_id) =~ @id
+
+  @doc false
+  @spec role?(String.t()) :: boolean()
+  def role?(role), do: String.valid?(role) and role =~ @role
+
+  # The grant's body, or `ArgumentError`: also how `EhOsContract.Auth.Grants.Local` holds a
+  # host's call to what EHOS takes, so development fails where a release would.
+  @doc false
+  @spec grant!(term()) :: %{String.t() => String.t()}
+  def grant!(grant) do
     unless Keyword.keyword?(grant) and Keyword.keys(grant) -- [:email, :role, :name] == [] do
       bad!()
     end

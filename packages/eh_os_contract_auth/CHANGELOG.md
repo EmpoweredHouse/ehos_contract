@@ -26,6 +26,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **People and grants where EHOS does not answer** (#475): the behaviours
+  `EhOsContract.Auth.People.Directory` and `EhOsContract.Auth.Grants.Granter`, which `People` and
+  `Grants` implement; `People.directory/0` and `Grants.granter/0`, which read
+  `config :eh_os_contract_auth, people_directory:` / `granter:` at each call and otherwise choose
+  EHOS's when `workload:` or `sign_in:` is configured and an `Unconfigured` one answering
+  `:unavailable` when not; `People.Directory.Static` (the configured people) and `Grants.Local`
+  (every grant made) for development; `Testing.People`, `Testing.Grants`, `stub_people/1` and
+  `stub_grants/1` for a host's tests, held per test and its processes; and `People.all/1`, every
+  page up to `max:`, `{:error, :too_many}` past it. A stand-in never answers for EHOS in a release:
+  the choice raises when it names `Static`, `Local` or a `Testing` one while `workload:` or
+  `sign_in:` is configured, and the `Testing` ones need `pin_keys: true`.
+
 - **`ehos.yaml/v7` and `ehos.manifest/v8`** (#453), as EHOS 0.21.0 released them.
   `mix eh_os_contract.manifest` reads an `ehos.yaml/v7`, EHOS's file copied byte for byte, whose
   `needs.compute` asks for the CPU (`cpu`, a request) and memory (`memory`, the request and the

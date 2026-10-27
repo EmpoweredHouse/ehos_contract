@@ -50,9 +50,31 @@ defmodule EhOsContract.Auth.Testing do
   child, a stand-in that never calls EHOS takes its name, so `config :eh_os_contract_auth,
   sign_in:` is not needed in `config/test.exs`.
 
-  All of them run in the test process and read and write through the engine's repo, so
-  they belong in a test that owns a sandbox connection, as any test of the host's
-  that dispatches does.
+  **People and grants without EHOS.** With
+
+      # config/test.exs
+      config :eh_os_contract_auth,
+        people_directory: EhOsContract.Auth.Testing.People,
+        granter: EhOsContract.Auth.Testing.Grants
+
+  `EhOsContract.Auth.People.directory/0` lists nobody and
+  `EhOsContract.Auth.Grants.granter/0` answers every grant as made, until a test says
+  otherwise with `stub_people/1` or `stub_grants/1`. What a test says holds for it and for
+  the processes it starts, a LiveView's and a task's, which name it among their
+  `$callers`, and for no other test, so the tests stay `async: true`. A host that uses
+  Mox or Hammox can instead `defmock` the two behaviours and `stub_with/2` them with
+  `EhOsContract.Auth.People.Directory.Static` and `EhOsContract.Auth.Grants.Local`.
+  Like the test key, the two stand-ins answer only with `pin_keys: true`, and raise
+  anywhere else.
+
+  A stub is made in the test itself, or in a `setup` block, which runs in the test's
+  process; one made in `setup_all` runs in another process, which the test does not name
+  among its `$callers`, and is not seen.
+
+  `credential/3`, `sign_in/3`, `sign_out/1` and `assert_every_entry_refuses/3` run in the
+  test process and read and write through the engine's repo, so they belong in a test that
+  owns a sandbox connection, as any test of the host's that dispatches does.
+  `stub_people/1` and `stub_grants/1` touch no repo.
   """
 
   import ExUnit.Assertions
@@ -63,7 +85,10 @@ defmodule EhOsContract.Auth.Testing do
 
   @key {__MODULE__, :key}
 
-  @doc "Imports `credential/3`, `sign_in/3`, `sign_out/1` and `assert_every_entry_refuses/3`."
+  @doc """
+  Imports `credential/3`, `sign_in/3`, `sign_out/1`, `assert_every_entry_refuses/3`,
+  `stub_people/1` and `stub_grants/1`.
+  """
   defmacro __using__(_opts) do
     quote do
       import EhOsContract.Auth.Testing
@@ -256,6 +281,64 @@ defmodule EhOsContract.Auth.Testing do
       [[count]] = repo.query!("SELECT count(*) FROM #{table}").rows
       {table, count}
     end
+  end
+
+  @doc """
+  The people `EhOsContract.Auth.Testing.People` answers for this test: a list, as
+  `EhOsContract.Auth.People.Directory.Static` takes it, or `{:error, reason}`, which
+  every call then answers, as EHOS down (`:unavailable`) or not agreed (`:not_agreed`).
+
+      stub_people([%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}])
+      stub_people({:error, :not_agreed})
+  """
+  @spec stub_people([map()] | {:error, EhOsContract.Auth.People.reason()}) :: :ok
+  def stub_people(people)
+      when is_list(people) or
+             (is_tuple(people) and tuple_size(people) == 2 and elem(people, 0) == :error and
+                is_atom(elem(people, 1))) do
+    Process.put({__MODULE__, :people}, people)
+    :ok
+  end
+
+  @doc """
+  What `EhOsContract.Auth.Testing.Grants` answers for this test: `:made`, every grant and
+  revocation made as `EhOsContract.Auth.Grants.Local` makes them, which is also what it
+  answers when a test says nothing; or `{:error, reason}`, which every call then answers.
+
+      stub_grants({:error, :beyond_rule})
+  """
+  @spec stub_grants(:made | {:error, EhOsContract.Auth.Grants.reason()}) :: :ok
+  def stub_grants(answer)
+      when answer == :made or
+             (is_tuple(answer) and tuple_size(answer) == 2 and elem(answer, 0) == :error and
+                is_atom(elem(answer, 1))) do
+    Process.put({__MODULE__, :grants}, answer)
+    :ok
+  end
+
+  # What a test stubbed under `name`: in this process, or in the first of its `$callers`
+  # that stubbed it, a LiveView's or a task's test. Only where test keys may be pinned, as
+  # the sign-in stand-in: anywhere else a stand-in would answer for EHOS.
+  @doc false
+  @spec stubbed!(:people | :grants, term()) :: term()
+  def stubbed!(name, default) do
+    unless Keys.test_trust?() do
+      raise ArgumentError,
+            "EhOsContract.Auth.Testing.People and .Grants are for tests only. Set config " <>
+              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
+    end
+
+    key = {__MODULE__, name}
+
+    Enum.find_value([self() | Process.get(:"$callers", [])], default, fn pid ->
+      case Process.info(pid, :dictionary) do
+        {:dictionary, dictionary} ->
+          List.keyfind(dictionary, key, 0) |> then(&(&1 && elem(&1, 1)))
+
+        nil ->
+          nil
+      end
+    end)
   end
 
   # One key per test run: made on first use, kept in `:persistent_term`.

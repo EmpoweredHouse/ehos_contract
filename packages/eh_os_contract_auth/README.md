@@ -611,6 +611,59 @@ signing in needs. It is made in the person's request, keeps no credential and re
 fails the page says so and the person asks again, which is safe. `docs/grants-api.md` in eh-os is the
 API it calls.
 
+## People and grants where EHOS does not answer
+
+In development there is no EHOS to ask, a release started without EHOS's credentials should
+neither list people nor say it invited someone, and a test should not reach EHOS at all. So a page
+asks for whoever answers, `EhOsContract.Auth.People.directory/0` and
+`EhOsContract.Auth.Grants.granter/0`, rather than `People` and `Grants` themselves:
+
+```elixir
+{:ok, %{people: people}} = EhOsContract.Auth.People.directory().list(q: "ad")
+EhOsContract.Auth.Grants.granter().grant(conn, email: email, role: "clinic.client")
+{:ok, everyone} = EhOsContract.Auth.People.all()   # every page, at most 10,000 people
+```
+
+Each reads the configuration at the call. Without a choice it is EHOS's when `workload:` (for
+people) or `sign_in:` (for grants) is configured, and otherwise one that answers `:unavailable`,
+which the page already says in words. `config/runtime.exs` then configures EHOS only when EHOS
+gave the credentials, and chooses nothing:
+
+```elixir
+# config/dev.exs
+config :eh_os_contract_auth,
+  people_directory: EhOsContract.Auth.People.Directory.Static,
+  granter: EhOsContract.Auth.Grants.Local
+
+config :eh_os_contract_auth, EhOsContract.Auth.People.Directory.Static,
+  people: [%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}]
+
+# config/test.exs
+config :eh_os_contract_auth,
+  people_directory: EhOsContract.Auth.Testing.People,
+  granter: EhOsContract.Auth.Testing.Grants
+```
+
+| Module | Answers |
+| --- | --- |
+| `EhOsContract.Auth.People` | EHOS's people API |
+| `EhOsContract.Auth.People.Directory.Static` | The people the configuration lists, nobody by default |
+| `EhOsContract.Auth.People.Directory.Unconfigured` | `:unavailable` |
+| `EhOsContract.Auth.Testing.People` | The people the test gave with `stub_people/1`, nobody by default |
+| `EhOsContract.Auth.Grants` | EHOS's grant routes |
+| `EhOsContract.Auth.Grants.Local` | Every grant made and mailed, the person's id derived from the email |
+| `EhOsContract.Auth.Grants.Unconfigured` | `:unavailable` |
+| `EhOsContract.Auth.Testing.Grants` | Every grant made, or what the test asked with `stub_grants/1` |
+
+Another answer of the host's own implements `EhOsContract.Auth.People.Directory` or
+`EhOsContract.Auth.Grants.Granter`.
+
+A stand-in never answers for EHOS in a release. `directory/0` raises when it names `Static` or
+`Testing.People` while `workload:` is configured, and `granter/0` when it names `Local` or
+`Testing.Grants` while `sign_in:` is: a `config/dev.exs` line that slipped into `config/config.exs`
+fails at the first call instead of telling a person someone was invited. The two `Testing` stand-ins
+also need `pin_keys: true`, as `EhOsContract.Auth.Testing`'s credentials do.
+
 ## Deciding, and recording every decision
 
 `EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
@@ -715,6 +768,20 @@ of the run, so the test configuration needs no `sign_in:`, and a test that start
 names it and passes `sign_in: name`. The stand-in cannot renew: a test that moves
 `EhOsContract.Clock` past the credential's ten minutes, or asks `Session.credential/3` for another
 application, gets `:ehos_unavailable`, and the plug answers 503.
+
+With the two stand-ins configured, a test says whom EHOS knows and what it answers:
+
+```elixir
+stub_people([%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}])
+stub_people({:error, :not_agreed})
+stub_grants({:error, :beyond_rule})
+```
+
+What a test says holds for it and the processes it starts, a LiveView's included, and for no other
+test, so tests stay `async: true`. A host on Mox or Hammox can `defmock` the two behaviours instead
+and `stub_with/2` them with `Static` and `Local`. The callbacks are typed with `People`'s and
+`Grants`' own types, so a Hammox mock refuses an answer EHOS never gives, such as
+`{:error, :timeout}`; this package's tests hold every implementation it ships to those types.
 
 ## Where the keys come from, and what to configure at integration
 

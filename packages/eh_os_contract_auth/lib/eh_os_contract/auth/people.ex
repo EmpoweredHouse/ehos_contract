@@ -56,14 +56,28 @@ defmodule EhOsContract.Auth.People do
 
   A call never raises or exits for what EHOS does, the process not running included.
 
+  **Another answer where EHOS gives none.** This module is EHOS's
+  `EhOsContract.Auth.People.Directory`. A page that asks `directory/0` instead gets the one
+  the configuration names, so development, a release started without EHOS and tests
+  answer without it:
+
+      # config/dev.exs
+      config :eh_os_contract_auth, people_directory: EhOsContract.Auth.People.Directory.Static
+
+      # anywhere
+      {:ok, %{people: people}} = EhOsContract.Auth.People.directory().list(q: "ad")
+
   Each request to EHOS reads at most 1 MiB and ends after ten seconds, as sign-in's do.
   A call makes at most two requests for the people and waits for at most two
   credentials, so it answers within about forty seconds when EHOS hangs, and at once
   when it refuses.
   """
 
+  @behaviour EhOsContract.Auth.People.Directory
+
   require Logger
 
+  alias EhOsContract.Auth.People.Directory.{Static, Unconfigured}
   alias EhOsContract.Auth.People.Person
   alias EhOsContract.Auth.SignIn.Http
   alias EhOsContract.Auth.Workload
@@ -73,6 +87,9 @@ defmodule EhOsContract.Auth.People do
   @max_q_bytes 2048
   # EHOS lists the invited and the joined to an application; the disabled only to a manager.
   @states ~w(invited joined)a
+  # `all/1`'s pages, EHOS's largest, and the people it reads at most by default.
+  @all_page 500
+  @all_max 10_000
   # The parameters EHOS's next page keeps from the request, which a cursor carries.
   @page_params ~w(q state limit after)
   # EHOS's ids are UUIDs: anything else is no one's, and is not sent.
@@ -106,6 +123,7 @@ defmodule EhOsContract.Auth.People do
   Raises `ArgumentError` for an option it does not take, as documented in
   `t:list_option/0`.
   """
+  @impl true
   @spec list([list_option()]) ::
           {:ok, %{people: [Person.t()], next: String.t() | nil}} | {:error, reason()}
   def list(opts \\ []) do
@@ -119,6 +137,7 @@ defmodule EhOsContract.Auth.People do
   end
 
   @doc "The person `id` names, a disabled one included."
+  @impl true
   @spec get(String.t(), [{:server, GenServer.server()}]) ::
           {:ok, Person.t()} | {:error, reason()}
   def get(id, opts \\ []) when is_binary(id) do
@@ -133,6 +152,117 @@ defmodule EhOsContract.Auth.People do
     else
       {:error, reason} -> {:error, reason}
       _other -> {:error, :unavailable}
+    end
+  end
+
+  @doc """
+  The `EhOsContract.Auth.People.Directory` a page asks, read at each call:
+  `config :eh_os_contract_auth, people_directory:` when it is set. Otherwise this module
+  when the workload is configured (`workload:`, or `people:`), and
+  `EhOsContract.Auth.People.Directory.Unconfigured` when it is not, so a release
+  started without EHOS's credentials answers `:unavailable` rather than failing to start.
+
+      # config/runtime.exs: nothing to choose; EHOS's credentials choose it
+      if client_id = System.get_env("EHOS_CLIENT_ID") do
+        config :eh_os_contract_auth, workload: [client_id: client_id, client_key_file: ...]
+      end
+
+  Raises `ArgumentError` when it names `EhOsContract.Auth.People.Directory.Static` or `EhOsContract.Auth.Testing.People` while `workload:` (or `people:`) is
+  configured, which is a release answering for EHOS, and when `people_directory:` names anything
+  but a module that implements
+  `EhOsContract.Auth.People.Directory`.
+  """
+  @spec directory() :: module()
+  def directory do
+    ehos? =
+      Application.get_env(:eh_os_contract_auth, :workload) != nil or
+        Application.get_env(:eh_os_contract_auth, :people) != nil
+
+    module =
+      case Application.get_env(:eh_os_contract_auth, :people_directory) do
+        nil ->
+          if ehos?, do: __MODULE__, else: Unconfigured
+
+        module when is_atom(module) and module not in [true, false] ->
+          if Code.ensure_loaded?(module) and
+               Enum.all?([list: 1, get: 1], fn {f, a} -> function_exported?(module, f, a) end),
+             do: module,
+             else:
+               raise(
+                 ArgumentError,
+                 "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, " <>
+                   "which does not implement EhOsContract.Auth.People.Directory"
+               )
+
+        other ->
+          raise ArgumentError,
+                "config :eh_os_contract_auth, people_directory: takes a module, not #{inspect(other)}"
+      end
+
+    # A stand-in where EHOS's credentials are configured is a release answering for EHOS: a
+    # list of people no one is, or "invited" for nobody.
+    if ehos? and module in [Static, EhOsContract.Auth.Testing.People] do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, a stand-in for " <>
+              "development or tests, where `workload:` (or `people:`) is configured too"
+    end
+
+    module
+  end
+
+  @doc """
+  Every person `directory/0` lists, page after page, in the order of their email. Takes
+  `q:` and `state:` as `list/1` does, and `max:`, the most people it reads, 10,000 by
+  default: a company with more answers `{:error, :too_many}`, never a list cut short.
+  `directory:` asks another `EhOsContract.Auth.People.Directory`.
+
+      {:ok, people} = EhOsContract.Auth.People.all(state: :joined)
+
+  Fails with the reason of the page that failed, and with `:unavailable` when a page
+  answers no one and still names a next one, or names the page just read, which would
+  read for ever. Raises `ArgumentError` for an option it does not take.
+
+  It reads the pages one after another, up to 21 with the default `max:`, each a call
+  of `list/1`: when EHOS hangs, a call waits as `list/1` documents, so ask it outside a
+  request a person waits on.
+  """
+  @spec all([
+          {:q, String.t()}
+          | {:state, :invited | :joined | [:invited | :joined]}
+          | {:max, pos_integer()}
+          | {:directory, module()}
+        ]) :: {:ok, [Person.t()]} | {:error, reason() | :too_many}
+  def all(opts \\ []) do
+    {directory, opts} = Keyword.pop_lazy(opts, :directory, &directory/0)
+    {max, opts} = Keyword.pop(opts, :max, @all_max)
+
+    unless is_integer(max) and max > 0 and Keyword.keys(opts) -- [:q, :state] == [] do
+      raise ArgumentError, "all/1 takes q:, state:, max: (a positive integer) and directory:"
+    end
+
+    pages(directory, [{:limit, @all_page} | opts], max, [], 0)
+  end
+
+  defp pages(directory, opts, max, read, count) do
+    with {:ok, %{people: people, next: next}} <- directory.list(opts) do
+      count = count + length(people)
+      read = [people | read]
+
+      cond do
+        count > max ->
+          {:error, :too_many}
+
+        is_nil(next) ->
+          {:ok, read |> Enum.reverse() |> Enum.concat()}
+
+        # Neither moves the count towards `max`, so either would read for ever.
+        people == [] or next == opts[:after] ->
+          Logger.warning("#{inspect(directory)} answered a page that leads nowhere")
+          {:error, :unavailable}
+
+        true ->
+          pages(directory, [after: next], max, read, count)
+      end
     end
   end
 
@@ -167,6 +297,16 @@ defmodule EhOsContract.Auth.People do
   defp unexpected(what) do
     Logger.warning("EHOS's people API answered #{what}")
     {:error, :unavailable}
+  end
+
+  # The options `list/1` takes, or `ArgumentError` as it raises it: also how
+  # `EhOsContract.Auth.People.Directory.Static` holds a host's call to what EHOS takes, so
+  # development fails where a release would.
+  @doc false
+  @spec list_options!([list_option()]) :: :ok
+  def list_options!(opts) do
+    opts |> Keyword.delete(:server) |> query!()
+    :ok
   end
 
   # A cursor is a value a page may have handed a browser: what it carries is held to the same
