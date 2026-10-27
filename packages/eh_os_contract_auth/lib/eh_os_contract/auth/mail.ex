@@ -55,6 +55,12 @@ defmodule EhOsContract.Auth.Mail do
       bytes, which this module encodes; with `inline: true` and a `content_id`, an image
       the HTML shows as `<img src="cid:…">`. At most 20, 10 MB together.
 
+  **Trying a call again.** `idempotency_key:` names the call, with 1 to 255 visible
+  ASCII characters, such as a new `Ecto.UUID.generate()` for each message. Keep it with
+  the message, and after `:outcome_unknown` call again with the same key and the same
+  message: for 24 hours EHOS sends nothing again for it and answers what the first call
+  sent. EHOS 0.22.0 or later reads it; an earlier one ignores it and sends again.
+
   An option this module does not take, a value of the wrong type, or a string that is
   not UTF-8 raises `ArgumentError` before EHOS is asked, naming the option and never its
   value. What EHOS checks of the content, the limits above included, comes back as
@@ -78,6 +84,11 @@ defmodule EhOsContract.Auth.Mail do
     * `:rate_limited`: EHOS's limit on calls a minute, or on the token endpoint;
     * `:too_many_messages`: the application has sent the messages it may send today;
     * `:mail_disabled`: the installation sends no mail;
+    * `:idempotency_key_reused`: the key named another message in the last 24 hours;
+    * `:idempotency_key_in_progress`: the call that used the key first is still sending;
+      call again shortly;
+    * `:idempotency_key_abandoned`: the call that used the key first never ended, and
+      EHOS does not know which of its messages were sent. A new key sends them all again;
     * `:unavailable`: nothing was sent, and the call may be made again: there is no
       credential, EHOS's name does not resolve, the connection was refused, its address
       is not https, or EHOS answered a refusal it never gives.
@@ -85,16 +96,17 @@ defmodule EhOsContract.Auth.Mail do
   **`:outcome_unknown`** is the one error after which some messages may have been sent:
   any other failure of the transport, a timeout even while connecting, a failed TLS
   handshake and an unreachable host included, since the client cannot tell them from one
-  after EHOS took the call; EHOS failing (a 5xx); or a 200 with what it never writes. EHOS sends each recipient's message before
-  it answers and takes no idempotency key, so a call made again may send a message twice.
-  Retry only where a second message does no harm.
+  after EHOS took the call; EHOS failing (a 5xx); or a 200 with what it never writes. EHOS
+  sends each recipient's message before it answers, so a call made again without its
+  `idempotency_key:` may send a message twice: retry it with the same key.
 
   Each reason in `reasons` is EHOS's sentence, naming the value it is about, such as
   `"to[1]: …"`.
 
   A call is never retried but once with a new credential when EHOS refuses the one it
   sent, before it sends anything. Retrying is the application's choice: after
-  `:unavailable` nothing was sent, after `:outcome_unknown` something may have been.
+  `:unavailable` nothing was sent, after `:outcome_unknown` something may have been, and
+  the same `idempotency_key:` sends it once.
   Both attempts share two minutes and a half, EHOS's two for the relay and a margin, and each may first wait up to twelve seconds for a credential: a
   call answers within three minutes. It never raises or exits for what EHOS does, the
   process not running included.
@@ -137,7 +149,10 @@ defmodule EhOsContract.Auth.Mail do
   @refusals %{
     {403, "not_agreed"} => :not_agreed,
     {429, "too_many_messages"} => :too_many_messages,
-    {503, "mail_disabled"} => :mail_disabled
+    {503, "mail_disabled"} => :mail_disabled,
+    {422, "idempotency_key_reused"} => :idempotency_key_reused,
+    {409, "idempotency_key_in_progress"} => :idempotency_key_in_progress,
+    {409, "idempotency_key_abandoned"} => :idempotency_key_abandoned
   }
 
   @typedoc "A recipient: a person in EHOS's directory by id, or, at `external`, an address."
@@ -161,6 +176,9 @@ defmodule EhOsContract.Auth.Mail do
           | :rate_limited
           | :too_many_messages
           | :mail_disabled
+          | :idempotency_key_reused
+          | :idempotency_key_in_progress
+          | :idempotency_key_abandoned
           | :unavailable
           | :outcome_unknown
 
@@ -175,6 +193,7 @@ defmodule EhOsContract.Auth.Mail do
           | {:in_reply_to, [String.t()]}
           | {:references, [String.t()]}
           | {:attachments, [attachment()]}
+          | {:idempotency_key, String.t()}
           | {:server, GenServer.server()}
 
   @doc """
@@ -187,7 +206,16 @@ defmodule EhOsContract.Auth.Mail do
     body = message |> message!() |> Jason.encode_to_iodata!()
     server = Keyword.get(message, :server, Workload)
 
-    case Workload.request(server, :post, "/api/v1/mail", body, @deadline, shared: true) do
+    headers =
+      case Keyword.get(message, :idempotency_key) do
+        nil -> []
+        key -> [{"idempotency-key", key}]
+      end
+
+    case Workload.request(server, :post, "/api/v1/mail", body, @deadline,
+           shared: true,
+           headers: headers
+         ) do
       {:ok, {200, _headers, body}} ->
         results(body)
 
@@ -240,7 +268,18 @@ defmodule EhOsContract.Auth.Mail do
     keys = Keyword.keys(message)
     if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
 
-    message |> Keyword.delete(:server) |> body!()
+    key!(Keyword.get(message, :idempotency_key))
+    message |> Keyword.drop([:server, :idempotency_key]) |> body!()
+  end
+
+  # What EHOS takes as a key: 1 to 255 visible ASCII characters, as given.
+  defp key!(nil), do: :ok
+
+  defp key!(key) do
+    unless is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/,
+      do: bad!("idempotency_key: as 1 to 255 visible ASCII characters")
+
+    :ok
   end
 
   defp body!(message) do
@@ -317,7 +356,7 @@ defmodule EhOsContract.Auth.Mail do
   defp bad!(what) do
     raise ArgumentError,
           "deliver/1 takes #{what}: to: (recipients), subject:, text:, and optionally html:, " <>
-            "verify_html:, reply_to:, in_reply_to:, references: and attachments:"
+            "verify_html:, reply_to:, in_reply_to:, references:, attachments: and idempotency_key:"
   end
 
   ## The answer

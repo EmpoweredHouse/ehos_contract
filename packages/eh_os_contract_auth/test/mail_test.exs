@@ -31,7 +31,9 @@ defmodule EhOsContract.Auth.MailTest do
     )
 
     {:ok, ehos} =
-      Agent.start_link(fn -> %{answer: :sent, tokens: [], bodies: [], expired_once: false} end)
+      Agent.start_link(fn ->
+        %{answer: :sent, tokens: [], bodies: [], keys: [], expired_once: false}
+      end)
 
     %{ehos: ehos, dir: dir, key_file: key_file}
   end
@@ -99,7 +101,13 @@ defmodule EhOsContract.Auth.MailTest do
 
       true ->
         assert ["application/json" <> _] = Plug.Conn.get_req_header(conn, "content-type")
-        Agent.update(ehos, &%{&1 | bodies: &1.bodies ++ [Jason.decode!(body)]})
+        keys = Plug.Conn.get_req_header(conn, "idempotency-key")
+
+        Agent.update(
+          ehos,
+          &%{&1 | bodies: &1.bodies ++ [Jason.decode!(body)], keys: &1.keys ++ [keys]}
+        )
+
         mail(conn, state.answer, Jason.decode!(body))
     end
   end
@@ -256,6 +264,20 @@ defmodule EhOsContract.Auth.MailTest do
       refute Map.has_key?(without, "verify_html")
     end
 
+    test "sends idempotency_key: as EHOS's Idempotency-Key, the same on the retry after a 401",
+         %{ehos: ehos} do
+      server = start!(ehos)
+      message = [server: server, to: [{:person, @ada}], subject: "s", text: "t"]
+
+      assert {:ok, _} = Mail.deliver(message)
+      set(ehos, %{answer: :expired})
+      assert {:ok, _} = Mail.deliver([idempotency_key: "k-1"] ++ message)
+
+      assert ehos(ehos, :keys) == [[], ["k-1"]]
+      # The key travels as a header, never in the body.
+      refute Enum.any?(ehos(ehos, :bodies), &Map.has_key?(&1, "idempotency_key"))
+    end
+
     test "refuses, before asking EHOS, what is not a message", %{ehos: ehos} do
       server = start!(ehos)
       ok = [to: [{:person, @ada}], subject: "s", text: "t"]
@@ -283,7 +305,11 @@ defmodule EhOsContract.Auth.MailTest do
             [server: server] ++ ok,
             Keyword.put(ok, :to, [{:person, @ada} | {:address, "secret@example.org"}]),
             Keyword.put(ok, :references, ["<a@b>" | "<c@d>"]),
-            Keyword.put(ok, :attachments, [Map.put(file, :filename, <<0xE9>>)])
+            Keyword.put(ok, :attachments, [Map.put(file, :filename, <<0xE9>>)]),
+            Keyword.put(ok, :idempotency_key, ""),
+            Keyword.put(ok, :idempotency_key, "a b"),
+            Keyword.put(ok, :idempotency_key, String.duplicate("k", 256)),
+            Keyword.put(ok, :idempotency_key, :k)
           ] do
         assert_raise ArgumentError, fn -> Mail.deliver([server: server] ++ message) end
       end
@@ -318,6 +344,9 @@ defmodule EhOsContract.Auth.MailTest do
             {{429, "too_many_calls"}, :rate_limited},
             {{429, "too_many_messages"}, :too_many_messages},
             {{503, "mail_disabled"}, :mail_disabled},
+            {{422, "idempotency_key_reused"}, :idempotency_key_reused},
+            {{409, "idempotency_key_in_progress"}, :idempotency_key_in_progress},
+            {{409, "idempotency_key_abandoned"}, :idempotency_key_abandoned},
             {413, {:invalid, ["the message is larger than EHOS reads"]}},
             {400, {:invalid, ["the message holds text EHOS does not take"]}}
           ] do

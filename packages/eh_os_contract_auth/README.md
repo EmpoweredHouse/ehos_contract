@@ -540,7 +540,8 @@ The configuration and the child are `EhOsContract.Auth.Workload`'s, as for
     text: "Open it at https://office.example.org/d/42.",
     html: ~s(<p>Open it <a href="https://office.example.org/d/42">here</a>.</p>),
     reply_to: {:address, "t-42@reply.office.example.org"},
-    attachments: [%{filename: "approval.pdf", content_type: "application/pdf", content: pdf}]
+    attachments: [%{filename: "approval.pdf", content_type: "application/pdf", content: pdf}],
+    idempotency_key: key                         # kept with the message, the same on a retry
   )
 # [%EhOsContract.Auth.Mail.Result{to: {:person, "6f1c…"}, sent?: true,
 #   message_id: "<…@office.example.org>", relay_response: "2.0.0 OK …", reason: nil}]
@@ -570,15 +571,21 @@ A call that sends nothing says why, and one that may have sent some says so:
 | `:rate_limited` | EHOS's limits: 60 credentials a minute, 60 calls a minute |
 | `:too_many_messages` | The application has sent the 1000 messages it may send today |
 | `:mail_disabled` | The installation sends no mail |
+| `:idempotency_key_reused` | The `idempotency_key:` named another message in the last 24 hours |
+| `:idempotency_key_in_progress` | The call that used the key first is still sending; call again shortly |
+| `:idempotency_key_abandoned` | The call that used the key first never ended, and EHOS does not know which of its messages went; a new key sends them all again |
 | `:unavailable` | Nothing was sent: no credential, EHOS's name does not resolve, the connection was refused, its address is not https, or a refusal EHOS never gives. Safe to try again |
 | `:outcome_unknown` | Some messages may have been sent: any other failure of the transport, a timeout even while connecting, a failed TLS handshake and an unreachable host included; EHOS failed (a 5xx); or it answered 200 with what it never writes |
 
 An option `deliver/1` does not take, or a string that is not UTF-8, raises `ArgumentError` before
 EHOS is asked, naming the option and never its value. A call is retried only once, with a new
 credential when EHOS refuses the one it sent, before anything is sent, and answers within three
-minutes. EHOS sends each recipient's message before it answers and takes no idempotency key, so
-after `:outcome_unknown` a call made again may mail someone twice: retry it only where that does no
-harm, and retry `:unavailable` freely. EHOS
+minutes. EHOS sends each recipient's message before it answers, so after `:outcome_unknown` a call
+made again may mail someone twice, unless it carries the same `idempotency_key:`: 1 to 255 visible
+ASCII characters, such as a new `Ecto.UUID.generate()` for each message, kept with it. For 24 hours
+EHOS sends nothing again for a key and answers what its first call sent (EHOS 0.22.0 or later; an
+earlier one ignores the key). Retry `:outcome_unknown` with the same key, and `:unavailable`
+freely. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
 which it reads itself.
 
