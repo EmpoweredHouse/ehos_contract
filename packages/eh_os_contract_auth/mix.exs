@@ -179,7 +179,10 @@ defmodule EhOsContract.Auth.MixProject do
       {:yamerl, "~> 0.10.0", runtime: false},
       {:jsv, "~> 0.25.0", runtime: false},
       # The manifest's property: every key of any valid ehos.yaml comes through unchanged.
-      {:stream_data, "~> 1.1", only: :test}
+      {:stream_data, "~> 1.1", only: :test},
+      # Holds every implementation of `People.Directory` and `Grants.Granter` but EHOS's to the
+      # callbacks' types, as a host's Hammox mock would (#475). Never a dependency of a host.
+      {:hammox, "~> 0.7", only: :test}
     ]
   end
 end

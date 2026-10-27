@@ -773,7 +773,9 @@ stub_grants({:error, :beyond_rule})
 
 What a test says holds for it and the processes it starts, a LiveView's included, and for no other
 test, so tests stay `async: true`. A host on Mox or Hammox can `defmock` the two behaviours instead
-and `stub_with/2` them with `Static` and `Local`.
+and `stub_with/2` them with `Static` and `Local`. The callbacks are typed with `People`'s and
+`Grants`' own types, so a Hammox mock refuses an answer EHOS never gives, such as
+`{:error, :timeout}`; this package's tests hold every implementation it ships to those types.
 
 ## Where the keys come from, and what to configure at integration
 
