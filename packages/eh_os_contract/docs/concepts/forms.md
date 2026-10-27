@@ -154,7 +154,7 @@ def handle_event("save", %{"issue_invoice" => params}, socket) do
       {:noreply, assign(socket, :form, to_form(changeset))}
 
     {:error, reason} ->
-      changeset = EhOsContract.Form.refused(changeset, reason, at: [issued_once: :period])
+      changeset = EhOsContract.Form.refused(changeset, reason)
       {:noreply, assign(socket, :form, to_form(changeset))}
   end
 end
@@ -196,12 +196,20 @@ end
   integer, a boolean, a decimal, a date or a timestamp. A field left blank (`""`, or only spaces) is
   absent: a required one is an error, an optional one is nil. A select's text is found among an enum's
   members, and an unknown one is an error; no atom is created from it.
-- **Rows, as `inputs_for` sends them.** A list arrives as a map keyed by the rows' indices, and is read
-  in their order. In this version a domain value with fields, or a list of them, is checked whole: a
-  problem anywhere inside it is an error at the field that holds it.
-- **Not a field the host supplies** (`supplied_by: :host`), which `EhOsContract.Supplier` gives at
-  dispatch; **not an identity dispatch generates** for a unit the command creates; and **not the
-  identity in `data:`**, whatever the params say about it.
+- **Rows, as a form sends them.** A list arrives as a map keyed by the rows' indices, and is read in
+  their order; a blank item, which a checkbox group sends when nothing is chosen, is dropped. In this
+  version a domain value with fields, or a list of them, is checked whole: a problem anywhere inside it
+  is an error at the field that holds it. Phoenix's `inputs_for` needs an embedded schema, which this
+  version does not build, so a list's inputs are named by hand (`issue_invoice[lines][0][title]`).
+- **Timestamps with their offset.** A `:timestamp` is read from ISO 8601 text with its offset,
+  `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends neither seconds nor an offset, which
+  is not a timestamp: the page adds them, or the field is a `:date`.
+- **Not a field the host supplies** (`supplied_by: :host`): the page fills it in `data:`, or passes
+  `supply: true` to `dispatch/3`, which then asks the `EhOsContract.Supplier`. **Not an identity
+  dispatch generates** for a unit the command creates. And **not the identity in `data:`**, whatever
+  the params say about it, nor shown back from them. Only the identity is held so; another field in
+  `data:` is a starting value the person may change. Holding the form to its unit is not access:
+  who may act on which unit is the `EhOsContract.Authorizer`'s and the host's to say.
 
 ## The errors
 
@@ -214,6 +222,13 @@ Each error carries the engine's reason in its keyword list:
 | `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name` |
 | `{"does not exist", validation: :unknown}` | Dispatch found no entity the field names (`refused/3`) |
 | `{"was refused", validation: :rejected, invariant: name}` | Dispatch refused on the unit's invariant or the command's constraint `name`, at the field `at:` names, or at `:base` (`refused/3`) |
+| `{"is invalid", validation: :generated \| :supplied}` | The command carried a field dispatch generates or the host supplies (`refused/3`): the page's mistake, never the person's |
+
+A rule names no field, so a rejection goes on `:base`, the whole form's, unless the page names the field
+it is about: `refused(changeset, reason, at: [period_closed: :period])`. A problem at a field the form
+never sent, the identity in `data:` or a field the host supplies, also goes on `:base`, with `field:`
+naming it, so it is never shown at an input that is not there. A command with a field named `base`
+shares that key with the whole form's errors.
 
 Any other refusal, a capability the person lacks, an idempotency key used for another command, the
 host failing to supply a field, puts no error on the changeset: none of them is a field's, and the page

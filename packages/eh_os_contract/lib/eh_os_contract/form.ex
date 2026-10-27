@@ -37,7 +37,8 @@ defmodule EhOsContract.Form do
 
   **Each problem is an error at its field**, with the engine's reason in its keyword
   list, so the application writes its own words for it (with `Ecto.Changeset.traverse_errors/2`
-  or its error helper), in its client's language. The engine writes none:
+  or its error helper), in its client's language. The engine writes no words of its own
+  beyond Ecto's stock messages:
 
     * a field that is missing: `{"can't be blank", validation: :required}`;
     * a value not of its type: `{"is invalid", validation: :type}`;
@@ -45,18 +46,24 @@ defmodule EhOsContract.Form do
       `{"is invalid", validation: :invariant, invariant: :positive}`.
 
   A domain value with fields, or a list of them, is checked whole in this version: a
-  problem anywhere inside it is an error at the field that holds it.
+  problem anywhere inside it is an error at the field that holds it. Phoenix's
+  `inputs_for` needs an embedded schema, which this version does not build, so a list's
+  inputs are named by hand (`issue_invoice[lines][0][title]`).
 
   **What it does not take from the params:**
 
-    * a field the host supplies (`supplied_by: :host`), which `EhOsContract.Supplier` gives
-      at dispatch;
+    * a field the host supplies (`supplied_by: :host`): the page fills it in `data:`, or
+      passes `supply: true` to `EhOsContract.dispatch/3`, which then asks the
+      `EhOsContract.Supplier`;
     * the identity of a unit the command creates, when the unit's identity is
       `generated: :uuid`, which dispatch gives;
     * the identity of the unit the form edits: the page puts it in `data:`, and a value
       the params carry for it is ignored, so a person cannot point the form at another
-      unit. When `data:` holds none, as on a form that creates a unit under an identity
-      the person types, it is read from the params like any other field.
+      unit through the form. Only the identity is held so: any other field `data:` gives
+      is a value the params may change. Holding the form to its unit is not access: who
+      may act on which unit is the `EhOsContract.Authorizer`'s and the host's to say. When
+      `data:` holds none, as on a form that creates a unit under an identity the person
+      types, it is read from the params like any other field.
 
   What the form has that the command does not, a search box or a picker's query, stays
   the application's: put it in another changeset, or read it from the params yourself.
@@ -66,7 +73,8 @@ defmodule EhOsContract.Form do
   above the fields.
 
   The changeset's data is the command's struct, so `Phoenix.HTML.FormData` names the form
-  after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`.
+  after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`. An error
+  that is the whole form's is at `:base`, which a command with a field named `base` shares.
 
   The rule behind it, from both sides, and a LiveView page that uses it:
   [Forms](forms.md) (`docs/concepts/forms.md` in the package).
