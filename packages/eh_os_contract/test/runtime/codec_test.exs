@@ -207,6 +207,21 @@ defmodule EhOsContract.CodecTest do
       assert {:ok, %{tasks: []}} = form(Map.put(@sent, "tasks", %{}))
     end
 
+    test "leaves text too long for an integer unparsed, and a row index past nine digits" do
+      digits = String.duplicate("9", 2_000_000)
+
+      assert form(%{@sent | "amount" => digits}) == {:error, [amount: :type]}
+
+      assert Codec.decode([%{name: :n, type: :integer}], %{"n" => digits}, @values, strings: true) ==
+               {:error, [n: :type]}
+
+      assert form(Map.put(@sent, "tasks", %{digits => %{"title" => "VAT"}})) ==
+               {:error, [tasks: :type]}
+
+      assert form(Map.put(@sent, "tasks", %{"1" => %{"title" => "A"}, "01" => %{"title" => "B"}})) ==
+               {:error, [tasks: :type]}
+    end
+
     test "ignores the keys a form adds that the declaration does not name" do
       assert {:ok, %{note: nil}} =
                form(Map.merge(@sent, %{"_unused_note" => "", "_target" => "x"}))

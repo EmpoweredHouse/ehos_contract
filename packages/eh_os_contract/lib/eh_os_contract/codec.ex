@@ -56,6 +56,10 @@ defmodule EhOsContract.Codec do
   # The longest plain form of a decimal within those bounds: a thousand digits and a
   # thousand zeros, a sign and a point.
   @max_decimal_text 2002
+  # The longest 64-bit integer as text, `-9223372036854775808`.
+  @max_integer_text 20
+  # The longest row index a form's list is read with: a billion rows is no form's.
+  @max_row_index_text 9
   @years 1..9999
 
   @typedoc "A declared field, as a model carries it."
@@ -556,19 +560,25 @@ defmodule EhOsContract.Codec do
   defp from_form(_type, value, _values), do: value
 
   # `inputs_for`'s rows, `%{"0" => row, "1" => row}`, in the order of their indices. A map
-  # with any other key is not a list of rows, and is left to fail as one.
+  # with any other key, an index past nine digits, or two keys for one row (`"1"`, `"01"`)
+  # is not a list of rows, and is left to fail as one.
   defp rows(map) do
     indexed =
       Enum.reduce_while(map, [], fn {key, row}, acc ->
-        case key |> to_string() |> Integer.parse() do
-          {index, ""} when index >= 0 -> {:cont, [{index, row} | acc]}
+        with key when byte_size(key) <= @max_row_index_text <- to_string(key),
+             {index, ""} when index >= 0 <- Integer.parse(key) do
+          {:cont, [{index, row} | acc]}
+        else
           _other -> {:halt, :error}
         end
       end)
 
-    case indexed do
-      :error -> :error
-      indexed -> {:ok, indexed |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+    with indexed when is_list(indexed) <- indexed,
+         sorted = Enum.sort_by(indexed, &elem(&1, 0)),
+         true <- length(Enum.dedup_by(sorted, &elem(&1, 0))) == length(sorted) do
+      {:ok, Enum.map(sorted, &elem(&1, 1))}
+    else
+      _not_rows -> :error
     end
   end
 
@@ -603,6 +613,11 @@ defmodule EhOsContract.Codec do
 
   defp from_text(type, value, values) when is_binary(value) do
     case base(type, values) do
+      # Past the twenty characters of the longest 64-bit integer, the text is left as text and
+      # fails as one: parsing a million digits first costs a second, and more raises.
+      :integer when byte_size(value) > @max_integer_text ->
+        value
+
       :integer ->
         case Integer.parse(value) do
           {integer, ""} -> integer
