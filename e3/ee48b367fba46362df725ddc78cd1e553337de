@@ -1,0 +1,23 @@
+Two reviews ran in parallel on `origin/main..HEAD` before the fixes: one for correctness, one for security and performance. Both read the diff by hand, not through `/code-review`, which would have reviewed another worktree.
+
+**Fixed**, each in its own commit with a test that fails on the old code (checked by restoring the old file and seeing only that test fail):
+
+- Production configured to use a stand-in. `granter: Grants.Local` slipping from `config/dev.exs` into `config/config.exs` made a release tell a person someone was invited when nobody was (security, medium). `granter/0` and `directory/0` now raise when they name a stand-in while `sign_in:` or `workload:` is configured. The `Testing` stand-ins also need `pin_keys: true`, as the sign-in stand-in already does. The guard's shape was approved by the user before the fix.
+- `People.all/1` could read for ever. A page with no one and a `next` cursor, or one naming the page just read, never moved the count towards `max:` (both reviews). It now answers `:unavailable`, and the doc states how long the pages can take.
+- `Static` answered where EHOS's raises (correctness, medium): `state: :disabled`, `limit: 1000` or a malformed `after:` worked in development and raised in a release. `Static` now runs `People.list/1`'s own checks.
+  - Ids are read in lower case, and emails are ordered regardless of case.
+  - A person with a `state` or `name` of another type is refused.
+  - The refusal names the keys given, never the person's values (security, low).
+- `Local` granted a role that is not `<application>.<name>` and revoked an id that is no one's (both reviews). It now answers `:unknown_role` and `:not_found`, with the checks shared from `Grants`.
+- `granter: false`, a misspelled module, or a module of the other behaviour passed the config check and failed later at the page. The choice now raises unless the module implements the behaviour.
+- `stub_people({:error})` was accepted, and every later call crashed far from it. A stub must now be a list or `{:error, atom}`.
+- Docs:
+  - the `Testing` moduledoc read ambiguously once the stand-ins were added;
+  - a stub made in `setup_all` is not seen;
+  - `Local`'s id is a pseudonym, not anonymous;
+  - `Grants` called through `Granter` uses the default sign-in.
+
+**No change needed**
+
+- `Testing.stubbed!/2` copies each `$callers` process dictionary (security, low). It runs in tests only, now that the stand-ins require `pin_keys: true`, and reading one key needs OTP 26.2.
+- `Local`'s id carries no per-boot secret (security, low). A salt would change every id at each restart and break a development database. The doc now says the id is a pseudonym.
