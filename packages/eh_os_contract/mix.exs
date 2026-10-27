@@ -275,8 +275,9 @@ defmodule EhOsContract.MixProject do
       # inherited: a package whose dependency is satisfied only because a neighbour
       # happens to need it breaks when the neighbour goes. At least 3.2: before 3.0
       # `Decimal.new/1` took any exponent (CVE-2026-32686), which a caller's text reaches
-      # through `Decimal.cast/1`, and the codec reads text as Decimal 3 parses it; 3.2 fixes
-      # `Decimal.round/3`'s unbounded allocation (EEF-CVE-2026-97853, #416).
+      # through `Decimal.cast/1`, and the codec reads text as Decimal 3 parses it. 3.1.2 fixed
+      # `Decimal.round/3`'s unbounded allocation (EEF-CVE-2026-97853, #416); 3.2 is the
+      # release the repository's locks hold.
       {:decimal, "~> 3.2"},
       # `EhOsContract.Plug` serves the model's commands, recordings and queries over
       # HTTP. Optional: a host without Plug does not get it, and the module compiles
