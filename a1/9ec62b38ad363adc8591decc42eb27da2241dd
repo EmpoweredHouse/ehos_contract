@@ -1,0 +1,32 @@
+Two reviews ran in parallel on `origin/main..HEAD` (phases 1–3 and 6) before the fixes: one for correctness, one for security and performance. Both read the diff by hand, not through `/code-review`, which would have reviewed another worktree. Neither found anything that breaks dispatch or the gate.
+
+**Fixed**, each in its own commit with a test that fails on the old code (checked by restoring the old file and seeing only that test fail):
+
+- **Unbounded integer parsing (security, medium).** `Integer.parse` grows superlinearly and raises past about 1.3M digits. Form mode reached it at every depth and in `inputs_for`'s row keys, so one hostile `phx-change` could cost seconds or crash the LiveView.
+  - Integer text past 20 characters is now left as text and fails as `:type`, for `strings: true` too.
+  - A row index past nine digits, or two keys naming one row, is not a list of rows.
+- **A supplied field made the page's own example fail with no error shown (correctness, medium).** Dispatch without `supply: true` refuses a missing supplied field, and `refused/3` put that at a field with no input, so the person pressing the button saw nothing.
+  - A problem at a field the form never sent now goes on `:base` with `field:`.
+  - The docs say the page fills a supplied field in `data:` or passes `supply: true`.
+- **Blank list items (correctness).** A checkbox group's blank item was read as nil, so the field could never be valid. It is now dropped. A non-text value is now trimmed.
+- **A tampered identity was shown back (security, low).** The changeset no longer keeps the params of fields it never reads.
+- **`data:` was unchecked (correctness, low).** A value of the wrong type, a generated identity, or part of a two-field identity now raises `ArgumentError`, naming the fields and never their values.
+- **Docs:**
+  - `inputs_for` needs an embedded schema, which comes in phase 4;
+  - `datetime-local` sends no offset;
+  - `data:` holds the identity alone, and holding the form to its unit is not access;
+  - `:generated`/`:supplied` are added to the table, and `:base` is shared with a field named `base`;
+  - the example's "already issued" goes on `:base`;
+  - the wording of "the engine writes none";
+  - the changelog's blank line.
+
+**No change needed:**
+
+- Reading one field at a time is equivalent to dispatch's whole-command decode. The sibling fields matter only to open a sealed personal field, and the form passes no opener.
+- No atom is created from input: an enum's text is matched against its declared members, and values enter through `change/2`, not `cast`.
+- `refused/3` leaks nothing about a capability, a supplier or an idempotency key onto the form.
+
+**Skipped:**
+
+- **No cap on the number of rows (security, low).** The work is linear in the input, and bounded by the host's parser and socket limits.
+- **Duplicate row indices with leading zeros.** These are now refused as not rows, as part of the bounds fix.
