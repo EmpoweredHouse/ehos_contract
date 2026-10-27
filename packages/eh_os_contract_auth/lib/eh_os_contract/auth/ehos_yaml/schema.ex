@@ -6,8 +6,9 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # an application's `.ehos/`, `ehos.yaml/v2` (sign-in) as read on 2 October, `ehos.yaml/v3` (the
   # company's people) on 8 October, `ehos.yaml/v4` (a seed and secrets) on 17 October,
   # `ehos.yaml/v5` (the hosts outside the installation it reaches) on 22 October, before EHOS
-  # released it, and `ehos.yaml/v6` (mail sent through EHOS) on 24 October 2026, as EHOS 0.20.0
-  # releases it. A test pins each SHA-256;
+  # released it, `ehos.yaml/v6` (mail sent through EHOS) on 24 October, as EHOS 0.20.0
+  # releases it, and `ehos.yaml/v7` (the CPU and memory a workload asks for) on 27 October 2026,
+  # as EHOS 0.21.0 released it. A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #
@@ -22,7 +23,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     "ehos.yaml/v3" => "v3.json",
     "ehos.yaml/v4" => "v4.json",
     "ehos.yaml/v5" => "v5.json",
-    "ehos.yaml/v6" => "v6.json"
+    "ehos.yaml/v6" => "v6.json",
+    "ehos.yaml/v7" => "v7.json"
   }
   @dir Path.expand("../../../../priv/schemas/ehos.yaml", __DIR__)
 
