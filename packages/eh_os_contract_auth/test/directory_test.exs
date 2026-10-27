@@ -258,6 +258,13 @@ defmodule EhOsContract.Auth.DirectoryTest do
       assert Testing.People.get(@ada.id) == {:error, :not_agreed}
     end
 
+    test "a stub that no call could answer is refused when it is made" do
+      for stub <- [{:error}, {:error, :a, :b}, {:error, "unavailable"}] do
+        assert_raise FunctionClauseError, fn -> stub_people(stub) end
+        assert_raise FunctionClauseError, fn -> stub_grants(stub) end
+      end
+    end
+
     test "what a test says reaches the processes it starts, and no other" do
       stub_people([@ada])
 

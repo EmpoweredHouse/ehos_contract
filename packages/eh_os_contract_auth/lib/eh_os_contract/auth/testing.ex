@@ -288,7 +288,9 @@ defmodule EhOsContract.Auth.Testing do
   """
   @spec stub_people([map()] | {:error, EhOsContract.Auth.People.reason()}) :: :ok
   def stub_people(people)
-      when is_list(people) or (is_tuple(people) and elem(people, 0) == :error) do
+      when is_list(people) or
+             (is_tuple(people) and tuple_size(people) == 2 and elem(people, 0) == :error and
+                is_atom(elem(people, 1))) do
     Process.put({__MODULE__, :people}, people)
     :ok
   end
@@ -302,7 +304,9 @@ defmodule EhOsContract.Auth.Testing do
   """
   @spec stub_grants(:made | {:error, EhOsContract.Auth.Grants.reason()}) :: :ok
   def stub_grants(answer)
-      when answer == :made or (is_tuple(answer) and elem(answer, 0) == :error) do
+      when answer == :made or
+             (is_tuple(answer) and tuple_size(answer) == 2 and elem(answer, 0) == :error and
+                is_atom(elem(answer, 1))) do
     Process.put({__MODULE__, :grants}, answer)
     :ok
   end
