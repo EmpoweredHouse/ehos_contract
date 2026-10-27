@@ -1,0 +1,20 @@
+One review, for correctness, security and the supply chain together. The change is four lock lines, two requirements and two tests, so the security-and-performance pass and the correctness pass had the same few lines to read. It was read by hand from `git diff origin/main..HEAD`. The advisories were checked against OSV, and the decimal releases against hex.pm.
+
+**Checked and found sound:**
+
+- **Lock diffs.** Only `decimal` (3.1.1 → 3.2.0) and `jose` (1.11.12 → 1.11.13) move. The checksums are the same across the locks, and nothing else changes.
+- **Requirements.** Every requirement in every lock admits them:
+  - ecto and ecto_sql `~> 3.0`;
+  - postgrex `… or ~> 3.0`;
+  - jason and jsv `… or ~> 3.0`;
+  - joken `~> 1.11.12`;
+  - oidcc `~> 1.11`.
+- **Advisory facts.** The eight jose advisories are fixed in 1.11.13. CVE-2026-32686 is fixed in decimal 3.0.0. No `Decimal.round/3` call exists in `lib/`.
+- **Breaking.** It holds by `CLAUDE.md`'s definition, since a host with an older lock has to run `mix deps.update`.
+
+**Fixed:**
+
+- The `mix.exs` comment said 3.2 fixed `Decimal.round/3`'s allocation; OSV says 3.1.2 did (low). The comment is corrected. The requirement stays `~> 3.2`, the release the locks hold, which shuts out only a host held at exactly 3.1.2.
+- The new `### Security` blocks came before `Added` and `Changed`. They now come last, as in Keep a Changelog and the repository's earlier entries.
+
+**No change needed:** dropping Decimal 2 changes nothing a host could resolve. `ecto_sql ~> 3.14` already pulls `decimal ~> 3.0`.
