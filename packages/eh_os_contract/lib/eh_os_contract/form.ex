@@ -102,17 +102,22 @@ defmodule EhOsContract.Form do
       #=> [amount: {"is invalid", [validation: :invariant, invariant: :positive]}]
 
   Raises `ArgumentError` when `contract` is not a contract or `command` is not one of its
-  commands, and when `data:` names a field the command does not have.
+  commands, and when `data:` names a field the command does not have, holds a value not of
+  its field's type, holds an identity dispatch generates, or holds part of an identity of
+  several fields: the page's mistakes, which dispatch would refuse at a field the person
+  never sees.
   """
   @spec changeset(module(), module(), map(), keyword()) :: t()
   def changeset(contract, command, params, opts \\ []) when is_map(params) do
     model = contract!(contract)
     declaration = command!(model, command)
-    data = data!(command, Keyword.get(opts, :data, %{}))
+    given = Keyword.get(opts, :data, %{})
+    data = data!(command, given)
     values = Codec.values(model.domain)
 
     excluded = excluded(model, declaration)
     fixed = for field <- identity(model, declaration), Map.get(data, field) != nil, do: field
+    data_fits!(model, declaration, given, values, excluded, fixed)
     cast = Enum.reject(declaration.fields, &(&1.name in excluded or &1.name in fixed))
     types = Map.new(declaration.fields, &{&1.name, ecto_type(&1.type, values)})
 
@@ -304,6 +309,33 @@ defmodule EhOsContract.Form do
               "data: names #{inspect(unknown)}, which #{inspect(command)} does not have"
     end
   end
+
+  # The page's data, held to what dispatch will hold the command to, so its mistakes fail
+  # here, by the field's name and never its value, rather than as a refusal at a field the
+  # person has no input for.
+  defp data_fits!(model, declaration, given, values, excluded, fixed) do
+    identity = identity(model, declaration)
+    present = for {name, value} <- given, value != nil, do: name
+
+    generated = Enum.filter(identity, &(&1 in excluded and &1 in present))
+    if generated != [], do: bad_data!(generated, "an identity dispatch generates")
+
+    if fixed != [] and fixed != identity,
+      do: bad_data!(identity -- fixed, "the rest of an identity of several fields")
+
+    fields = Enum.filter(declaration.fields, &(&1.name in present))
+
+    case Codec.problems(fields, Map.new(given), values, model.domain) do
+      [] ->
+        :ok
+
+      problems ->
+        bad_data!(Keyword.keys(problems), "a value its field's type and invariants allow")
+    end
+  end
+
+  defp bad_data!(fields, what),
+    do: raise(ArgumentError, "data: needs #{what}, for #{inspect(fields)}")
 
   defp contract!(contract) do
     case Model.fetch(contract) do

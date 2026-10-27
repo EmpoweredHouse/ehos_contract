@@ -220,6 +220,26 @@ defmodule EhOsContract.FormTest do
       end
     end
 
+    test "data: holding what dispatch would refuse at a field the person never sees" do
+      assert_raise ArgumentError, ~r/a value its field's type.*\[:invoice_id\]/, fn ->
+        changeset(@sent, data: %{invoice_id: 42})
+      end
+
+      assert_raise ArgumentError, ~r/an identity dispatch generates.*\[:entry_id\]/, fn ->
+        Form.changeset(BoundaryRig.Waitlist, BoundaryRig.Waitlist.Commands.JoinWaitlist, %{},
+          data: %{entry_id: "e-1"}
+        )
+      end
+
+      assert_raise ArgumentError,
+                   ~r/the rest of an identity of several fields.*\[:shift_id\]/,
+                   fn ->
+                     Form.changeset(ValueRig.Till, ValueRig.Till.Commands.OpenDrawer, %{},
+                       data: %{till_id: "t-1"}
+                     )
+                   end
+    end
+
     test "data: naming a field the command does not have" do
       assert_raise ArgumentError, ~r/data: names \[:customer\]/, fn ->
         changeset(@sent, data: %{customer: "x"})
