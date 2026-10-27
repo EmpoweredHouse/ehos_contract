@@ -222,6 +222,26 @@ defmodule EhOsContract.CodecTest do
                {:error, [tasks: :type]}
     end
 
+    test "drops a list's blank items, as a checkbox group sends to say nothing was chosen" do
+      fields = [%{name: :codes, type: {:list, {:enum, [:a, :b]}}, optional: true}]
+
+      assert Codec.decode(fields, %{"codes" => [""]}, @values, form: true) == {:ok, %{codes: []}}
+
+      assert Codec.decode(fields, %{"codes" => ["", "a", " "]}, @values, form: true) ==
+               {:ok, %{codes: [:a]}}
+    end
+
+    test "trims the spaces around a value that is not text, and keeps text as typed" do
+      assert {:ok, %{visit_id: "w-1", amount: 42, method: :cash, note: " a note "}} =
+               form(%{
+                 @sent
+                 | "visit_id" => " w-1 ",
+                   "amount" => " 42 ",
+                   "method" => "cash ",
+                   "note" => " a note "
+               })
+    end
+
     test "ignores the keys a form adds that the declaration does not name" do
       assert {:ok, %{note: nil}} =
                form(Map.merge(@sent, %{"_unused_note" => "", "_target" => "x"}))

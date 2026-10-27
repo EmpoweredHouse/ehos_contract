@@ -509,10 +509,17 @@ defmodule EhOsContract.Codec do
     end)
   end
 
-  # What a form sends, in the shape JSON would carry it: blank as absent, and a list of
-  # rows from its indices. The text in it stays text, for `from_text/3`.
-  defp from_form(_type, value, _values) when is_binary(value) do
-    if String.trim(value) == "", do: nil, else: value
+  # What a form sends, in the shape JSON would carry it: blank as absent, the spaces around
+  # a value that is not text gone, and a list of rows from its indices. The text in it stays
+  # text, for `from_text/3`.
+  defp from_form(type, value, values) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    cond do
+      trimmed == "" -> nil
+      base(type, values) == :string -> value
+      true -> trimmed
+    end
   end
 
   defp from_form({:list, inner}, value, values) when is_map(value) and not is_struct(value) do
@@ -522,8 +529,13 @@ defmodule EhOsContract.Codec do
     end
   end
 
-  defp from_form({:list, inner}, value, values) when is_list(value),
-    do: Enum.map(value, &from_form(inner, &1, values))
+  # A blank item is dropped, not read as absent: a checkbox group or a multiple select sends
+  # an empty one so that choosing nothing still sends the field.
+  defp from_form({:list, inner}, value, values) when is_list(value) do
+    value
+    |> Enum.reject(&(is_binary(&1) and String.trim(&1) == ""))
+    |> Enum.map(&from_form(inner, &1, values))
+  end
 
   defp from_form(type, value, values)
        when is_atom(type) and is_map_key(values, type) and is_map(value) and
