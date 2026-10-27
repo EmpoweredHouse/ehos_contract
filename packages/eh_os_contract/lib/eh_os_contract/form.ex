@@ -162,7 +162,9 @@ defmodule EhOsContract.Form do
 
     * `{:invalid, problems}`: each problem at its field, as `changeset/4` puts its own,
       and an entity the host does not have (`:unknown`, a company id that names no
-      company) as `{"does not exist", validation: :unknown}`;
+      company) as `{"does not exist", validation: :unknown}`. A problem at a field the
+      form never sent, the identity in `data:` or a field the host supplies, goes on
+      `:base` with `field:` naming it, so it is never shown at an input that is not there;
     * an `EhOsContract.Rejection`, a rule of the unit or a constraint of the command that
       refused it: `{"was refused", validation: :rejected, invariant: name}`, at the field
       `at:` names for the rule, or at `:base`, the whole form's, when it names none. A
@@ -191,22 +193,29 @@ defmodule EhOsContract.Form do
     at = at!(command, Keyword.get(opts, :at, []))
 
     reason
-    |> refusal_errors(at)
+    |> refusal_errors(at, Map.keys(changeset.params || %{}))
     |> Enum.reduce(%{changeset | action: :insert}, fn {field, {message, keys}}, changeset ->
       Ecto.Changeset.add_error(changeset, field, message, keys)
     end)
   end
 
-  defp refusal_errors({:invalid, problems}, _at) when is_list(problems),
-    do: for({field, problem} <- Enum.reverse(problems), do: {field, error(problem)})
+  defp refusal_errors({:invalid, problems}, _at, sent) when is_list(problems) do
+    for {field, problem} <- Enum.reverse(problems) do
+      {message, keys} = error(problem)
 
-  defp refusal_errors(%Rejection{invariant: name}, at),
+      if Atom.to_string(field) in sent,
+        do: {field, {message, keys}},
+        else: {@form_error, {message, keys ++ [field: field]}}
+    end
+  end
+
+  defp refusal_errors(%Rejection{invariant: name}, at, _sent),
     do: [
       {Keyword.get(at, name, @form_error),
        {"was refused", validation: :rejected, invariant: name}}
     ]
 
-  defp refusal_errors(_not_a_field, _at), do: []
+  defp refusal_errors(_not_a_field, _at, _sent), do: []
 
   defp at!(command, at) do
     known = command |> struct() |> Map.keys()

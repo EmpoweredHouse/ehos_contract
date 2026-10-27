@@ -168,8 +168,25 @@ defmodule EhOsContract.FormTest do
 
       assert changeset.errors == [
                period: {"is invalid", [validation: :invariant, invariant: :written_as_month]},
-               invoice_id: {"does not exist", [validation: :unknown]},
+               base: {"does not exist", [validation: :unknown, field: :invoice_id]},
                lines: {"is invalid", [validation: :type]}
+             ]
+    end
+
+    test "puts a problem at a field the form never sent on the whole form, naming the field" do
+      changeset =
+        Form.changeset(
+          SupplyRig.Desk,
+          SupplyRig.Desk.Commands.CloseVisit,
+          %{"code" => "A1"},
+          data: %{visit_id: "v-1"}
+        )
+        |> Form.refused({:invalid, [reported: :required, visit_id: :unknown, code: :unknown]})
+
+      assert changeset.errors == [
+               base: {"can't be blank", [validation: :required, field: :reported]},
+               base: {"does not exist", [validation: :unknown, field: :visit_id]},
+               code: {"does not exist", [validation: :unknown]}
              ]
     end
 
