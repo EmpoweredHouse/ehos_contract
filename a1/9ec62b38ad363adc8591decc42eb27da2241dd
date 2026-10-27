@@ -29,4 +29,3 @@ Two reviews ran in parallel on `origin/main..HEAD` (phases 1–3 and 6) before t
 **Skipped:**
 
 - **No cap on the number of rows (security, low).** The work is linear in the input, and bounded by the host's parser and socket limits.
-- **Duplicate row indices with leading zeros.** These are now refused as not rows, as part of the bounds fix.
