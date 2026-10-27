@@ -1,0 +1,1 @@
+Reviewed: a release's versions and changelog sections. The engine moves to 0.12.0 for its Breaking line (decimal), eh_os_contract_auth to 0.9.0 (Added, Breaking), eh_os_contract_web to 0.7.0 for the raised engine requirement; eh_os_contract_graph has no lines and stays at 0.8.1-dev. deps.get resolves in auth, web and sandbox; mix.lock unchanged.
