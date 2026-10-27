@@ -9,8 +9,9 @@ defmodule EhOsContract.Auth.Grants.Local do
   A grant answers an `EhOsContract.Auth.Grants.Grant` of a person invited, the role
   bound now and a link mailed. The person's id is a UUID derived from the email, the
   same for the same address in either case, and never the email itself, so an
-  application that keeps it keeps what it would keep from EHOS. A revocation answers the
-  binding it would have removed.
+  application that keeps it keeps what it would keep from EHOS. It is a pseudonym, not
+  anonymous: anyone who guesses the email can derive it, which is why it belongs to
+  development alone. A revocation answers the binding it would have removed.
 
   It takes the arguments `EhOsContract.Auth.Grants` takes, raises `ArgumentError` for the
   ones EHOS's would raise for, and refuses what EHOS refuses without a person's decision in

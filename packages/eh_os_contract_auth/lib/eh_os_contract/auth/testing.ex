@@ -67,9 +67,14 @@ defmodule EhOsContract.Auth.Testing do
   Like the test key, the two stand-ins answer only with `pin_keys: true`, and raise
   anywhere else.
 
-  All of them but the last two run in the test process and read and write through the
-  engine's repo, so they belong in a test that owns a sandbox connection, as any test of
-  the host's that dispatches does.
+  A stub is made in the test itself, or in a `setup` block, which runs in the test's
+  process; one made in `setup_all` runs in another process, which the test does not name
+  among its `$callers`, and is not seen.
+
+  `credential/3`, `sign_in/3`, `sign_out/1` and `assert_every_entry_refuses/3` run in the
+  test process and read and write through the engine's repo, so they belong in a test that
+  owns a sandbox connection, as any test of the host's that dispatches does.
+  `stub_people/1` and `stub_grants/1` touch no repo.
   """
 
   import ExUnit.Assertions

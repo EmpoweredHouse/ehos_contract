@@ -23,6 +23,11 @@ defmodule EhOsContract.Auth.Grants.Granter do
 
   An implementation of its own takes the arguments and answers the reasons
   `EhOsContract.Auth.Grants` documents.
+
+  Through this behaviour, `EhOsContract.Auth.Grants` takes its default options: the
+  sign-in named `EhOsContract.Auth.SignIn`, and the verification options the configuration
+  gives. A host whose sign-in child has another name calls `EhOsContract.Auth.Grants.grant/3`
+  and `revoke/4` with `sign_in:` instead.
   """
 
   alias EhOsContract.Auth.Grants
