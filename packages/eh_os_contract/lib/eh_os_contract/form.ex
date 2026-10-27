@@ -126,7 +126,9 @@ defmodule EhOsContract.Form do
 
     {data, types}
     |> Ecto.Changeset.change(changes)
-    |> Map.put(:params, stringified(params))
+    # What the form never reads is not kept either: `Phoenix.HTML.FormData` shows a field's
+    # params when it has no change, so a tampered identity would be shown for the real one.
+    |> Map.put(:params, Map.drop(stringified(params), Enum.map(excluded ++ fixed, &to_string/1)))
     |> then(fn changeset ->
       # `add_error/4` puts each in front, so the last field's goes in first.
       Enum.reduce(errors, changeset, fn {field, {message, keys}}, changeset ->

@@ -98,10 +98,11 @@ defmodule EhOsContract.FormTest do
   end
 
   describe "the identity" do
-    test "comes from data:, and a value the params carry for it is ignored" do
+    test "comes from data:, and a value the params carry for it is ignored, and not shown" do
       changeset = changeset(Map.put(@sent, "invoice_id", "i-other"))
 
       assert {:ok, %IssueInvoice{invoice_id: "i-1"}} = Form.to_command(changeset)
+      refute Map.has_key?(changeset.params, "invoice_id")
     end
 
     test "is read from the params when data: holds none, as any other field" do
