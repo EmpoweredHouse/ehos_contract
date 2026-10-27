@@ -582,8 +582,9 @@ harm, and retry `:unavailable` freely. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
 which it reads itself.
 
-In development, in a release without EHOS and in tests, the application asks
-`EhOsContract.Auth.Mail.sender/0` instead, which sends nothing there:
+The application asks `EhOsContract.Auth.Mail.sender/0` rather than `Mail` itself: it answers
+`Mail` where the workload is configured, and sends nothing in development, in a release without
+EHOS and in tests:
 [People, grants and mail where EHOS does not answer](#people-grants-and-mail-where-ehos-does-not-answer).
 
 ## A person granting a role

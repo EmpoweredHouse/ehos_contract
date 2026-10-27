@@ -62,13 +62,15 @@ defmodule EhOsContract.Auth.Testing do
   `EhOsContract.Auth.Grants.granter/0` answers every grant as made and
   `EhOsContract.Auth.Mail.sender/0` every message as taken, until a test says otherwise
   with `stub_people/1`, `stub_grants/1` or `stub_mail/1`. A message the application asks
-  to send comes to the test as `{:ehos_mail, message}`, for `assert_received`. What a test says holds for it and for
-  the processes it starts, a LiveView's and a task's, which name it among their
-  `$callers`, and for no other test, so the tests stay `async: true`. A host that uses
+  to send comes to the test as `{:ehos_mail, message}`, for `assert_received`.
+
+  What a test says holds for it and for the processes it starts, a LiveView's and a
+  task's, which name it among their `$callers`, and for no other test, so the tests stay
+  `async: true`. A host that uses
   Mox or Hammox can instead `defmock` the three behaviours and `stub_with/2` them with
   `EhOsContract.Auth.People.Directory.Static`, `EhOsContract.Auth.Grants.Local` and
-  `EhOsContract.Auth.Mail.Local`. Like the test key, the three stand-ins answer only with
-  `pin_keys: true`, and raise anywhere else.
+  `EhOsContract.Auth.Mail.Local`. Like the test key, the three `Testing` stand-ins answer
+  only with `pin_keys: true`, and raise anywhere else.
 
   A stub is made in the test itself, or in a `setup` block, which runs in the test's
   process; one made in `setup_all` runs in another process, which the test does not name
@@ -322,8 +324,10 @@ defmodule EhOsContract.Auth.Testing do
   @doc """
   What `EhOsContract.Auth.Testing.Mail` answers for this test: `:sent`, every message
   taken as `EhOsContract.Auth.Mail.Local` takes it, which is also what it answers when a
-  test says nothing; or `{:error, reason}`, which every call then answers, a reason
-  `EhOsContract.Auth.Mail` documents. Each message still comes to the test as
+  test says nothing; or `{:error, reason}`, which every call then answers: an atom, or
+  `{:beyond_agreement, reasons}` or `{:invalid, reasons}`. Stub a reason
+  `EhOsContract.Auth.Mail` documents: one it never answers is taken here, and only a
+  Hammox mock of `EhOsContract.Auth.Mail.Sender` refuses it. Each message still comes to the test as
   `{:ehos_mail, message}`.
 
       stub_mail({:error, :not_agreed})
