@@ -73,6 +73,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   scripts and forms. A host that puts a value it did not write into its HTML escapes it, and may
   pass `verify_html: true` as a backstop (#469).
 
+### Security
+
+- **Breaking:** `eh_os_contract_auth` names `jose` itself, `>= 1.11.13 and < 2.0.0`, which it reached
+  only through `joken` before: 1.11.13 fixes eight advisories against 1.11.12 (EEF-CVE-2026-65625 to
+  EEF-CVE-2026-65632), and this package verifies credentials with it. A host whose lock holds an older
+  `jose` runs `mix deps.update jose` (#471).
+
 ## [0.8.0] - 2026-10-26
 
 ### Added

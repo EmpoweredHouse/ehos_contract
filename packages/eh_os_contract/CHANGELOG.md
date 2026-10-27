@@ -55,6 +55,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - `docs/authorization.md` names `ehos.manifest/v8`, which `eh_os_contract_auth` writes for an `ehos.yaml/v7`
   that asks for the CPU and memory its workload needs (#453).
 
+### Security
+
+- **Breaking:** the engine requires `decimal` `~> 3.2`, no longer `~> 2.0 or ~> 3.0`. Before 3.0
+  `Decimal.new/1` took any exponent (CVE-2026-32686), which a caller's text for a `:decimal` field
+  reaches; 3.1.1 and earlier allocate without bound in `Decimal.round/3` (EEF-CVE-2026-97853), which
+  the engine never calls but a host may. A host whose lock holds an older `decimal` runs
+  `mix deps.update decimal` (#416).
+
 ## [0.11.0] - 2026-10-26
 
 ### Added
