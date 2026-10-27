@@ -582,6 +582,10 @@ harm, and retry `:unavailable` freely. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
 which it reads itself.
 
+In development, in a release without EHOS and in tests, the application asks
+`EhOsContract.Auth.Mail.sender/0` instead, which sends nothing there:
+[People, grants and mail where EHOS does not answer](#people-grants-and-mail-where-ehos-does-not-answer).
+
 ## A person granting a role
 
 An accountant names a client's representative on the application's page, and the representative is
@@ -611,21 +615,23 @@ signing in needs. It is made in the person's request, keeps no credential and re
 fails the page says so and the person asks again, which is safe. `docs/grants-api.md` in eh-os is the
 API it calls.
 
-## People and grants where EHOS does not answer
+## People, grants and mail where EHOS does not answer
 
 In development there is no EHOS to ask, a release started without EHOS's credentials should
-neither list people nor say it invited someone, and a test should not reach EHOS at all. So a page
-asks for whoever answers, `EhOsContract.Auth.People.directory/0` and
-`EhOsContract.Auth.Grants.granter/0`, rather than `People` and `Grants` themselves:
+neither list people nor say it invited someone or sent a message, and a test should not reach EHOS
+at all. So a page asks for whoever answers, `EhOsContract.Auth.People.directory/0`,
+`EhOsContract.Auth.Grants.granter/0` and `EhOsContract.Auth.Mail.sender/0`, rather than `People`,
+`Grants` and `Mail` themselves:
 
 ```elixir
 {:ok, %{people: people}} = EhOsContract.Auth.People.directory().list(q: "ad")
 EhOsContract.Auth.Grants.granter().grant(conn, email: email, role: "clinic.client")
 {:ok, everyone} = EhOsContract.Auth.People.all()   # every page, at most 10,000 people
+EhOsContract.Auth.Mail.sender().deliver(to: [{:person, id}], subject: subject, text: text)
 ```
 
 Each reads the configuration at the call. Without a choice it is EHOS's when `workload:` (for
-people) or `sign_in:` (for grants) is configured, and otherwise one that answers `:unavailable`,
+people and mail) or `sign_in:` (for grants) is configured, and otherwise one that answers `:unavailable`,
 which the page already says in words. `config/runtime.exs` then configures EHOS only when EHOS
 gave the credentials, and chooses nothing:
 
@@ -633,7 +639,8 @@ gave the credentials, and chooses nothing:
 # config/dev.exs
 config :eh_os_contract_auth,
   people_directory: EhOsContract.Auth.People.Directory.Static,
-  granter: EhOsContract.Auth.Grants.Local
+  granter: EhOsContract.Auth.Grants.Local,
+  mail_sender: EhOsContract.Auth.Mail.Local
 
 config :eh_os_contract_auth, EhOsContract.Auth.People.Directory.Static,
   people: [%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}]
@@ -641,7 +648,8 @@ config :eh_os_contract_auth, EhOsContract.Auth.People.Directory.Static,
 # config/test.exs
 config :eh_os_contract_auth,
   people_directory: EhOsContract.Auth.Testing.People,
-  granter: EhOsContract.Auth.Testing.Grants
+  granter: EhOsContract.Auth.Testing.Grants,
+  mail_sender: EhOsContract.Auth.Testing.Mail
 ```
 
 | Module | Answers |
@@ -654,15 +662,20 @@ config :eh_os_contract_auth,
 | `EhOsContract.Auth.Grants.Local` | Every grant made and mailed, the person's id derived from the email |
 | `EhOsContract.Auth.Grants.Unconfigured` | `:unavailable` |
 | `EhOsContract.Auth.Testing.Grants` | Every grant made, or what the test asked with `stub_grants/1` |
+| `EhOsContract.Auth.Mail` | EHOS's mail API |
+| `EhOsContract.Auth.Mail.Local` | Every message taken and none sent, logged without its recipients or content |
+| `EhOsContract.Auth.Mail.Unconfigured` | `:unavailable` |
+| `EhOsContract.Auth.Testing.Mail` | Every message taken, or what the test asked with `stub_mail/1`; each message to the test as `{:ehos_mail, message}` |
 
-Another answer of the host's own implements `EhOsContract.Auth.People.Directory` or
-`EhOsContract.Auth.Grants.Granter`.
+Another answer of the host's own implements `EhOsContract.Auth.People.Directory`,
+`EhOsContract.Auth.Grants.Granter` or `EhOsContract.Auth.Mail.Sender`.
 
 A stand-in never answers for EHOS in a release. `directory/0` raises when it names `Static` or
-`Testing.People` while `workload:` is configured, and `granter/0` when it names `Local` or
+`Testing.People` while `workload:` is configured, `sender/0` when it names `Mail.Local` or
+`Testing.Mail` while `workload:` is, and `granter/0` when it names `Grants.Local` or
 `Testing.Grants` while `sign_in:` is: a `config/dev.exs` line that slipped into `config/config.exs`
-fails at the first call instead of telling a person someone was invited. The two `Testing` stand-ins
-also need `pin_keys: true`, as `EhOsContract.Auth.Testing`'s credentials do.
+fails at the first call instead of telling a person someone was invited or a message sent. The
+`Testing` stand-ins also need `pin_keys: true`, as `EhOsContract.Auth.Testing`'s credentials do.
 
 ## Deciding, and recording every decision
 
@@ -769,18 +782,23 @@ names it and passes `sign_in: name`. The stand-in cannot renew: a test that move
 `EhOsContract.Clock` past the credential's ten minutes, or asks `Session.credential/3` for another
 application, gets `:ehos_unavailable`, and the plug answers 503.
 
-With the two stand-ins configured, a test says whom EHOS knows and what it answers:
+With the three stand-ins configured, a test says whom EHOS knows and what it answers, and sees the
+mail the application asked to send:
 
 ```elixir
 stub_people([%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}])
 stub_people({:error, :not_agreed})
 stub_grants({:error, :beyond_rule})
+stub_mail({:error, :not_agreed})
+
+assert_received {:ehos_mail, message}
+assert message[:to] == [{:person, "6f1c0a1e-0000-4000-8000-000000000001"}]
 ```
 
 What a test says holds for it and the processes it starts, a LiveView's included, and for no other
-test, so tests stay `async: true`. A host on Mox or Hammox can `defmock` the two behaviours instead
-and `stub_with/2` them with `Static` and `Local`. The callbacks are typed with `People`'s and
-`Grants`' own types, so a Hammox mock refuses an answer EHOS never gives, such as
+test, so tests stay `async: true`. A host on Mox or Hammox can `defmock` the three behaviours instead
+and `stub_with/2` them with `Static`, `Grants.Local` and `Mail.Local`. The callbacks are typed with
+`People`'s, `Grants`' and `Mail`'s own types, so a Hammox mock refuses an answer EHOS never gives, such as
 `{:error, :timeout}`; this package's tests hold every implementation it ships to those types.
 
 ## Where the keys come from, and what to configure at integration

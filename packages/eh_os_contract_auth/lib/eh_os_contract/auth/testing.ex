@@ -55,17 +55,20 @@ defmodule EhOsContract.Auth.Testing do
       # config/test.exs
       config :eh_os_contract_auth,
         people_directory: EhOsContract.Auth.Testing.People,
-        granter: EhOsContract.Auth.Testing.Grants
+        granter: EhOsContract.Auth.Testing.Grants,
+        mail_sender: EhOsContract.Auth.Testing.Mail
 
-  `EhOsContract.Auth.People.directory/0` lists nobody and
-  `EhOsContract.Auth.Grants.granter/0` answers every grant as made, until a test says
-  otherwise with `stub_people/1` or `stub_grants/1`. What a test says holds for it and for
+  `EhOsContract.Auth.People.directory/0` lists nobody,
+  `EhOsContract.Auth.Grants.granter/0` answers every grant as made and
+  `EhOsContract.Auth.Mail.sender/0` every message as taken, until a test says otherwise
+  with `stub_people/1`, `stub_grants/1` or `stub_mail/1`. A message the application asks
+  to send comes to the test as `{:ehos_mail, message}`, for `assert_received`. What a test says holds for it and for
   the processes it starts, a LiveView's and a task's, which name it among their
   `$callers`, and for no other test, so the tests stay `async: true`. A host that uses
-  Mox or Hammox can instead `defmock` the two behaviours and `stub_with/2` them with
-  `EhOsContract.Auth.People.Directory.Static` and `EhOsContract.Auth.Grants.Local`.
-  Like the test key, the two stand-ins answer only with `pin_keys: true`, and raise
-  anywhere else.
+  Mox or Hammox can instead `defmock` the three behaviours and `stub_with/2` them with
+  `EhOsContract.Auth.People.Directory.Static`, `EhOsContract.Auth.Grants.Local` and
+  `EhOsContract.Auth.Mail.Local`. Like the test key, the three stand-ins answer only with
+  `pin_keys: true`, and raise anywhere else.
 
   A stub is made in the test itself, or in a `setup` block, which runs in the test's
   process; one made in `setup_all` runs in another process, which the test does not name
@@ -74,7 +77,7 @@ defmodule EhOsContract.Auth.Testing do
   `credential/3`, `sign_in/3`, `sign_out/1` and `assert_every_entry_refuses/3` run in the
   test process and read and write through the engine's repo, so they belong in a test that
   owns a sandbox connection, as any test of the host's that dispatches does.
-  `stub_people/1` and `stub_grants/1` touch no repo.
+  `stub_people/1`, `stub_grants/1` and `stub_mail/1` touch no repo.
   """
 
   import ExUnit.Assertions
@@ -87,7 +90,7 @@ defmodule EhOsContract.Auth.Testing do
 
   @doc """
   Imports `credential/3`, `sign_in/3`, `sign_out/1`, `assert_every_entry_refuses/3`,
-  `stub_people/1` and `stub_grants/1`.
+  `stub_people/1`, `stub_grants/1` and `stub_mail/1`.
   """
   defmacro __using__(_opts) do
     quote do
@@ -316,15 +319,43 @@ defmodule EhOsContract.Auth.Testing do
     :ok
   end
 
+  @doc """
+  What `EhOsContract.Auth.Testing.Mail` answers for this test: `:sent`, every message
+  taken as `EhOsContract.Auth.Mail.Local` takes it, which is also what it answers when a
+  test says nothing; or `{:error, reason}`, which every call then answers, a reason
+  `EhOsContract.Auth.Mail` documents. Each message still comes to the test as
+  `{:ehos_mail, message}`.
+
+      stub_mail({:error, :not_agreed})
+      stub_mail({:error, {:beyond_agreement, ["to[0]: not a person of this company"]}})
+  """
+  @spec stub_mail(:sent | {:error, EhOsContract.Auth.Mail.reason()}) :: :ok
+  def stub_mail(answer)
+      when answer == :sent or
+             (is_tuple(answer) and tuple_size(answer) == 2 and elem(answer, 0) == :error and
+                (is_atom(elem(answer, 1)) or
+                   (is_tuple(elem(answer, 1)) and tuple_size(elem(answer, 1)) == 2 and
+                      elem(elem(answer, 1), 0) in [:beyond_agreement, :invalid] and
+                      is_list(elem(elem(answer, 1), 1))))) do
+    Process.put({__MODULE__, :mail}, answer)
+    :ok
+  end
+
+  # The test's process: the first of the `$callers` chain, which started the rest, or this
+  # one when it started none.
+  @doc false
+  @spec test_process() :: pid()
+  def test_process, do: List.last(Process.get(:"$callers", [])) || self()
+
   # What a test stubbed under `name`: in this process, or in the first of its `$callers`
   # that stubbed it, a LiveView's or a task's test. Only where test keys may be pinned, as
   # the sign-in stand-in: anywhere else a stand-in would answer for EHOS.
   @doc false
-  @spec stubbed!(:people | :grants, term()) :: term()
+  @spec stubbed!(:people | :grants | :mail, term()) :: term()
   def stubbed!(name, default) do
     unless Keys.test_trust?() do
       raise ArgumentError,
-            "EhOsContract.Auth.Testing.People and .Grants are for tests only. Set config " <>
+            "EhOsContract.Auth.Testing.People, .Grants and .Mail are for tests only. Set config " <>
               ":eh_os_contract_auth, pin_keys: true in config/test.exs"
     end
 

@@ -26,6 +26,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **Mail where EHOS does not answer** (#477), as #475 did for people and grants: the behaviour
+  `EhOsContract.Auth.Mail.Sender`, which `Mail` implements; `Mail.sender/0`, which reads
+  `config :eh_os_contract_auth, mail_sender:` at each call and otherwise chooses EHOS's when
+  `workload:` is configured and `Mail.Unconfigured`, answering `:unavailable`, when not;
+  `Mail.Local`, which sends nothing and answers every message as taken, for development; and
+  `Testing.Mail` with `stub_mail/1`, which tells a host's test each message as
+  `{:ehos_mail, message}`. `sender/0` raises when it names `Mail.Local` or `Testing.Mail` while
+  `workload:` is configured, and `Testing.Mail` needs `pin_keys: true`.
+
 - **People and grants where EHOS does not answer** (#475): the behaviours
   `EhOsContract.Auth.People.Directory` and `EhOsContract.Auth.Grants.Granter`, which `People` and
   `Grants` implement; `People.directory/0` and `Grants.granter/0`, which read
