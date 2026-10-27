@@ -24,6 +24,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Security
+
+- **Breaking:** `eh_os_contract_auth` names `jose` itself, `>= 1.11.13 and < 2.0.0`, which it reached
+  only through `joken` before: 1.11.13 fixes eight advisories against 1.11.12 (EEF-CVE-2026-65625 to
+  EEF-CVE-2026-65632), and this package verifies credentials with it. A host whose lock holds an older
+  `jose` runs `mix deps.update jose` (#471).
+
 ### Added
 
 - **Mail where EHOS does not answer** (#477), as #475 did for people and grants: the behaviour

@@ -28,6 +28,10 @@ defmodule EhOsContract.PackageTest do
     assert package[:links]["GitHub"]
   end
 
+  test "decimal is held past the releases with advisories against them (#416)", %{config: config} do
+    assert {:decimal, "~> 3.2"} in config[:deps]
+  end
+
   test "the licence travels with the package, not only as metadata", %{config: _} do
     # A package published from a subdirectory does not pick up the repository's
     # licence file. `licenses: ["Apache-2.0"]` is a claim; this is the text.

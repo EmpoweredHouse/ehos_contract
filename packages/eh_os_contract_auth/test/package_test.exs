@@ -8,9 +8,13 @@ defmodule EhOsContract.Auth.PackageTest do
   test "what the package calls directly is declared, not inherited through the engine" do
     declared = Mix.Project.config()[:deps] |> Enum.map(&elem(&1, 0))
 
-    for dep <- [:jason, :ecto_sql, :postgrex, :joken, :req, :yamerl, :jsv] do
+    for dep <- [:jason, :ecto_sql, :postgrex, :joken, :jose, :req, :yamerl, :jsv] do
       assert dep in declared, "#{dep} is called here directly and must be a direct dependency"
     end
+  end
+
+  test "jose is held past the release with advisories against it (#471)" do
+    assert {:jose, ">= 1.11.13 and < 2.0.0"} in Mix.Project.config()[:deps]
   end
 
   test "yamerl is held to the minor version whose tokens and nodes the reader matches" do

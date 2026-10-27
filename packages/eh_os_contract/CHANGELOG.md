@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Security
+
+- **Breaking:** the engine requires `decimal` `~> 3.2`, no longer `~> 2.0 or ~> 3.0`. Before 3.0
+  `Decimal.new/1` took any exponent (CVE-2026-32686), which a caller's text for a `:decimal` field
+  reaches; 3.1.1 and earlier allocate without bound in `Decimal.round/3` (EEF-CVE-2026-97853), which
+  the engine never calls but a host may. A host whose lock holds an older `decimal` runs
+  `mix deps.update decimal` (#416).
+
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in

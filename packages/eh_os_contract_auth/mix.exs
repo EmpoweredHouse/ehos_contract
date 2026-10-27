@@ -151,6 +151,9 @@ defmodule EhOsContract.Auth.MixProject do
       # Not `joken_jwks`, which refreshes only on an unknown key and keeps its keys
       # only in memory, both of which EHOS's design rules out.
       {:joken, "~> 2.7"},
+      # Named, not only inherited through Joken: the package calls JOSE itself, and 1.11.13
+      # fixes eight advisories against 1.11.12 (EEF-CVE-2026-65625 to -65632, #471).
+      {:jose, ">= 1.11.13 and < 2.0.0"},
       # The key set is fetched over HTTP, by the small fetcher EHOS's design chose.
       {:req, "~> 0.7"},
       # Req's HTTP client, at least the release past three advisories, since
