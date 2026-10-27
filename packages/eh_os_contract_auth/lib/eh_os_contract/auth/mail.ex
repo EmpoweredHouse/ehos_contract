@@ -268,13 +268,15 @@ defmodule EhOsContract.Auth.Mail do
     keys = Keyword.keys(message)
     if length(keys) != length(Enum.uniq(keys)), do: bad!("each option once")
 
-    key!(Keyword.get(message, :idempotency_key))
+    # A key given as nil is a key the host lost, not none: sent without it, a retry could mail
+    # someone twice.
+    if Keyword.has_key?(message, :idempotency_key),
+      do: key!(Keyword.fetch!(message, :idempotency_key))
+
     message |> Keyword.drop([:server, :idempotency_key]) |> body!()
   end
 
   # What EHOS takes as a key: 1 to 255 visible ASCII characters, as given.
-  defp key!(nil), do: :ok
-
   defp key!(key) do
     unless is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/,
       do: bad!("idempotency_key: as 1 to 255 visible ASCII characters")

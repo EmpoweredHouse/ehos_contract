@@ -32,7 +32,14 @@ defmodule EhOsContract.Auth.MailTest do
 
     {:ok, ehos} =
       Agent.start_link(fn ->
-        %{answer: :sent, tokens: [], bodies: [], keys: [], expired_once: false}
+        %{
+          answer: :sent,
+          tokens: [],
+          bodies: [],
+          keys: [],
+          refused_keys: nil,
+          expired_once: false
+        }
       end)
 
     %{ehos: ehos, dir: dir, key_file: key_file}
@@ -77,7 +84,11 @@ defmodule EhOsContract.Auth.MailTest do
 
     cond do
       state.answer == :expired and not state.expired_once ->
-        set(ehos, %{expired_once: true})
+        set(ehos, %{
+          expired_once: true,
+          refused_keys: Plug.Conn.get_req_header(conn, "idempotency-key")
+        })
+
         answer(conn, 401, %{"error" => "unauthorized"})
 
       # As EHOS's parser answers, before the route, in Phoenix's own shape.
@@ -274,6 +285,7 @@ defmodule EhOsContract.Auth.MailTest do
       assert {:ok, _} = Mail.deliver([idempotency_key: "k-1"] ++ message)
 
       assert ehos(ehos, :keys) == [[], ["k-1"]]
+      assert ehos(ehos, :refused_keys) == ["k-1"]
       # The key travels as a header, never in the body.
       refute Enum.any?(ehos(ehos, :bodies), &Map.has_key?(&1, "idempotency_key"))
     end
@@ -309,7 +321,8 @@ defmodule EhOsContract.Auth.MailTest do
             Keyword.put(ok, :idempotency_key, ""),
             Keyword.put(ok, :idempotency_key, "a b"),
             Keyword.put(ok, :idempotency_key, String.duplicate("k", 256)),
-            Keyword.put(ok, :idempotency_key, :k)
+            Keyword.put(ok, :idempotency_key, :k),
+            Keyword.put(ok, :idempotency_key, nil)
           ] do
         assert_raise ArgumentError, fn -> Mail.deliver([server: server] ++ message) end
       end
@@ -318,7 +331,11 @@ defmodule EhOsContract.Auth.MailTest do
 
       # A string JSON cannot carry is refused by its option's name: its value, a body or an
       # address, never reaches the message, nor a crash report.
-      for {key, value} <- [text: "caf" <> <<0xE9>> <> " secret", to: [{:address, <<0xE9>>}]] do
+      for {key, value} <- [
+            text: "caf" <> <<0xE9>> <> " secret",
+            to: [{:address, <<0xE9>>}],
+            idempotency_key: "a secret key"
+          ] do
         error =
           assert_raise ArgumentError, fn ->
             Mail.deliver([server: server] ++ Keyword.put(ok, key, value))
