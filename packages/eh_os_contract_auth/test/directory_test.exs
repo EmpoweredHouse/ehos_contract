@@ -63,12 +63,42 @@ defmodule EhOsContract.Auth.DirectoryTest do
     end
 
     test "the configured one over either, read at each call" do
-      Application.put_env(:eh_os_contract_auth, :workload, client_id: "x")
       Application.put_env(:eh_os_contract_auth, :people_directory, Static)
       Application.put_env(:eh_os_contract_auth, :granter, Local)
-
       assert People.directory() == Static
       assert Grants.granter() == Local
+
+      Application.put_env(:eh_os_contract_auth, :workload, client_id: "x")
+      Application.put_env(:eh_os_contract_auth, :sign_in, client_id: "x")
+      Application.put_env(:eh_os_contract_auth, :people_directory, Unconfigured)
+      Application.put_env(:eh_os_contract_auth, :granter, Grants.Unconfigured)
+      assert People.directory() == Unconfigured
+      assert Grants.granter() == Grants.Unconfigured
+    end
+
+    test "a stand-in where EHOS's credentials are configured raises, as a release answering for EHOS" do
+      Application.put_env(:eh_os_contract_auth, :workload, client_id: "x")
+      Application.put_env(:eh_os_contract_auth, :sign_in, client_id: "x")
+
+      for directory <- [Static, Testing.People] do
+        Application.put_env(:eh_os_contract_auth, :people_directory, directory)
+        assert_raise ArgumentError, ~r/a stand-in for development or tests/, &People.directory/0
+      end
+
+      for granter <- [Local, Testing.Grants] do
+        Application.put_env(:eh_os_contract_auth, :granter, granter)
+        assert_raise ArgumentError, ~r/a stand-in for development or tests/, &Grants.granter/0
+      end
+    end
+
+    test "the tests' stand-ins answer only where test keys may be pinned" do
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+
+      assert_raise ArgumentError, ~r/for tests only/, fn -> Testing.People.list() end
+
+      assert_raise ArgumentError, ~r/for tests only/, fn ->
+        Testing.Grants.grant(%{}, email: "a@b.c", role: "x.y")
+      end
     end
 
     test "anything but a module raises" do

@@ -98,7 +98,7 @@ defmodule EhOsContract.Auth.Grants do
 
   require Logger
 
-  alias EhOsContract.Auth.Grants.{Grant, Unconfigured}
+  alias EhOsContract.Auth.Grants.{Grant, Local, Unconfigured}
   alias EhOsContract.Auth.{Session, SignIn}
   alias EhOsContract.Auth.SignIn.{ClientKey, Http, Renewal}
 
@@ -216,32 +216,45 @@ defmodule EhOsContract.Auth.Grants do
   is not, so a release started without EHOS's credentials answers `:unavailable` and never
   says it invited.
 
-  Raises `ArgumentError` when `granter:` names anything but a module that implements
+  Raises `ArgumentError` when it names `EhOsContract.Auth.Grants.Local` or `EhOsContract.Auth.Testing.Grants` while `sign_in:` is
+  configured, which is a release answering for EHOS, and when `granter:` names anything
+  but a module that implements
   `EhOsContract.Auth.Grants.Granter`.
   """
   @spec granter() :: module()
   def granter do
-    case Application.get_env(:eh_os_contract_auth, :granter) do
-      nil ->
-        if Application.get_env(:eh_os_contract_auth, :sign_in),
-          do: __MODULE__,
-          else: Unconfigured
+    ehos? = Application.get_env(:eh_os_contract_auth, :sign_in) != nil
 
-      module when is_atom(module) and module not in [true, false] ->
-        if Code.ensure_loaded?(module) and
-             Enum.all?([grant: 2, revoke: 3], fn {f, a} -> function_exported?(module, f, a) end),
-           do: module,
-           else:
-             raise(
-               ArgumentError,
-               "config :eh_os_contract_auth, granter: names #{inspect(module)}, " <>
-                 "which does not implement EhOsContract.Auth.Grants.Granter"
-             )
+    module =
+      case Application.get_env(:eh_os_contract_auth, :granter) do
+        nil ->
+          if ehos?, do: __MODULE__, else: Unconfigured
 
-      other ->
-        raise ArgumentError,
-              "config :eh_os_contract_auth, granter: takes a module, not #{inspect(other)}"
+        module when is_atom(module) and module not in [true, false] ->
+          if Code.ensure_loaded?(module) and
+               Enum.all?([grant: 2, revoke: 3], fn {f, a} -> function_exported?(module, f, a) end),
+             do: module,
+             else:
+               raise(
+                 ArgumentError,
+                 "config :eh_os_contract_auth, granter: names #{inspect(module)}, " <>
+                   "which does not implement EhOsContract.Auth.Grants.Granter"
+               )
+
+        other ->
+          raise ArgumentError,
+                "config :eh_os_contract_auth, granter: takes a module, not #{inspect(other)}"
+      end
+
+    # A stand-in where EHOS's credentials are configured is a release answering for EHOS: a
+    # list of people no one is, or "invited" for nobody.
+    if ehos? and module in [Local, EhOsContract.Auth.Testing.Grants] do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, granter: names #{inspect(module)}, a stand-in for " <>
+              "development or tests, where `sign_in:` is configured too"
     end
+
+    module
   end
 
   # What EHOS would refuse without being asked: an id that is no one's, a role that is not

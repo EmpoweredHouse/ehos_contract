@@ -20,7 +20,7 @@ defmodule EhOsContract.Auth.Testing.People do
   @spec list([People.list_option()]) ::
           {:ok, %{people: [Person.t()], next: nil}} | {:error, People.reason()}
   def list(opts \\ []) do
-    case Testing.stubbed(:people, []) do
+    case Testing.stubbed!(:people, []) do
       {:error, reason} -> {:error, reason}
       people -> Static.list(opts, people)
     end
@@ -30,7 +30,7 @@ defmodule EhOsContract.Auth.Testing.People do
   @doc "The test's person `id` names."
   @spec get(String.t()) :: {:ok, Person.t()} | {:error, People.reason()}
   def get(id) do
-    case Testing.stubbed(:people, []) do
+    case Testing.stubbed!(:people, []) do
       {:error, reason} -> {:error, reason}
       people -> Static.get(id, people)
     end

@@ -64,6 +64,8 @@ defmodule EhOsContract.Auth.Testing do
   `$callers`, and for no other test, so the tests stay `async: true`. A host that uses
   Mox or Hammox can instead `defmock` the two behaviours and `stub_with/2` them with
   `EhOsContract.Auth.People.Directory.Static` and `EhOsContract.Auth.Grants.Local`.
+  Like the test key, the two stand-ins answer only with `pin_keys: true`, and raise
+  anywhere else.
 
   All of them but the last two run in the test process and read and write through the
   engine's repo, so they belong in a test that owns a sandbox connection, as any test of
@@ -306,10 +308,17 @@ defmodule EhOsContract.Auth.Testing do
   end
 
   # What a test stubbed under `name`: in this process, or in the first of its `$callers`
-  # that stubbed it, a LiveView's or a task's test.
+  # that stubbed it, a LiveView's or a task's test. Only where test keys may be pinned, as
+  # the sign-in stand-in: anywhere else a stand-in would answer for EHOS.
   @doc false
-  @spec stubbed(:people | :grants, term()) :: term()
-  def stubbed(name, default) do
+  @spec stubbed!(:people | :grants, term()) :: term()
+  def stubbed!(name, default) do
+    unless Keys.test_trust?() do
+      raise ArgumentError,
+            "EhOsContract.Auth.Testing.People and .Grants are for tests only. Set config " <>
+              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
+    end
+
     key = {__MODULE__, name}
 
     Enum.find_value([self() | Process.get(:"$callers", [])], default, fn pid ->

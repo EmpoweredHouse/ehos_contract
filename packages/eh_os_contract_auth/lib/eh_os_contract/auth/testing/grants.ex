@@ -19,7 +19,7 @@ defmodule EhOsContract.Auth.Testing.Grants do
   @spec grant(Plug.Conn.t() | map(), [Grants.grant_option()]) ::
           {:ok, Grant.t()} | {:error, Grants.reason()}
   def grant(session, grant) do
-    case Testing.stubbed(:grants, :made) do
+    case Testing.stubbed!(:grants, :made) do
       :made -> Local.grant(session, grant)
       {:error, reason} -> {:error, reason}
     end
@@ -30,7 +30,7 @@ defmodule EhOsContract.Auth.Testing.Grants do
   @spec revoke(Plug.Conn.t() | map(), String.t(), String.t()) ::
           {:ok, %{role_binding_id: String.t(), role: String.t()}} | {:error, Grants.reason()}
   def revoke(session, person_id, role) do
-    case Testing.stubbed(:grants, :made) do
+    case Testing.stubbed!(:grants, :made) do
       :made -> Local.revoke(session, person_id, role)
       {:error, reason} -> {:error, reason}
     end

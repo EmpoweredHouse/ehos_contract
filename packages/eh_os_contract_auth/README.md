@@ -658,6 +658,12 @@ config :eh_os_contract_auth,
 Another answer of the host's own implements `EhOsContract.Auth.People.Directory` or
 `EhOsContract.Auth.Grants.Granter`.
 
+A stand-in never answers for EHOS in a release. `directory/0` raises when it names `Static` or
+`Testing.People` while `workload:` is configured, and `granter/0` when it names `Local` or
+`Testing.Grants` while `sign_in:` is: a `config/dev.exs` line that slipped into `config/config.exs`
+fails at the first call instead of telling a person someone was invited. The two `Testing` stand-ins
+also need `pin_keys: true`, as `EhOsContract.Auth.Testing`'s credentials do.
+
 ## Deciding, and recording every decision
 
 `EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query

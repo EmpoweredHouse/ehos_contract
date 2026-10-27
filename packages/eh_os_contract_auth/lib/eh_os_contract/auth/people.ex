@@ -77,7 +77,7 @@ defmodule EhOsContract.Auth.People do
 
   require Logger
 
-  alias EhOsContract.Auth.People.Directory.Unconfigured
+  alias EhOsContract.Auth.People.Directory.{Static, Unconfigured}
   alias EhOsContract.Auth.People.Person
   alias EhOsContract.Auth.SignIn.Http
   alias EhOsContract.Auth.Workload
@@ -167,33 +167,47 @@ defmodule EhOsContract.Auth.People do
         config :eh_os_contract_auth, workload: [client_id: client_id, client_key_file: ...]
       end
 
-  Raises `ArgumentError` when `people_directory:` names anything but a module that implements
+  Raises `ArgumentError` when it names `EhOsContract.Auth.People.Directory.Static` or `EhOsContract.Auth.Testing.People` while `workload:` (or `people:`) is
+  configured, which is a release answering for EHOS, and when `people_directory:` names anything
+  but a module that implements
   `EhOsContract.Auth.People.Directory`.
   """
   @spec directory() :: module()
   def directory do
-    case Application.get_env(:eh_os_contract_auth, :people_directory) do
-      nil ->
-        if Application.get_env(:eh_os_contract_auth, :workload) ||
-             Application.get_env(:eh_os_contract_auth, :people),
-           do: __MODULE__,
-           else: Unconfigured
+    ehos? =
+      Application.get_env(:eh_os_contract_auth, :workload) != nil or
+        Application.get_env(:eh_os_contract_auth, :people) != nil
 
-      module when is_atom(module) and module not in [true, false] ->
-        if Code.ensure_loaded?(module) and
-             Enum.all?([list: 1, get: 1], fn {f, a} -> function_exported?(module, f, a) end),
-           do: module,
-           else:
-             raise(
-               ArgumentError,
-               "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, " <>
-                 "which does not implement EhOsContract.Auth.People.Directory"
-             )
+    module =
+      case Application.get_env(:eh_os_contract_auth, :people_directory) do
+        nil ->
+          if ehos?, do: __MODULE__, else: Unconfigured
 
-      other ->
-        raise ArgumentError,
-              "config :eh_os_contract_auth, people_directory: takes a module, not #{inspect(other)}"
+        module when is_atom(module) and module not in [true, false] ->
+          if Code.ensure_loaded?(module) and
+               Enum.all?([list: 1, get: 1], fn {f, a} -> function_exported?(module, f, a) end),
+             do: module,
+             else:
+               raise(
+                 ArgumentError,
+                 "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, " <>
+                   "which does not implement EhOsContract.Auth.People.Directory"
+               )
+
+        other ->
+          raise ArgumentError,
+                "config :eh_os_contract_auth, people_directory: takes a module, not #{inspect(other)}"
+      end
+
+    # A stand-in where EHOS's credentials are configured is a release answering for EHOS: a
+    # list of people no one is, or "invited" for nobody.
+    if ehos? and module in [Static, EhOsContract.Auth.Testing.People] do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, people_directory: names #{inspect(module)}, a stand-in for " <>
+              "development or tests, where `workload:` (or `people:`) is configured too"
     end
+
+    module
   end
 
   @doc """
