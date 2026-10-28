@@ -54,7 +54,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         end}
       />
 
-  Without `link`, or where it answers `nil`, raises, or answers anything but a path or an
+  Without `link`, or where it answers `nil`, raises, throws or exits, or answers anything but a path or an
   `http` or `https` URL that parses as one (`//host/…` and an unescaped space are not), the
   panel offers no link. The names come from the documents the landscape joins, so the host
   escapes them as it builds the address, as `~p` does. `link` is called for every box when
@@ -333,11 +333,12 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     do: %{id: id, label: label, target: opener.target}
 
   # The host's `link` over names from other applications' documents: one it cannot answer
-  # for, by raising, offers no link rather than crashing the page.
+  # for, by raising, throwing or exiting, offers no link rather than crashing the page, which
+  # asks it of every box as it draws the picture.
   defp called(link, args) do
     apply(link, args)
-  rescue
-    _error -> nil
+  catch
+    _kind, _reason -> nil
   end
 
   # What a host's `link` answered, when it is a path or a web address: never a
@@ -504,7 +505,11 @@ defmodule EhOsContract.GraphRenderer.Canvas do
               phx-value-id={group.id}
               phx-target={@myself}
             >
-              {group.title}
+              <span class="ehg-group-name">{group.title}</span><span
+                :if={MapSet.member?(@leads, group.id)}
+                class="ehg-group-mark"
+                aria-hidden="true"
+              >›</span>
             </button>
             <p :if={group.note} class="ehg-group-note">{group.note}</p>
           </div>

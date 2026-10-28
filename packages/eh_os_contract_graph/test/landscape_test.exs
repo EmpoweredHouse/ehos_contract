@@ -405,6 +405,12 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     def off_site(_application, _domain, _contract), do: "//evil.example/x"
     def hostless(_application, _domain, _contract), do: "https:evil.example"
     def raising(_application, _domain, _contract), do: raise("no such application")
+    def exiting(_application, _domain, _contract), do: exit(:no_such_application)
+
+    def domains_only(application, domain, nil) when is_binary(domain),
+      do: "/apps/#{application}/domains/#{domain}"
+
+    def throwing(_application, _domain, _contract), do: throw(:no_such_application)
 
     defp drawn(link, document \\ landscape()) do
       {:ok, view, _html} =
@@ -465,10 +471,33 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     # leads nowhere does not.
     test "marks a box that leads to a page of the host's, and only such a box" do
       leading = drawn({__MODULE__, :to_page})
-      assert has_element?(leading, ~s([data-ehg-group="1/domain:Ledger.Domain"].leads))
+      box = ~s([data-ehg-group="1/domain:Ledger.Domain"].leads)
+      assert has_element?(leading, box)
+      # The mark is an element of its own, so a title cut short to its box keeps it.
+      assert has_element?(leading, "#{box} .ehg-group-title .ehg-group-mark")
 
-      refute has_element?(drawn(nil), ".ehg-group.leads")
+      refute has_element?(drawn(nil), ".ehg-group.leads, .ehg-group-mark")
       refute has_element?(drawn({__MODULE__, :contracts_only}), ".ehg-group.leads")
+
+      # A host whose link has no page for an application marks only the domains' boxes.
+      described =
+        drawn(
+          {__MODULE__, :domains_only},
+          Landscape.join([{"ledger", quiet_ledger()}, {"office", :none}])
+        )
+
+      assert has_element?(described, ~s([data-ehg-group="0/domain:Ledger.Domain"].leads))
+      refute has_element?(described, ~s([data-ehg-group="1/application:office"].leads))
+    end
+
+    # Its link is now asked of every box as the picture is drawn: one that exits or throws for
+    # a name offers nothing for it, and the page goes on.
+    test "draws the picture where the host's link exits or throws" do
+      for link <- [{__MODULE__, :exiting}, {__MODULE__, :throwing}] do
+        view = drawn(link)
+        assert has_element?(view, "[data-ehg-group]")
+        refute has_element?(view, ".ehg-group.leads")
+      end
     end
 
     test "offers nothing where the host's link raises, and the page goes on" do

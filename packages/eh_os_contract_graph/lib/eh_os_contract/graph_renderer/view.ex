@@ -94,7 +94,11 @@ defmodule EhOsContract.GraphRenderer.View do
   @typedoc "Who reads a view: the engineer, everything; the business owner, the client's words."
   @type audience :: :engineering | :owner
 
-  @typedoc "A box around cards, titled; `facts` is the document's node it is."
+  @typedoc """
+  A box around cards, titled; `note` says in words why it holds none, where the view says
+  (a landscape's domain with nothing on the wire), and is `nil` otherwise; `facts` is the
+  document's node it is.
+  """
   @type group :: %{
           id: String.t(),
           kind: String.t(),
