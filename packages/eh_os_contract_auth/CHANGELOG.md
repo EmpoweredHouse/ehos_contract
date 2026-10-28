@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-28
+
 ### Added
 
 - `EhOsContract.Auth.Mail.deliver/1` takes `idempotency_key:`, sent as EHOS's `Idempotency-Key`
@@ -31,6 +33,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   one twice: for 24 hours EHOS answers a repeat with what the first call sent. Three new errors
   say why a repeat sent nothing: `:idempotency_key_reused`, `:idempotency_key_in_progress` and
   `:idempotency_key_abandoned`. EHOS 0.23.0 or later reads the key (#482).
+
+### Changed
+
+- **Breaking:** **the engine is required at `~> 0.13.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
 
 ## [0.9.0] - 2026-10-27
 

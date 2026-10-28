@@ -1,13 +1,13 @@
 defmodule EhOsContract.Web.MixProject do
   use Mix.Project
 
-  @version "0.7.1-dev"
+  @version "0.8.0"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   # The siblings' versions this package works with, passed in every mode below, so that
   # beside them in this repository Mix holds their versions to these as well.
-  @eh_os_contract_requirement "~> 0.12.0"
-  @eh_os_contract_graph_requirement "~> 0.8.0"
+  @eh_os_contract_requirement "~> 0.13.0"
+  @eh_os_contract_graph_requirement "~> 0.9.0"
   @description "A mountable conformance dashboard for EhOsContract."
 
   @moduledoc """
