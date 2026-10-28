@@ -224,6 +224,37 @@
   pointer-events: auto;
 }
 
+/* A box's title is its button: it says so when pointed at or reached by the keyboard, and one whose box
+   leads somewhere, a host's page or a picture inside, ends in a mark (#488). The mark is drawn, not read. */
+
+.ehg-group-title:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.ehg-group-title:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+.ehg-group.leads .ehg-group-title {
+  color: var(--text-primary);
+}
+
+.ehg-group.leads .ehg-group-title::after {
+  content: " \203A" / "";
+}
+
+/* Why a box holds no card, in words, under its title. */
+
+.ehg-group-note {
+  margin: 4px 2px 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
 /* A landscape's box of an application no domain document describes: dashed and see-through, so it reads as
    there but not known, never as a domain with nothing in it. */
 

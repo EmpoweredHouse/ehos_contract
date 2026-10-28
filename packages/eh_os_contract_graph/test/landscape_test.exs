@@ -461,6 +461,16 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       assert offered(drawn({__MODULE__, :raising}, document), box) == []
     end
 
+    # #488: a box that leads to a page of the host's says so before it is selected; one that
+    # leads nowhere does not.
+    test "marks a box that leads to a page of the host's, and only such a box" do
+      leading = drawn({__MODULE__, :to_page})
+      assert has_element?(leading, ~s([data-ehg-group="1/domain:Ledger.Domain"].leads))
+
+      refute has_element?(drawn(nil), ".ehg-group.leads")
+      refute has_element?(drawn({__MODULE__, :contracts_only}), ".ehg-group.leads")
+    end
+
     test "offers nothing where the host's link raises, and the page goes on" do
       view = drawn({__MODULE__, :raising})
 
@@ -506,5 +516,22 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
 
     assert Enum.count(LazyHTML.query(html, ~s([data-ehg-group="0/domain:Ledger.Domain"]))) == 1
     assert Enum.count(LazyHTML.query(html, "[data-ehg-node]")) == 0
+
+    # #488: inside, in words, why it holds no card.
+    assert html |> LazyHTML.query(".ehg-group-note") |> LazyHTML.text() ==
+             "Publishes and subscribes to nothing"
+  end
+
+  test "says nothing inside a box that holds cards, nor in one no graph describes" do
+    html =
+      render_component(Canvas,
+        id: "landscape",
+        document:
+          Landscape.join([{"billing", Fixtures.document("domain.billing")}, {"office", :none}]),
+        view: :landscape
+      )
+      |> LazyHTML.from_fragment()
+
+    assert Enum.to_list(LazyHTML.query(html, ".ehg-group-note")) == []
   end
 end
