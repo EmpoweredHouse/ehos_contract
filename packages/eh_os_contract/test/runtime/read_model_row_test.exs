@@ -92,6 +92,10 @@ defmodule EhOsContract.ReadModelRowTest do
   # call the compiler would look for before the module exists.
   defp visits, do: Module.concat(EhOsContract.Fixtures.RowClinic.Contract.ReadModels.Visits, Row)
 
+  # A value of the domain compiled while the test runs, as its struct.
+  defp value(name, fields),
+    do: struct!(Module.concat(EhOsContract.Fixtures.RowClinic.Domain.Values, name), fields)
+
   defp seen,
     do: Module.concat(EhOsContract.Fixtures.RowClinic.Contract.ReadModels.VisitsSeen, Row)
 
@@ -186,8 +190,8 @@ defmodule EhOsContract.ReadModelRowTest do
     # The map an event carries is written as it is, and read back the same: never a
     # struct, so a projection and a query see what an event's consumer sees.
     test "writes a value made of fields, and a list of them, in the log's form, and reads back the event's map" do
-      address = %{street: "Main", since: ~D[2026-01-31], method: :cash}
-      stop = %{street: "Side", since: nil, method: nil}
+      address = value(Address, street: "Main", since: ~D[2026-01-31], method: :cash)
+      stop = value(Address, street: "Side", since: nil, method: nil)
 
       Repo.insert_all(visits(), [
         %{visit_id: "v-1", room_id: "r-1", status: :open, address: address, stops: [stop]}
@@ -213,7 +217,7 @@ defmodule EhOsContract.ReadModelRowTest do
           visit_id: "v-1",
           room_id: "r-1",
           status: :open,
-          contact: %{member_id: "m-1", email: erased}
+          contact: value(Contact, member_id: "m-1", email: erased)
         }
       ])
 
@@ -230,7 +234,7 @@ defmodule EhOsContract.ReadModelRowTest do
     # keys are the field names, never the strings the column holds.
     test "reads a value whose fields are all optional with its keys as atoms" do
       Repo.insert_all(visits(), [
-        %{visit_id: "v-1", room_id: "r-1", status: :open, remark: %{text: "late"}}
+        %{visit_id: "v-1", room_id: "r-1", status: :open, remark: value(Remark, text: "late")}
       ])
 
       assert [%{remark: %{text: "late"}}] = Repo.all(visits())

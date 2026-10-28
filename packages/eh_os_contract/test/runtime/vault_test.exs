@@ -154,7 +154,12 @@ defmodule EhOsContract.VaultTest do
             membership_id: "membership-anna",
             member_id: "member-anna",
             name: "Anna Nowak",
-            contacts: [%{member_id: "member-bartek", phone: "+48 600 300 400"}],
+            contacts: [
+              %ShreddingRig.Domain.Values.Contact{
+                member_id: "member-bartek",
+                phone: "+48 600 300 400"
+              }
+            ],
             plan: :basic
           },
           actor: Actor.credential("u-clerk", ["shredding_rig.join"])

@@ -380,8 +380,8 @@ if Code.ensure_loaded?(StreamData) do
       |> member_of()
     end
 
-    defp domain_value(_name, %{type: nil, fields: fields}, values),
-      do: fields_of(fields, values, [])
+    defp domain_value(_name, %{type: nil, fields: fields} = declared, values),
+      do: map(fields_of(fields, values, []), &Codec.built(declared, &1))
 
     defp domain_value(_name, %{type: type}, values), do: type(type, values)
 

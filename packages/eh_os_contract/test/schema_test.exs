@@ -333,7 +333,12 @@ defmodule EhOsContract.SchemaTest do
             membership_id: "membership-anna",
             member_id: "member-anna",
             name: "Anna Nowak",
-            contacts: [%{member_id: "member-anna", phone: "+48 600 100 200"}],
+            contacts: [
+              %ShreddingRig.Domain.Values.Contact{
+                member_id: "member-anna",
+                phone: "+48 600 100 200"
+              }
+            ],
             plan: :basic
           },
           actor: @member_clerk

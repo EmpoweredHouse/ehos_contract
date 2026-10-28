@@ -144,7 +144,9 @@ defmodule EhOsContract.Contract.Data do
   It casts; it does not check. `{:error, problem}` — the first, in the words of
   `problems/2` — comes back only where casting needs the value to fit: a built-in or
   enum value of the wrong form, a value already cast (a `Date`, a `Decimal`, which a
-  contract never holds), or a domain value with fields that is not a map. Anything
+  contract never holds), or a domain value with fields that is not a map. A domain value
+  with fields becomes its struct when `domain` names one, as `EhOsContract.Codec.values/1`
+  does (#486); otherwise the map. Anything
   else is returned as written: a non-list for a list type, an `{:id, entity}`, a type
   the domain does not name. Checking is `problems/2` and `problems/3`.
   """
@@ -170,9 +172,10 @@ defmodule EhOsContract.Contract.Data do
 
   defp cast!(type, value, domain) when is_atom(type) and is_map_key(domain, type) do
     case Map.fetch!(domain, type) do
-      %{type: nil, fields: fields} when is_map(value) ->
+      %{type: nil, fields: fields} = declared when is_map(value) ->
         types = Map.new(fields, &{&1.name, &1.type})
-        Map.new(value, fn {key, v} -> {key, cast!(Map.get(types, key), v, domain)} end)
+        cast = Map.new(value, fn {key, v} -> {key, cast!(Map.get(types, key), v, domain)} end)
+        EhOsContract.Codec.built(declared, cast)
 
       %{type: nil} ->
         throw({:unfit, "#{inspect(value)} is not a map of the fields of #{inspect(type)}"})

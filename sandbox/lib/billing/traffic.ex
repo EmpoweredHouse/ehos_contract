@@ -22,6 +22,7 @@ defmodule Billing.Traffic do
   """
 
   alias Billing.Contracts.{Payments, Subscriptions}
+  alias Billing.Domain.Values.UsageRecord
   alias Billing.Contracts.Payments.Commands.WriteOffPayment
 
   alias Billing.Contracts.Subscriptions.Commands.{
@@ -89,7 +90,7 @@ defmodule Billing.Traffic do
   end
 
   defp usage(id, usage, units),
-    do: %RecordUsage{subscription_id: id, usage: %{usage_id: usage, units: units}}
+    do: %RecordUsage{subscription_id: id, usage: %UsageRecord{usage_id: usage, units: units}}
 
   # The latest first of a month, at midnight UTC, at least four days before `now`, so its
   # invoices' three days are over.

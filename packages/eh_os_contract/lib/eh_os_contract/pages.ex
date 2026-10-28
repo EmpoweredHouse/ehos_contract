@@ -1059,7 +1059,8 @@ defmodule EhOsContract.Pages do
         # refused on, an invariant of a domain value its fields hold, the one dispatch
         # would name.
         {:value_rules, fields, data} ->
-          values = Map.new(site.domain.values, &{&1.name, &1})
+          # With their structs, so a value's check is handed what dispatch hands it (#486).
+          values = EhOsContract.Codec.values(site.domain.module)
 
           with value when value != nil <-
                  EhOsContract.Contract.Links.Scenarios.refusing_value(

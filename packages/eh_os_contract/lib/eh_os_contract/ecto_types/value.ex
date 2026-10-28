@@ -9,10 +9,9 @@ defmodule EhOsContract.EctoTypes.Value do
   # `EhOsContract.EctoTypes.of/2`: a `:money` resting on `:integer` an integer, a domain
   # enum an `Ecto.Enum`. A value made of fields is a `jsonb` column, and so is a list of
   # them, one column holding the list as `embeds_many` would; each is written in the
-  # log's form and read back through `EhOsContract.Codec` as the map the engine hands a
-  # consumer in an event: atom keys, a date a `Date`, an enum's member an atom. It is
-  # never a struct, so a projection writes `event.address` as it is, and reads back
-  # what it wrote.
+  # log's form and read back through `EhOsContract.Codec` as the value's struct, the one
+  # the engine hands a consumer in an event (#486), so a projection writes
+  # `event.address` as it is, and reads back what it wrote.
   @moduledoc false
 
   use Ecto.ParameterizedType
@@ -63,8 +62,8 @@ defmodule EhOsContract.EctoTypes.Value do
 
   def dump(value, dumper, params) do
     case resolved(params) do
-      {:one, fields, values} -> write(fields, value, values)
-      {:many, fields, values} -> each(value, &write(fields, &1, values))
+      {:one, declared, values} -> write(declared, value, values)
+      {:many, declared, values} -> each(value, &write(declared, &1, values))
       {:type, type} -> Ecto.Type.dump(type, value, dumper)
     end
   end
@@ -85,30 +84,33 @@ defmodule EhOsContract.EctoTypes.Value do
     end
   end
 
-  # A value made of fields, one or a list, as the engine holds it, or as the log and a
-  # JSON caller write it: a map already of its types is taken as it is, anything else
-  # is decoded.
-  defp read({:one, fields, values}, value), do: one(fields, value, values)
-  defp read({:many, fields, values}, value), do: each(value, &one(fields, &1, values))
+  # A value made of fields, one or a list: the value's struct as the engine holds it,
+  # taken as it is, or the string-keyed map the column and a JSON caller write, decoded
+  # into it. A map keyed by atoms is neither, and is refused, as dispatch refuses one.
+  defp read({:one, declared, values}, value), do: one(declared, value, values)
+  defp read({:many, declared, values}, value), do: each(value, &one(declared, &1, values))
 
-  # Only a map keyed by atoms is the engine's own: one keyed by strings, the log's or a
-  # caller's, is decoded even when every field is optional, so no key is left a string.
-  defp one(fields, value, values) when is_map(value) and not is_struct(value) do
-    if Enum.all?(Map.keys(value), &is_atom/1) and Codec.problems(fields, value, values) == [] do
-      {:ok, value}
-    else
-      case Codec.decode(fields, value, values) do
-        {:ok, decoded} -> {:ok, decoded}
-        {:error, _problems} -> :error
-      end
+  defp one(%{fields: fields} = declared, value, values) when is_map(value) do
+    cond do
+      is_struct(value, declared.struct) ->
+        if Codec.problems(fields, value, values) == [], do: {:ok, value}, else: :error
+
+      not is_struct(value) and Enum.all?(Map.keys(value), &is_binary/1) ->
+        case Codec.decode(fields, value, values) do
+          {:ok, decoded} -> {:ok, Codec.built(declared, decoded)}
+          {:error, _problems} -> :error
+        end
+
+      true ->
+        :error
     end
   end
 
-  defp one(_fields, _value, _values), do: :error
+  defp one(_declared, _value, _values), do: :error
 
   # In the log's form, as an event's payload holds it.
-  defp write(fields, value, values) do
-    if is_map(value) and not is_struct(value) and Codec.problems(fields, value, values) == [],
+  defp write(%{fields: fields} = declared, value, values) do
+    if is_struct(value, declared.struct) and Codec.problems(fields, value, values) == [],
       do: {:ok, Codec.encode(fields, value, values)},
       else: :error
   end
@@ -181,7 +183,7 @@ defmodule EhOsContract.EctoTypes.Value do
 
   defp made_of(cardinality, value, values) do
     values = Map.new(values, fn {name, v} -> {name, Map.update(v, :fields, [], &erasable/1)} end)
-    {cardinality, Map.fetch!(values, value).fields, values}
+    {cardinality, Map.fetch!(values, value), values}
   end
 
   defp erasable(fields),

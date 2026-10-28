@@ -25,7 +25,10 @@ defmodule EhOsContract.PersonalTest do
       member_id: member,
       name: Keyword.get(opts, :name, "Anna Nowak"),
       email: Keyword.get(opts, :email, "anna@example.com"),
-      contacts: Keyword.get(opts, :contacts, [%{member_id: member, phone: "+48 600 100 200"}]),
+      contacts:
+        Keyword.get(opts, :contacts, [
+          %ShreddingRig.Domain.Values.Contact{member_id: member, phone: "+48 600 100 200"}
+        ]),
       plan: :full
     }
 
@@ -94,8 +97,11 @@ defmodule EhOsContract.PersonalTest do
     test "a personal field is sealed in the log, and every other field is not" do
       join!("membership-anna", "member-anna",
         contacts: [
-          %{member_id: "member-anna", phone: "+48 600 100 200"},
-          %{member_id: "member-bartek", phone: "+48 600 300 400"}
+          %ShreddingRig.Domain.Values.Contact{member_id: "member-anna", phone: "+48 600 100 200"},
+          %ShreddingRig.Domain.Values.Contact{
+            member_id: "member-bartek",
+            phone: "+48 600 300 400"
+          }
         ]
       )
 
@@ -178,7 +184,12 @@ defmodule EhOsContract.PersonalTest do
       assert %Joined{
                name: "Anna Nowak",
                email: "anna@example.com",
-               contacts: [%{member_id: "member-anna", phone: "+48 600 100 200"}],
+               contacts: [
+                 %ShreddingRig.Domain.Values.Contact{
+                   member_id: "member-anna",
+                   phone: "+48 600 100 200"
+                 }
+               ],
                plan: :full
              } = joined
 
@@ -211,8 +222,11 @@ defmodule EhOsContract.PersonalTest do
     test "a personal field reads back as Erased, and every other field as it was" do
       join!("membership-anna", "member-anna",
         contacts: [
-          %{member_id: "member-anna", phone: "+48 600 100 200"},
-          %{member_id: "member-bartek", phone: "+48 600 300 400"}
+          %ShreddingRig.Domain.Values.Contact{member_id: "member-anna", phone: "+48 600 100 200"},
+          %ShreddingRig.Domain.Values.Contact{
+            member_id: "member-bartek",
+            phone: "+48 600 300 400"
+          }
         ]
       )
 
@@ -265,9 +279,10 @@ defmodule EhOsContract.PersonalTest do
       assert string =~ "member_id: String.t(),"
       refute string =~ "member_id: String.t() | EhOsContract.Erased.t()"
 
-      {:ok, types} = Code.Typespec.fetch_types(ShreddingRig.Domain.Values)
-      [contact] = for {:type, {:contact, spec, []}} <- types, do: spec
-      string = Macro.to_string(Code.Typespec.type_to_quoted({:contact, contact, []}))
+      # A value made of fields is its struct (#486), whose personal field admits it too.
+      {:ok, types} = Code.Typespec.fetch_types(ShreddingRig.Domain.Values.Contact)
+      [t] = for {:type, {:t, spec, []}} <- types, do: spec
+      string = Macro.to_string(Code.Typespec.type_to_quoted({:t, t, []}))
       assert string =~ "phone: String.t() | EhOsContract.Erased.t()"
     end
   end

@@ -285,6 +285,11 @@ defmodule EhOsContract.ScenarioCase do
   defp same?(%{} = a, %{} = b) when not is_struct(a) and not is_struct(b),
     do: Map.keys(a) == Map.keys(b) and Enum.all?(a, fn {k, v} -> same?(v, Map.fetch!(b, k)) end)
 
+  # A value made of fields is its struct (#486): compared field by field, so a decimal in
+  # it is compared by what it is too.
+  defp same?(%module{} = a, %module{} = b) when module not in [Date, DateTime],
+    do: same?(Map.from_struct(a), Map.from_struct(b))
+
   defp same?(a, b), do: a == b
 
   @typedoc "One example of a value's invariant, as a test runs it."
@@ -330,7 +335,9 @@ defmodule EhOsContract.ScenarioCase do
     model = Model.fetch(domain)
     implementation = implementation!(model, %{kind: :value, name: example.value}, implementations)
     value = Enum.find(model.values, &(&1.name == example.value))
-    values = Map.new(model.values, &{&1.name, &1})
+    # The values with their structs, so an implementation is handed the example as
+    # dispatch hands it a value: `%Window{}`, never a map (#486).
+    values = EhOsContract.Codec.values(model.module)
     data = cast_example(example, values)
 
     checked =

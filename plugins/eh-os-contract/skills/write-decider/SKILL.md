@@ -172,7 +172,9 @@ every event it `consults`, folded in the log's order. Two things differ:
    add.
 3. Write each callback as clauses, one per outcome: the refusals first, each on the state that makes
    it, then the emit. Branch to different `emit/1` literals rather than computing the list of events
-   (`I4`).
+   (`I4`). A field holding a value made of fields takes its struct, `%Billing.Domain.Values.UsageRecord{…}`,
+   or the command's own, passed on: a map with its keys is not the value, and the event raises as a
+   defect.
 4. Write `evolve/2` for every event that changes the state, and a named catch-all for the rest.
    Write each function an event's `upcast … function:` names — a unit that only records needs a
    module for it too, with nothing else in it: it takes an old row's

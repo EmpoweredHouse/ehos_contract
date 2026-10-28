@@ -32,7 +32,9 @@ defmodule EhOsContract.ErasureTest do
         membership_id: membership,
         member_id: member,
         name: name,
-        contacts: [%{member_id: member, phone: "+48 600 100 200"}],
+        contacts: [
+          %ShreddingRig.Domain.Values.Contact{member_id: member, phone: "+48 600 100 200"}
+        ],
         plan: :basic
       },
       actor: @clerk

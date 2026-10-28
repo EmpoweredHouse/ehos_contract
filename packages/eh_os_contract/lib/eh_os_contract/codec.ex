@@ -11,8 +11,8 @@ defmodule EhOsContract.Codec do
   # rule. `:integer` and `:boolean` what they
   # say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   # `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
-  # domain value is its own type: an alias of a type (`value :money, :integer`), or a
-  # map of its fields.
+  # domain value is its own type: an alias of a type (`value :money, :integer`), or the
+  # struct of its fields (#486), which decoding builds and a field of the value must hold.
   #
   # **Bounds.** A value that enters the log is bounded where what holds it is: an `:id`
   # is at most 255 bytes, which an index entry keys with room for the rest of a key; an
@@ -95,14 +95,24 @@ defmodule EhOsContract.Codec do
 
   @doc """
   The values a domain declares, by name. `%{}` when the domain is not a compiled
-  `EhOsContract.Domain`, and then a field of a domain value fits nothing.
+  `EhOsContract.Domain`, and then a field of a domain value fits nothing. A value made
+  of fields carries `:struct`, the module of its struct (#486), which decoding builds
+  and a field of the value must hold.
   """
   @spec values(module()) :: values()
   def values(domain) do
-    if Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0),
-      do: Map.new(domain.__eh_os_contract_model__().values, &{&1.name, &1}),
+    if Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_values__, 0),
+      do: domain.__eh_os_contract_values__(),
       else: %{}
   end
+
+  @doc """
+  A value made of fields as the struct `values` names for it, or as the map it is when
+  they name none: a domain's values read at compile time carry no struct.
+  """
+  @spec built(map(), map()) :: struct() | map()
+  def built(%{struct: module}, fields), do: struct(module, fields)
+  def built(_value, fields), do: fields
 
   @doc """
   What is wrong with `data`, a struct or a map with atom keys, against `fields`: a
@@ -186,8 +196,10 @@ defmodule EhOsContract.Codec do
 
   defp fits?(type, value, values) when is_atom(type) do
     case Map.fetch(values, type) do
-      {:ok, %{type: nil, fields: fields}} ->
-        is_map(value) and problems(fields, value, values) == []
+      # The value's struct, never a map with its keys (#486): a misspelt key is what
+      # the struct is there to catch.
+      {:ok, %{type: nil, fields: fields} = declared} ->
+        of_value?(value, declared) and problems(fields, value, values) == []
 
       {:ok, %{type: inner}} ->
         fits?(inner, value, values)
@@ -198,6 +210,9 @@ defmodule EhOsContract.Codec do
   end
 
   defp fits?(_type, _value, _values), do: false
+
+  defp of_value?(value, %{struct: module}), do: is_struct(value, module)
+  defp of_value?(value, _declared), do: is_map(value) and not is_struct(value)
 
   @doc """
   `data`'s fields in the log's form: a map with string keys, JSON-encodable. Every
@@ -732,8 +747,9 @@ defmodule EhOsContract.Codec do
   defp decode_value(type, value, values, open, path)
        when is_atom(type) and is_map_key(values, type) do
     case Map.fetch!(values, type) do
-      %{type: nil, fields: fields} when is_map(value) ->
-        decode_fields(fields, value, values, open, path)
+      %{type: nil, fields: fields} = declared when is_map(value) ->
+        with {:ok, decoded} <- decode_fields(fields, value, values, open, path),
+             do: {:ok, built(declared, decoded)}
 
       %{type: nil} ->
         :error
