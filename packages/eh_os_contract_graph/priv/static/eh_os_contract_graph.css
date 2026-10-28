@@ -875,38 +875,22 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
-.ehg-head {
+.ehg-path {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-soft);
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
 }
-.ehg-tabs {
-  display: flex;
-  gap: 4px;
-}
-.ehg-audience {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-  padding-bottom: 4px;
-}
-.ehg-tab {
-  margin-bottom: -1px;
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
-  background: none;
-  color: var(--text-secondary);
-  font: inherit;
-  cursor: pointer;
-}
-.ehg-tab.is-current {
-  border-color: var(--border-soft);
-  border-bottom-color: var(--surface-1);
-  background: var(--surface-1);
+.ehg-path button:hover {
   color: var(--text-primary);
+}
+.ehg-about {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 .ehg-path ol {
   display: flex;

@@ -45,6 +45,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The explorer has one path, says what each place shows, and no switch of who reads** (#490): the tabs
+  "Structure" and "Processes" are gone; the path is the one way through, with the step to the processes beside
+  the domain. A line under the path says what the place shows, and where it can be drawn two ways — "Contracts"
+  or "Contexts and their relations", "Commands and events" or "Lifecycle" — both stay offered there with the
+  chosen one's line. The reader's "Engineering" / "Owner" switch is gone: a host that wants the owner's view
+  alone still passes `audience={:owner}`.
+
 - **The zoom is one control in the picture's corner** (#489): the row of "−", "+", "Readable" and "Whole picture"
   over the canvas is gone; a button over the picture's top right corner opens a menu of "Closer", "Farther",
   "Readable" and "Whole picture", which stays open while it is used and closes on a press elsewhere or Escape.

@@ -31,6 +31,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   hook its committed `priv/static/assets/` now carry, rebuilt: the zoom is one control in the picture's corner,
   and a box that opens a contract, a unit or a process ends its title in a mark. The hook needs that version's
   markup, so the renderer is required at `~> 0.8.1` once both are released, and a host moves the two together.
+- **The dashboard's graph has one path and no switch of who reads** (#490): the explorer it draws with lost its
+  "Structure" / "Processes" tabs, the processes being a step of the path, and its "Engineering" / "Owner"
+  switch; each place says in a line what it shows. `priv/static/assets/app.css` is rebuilt with it.
 
 ## [0.7.0] - 2026-10-27
 

@@ -1,6 +1,6 @@
 defmodule EhOsContract.GraphRenderer.Places do
   # Where the explorer can go, and where a card leads: plan DD, stage G1 (#297), the two
-  # viewpoints of the user's decision of 15 October. A place of the structure is the
+  # viewpoints of the user's decision of 15 October, branches of one path since #490. A place of the structure is the
   # domain's system, a contract's full graph, or one of its units; a place of the processes
   # is their list, or one process module's picture. A landscape's box and the contracts in it
   # lead out of the landscape, to a page of the host's (#404).
@@ -27,12 +27,6 @@ defmodule EhOsContract.GraphRenderer.Places do
   def ref({:contract, id}, _domain), do: {:contract, id}
   def ref({:unit, contract, _unit}, _domain), do: {:contract, contract}
   def ref({:process, id}, _domain), do: {:process, id}
-
-  @doc "Which of the two viewpoints a place is of."
-  @spec tab(t()) :: :structure | :processes
-  def tab(:processes), do: :processes
-  def tab({:process, _id}), do: :processes
-  def tab(_place), do: :structure
 
   @doc """
   Where the card of `kind` and `node`, drawn from `document`, leads, with the words of the

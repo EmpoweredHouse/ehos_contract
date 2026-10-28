@@ -36,7 +36,22 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
 
     assert "contract:fulfilment.warehouse" in cards(view)
     assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment"
-    assert text(page(view), ".ehg-tab.is-current") =~ "Structure"
+    # #490: the path is the one way through, without tabs above it.
+    refute has_element?(view, ".ehg-tabs, .ehg-tab")
+  end
+
+  # #490: what each place shows, and each way of drawing it, is said in a line under the path.
+  test "says what the place shows, and what each way of drawing it shows" do
+    view = start()
+
+    assert text(page(view), ".ehg-lenses [aria-pressed=true]") =~ "Contracts"
+    assert text(page(view), ".ehg-about") =~ "Which contracts there are"
+
+    view |> element(".ehg-lenses button", "Contexts and their relations") |> render_click()
+    assert text(page(view), ".ehg-about") =~ "areas of language"
+
+    go(view, "Processes")
+    assert text(page(view), ".ehg-about") =~ "How work runs over time"
   end
 
   test "the context map is a switch on the domain's level" do
@@ -74,11 +89,11 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     refute has_element?(view, ".ehg-lenses")
   end
 
-  test "the processes are the other viewpoint, and an event opens its contract across them" do
+  test "the processes are a branch of the path, and an event opens its contract across them" do
     view = start()
     go(view, "Processes")
 
-    assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+    assert text(page(view), ".ehg-path [aria-current]") =~ "Processes"
     view |> element(".ehg-places button", "fulfilment.order") |> render_click()
     render_async(view)
 
@@ -88,10 +103,13 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     render_async(view)
     assert view |> page() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() > 0
 
+    # The path names where the process is, and leads back up through the processes.
+    assert view |> page() |> LazyHTML.query(".ehg-path button") |> LazyHTML.text() =~ "Processes"
+
     open(view, "event:fulfilment.warehouse:picked")
 
-    assert text(page(view), ".ehg-tab.is-current") =~ "Structure"
     assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.warehouse"
+    refute text(page(view), ".ehg-path") =~ "Processes"
     assert "command:fulfilment.warehouse:confirm_pick" in cards(view)
   end
 
@@ -173,7 +191,6 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
 
       assert "command:fulfilment.warehouse:confirm_pick" in cards(view)
       assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.warehouse"
-      assert text(page(view), ".ehg-tab.is-current") =~ "Structure"
 
       view |> element(".ehg-path button", "fulfilment") |> render_click()
       assert "contract:fulfilment.warehouse" in cards(view)
@@ -182,7 +199,9 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     test "at a process module, in the processes' viewpoint, or at their list" do
       view = start_at(%{"at" => {:process, "fulfilment.order"}})
 
-      assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+      assert view |> page() |> LazyHTML.query(".ehg-path button") |> LazyHTML.text() =~
+               "Processes"
+
       assert text(page(view), ".ehg-path [aria-current]") =~ "fulfilment.order"
 
       view = start_at(%{"at" => :processes})
@@ -223,14 +242,15 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
         )
 
       assert_receive {:held, loader}
-      # The tab the reader is already on moves nothing; the other one does.
-      view |> element(".ehg-tab", "Structure") |> render_click()
-      view |> element(".ehg-tab", "Processes") |> render_click()
+      # Where the reader already is moves nothing; another place does.
+      target = with_target(view, "#explorer")
+      render_click(target, "go", %{"to" => "domain"})
+      render_click(target, "go", %{"to" => "processes"})
       send(loader, :go)
       render_async(view)
       render_async(view)
 
-      assert text(page(view), ".ehg-tab.is-current") =~ "Processes"
+      assert text(page(view), ".ehg-path [aria-current]") =~ "Processes"
     end
 
     test "holds through a click that leaves the reader where they were" do
@@ -240,7 +260,7 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
         )
 
       assert_receive {:held, loader}
-      view |> element(".ehg-tab", "Structure") |> render_click()
+      view |> with_target("#explorer") |> render_click("go", %{"to" => "domain"})
       send(loader, :go)
       render_async(view)
       render_async(view)
@@ -315,50 +335,32 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
   end
 
   # Plan DD, L4 (#326): the switch of who reads, over the canvas.
+  # #490: one picture for both readers; only a host reads it for the owner.
   describe "the owner's view" do
-    defp read_as(view, words) do
-      view |> element(".ehg-audience button", words) |> render_click()
-      render_async(view)
-    end
-
     defp panel_of(view, id) do
       view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
       text(page(view), ".ehg-panel")
     end
 
-    test "starts as the engineer reads it, and the switch reads the process for the owner and back" do
+    test "is not a switch of the reader's: the explorer reads as the host started it" do
       view = start()
-      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
+      refute has_element?(view, ".ehg-audience")
 
       go(view, "Processes")
       view |> element(".ehg-places button", "An order") |> render_click()
       render_async(view)
+      assert panel_of(view, "process:fulfilment.order") =~ "One run per"
 
-      process = "process:fulfilment.order"
-      assert panel_of(view, process) =~ "One run per"
-
-      read_as(view, "Owner")
-      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Owner"
-      owner = text(page(view), ".ehg-panel")
-
-      refute owner =~ "One run per"
-      refute owner =~ "order_id"
-      # The log's numbers stay.
-      assert owner =~ "From the log"
-      assert view |> page() |> LazyHTML.query(".ehg-card .ehg-count") |> Enum.count() > 0
-      # The path names the process by its label.
-      assert text(page(view), ".ehg-path [aria-current]") =~ "An order"
-
-      read_as(view, "Engineering")
+      # A switch the page no longer offers changes nothing when it is sent all the same.
+      view |> with_target("#explorer") |> render_click("audience", %{"to" => "owner"})
       assert text(page(view), ".ehg-panel") =~ "One run per"
     end
 
-    test "a host starts it for the owner, and its next render keeps the reader's switch" do
+    test "a host starts it for the owner, in the client's words, and its next render keeps it" do
       # Each case study's context is labelled as its contract's module is named, so the
       # warehouse is labelled apart here.
       labels = %{"context:Fulfilment.Domain:warehouse" => "Stock room"}
       view = start(%{"audience" => :owner, "opts" => [labels: labels]})
-      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Owner"
 
       # A contract is read by its context's label, and has no name in code under it.
       warehouse =
@@ -369,19 +371,24 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
       assert warehouse |> LazyHTML.query(".ehg-name") |> Enum.count() == 0
       refute text(page(view), ".ehg-actors") =~ "Role in EHOS"
 
-      read_as(view, "Engineering")
+      go(view, "Processes")
+      view |> element(".ehg-places button", "An order") |> render_click()
+      render_async(view)
+      owner = panel_of(view, "process:fulfilment.order")
+      refute owner =~ "One run per"
+      # The log's numbers stay, and the path names the process by its label.
+      assert owner =~ "From the log"
+      assert text(page(view), ".ehg-path [aria-current]") =~ "An order"
+
       send(view.pid, :render)
-      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
+      refute text(page(view), ".ehg-panel") =~ "One run per"
+      assert text(page(view), ".ehg-panel") =~ "From the log"
     end
 
     test "an audience the explorer does not know is refused by name" do
       assert_raise ArgumentError, ~r/:engineering or :owner, got: :manager/, fn ->
         EhOsContract.GraphRenderer.Audience.cast(:manager)
       end
-
-      view = start()
-      view |> with_target("#explorer") |> render_click("audience", %{"to" => "manager"})
-      assert text(page(view), ".ehg-audience [aria-pressed=true]") =~ "Engineering"
     end
   end
 end

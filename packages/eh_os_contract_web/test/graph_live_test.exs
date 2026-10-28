@@ -126,9 +126,9 @@ defmodule EhOsContract.Web.Live.GraphTest do
              drawn(document, {:lifecycle, unit["id"]}, Overlay.contract(contract))
   end
 
-  test "the processes are the other viewpoint" do
+  test "the processes are the path's other branch" do
     view = live_graph()
-    view |> element(explorer(view) <> " .ehg-tab", "Processes") |> render_click()
+    view |> element(explorer(view) <> " .ehg-path button", "Processes") |> render_click()
 
     view
     |> element(explorer(view) <> " .ehg-places button", "web_test_host.case_run")

@@ -19,11 +19,12 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   `domain` names the domain as its documents do, by its module; `loader` is a module, or
   `{module, opts}` to hand the loader `opts`.
 
-  **Who reads it** is a switch over the canvas, "Engineering" or "Owner": the engineer
-  reads everything the documents hold, the business owner the model in the client's
-  words — each declaration by its label, with the numbers from the log, and nothing of
-  the engineering (`EhOsContract.GraphRenderer.Canvas`, its `audience`). `audience` is
-  where the explorer starts, `:engineering` when it is left out:
+  **Who reads it** is the host's to say, not a switch of the reader's: every card
+  leads with the client's label and keeps its name in code small under it, for engineer
+  and owner alike, unless the host draws it for the owner alone, `audience={:owner}` —
+  each declaration by its label, with the numbers from the log, and nothing of the
+  engineering (`EhOsContract.GraphRenderer.Canvas`, its `audience`). `:engineering` when it
+  is left out:
 
       <.live_component
         module={EhOsContract.GraphRenderer.Explorer}
@@ -33,9 +34,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
         audience={:owner}
       />
 
-  The reader's switch holds until the page is left: a host rendering the explorer again
-  does not set it back, so `audience` is read when the explorer starts, and anything but
-  `:engineering` or `:owner` there raises an `ArgumentError`.
+  `audience` is read when the explorer starts, so a host rendering it again with another
+  does not change it, and anything but `:engineering` or `:owner` raises an
+  `ArgumentError`.
 
   **Where it starts** is `at`: the domain's system, `:domain`, when it is left out; a
   contract by its id, `{:contract, "lending.circulation"}`; a process module by its id,
@@ -57,20 +58,24 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   nothing loaded that the domain does not name. Like `audience`, `at` is read when the
   explorer starts; a host rendering it again with another does not move the reader.
 
-  **Two viewpoints**, as tabs over the canvas, share a path ("Lending.Domain ›
-  lending.circulation › loan") that goes back up:
+  **The path** is the one way through: from the domain down, each step a way back up
+  ("Lending.Domain › lending.circulation › loan"), along two branches:
 
-  - **Structure:** the domain's system — its contracts in their contexts, what one consumes
-    from another, the drift's numbers on each — with a switch to its context map; a
-    contract's full graph; one of its units, with a switch to its lifecycle when it
-    declares one.
-  - **Processes:** the domain's process modules, and one's picture: its stages, the events
-    in them and its promises.
+  - **the structure:** the domain's system — its contracts in their contexts, what one
+    consumes from another, the drift's numbers on each — or its context map; a contract's
+    full graph; one of its units, or its lifecycle when it declares one;
+  - **the processes**, a step beside the domain ("Lending.Domain › Processes"): the domain's
+    process modules, and one's picture — its stages, the events in them and its promises.
+
+  **Each place says what it shows**, in a line under the path. Where it can be drawn two
+  ways — the domain's contracts or its contexts and their relations, a unit's commands and
+  events or its lifecycle — both are offered there, and the line says what the chosen one
+  shows.
 
   Each picture is an `EhOsContract.GraphRenderer.Canvas`, with its search, focus and
   panel. **The panel opens where a card leads:** a contract or a process of the map, a
   unit of a contract, and an event's unit or contract — from a process's event to the
-  contract that declares it, across the two viewpoints.
+  contract that declares it, from one branch to the other.
 
   **Documents load in the background**, each the first time the reader enters a picture
   of it, and its overlay only where the picture draws the log's numbers: the picture is
@@ -95,7 +100,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
      )}
   end
 
-  # `audience` is where the reader starts: once they switch, a host's render keeps their choice.
+  # `audience` is the host's, read when the explorer starts; the reader has no switch of it (#490).
   @impl true
   def update(assigns, socket) do
     socket =
@@ -213,10 +218,6 @@ defmodule EhOsContract.GraphRenderer.Explorer do
       {:noreply,
        socket |> assign(lens: String.to_existing_atom(lens)) |> enter() |> moved(socket)}
 
-  def handle_event("audience", %{"to" => audience}, socket)
-      when audience in ~w(engineering owner),
-      do: {:noreply, socket |> assign(audience: Audience.cast(audience)) |> derive()}
-
   # The panel's "Open": where the selected card of the drawn picture leads.
   def handle_event("open", %{"id" => id}, socket) when is_binary(id) do
     with document when document != nil <- socket.assigns.document,
@@ -311,7 +312,6 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
     socket =
       assign(socket,
-        tab: Places.tab(place),
         state: documents[ref],
         document: document,
         domain_document: domain_document,
@@ -326,7 +326,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
     assign(socket,
       picture: picture,
-      overlay: if(picture && picture.overlay && is_map(overlay), do: overlay)
+      overlay: if(picture && picture.overlay && is_map(overlay), do: overlay),
+      about: about(place, picture, socket.assigns.lens)
     )
   end
 
@@ -334,36 +335,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   def render(assigns) do
     ~H"""
     <div id={@id} class="ehg-explorer">
-      <div class="ehg-head">
-        <div class="ehg-tabs" role="tablist" aria-label="Viewpoint">
-          <button
-            :for={{tab, words, to} <- [{:structure, "Structure", "domain"}, {:processes, "Processes", "processes"}]}
-            type="button"
-            role="tab"
-            aria-selected={to_string(@tab == tab)}
-            class={["ehg-tab", @tab == tab && "is-current"]}
-            phx-click="go"
-            phx-value-to={to}
-            phx-target={@myself}
-          >
-            {words}
-          </button>
-        </div>
-        <div class="ehg-audience" role="group" aria-label="Read as">
-          <button
-            :for={{audience, words} <- [engineering: "Engineering", owner: "Owner"]}
-            type="button"
-            class={["ehg-tool", @audience == audience && "is-current"]}
-            aria-pressed={to_string(@audience == audience)}
-            phx-click="audience"
-            phx-value-to={audience}
-            phx-target={@myself}
-          >
-            {words}
-          </button>
-        </div>
-      </div>
-
+      <%!-- #490: the path is the one way through: from the domain down to a contract and a
+      unit, and along its other branch to the processes and one of them. --%>
       <nav class="ehg-path" aria-label="Where you are">
         <ol>
           <li :for={{words, to} <- @trail}>
@@ -373,6 +346,16 @@ defmodule EhOsContract.GraphRenderer.Explorer do
             <span :if={!to} aria-current="location">{words}</span>
           </li>
         </ol>
+        <button
+          :if={@place == :domain and @domain_document && processes(@domain_document) != []}
+          type="button"
+          class="ehg-branch"
+          phx-click="go"
+          phx-value-to="processes"
+          phx-target={@myself}
+        >
+          Processes ›
+        </button>
       </nav>
 
       <div :if={@picture && @picture.lenses != []} class="ehg-lenses" role="group" aria-label="Show as">
@@ -388,6 +371,9 @@ defmodule EhOsContract.GraphRenderer.Explorer do
           {words}
         </button>
       </div>
+
+      <%!-- What the place shows, or the way of drawing it the reader chose (#490). --%>
+      <p :if={@about} class="ehg-about">{@about}</p>
 
       <p :if={@state in [nil, :loading]} class="ehg-note">Loading…</p>
       <p :if={match?({:error, _}, @state)} class="ehg-note ehg-failed">
@@ -468,6 +454,51 @@ defmodule EhOsContract.GraphRenderer.Explorer do
   end
 
   defp picture(%{place: {:process, _id}}), do: %{view: :process, overlay: true, lenses: []}
+
+  # What a place shows, in a line under the path (#490): where it can be drawn two ways, what
+  # the way the reader chose shows; otherwise what the place itself does.
+  defp about(_place, %{lenses: [_ | _] = lenses}, lens) do
+    Map.fetch!(
+      %{
+        graph: about_graph(lenses),
+        map:
+          "The domain's areas of language, its bounded contexts, and how each depends on the " <>
+            "others: who supplies, who conforms, who translates.",
+        lifecycle: "The statuses the unit moves through, and the events that move it."
+      },
+      if(List.keymember?(lenses, lens, 0), do: lens, else: :graph)
+    )
+  end
+
+  defp about(:domain, _picture, _lens),
+    do:
+      "The domain's areas of language, its bounded contexts, and how each depends on the others."
+
+  defp about(:processes, _picture, _lens),
+    do:
+      "How work runs over time here: each process's stages, the events that move it, and what " <>
+        "it promises to finish by."
+
+  defp about({:contract, _id}, _picture, _lens),
+    do:
+      "One part of the business: the units that decide in it, the commands they take, the " <>
+        "events they record, and what reacts to them."
+
+  defp about({:process, _id}, _picture, _lens),
+    do:
+      "One process: its stages in order, the events each includes and the contracts that " <>
+        "record them, and what it promises."
+
+  defp about(_place, _picture, _lens), do: nil
+
+  # The first way of drawing a place with two: the domain's contracts, or a unit's commands.
+  defp about_graph([{:graph, "Contracts"} | _]),
+    do:
+      "Which contracts there are, in which context each sits, and what one takes from " <>
+        "another."
+
+  defp about_graph(_unit),
+    do: "What the unit takes, what it records, and the rules that may refuse a command."
 
   # The path from the domain to the place, each step a button back to it but the last: by
   # its name in code, or for the owner by its label (`step/3`).
