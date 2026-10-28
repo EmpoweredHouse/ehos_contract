@@ -133,6 +133,11 @@ A value has a type or fields, never both and never neither ([`D3`](../contract.m
 `:decimal`. A field of a value made of fields may be `personal:`, naming an identifier field of the value with
 its `subject:`; a field of such a value then holds personal data wherever it is used.
 
+Code that needs an enum's members, a select's options or a check of its own, reads them from the domain
+instead of copying them: `Lending.Domain.members(:bike_kind)` is `[city: "City bike", road: "Road bike"]`,
+each member with its label, or `nil` for a member written as a bare atom. A value named after an enum value
+has its members; any other name raises `ArgumentError`.
+
 ### Invariants of a value
 
 A value may declare what is true of every value of the type, each invariant with values that break it and

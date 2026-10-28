@@ -93,7 +93,7 @@ defmodule EhOsContract.Form do
   [Forms](forms.md) (`docs/concepts/forms.md` in the package).
   """
 
-  alias EhOsContract.{Codec, Dispatcher, Model, Rejection, Supplier}
+  alias EhOsContract.{Codec, Dispatcher, EctoTypes, Model, Rejection, Supplier}
 
   # The key of an error that is the whole form's, not one field's.
   @form_error :base
@@ -228,7 +228,7 @@ defmodule EhOsContract.Form do
     sent? = Map.has_key?(params, Atom.to_string(field.name))
     held = Map.get(data, field.name)
 
-    case shape(field.type, values) do
+    case EctoTypes.shape(field.type, values) do
       :flat when not sent? and held != nil ->
         {changes, rows, errors}
 
@@ -493,63 +493,18 @@ defmodule EhOsContract.Form do
   defp unit(model, declaration),
     do: Enum.find(model.units, &(&1.name == Map.get(declaration, :unit, :none)))
 
-  # Whether a field holds a domain value with fields, one or a list of them, which the form
-  # reads row by row, or anything else, which it reads whole.
-  defp shape({:list, inner}, values) do
-    case shape(inner, values) do
-      {:one, value} -> {:many, value}
-      _other -> :flat
-    end
-  end
-
-  defp shape(type, values) when is_atom(type) and is_map_key(values, type) do
-    case Map.fetch!(values, type) do
-      %{type: nil} -> {:one, type}
-      %{type: inner} -> shape(inner, values)
-    end
-  end
-
-  defp shape(_type, _values), do: :flat
-
   # A field's type in the changeset: an embed for a domain value with fields, which is what
   # `inputs_for` asks for, though no schema stands behind it and nothing is cast through it.
   defp field_type(field, values) do
-    case shape(field.type, values) do
+    case EctoTypes.shape(field.type, values) do
       {cardinality, _value} ->
         {:embed,
          %Ecto.Embedded{cardinality: cardinality, field: field.name, related: __MODULE__.Row}}
 
       :flat ->
-        ecto_type(field.type, values)
+        EctoTypes.of(field.type, values)
     end
   end
-
-  # The changeset's types, from the declaration's, for the form to show each value.
-  defp ecto_type(type, _values) when type in [:string, :id], do: :string
-  defp ecto_type({:id, _entity}, _values), do: :string
-  defp ecto_type(:timestamp, _values), do: :utc_datetime_usec
-  defp ecto_type(type, _values) when type in [:integer, :boolean, :decimal, :date], do: type
-
-  defp ecto_type({:enum, members}, _values),
-    do:
-      Ecto.ParameterizedType.init(Ecto.Enum,
-        values:
-          Enum.map(members, fn
-            {name, _label} -> name
-            name -> name
-          end)
-      )
-
-  defp ecto_type({:list, inner}, values), do: {:array, ecto_type(inner, values)}
-
-  defp ecto_type(type, values) when is_atom(type) and is_map_key(values, type) do
-    case Map.fetch!(values, type) do
-      %{type: nil} -> :map
-      %{type: inner} -> ecto_type(inner, values)
-    end
-  end
-
-  defp ecto_type(_type, _values), do: :any
 
   # A form keyed by atoms, from a test or the page's own code, as a form's would be.
   defp stringified(params), do: Map.new(params, fn {key, value} -> {to_string(key), value} end)

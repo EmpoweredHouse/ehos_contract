@@ -48,4 +48,43 @@ defmodule EhOsContract.DomainValuesTest do
              }
     end
   end
+
+  describe "members/1" do
+    # Compiled once: each test asks the same domain.
+    setup do
+      domain = EhOsContract.DomainTest.Members
+
+      unless Code.ensure_loaded?(domain) do
+        compile("""
+        defmodule EhOsContract.DomainTest.Members do
+          use EhOsContract.Domain, name: :clinic, language: :pl
+
+          value :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+          value :refund_method, :method
+          value :priority, {:enum, [:low, :high]}
+          value :money, :integer, unit: :cents
+        end
+        """)
+      end
+
+      %{domain: domain}
+    end
+
+    test "lists an enum's members in the order declared, each with its label", %{domain: domain} do
+      assert domain.members(:method) == [card: "Karta", cash: "Gotówka"]
+      assert domain.members(:priority) == [low: nil, high: nil]
+    end
+
+    test "follows a value named after an enum to its members", %{domain: domain} do
+      assert domain.members(:refund_method) == [card: "Karta", cash: "Gotówka"]
+    end
+
+    test "refuses a value that is not an enum, or no value at all", %{domain: domain} do
+      for name <- [:money, :nothing] do
+        assert_raise ArgumentError,
+                     ~r/is no enum value of EhOsContract.DomainTest.Members; its enum values are \[:method, :priority, :refund_method\]/,
+                     fn -> domain.members(name) end
+      end
+    end
+  end
 end

@@ -74,6 +74,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   goes through `Form` (#132). A new concept page,
   `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
   changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
+- **A domain lists an enum value's members** (#472): `Lending.Domain.members(:bike_kind)` is
+  `[city: "City bike", road: "Road bike"]`, in the order declared, each with its label or `nil`, so a
+  select's options or a check read them from the domain instead of a copy. A value named after an
+  enum value has its members; any other name raises `ArgumentError`.
 
 ## [0.12.0] - 2026-10-27
 
