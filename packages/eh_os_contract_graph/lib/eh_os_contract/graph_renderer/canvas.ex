@@ -109,6 +109,12 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   faint, and the panel says what it is.
   Clicking it again, the panel's close button, or Escape clears the selection.
 
+  **The panel says the business first.** The facts of the code — a grant, a scope, a field's
+  stored type, a name on the wire, a scenario's data — are in the page, folded under
+  "Technical details", which the reader unfolds and which stays as they left it from one
+  selection to the next; what the panel says in plain words gives way to the same in code
+  while it is open. For the owner, `audience={:owner}`, the panel has no such facts to fold.
+
   **The panel is a sidebar** at the right of the window, as tall as it, whose left
   edge the reader drags to set its width, kept in the browser between visits. One is
   open at a time: selecting in one canvas clears the selection of the others on the
@@ -593,6 +599,7 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         target={@myself}
         open={@opens}
         audience={@audience}
+        id={"#{@id}-panel"}
       />
     </div>
     """

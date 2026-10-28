@@ -955,7 +955,25 @@
   text-align: left;
   cursor: pointer;
 }
-.ehg-panel .ehg-open {
+.ehg-panel .ehg-tech {
+  margin: 4px 0 10px;
+  font-size: 12px;
+}
+.ehg-tech > summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ehg-tech > summary:hover,
+.ehg-tech[open] > summary {
+  color: var(--text-primary);
+}
+.ehg-panel:has(.ehg-tech:not([open])) .ehg-code,
+.ehg-panel:has(.ehg-tech:not([open])) .ehg-part:not(:has(> :not(.ehg-part-title, .ehg-code))),
+.ehg-panel:has(.ehg-tech[open]) .ehg-plain {
+  display: none;
+}
+.ehg-open {
   display: inline-block;
   margin: 0 0 10px;
   padding: 3px 9px;

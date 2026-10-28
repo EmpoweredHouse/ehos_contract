@@ -56,6 +56,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   attr :audience, :atom, default: :engineering, doc: "who reads it: `:engineering` or `:owner`"
 
+  attr :id, :string,
+    default: "ehg-panel",
+    doc: "unique on the page: its technical details' fold keeps its id"
+
   @doc "The panel of what is selected."
   @spec panel(map()) :: Phoenix.LiveView.Rendered.t()
   def panel(assigns) do
@@ -67,7 +71,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
       target: assigns.target,
       overlay: assigns.overlay,
       open: assigns.open,
-      code?: Audience.code?(assigns.audience)
+      code?: Audience.code?(assigns.audience),
+      id: assigns.id
     })
     |> selected()
   end
@@ -145,6 +150,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
           </button>
           <p :if={@name} class="ehg-panel-name">{@name}</p>
         </header>
+        <%!-- #490: the facts of the code, folded; the server never patches the fold, so it stays
+        as the reader left it from one selection to the next. --%>
+        <details :if={@ctx.code?} id={"#{@ctx.id}-tech"} class="ehg-tech" phx-update="ignore">
+          <summary>Technical details</summary>
+        </details>
         <a :if={@ctx.open[:href]} class="ehg-open" href={@ctx.open.href}>{@ctx.open.label} →</a>
         <button
           :if={@ctx.open[:target]}
@@ -188,11 +198,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <.refs relations={@people} side="from" ctx={@ctx} />
       <.refs relations={@reactions} side="from" then={:phase} ctx={@ctx} />
       <.refs relations={@timers} side="from" then={:fires} ctx={@ctx} />
-      <p :if={@node["capability"]}>EHOS grants it as <code>{@node["capability"]}</code>.</p>
-      <p :if={@node["actor_is"] && @ctx.code?}>
+      <p :if={@node["capability"]} class="ehg-code">
+        EHOS grants it as <code>{@node["capability"]}</code>.
+      </p>
+      <p :if={@node["actor_is"] && @ctx.code?} class="ehg-code">
         Only the person its unit's <code>{@node["actor_is"]}</code> names; anyone else is refused.
       </p>
-      <p :if={@node["actor_is"] && !@ctx.code?}>
+      <p :if={@node["actor_is"]} class={@ctx.code? && "ehg-plain"}>
         Only the person its unit names; anyone else is refused.
       </p>
       <p :if={@people == [] and @reactions == [] and @timers == []} class="ehg-empty">
@@ -202,10 +214,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@reads != []} title="Reads before deciding">
       <p :for={r <- @reads}>
         <.ref :if={r["entity"]} id={r["entity"]} ctx={@ctx} />
-        <span :if={!r["entity"]}>{r["name"]}</span><span :if={@ctx.code?}>, the row its <code>{r["field"]}</code> names</span>
+        <span :if={!r["entity"]}>{r["name"]}</span><span :if={@ctx.code?} class="ehg-code">, the row its <code>{r["field"]}</code> names</span>
       </p>
     </.part>
-    <.part :if={@node["scope"]} title="Scope">
+    <.part :if={@node["scope"]} title="Scope" class="ehg-code">
       <p>
         A grant narrows it to one <code>{@node["scope"]}</code>: a person may issue it only for
         the one their grant names.
@@ -243,12 +255,14 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part title="Where it comes from">
       <p :if={@node["unit"]}>Recorded in <.ref id={@node["unit"]} ctx={@ctx} />.</p>
       <p :if={@node["declared_as"]}>Declared in another contract and consumed here.</p>
-      <p :for={r <- @received} :if={@ctx.code?}>
+      <p :for={r <- @received} :if={@ctx.code?} class="ehg-code">
         Received from another application as <.ref id={r["from"]} ctx={@ctx} />.
       </p>
-      <p :if={@received != [] and !@ctx.code?}>Received from another application.</p>
+      <p :if={@received != []} class={@ctx.code? && "ehg-plain"}>
+        Received from another application.
+      </p>
       <p :if={@node["contract"]}>Declared in <.ref id={@node["contract"]} ctx={@ctx} />.</p>
-      <p :if={@node["type"]}>
+      <p :if={@node["type"]} class="ehg-code">
         In the log as <code>{@node["type"]}</code>{if @node["schema_version"],
           do: ", schema version #{@node["schema_version"]}"}.
       </p>
@@ -259,11 +273,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
     </.part>
     <.part :if={@people != [] or (@node["capability"] && @received == [])} title="Recorded by">
       <.refs relations={@people} side="from" ctx={@ctx} />
-      <p :if={@node["capability"] && @received == []}>
+      <p :if={@node["capability"] && @received == []} class="ehg-code">
         EHOS grants it as <code>{@node["capability"]}</code>.
       </p>
     </.part>
-    <p :if={@node["capability"] && @received != []}>
+    <p :if={@node["capability"] && @received != []} class="ehg-code">
       The application takes it with <code>{@node["capability"]}</code>.
     </p>
     <p :if={@node["terminal"]} class="ehg-strong">It ends the run.</p>
@@ -311,7 +325,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       )
 
     ~H"""
-    <p :if={@node["correlate"] not in [nil, []]}>
+    <p :if={@node["correlate"] not in [nil, []]} class="ehg-code">
       One run per <code>{Enum.join(@node["correlate"], ", ")}</code>.
     </p>
     <.part title="Starts on"><.refs relations={@starts} side="from" ctx={@ctx} /></.part>
@@ -434,13 +448,15 @@ defmodule EhOsContract.GraphRenderer.Panel do
     </.part>
     <.part title="Who may ask">
       <.refs relations={@people} side="from" ctx={@ctx} />
-      <p :if={@node["capability"]}>EHOS grants it as <code>{@node["capability"]}</code>.</p>
+      <p :if={@node["capability"]} class="ehg-code">
+        EHOS grants it as <code>{@node["capability"]}</code>.
+      </p>
       <p :if={@people == [] and !@node["capability"]} class="ehg-quiet">No actor may ask it.</p>
     </.part>
     <.part title="Reads">
       <.refs relations={@reads} side="to" ctx={@ctx} />
       <p>{if @node["returns"] == "one", do: "Returns one row.", else: "Returns a list of rows."}</p>
-      <p :if={@node["scope"]}>
+      <p :if={@node["scope"]} class="ehg-code">
         A grant narrows the answer to the rows of one <code>{@node["scope"]}</code>.
       </p>
     </.part>
@@ -466,7 +482,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     ~H"""
     <p>
-      {if @node["unit_kind"] == "dcb", do: "A dynamic consistency boundary", else: "An aggregate"}<span :if={@node["identity"]}>, identified by
+      {if @node["unit_kind"] == "dcb", do: "A dynamic consistency boundary", else: "An aggregate"}<span :if={@node["identity"]} class="ehg-code">, identified by
       <code>{Enum.join(List.wrap(@node["identity"]), ", ")}</code></span>{if @node["generated"],
         do: ", which the library generates (#{@node["generated"]}) when a command creates one"}.
     </p>
@@ -568,8 +584,8 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <p :if={@node["context"]}>
       {actor_kind(@node)}, of <.ref id={@node["context"]} ctx={@ctx} />.
     </p>
-    <p :if={@node["role"]}>Their role in EHOS is <code>{@node["role"]}</code>.</p>
-    <p :if={@node["scope"] not in [nil, []]}>
+    <p :if={@node["role"]} class="ehg-code">Their role in EHOS is <code>{@node["role"]}</code>.</p>
+    <p :if={@node["scope"] not in [nil, []]} class="ehg-code">
       A grant to this role narrows answers by <code>{Enum.join(@node["scope"], ", ")}</code>.
     </p>
     <.part :if={@backed != []} title="Stands for"><.refs relations={@backed} side="to" ctx={@ctx} /></.part>
@@ -583,7 +599,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@issue != []} title="May issue"><.granted relations={@issue} ctx={@ctx} /></.part>
     <.part :if={@record != []} title="May record"><.granted relations={@record} ctx={@ctx} /></.part>
     <.part :if={@ask != []} title="May ask"><.granted relations={@ask} ctx={@ctx} /></.part>
-    <.part :if={@capabilities != %{}} title="What the role may do">
+    <.part :if={@capabilities != %{}} title="What the role may do" class="ehg-code">
       <div :for={{contract, granted} <- @capabilities} class="ehg-trigger">
         <p class="ehg-trigger-title"><.ref id={contract} ctx={@ctx} /></p>
         <ul class="ehg-list">
@@ -627,7 +643,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@node["operations"] not in [nil, []]} title="Operations">
       <ul class="ehg-list">
         <li :for={o <- @node["operations"]}>
-          {o["label"] || o["name"]} <code :if={@ctx.code?}>{o["name"]}</code>
+          {o["label"] || o["name"]} <code :if={@ctx.code?} class="ehg-code">{o["name"]}</code>
         </li>
       </ul>
     </.part>
@@ -643,7 +659,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@gives != []} title="Gives the value of">
       <ul class="ehg-list">
         <li :for={{node, field} <- @gives}>
-          <code :if={@ctx.code?}>{field["name"]}</code><span :if={!@ctx.code?}>{field["label"]}</span>
+          <code :if={@ctx.code?} class="ehg-code">{field["name"]}</code><span class={
+            @ctx.code? && "ehg-plain"
+          }>{field["label"] || field["name"]}</span>
           of <.ref id={node} ctx={@ctx} />
         </li>
       </ul>
@@ -687,7 +705,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
             <span :for={t <- term["translations"] || []} class="ehg-translation">
               {t["language"]}: {t["text"]}{if t["definition"], do: " — #{t["definition"]}"}
             </span>
-            <span :if={term["code"]} class="ehg-translation">In code: <code>{term["code"]}</code></span>
+            <span :if={term["code"]} class="ehg-translation ehg-code">In code: <code>{term["code"]}</code></span>
           </dd>
         <% end %>
       </dl>
@@ -697,7 +715,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@entities != []} title="Entities">
       <div :for={e <- @entities} class="ehg-trigger">
         <p class="ehg-trigger-title">
-          <.ref id={e["id"]} ctx={@ctx} /><span :if={e["identity"]}>, identified by <code>{e["identity"]}</code></span>
+          <.ref id={e["id"]} ctx={@ctx} /><span :if={e["identity"]} class="ehg-code">, identified by <code>{e["identity"]}</code></span>
         </p>
         <.fields fields={e["fields"] || []} of="entity" ctx={@ctx} />
       </div>
@@ -735,10 +753,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
       )
 
     ~H"""
-    <p :if={@node["module"]}>
+    <p :if={@node["module"]} class="ehg-code">
       The process module <code>{@node["name"]}</code>, in the code <code>{@node["module"]}</code>.
     </p>
-    <p :if={@node["correlate"] not in [nil, []]}>
+    <p :if={@node["correlate"] not in [nil, []]} class="ehg-code">
       One run per <code>{Enum.join(@node["correlate"], ", ")}</code>.
     </p>
     <p :if={@node["deadline"]}>
@@ -818,13 +836,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
       )
 
     ~H"""
-    <p>On the wire as <code>{@node["name"]}</code>.</p>
+    <p class="ehg-code">On the wire as <code>{@node["name"]}</code>.</p>
     <.part :if={@published != []} title="Published from">
       <ul class="ehg-list">
         <li :for={r <- @published}>
-          <.ref id={r["from"]} ctx={@ctx} />, with <code>{Enum.join(r["fields"] || [], ", ")}</code>{repeat_key(
+          <.ref id={r["from"]} ctx={@ctx} /><span class="ehg-code">, with <code>{Enum.join(r["fields"] || [], ", ")}</code>{repeat_key(
             r
-          )}
+          )}</span>
         </li>
       </ul>
     </.part>
@@ -841,7 +859,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@subscribers != []} title="Subscribed by">
       <ul class="ehg-list">
         <li :for={r <- @subscribers}>
-          <.ref id={r["to"]} ctx={@ctx} />, as <code>{r["as"]}</code>{with_grant(r)}
+          <.ref id={r["to"]} ctx={@ctx} /><span class="ehg-code">, as <code>{r["as"]}</code>{with_grant(
+            r
+          )}</span>
         </li>
       </ul>
     </.part>
@@ -863,7 +883,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       )
 
     ~H"""
-    <p :if={@ctx.code?}>
+    <p :if={@ctx.code?} class="ehg-code">
       The contract <code>{@node["name"]}</code>, in the code <code>{@node["module"]}</code>.
     </p>
     <p :if={@node["context"]}>In the context <.ref id={@node["context"]} ctx={@ctx} />.</p>
@@ -933,7 +953,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp body(%{kind: "entity"} = assigns) do
     ~H"""
     <p :if={@node["identity"]}>
-      Identified by <code>{@node["identity"]}</code>{if @node["context"], do: ", in the context"}
+      <span class="ehg-code">Identified by <code>{@node["identity"]}</code></span>{if @node["context"], do: ", in the context"}
       <.ref :if={@node["context"]} id={@node["context"]} ctx={@ctx} />.
     </p>
     <p :if={!@node["identity"] && @node["context"]}>
@@ -962,7 +982,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # Anything else — a subject, a domain service — as the document has it.
   defp body(assigns) do
     ~H"""
-    <.facts :if={@ctx.code?} facts={Map.drop(@node, ["id", "label", "name", "source"])} />
+    <div :if={@ctx.code?} class="ehg-code">
+      <.facts facts={Map.drop(@node, ["id", "label", "name", "source"])} />
+    </div>
     """
   end
 
@@ -1109,11 +1131,12 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # --- parts --------------------------------------------------------------------------------
 
   attr :title, :string, required: true
+  attr :class, :string, default: nil
   slot :inner_block, required: true
 
   defp part(assigns) do
     ~H"""
-    <div class="ehg-part">
+    <div class={["ehg-part", @class]}>
       <p class="ehg-part-title">{@title}</p>
       {render_slot(@inner_block)}
     </div>
@@ -1200,7 +1223,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <ul class="ehg-list">
       <li :for={r <- @relations}>
-        <.ref id={r["to"]} ctx={@ctx} /><code :if={capability(@ctx.lookup, r["to"])} class="ehg-grant">{capability(
+        <.ref id={r["to"]} ctx={@ctx} /><code :if={capability(@ctx.lookup, r["to"])} class="ehg-grant ehg-code">{capability(
             @ctx.lookup,
             r["to"]
           )}</code>
@@ -1325,10 +1348,15 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <ul :if={@fields != []} class="ehg-fields">
       <li :for={field <- @fields}>
-        <span :if={@ctx.code?} class="ehg-field-name">{field["name"]}</span>
+        <%!-- A field the client gave no label has no other name than this one, which stays. --%>
+        <span :if={@ctx.code?} class={["ehg-field-name", field["label"] && "ehg-code"]}>
+          {field["name"]}
+        </span>
         <span :if={field["label"]} class="ehg-field-label">{field["label"]}</span>
-        <span :if={@ctx.code?} class="ehg-field-type">{field_type(field)}</span>
-        <span :if={!@ctx.code? and field["required"] == false} class="ehg-field-type">optional</span>
+        <span :if={@ctx.code?} class="ehg-field-type ehg-code">{field_type(field)}</span>
+        <span :if={field["required"] == false} class={["ehg-field-type", @ctx.code? && "ehg-plain"]}>
+          optional
+        </span>
         <span :for={{look, note} <- field_notes(field, @fields, @ctx)} class={look}>
           {note}
         </span>
@@ -1522,7 +1550,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <p :for={t <- @scenario["sets"] || []}>sets <.ref id={t} ctx={@ctx} /></p>
       <p :for={t <- @scenario["cancels"] || []}>cancels <.ref id={t} ctx={@ctx} /></p>
       <p :if={@scenario["ended"]} class="ehg-strong">the run ends</p>
-      <div :if={@ctx.code? and @scenario["state"] not in [nil, %{}]}>
+      <div :if={@ctx.code? and @scenario["state"] not in [nil, %{}]} class="ehg-code">
         <p class="ehg-step">It then remembers</p>
         <.data data={@scenario["state"]} />
       </div>
@@ -1536,13 +1564,15 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <article class="ehg-scenario">
       <p class="ehg-scenario-title">{@scenario["description"]}</p>
       <.happened title="Given" list={@scenario["given"] || []} ctx={@ctx} />
-      <p :if={@ctx.code?} class="ehg-step">Asked with</p>
-      <.data :if={@ctx.code?} data={@scenario["params"] || %{}} />
+      <div :if={@ctx.code?} class="ehg-code">
+        <p class="ehg-step">Asked with</p>
+        <.data data={@scenario["params"] || %{}} />
+      </div>
       <p class="ehg-step">It answers</p>
-      <div :for={row <- List.wrap(@scenario["answers"])} :if={@ctx.code?} class="ehg-row">
+      <div :for={row <- List.wrap(@scenario["answers"])} :if={@ctx.code?} class="ehg-row ehg-code">
         <.data data={row} />
       </div>
-      <p :if={!@ctx.code? and @scenario["answers"] not in [nil, []]}>
+      <p :if={@scenario["answers"] not in [nil, []]} class={@ctx.code? && "ehg-plain"}>
         {count(length(List.wrap(@scenario["answers"])), "row")}
       </p>
       <p :if={@scenario["answers"] in [nil, []]}>nothing</p>
@@ -1594,7 +1624,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <div class="ehg-happened">
       <.ref id={@id} ctx={@ctx} />{if @at, do: ", at #{@at}"}
-      <.data :if={@ctx.code?} data={@data || %{}} />
+      <div :if={@ctx.code?} class="ehg-code"><.data data={@data || %{}} /></div>
     </div>
     """
   end

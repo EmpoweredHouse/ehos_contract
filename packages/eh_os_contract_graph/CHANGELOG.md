@@ -51,6 +51,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   or "Contexts and their relations", "Commands and events" or "Lifecycle" — both stay offered there with the
   chosen one's line. The reader's "Engineering" / "Owner" switch is gone: a host that wants the owner's view
   alone still passes `audience={:owner}`.
+- **The panel says the business first, the code folded** (#490): a grant, a scope, a field's stored type, a name
+  on the wire, a scenario's data and the other facts of the code are folded under "Technical details" at the top
+  of the panel, which stays as the reader left it between selections; while it is open, what the panel says in
+  plain words gives way to the same in code. A field with no label keeps its name in code, its only name. With
+  `audience={:owner}` the panel has no technical details, as before.
 
 - **The zoom is one control in the picture's corner** (#489): the row of "−", "+", "Readable" and "Whole picture"
   over the canvas is gone; a button over the picture's top right corner opens a menu of "Closer", "Farther",

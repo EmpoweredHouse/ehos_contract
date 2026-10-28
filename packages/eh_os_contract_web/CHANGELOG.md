@@ -27,6 +27,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The dashboard's panel folds the facts of the code under "Technical details"** (#490), as the renderer it draws
+  with now does; `priv/static/assets/app.css` is rebuilt with it.
+
 - **Breaking:** **the dashboard's graph is drawn by the renderer of `eh_os_contract_graph` 0.8.1** (#489), whose
   hook its committed `priv/static/assets/` now carry, rebuilt: the zoom is one control in the picture's corner,
   and a box that opens a contract, a unit or a process ends its title in a mark. The hook needs that version's
