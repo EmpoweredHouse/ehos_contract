@@ -1,0 +1,1 @@
+Merge of origin/main (v0.12.0 release) into engine/474-form. Only CHANGELOG.md conflicted: #474's Added block kept under [Unreleased], above [0.12.0]. No code changed, so no new review; full gate on OTP 27.2/Elixir 1.18.4 from clean builds: EXIT=0.
