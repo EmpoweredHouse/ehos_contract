@@ -47,15 +47,21 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
 
     Mix.Task.run("compile")
     Application.load(:eh_os_contract)
-    EhOsContract.Registry.load!()
 
     repo = EhOsContract.Config.fetch!(:repo)
     dir = opts[:migrations_path] || Path.join(priv(repo), "migrations")
+    existing = migrations(dir)
 
     tables =
       case {opts[:all], rest} do
         {true, []} ->
-          Enum.reject(ReadModelTable.of(EhOsContract.Registry.contracts()), &created?(&1, dir))
+          EhOsContract.Registry.load!()
+          sources = Enum.map(existing, &File.read!(Path.join(dir, &1)))
+
+          Enum.reject(
+            ReadModelTable.of(EhOsContract.Registry.contracts()),
+            &ReadModelTable.created_by?(&1.table, sources)
+          )
 
         {nil, [contract, read_model]} ->
           [one!(contract, read_model)]
@@ -68,9 +74,7 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
 
     File.mkdir_p!(dir)
 
-    tables
-    |> Enum.with_index()
-    |> Enum.each(fn {table, i} -> write!(table, repo, dir, i) end)
+    Enum.reduce(tables, latest(existing), fn table, latest -> write!(table, repo, dir, latest) end)
   end
 
   defp one!(contract, read_model) do
@@ -89,27 +93,36 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
       )
   end
 
-  # A migration of `dir` already creates the table.
-  defp created?(table, dir) do
-    needle = "table(#{inspect(String.to_atom(table.table))}"
+  # The migration files of `dir`, by name: listed, never matched as a pattern, so a
+  # path with `[` or `*` in it is a path.
+  defp migrations(dir) do
+    case File.ls(dir) do
+      {:ok, names} ->
+        names |> Enum.filter(&Regex.match?(~r/\A[0-9]{14}_.+\.exs\z/, &1)) |> Enum.sort()
 
-    dir
-    |> Path.join("*.exs")
-    |> Path.wildcard()
-    |> Enum.any?(&String.contains?(File.read!(&1), needle))
+      {:error, _} ->
+        []
+    end
   end
 
-  defp write!(table, repo, dir, i) do
-    # One second apart, so migrations written together keep their order and names.
-    stamp =
-      DateTime.utc_now()
-      |> DateTime.add(i, :second)
-      |> Calendar.strftime("%Y%m%d%H%M%S")
+  # The highest version a migration of `dir` holds, so a new one never repeats it.
+  defp latest(names) do
+    names
+    |> Enum.map(&(&1 |> String.slice(0, 14) |> String.to_integer()))
+    |> Enum.max(fn -> 0 end)
+  end
+
+  defp write!(table, repo, dir, latest) do
+    now = DateTime.utc_now() |> Calendar.strftime("%Y%m%d%H%M%S") |> String.to_integer()
+    version = max(now, latest + 1)
 
     name = "create_#{table.table}"
-    path = Path.join(dir, "#{stamp}_#{name}.exs")
+    path = Path.join(dir, "#{version}_#{name}.exs")
 
-    if Path.wildcard(Path.join(dir, "*_#{name}.exs")) != [],
+    # `<version>_create_<table>.exs` exactly: `create_x_create_<table>` is another's.
+    named = ~r/\A[0-9]{14}_#{Regex.escape(name)}\.exs\z/
+
+    if Enum.any?(migrations(dir), &Regex.match?(named, &1)),
       do: Mix.raise("#{dir} already holds a migration named #{name}; it is never overwritten")
 
     module = Module.concat([repo, Migrations, Macro.camelize(name)])
@@ -120,8 +133,9 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
       |> Code.format_string!(locals_without_parens: [add: :*, create: :*])
       |> IO.iodata_to_binary()
 
-    File.write!(path, source <> "\n")
+    File.write!(path, source <> "\n", [:exclusive])
     Mix.shell().info("wrote #{path}")
+    version
   end
 
   # Where Ecto keeps a repo's migrations: its `:priv`, or `priv/<repo's last name>`.

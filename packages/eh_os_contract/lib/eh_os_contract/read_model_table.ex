@@ -126,6 +126,21 @@ defmodule EhOsContract.ReadModelTable do
     """
   end
 
+  @doc """
+  Whether one of the migration `sources` creates the table `name`: `create table(:t, …)`
+  or `(:t)`, the name an atom or a string, `create_if_not_exists` too. An `alter` or a
+  `drop` does not count, nor does another table whose name starts with this one.
+  """
+  @spec created_by?(String.t(), [String.t()]) :: boolean()
+  def created_by?(name, sources) do
+    name = Regex.escape(name)
+
+    creates =
+      ~r/create(?:_if_not_exists)?\(?\s*table\(\s*(?::#{name}|:"#{name}"|"#{name}")\s*[,)]/
+
+    Enum.any?(sources, &Regex.match?(creates, &1))
+  end
+
   # The column type a migration adds for an Ecto type: text for a string, which an
   # identifier and an enum's member are too, and 64 bits for an integer, as the
   # engine bounds one.
@@ -136,9 +151,12 @@ defmodule EhOsContract.ReadModelTable do
 
   @doc """
   What is wrong with the table in the database `repo` reads, against what `table`
-  needs, in words: `[]` when nothing is. A column the read model does not declare is
-  the projection's own and is let be, unless it refuses a row written through `Row`:
-  `NOT NULL` with no default.
+  needs, in words: `[]` when nothing is. The table is found by its exact name in the
+  current schema, as Ecto quotes it. A column the read model does not declare is the
+  projection's own and is let be, unless it refuses a row written through `Row`:
+  `NOT NULL` with no default, identity or generation. A narrower column of the same
+  kind passes, an `int4` for an integer or a `varchar(n)` for a string, as Ecto's own
+  `:integer` and `:string` write them; the generator writes the wide ones.
   """
   @spec problems(t(), module()) :: [String.t()]
   def problems(%{table: name} = table, repo) do
@@ -161,7 +179,7 @@ defmodule EhOsContract.ReadModelTable do
         blocking =
           for column <- found,
               not MapSet.member?(declared, column.name),
-              not column.nullable and column.default == nil do
+              not column.nullable and not column.fills_itself do
             "column #{column.name} is not a field of the read model, and is NOT NULL with no " <>
               "default, so no row written through its Row fits it"
           end
@@ -208,6 +226,8 @@ defmodule EhOsContract.ReadModelTable do
     do: ["timestamp", "timestamptz"]
 
   defp accepted(:map), do: ["jsonb", "json"]
+  # Postgres names an array of any depth by its element alone: `text[][]` is `_text`.
+  defp accepted({:array, {:array, _} = inner}), do: accepted(inner)
   defp accepted({:array, inner}), do: Enum.map(accepted(inner), &("_" <> &1))
   defp accepted(_other), do: []
 
@@ -217,7 +237,9 @@ defmodule EhOsContract.ReadModelTable do
     %{rows: rows} =
       repo.query!(
         """
-        SELECT column_name, udt_name, is_nullable, column_default, data_type
+        SELECT column_name, udt_name, is_nullable,
+               column_default IS NOT NULL OR is_identity = 'YES' OR is_generated <> 'NEVER',
+               data_type
         FROM information_schema.columns
         WHERE table_schema = current_schema() AND table_name = $1
         ORDER BY ordinal_position
@@ -225,12 +247,13 @@ defmodule EhOsContract.ReadModelTable do
         [table]
       )
 
-    for [name, udt, nullable, default, data_type] <- rows do
+    for [name, udt, nullable, fills_itself, data_type] <- rows do
       %{
         name: name,
         udt: udt,
         nullable: nullable == "YES",
-        default: default,
+        # A default, an identity or a generated column fills a row that leaves it out.
+        fills_itself: fills_itself,
         shown: if(data_type == "ARRAY", do: "#{String.trim_leading(udt, "_")}[]", else: udt)
       }
     end
@@ -242,8 +265,10 @@ defmodule EhOsContract.ReadModelTable do
         """
         SELECT a.attname
         FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
         JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-        WHERE i.indrelid = to_regclass($1) AND i.indisprimary
+        WHERE c.relname = $1 AND n.nspname = current_schema() AND i.indisprimary
         """,
         [table]
       )

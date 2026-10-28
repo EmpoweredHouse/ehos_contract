@@ -30,6 +30,7 @@ defmodule EhOsContract.ReadModelTablesTest do
           subject :member, "Member"
 
           value :money, :integer, unit: :cents
+          value :codes, {:list, :string}
 
           value :address do
             field :street, :string
@@ -58,6 +59,25 @@ defmodule EhOsContract.ReadModelTablesTest do
             field :address, :address, optional: true
             field :member_id, :id, subject: :member
             field :name, :string, personal: :member_id
+            field :code_lists, {:list, :codes}, optional: true
+          end
+        end
+
+        defmodule EhOsContract.Fixtures.TableCheck.Rooms do
+          use EhOsContract.Contract,
+            domain: EhOsContract.Fixtures.TableCheck.Domain,
+            context: :visits,
+            id: "table_check.rooms"
+
+          aggregate :room, "Room" do
+            identity :room_id
+            command :open_room, "Opening a room", by: :reception, emits: :room_opened
+            event :room_opened, "Room opened"
+          end
+
+          read_model :rooms, "Rooms", projects: :room_opened,
+            table: "TableCheckRooms", key: :room_id do
+            field :room_id, :id
           end
         end
         """,
@@ -79,7 +99,8 @@ defmodule EhOsContract.ReadModelTablesTest do
         "tags text[]",
         "address jsonb",
         "member_id text NOT NULL",
-        "name text"
+        "name text",
+        "code_lists text[][]"
       ])
 
     Repo.query!("CREATE TABLE #{@table} (#{Enum.join(columns, ", ")})")
@@ -101,8 +122,16 @@ defmodule EhOsContract.ReadModelTablesTest do
     assert check() == :ok
   end
 
-  test "a column of the projection's own passes when it takes NULL or has a default" do
-    create!(&(&1 ++ ["note text", "position bigint NOT NULL DEFAULT 0"]))
+  test "a column of the projection's own passes when it takes NULL or fills itself" do
+    create!(
+      &(&1 ++
+          [
+            "note text",
+            "position bigint NOT NULL DEFAULT 0",
+            "seq bigint GENERATED ALWAYS AS IDENTITY"
+          ])
+    )
+
     assert check() == :ok
   end
 
@@ -150,6 +179,12 @@ defmodule EhOsContract.ReadModelTablesTest do
              ~s|its primary key is ["member_id"], and the read model's key is ["visit_id"]|
   end
 
+  # Ecto quotes the name, so the table is `"TableCheckRooms"`, found by its exact name.
+  test "a table named with capitals is found, its primary key with it" do
+    Repo.query!(~s|CREATE TABLE "TableCheckRooms" (room_id text PRIMARY KEY)|)
+    assert Testing.assert_read_model_tables([EhOsContract.Fixtures.TableCheck.Rooms]) == :ok
+  end
+
   test "a column of the projection's own that refuses a row written through Row" do
     create!(&(&1 ++ ["position bigint NOT NULL"]))
 
@@ -158,6 +193,37 @@ defmodule EhOsContract.ReadModelTablesTest do
   end
 
   describe "mix eh_os_contract.gen.migration" do
+    setup do
+      Mix.shell(Mix.Shell.Process)
+      on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
+    end
+
+    test "a migration creates a table only by its whole name, and only with create" do
+      created_by? = &EhOsContract.ReadModelTable.created_by?("visits", [&1])
+
+      assert created_by?.("create table(:visits, primary_key: false) do")
+      assert created_by?.("create table(:visits) do")
+      assert created_by?.(~s|create table("visits", primary_key: false) do|)
+      assert created_by?.("create_if_not_exists table(:visits) do")
+      refute created_by?.("create table(:visits_archive, primary_key: false) do")
+      refute created_by?.("alter table(:visits) do")
+      refute created_by?.("drop table(:visits)")
+    end
+
+    @tag :tmp_dir
+    test "gives a migration a version after every one the directory holds", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, "99991231235959_far_ahead.exs"), "")
+
+      Mix.Tasks.EhOsContract.Gen.Migration.run([
+        inspect(@contract),
+        "visits",
+        "--migrations-path",
+        dir
+      ])
+
+      assert File.exists?(Path.join(dir, "99991231235960_create_#{@table}.exs"))
+    end
+
     @tag :tmp_dir
     test "writes a migration that creates a table its contract fits", %{tmp_dir: dir} do
       Mix.Tasks.EhOsContract.Gen.Migration.run([
@@ -178,6 +244,7 @@ defmodule EhOsContract.ReadModelTablesTest do
       # Personal, so an erasure may blank it, though the field is required.
       assert source =~ ~r/add :name, :text\n/
       assert source =~ "create index(:#{@table}, [:member_id])"
+      assert source =~ "add :code_lists, {:array, {:array, :text}}"
 
       [{module, _}] = Code.compile_file(path)
       :ok = Ecto.Migrator.up(Repo, 20_261_028_000_000, module, log: false, migration_lock: false)
