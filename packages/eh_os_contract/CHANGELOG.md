@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-27
+
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
