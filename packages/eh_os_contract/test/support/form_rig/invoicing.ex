@@ -23,6 +23,8 @@ defmodule FormRig.Invoicing do
       field :paid, :boolean, optional: true
       field :sent_at, :timestamp, optional: true
       field :note, :string, optional: true
+      field :items, {:list, :line}, optional: true
+      field :billing_address, :address, optional: true
     end
 
     event :invoice_issued, "Invoice issued" do
@@ -34,6 +36,8 @@ defmodule FormRig.Invoicing do
       field :paid, :boolean, optional: true
       field :sent_at, :timestamp, optional: true
       field :note, :string, optional: true
+      field :items, {:list, :line}, optional: true
+      field :billing_address, :address, optional: true
     end
   end
 

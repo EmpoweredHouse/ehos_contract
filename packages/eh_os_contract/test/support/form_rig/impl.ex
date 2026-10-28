@@ -7,6 +7,15 @@ defmodule FormRig.Period do
   def written_as_month(period), do: period =~ ~r/\A[0-9]{4}-(0[1-9]|1[0-2])\z/
 end
 
+defmodule FormRig.Line do
+  @moduledoc "**Invented.** The check of `FormRig.Domain`'s value `:line`."
+
+  use FormRig.Domain, value: :line
+
+  @impl true
+  def counted(%{quantity: quantity}), do: quantity >= 1
+end
+
 defmodule FormRig.InvoiceDecider do
   @moduledoc "**Invented.** The decider of `FormRig.Invoicing`'s invoice: it issues what it is asked."
 
@@ -24,6 +33,8 @@ defmodule FormRig.InvoiceDecider do
         due_on: c.due_on,
         paid: c.paid,
         sent_at: c.sent_at,
-        note: c.note
+        note: c.note,
+        items: c.items,
+        billing_address: c.billing_address
       })
 end

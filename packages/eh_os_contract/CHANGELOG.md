@@ -67,7 +67,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   and a command's constraints are not asked: they come back as dispatch's refusal, which
   `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
   at the field `at:` names for its rule, or on the whole form (`:base`), where a problem at a field
-  the form never sent goes too. A new concept page,
+  the form never sent goes too. A domain value with fields, or a list of them, is a row each, which
+  `inputs_for` renders with its own errors, and a field the params leave out keeps the value
+  `data:` gives it. A new concept page,
   `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
   changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
 

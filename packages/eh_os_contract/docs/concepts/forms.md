@@ -220,11 +220,14 @@ end
   integer, a boolean, a decimal, a date or a timestamp. A field left blank (`""`, or only spaces) is
   absent: a required one is an error, an optional one is nil. A select's text is found among an enum's
   members, and an unknown one is an error; no atom is created from it.
-- **Rows, as a form sends them.** A list arrives as a map keyed by the rows' indices, and is read in
-  their order; a blank item, which a checkbox group sends when nothing is chosen, is dropped. In this
-  version a domain value with fields, or a list of them, is checked whole: a problem anywhere inside it
-  is an error at the field that holds it. Phoenix's `inputs_for` needs an embedded schema, which this
-  version does not build, so a list's inputs are named by hand (`issue_invoice[lines][0][title]`).
+- **Rows, as `inputs_for` sends them.** A domain value with fields is a row, and a list of them a row
+  each, arriving as a map keyed by the rows' indices and read in their order. Each row is a changeset
+  of its own, which `<.inputs_for>` renders with its own errors: a problem at the row's field, and an
+  invariant of the value as a whole on the row's `:base`. A blank item of a plain list, which a
+  checkbox group sends when nothing is chosen, is dropped.
+- **What the params leave out keeps its value from `data:`.** An edit form need not render every
+  field: one absent from the params keeps the value the page gave it, its rows too. One the params
+  carry, even blank, is read from them.
 - **Timestamps with their offset.** A `:timestamp` is read from ISO 8601 text with its offset,
   `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends neither seconds nor an offset, which
   is not a timestamp: the page adds them, or the field is a `:date`.
@@ -243,7 +246,7 @@ Each error carries the engine's reason in its keyword list:
 | --- | --- |
 | `{"can't be blank", validation: :required}` | A required field is missing or blank |
 | `{"is invalid", validation: :type}` | A value is not of its declared type, or not one of an enum's members |
-| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name` |
+| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name`; a value with fields as a whole, on its row's `:base` |
 | `{"does not exist", validation: :unknown}` | Dispatch found no entity the field names (`refused/3`) |
 | `{"was refused", validation: :rejected, invariant: name}` | Dispatch refused on the unit's invariant or the command's constraint `name`, at the field `at:` names, or at `:base` (`refused/3`) |
 | `{"is invalid", validation: :generated \| :supplied}` | The command carried a field dispatch generates or the host supplies (`refused/3`): the page's mistake, never the person's |

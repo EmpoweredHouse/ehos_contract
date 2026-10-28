@@ -571,6 +571,14 @@ defmodule EhOsContract.Codec do
 
   defp from_form(_type, value, _values), do: value
 
+  @doc false
+  # A form's list as `EhOsContract.Form` reads its rows: a list as it is, `inputs_for`'s
+  # map of rows in their order, or `:error` for anything else.
+  @spec form_rows(term()) :: {:ok, list()} | :error
+  def form_rows(value) when is_list(value), do: {:ok, value}
+  def form_rows(value) when is_map(value) and not is_struct(value), do: rows(value)
+  def form_rows(_value), do: :error
+
   # `inputs_for`'s rows, `%{"0" => row, "1" => row}`, in the order of their indices. A map
   # with any other key, an index past nine digits, or two keys for one row (`"1"`, `"01"`)
   # is not a list of rows, and is left to fail as one.

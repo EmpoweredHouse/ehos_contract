@@ -147,6 +147,98 @@ defmodule EhOsContract.FormTest do
              ).errors
   end
 
+  describe "rows: a domain value with fields, one or a list" do
+    @items %{
+      "1" => %{"title" => "VAT", "quantity" => "0", "_persistent_id" => "1"},
+      "0" => %{"title" => "", "quantity" => "two", "_persistent_id" => "0"},
+      "2" => %{"title" => "Payroll", "quantity" => "3", "_persistent_id" => "2"}
+    }
+
+    test "puts each row's problems in that row, in the order of their indices" do
+      changeset = changeset(Map.put(@sent, "items", @items))
+
+      refute changeset.valid?
+      assert changeset.errors == []
+
+      assert [first, second, third] = changeset.changes.items
+
+      assert first.errors == [
+               title: {"can't be blank", [validation: :required]},
+               quantity: {"is invalid", [validation: :type]}
+             ]
+
+      assert second.errors == [
+               base: {"is invalid", [validation: :invariant, invariant: :counted]}
+             ]
+
+      assert third.valid?
+
+      assert Ecto.Changeset.traverse_errors(changeset, fn {message, _keys} -> message end) == %{
+               items: [
+                 %{title: ["can't be blank"], quantity: ["is invalid"]},
+                 %{base: ["is invalid"]},
+                 %{}
+               ]
+             }
+    end
+
+    test "gives the command the rows as the maps its field carries" do
+      items = %{
+        "0" => %{"title" => "VAT", "quantity" => "1"},
+        "1" => %{"title" => "Payroll", "quantity" => "3"}
+      }
+
+      address = %{"street" => "Main 1", "city" => ""}
+
+      assert {:ok, %IssueInvoice{} = command} =
+               Form.to_struct(
+                 changeset(Map.merge(@sent, %{"items" => items, "billing_address" => address}))
+               )
+
+      assert command.items == [%{title: "VAT", quantity: 1}, %{title: "Payroll", quantity: 3}]
+      assert command.billing_address == %{street: "Main 1", city: nil}
+    end
+
+    test "starts an edit form's rows from data:, and keeps them when the params leave the field out" do
+      data = %{invoice_id: "i-1", items: [%{title: "VAT", quantity: 2}], note: "kept"}
+      changeset = changeset(Map.delete(@sent, "note"), data: data)
+
+      assert changeset.valid?
+      assert [%Ecto.Changeset{data: %{title: "VAT", quantity: 2}}] = changeset.changes.items
+
+      assert {:ok, %{items: [%{title: "VAT", quantity: 2}], note: "kept"}} =
+               Form.to_struct(changeset)
+    end
+
+    test "a list that is no rows is the field's error, and an optional one left blank is nil" do
+      assert [items: {"is invalid", [validation: :type]}] =
+               changeset(Map.put(@sent, "items", "VAT")).errors
+
+      assert {:ok, %{items: nil, billing_address: nil}} =
+               Form.to_struct(
+                 changeset(Map.merge(@sent, %{"items" => "", "billing_address" => ""}))
+               )
+    end
+
+    test "inputs_for shows each row with its own errors, named as the form sends them back" do
+      changeset = changeset(Map.put(@sent, "items", @items))
+      form = Phoenix.HTML.FormData.to_form(changeset, action: :validate)
+
+      assert form.name == "issue_invoice"
+
+      rows = Phoenix.HTML.FormData.to_form(changeset, form, :items, [])
+
+      assert Enum.map(rows, & &1.name) ==
+               ["issue_invoice[items][0]", "issue_invoice[items][1]", "issue_invoice[items][2]"]
+
+      assert [[title: _, quantity: _], [base: _], []] = Enum.map(rows, & &1.errors)
+      assert Phoenix.HTML.FormData.input_value(hd(rows).source, hd(rows), :quantity) == "two"
+
+      [address] = Phoenix.HTML.FormData.to_form(changeset, form, :billing_address, [])
+      assert address.name == "issue_invoice[billing_address]"
+    end
+  end
+
   describe "a recorded event and a query" do
     test "an event an actor records is read and checked as a command is, for record/3" do
       event = ValueRig.Till.Events.Counted
