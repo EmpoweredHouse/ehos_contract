@@ -271,7 +271,7 @@ defmodule EhOsContract.PersonalTest do
 
   describe "the generated structs" do
     # A person's data stays out of a value printed in a log or a failed test's message.
-    test "inspect a value without its personal fields" do
+    test "inspect a value, an event and a command without their personal fields" do
       shown =
         inspect(%ShreddingRig.Domain.Values.Contact{
           member_id: "member-anna",
@@ -280,6 +280,21 @@ defmodule EhOsContract.PersonalTest do
 
       assert shown =~ "member-anna"
       refute shown =~ "600 100 200"
+
+      # The same for an event's, a command's or a state's own personal fields.
+      shown =
+        inspect(%Joined{
+          membership_id: "membership-anna",
+          member_id: "member-anna",
+          name: "Anna Nowak",
+          email: "anna@example.com",
+          contacts: [],
+          plan: :full
+        })
+
+      assert shown =~ "member-anna"
+      refute shown =~ "Anna Nowak"
+      refute shown =~ "anna@example.com"
     end
 
     test "admit Erased on a personal field, and only there" do

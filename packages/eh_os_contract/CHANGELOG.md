@@ -102,8 +102,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   (`%Lending.Domain.Values.Address{street: …}`). A scenario's data stays a map, which the engine
   casts, and so does a state field's `default:`, which a contract cannot write as the struct: it is
   a map until the first event's `evolve/2` sets the field.
-- A domain value's struct is inspected without its personal fields, so a value printed in a log, a
-  crash report or a failed test's message leaves the person's data out, as a read model's `Row` does.
+- A domain value's struct, and a contract's command, event and state structs, are inspected without
+  their personal fields, so a value printed in a log, a crash report or a failed test's message
+  leaves the person's data out, as a read model's `Row` does. An assertion that fails only on a
+  personal field shows both sides alike; compare `Map.from_struct/1` to see the field.
 - **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
   as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
   (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
