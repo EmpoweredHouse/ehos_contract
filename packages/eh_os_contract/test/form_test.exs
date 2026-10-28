@@ -253,6 +253,13 @@ defmodule EhOsContract.FormTest do
                )
     end
 
+    test "a list sent with no rows is an empty list, and a blank item among rows is dropped" do
+      for items <- [%{}, [""], ["", %{"title" => "VAT", "quantity" => "1"}]] do
+        assert {:ok, %{items: rows}} = Form.to_struct(changeset(Map.put(@sent, "items", items)))
+        assert rows in [[], [%{title: "VAT", quantity: 1}]]
+      end
+    end
+
     test "a refusal at a field of rows goes on the whole form, which inputs_for shows" do
       changeset =
         changeset(Map.put(@sent, "items", %{"0" => %{"title" => "VAT", "quantity" => "1"}}))

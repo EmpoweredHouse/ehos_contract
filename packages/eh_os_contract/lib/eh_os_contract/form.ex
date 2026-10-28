@@ -274,9 +274,15 @@ defmodule EhOsContract.Form do
   end
 
   # A domain value with fields, one or a list, read from what the form sent or from `data:`.
-  defp nested(_cardinality, _value, raw, _sent?, _values, _domain)
-       when raw in [nil, "", []] or raw == %{},
-       do: :absent
+  defp nested(_cardinality, _value, raw, _sent?, _values, _domain) when raw in [nil, ""],
+    do: :absent
+
+  # A list the form sent with no rows is an empty list, as dispatch takes one; a value with
+  # no fields sent, or a list `data:` holds empty, is absent.
+  defp nested(:many, _value, raw, true, _values, _domain) when raw == [] or raw == %{}, do: []
+
+  defp nested(_cardinality, _value, raw, _sent?, _values, _domain) when raw == [] or raw == %{},
+    do: :absent
 
   defp nested(:one, value, raw, sent?, values, domain) when is_map(raw),
     do: row(value, raw, sent?, values, domain)
@@ -284,6 +290,9 @@ defmodule EhOsContract.Form do
   defp nested(:many, value, raw, sent?, values, domain) do
     case if(sent?, do: Codec.form_rows(raw), else: {:ok, raw}) do
       {:ok, items} when is_list(items) ->
+        # The blank item a form sends so that a list with nothing chosen is sent at all.
+        items = Enum.reject(items, &(is_binary(&1) and String.trim(&1) == ""))
+
         if Enum.all?(items, &is_map/1),
           do: Enum.map(items, &row(value, &1, sent?, values, domain)),
           else: :type
