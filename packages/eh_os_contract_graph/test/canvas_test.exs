@@ -476,6 +476,25 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert count.(view) == all
     end
 
+    test "a host's select draws the whole picture again, so what it selects is drawn", %{
+      view: view
+    } do
+      id = "event:fulfilment.orders:payment_confirmed"
+      view |> element(~s(button[data-ehg-node="#{id}"])) |> render_click()
+      view |> element("button.ehg-tool", "Focus on the selection") |> render_click()
+
+      document = Fixtures.document("process.fulfilment.order")
+      around = document |> View.process() |> View.around(id)
+
+      [elsewhere | _] =
+        Enum.map(View.process(document).nodes, & &1.id) -- Enum.map(around.nodes, & &1.id)
+
+      Phoenix.LiveView.send_update(view.pid, Canvas, id: "graph", select: elsewhere)
+
+      assert "is-selected" in classes(at(shown(view), "data-ehg-node", elsewhere))
+      refute has_element?(view, "button.ehg-tool", "Show the whole picture")
+    end
+
     test "closing the panel leaves focus too", %{view: view} do
       view
       |> element(~s(button[data-ehg-node="event:fulfilment.orders:payment_confirmed"]))
@@ -744,8 +763,52 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert page(view) |> LazyHTML.query("[data-reveal]") |> LazyHTML.attribute("data-reveal") ==
                ["2"]
 
+      # An id the document does not have changes nothing.
       select.("no such id")
-      assert Enum.count(LazyHTML.query(page(view), ".ehg-panel, .is-selected")) == 0
+      assert "is-selected" in classes(at(page(view), "data-ehg-relation", "builds:a"))
+    end
+
+    test "a host's select the view does not have yet is applied once it has it", %{
+      view: view,
+      document: document
+    } do
+      without =
+        update_in(document, ["nodes", "unit"], fn units ->
+          Enum.reject(units, &(&1["id"] == "unit:edge_cases:1st"))
+        end)
+
+      send(view.pid, {:document, without})
+      Phoenix.LiveView.send_update(view.pid, Canvas, id: "graph", select: "unit:edge_cases:1st")
+      assert Enum.count(LazyHTML.query(page(view), ".is-selected")) == 0
+
+      Phoenix.LiveView.send_update(view.pid, Canvas,
+        id: "graph",
+        document: document,
+        select: "unit:edge_cases:1st"
+      )
+
+      assert "is-selected" in classes(at(page(view), "data-ehg-node", "unit:edge_cases:1st"))
+    end
+
+    test "an update without select keeps what the reader selected, and nil lets the host ask again",
+         %{view: view, document: document} do
+      update = &Phoenix.LiveView.send_update(view.pid, Canvas, [id: "graph"] ++ &1)
+
+      update.(select: "unit:edge_cases:1st")
+
+      view
+      |> element(~s(button[data-ehg-node="event:edge_cases:zażółć gęślą jaźń"]))
+      |> render_click()
+
+      update.(document: document)
+
+      assert "is-selected" in classes(
+               at(page(view), "data-ehg-node", "event:edge_cases:zażółć gęślą jaźń")
+             )
+
+      update.(select: nil)
+      update.(select: "unit:edge_cases:1st")
+      assert "is-selected" in classes(at(page(view), "data-ehg-node", "unit:edge_cases:1st"))
     end
 
     test "an update that names only some attributes keeps the rest", %{

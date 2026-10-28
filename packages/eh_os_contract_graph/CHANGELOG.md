@@ -24,9 +24,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Added
 
 - **A host can open a canvas at an element**: `Canvas` takes `select`, the id of a card, a group or an
-  arrow of the view, which it selects, opens the panel of and brings into view, as the search's Enter does. It
-  is read when the host gives one other than the last it gave, so rendering again with the same leaves what the
-  reader selected since. `Landscape.box/2` names an application's first box, to open a landscape at it.
+  arrow of the view, which it selects over the whole picture, opens the panel of and brings into view, as the
+  search's Enter does. It is read when the host gives one other than the last it gave, so rendering again with
+  the same leaves what the reader selected since; `nil` lets the host ask for the same again, and an id the
+  document does not have yet applies once it has it. `Landscape.box/2` names an application's first box, to
+  open a landscape at it.
 - **A landscape draws an application no domain document describes** (#487): `Landscape.join/1` takes
   `{application, :none}` for an application the host knows is there but has no document of, and the canvas draws
   it as a dashed, see-through box in the place of its entry, titled "no graph described", empty and with no arrow.

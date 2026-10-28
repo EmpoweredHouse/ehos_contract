@@ -4744,6 +4744,7 @@ var EhOsContractGraph = {
     });
     labels.forEach(({ id: id2, width: width2, height: height2 }, i) => {
       const { x, y } = geometry[i];
+      this.places.set(id2, { x, y });
       rules.push(
         `${this.scope} [data-ehg-relation=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px }`
       );
@@ -4839,7 +4840,7 @@ var EhOsContractGraph = {
     } else return;
     this.touched = true;
   },
-  // Card or box `id` in the middle of the canvas, at the scale the reader has, or a readable one.
+  // Card, box or arrow's label `id` in the middle of the canvas, at the scale the reader has, or a readable one.
   reveal(id2) {
     const place = id2 !== void 0 && this.places?.get(id2);
     if (!place) return;

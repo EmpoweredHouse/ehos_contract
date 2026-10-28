@@ -988,14 +988,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
   def landscape(_document), do: finish("LR", [], [], [])
 
-  # A place is a short number: an id led by more digits than a landscape has entries is read as
-  # none, rather than parsed into a number too large for the VM.
-  defp entry_place(id) do
-    case Regex.run(~r/\A(\d{1,9})\//, id) do
-      [_whole, place] -> String.to_integer(place)
-      nil -> 0
-    end
-  end
+  defp entry_place(id), do: EhOsContract.GraphRenderer.Landscape.place(id)
 
   # A contract's card on a map of contracts, in `group`: named by its module's last segment,
   # or by the label the owner's document gives it.

@@ -111,11 +111,16 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   while the graph stays as it is.
 
   **`select`** is what the host selects, by the id of a card, a group or an arrow of the
-  view: the canvas selects it, opens its panel and brings it into view, as the search's
-  Enter does. It is read when the host gives one other than the last it gave, so a host
-  rendering the canvas again with the same `select` leaves what the reader has selected
-  since; an id the view does not have selects nothing. A host that opens a landscape at an
-  application gives the id of its box, `EhOsContract.GraphRenderer.Landscape.box/2`:
+  view: the canvas draws the whole picture, selects it, opens its panel and brings it into
+  view, as the search's Enter does; a node of the document the view does not draw opens its
+  panel alone, as a name in the panel does. It is read when the host gives one other than the
+  last it gave, so a host rendering the canvas again with the same `select` leaves what the
+  reader has selected since, and one that gives `nil` in between may ask for the same again.
+  An id the document does not have changes nothing, and is applied once a document that has
+  it comes. A panel is open on one canvas of a page at a time, so of two canvases each given a
+  `select` when the page is drawn, the panel of the last drawn stays open. A host that opens a
+  landscape at an application gives the id of its box,
+  `EhOsContract.GraphRenderer.Landscape.box/2`:
 
       <.live_component
         module={EhOsContract.GraphRenderer.Canvas}
@@ -136,9 +141,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   the policy allows; the stylesheet sets the same, so LiveView taking it away changes
   nothing.
 
-  **An id with a carriage return or a NUL cannot be selected**: the browser's HTML
-  parser rewrites both in the `phx-value-id` a click sends, so the id that comes back
-  is not the document's. Nothing a client declares today has either.
+  **An id with a carriage return or a NUL cannot be selected** by a click: the browser's
+  HTML parser rewrites both in the `phx-value-id` a click sends, so the id that comes back
+  is not the document's. A host's `select` of one opens its panel, but the hook cannot find it
+  to bring it into view. Nothing a client declares today has either.
   """
 
   use Phoenix.LiveComponent
@@ -187,12 +193,30 @@ defmodule EhOsContract.GraphRenderer.Canvas do
      |> refresh()}
   end
 
-  # The host's `select`, when it is not the one it gave last: selected, and brought into view
-  # once the hook has drawn it. What `refresh/1` then finds the view does not have is forgotten.
-  defp asked(socket, %{select: select}) when select != nil do
-    if select == socket.assigns[:asked],
-      do: socket,
-      else: assign(socket, asked: select, selected: select, reveal: socket.assigns.reveal + 1)
+  # The host's `select`, when it is not the one it gave last: selected over the whole picture,
+  # since a focus elsewhere would leave it undrawn, and brought into view once the hook has drawn
+  # it. One the document does not have yet is not taken as given, so it applies once it has it;
+  # `nil` forgets the last, so the host may ask for it again.
+  defp asked(socket, %{select: nil}), do: assign(socket, asked: nil)
+
+  defp asked(socket, %{select: select}) do
+    %{view: view, document: document} = socket.assigns
+
+    cond do
+      select == socket.assigns[:asked] ->
+        socket
+
+      picked(view, document, select) ->
+        assign(socket,
+          asked: select,
+          selected: select,
+          focus: nil,
+          reveal: socket.assigns.reveal + 1
+        )
+
+      true ->
+        socket
+    end
   end
 
   defp asked(socket, _assigns), do: socket

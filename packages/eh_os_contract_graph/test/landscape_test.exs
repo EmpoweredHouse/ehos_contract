@@ -335,6 +335,8 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     assert Landscape.box(joined, "office") == "1/application:office"
     assert Landscape.box(joined, "nobody") == nil
     assert Landscape.box(%{"kind" => "landscape"}, "ledger") == nil
+    # A host may pass what a reader's address gave it: anything but a name names no box.
+    assert Landscape.box(joined, ["ledger"]) == nil
   end
 
   # A landscape a host built or read back holds ids it did not make: one led by more digits than
