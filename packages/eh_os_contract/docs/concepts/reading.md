@@ -97,8 +97,8 @@ The read model's `Row` is an Ecto schema of its fields. A read model that names 
 and the row fields that make a row unique, `key:`, gets a schema of that table with the key as its
 primary key, so a projection writes through it (`insert_all(Row, rows, on_conflict: …,
 conflict_target: key)`) and a query reads `from r in Row`, each field of the contract's type: an enum
-an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, a domain value the type
-the domain gives it. A read model without `table:` has an embedded schema, with no table behind it.
+an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, written at whatever
+precision a time comes in, a domain value the type the domain gives it. A read model without `table:` has an embedded schema, with no table behind it.
 The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
 
 ```elixir

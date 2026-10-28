@@ -35,14 +35,15 @@ defmodule EhOsContract.EctoTypes do
   def shape(_type, _values), do: :flat
 
   @doc """
-  The Ecto type of a declared type: an `:id` is text, a `:timestamp` keeps microseconds,
+  The Ecto type of a declared type: an `:id` is text, a `:timestamp` keeps microseconds
+  and writes a time of any precision (`EhOsContract.EctoTypes.Timestamp`),
   an enum is an `Ecto.Enum` of its members, a domain value is the type it names, and a
   domain value with fields is a `:map`.
   """
   @spec of(term(), values()) :: Ecto.Type.t()
   def of(type, _values) when type in [:string, :id], do: :string
   def of({:id, _entity}, _values), do: :string
-  def of(:timestamp, _values), do: :utc_datetime_usec
+  def of(:timestamp, _values), do: EhOsContract.EctoTypes.Timestamp
   def of(type, _values) when type in [:integer, :boolean, :decimal, :date], do: type
 
   def of({:enum, members}, _values),

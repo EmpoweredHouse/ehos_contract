@@ -95,7 +95,7 @@ defmodule EhOsContract.ReadModelRowTest do
       assert visits().__schema__(:fields) ==
                [:visit_id, :room_id, :status, :paid, :method, :closed_at, :tags]
 
-      assert visits().__schema__(:type, :closed_at) == :utc_datetime_usec
+      assert visits().__schema__(:type, :closed_at) == EhOsContract.EctoTypes.Timestamp
       assert visits().__schema__(:type, :tags) == {:array, :string}
       assert Ecto.Enum.values(visits(), :status) == [:open, :closed]
     end
@@ -132,6 +132,17 @@ defmodule EhOsContract.ReadModelRowTest do
                closed_at: ^closed_at,
                tags: ["late"]
              } = row
+    end
+
+    # A scenario's given happens at a time to the second, as does an ISO 8601 string a
+    # caller sends; Ecto's `:utc_datetime_usec` alone refuses to write one.
+    test "writes a time to the second, as a scenario's given carries it, and reads it back" do
+      Repo.insert_all(visits(), [
+        %{visit_id: "v-1", room_id: "r-1", status: :open, closed_at: ~U[2026-01-01 09:00:00Z]}
+      ])
+
+      assert [%{closed_at: ~U[2026-01-01 09:00:00.000000Z]}] =
+               Repo.all(from(r in visits(), where: r.closed_at >= ^~U[2026-01-01 09:00:00Z]))
     end
 
     test "dumps a domain value through the type the domain gives it, and refuses what does not fit" do

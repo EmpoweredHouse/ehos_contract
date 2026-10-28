@@ -87,7 +87,7 @@ defmodule EhOsContract.FormTest do
       assert types.lines == :integer
       assert types.due_on == :date
       assert types.paid == :boolean
-      assert types.sent_at == :utc_datetime_usec
+      assert types.sent_at == EhOsContract.EctoTypes.Timestamp
 
       assert Ecto.Type.cast(types.method, "card") == {:ok, :card}
       assert {:error, _not_a_member} = Ecto.Type.cast(types.method, "cheque")

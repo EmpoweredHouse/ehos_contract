@@ -91,8 +91,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
   (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
   with no `select:` map and no conversion: each field has the contract's type, an enum an `Ecto.Enum`
-  stored as its member's name, a `:timestamp` `:utc_datetime_usec`, a domain value the type the domain
-  gives it, read when first used, so the contract still does not depend on its domain at compile time.
+  stored as its member's name, a `:timestamp` `:utc_datetime_usec` that writes a time of any
+  precision, so a scenario's `given`, which happens to the second, is projected as a dispatched event
+  is, a domain value the type the domain gives it, read when first used, so the contract still does
+  not depend on its domain at compile time.
   A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
   `Row.__schema__(:fields)`, not the struct's keys.
 
