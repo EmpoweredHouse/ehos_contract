@@ -323,6 +323,39 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
                  end
   end
 
+  test "names an application's first box, a domain's or one no graph describes, for a host to select" do
+    joined =
+      Landscape.join([
+        {"billing", Fixtures.document("domain.billing")},
+        {"office", :none},
+        {"ledger", Fixtures.document("domain.ledger")}
+      ])
+
+    assert Landscape.box(joined, "ledger") == "2/domain:Ledger.Domain"
+    assert Landscape.box(joined, "office") == "1/application:office"
+    assert Landscape.box(joined, "nobody") == nil
+    assert Landscape.box(%{"kind" => "landscape"}, "ledger") == nil
+    # A host may pass what a reader's address gave it: anything but a name names no box.
+    assert Landscape.box(joined, ["ledger"]) == nil
+  end
+
+  # A landscape a host built or read back holds ids it did not make: one led by more digits than
+  # a place has is read as none, never parsed into a number too large for the VM.
+  test "reads an id led by too many digits as no place, in its view and its box" do
+    long = String.duplicate("9", 2_000_000) <> "/application:office"
+
+    landscape = %{
+      "kind" => "landscape",
+      "nodes" => %{
+        "domain" => [],
+        "application" => [%{"id" => long, "application" => "office", "label" => "office"}]
+      }
+    }
+
+    assert [%{id: ^long}] = View.build(landscape, :landscape).groups
+    assert Landscape.box(landscape, "office") == long
+  end
+
   test "is the one view of a landscape, which no other view draws" do
     assert View.views(landscape()) == [{:landscape, "Landscape"}]
     assert View.build(Fixtures.document("domain.billing"), :landscape).nodes == []

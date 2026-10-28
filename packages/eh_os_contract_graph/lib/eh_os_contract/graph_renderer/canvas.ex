@@ -110,6 +110,27 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   from outside the component, `phx-target` naming its root — and the panel shows it
   while the graph stays as it is.
 
+  **`select`** is what the host selects, by the id of a card, a group or an arrow of the
+  view: the canvas draws the whole picture, selects it, opens its panel and brings it into
+  view, as the search's Enter does; a node of the document the view does not draw opens its
+  panel alone, as a name in the panel does. It is read when the host gives one other than the
+  last it gave, so a host rendering the canvas again with the same `select` leaves what the
+  reader has selected since, and one that gives `nil` in between may ask for the same again.
+  An id the document does not have when given changes nothing, and is applied once a document
+  that has it comes, over what the reader selected meanwhile; one applied and then gone from
+  the document is not applied again when it comes back, until the host gives `nil` or another. A panel is open on one canvas of a page at a time, so of two canvases each given a
+  `select` when the page is drawn, the panel of the last drawn stays open. A host that opens a
+  landscape at an application gives the id of its box,
+  `EhOsContract.GraphRenderer.Landscape.box/2`:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Canvas}
+        id="landscape"
+        document={@landscape}
+        view={:landscape}
+        select={EhOsContract.GraphRenderer.Landscape.box(@landscape, "billing")}
+      />
+
   **Nothing here renders a `style` attribute**, and the hook sets none: the host's
   Content-Security-Policy of `default-src 'self'` refuses one, and LiveView takes
   away on its next patch one the server did not render. Positions and sizes live in
@@ -121,9 +142,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   the policy allows; the stylesheet sets the same, so LiveView taking it away changes
   nothing.
 
-  **An id with a carriage return or a NUL cannot be selected**: the browser's HTML
-  parser rewrites both in the `phx-value-id` a click sends, so the id that comes back
-  is not the document's. Nothing a client declares today has either.
+  **An id with a carriage return or a NUL cannot be selected** by a click: the browser's
+  HTML parser rewrites both in the `phx-value-id` a click sends, so the id that comes back
+  is not the document's. A host's `select` of one opens its panel, but the hook cannot find it
+  to bring it into view. Nothing a client declares today has either.
   """
 
   use Phoenix.LiveComponent
@@ -168,8 +190,37 @@ defmodule EhOsContract.GraphRenderer.Canvas do
      |> assign(source: source, document: document, audience: audience)
      |> assign(lookup: lookup, lookup_of: of, spec: spec, given: given)
      |> build()
+     |> asked(assigns)
      |> refresh()}
   end
+
+  # The host's `select`, when it is not the one it gave last: selected over the whole picture,
+  # since a focus elsewhere would leave it undrawn, and brought into view once the hook has drawn
+  # it. One the document does not have yet is not taken as given, so it applies once it has it;
+  # `nil` forgets the last, so the host may ask for it again.
+  defp asked(socket, %{select: nil}), do: assign(socket, asked: nil)
+
+  defp asked(socket, %{select: select}) do
+    %{view: view, document: document} = socket.assigns
+
+    cond do
+      select == socket.assigns[:asked] ->
+        socket
+
+      picked(view, document, select) ->
+        assign(socket,
+          asked: select,
+          selected: select,
+          focus: nil,
+          reveal: socket.assigns.reveal + 1
+        )
+
+      true ->
+        socket
+    end
+  end
+
+  defp asked(socket, _assigns), do: socket
 
   # The view and what the log says over it: the overlay the host gave, when it is of this
   # version of the document and the reader has the log on.

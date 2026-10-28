@@ -988,12 +988,7 @@ defmodule EhOsContract.GraphRenderer.View do
 
   def landscape(_document), do: finish("LR", [], [], [])
 
-  defp entry_place(id) do
-    case Integer.parse(id) do
-      {place, "/" <> _rest} -> place
-      _other -> 0
-    end
-  end
+  defp entry_place(id), do: EhOsContract.GraphRenderer.Landscape.place(id)
 
   # A contract's card on a map of contracts, in `group`: named by its module's last segment,
   # or by the label the owner's document gives it.
