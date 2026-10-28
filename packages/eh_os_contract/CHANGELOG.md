@@ -68,6 +68,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
   changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
 
+## [0.12.0] - 2026-10-27
+
 ### Changed
 
 - `mix eh_os_contract.graph`'s documentation (`docs/cli.md`) names `mix eh_os_contract.bundle`, in
