@@ -22,6 +22,10 @@ defmodule EhOsContract.Domain do
           satisfied_by: [0, 15_000]
       end
 
+  A value made of fields is a struct, `Lending.Domain.Values.Address`, generated with
+  its required fields enforced: the engine hands it wherever the value appears, and
+  refuses a map in its place.
+
   The domain then generates a behaviour, `Lending.Domain.Values.Money`, and a module
   bound with `use Lending.Domain, value: :money` defines one function per invariant,
   answering whether a value keeps it. Dispatch holds every value of the type to them,

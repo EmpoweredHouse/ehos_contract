@@ -78,7 +78,9 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 - Built-in: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`.
   Anything else is a `value` of the domain (`X3`), and a thing the business recognises — money, a
   period, a tax number — is one: `value :money, :integer, unit: :cents`, with invariants that dispatch
-  holds every value to. A new field uses a value, never an integer named `_minor`.
+  holds every value to. A new field uses a value, never an integer named `_minor`. A value made of
+  fields (`value :address do field :street, :string … end`) is a struct the domain generates,
+  `<Domain>.Values.Address`: the event carries it, and the code that emits the event builds it.
 - **`:string` is text a person typed.** A code, a number or a choice has a type of its own; a
   `:string` not marked `personal:` gets the `free-text-not-personal` notice, because it stays in the
   log as written after its subject is erased. A code written as text — a tax number, a currency, an

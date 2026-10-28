@@ -126,7 +126,8 @@ part of it itself, and the rest is yours:
   that make a row unique in the declaration (`table: "lending_member_directory", key:
   :membership_id`): `Row` is then an Ecto schema of that table, with the contract's types. Write
   through it with the key as the conflict target (`insert_all(Row, rows, on_conflict: :nothing,
-  conflict_target: [:membership_id])`, as `Lending.Membership.Directory` does), or a replay
+  conflict_target: [:membership_id])`, as `Lending.Membership.Directory` does; a value made of
+  fields is written as the struct the event carries, and read back as one), or a replay
   double-counts. The query reads `from r in Row` and answers what Ecto loads, as
   `Lending.Membership.MemberContact` does: never a `select:` map listing the fields again, nor an
   `Ecto.Schema` of your own beside the contract. A column the projection keeps for itself is a

@@ -103,7 +103,7 @@ conflict_target: key)`) and a query reads `from r in Row`, each field of the con
 an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, written at whatever
 precision a time comes in, a domain value the type the domain gives it, and a value made of fields a
 `jsonb` column (a list of them too, one column holding the list), written in the log's form and read
-back as the map an event carries, never a struct, with a personal field that was erased as `nil`. A
+back as the value's struct, as an event carries it, with a personal field that was erased as `nil`. A
 personal field is redacted when a row is inspected. A read model without `table:` has an embedded
 schema, with no table behind it.
 The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).

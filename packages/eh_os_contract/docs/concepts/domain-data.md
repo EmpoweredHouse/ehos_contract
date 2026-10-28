@@ -133,6 +133,14 @@ A value has a type or fields, never both and never neither ([`D3`](../contract.m
 `:decimal`. A field of a value made of fields may be `personal:`, naming an identifier field of the value with
 its `subject:`; a field of such a value then holds personal data wherever it is used.
 
+A value made of fields is a struct of its own, `<Domain>.Values.Address`, which the domain generates with its
+required fields enforced, so `%Address{street: "Main 1"}` without a required `city` does not compile. The
+engine hands that struct wherever the value appears: in a command or an event, a unit's state, a form's rows
+and a read model's `Row`. Build the value as its struct in a decider or a reaction. A map with the same keys
+is not the value: a command carrying one is refused with the field and `:type`, and an event a decision
+returns with one raises. A scenario writes the value as a map, which the engine casts, since a contract does
+not depend on its domain when it compiles.
+
 Code that needs an enum's members, a select's options or a check of its own, reads them from the domain
 instead of copying them: `Lending.Domain.members(:bike_kind)` is `[city: "City bike", road: "Road bike"]`,
 each member with its label, or `nil` for a member written as a bare atom. A value named after an enum value
