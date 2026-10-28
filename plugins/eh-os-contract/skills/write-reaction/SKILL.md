@@ -122,8 +122,15 @@ part of it itself, and the rest is yours:
   refused), or record the answer with an idempotency key derived from it (`owner: :self`), such as
   `"gateway-answered:#{meta.id}"`. `Billing.Payments.CollectPayment` is the first kind. The far end is where a
   duplicate e-mail is sent.
-- **A read model writes the host's tables.** Key its rows by the event (`on_conflict: :nothing` on
-  the event's id, as `Lending.Membership.Directory` does), or a replay double-counts.
+- **A read model writes the host's tables, through its `Row`.** Name the table and the row fields
+  that make a row unique in the declaration (`table: "lending_member_directory", key:
+  :membership_id`): `Row` is then an Ecto schema of that table, with the contract's types. Write
+  through it with the key as the conflict target (`insert_all(Row, rows, on_conflict: :nothing,
+  conflict_target: [:membership_id])`, as `Lending.Membership.Directory` does), or a replay
+  double-counts. The query reads `from r in Row` and answers what Ecto loads, as
+  `Lending.Membership.MemberContact` does: never a `select:` map listing the fields again, nor an
+  `Ecto.Schema` of your own beside the contract. A column the projection keeps for itself is a
+  field of the read model too, or written by the table's name.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
   publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery reacts
   once either way; the same fact published again under a new id reacts once only when the publisher

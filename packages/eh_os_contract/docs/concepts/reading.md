@@ -55,7 +55,10 @@ defmodule Concepts.Reading.Contracts.Loans do
     event :copy_returned, "Copy returned"
   end
 
-  read_model :copies_out, "Copies out on loan", projects: [:copy_lent, :copy_returned] do
+  read_model :copies_out, "Copies out on loan",
+    projects: [:copy_lent, :copy_returned],
+    table: "reading_example_copies_out",
+    key: :loan_id do
     field :loan_id, :id
     field :copy_id, :id
     field :member_id, :id, subject: :member
@@ -101,13 +104,15 @@ an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, wr
 precision a time comes in, a domain value the type the domain gives it. A read model without `table:` has an embedded schema, with no table behind it.
 The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
 
+The schema holds the declared fields and nothing else. A column the projection keeps for itself, the
+position it has read up to, say, is a field of the read model too, or written by the table's name,
+outside the schema.
+
 ```elixir
 defmodule Concepts.Reading.CopiesOut do
   use Concepts.Reading.Contracts.Loans, read_model: :copies_out
 
   import Ecto.Query
-
-  @table "reading_example_copies_out"
 
   @impl true
   def copy_lent(%CopyLent{} = event) do
@@ -118,25 +123,26 @@ defmodule Concepts.Reading.CopiesOut do
       member_name: if(is_binary(event.member_name), do: event.member_name)
     }
 
-    repo().insert_all(@table, [row], on_conflict: :nothing)
+    # A second delivery of the same event, or a rebuild, writes no second row.
+    repo().insert_all(Row, [row], on_conflict: :nothing, conflict_target: [:loan_id])
     :ok
   end
 
   @impl true
   def copy_returned(%CopyReturned{loan_id: loan}) do
-    repo().delete_all(from(r in @table, where: r.loan_id == ^loan))
+    repo().delete_all(from(r in Row, where: r.loan_id == ^loan))
     :ok
   end
 
   @impl true
   def forget(:member, member) do
-    repo().update_all(from(r in @table, where: r.member_id == ^member), set: [member_name: nil])
+    repo().update_all(from(r in Row, where: r.member_id == ^member), set: [member_name: nil])
     :ok
   end
 
   @impl true
   def reset do
-    repo().delete_all(@table)
+    repo().delete_all(Row)
     :ok
   end
 
@@ -185,7 +191,8 @@ which is why `copy_lent` above keeps a name only when it is a string.
 A query names the read model it `reads`, who may ask it (`by:`, required, [`D10`](../contract.md#refusals-d)), its parameters
 (`param`), and whether it answers rows or one row (`returns: :many`, the default, or `:one`). Its
 implementation is one function named after it, taking the parameters' struct and a context with the
-actor, and answering the read model's `Row` structs (a list, or one row or `nil`):
+actor, and answering the read model's `Row` structs (a list, or one row or `nil`). With a table, it
+queries the schema and answers what Ecto loads, with no field listed again:
 
 ```elixir
 defmodule Concepts.Reading.LoansOfMember do
@@ -195,12 +202,8 @@ defmodule Concepts.Reading.LoansOfMember do
 
   @impl true
   def loans_of_member(%LoansOfMember{member_id: member}, _ctx) do
-    from(r in "reading_example_copies_out",
-      where: r.member_id == ^member,
-      select: %{loan_id: r.loan_id, copy_id: r.copy_id, member_id: r.member_id, member_name: r.member_name}
-    )
+    from(r in Row, where: r.member_id == ^member, order_by: r.loan_id)
     |> EhOsContract.Config.fetch!(:repo).all()
-    |> Enum.map(&struct(Row, &1))
   end
 end
 
@@ -211,12 +214,8 @@ defmodule Concepts.Reading.HolderOfCopy do
 
   @impl true
   def holder_of_copy(%HolderOfCopy{copy_id: copy}, _ctx) do
-    from(r in "reading_example_copies_out",
-      where: r.copy_id == ^copy,
-      select: %{loan_id: r.loan_id, copy_id: r.copy_id, member_id: r.member_id, member_name: r.member_name}
-    )
+    from(r in Row, where: r.copy_id == ^copy)
     |> EhOsContract.Config.fetch!(:repo).one()
-    |> then(&(&1 && struct(Row, &1)))
   end
 end
 ```

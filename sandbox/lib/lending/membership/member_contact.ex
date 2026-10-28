@@ -7,17 +7,7 @@ defmodule Lending.Membership.MemberContact do
 
   @impl true
   def member_contact(%MemberContact{member_id: member}, _ctx) do
-    from(m in "lending_member_directory",
-      where: m.member_id == ^member,
-      select: %{
-        membership_id: m.membership_id,
-        member_id: m.member_id,
-        name: m.name,
-        email: m.email
-      }
-    )
-    |> order_by([m], m.membership_id)
+    from(m in Row, where: m.member_id == ^member, order_by: m.membership_id)
     |> EhOsContract.Config.fetch!(:repo).all()
-    |> Enum.map(&struct(Row, &1))
   end
 end

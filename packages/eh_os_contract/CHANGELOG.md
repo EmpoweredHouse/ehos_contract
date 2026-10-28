@@ -96,7 +96,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   is, a domain value the type the domain gives it, read when first used, so the contract still does
   not depend on its domain at compile time.
   A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
-  `Row.__schema__(:fields)`, not the struct's keys.
+  `Row.__schema__(:fields)`, not the struct's keys. `docs/concepts/reading.md` writes and reads its
+  example through `Row`.
 
 ## [0.12.0] - 2026-10-27
 
