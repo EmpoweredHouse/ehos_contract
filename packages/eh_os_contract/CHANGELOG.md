@@ -105,7 +105,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - A domain value's struct, and a contract's command, event and state structs, are inspected without
   their personal fields, so a value printed in a log, a crash report or a failed test's message
   leaves the person's data out, as a read model's `Row` does. An assertion that fails only on a
-  personal field shows both sides alike; compare `Map.from_struct/1` to see the field.
+  personal field shows both sides alike; compare `Map.from_struct/1` to see the field. A host that
+  defines its own `Inspect` for one of these modules, one with personal fields, now redefines the
+  engine's (a warning, an error under `--warnings-as-errors`): remove it, or keep its own and accept
+  that it, not the engine, decides what is printed.
 - **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
   as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
   (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
