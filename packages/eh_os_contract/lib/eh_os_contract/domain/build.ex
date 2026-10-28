@@ -40,6 +40,14 @@ defmodule EhOsContract.Domain.Build do
     behaviours = for %{invariants: [_ | _]} = value <- model.values, do: behaviour(model, value)
     members = enum_members(model.values)
 
+    # One clause per enum value, not a lookup in a map literal: in a domain with no enum,
+    # the type checker of a newer Elixir sees the empty map and warns that the lookup
+    # can never succeed.
+    member_clauses =
+      for {name, labelled} <- Enum.sort(members) do
+        quote do: def(members(unquote(name)), do: unquote(Macro.escape(labelled)))
+      end
+
     {:ok,
      Transformer.eval(
        dsl,
@@ -72,18 +80,14 @@ defmodule EhOsContract.Domain.Build do
          an enum.
          """
          @spec members(atom()) :: [{atom(), String.t() | nil}]
+         def members(value)
+
+         unquote_splicing(member_clauses)
+
          def members(value) do
-           enums = unquote(Macro.escape(members))
-
-           case Map.fetch(enums, value) do
-             {:ok, members} ->
-               members
-
-             :error ->
-               raise ArgumentError,
-                     "#{inspect(value)} is no enum value of #{inspect(__MODULE__)}; its enum " <>
-                       "values are #{enums |> Map.keys() |> Enum.sort() |> inspect()}"
-           end
+           raise ArgumentError,
+                 "#{inspect(value)} is no enum value of #{inspect(__MODULE__)}; its enum " <>
+                   "values are #{inspect(unquote(members |> Map.keys() |> Enum.sort()))}"
          end
 
          @doc "Binds a value's invariants to their checks: `EhOsContract.Implementation`."
