@@ -9,7 +9,16 @@ defmodule EhOsContract.GraphOverlayTest do
   alias EhOsContract.Graph.{Document, Overlay}
   alias EhOsContract.Registry
 
-  @schema Overlay.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+  # Built when a test first asks for it, never into a module attribute: on OTP 28 a
+  # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a
+  # function that reads the attribute (#492).
+  defp schema do
+    with nil <- :persistent_term.get({__MODULE__, :schema}, nil) do
+      built = Overlay.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+      :persistent_term.put({__MODULE__, :schema}, built)
+      built
+    end
+  end
 
   test "every overlay holds to its schema and names its document's digest" do
     contracts = Registry.contracts()
@@ -22,7 +31,7 @@ defmodule EhOsContract.GraphOverlayTest do
             do: {Overlay.domain(d, modules), Document.domain(d, modules)}
 
     for {overlay, document} <- overlays do
-      assert {:ok, _} = JSV.validate(overlay, @schema),
+      assert {:ok, _} = JSV.validate(overlay, schema()),
              inspect(overlay["contract"] || overlay["process"] || overlay["domain"])
 
       assert overlay["document_digest"] == document["digest"]
@@ -43,7 +52,7 @@ defmodule EhOsContract.GraphOverlayTest do
   test "the order's overlay has its runs and its promise's verdicts" do
     o = Overlay.process(Fulfilment.Processes.Order)
 
-    assert {:ok, _} = JSV.validate(o, @schema)
+    assert {:ok, _} = JSV.validate(o, schema())
     assert o["nodes"]["process:fulfilment.order"] == %{"runs" => 0}
 
     assert %{"violated" => 0, "instances" => 0, "suspended" => 0} =
