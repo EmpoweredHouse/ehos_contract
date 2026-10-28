@@ -30,7 +30,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   header, so a call answered `:outcome_unknown` can be made again with the same key and mails no
   one twice: for 24 hours EHOS answers a repeat with what the first call sent. Three new errors
   say why a repeat sent nothing: `:idempotency_key_reused`, `:idempotency_key_in_progress` and
-  `:idempotency_key_abandoned`. EHOS 0.23.0 or later reads the key (EmpoweredHouse/eh-os#1016).
+  `:idempotency_key_abandoned`. EHOS 0.23.0 or later reads the key (#482).
 
 ## [0.9.0] - 2026-10-27
 
