@@ -953,7 +953,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       No document describes this application's domain, so the landscape cannot say which
       contracts it has, nor what it publishes to other applications or takes from them.
     </p>
-    <p class="ehg-empty">
+    <p class="ehg-quiet">
       It is drawn with its contracts once its domain's document is given with the others.
     </p>
     """
