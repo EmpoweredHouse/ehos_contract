@@ -94,10 +94,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   with no `select:` map and no conversion: each field has the contract's type, an enum an `Ecto.Enum`
   stored as its member's name, a `:timestamp` `:utc_datetime_usec` that writes a time of any
   precision, so a scenario's `given`, which happens to the second, is projected as a dispatched event
-  is, a domain value the type the domain gives it, read when first used, so the contract still does
-  not depend on its domain at compile time. A value made of fields is a `jsonb` column (a list of them
-  `jsonb[]`), written in the log's form and read back as the map an event carries, so a projection
-  writes `event.address` as it is.
+  is, a domain value the type the domain gives it, read from the domain once it is compiled, so the
+  contract still does not depend on its domain at compile time. A value made of fields is a `jsonb`
+  column, a list of them too, written in the log's form and read back as the map an event carries, so
+  a projection writes `event.address` as it is; a personal field of it that was erased is written and
+  read back `nil`. A personal field is redacted when a row is inspected. An enum's member the contract
+  no longer declares cannot be loaded, so a query over a row that holds one raises until the read
+  model is rebuilt. `EhOsContract.Form`'s changeset types a `:timestamp` field with the same type,
+  which casts as `:utc_datetime_usec` does.
   A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
   `Row.__schema__(:fields)`, not the struct's keys. `docs/concepts/reading.md` writes and reads its
   example through `Row`.

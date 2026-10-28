@@ -361,6 +361,8 @@ defmodule EhOsContract.Contract.Generate do
       for f <- read_model.fields do
         {type, opts} = ecto_field(f.type, model.domain)
         opts = if f.name in key, do: [primary_key: true] ++ opts, else: opts
+        # A person's data stays out of a row printed in a log or a failed test.
+        opts = if Map.get(f, :personal), do: [redact: true] ++ opts, else: opts
         quote(do: field(unquote(f.name), unquote(Macro.escape(type)), unquote(opts)))
       end
 
@@ -373,8 +375,10 @@ defmodule EhOsContract.Contract.Generate do
       for f <- read_model.fields do
         type = typespec(f.type, values)
 
+        # A row an implementation builds may carry what an erased field reads back as;
+        # one loaded from a table holds `nil` there, since a column cannot hold it.
         type =
-          if Map.get(f, :personal),
+          if Map.get(f, :personal) && table == nil,
             do: quote(do: unquote(type) | EhOsContract.Erased.t()),
             else: type
 

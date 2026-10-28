@@ -76,6 +76,8 @@ defmodule EhOsContract.ReadModelRowTest do
           read_model :visits_seen, "Visits seen", projects: :visit_closed do
             field :visit_id, :id
             field :address, :address, optional: true
+            field :member_id, :id, subject: :member
+            field :member_name, :string, personal: :member_id, optional: true
           end
         end
         """,
@@ -218,6 +220,12 @@ defmodule EhOsContract.ReadModelRowTest do
       assert [%{contact: %{member_id: "m-1", email: nil}}] = Repo.all(visits())
     end
 
+    test "redacts a personal field when a row is inspected" do
+      # Inspect itself is not asked: a module compiled while the tests run comes after
+      # protocols were consolidated, so its redacting Inspect has no effect here.
+      assert seen().__schema__(:redact_fields) == [:member_name]
+    end
+
     # A value whose fields are all optional is still decoded from the log's form: its
     # keys are the field names, never the strings the column holds.
     test "reads a value whose fields are all optional with its keys as atoms" do
@@ -247,7 +255,7 @@ defmodule EhOsContract.ReadModelRowTest do
   test "a read model without a table is an embedded schema" do
     assert seen().__schema__(:source) == nil
     assert seen().__schema__(:primary_key) == []
-    assert seen().__schema__(:fields) == [:visit_id, :address]
+    assert seen().__schema__(:fields) == [:visit_id, :address, :member_id, :member_name]
     refute Map.has_key?(struct(seen()), :__meta__)
 
     assert {:ok, %{street: "Main", since: ~D[2026-01-31], method: :card}} =
