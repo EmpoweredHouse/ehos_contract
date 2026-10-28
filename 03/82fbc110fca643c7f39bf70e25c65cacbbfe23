@@ -1,0 +1,24 @@
+Two reviews ran in parallel on `origin/main..HEAD` (the three phases) before the fixes: one for correctness, one for security and performance. Both read the diff by hand, not through `/code-review`, which would have reviewed another worktree. Neither found anything exploitable or anything that breaks dispatch.
+
+**Fixed**, each in its own commit with a test that fails on the old code (checked by restoring the old file and seeing only those tests fail):
+
+- **A page crashed rendering a nested field whose value came from `data:` (correctness, medium).** `inputs_for` builds rows from the data when a field has no change, and `Ecto.Changeset.change/1` has no clause for a plain map. This happened when the params left the field out, or sent something that is not rows. A nested field now always gets rows of its own, built from `data:` where the form sent none.
+- **An optional value sent blank kept `data:`'s value (correctness, medium),** against the docs. It is now cleared: `nil` for one value, no rows for a list.
+- **A struct row in `data:` crashed (correctness, medium).** An embedded schema's struct, as from a read model, passed the data check and then failed in `Map.new/1`. It is now read as a map. The dead string-key branch of the helper went with it.
+- **A refusal at a field of rows was put where `inputs_for` shows nothing (correctness, low).** It now goes on `:base` with `field:`.
+- **A list sent with no rows was "can't be blank" (correctness, low),** though dispatch takes an empty list, and a blank item among rows made the list `:type`. It is now an empty list, and the blank item is dropped.
+- **Docs:**
+  - A form by capability name reveals the shape the contract declares, the names of its values' invariants and a person's recordings among it. The published documents do not all state that, and the docs no longer claim they do (security, low).
+  - Leaving a field off the page protects nothing, since params that carry it set it (security, low).
+  - A row the form sends is read whole. `items_sort[]` and `items_drop[]` are not read. A multiple select needs a hidden blank input to clear `data:`.
+  - A LiveView reads every row on each change, so the host bounds what a form may send (security, low: rows are linear in the input, and nesting depth is fixed by the domain).
+  - The search example's query is said to be one a contract declares. A garbled sentence is mended.
+
+**No change needed:**
+
+- **Mass assignment.** Params never reach the pinned identity, a supplied field (none can sit inside a row), a generated identity, or an undeclared key: rows are rebuilt from declared fields.
+- **No atom from input.** The `String.to_existing_atom` the security review looked at was reachable only from `data:`, and is gone.
+- **Recursion.** Hostile input cannot drive it: only declared fields are traversed, and cycles between values are refused at compile time.
+- **The test-only `phoenix_ecto` and `phoenix_html`** stay out of a host.
+
+**Skipped:** `inspect/1` of a form's changeset shows a row's personal fields, as it already did a flat field's. Redacting a changeset's inspection is a matter for the whole engine, not for this pull request.
