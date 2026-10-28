@@ -14,7 +14,7 @@ defmodule EhOsContract.Auth.Mail.Local do
   It takes the options `EhOsContract.Auth.Mail.deliver/1` takes, and raises
   `ArgumentError` for the ones it would raise for, so development fails where a release
   would. What only EHOS checks, an agreement's level or a message's size among it, it
-  does not.
+  does not, nor does it remember an `idempotency_key:`: a repeat is answered again.
   """
 
   @behaviour EhOsContract.Auth.Mail.Sender

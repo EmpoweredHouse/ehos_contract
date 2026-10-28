@@ -113,7 +113,8 @@ defmodule EhOsContract.Auth.MailSenderTest do
             Keyword.delete(@message, :subject),
             [{:cc, ["x"]} | @message],
             Keyword.put(@message, :to, [{:phone, "1"}]),
-            @message ++ [subject: "twice"]
+            @message ++ [subject: "twice"],
+            [{:idempotency_key, "a key"} | @message]
           ] do
         assert_raise ArgumentError, ~r/deliver\/1 takes/, fn -> Local.deliver(message) end
       end
