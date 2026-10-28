@@ -270,6 +270,18 @@ defmodule EhOsContract.PersonalTest do
   end
 
   describe "the generated structs" do
+    # A person's data stays out of a value printed in a log or a failed test's message.
+    test "inspect a value without its personal fields" do
+      shown =
+        inspect(%ShreddingRig.Domain.Values.Contact{
+          member_id: "member-anna",
+          phone: "+48 600 100 200"
+        })
+
+      assert shown =~ "member-anna"
+      refute shown =~ "600 100 200"
+    end
+
     test "admit Erased on a personal field, and only there" do
       {:ok, types} = Code.Typespec.fetch_types(Joined)
       [t] = for {:type, {:t, spec, []}} <- types, do: spec
