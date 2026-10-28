@@ -265,9 +265,10 @@ defmodule EhOsContract.PersonalTest do
       assert string =~ "member_id: String.t(),"
       refute string =~ "member_id: String.t() | EhOsContract.Erased.t()"
 
-      {:ok, types} = Code.Typespec.fetch_types(ShreddingRig.Domain.Values)
-      [contact] = for {:type, {:contact, spec, []}} <- types, do: spec
-      string = Macro.to_string(Code.Typespec.type_to_quoted({:contact, contact, []}))
+      # A value made of fields is its struct (#486), whose personal field admits it too.
+      {:ok, types} = Code.Typespec.fetch_types(ShreddingRig.Domain.Values.Contact)
+      [t] = for {:type, {:t, spec, []}} <- types, do: spec
+      string = Macro.to_string(Code.Typespec.type_to_quoted({:t, t, []}))
       assert string =~ "phone: String.t() | EhOsContract.Erased.t()"
     end
   end

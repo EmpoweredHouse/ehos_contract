@@ -270,8 +270,9 @@ defmodule EhOsContract.Model do
   @doc """
   The module a contract generates for a declaration: the struct of a command, an
   event or a query's parameters, or the behaviour of a unit, a policy, an effect, a
-  process manager or a read model. A domain generates one too, the behaviour of a
-  value that declares invariants:
+  process manager or a read model. A domain generates one too, for a value that
+  declares invariants or is made of fields: the behaviour of its invariants, and the
+  struct of its fields:
 
       Model.module_for(Lending.Domain, :value, :money)
       #=> Lending.Domain.Values.Money
@@ -292,12 +293,12 @@ defmodule EhOsContract.Model do
   def module_for(domain, :value, name) do
     case fetch(domain) do
       %{kind: :domain, module: module, values: values} ->
-        if Enum.any?(values, &(&1.name == name and &1.invariants != [])),
+        if Enum.any?(values, &(&1.name == name and (&1.invariants != [] or &1.type == nil))),
           do: generated_name(module, Values, name),
           else:
             raise(
               ArgumentError,
-              "#{inspect(module)} declares no value #{inspect(name)} with invariants"
+              "#{inspect(module)} declares no value #{inspect(name)} with invariants or fields"
             )
 
       %{kind: kind, module: module} ->

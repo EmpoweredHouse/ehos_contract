@@ -36,8 +36,13 @@ defmodule EhOsContract.Domain.Build do
   @impl true
   def transform(dsl) do
     model = model(dsl)
-    types = Enum.map(model.values, &value_type/1)
-    behaviours = for %{invariants: [_ | _]} = value <- model.values, do: behaviour(model, value)
+    types = Enum.map(model.values, &value_type(&1, model.module))
+
+    behaviours =
+      for value <- model.values,
+          value.invariants != [] or value.type == nil,
+          do: value_module(model, value)
+
     members = enum_members(model.values)
 
     # One clause per enum value, not a lookup in a map literal: in a domain with no enum,
@@ -97,11 +102,13 @@ defmodule EhOsContract.Domain.Build do
      )}
   end
 
-  # `D.Values.Money`: one callback per invariant of `value :money`, taking a value of
-  # the type and answering whether it keeps the invariant (plan EL2b). Written from
-  # `EhOsContract.Contract.Callbacks`, the list `use D, value: :money` checks
-  # against.
-  defp behaviour(model, value) do
+  # `D.Values.Money`, the one module of a value: one callback per invariant of
+  # `value :money`, taking a value of the type and answering whether it keeps the
+  # invariant (plan EL2b), written from `EhOsContract.Contract.Callbacks`, the list
+  # `use D, value: :money` checks against; and, for a value made of fields, its struct
+  # (#486), whose required fields are enforced, so `%Address{}` without one does not
+  # compile.
+  defp value_module(model, value) do
     module = Module.concat([model.module, Values, Macro.camelize(Atom.to_string(value.name))])
     %{callbacks: callbacks} = EhOsContract.Contract.Callbacks.of(model, :value, value.name)
     labels = Map.new(value.invariants, &{&1.name, &1.label})
@@ -114,17 +121,55 @@ defmodule EhOsContract.Domain.Build do
         end
       end
 
-    doc =
+    rules =
       "What an implementation of value `#{inspect(value.name)}` of `#{inspect(model.module)}` " <>
         "defines, generated from its invariants: one function each, answering whether a " <>
         "value of the type keeps it. Bound with `use #{inspect(model.module)}, value: " <>
         "#{inspect(value.name)}`."
 
+    doc =
+      case {value.type, value.invariants} do
+        {nil, []} -> struct_doc(model, value)
+        {nil, _invariants} -> struct_doc(model, value) <> "\n\n" <> rules
+        {_type, _invariants} -> rules
+      end
+
     quote do
       defmodule unquote(module) do
         @moduledoc unquote(doc)
+        unquote(
+          if value.type == nil, do: value_struct(value, Module.concat(model.module, Values))
+        )
+
         unquote_splicing(specs)
       end
+    end
+  end
+
+  defp struct_doc(model, value),
+    do:
+      "Value `#{inspect(value.name)}` of `#{inspect(model.module)}`, generated from its " <>
+        "fields: the struct the engine hands a consumer wherever the value appears."
+
+  # The struct of a value made of fields, its fields in the order declared. A personal
+  # field may hold what it reads back as once its subject is erased (v2 §14).
+  defp value_struct(value, values) do
+    enforce = for f <- value.fields, not f.optional, do: f.name
+
+    types =
+      for field <- value.fields do
+        type = remote(field.type, values)
+
+        type =
+          if field.personal, do: quote(do: unquote(type) | EhOsContract.Erased.t()), else: type
+
+        {field.name, if(field.optional, do: quote(do: unquote(type) | nil), else: type)}
+      end
+
+    quote do
+      @enforce_keys unquote(enforce)
+      defstruct unquote(Enum.map(value.fields, & &1.name))
+      @type t :: %__MODULE__{unquote_splicing(types)}
     end
   end
 
@@ -150,25 +195,27 @@ defmodule EhOsContract.Domain.Build do
   defp labelled(member), do: {member, nil}
 
   # `value :money, :integer` becomes `@type money :: integer()`; a value with fields
-  # becomes a map type with one key per field. A personal field may hold what it
-  # reads back as once its subject is erased (v2 §14).
-  defp value_type(%{name: name, type: nil, fields: fields}) do
-    pairs =
-      for field <- fields do
-        type = typespec(field.type)
-
-        type =
-          if field.personal, do: quote(do: unquote(type) | EhOsContract.Erased.t()), else: type
-
-        {field.name, if(field.optional, do: quote(do: unquote(type) | nil), else: type)}
-      end
-
-    quote do: @type(unquote({name, [], []}) :: %{unquote_splicing(pairs)})
+  # becomes its struct's type, `@type address :: D.Values.Address.t()` (#486).
+  defp value_type(%{name: name, type: nil}, domain) do
+    module = Module.concat([domain, Values, Macro.camelize(Atom.to_string(name))])
+    quote do: @type(unquote({name, [], []}) :: unquote(module).t())
   end
 
-  defp value_type(%{name: name, type: type}) do
+  defp value_type(%{name: name, type: type}, _domain) do
     quote do: @type(unquote({name, [], []}) :: unquote(typespec(type)))
   end
+
+  # A field's type outside `Values`, where another value is the remote `Values.x()`.
+  defp remote({:list, inner}, values), do: quote(do: [unquote(remote(inner, values))])
+
+  defp remote(value, values) when is_atom(value) do
+    case typespec(value) do
+      {^value, [], []} -> quote(do: unquote(values).unquote(value)())
+      built_in -> built_in
+    end
+  end
+
+  defp remote(type, _values), do: typespec(type)
 
   @doc false
   @spec typespec(term()) :: Macro.t()

@@ -88,6 +88,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **Breaking:** **a domain value made of fields is a struct of its own** (#486),
+  `Lending.Domain.Values.Address`, generated in the module that already holds its invariants' callbacks,
+  if it has any, and named by `EhOsContract.Model.module_for(domain, :value, name)`. Its required fields
+  are enforced, so `%Address{}` without one does not compile, and the value's type in
+  `Lending.Domain.Values` is the struct's.
 - **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
   as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
   (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
