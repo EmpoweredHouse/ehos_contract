@@ -89,6 +89,19 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
   alias EhOsContract.GraphRenderer.{Actors, Audience, Canvas, Places, View}
 
+  # What each place, or each way of drawing it, shows: the line under the path (#490).
+  @contracts "Which contracts there are, in which context each sits, and what one takes from another."
+  @contexts "The domain's areas of language, its bounded contexts, and how each depends on the " <>
+              "others: who supplies, who conforms, who translates."
+  @unit "What the unit takes, what it records, and the rules that may refuse a command."
+  @lifecycle "The statuses the unit moves through, and the events that move it."
+  @processes "How work runs over time here: each process's stages, the events that move it, " <>
+               "and what it promises to finish by."
+  @contract "One part of the business: the units that decide in it, the commands they take, " <>
+              "the events they record, and what reacts to them."
+  @process "One process: its stages in order, the events each includes and the contracts that " <>
+             "record them, and what it promises."
+
   @impl true
   def mount(socket) do
     {:ok,
@@ -327,7 +340,8 @@ defmodule EhOsContract.GraphRenderer.Explorer do
     assign(socket,
       picture: picture,
       overlay: if(picture && picture.overlay && is_map(overlay), do: overlay),
-      about: about(place, picture, socket.assigns.lens)
+      # Said once the place's document is there, so a line never changes under the reader.
+      about: if(document, do: about(place, picture, socket.assigns.lens))
     )
   end
 
@@ -354,7 +368,7 @@ defmodule EhOsContract.GraphRenderer.Explorer do
           phx-value-to="processes"
           phx-target={@myself}
         >
-          Processes ›
+          Processes <span aria-hidden="true">›</span>
         </button>
       </nav>
 
@@ -457,48 +471,14 @@ defmodule EhOsContract.GraphRenderer.Explorer do
 
   # What a place shows, in a line under the path (#490): where it can be drawn two ways, what
   # the way the reader chose shows; otherwise what the place itself does.
-  defp about(_place, %{lenses: [_ | _] = lenses}, lens) do
-    Map.fetch!(
-      %{
-        graph: about_graph(lenses),
-        map:
-          "The domain's areas of language, its bounded contexts, and how each depends on the " <>
-            "others: who supplies, who conforms, who translates.",
-        lifecycle: "The statuses the unit moves through, and the events that move it."
-      },
-      if(List.keymember?(lenses, lens, 0), do: lens, else: :graph)
-    )
-  end
-
-  defp about(:domain, _picture, _lens),
-    do:
-      "The domain's areas of language, its bounded contexts, and how each depends on the others."
-
-  defp about(:processes, _picture, _lens),
-    do:
-      "How work runs over time here: each process's stages, the events that move it, and what " <>
-        "it promises to finish by."
-
-  defp about({:contract, _id}, _picture, _lens),
-    do:
-      "One part of the business: the units that decide in it, the commands they take, the " <>
-        "events they record, and what reacts to them."
-
-  defp about({:process, _id}, _picture, _lens),
-    do:
-      "One process: its stages in order, the events each includes and the contracts that " <>
-        "record them, and what it promises."
-
-  defp about(_place, _picture, _lens), do: nil
-
-  # The first way of drawing a place with two: the domain's contracts, or a unit's commands.
-  defp about_graph([{:graph, "Contracts"} | _]),
-    do:
-      "Which contracts there are, in which context each sits, and what one takes from " <>
-        "another."
-
-  defp about_graph(_unit),
-    do: "What the unit takes, what it records, and the rules that may refuse a command."
+  defp about(:domain, %{lenses: [_ | _]}, :map), do: @contexts
+  defp about(:domain, %{lenses: [_ | _]}, _lens), do: @contracts
+  defp about(:domain, _picture, _lens), do: @contexts
+  defp about({:unit, _c, _u}, %{lenses: [_ | _]}, :lifecycle), do: @lifecycle
+  defp about({:unit, _c, _u}, _picture, _lens), do: @unit
+  defp about(:processes, _picture, _lens), do: @processes
+  defp about({:contract, _id}, _picture, _lens), do: @contract
+  defp about({:process, _id}, _picture, _lens), do: @process
 
   # The path from the domain to the place, each step a button back to it but the last: by
   # its name in code, or for the owner by its label (`step/3`).

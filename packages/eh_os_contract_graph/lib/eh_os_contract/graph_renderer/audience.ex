@@ -34,7 +34,7 @@ defmodule EhOsContract.GraphRenderer.Audience do
   # The lists of fields a node may hold.
   @fields ~w(fields state params)
 
-  @doc "The audience a host or a reader names, or an `ArgumentError` naming what it was given."
+  @doc "The audience a host names, or an `ArgumentError` naming what it was given."
   @spec cast(term()) :: t()
   def cast(audience) when audience in [:engineering, :owner], do: audience
 

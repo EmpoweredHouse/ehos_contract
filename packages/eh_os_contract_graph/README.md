@@ -33,10 +33,12 @@ dashboard's bundle reads the markup this package renders, so update them togethe
 
 ## Exploring a domain
 
-The explorer is one canvas the reader moves through, with two viewpoints as tabs: the **structure** — the
-domain's system (its contracts in their contexts, with a switch to its context map), a contract, one of its units
-(with a switch to its lifecycle) — and the **processes**. A path goes back up, and the panel opens where a card
-leads: a contract or a process of the map, a unit of a contract, an event's unit or contract.
+The explorer is one canvas the reader moves through along one path, which goes back up from wherever they are and
+has two branches: the **structure** — the domain's system (its contracts in their contexts, or its context map), a
+contract, one of its units (or its lifecycle) — and, a step beside the domain, the **processes**. A line under
+the path says what each place shows, and where a place can be drawn two ways, both are offered there. The panel
+opens where a card leads: a contract or a process of the map, a unit of a contract, an event's unit or contract.
+Engineer and owner read one picture; a host that wants the owner's alone passes `audience={:owner}`.
 
 ```heex
 <.live_component

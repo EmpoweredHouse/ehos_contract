@@ -1081,7 +1081,8 @@
   display: block;
 }
 
-/* The explorer: two viewpoints as tabs, the path back up, the lenses of a picture, and the list of processes. */
+/* The explorer: the path back up along its two branches, the line on what a place shows, the ways of drawing
+   it, and the list of processes. */
 
 .ehg-explorer {
   display: grid;

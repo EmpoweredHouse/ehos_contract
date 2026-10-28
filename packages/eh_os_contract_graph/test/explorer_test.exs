@@ -54,6 +54,18 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     assert text(page(view), ".ehg-about") =~ "How work runs over time"
   end
 
+  test "says nothing of the domain before its document says what it is" do
+    {:ok, view, _html} =
+      live_isolated(build_conn(), ExplorerLive, session: %{"opts" => [hold: self()]})
+
+    assert_receive {:held, loader}
+    refute has_element?(view, ".ehg-about")
+
+    send(loader, :go)
+    render_async(view)
+    assert text(page(view), ".ehg-about") =~ "Which contracts there are"
+  end
+
   test "the context map is a switch on the domain's level" do
     view = start()
     view |> element(".ehg-lenses button", "Contexts and their relations") |> render_click()
@@ -87,6 +99,8 @@ defmodule EhOsContract.GraphRenderer.ExplorerTest do
     assert text(page(view), ".ehg-path [aria-current]") =~ "pick_list"
     assert "command:fulfilment.warehouse:confirm_pick" in cards(view)
     refute has_element?(view, ".ehg-lenses")
+    # A unit drawn one way only says what it shows all the same.
+    assert text(page(view), ".ehg-about") =~ "What the unit takes"
   end
 
   test "the processes are a branch of the path, and an event opens its contract across them" do
