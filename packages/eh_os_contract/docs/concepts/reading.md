@@ -101,7 +101,9 @@ and the row fields that make a row unique, `key:`, gets a schema of that table w
 primary key, so a projection writes through it (`insert_all(Row, rows, on_conflict: …,
 conflict_target: key)`) and a query reads `from r in Row`, each field of the contract's type: an enum
 an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, written at whatever
-precision a time comes in, a domain value the type the domain gives it. A read model without `table:` has an embedded schema, with no table behind it.
+precision a time comes in, a domain value the type the domain gives it, and a value made of fields a
+`jsonb` column (a list of them `jsonb[]`), written in the log's form and read back as the map an event
+carries, never a struct. A read model without `table:` has an embedded schema, with no table behind it.
 The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
 
 The schema holds the declared fields and nothing else. A column the projection keeps for itself, the

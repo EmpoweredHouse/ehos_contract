@@ -94,7 +94,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   stored as its member's name, a `:timestamp` `:utc_datetime_usec` that writes a time of any
   precision, so a scenario's `given`, which happens to the second, is projected as a dispatched event
   is, a domain value the type the domain gives it, read when first used, so the contract still does
-  not depend on its domain at compile time.
+  not depend on its domain at compile time. A value made of fields is a `jsonb` column (a list of them
+  `jsonb[]`), written in the log's form and read back as the map an event carries, so a projection
+  writes `event.address` as it is.
   A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
   `Row.__schema__(:fields)`, not the struct's keys. `docs/concepts/reading.md` writes and reads its
   example through `Row`.

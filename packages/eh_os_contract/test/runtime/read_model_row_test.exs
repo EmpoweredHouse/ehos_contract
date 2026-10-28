@@ -30,6 +30,8 @@ defmodule EhOsContract.ReadModelRowTest do
 
           value :address do
             field :street, :string
+            field :since, :date, optional: true
+            field :method, :method, optional: true
           end
         end
 
@@ -54,6 +56,8 @@ defmodule EhOsContract.ReadModelRowTest do
             field :method, :method, optional: true
             field :closed_at, :timestamp, optional: true
             field :tags, {:list, :string}, optional: true
+            field :address, :address, optional: true
+            field :stops, {:list, :address}, optional: true
           end
 
           read_model :visits_seen, "Visits seen", projects: :visit_closed do
@@ -80,7 +84,8 @@ defmodule EhOsContract.ReadModelRowTest do
     Repo.query!("""
     CREATE TABLE #{@table} (
       visit_id text, room_id text, status text, paid integer, method text,
-      closed_at timestamp(6), tags text[], PRIMARY KEY (visit_id, room_id)
+      closed_at timestamp(6), tags text[], address jsonb, stops jsonb[],
+      PRIMARY KEY (visit_id, room_id)
     )
     """)
 
@@ -93,7 +98,7 @@ defmodule EhOsContract.ReadModelRowTest do
       assert visits().__schema__(:primary_key) == [:visit_id, :room_id]
 
       assert visits().__schema__(:fields) ==
-               [:visit_id, :room_id, :status, :paid, :method, :closed_at, :tags]
+               [:visit_id, :room_id, :status, :paid, :method, :closed_at, :tags, :address, :stops]
 
       assert visits().__schema__(:type, :closed_at) == EhOsContract.EctoTypes.Timestamp
       assert visits().__schema__(:type, :tags) == {:array, :string}
@@ -145,6 +150,30 @@ defmodule EhOsContract.ReadModelRowTest do
                Repo.all(from(r in visits(), where: r.closed_at >= ^~U[2026-01-01 09:00:00Z]))
     end
 
+    # The map an event carries is written as it is, and read back the same: never a
+    # struct, so a projection and a query see what an event's consumer sees.
+    test "writes a value made of fields, and a list of them, in the log's form, and reads back the event's map" do
+      address = %{street: "Main", since: ~D[2026-01-31], method: :cash}
+      stop = %{street: "Side", since: nil, method: nil}
+
+      Repo.insert_all(visits(), [
+        %{visit_id: "v-1", room_id: "r-1", status: :open, address: address, stops: [stop]}
+      ])
+
+      assert %{rows: [[%{"street" => "Main", "since" => "2026-01-31", "method" => "cash"}]]} =
+               Repo.query!("SELECT address FROM #{@table}")
+
+      assert [%{address: ^address, stops: [^stop]}] = Repo.all(visits())
+    end
+
+    test "refuses to write a value made of fields that does not fit it" do
+      assert_raise Ecto.ChangeError, fn ->
+        Repo.insert_all(visits(), [
+          %{visit_id: "v-1", room_id: "r-1", status: :open, address: %{street: 7}}
+        ])
+      end
+    end
+
     test "dumps a domain value through the type the domain gives it, and refuses what does not fit" do
       assert {:ok, 1500} = Ecto.Type.dump(visits().__schema__(:type, :paid), 1500)
       assert :error = Ecto.Type.cast(visits().__schema__(:type, :paid), "a lot")
@@ -159,7 +188,11 @@ defmodule EhOsContract.ReadModelRowTest do
     assert seen().__schema__(:fields) == [:visit_id, :address]
     refute Map.has_key?(struct(seen()), :__meta__)
 
-    assert {:ok, %{"street" => "Main"}} =
-             Ecto.Type.cast(seen().__schema__(:type, :address), %{"street" => "Main"})
+    assert {:ok, %{street: "Main", since: ~D[2026-01-31], method: :card}} =
+             Ecto.Type.cast(seen().__schema__(:type, :address), %{
+               "street" => "Main",
+               "since" => "2026-01-31",
+               "method" => "card"
+             })
   end
 end
