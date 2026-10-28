@@ -393,7 +393,13 @@ defmodule EhOsContract.Contract.Generate do
   end
 
   # `{type, options}` of a row's `field/3`: an enum is an `Ecto.Enum` of its members,
-  # a domain value the type its domain gives it, anything else `EctoTypes.of/2`'s.
+  # a domain value, or a list of one, the type its domain gives it, anything else
+  # `EctoTypes.of/2`'s. Not `of/2` itself: `field/3` takes a type's module and options,
+  # never an initialised `{:parameterized, …}`, and a domain value is not known here.
+  defp ecto_field({:list, value}, domain)
+       when is_atom(value) and value not in @built_in,
+       do: {EhOsContract.EctoTypes.Value, domain: domain, value: value, list: true}
+
   defp ecto_field({:enum, members}, _domain),
     do: {Ecto.Enum, values: EhOsContract.EctoTypes.members(members)}
 

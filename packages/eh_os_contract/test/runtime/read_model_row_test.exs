@@ -70,6 +70,7 @@ defmodule EhOsContract.ReadModelRowTest do
             field :stops, {:list, :address}, optional: true
             field :contact, :contact, optional: true
             field :remark, :remark, optional: true
+            field :amounts, {:list, :money}, optional: true
           end
 
           read_model :visits_seen, "Visits seen", projects: :visit_closed do
@@ -96,7 +97,7 @@ defmodule EhOsContract.ReadModelRowTest do
     Repo.query!("""
     CREATE TABLE #{@table} (
       visit_id text, room_id text, status text, paid integer, method text,
-      closed_at timestamp(6), tags text[], address jsonb, stops jsonb[], contact jsonb, remark jsonb,
+      closed_at timestamp(6), tags text[], address jsonb, stops jsonb, contact jsonb, remark jsonb, amounts integer[],
       PRIMARY KEY (visit_id, room_id)
     )
     """)
@@ -121,12 +122,18 @@ defmodule EhOsContract.ReadModelRowTest do
                  :address,
                  :stops,
                  :contact,
-                 :remark
+                 :remark,
+                 :amounts
                ]
 
       assert visits().__schema__(:type, :closed_at) == EhOsContract.EctoTypes.Timestamp
       assert visits().__schema__(:type, :tags) == {:array, :string}
       assert Ecto.Enum.values(visits(), :status) == [:open, :closed]
+
+      # Read from the domain: a list of values made of fields is one jsonb column, a
+      # list of values resting on a type an array of that type.
+      assert Ecto.Type.type(visits().__schema__(:type, :stops)) == :map
+      assert Ecto.Type.type(visits().__schema__(:type, :amounts)) == {:array, :integer}
     end
 
     test "writes and reads through its schema, a domain value read from the domain" do
@@ -186,6 +193,10 @@ defmodule EhOsContract.ReadModelRowTest do
 
       assert %{rows: [[%{"street" => "Main", "since" => "2026-01-31", "method" => "cash"}]]} =
                Repo.query!("SELECT address FROM #{@table}")
+
+      # A list of them is one column holding the list, as `embeds_many` keeps it.
+      assert %{rows: [[[%{"street" => "Side", "since" => nil, "method" => nil}]]]} =
+               Repo.query!("SELECT stops FROM #{@table}")
 
       assert [%{address: ^address, stops: [^stop]}] = Repo.all(visits())
     end

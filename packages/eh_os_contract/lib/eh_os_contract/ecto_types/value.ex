@@ -4,9 +4,11 @@ defmodule EhOsContract.EctoTypes.Value do
   # A contract names its domain without a compile dependency, so its `Row` cannot know,
   # when it compiles, what a domain value is. This type keeps the domain's module and
   # the value's name, and reads the value from the domain the first time it casts,
-  # loads or dumps. A value resting on a type is that type's column, through
+  # loads or dumps, kept until the domain is recompiled. A value resting on a type is
+  # that type's column, through
   # `EhOsContract.EctoTypes.of/2`: a `:money` resting on `:integer` an integer, a domain
-  # enum an `Ecto.Enum`. A value made of fields is a `jsonb` column, written in the
+  # enum an `Ecto.Enum`. A value made of fields is a `jsonb` column, and so is a list of
+  # them, one column holding the list as `embeds_many` would; each is written in the
   # log's form and read back through `EhOsContract.Codec` as the map the engine hands a
   # consumer in an event: atom keys, a date a `Date`, an enum's member an atom. It is
   # never a struct, so a projection writes `event.address` as it is, and reads back
@@ -18,15 +20,19 @@ defmodule EhOsContract.EctoTypes.Value do
   alias EhOsContract.{Codec, EctoTypes}
 
   @impl true
-  def init(opts),
-    do: %{domain: Keyword.fetch!(opts, :domain), value: Keyword.fetch!(opts, :value)}
+  def init(opts) do
+    %{
+      domain: Keyword.fetch!(opts, :domain),
+      value: Keyword.fetch!(opts, :value),
+      list: Keyword.get(opts, :list, false)
+    }
+  end
 
   @impl true
   def type(params) do
     case resolved(params) do
-      {:one, _fields, _values} -> :map
-      {:many, _fields, _values} -> {:array, :map}
       {:type, type} -> Ecto.Type.type(type)
+      _made_of -> :map
     end
   end
 
@@ -131,21 +137,51 @@ defmodule EhOsContract.EctoTypes.Value do
   # it `nil` in the row (`EhOsContract.Erased` is written as `nil`, as a query's answer
   # gives it over HTTP), and a row that could not be read back would fail every query
   # over its read model.
-  defp resolved(%{domain: domain, value: value}) do
+  defp resolved(%{domain: domain, value: value, list: list}) do
+    # Asked for every field of every row, so read once per compiled domain: the key
+    # carries the domain's digest, and a recompiled domain is read again.
+    digest = if Code.ensure_loaded?(domain), do: domain.module_info(:md5)
+    key = {__MODULE__, domain, value, list}
+
+    case :persistent_term.get(key, nil) do
+      {^digest, resolved} when digest != nil ->
+        resolved
+
+      _stale_or_none ->
+        resolved = resolve(domain, value, list)
+        if digest, do: :persistent_term.put(key, {digest, resolved})
+        resolved
+    end
+  end
+
+  defp resolve(domain, value, list) do
     values = Codec.values(domain)
 
     unless is_map_key(values, value) do
       raise ArgumentError, "#{inspect(domain)} declares no value #{inspect(value)}"
     end
 
-    case EctoTypes.shape(value, values) do
-      {cardinality, made_of} ->
-        values = Map.new(values, fn {name, v} -> {name, Map.update(v, :fields, [], &erasable/1)} end)
-        {cardinality, Map.fetch!(values, made_of).fields, values}
+    case {EctoTypes.shape(value, values), list} do
+      {{:one, made_of}, list} ->
+        made_of(if(list, do: :many, else: :one), made_of, values)
 
-      :flat ->
-        {:type, EctoTypes.of(value, values)}
+      {{:many, made_of}, false} ->
+        made_of(:many, made_of, values)
+
+      # A list of a value that is a list itself: rows of it are lists of maps, kept as
+      # the column holds them.
+      {{:many, _made_of}, true} ->
+        {:type, {:array, :map}}
+
+      {:flat, list} ->
+        type = EctoTypes.of(value, values)
+        {:type, if(list, do: {:array, type}, else: type)}
     end
+  end
+
+  defp made_of(cardinality, value, values) do
+    values = Map.new(values, fn {name, v} -> {name, Map.update(v, :fields, [], &erasable/1)} end)
+    {cardinality, Map.fetch!(values, value).fields, values}
   end
 
   defp erasable(fields),
