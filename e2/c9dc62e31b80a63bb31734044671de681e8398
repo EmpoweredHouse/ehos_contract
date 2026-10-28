@@ -1,0 +1,23 @@
+Pre-PR review of origin/main..HEAD (#472), two reviews in parallel.
+
+Correctness review:
+1. An erased personal sub-field of a value made of fields was written nil and could not be loaded, failing every query: fixed (2553f1de), test + reverse check.
+2. A value whose fields are all optional loaded/cast with string keys: fixed (2553f1de), test + reverse check.
+3. The domain was re-read on every call, though docs said "when first used": fixed with :persistent_term keyed by the domain's md5 (da0acf1c).
+4. Load may hold stored values to input bounds: no change needed; dump runs Codec.problems, the same bounds, so whatever is stored passes them.
+5. Row typespec admitted Erased for a table row; no redact on personal fields: fixed (e2c9dc62), redact tested + reverse check.
+6. P6 within one contract only; engine's tables; 63-byte names: fixed (631e3d45), tests + reverse checks.
+7. CHANGELOG gaps (list values in P6 line, Form timestamp type, wording): fixed (631e3d45, e2c9dc62).
+Simplification: ecto_field vs EctoTypes.of: comment added saying why (da0acf1c).
+
+Security and performance review:
+1. Erased sub-field unreadable (same as correctness 1): fixed.
+2. String-keyed fast path (same as correctness 2): fixed.
+3. Codec.values per callback, 2-12 us per call for 40-200 values: fixed (da0acf1c).
+4. Table shared across contracts; 63-byte truncation: fixed (631e3d45).
+5. A dropped enum member makes a query raise: documented in CHANGELOG and change-contract skill (e2c9dc62).
+Informational: redact personal fields: done (e2c9dc62). Indexes on key/scope/subject columns: skipped, the application's migration; reading.md already says to index the subject column.
+
+Maintainer's choice during review: a list of values made of fields is one jsonb column, not jsonb[] (da0acf1c).
+
+Gate: OTP 27.2 / Elixir 1.18.4, mix check in sandbox, EXIT=0; check counts unchanged (sandbox 0/3/7).
