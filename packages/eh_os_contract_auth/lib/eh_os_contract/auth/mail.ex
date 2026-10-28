@@ -59,7 +59,7 @@ defmodule EhOsContract.Auth.Mail do
   ASCII characters, such as a new `Ecto.UUID.generate()` for each message. Keep it with
   the message, and after `:outcome_unknown` call again with the same key and the same
   message: for 24 hours EHOS sends nothing again for it and answers what the first call
-  sent. EHOS 0.22.0 or later reads it; an earlier one ignores it and sends again.
+  sent. EHOS 0.23.0 or later reads it; an earlier one ignores it and sends again.
 
   An option this module does not take, a value of the wrong type, or a string that is
   not UTF-8 raises `ArgumentError` before EHOS is asked, naming the option and never its

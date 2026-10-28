@@ -583,7 +583,7 @@ credential when EHOS refuses the one it sent, before anything is sent, and answe
 minutes. EHOS sends each recipient's message before it answers, so after `:outcome_unknown` a call
 made again may mail someone twice, unless it carries the same `idempotency_key:`: 1 to 255 visible
 ASCII characters, such as a new `Ecto.UUID.generate()` for each message, kept with it. For 24 hours
-EHOS sends nothing again for a key and answers what its first call sent (EHOS 0.22.0 or later; an
+EHOS sends nothing again for a key and answers what its first call sent (EHOS 0.23.0 or later; an
 earlier one ignores the key). Retry `:outcome_unknown` with the same key, and `:unavailable`
 freely. EHOS
 receives no mail: the answers to a reply domain arrive in the application's own mailbox there,
