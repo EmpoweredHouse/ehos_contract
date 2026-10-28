@@ -93,13 +93,55 @@ defmodule EhOsContract.Form do
   [Forms](forms.md) (`docs/concepts/forms.md` in the package).
   """
 
-  alias EhOsContract.{Codec, Model, Rejection, Supplier}
+  alias EhOsContract.{Codec, Dispatcher, Model, Rejection, Supplier}
 
   # The key of an error that is the whole form's, not one field's.
   @form_error :base
 
   @typedoc "A changeset `changeset/4` built, over the struct of a command, a recorded event or a query."
   @type t :: Ecto.Changeset.t()
+
+  @doc """
+  The changeset of the capability EHOS grants by `capability`'s name, for a page that knows
+  the name rather than the module, as `EhOsContract.call/3` takes it: `{:command, name}`,
+  `{:record, name}` or `{:query, name}`. `opts` are `changeset/4`'s, and `contracts:`, the
+  contracts the name is looked up among, every registered one by default, as for `call/3`.
+
+      EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params, data: %{invoice_id: id})
+
+  Like `changeset/4`, it checks the shape of what was typed, which the contract's published
+  documents already state, and asks no `EhOsContract.Authorizer`: whether the person may
+  issue it is asked when it is sent, by `dispatch/3`, `record/3` or `query/3`.
+
+  Raises `ArgumentError` when none of the contracts declares a capability of that kind and
+  name.
+  """
+  @spec changeset({:command | :record | :query, String.t()}, map()) :: t()
+  def changeset({_kind, _name} = capability, params), do: changeset(capability, params, [])
+
+  @doc """
+  `changeset/4` without options, or `changeset/2`'s capability with them: the first
+  argument tells which.
+  """
+  @spec changeset(module(), module(), map()) :: t()
+  @spec changeset({:command | :record | :query, String.t()}, map(), keyword()) :: t()
+  def changeset(contract, command, params) when is_atom(contract),
+    do: changeset(contract, command, params, [])
+
+  def changeset({kind, name}, params, opts)
+      when kind in [:command, :record, :query] and is_binary(name) and is_map(params) do
+    {contracts, opts} = Keyword.pop_lazy(opts, :contracts, &EhOsContract.Registry.contracts/0)
+
+    case Dispatcher.route(contracts, kind, name) do
+      {:ok, model, declaration} ->
+        generated = if kind == :record, do: :event, else: kind
+        module = Model.module_for(model, generated, declaration.name)
+        changeset(model.module, module, params, opts)
+
+      {:error, :not_found} ->
+        raise ArgumentError, "no contract among those given declares #{kind} #{inspect(name)}"
+    end
+  end
 
   @doc """
   The changeset of `command` for the form's `params`: a command module of `contract`, or
@@ -134,7 +176,7 @@ defmodule EhOsContract.Form do
   never sees.
   """
   @spec changeset(module(), module(), map(), keyword()) :: t()
-  def changeset(contract, command, params, opts \\ []) when is_map(params) do
+  def changeset(contract, command, params, opts) when is_atom(contract) and is_map(params) do
     model = contract!(contract)
     declaration = declaration!(model, command)
     given = Keyword.get(opts, :data, %{})

@@ -214,6 +214,11 @@ else
 end
 ```
 
+A page that knows a capability's name rather than its module, as `EhOsContract.call/3` takes it, builds
+the same changeset by the name: `Form.changeset({:command, "forms_example.issue_invoice"}, params)`,
+among the registered contracts or those `contracts:` names. `call/3` itself takes data typed as JSON
+types it, and a form's text goes through `Form`.
+
 ## What a form reads, and what it does not
 
 - **Text, as a form sends it.** Every value arrives as text and is read as its declared type, an

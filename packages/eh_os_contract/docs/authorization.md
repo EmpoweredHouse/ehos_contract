@@ -285,9 +285,9 @@ about the declaration's fields, and every request is one decision, recorded by t
 
 ## Another door
 
-The plug is one door onto `EhOsContract.call/3`, and a host's other doors, such as a form or a job that carries a
-person's credential, call it the same way: the capability's name, the data as it was sent, the
-credential's actor.
+The plug is one door onto `EhOsContract.call/3`, and a host's other doors that carry raw data, such as a job
+holding a person's credential or another API, call it the same way: the capability's name, the data as it
+was sent, the credential's actor.
 
 ```elixir
 EhOsContract.call(
@@ -304,6 +304,14 @@ serves (`contracts:`, every registered one by default) do not declare as that ki
 without a credential's actor, and, once the caller may, `{:error, :not_an_object}` or
 `{:error, :correlation_id_is_not_a_uuid}`. A door that builds the structs itself skips that order, which
 is why the plug no longer builds them.
+
+`call/3` takes data typed as JSON types it: a boolean as `true`, an integer as a number. A form sends text,
+`"false"` for a checkbox and `"42"` for an amount, and a page reads it through
+[`EhOsContract.Form`](concepts/forms.md) instead: a changeset that checks what was typed field by field
+while the person types, built from the declaration by the module or by the same capability name
+(`Form.changeset({:command, "fulfilment.assign_pick_list"}, params)`), whose struct the page then
+dispatches with the person's actor. The `Authorizer` is asked then, by `dispatch/3`; until the form is
+sent, what it checks is the shape the contract's published documents already state.
 
 ## Calling it from code
 

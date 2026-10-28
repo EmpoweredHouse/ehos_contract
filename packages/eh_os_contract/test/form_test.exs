@@ -269,6 +269,59 @@ defmodule EhOsContract.FormTest do
     end
   end
 
+  describe "by a capability's name" do
+    defp capability(contract, kind, name) do
+      contract
+      |> EhOsContract.Model.fetch()
+      |> EhOsContract.Model.capabilities()
+      |> Enum.find_value(fn
+        {capability, %{kind: ^kind, name: ^name}} -> capability
+        _other -> nil
+      end)
+    end
+
+    @contracts [Invoicing, ValueRig.Till]
+
+    test "builds the same changeset as the module would, for a command, a recording and a query" do
+      issue = capability(Invoicing, :command, :issue_invoice)
+
+      assert Form.changeset({:command, issue}, @sent,
+               contracts: @contracts,
+               data: %{invoice_id: "i-1"}
+             ) ==
+               changeset(@sent)
+
+      # A person's recording: the registrar's; a system actor's, the counter's, has no name.
+      confirmed = capability(BoundaryRig.Waitlist, :record, :place_confirmed)
+
+      assert {:ok, %BoundaryRig.Waitlist.Events.PlaceConfirmed{entry_id: "e-1"}} =
+               Form.changeset({:record, confirmed}, %{},
+                 contracts: [BoundaryRig.Waitlist | @contracts],
+                 data: %{entry_id: "e-1"}
+               )
+               |> Form.to_struct()
+
+      above = capability(ValueRig.Till, :query, :payments_above)
+
+      assert {:ok, %ValueRig.Till.Queries.PaymentsAbove{above: 100}} =
+               Form.to_struct(
+                 Form.changeset({:query, above}, %{"above" => "100"}, contracts: @contracts)
+               )
+    end
+
+    test "raises for a name no contract declares as that kind" do
+      issue = capability(Invoicing, :command, :issue_invoice)
+
+      assert_raise ArgumentError, ~r/declares query/, fn ->
+        Form.changeset({:query, issue}, %{}, contracts: @contracts)
+      end
+
+      assert_raise ArgumentError, ~r/declares command "nobody.nothing"/, fn ->
+        Form.changeset({:command, "nobody.nothing"}, %{}, contracts: @contracts)
+      end
+    end
+  end
+
   describe "to_struct/1" do
     test "answers an invalid changeset with the action that shows its errors" do
       assert {:error, %Ecto.Changeset{action: :insert, valid?: false}} =
