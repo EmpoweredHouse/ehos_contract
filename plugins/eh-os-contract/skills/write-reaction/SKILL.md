@@ -131,7 +131,10 @@ part of it itself, and the rest is yours:
   double-counts. The query reads `from r in Row` and answers what Ecto loads, as
   `Lending.Membership.MemberContact` does: never a `select:` map listing the fields again, nor an
   `Ecto.Schema` of your own beside the contract. A column the projection keeps for itself is a
-  field of the read model too, or written by the table's name.
+  field of the read model too, or written by the table's name. Generate the table's migration with
+  `mix eh_os_contract.gen.migration <Contract> <read_model>` rather than writing its columns again,
+  and keep one test that calls `EhOsContract.Testing.assert_read_model_tables()`, so a field
+  added later to the contract and not to the table fails in the tests.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
   publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery reacts
   once either way; the same fact published again under a new id reacts once only when the publisher
