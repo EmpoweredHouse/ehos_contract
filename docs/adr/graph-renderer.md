@@ -397,6 +397,32 @@ What follows on this side:
 
 Recorded on [#344](https://github.com/EmpoweredHouse/eh-os-contract/issues/344).
 
+## Amendment, 28 October 2026: one path, explained, and no switch of who reads
+
+Going through the explorer with the maintainer, a reader who met it for the first time could not tell what its
+three rows of switches change: the tabs "Structure" and "Processes", "Engineering" or "Owner", and under
+Structure "Contracts" or "Contexts and their relations". Three things were decided.
+
+**The two viewpoints stay, as branches of one path, not tabs.** Structure and process still answer different
+questions and need different layouts, as decided on 15 October; but as tabs over the canvas they read as the
+page's navigation. The path is now the one way through: the domain, and beside it the step to its processes;
+a contract and its unit below the domain, a process below the processes, each step a way back up.
+
+**Each place says what it shows.** A line under the path says what the place draws, and where a place can be
+drawn two ways, the two stay offered there, visible, with the chosen one's line: which contracts there are and
+what one takes from another, or the domain's areas of language and how each depends on the others; a unit's
+commands and events, or its lifecycle. *Rejected:* the two ways in a menu with the zoom, since a choice that
+needs explaining is not hidden.
+
+**One picture for engineer and owner; the reader has no switch.** The two audiences differed in what a card
+leads with and in what the panel shows. Every card leads with the client's label and keeps its name in code
+small under it; the panel is to say the business first and fold the technical facts, which a second change
+builds. Hiding was never who may see what — that is the host's — only readability. `audience: :owner` stays,
+the host's choice for a page that should show no code at all. This revisits the decision of 16 October (DD,
+L4, #326), which gave the reader the switch.
+
+Recorded on [#490](https://github.com/EmpoweredHouse/eh-os-contract/issues/490).
+
 ## Sources
 
 - npm registry, versions, licences and dependencies as of 7 October 2026; bundles built and scanned with

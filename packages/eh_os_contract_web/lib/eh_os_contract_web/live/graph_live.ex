@@ -3,8 +3,8 @@ defmodule EhOsContract.Web.Live.Graph do
   #
   # **One explorer per domain** (plan DD, stage G1, #297, the user's decisions of
   # 15 October): the renderer's `EhOsContract.GraphRenderer.Explorer`, with the structure
-  # (the domain's system, a contract, a unit) and the processes as two viewpoints of one
-  # canvas, a path back up, and the panel opening where a card leads. Its documents and
+  # (the domain's system, a contract, a unit) and the processes as two branches of one
+  # path back up (#490), and the panel opening where a card leads. Its documents and
   # overlays come from `EhOsContract.Web.GraphLoader`, the same the API serves, each built
   # in the background when the reader enters its picture — so mounting the screen counts
   # nothing in the log, and a host with only the API draws the same explorer from it. Before
