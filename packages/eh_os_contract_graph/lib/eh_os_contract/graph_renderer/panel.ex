@@ -945,6 +945,20 @@ defmodule EhOsContract.GraphRenderer.Panel do
     """
   end
 
+  # A landscape's box of an application the host gave no domain document of (#487): what
+  # is not known, rather than that there is nothing.
+  defp body(%{kind: "application"} = assigns) do
+    ~H"""
+    <p>
+      No document describes this application's domain, so the landscape cannot say which
+      contracts it has, nor what it publishes to other applications or takes from them.
+    </p>
+    <p class="ehg-empty">
+      It is drawn with its contracts once its domain's document is given with the others.
+    </p>
+    """
+  end
+
   # Anything else — a subject, a domain service — as the document has it.
   defp body(assigns) do
     ~H"""

@@ -13,8 +13,12 @@ defmodule EhOsContract.GraphRenderer.Places do
           | :processes
           | {:process, String.t()}
 
-  @typedoc "Where a landscape's box or a contract in it leads: the host's page of that domain."
-  @type outside :: {:outside, application :: String.t(), domain :: String.t(), String.t() | nil}
+  @typedoc """
+  Where a landscape's box or a contract in it leads: the host's page of that domain, or of
+  the application, with no domain, for the box of one the landscape has no document of.
+  """
+  @type outside ::
+          {:outside, application :: String.t(), domain :: String.t() | nil, String.t() | nil}
 
   @doc "The document a place is drawn from, as a loader names it; none for the list of processes."
   @spec ref(t(), String.t()) :: EhOsContract.GraphRenderer.Loader.ref() | nil
@@ -35,12 +39,17 @@ defmodule EhOsContract.GraphRenderer.Places do
   button that goes there; nil where it leads nowhere it is not already. A contract or a
   process of the domain's map opens it; a unit of a contract opens it; an event opens the
   unit or the contract it is declared in. A landscape's box opens its domain, and a contract
-  in it that contract, outside the landscape: on the host's page, when it has one.
+  in it that contract, outside the landscape: on the host's page, when it has one; the box
+  of an application the landscape has no document of opens the application.
   """
   @spec destination(map(), String.t(), map()) :: {t() | outside(), String.t()} | nil
   def destination(%{"kind" => "landscape"}, "domain", %{"application" => a, "domain" => d})
       when is_binary(a) and is_binary(d),
       do: {{:outside, a, d, nil}, "Open this domain"}
+
+  def destination(%{"kind" => "landscape"}, "application", %{"application" => a})
+      when is_binary(a),
+      do: {{:outside, a, nil, nil}, "Open this application"}
 
   def destination(%{"kind" => "landscape"} = document, "contract", %{"in" => box, "name" => id})
       when is_binary(id) do

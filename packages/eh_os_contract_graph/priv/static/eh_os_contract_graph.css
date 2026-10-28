@@ -165,6 +165,16 @@
   cursor: pointer;
   pointer-events: auto;
 }
+.ehg-group[data-kind=application] {
+  border-style: dashed;
+  border-color: var(--text-tertiary);
+  background: transparent;
+}
+.ehg-group[data-kind=application] .ehg-group-title {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
 .ehg-group.is-selected {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;

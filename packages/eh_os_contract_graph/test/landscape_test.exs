@@ -89,6 +89,93 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     assert view.relations == []
   end
 
+  describe "an application the host has no domain document of" do
+    # Billing with its document, an application the host knows of without one, and the
+    # ledger: the boxes in the order of the entries.
+    defp with_undescribed,
+      do:
+        Landscape.join([
+          {"billing", Fixtures.document("domain.billing")},
+          {"office", :none},
+          {"ledger", Fixtures.document("domain.ledger")}
+        ])
+
+    test "has a box of its own, saying no graph describes it, in the place of its entry" do
+      view = View.build(with_undescribed(), :landscape)
+
+      assert Enum.map(view.groups, &{&1.id, &1.kind, &1.title}) == [
+               {"0/domain:Billing.Domain", "domain", "billing · billing · 1 more contract"},
+               {"1/application:office", "application", "office · no graph described"},
+               {"2/domain:Ledger.Domain", "domain", "ledger · ledger · 1 more contract"}
+             ]
+
+      assert Enum.filter(view.nodes, &(&1.group == "1/application:office")) == []
+      refute Enum.any?(view.relations, &("1/application:office" in [&1.from, &1.to]))
+    end
+
+    test "joins the others as it would without it" do
+      without =
+        Landscape.join([
+          {"billing", Fixtures.document("domain.billing")},
+          {"ledger", Fixtures.document("domain.ledger")}
+        ])
+
+      shown = View.build(with_undescribed(), :landscape)
+      relabelled = &String.replace(&1, ~r{^2/}, "1/")
+
+      assert Enum.map(shown.relations, &{relabelled.(&1.from), relabelled.(&1.to)}) ==
+               Enum.map(View.build(without, :landscape).relations, &{&1.from, &1.to})
+    end
+
+    test "is in the digest" do
+      refute with_undescribed()["digest"] == landscape()["digest"]
+      assert with_undescribed()["digest"] == with_undescribed()["digest"]
+    end
+
+    test "a landscape of such applications alone is their boxes" do
+      view = View.build(Landscape.join([{"office", :none}]), :landscape)
+
+      assert [%{id: "0/application:office", kind: "application"}] = view.groups
+      assert view.nodes == []
+    end
+
+    test "its panel says why it is drawn without its contracts" do
+      document = with_undescribed()
+      group = Enum.find(View.build(document, :landscape).groups, &(&1.kind == "application"))
+
+      html =
+        render_component(&Panel.panel/1,
+          picked: {:group, group},
+          lookup: Lookup.new(document),
+          target: "#graph"
+        )
+        |> LazyHTML.from_fragment()
+
+      assert LazyHTML.text(LazyHTML.query(html, "header h4")) == "office"
+      assert LazyHTML.text(LazyHTML.query(html, ".ehg-panel-kind")) == "application"
+      assert LazyHTML.text(html) =~ "No document describes this application's domain"
+    end
+
+    test "the canvas draws its box apart from a domain's" do
+      html =
+        render_component(Canvas, id: "landscape", document: with_undescribed(), view: :landscape)
+        |> LazyHTML.from_fragment()
+
+      assert Enum.count(LazyHTML.query(html, ~s([data-ehg-group][data-kind="application"]))) == 1
+      assert Enum.count(LazyHTML.query(html, ~s([data-ehg-group][data-kind="domain"]))) == 2
+    end
+
+    test "refuses anything but a document or :none beside an application" do
+      assert_raise ArgumentError, ~r/joins \{application, domain document\} pairs/, fn ->
+        Landscape.join([{"office", nil}])
+      end
+
+      assert_raise ArgumentError, ~r/names each application by a string, got :office/, fn ->
+        Landscape.join([{:office, :none}])
+      end
+    end
+  end
+
   test "says a name nobody in the set publishes comes from outside it, and no other" do
     tags = Map.new(View.build(landscape(), :landscape).nodes, &{&1.id, &1.tag})
 
@@ -272,6 +359,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     def to_page(application, domain, contract),
       do: "/apps/#{application}/domains/#{domain}?contract=#{contract}"
 
+    def to_application(application, nil, nil), do: "/apps/#{application}"
     def contracts_only(_application, _domain, contract), do: contract && "/c/#{contract}"
     def script(_application, _domain, _contract), do: "javascript:alert(1)"
     def shouted_script(_application, _domain, _contract), do: "JavaScript:alert(1)"
@@ -323,6 +411,17 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       box = ~s([data-ehg-group="0/domain:Ledger.Domain"] button.ehg-group-title)
 
       assert offered(view, box) == [{"/apps/ledger/domains/Ledger.Domain", "Open this domain →"}]
+    end
+
+    test "a box of an application with no document opens the host's page of the application" do
+      document = Landscape.join([{"ledger", quiet_ledger()}, {"office", :none}])
+      box = ~s([data-ehg-group="1/application:office"] button.ehg-group-title)
+
+      assert offered(drawn({__MODULE__, :to_application}, document), box) ==
+               [{"/apps/office", "Open this application →"}]
+
+      # A host whose link builds a domain's page only offers nothing for it.
+      assert offered(drawn({__MODULE__, :raising}, document), box) == []
     end
 
     test "offers nothing where the host's link raises, and the page goes on" do

@@ -34,15 +34,21 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   application's name, its domain's module and a contract's id, `nil` for the domain itself,
   that answers a path or a URL, or `nil` where the host has no page for it. In the
   `:landscape` view, the panel of a domain's box offers "Open this domain" and that of a
-  contract in it "Open this contract", each a plain link to what `link` answered:
+  contract in it "Open this contract", each a plain link to what `link` answered. The box
+  of an application the landscape has no domain document of (`{application, :none}` in
+  `EhOsContract.GraphRenderer.Landscape.join/1`) offers "Open this application", and
+  `link` is called for it with `nil` for the domain too; only a host that joins such
+  applications is ever called so:
 
       <.live_component
         module={EhOsContract.GraphRenderer.Canvas}
         id="landscape"
         document={@landscape}
         view={:landscape}
-        link={fn application, domain, contract ->
-          ~p"/apps/\#{application}/domains/\#{domain}?\#{[contract: contract || ""]}"
+        link={fn
+          application, nil, nil -> ~p"/apps/\#{application}"
+          application, domain, contract ->
+            ~p"/apps/\#{application}/domains/\#{domain}?\#{[contract: contract || ""]}"
         end}
       />
 
