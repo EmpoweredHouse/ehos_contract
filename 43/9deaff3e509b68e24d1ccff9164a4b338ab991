@@ -1,0 +1,1 @@
+Documentation alone since the reviewed commits: the CHANGELOG line names #482 rather than a private repository's issue, which CI's private-references check refuses. The check's grep, run locally, finds nothing.
