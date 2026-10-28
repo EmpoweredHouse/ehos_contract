@@ -7,12 +7,18 @@ defmodule EhOsContract.Form do
   they hold. The form is checked while the person types, with the same rules dispatch
   applies, and the application writes none of them a second time.
 
+  A form that records a fact (an event an actor records, `recorded_by:`) or asks a query
+  (a search or a filter over a read model) is built the same way, from the event's fields
+  or the query's params, for `EhOsContract.record/3` or `EhOsContract.query/3`. And
+  "a form" is any input that arrives as text, a CSV import or a console among them, not
+  only an HTML page.
+
       # mount, and phx-change="validate"
       changeset = EhOsContract.Form.changeset(Billing.Contracts.Invoicing, Commands.IssueInvoice, params)
       assign(socket, :form, to_form(changeset, action: :validate))
 
       # phx-submit="save"
-      with {:ok, command} <- EhOsContract.Form.to_command(changeset),
+      with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
            {:ok, _receipt} <- EhOsContract.dispatch(Billing.Contracts.Invoicing, command, actor: actor) do
         ...
       else
@@ -72,7 +78,7 @@ defmodule EhOsContract.Form do
   at the field, and a rejection at the field the application names for its rule, or
   above the fields.
 
-  The changeset's data is the command's struct, so `Phoenix.HTML.FormData` names the form
+  The changeset's data is the command's struct (the event's, the query's), so `Phoenix.HTML.FormData` names the form
   after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`. An error
   that is the whole form's is at `:base`, which a command with a field named `base` shares.
 
@@ -85,11 +91,14 @@ defmodule EhOsContract.Form do
   # The key of an error that is the whole form's, not one field's.
   @form_error :base
 
-  @typedoc "A changeset `changeset/4` built, over the command's struct."
+  @typedoc "A changeset `changeset/4` built, over the struct of a command, a recorded event or a query."
   @type t :: Ecto.Changeset.t()
 
   @doc """
-  The changeset of `command`, a command module of `contract`, for the form's `params`.
+  The changeset of `command` for the form's `params`: a command module of `contract`, or
+  the module of an event it lets an actor record, or of one of its queries. An event's
+  fields and a query's params are read and checked as a command's are; a query has no
+  identity.
 
   `opts`:
 
@@ -109,8 +118,8 @@ defmodule EhOsContract.Form do
       changeset.errors
       #=> [amount: {"is invalid", [validation: :invariant, invariant: :positive]}]
 
-  Raises `ArgumentError` when `contract` is not a contract or `command` is not one of its
-  commands, and when `data:` names a field the command does not have, holds a value not of
+  Raises `ArgumentError` when `contract` is not a contract or `command` is none of its
+  commands, recorded events or queries, and when `data:` names a field the command does not have, holds a value not of
   its field's type, holds an identity dispatch generates, or holds part of an identity of
   several fields: the page's mistakes, which dispatch would refuse at a field the person
   never sees.
@@ -118,7 +127,7 @@ defmodule EhOsContract.Form do
   @spec changeset(module(), module(), map(), keyword()) :: t()
   def changeset(contract, command, params, opts \\ []) when is_map(params) do
     model = contract!(contract)
-    declaration = command!(model, command)
+    declaration = declaration!(model, command)
     given = Keyword.get(opts, :data, %{})
     data = data!(command, given)
     values = Codec.values(model.domain)
@@ -151,17 +160,19 @@ defmodule EhOsContract.Form do
   end
 
   @doc """
-  The command a valid changeset holds, `{:ok, struct}`, for `EhOsContract.dispatch/3`; or
-  `{:error, changeset}` with the action `:insert`, so the form shows its errors.
+  The struct a valid changeset holds, `{:ok, struct}`: the command for
+  `EhOsContract.dispatch/3`, the event for `EhOsContract.record/3`, or the query for
+  `EhOsContract.query/3`. Or `{:error, changeset}` with the action `:insert`, so the form
+  shows its errors.
 
   The fields the changeset does not take from the params are as `data:` gave them, or
   nil: dispatch supplies the host's, and gives a generated identity.
   """
-  @spec to_command(t()) :: {:ok, struct()} | {:error, t()}
-  def to_command(%Ecto.Changeset{valid?: true} = changeset),
+  @spec to_struct(t()) :: {:ok, struct()} | {:error, t()}
+  def to_struct(%Ecto.Changeset{valid?: true} = changeset),
     do: {:ok, Ecto.Changeset.apply_changes(changeset)}
 
-  def to_command(%Ecto.Changeset{} = changeset),
+  def to_struct(%Ecto.Changeset{} = changeset),
     do: {:error, %{changeset | action: :insert}}
 
   @doc """
@@ -281,7 +292,9 @@ defmodule EhOsContract.Form do
     end
   end
 
-  defp unit(model, declaration), do: Enum.find(model.units, &(&1.name == declaration.unit))
+  # A query addresses no unit, and has no identity.
+  defp unit(model, declaration),
+    do: Enum.find(model.units, &(&1.name == Map.get(declaration, :unit, :none)))
 
   # The changeset's types, from the declaration's, for the form to show each value. A domain
   # value with fields is a map until its fields are cast one by one.
@@ -361,8 +374,19 @@ defmodule EhOsContract.Form do
     end
   end
 
-  defp command!(model, module) do
+  # The declaration whose struct `module` is: a command, an event an actor records, or a
+  # query, whose params are its fields here.
+  defp declaration!(model, module) do
     Enum.find(model.commands, &(Model.module_for(model, :command, &1.name) == module)) ||
-      raise ArgumentError, "#{inspect(module)} is not a command of #{inspect(model.module)}"
+      Enum.find(model.events, fn event ->
+        event.recorded_by != [] and Model.module_for(model, :event, event.name) == module
+      end) ||
+      Enum.find_value(model.queries, fn query ->
+        if Model.module_for(model, :query, query.name) == module,
+          do: Map.put(query, :fields, query.params)
+      end) ||
+      raise ArgumentError,
+            "#{inspect(module)} is not a command, a recorded event or a query of " <>
+              inspect(model.module)
   end
 end

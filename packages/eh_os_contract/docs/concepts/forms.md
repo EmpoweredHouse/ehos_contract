@@ -11,6 +11,12 @@ what a person typed to the same rules, before it is sent, and say which field is
 `EhOsContract.Form` builds the form's `Ecto.Changeset` from the command's declaration, so the rules are
 written once, in the contract.
 
+The same holds for the two other things a person sends: an event an actor records (`recorded_by:`),
+for `EhOsContract.record/3`, and a query's params, a search or a filter over a read model, for
+`EhOsContract.query/3`. `Form.changeset/4` takes the event's module or the query's as it takes a
+command's, and `Form.to_struct/1` gives the struct each of them takes. "A form" here is any input that
+arrives as text: an HTML page, a CSV import, a console.
+
 ## The rule, from both sides
 
 - **The contract holds the rules.** A required field, a type, an enum's members, a domain value's
@@ -142,7 +148,7 @@ end
 def handle_event("save", %{"issue_invoice" => params}, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
 
-  with {:ok, command} <- EhOsContract.Form.to_command(changeset),
+  with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
        {:ok, _receipt} <-
          EhOsContract.dispatch(Invoicing, command,
            actor: socket.assigns.actor,
@@ -187,6 +193,24 @@ def error_message({_message, opts}) do
     {:unknown, _} -> "Nothing of that name exists"
     _other -> "This cannot be accepted"
   end
+end
+```
+
+## A form that records, and a form that asks
+
+A form that records a fact is built from the event, and its struct goes to `record/3`; a refusal comes
+back through `refused/3` as a command's does. A search form is built from the query, which has no
+identity: its params are checked as fields, and its struct goes to `query/3`.
+
+```elixir
+changeset = EhOsContract.Form.changeset(Invoicing, Invoicing.Queries.InvoicesOfPeriod, params)
+
+with {:ok, query} <- EhOsContract.Form.to_struct(changeset),
+     {:ok, rows} <- EhOsContract.query(Invoicing, query, actor: socket.assigns.actor) do
+  assign(socket, rows: rows, filter: to_form(changeset, action: :validate))
+else
+  {:error, %Ecto.Changeset{} = changeset} -> assign(socket, :filter, to_form(changeset))
+  {:error, reason} -> assign(socket, :filter, to_form(EhOsContract.Form.refused(changeset, reason)))
 end
 ```
 

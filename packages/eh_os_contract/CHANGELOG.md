@@ -50,8 +50,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
-- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474).
-  `Form.changeset(contract, command, params, data: ...)` reads what an HTML form sends:
+- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474), and from an
+  event an actor records or a query's params, for `record/3` and `query/3`.
+  `Form.changeset(contract, module, params, data: ...)` reads what an HTML form, or any input that
+  arrives as text, sends:
   - every value as text, a blank field as absent, a select's text as an enum's member;
   - each field held to the rules dispatch applies: required, of its declared type, and within
     its domain value's invariants, asked of the domain.
@@ -59,8 +61,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   Each problem is an error at its field, with the engine's reason in its keyword list
   (`validation: :required | :type | :invariant`, and `invariant:`), so the application writes
   its own words. The identity of the unit an edit form changes comes from `data:`, never the
-  params; a supplied field and a generated identity are left to dispatch. `Form.to_command/1`
-  turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
+  params; a supplied field and a generated identity are left to dispatch. `Form.to_struct/1`
+  turns a valid changeset into the struct `EhOsContract.dispatch/3`, `record/3` or `query/3` takes.
+  A unit's invariants
   and a command's constraints are not asked: they come back as dispatch's refusal, which
   `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
   at the field `at:` names for its rule, or on the whole form (`:base`), where a problem at a field

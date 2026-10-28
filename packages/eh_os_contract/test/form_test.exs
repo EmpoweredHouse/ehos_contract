@@ -31,7 +31,7 @@ defmodule EhOsContract.FormTest do
       assert changeset.valid?
       assert changeset.errors == []
 
-      assert {:ok, %IssueInvoice{} = command} = Form.to_command(changeset)
+      assert {:ok, %IssueInvoice{} = command} = Form.to_struct(changeset)
 
       assert command == %IssueInvoice{
                invoice_id: "i-1",
@@ -101,13 +101,13 @@ defmodule EhOsContract.FormTest do
     test "comes from data:, and a value the params carry for it is ignored, and not shown" do
       changeset = changeset(Map.put(@sent, "invoice_id", "i-other"))
 
-      assert {:ok, %IssueInvoice{invoice_id: "i-1"}} = Form.to_command(changeset)
+      assert {:ok, %IssueInvoice{invoice_id: "i-1"}} = Form.to_struct(changeset)
       refute Map.has_key?(changeset.params, "invoice_id")
     end
 
     test "is read from the params when data: holds none, as any other field" do
       assert {:ok, %IssueInvoice{invoice_id: "i-9"}} =
-               Form.to_command(changeset(Map.put(@sent, "invoice_id", "i-9"), []))
+               Form.to_struct(changeset(Map.put(@sent, "invoice_id", "i-9"), []))
 
       assert [invoice_id: {"can't be blank", [validation: :required]}] =
                changeset(@sent, []).errors
@@ -122,7 +122,7 @@ defmodule EhOsContract.FormTest do
         )
 
       assert {:ok, %{entry_id: nil, course_id: "c-1", student_id: "s-1"}} =
-               Form.to_command(changeset)
+               Form.to_struct(changeset)
     end
   end
 
@@ -135,7 +135,7 @@ defmodule EhOsContract.FormTest do
         data: %{visit_id: "v-1"}
       )
 
-    assert {:ok, %{visit_id: "v-1", code: "A1", reported: nil}} = Form.to_command(changeset)
+    assert {:ok, %{visit_id: "v-1", code: "A1", reported: nil}} = Form.to_struct(changeset)
   end
 
   test "a domain value's invariant is asked as dispatch asks it, through the domain" do
@@ -147,10 +147,40 @@ defmodule EhOsContract.FormTest do
              ).errors
   end
 
-  describe "to_command/1" do
+  describe "a recorded event and a query" do
+    test "an event an actor records is read and checked as a command is, for record/3" do
+      event = ValueRig.Till.Events.Counted
+
+      changeset =
+        Form.changeset(ValueRig.Till, event, %{"amount" => "250"}, data: %{till_id: "till-1"})
+
+      assert {:ok, %ValueRig.Till.Events.Counted{till_id: "till-1", amount: 250}} =
+               Form.to_struct(changeset)
+
+      assert [amount: {"is invalid", [validation: :invariant, invariant: :positive]}] =
+               Form.changeset(ValueRig.Till, event, %{"amount" => "0"},
+                 data: %{till_id: "till-1"}
+               ).errors
+    end
+
+    test "a query's params are its fields, for query/3, with no identity" do
+      query = ValueRig.Till.Queries.PaymentsAbove
+
+      assert {:ok, %ValueRig.Till.Queries.PaymentsAbove{above: 100}} =
+               Form.to_struct(Form.changeset(ValueRig.Till, query, %{"above" => " 100 "}))
+
+      assert [above: {"is invalid", [validation: :invariant, invariant: :positive]}] =
+               Form.changeset(ValueRig.Till, query, %{"above" => "0"}).errors
+
+      assert [above: {"can't be blank", [validation: :required]}] =
+               Form.changeset(ValueRig.Till, query, %{"above" => ""}).errors
+    end
+  end
+
+  describe "to_struct/1" do
     test "answers an invalid changeset with the action that shows its errors" do
       assert {:error, %Ecto.Changeset{action: :insert, valid?: false}} =
-               Form.to_command(changeset(%{@sent | "amount" => ""}))
+               Form.to_struct(changeset(%{@sent | "amount" => ""}))
     end
   end
 
@@ -232,8 +262,13 @@ defmodule EhOsContract.FormTest do
         Form.changeset(FormRig.Domain, IssueInvoice, %{})
       end
 
-      assert_raise ArgumentError, ~r/is not a command of/, fn ->
+      assert_raise ArgumentError, ~r/is not a command, a recorded event or a query of/, fn ->
         Form.changeset(Invoicing, ValueRig.Till.Commands.PayIn, %{})
+      end
+
+      # An event a command emits is no actor's to record.
+      assert_raise ArgumentError, ~r/is not a command, a recorded event or a query of/, fn ->
+        Form.changeset(ValueRig.Till, ValueRig.Till.Events.PaidIn, %{})
       end
     end
 
