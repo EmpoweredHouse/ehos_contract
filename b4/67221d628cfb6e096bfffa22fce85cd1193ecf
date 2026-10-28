@@ -1,0 +1,1 @@
+Rebased onto the merge of #503: changelog conflict kept both lines; the dashboard bundle rebuilt from the merged sources. Both reviews of the panel stand (two rounds before the rebase). Gate: graph mix check EXIT=0 236; web 79.
