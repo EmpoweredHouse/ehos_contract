@@ -90,8 +90,16 @@ end
 
 A read model declares the shape of its rows (`field`) and the events it `projects`: events of this
 contract, or ones it `consumes` from a sibling ([`P5`](../contract.md#refusals-p)). It is implemented by a module with one callback
-per projected event, which writes the application's own tables and returns `:ok`. The library knows
-nothing of those tables: the application creates them with its own migrations.
+per projected event, which writes the application's own tables and returns `:ok`. The application
+creates them with its own migrations.
+
+The read model's `Row` is an Ecto schema of its fields. A read model that names its table, `table:`,
+and the row fields that make a row unique, `key:`, gets a schema of that table with the key as its
+primary key, so a projection writes through it (`insert_all(Row, rows, on_conflict: …,
+conflict_target: key)`) and a query reads `from r in Row`, each field of the contract's type: an enum
+an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, a domain value the type
+the domain gives it. A read model without `table:` has an embedded schema, with no table behind it.
+The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
 
 ```elixir
 defmodule Concepts.Reading.CopiesOut do

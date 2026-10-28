@@ -40,6 +40,7 @@ defmodule EhOsContract do
       Domain,
       {Domain.Dsl, []},
       Duration,
+      EctoTypes.Value,
       Entities,
       Entities.UnfitRowError,
       Erased,

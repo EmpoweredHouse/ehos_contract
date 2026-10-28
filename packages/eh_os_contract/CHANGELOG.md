@@ -85,6 +85,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   read models of a contract share, and a key field that is not a row field, is named twice, or is
   optional, personal, a list or a domain value made of fields.
 
+### Changed
+
+- **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
+  as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
+  (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
+  with no `select:` map and no conversion: each field has the contract's type, an enum an `Ecto.Enum`
+  stored as its member's name, a `:timestamp` `:utc_datetime_usec`, a domain value the type the domain
+  gives it, read when first used, so the contract still does not depend on its domain at compile time.
+  A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
+  `Row.__schema__(:fields)`, not the struct's keys.
+
 ## [0.12.0] - 2026-10-27
 
 ### Changed
