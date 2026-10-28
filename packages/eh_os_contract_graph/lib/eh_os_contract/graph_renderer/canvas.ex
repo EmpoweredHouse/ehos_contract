@@ -54,12 +54,18 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         end}
       />
 
-  Without `link`, or where it answers `nil`, raises, or answers anything but a path or an
+  Without `link`, or where it answers `nil`, raises, throws or exits, or answers anything but a path or an
   `http` or `https` URL that parses as one (`//host/…` and an unescaped space are not), the
   panel offers no link. The names come from the documents the landscape joins, so the host
-  escapes them as it builds the address, as `~p` does. `link` is called whenever a box or a
-  contract is selected and whenever the host renders the canvas while one is, so it builds
-  an address and looks nothing up.
+  escapes them as it builds the address, as `~p` does. `link` is called for every box when
+  the canvas draws the picture, so that a box that leads to a page says so before it is
+  selected, and whenever a box or a contract is selected; it builds an address and looks
+  nothing up.
+
+  **A box that leads somewhere says so**: its title, a button, ends in a mark when its panel
+  would offer to open a host's page or a picture inside, and shows when it is pointed at or
+  reached by the keyboard. A landscape's domain box with nothing on the wire says inside it
+  that it publishes and subscribes to nothing, its group's `note`.
 
   **What it draws** is the view `view` names (`EhOsContract.GraphRenderer.View`,
   `t:EhOsContract.GraphRenderer.View.spec/0`): `:contract`, `{:unit, id}`,
@@ -240,6 +246,22 @@ defmodule EhOsContract.GraphRenderer.Canvas do
       stale_overlay?: given != nil and not current,
       logged?: current == true
     )
+    |> leading()
+  end
+
+  # The boxes that lead somewhere, inside the picture or to a host's page, which say so before
+  # they are selected (#488). The host's `link` is called for each, as it is for a selected one.
+  defp leading(socket) do
+    %{view: view, document: document} = socket.assigns
+
+    leads =
+      for group <- view.groups,
+          {place, label} <- [Places.destination(document, group.kind, group.facts)],
+          leads(socket.assigns, place, label, group.id) != nil,
+          into: MapSet.new(),
+          do: group.id
+
+    assign(socket, leads: leads)
   end
 
   # After any change: a selection or a focus the view no longer has is forgotten; then what
@@ -311,11 +333,12 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     do: %{id: id, label: label, target: opener.target}
 
   # The host's `link` over names from other applications' documents: one it cannot answer
-  # for, by raising, offers no link rather than crashing the page.
+  # for, by raising, throwing or exiting, offers no link rather than crashing the page, which
+  # asks it of every box as it draws the picture.
   defp called(link, args) do
     apply(link, args)
-  rescue
-    _error -> nil
+  catch
+    _kind, _reason -> nil
   end
 
   # What a host's `link` answered, when it is a path or a web address: never a
@@ -467,7 +490,10 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         <div class="ehg-viewport">
           <div
             :for={group <- @shown.groups}
-            class={["ehg-group" | classes(group.id, @lit, @near, nil)]}
+            class={[
+              "ehg-group",
+              MapSet.member?(@leads, group.id) && "leads" | classes(group.id, @lit, @near, nil)
+            ]}
             data-ehg-group={group.id}
             data-kind={group.kind}
           >
@@ -479,8 +505,13 @@ defmodule EhOsContract.GraphRenderer.Canvas do
               phx-value-id={group.id}
               phx-target={@myself}
             >
-              {group.title}
+              <span class="ehg-group-name">{group.title}</span><span
+                :if={MapSet.member?(@leads, group.id)}
+                class="ehg-group-mark"
+                aria-hidden="true"
+              >›</span>
             </button>
+            <p :if={group.note} class="ehg-group-note">{group.note}</p>
           </div>
           <svg id={"#{@id}-arrows"} class="ehg-arrows" phx-update="ignore" aria-hidden="true"></svg>
           <button

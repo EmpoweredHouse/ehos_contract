@@ -94,8 +94,18 @@ defmodule EhOsContract.GraphRenderer.View do
   @typedoc "Who reads a view: the engineer, everything; the business owner, the client's words."
   @type audience :: :engineering | :owner
 
-  @typedoc "A box around cards, titled; `facts` is the document's node it is."
-  @type group :: %{id: String.t(), kind: String.t(), title: String.t(), facts: map()}
+  @typedoc """
+  A box around cards, titled; `note` says in words why it holds none, where the view says
+  (a landscape's domain with nothing on the wire), and is `nil` otherwise; `facts` is the
+  document's node it is.
+  """
+  @type group :: %{
+          id: String.t(),
+          kind: String.t(),
+          title: String.t(),
+          note: String.t() | nil,
+          facts: map()
+        }
 
   @type t :: %{
           direction: String.t(),
@@ -971,7 +981,12 @@ defmodule EhOsContract.GraphRenderer.View do
       for d <- nodes(document, "domain") do
         others = d["others"] || 0
         noun = if MapSet.member?(held, d["id"]), do: "more contract", else: "contract"
-        group("domain", d, join([d["label"], others > 0 && count(others, noun)]))
+        box = group("domain", d, join([d["label"], others > 0 && count(others, noun)]))
+
+        # A box with no card says why in words, so it does not read as one drawn wrong (#488).
+        if MapSet.member?(held, d["id"]),
+          do: box,
+          else: %{box | note: "Publishes and subscribes to nothing"}
       end
 
     # An application the host has no domain document of has a box of its own kind, empty
@@ -1131,7 +1146,8 @@ defmodule EhOsContract.GraphRenderer.View do
     )
   end
 
-  defp group(kind, node, title), do: %{id: node["id"], kind: kind, title: title, facts: node}
+  defp group(kind, node, title),
+    do: %{id: node["id"], kind: kind, title: title, note: nil, facts: node}
 
   # The view: the groups some card sits in, a card naming no group of the view in none,
   # and the relations whose two ends are in it. A stage nothing sits in is drawn all the

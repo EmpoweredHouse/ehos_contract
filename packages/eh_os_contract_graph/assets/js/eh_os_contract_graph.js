@@ -350,11 +350,15 @@ export const EhOsContractGraph = {
     // A group with cards in it is as large as dagre makes it around them, so it is not measured; one with none
     // is laid out as a card of its own, as large as its title. offsetWidth rounds a sub-pixel width down, and a
     // title one fraction of a pixel wider than its box is cut short, so the box takes the next whole pixel.
+    // It is measured at its own size, not the one the last layout gave it, or each measure would add that pixel
+    // again and lay the picture out anew on every update.
     const filled = new Set(cards.map(({ group }) => group))
+    viewport.classList.add("ehg-measuring")
     const groups = boxes.map((el) => {
       const id = el.dataset.ehgGroup
       return filled.has(id) ? { id, filled: true } : { id, filled: false, width: el.offsetWidth + 1, height: el.offsetHeight }
     })
+    viewport.classList.remove("ehg-measuring")
     const labels = [...viewport.querySelectorAll("[data-ehg-relation]")].map((el) => ({
       el,
       id: el.dataset.ehgRelation,

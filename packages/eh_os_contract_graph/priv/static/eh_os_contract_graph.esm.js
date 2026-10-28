@@ -4646,10 +4646,12 @@ var EhOsContractGraph = {
       height: el.offsetHeight
     }));
     const filled = new Set(cards.map(({ group }) => group));
+    viewport.classList.add("ehg-measuring");
     const groups = boxes.map((el) => {
       const id2 = el.dataset.ehgGroup;
       return filled.has(id2) ? { id: id2, filled: true } : { id: id2, filled: false, width: el.offsetWidth + 1, height: el.offsetHeight };
     });
+    viewport.classList.remove("ehg-measuring");
     const labels = [...viewport.querySelectorAll("[data-ehg-relation]")].map((el) => ({
       el,
       id: el.dataset.ehgRelation,

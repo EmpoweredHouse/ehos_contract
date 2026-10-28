@@ -23,6 +23,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **A box that leads somewhere says so** (#488): the title of a box whose panel offers to open a host's page or a
+  picture inside ends in a mark, "›", and shows when it is pointed at or reached by the keyboard; a landscape's
+  domain box with nothing on the wire says inside it that it publishes and subscribes to nothing. A view's
+  groups gain a `note`, `nil` but for such a box. The canvas calls the host's `link` for each box when it draws
+  the picture, not only for a selected one; a `link` that throws or exits, as one that raises, offers nothing for
+  that box.
 - **A host can open a canvas at an element**: `Canvas` takes `select`, the id of a card, a group or an
   arrow of the view, which it selects over the whole picture, opens the panel of and brings into view, as the
   search's Enter does. It is read when the host gives one other than the last it gave, so rendering again with
@@ -36,6 +42,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `link` with `nil` for the domain; a host that joins no such entry is never called so, and one that does
   answers for a `nil` domain, since the panel offers whatever path its `link` builds. The landscape's `nodes`
   gain an `"application"` list, empty without such entries.
+
+### Fixed
+
+- **A box with no card no longer grows on each update** (#488): the hook measured such a box at the size its
+  last layout gave it, one pixel more each time, and laid the picture out anew whenever the host rendered it
+  again; it now measures each at its own size.
 
 ## [0.8.0] - 2026-10-26
 
