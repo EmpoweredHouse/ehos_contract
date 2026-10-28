@@ -222,8 +222,10 @@
   pointer-events: auto;
 }
 
+/* The pixel past the text keeps an italic last letter whole where the name is clipped. */
 .ehg-group-name {
   min-width: 0;
+  padding-right: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

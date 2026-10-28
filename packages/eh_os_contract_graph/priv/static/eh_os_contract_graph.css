@@ -165,6 +165,7 @@
 }
 .ehg-group-name {
   min-width: 0;
+  padding-right: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
