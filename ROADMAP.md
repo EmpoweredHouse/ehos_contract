@@ -6,13 +6,13 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (26 October 2026)
+## Where things stand (28 October 2026)
 
-- **Released:** v0.11.0, with the engine 0.11.0 (a unit's key typed by a domain value and held to its
-  invariants, scenarios that record an event or show a command refused on a value's invariant, `code: true`
-  values), `eh_os_contract_auth` 0.8.0 (signing in from a host's tests, and a mail whose sending is unknown told
-  apart), `eh_os_contract_graph` 0.8.0 and `eh_os_contract_web` 0.6.0 (those scenarios drawn), and the plugin's
-  skills at 0.10.1. Applications install them from git. `main` is at the next patch's `-dev` of each.
+- **Released:** v0.12.0, with the engine 0.12.0 (`decimal` `~> 3.2`), `eh_os_contract_auth` 0.9.0
+  (`mix eh_os_contract.bundle`, mail, people and grants where EHOS does not answer, `ehos.yaml/v7`, `jose`
+  required at 1.11.13 or later) and `eh_os_contract_web` 0.7.0 (the engine required at `~> 0.12.0`);
+  `eh_os_contract_graph` stays at 0.8.1-dev, last released as 0.8.0 at v0.11.0, and the plugin's skills at
+  0.10.1. Applications install them from git. `main` is at the next patch's `-dev` of each.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
