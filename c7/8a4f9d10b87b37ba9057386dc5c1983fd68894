@@ -1,0 +1,1 @@
+Documentation alone since the reviewed 4 commits: the EHOS version that reads the key moves from 0.22.0 to 0.23.0, as 0.22.0 was released before eh-os#1054 merged; checked against eh-os's mix.exs (0.22.0 released) and its CHANGELOG (the line under Unreleased). mix check in packages/eh_os_contract_auth rc=0.
