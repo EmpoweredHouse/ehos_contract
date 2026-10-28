@@ -15,7 +15,17 @@ defmodule EhOsContract.GraphRendererTest do
   alias EhOsContract.GraphRenderer.{Canvas, Lookup, Panel, View}
   alias EhOsContract.Registry
 
-  @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+  # Built when a test first asks for it, never into a module attribute: on OTP 28 a
+  # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a
+  # function that reads the attribute (#492).
+  defp schema do
+    with nil <- :persistent_term.get({__MODULE__, :schema}, nil) do
+      built = Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+      :persistent_term.put({__MODULE__, :schema}, built)
+      built
+    end
+  end
+
   @fixtures Path.expand("../../packages/eh_os_contract_graph/test/fixtures", __DIR__)
 
   # Every contract's, every process module's (plan DD, P2e, #220) and every domain's, with
@@ -140,7 +150,7 @@ defmodule EhOsContract.GraphRendererTest do
 
     for name <- taken do
       document = @fixtures |> Path.join(name) |> File.read!() |> Jason.decode!()
-      assert {:ok, _} = JSV.validate(document, @schema), name
+      assert {:ok, _} = JSV.validate(document, schema()), name
     end
   end
 end

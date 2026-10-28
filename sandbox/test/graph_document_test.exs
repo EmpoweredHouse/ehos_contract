@@ -12,7 +12,16 @@ defmodule EhOsContract.GraphDocumentTest do
   alias EhOsContract.Graph.Document
   alias EhOsContract.Registry
 
-  @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+  # Built when a test first asks for it, never into a module attribute: on OTP 28 a
+  # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a
+  # function that reads the attribute (#492).
+  defp schema do
+    with nil <- :persistent_term.get({__MODULE__, :schema}, nil) do
+      built = Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+      :persistent_term.put({__MODULE__, :schema}, built)
+      built
+    end
+  end
 
   defp documents do
     contracts = Registry.contracts()
@@ -33,7 +42,7 @@ defmodule EhOsContract.GraphDocumentTest do
 
   test "every document holds to the schema" do
     for {module, document} <- documents() do
-      case JSV.validate(document, @schema) do
+      case JSV.validate(document, schema()) do
         {:ok, _} -> :ok
         {:error, error} -> flunk("#{inspect(module)}: #{inspect(JSV.normalize_error(error))}")
       end

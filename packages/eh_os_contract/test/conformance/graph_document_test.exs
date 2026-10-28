@@ -12,7 +12,16 @@ defmodule EhOsContract.GraphDocumentTest do
   alias EhOsContract.Graph.Document
   alias EhOsContract.{Model, Registry}
 
-  @schema Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+  # Built when a test first asks for it, never into a module attribute: on OTP 28 a
+  # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a
+  # function that reads the attribute (#492).
+  defp schema do
+    with nil <- :persistent_term.get({__MODULE__, :schema}, nil) do
+      built = Document.schema_path() |> File.read!() |> Jason.decode!() |> JSV.build!()
+      :persistent_term.put({__MODULE__, :schema}, built)
+      built
+    end
+  end
 
   # A contract that consumes the ledger's event, as `DispatchRig.Branch` does, and has a
   # scenario with a dated given. Invented.
@@ -150,7 +159,7 @@ defmodule EhOsContract.GraphDocumentTest do
 
   test "every document of every fixture holds to the schema" do
     for {module, document} <- documents() do
-      case JSV.validate(document, @schema) do
+      case JSV.validate(document, schema()) do
         {:ok, _} -> :ok
         {:error, error} -> flunk("#{inspect(module)}: #{inspect(JSV.normalize_error(error))}")
       end
@@ -159,7 +168,7 @@ defmodule EhOsContract.GraphDocumentTest do
 
   test "the schema refuses the log, a look, an unknown kind or type and a missing key" do
     document = Document.contract(DispatchRig.Ledger)
-    valid? = &match?({:ok, _}, JSV.validate(&1, @schema))
+    valid? = &match?({:ok, _}, JSV.validate(&1, schema()))
 
     first = fn group, key, f ->
       update_in(document, [group, key], fn [x | r] -> [f.(x) | r] end)
@@ -333,7 +342,7 @@ defmodule EhOsContract.GraphDocumentTest do
       openings = Document.contract(Openings)
       branch = node(openings, "unit", "unit:dispatch_rig.graph_openings:branch_note")
       assert branch["records_only"] == true
-      assert {:ok, _} = JSV.validate(openings, @schema)
+      assert {:ok, _} = JSV.validate(openings, schema())
 
       account =
         node(Document.contract(DispatchRig.Ledger), "unit", "unit:dispatch_rig.ledger:account")
@@ -345,7 +354,7 @@ defmodule EhOsContract.GraphDocumentTest do
     # it is a group of its own; it is about its unit and covers the actor's arrow.
     test "a recording's scenario is about its unit, and is refused on a value's invariant" do
       d = Document.contract(ValueRig.Till)
-      assert {:ok, _} = JSV.validate(d, @schema)
+      assert {:ok, _} = JSV.validate(d, schema())
 
       [counted, nothing] = d["scenarios"]["record"]
 
@@ -376,7 +385,7 @@ defmodule EhOsContract.GraphDocumentTest do
     # covers no arrow to a rule: none refuses it.
     test "a command refused on a value's invariant names the value, and no rule" do
       d = Document.contract(ValueRig.Till)
-      assert {:ok, _} = JSV.validate(d, @schema)
+      assert {:ok, _} = JSV.validate(d, schema())
       scenarios = Map.new(d["scenarios"]["unit"], &{&1["description"], &1})
 
       no_day = scenarios["a drawer is not opened for a shift that is no day"]
@@ -404,7 +413,7 @@ defmodule EhOsContract.GraphDocumentTest do
     # breaks the later field's, so the graph names that field's value, as dispatch refuses.
     test "a command refused for its data names the value the data breaks" do
       d = Document.contract(TipRig.Till)
-      assert {:ok, _} = JSV.validate(d, @schema)
+      assert {:ok, _} = JSV.validate(d, schema())
 
       named =
         for s <- d["scenarios"]["unit"],
@@ -570,7 +579,7 @@ defmodule EhOsContract.GraphDocumentTest do
             )
 
       for document <- [d, domain] do
-        assert {:ok, _} = JSV.validate(document, @schema)
+        assert {:ok, _} = JSV.validate(document, schema())
         ids = Enum.map(relations(document), & &1["id"])
         assert ids == Enum.uniq(ids)
       end
@@ -1241,7 +1250,7 @@ defmodule EhOsContract.GraphDocumentTest do
     assert [%{"symmetric" => true}] = d["relations"]["partnership"]
     assert [supplier] = d["relations"]["customer_supplier"]
     refute Map.has_key?(supplier, "symmetric")
-    assert JSV.validate(d, @schema) |> elem(0) == :ok
+    assert JSV.validate(d, schema()) |> elem(0) == :ok
   end
 
   # A term's word in code (plan DD, L1, #269): its text in the domain's `code_language:`
@@ -1278,7 +1287,7 @@ defmodule EhOsContract.GraphDocumentTest do
       for c <- d["nodes"]["context"], t <- c["terms"], into: %{}, do: {t["text"], t["code"]}
 
     assert terms == %{"Visit" => "Besuch", "Payer" => nil, "Buch" => "Buch"}
-    assert JSV.validate(d, @schema) |> elem(0) == :ok
+    assert JSV.validate(d, schema()) |> elem(0) == :ok
     assert Document.domain(DispatchRig.Domain, [])["code_language"] == "en"
   end
 
@@ -1339,7 +1348,7 @@ defmodule EhOsContract.GraphDocumentTest do
       assert [%{"at" => "2026-09-07T09:00:00+02:00"}] = scenario["given"]
       assert [expected] = scenario["expect"]
       refute Map.has_key?(expected, "at")
-      assert JSV.validate(d, @schema) |> elem(0) == :ok
+      assert JSV.validate(d, schema()) |> elem(0) == :ok
     end
   end
 
@@ -1470,7 +1479,7 @@ defmodule EhOsContract.GraphDocumentTest do
       domain = Document.domain(DispatchRig.Domain, [DispatchRig.Ledger, module])
       assert [_] = domain["nodes"]["process"]
       assert domain["relations"]["accountable_for"] == []
-      assert JSV.validate(d, @schema) |> elem(0) == :ok
+      assert JSV.validate(d, schema()) |> elem(0) == :ok
     end
 
     # An outage of a system an event rests on suspends a promise, so the picture of the
@@ -1487,7 +1496,7 @@ defmodule EhOsContract.GraphDocumentTest do
       assert d["relations"]["depends_on"] == contract["relations"]["depends_on"]
 
       assert Document.process(DispatchRig.AccountReview)["nodes"]["external"] == []
-      assert JSV.validate(d, @schema) |> elem(0) == :ok
+      assert JSV.validate(d, schema()) |> elem(0) == :ok
     end
 
     test "is a process module's alone, and does not depend on anything but it" do
