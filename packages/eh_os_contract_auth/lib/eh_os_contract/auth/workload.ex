@@ -85,21 +85,24 @@ defmodule EhOsContract.Auth.Workload do
   @doc false
   # A request to EHOS's API with the credential, and once more with a new one when EHOS answers
   # 401: a second 401 is answered as it came. `body` is JSON to send, or nil. Each attempt has
-  # `timeout`, or, with `shared: true`, both share it. The caller reads the status in its own words;
-  # what the transport did is `{:error, {:unreachable, reason}}`.
+  # `timeout`, or, with `shared: true`, both share it; `headers:` are sent with each as well. The
+  # caller reads the status in its own words; what the transport did is
+  # `{:error, {:unreachable, reason}}`.
   @spec request(
           GenServer.server(),
           :get | :post,
           String.t(),
           iodata() | nil,
           pos_integer(),
-          [{:shared, boolean()}]
+          [{:shared, boolean()} | {:headers, [{String.t(), String.t()}]}]
         ) :: {:ok, answer()} | {:error, reason() | {:unreachable, term()}}
   def request(server, method, path, body, timeout, opts \\ []) do
     started = System.monotonic_time(:millisecond)
 
+    extra = Keyword.get(opts, :headers, [])
+
     with {:ok, credential} <- credential(server, nil) do
-      case send_request(credential, method, path, body, timeout) do
+      case send_request(credential, method, path, body, timeout, extra) do
         {:ok, {401, _headers, _body}} = answer ->
           left =
             if opts[:shared],
@@ -108,7 +111,7 @@ defmodule EhOsContract.Auth.Workload do
 
           with true <- left > 0 || answer,
                {:ok, renewed} <- credential(server, credential.id) do
-            send_request(renewed, method, path, body, left)
+            send_request(renewed, method, path, body, left, extra)
           end
 
         answer ->
@@ -131,8 +134,10 @@ defmodule EhOsContract.Auth.Workload do
   defp exit_reason({:noproc, _call}), do: "it is not running"
   defp exit_reason(_reason), do: "it exited"
 
-  defp send_request(credential, method, path, body, timeout) do
-    headers = [{"authorization", "Bearer " <> credential.token}, {"accept", "application/json"}]
+  defp send_request(credential, method, path, body, timeout, extra) do
+    headers =
+      [{"authorization", "Bearer " <> credential.token}, {"accept", "application/json"} | extra]
+
     url = credential.issuer <> path
 
     request =
