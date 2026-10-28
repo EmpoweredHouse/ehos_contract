@@ -1,3 +1,8 @@
+defmodule EhOsContract.FormTest.Address do
+  @moduledoc "An embedded schema's struct, as a read model would hold an address."
+  defstruct [:street, :city]
+end
+
 defmodule EhOsContract.FormTest do
   @moduledoc """
   #474: a form's changeset, built from a command's declaration and checked with the rules
@@ -214,9 +219,37 @@ defmodule EhOsContract.FormTest do
       assert [items: {"is invalid", [validation: :type]}] =
                changeset(Map.put(@sent, "items", "VAT")).errors
 
-      assert {:ok, %{items: nil, billing_address: nil}} =
+      assert {:ok, %{items: [], billing_address: nil}} =
                Form.to_struct(
                  changeset(Map.merge(@sent, %{"items" => "", "billing_address" => ""}))
+               )
+    end
+
+    test "a value data: holds is shown as rows whatever the form sent, and cleared when sent blank" do
+      held = %{
+        invoice_id: "i-1",
+        billing_address: %{street: "Main 1", city: nil},
+        items: [%{title: "VAT", quantity: 2}]
+      }
+
+      for params <- [@sent, Map.merge(@sent, %{"items" => "x", "billing_address" => "y"})] do
+        changeset = changeset(params, data: held)
+        form = Phoenix.HTML.FormData.to_form(changeset, action: :validate)
+
+        assert [_row] = Phoenix.HTML.FormData.to_form(changeset, form, :items, [])
+        assert [_address] = Phoenix.HTML.FormData.to_form(changeset, form, :billing_address, [])
+      end
+
+      cleared = changeset(Map.merge(@sent, %{"items" => "", "billing_address" => ""}), data: held)
+      assert {:ok, %{items: [], billing_address: nil}} = Form.to_struct(cleared)
+    end
+
+    test "a row data: holds may be a struct, an embedded schema's from a read model" do
+      address = %EhOsContract.FormTest.Address{street: "Main 1"}
+
+      assert {:ok, %{billing_address: %{street: "Main 1", city: nil}}} =
+               Form.to_struct(
+                 changeset(@sent, data: %{invoice_id: "i-1", billing_address: address})
                )
     end
 

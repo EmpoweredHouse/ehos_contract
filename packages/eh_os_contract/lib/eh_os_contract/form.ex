@@ -237,20 +237,39 @@ defmodule EhOsContract.Form do
 
       {cardinality, value} ->
         raw = if sent?, do: Map.get(params, Atom.to_string(field.name)), else: held
+        # The rows of what `data:` holds. `inputs_for` builds rows from the data when a field
+        # has no change, and cannot from a plain map, so a field always gets rows of its own.
+        kept =
+          if held in [nil, []], do: nil, else: rows_of(cardinality, value, held, values, domain)
 
-        case nested(cardinality, value, raw, sent?, values, domain) do
-          :absent when field.optional or (not sent? and held != nil) ->
+        case {nested(cardinality, value, raw, sent?, values, domain), sent?} do
+          {:absent, false} when held != nil ->
+            {changes, Map.put(rows, field.name, kept), errors}
+
+          # Cleared on purpose: the form sent it, blank.
+          {:absent, true} when field.optional ->
+            {changes, Map.put(rows, field.name, if(cardinality == :one, do: nil, else: [])),
+             errors}
+
+          {:absent, false} when field.optional ->
             {changes, rows, errors}
 
-          :absent ->
-            {changes, rows, [{field.name, error(:required)} | errors]}
+          {problem, _sent?} when problem in [:absent, :type] ->
+            rows = if kept, do: Map.put(rows, field.name, kept), else: rows
 
-          :type ->
-            {changes, rows, [{field.name, error(:type)} | errors]}
+            {changes, rows,
+             [{field.name, error(if problem == :absent, do: :required, else: :type)} | errors]}
 
-          row_or_rows ->
+          {row_or_rows, _sent?} ->
             {changes, Map.put(rows, field.name, row_or_rows), errors}
         end
+    end
+  end
+
+  defp rows_of(cardinality, value, held, values, domain) do
+    case nested(cardinality, value, held, false, values, domain) do
+      problem when problem in [:absent, :type] -> nil
+      row_or_rows -> row_or_rows
     end
   end
 
@@ -280,7 +299,7 @@ defmodule EhOsContract.Form do
   # invariants, which no single field holds, on the row's `:base`.
   defp row(value, raw, sent?, values, domain) do
     %{fields: fields} = Map.fetch!(values, value)
-    {params, data} = if sent?, do: {stringified(raw), %{}}, else: {%{}, atomized(raw)}
+    {params, data} = if sent?, do: {stringified(raw), %{}}, else: {%{}, plain(raw)}
     data = Map.new(fields, &{&1.name, Map.get(data, &1.name)})
     changeset = build(fields, fields, params, data, values, domain)
 
@@ -295,6 +314,7 @@ defmodule EhOsContract.Form do
     end
   end
 
+  defp valid_rows?(nil), do: true
   defp valid_rows?(%Ecto.Changeset{valid?: valid?}), do: valid?
   defp valid_rows?(rows) when is_list(rows), do: Enum.all?(rows, &valid_rows?/1)
 
@@ -306,11 +326,9 @@ defmodule EhOsContract.Form do
   defp applied(rows) when is_list(rows), do: Enum.map(rows, &applied/1)
   defp applied(value), do: value
 
-  defp atomized(map),
-    do:
-      Map.new(map, fn {key, value} ->
-        {if(is_binary(key), do: String.to_existing_atom(key), else: key), value}
-      end)
+  # A row `data:` holds, as a map: an embedded schema's struct, from a read model, too.
+  defp plain(%_{} = struct), do: Map.from_struct(struct)
+  defp plain(map), do: map
 
   @doc """
   The struct a valid changeset holds, `{:ok, struct}`: the command for
