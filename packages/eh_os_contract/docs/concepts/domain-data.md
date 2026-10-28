@@ -138,8 +138,10 @@ required fields enforced, so `%Address{street: "Main 1"}` without a required `ci
 engine hands that struct wherever the value appears: in a command or an event, a unit's state, a form's rows
 and a read model's `Row`. Build the value as its struct in a decider or a reaction. A map with the same keys
 is not the value: a command carrying one is refused with the field and `:type`, and an event a decision
-returns with one raises. A scenario writes the value as a map, which the engine casts, since a contract does
-not depend on its domain when it compiles.
+returns with one raises, and so do an entity's row, a supplier's answer and a domain service's argument or
+result. A scenario writes the value as a map, which the engine casts, since a contract does not depend on its
+domain when it compiles; for the same reason a state field's `default:` holding such a value is a map, until
+`evolve/2` sets the field.
 
 Code that needs an enum's members, a select's options or a check of its own, reads them from the domain
 instead of copying them: `Lending.Domain.members(:bike_kind)` is `[city: "City bike", road: "Road bike"]`,

@@ -94,10 +94,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   are enforced, so `%Address{}` without one does not compile, and the value's type in
   `Lending.Domain.Values` is the struct's. The engine hands the struct wherever the value appears: an
   event or a command read from the log or decoded from a caller, a unit's state, a scenario's data,
-  a generated value, `EhOsContract.Form`'s rows and a read model's `Row`. A map in its place is not
-  the value: a command or a recorded event that carries one is refused with `{field, :type}`, and an
-  event a decision returns with one raises. Build the value as its struct
-  (`%Lending.Domain.Values.Address{street: …}`); a scenario's data stays a map, which the engine casts.
+  a generated value, `EhOsContract.Form`'s rows, a read model's `Row` and a domain's invariant
+  examples. A map in its place is not the value: a command or a recorded event that carries one is
+  refused with `{field, :type}`, and an event a decision returns with one raises; so do an
+  `EhOsContract.Entities` row, an `EhOsContract.Supplier` answer, a domain service's argument or
+  result, `Form`'s `data:` and a write through a `Row`. Build the value as its struct
+  (`%Lending.Domain.Values.Address{street: …}`). A scenario's data stays a map, which the engine
+  casts, and so does a state field's `default:`, which a contract cannot write as the struct: it is
+  a map until the first event's `evolve/2` sets the field.
 - **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
   as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
   (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
