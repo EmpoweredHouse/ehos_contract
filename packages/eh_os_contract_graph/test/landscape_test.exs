@@ -154,6 +154,8 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       assert LazyHTML.text(LazyHTML.query(html, "header h4")) == "office"
       assert LazyHTML.text(LazyHTML.query(html, ".ehg-panel-kind")) == "application"
       assert LazyHTML.text(html) =~ "No document describes this application's domain"
+      # Nothing in it is a finding, which `ehg-empty` draws in the colour of an error.
+      assert Enum.to_list(LazyHTML.query(html, ".ehg-empty")) == []
     end
 
     test "the canvas draws its box apart from a domain's" do
