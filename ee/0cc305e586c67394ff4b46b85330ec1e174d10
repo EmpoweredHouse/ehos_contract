@@ -1,0 +1,1 @@
+One review covering correctness and security/performance of a one-line class swap: no defects. Changelog: none needed, the panel is unreleased (#494 line under Unreleased). Other ehg-empty uses are findings, left as they are. Reverse check: the new assertion fails before the fix (red run recorded), passes after. Gate: graph package mix check EXIT=0 (219 tests).
