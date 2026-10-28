@@ -215,7 +215,7 @@ defmodule EhOsContract.FormTest do
                Form.to_struct(changeset)
     end
 
-    test "a list that is no rows is the field's error, and an optional one left blank is nil" do
+    test "a list that is no rows is the field's error, and an optional one sent blank is cleared" do
       assert [items: {"is invalid", [validation: :type]}] =
                changeset(Map.put(@sent, "items", "VAT")).errors
 
@@ -251,6 +251,17 @@ defmodule EhOsContract.FormTest do
                Form.to_struct(
                  changeset(@sent, data: %{invoice_id: "i-1", billing_address: address})
                )
+    end
+
+    test "a refusal at a field of rows goes on the whole form, which inputs_for shows" do
+      changeset =
+        changeset(Map.put(@sent, "items", %{"0" => %{"title" => "VAT", "quantity" => "1"}}))
+        |> Form.refused({:invalid, [items: :unknown, lines: :type]})
+
+      assert changeset.errors == [
+               base: {"does not exist", [validation: :unknown, field: :items]},
+               lines: {"is invalid", [validation: :type]}
+             ]
     end
 
     test "inputs_for shows each row with its own errors, named as the form sends them back" do
