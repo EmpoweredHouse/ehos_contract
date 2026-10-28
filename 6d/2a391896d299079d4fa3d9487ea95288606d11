@@ -1,0 +1,1 @@
+Fix-up review of 6d2a3918 (members/1 as clauses), read by hand: the generated function keeps its doc, spec and behaviour (domain_values_test, 4 tests), and the raise lists the enum values sorted as before. Verified on CI's newest pair locally: sandbox mix compile --force --warnings-as-errors on Elixir 1.20.4/OTP 29.0.6, EXIT=0. Gate on OTP 27.2: EXIT=0.
