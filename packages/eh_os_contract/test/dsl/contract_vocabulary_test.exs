@@ -88,7 +88,8 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:effect, :constraint] => [:name, :label, :source],
         [:process_manager, :constraint] => [:name, :label, :source],
         [:process_manager, :invariant] => [:name, :label, :source],
-        [:read_model] => [:name, :label, :projects, :delivery, :source],
+        # #472: the table a read model's rows are kept in, and their key.
+        [:read_model] => [:name, :label, :projects, :delivery, :table, :key, :source],
         [:read_model, :field] => @field,
         [:query] => [:name, :label, :reads, :by, :returns, :scope, :source],
         [:query, :param] => [:name, :type, :optional, :label],

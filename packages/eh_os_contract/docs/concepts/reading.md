@@ -265,6 +265,9 @@ are made is in [authorization](../authorization.md).
 
 - a read model projecting an event neither of this contract nor consumed from a sibling, or a query
   reading what is not a read model of this contract ([`P5`](../contract.md#refusals-p));
+- a read model with `table:` and no `key:`, or a `key:` without `table:`; a table that is not a plain SQL
+  name or that another read model of the contract keeps its rows in; a key field that is not a row field, or
+  is optional, personal, a list or a domain value made of fields ([`P6`](../contract.md#refusals-p));
 - a read model taking an event received from another application ([`D12`](../contract.md#refusals-d));
 - a read model of a sibling's event in another context without `delivery` ([`X10`](../contract.md#refusals-x));
 - a query without `by:`, or a scope that is not a same-typed parameter and row field ([`D10`](../contract.md#refusals-d));

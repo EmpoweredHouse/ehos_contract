@@ -994,6 +994,57 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  describe "P6: a read model's key field is one value" do
+    # #472: a key is its table's primary key, so a domain value made of fields, or one
+    # that is a list, through an alias as well, cannot be a key field.
+    test "a key field typed by a value made of fields, an alias of one, or a list value" do
+      read_model = """
+        read_model :payments, "Payments", projects: :payment_recorded,
+          table: "clinic_payments", key: [:period, :contact, :alias, :clinics] do
+          field :clinic_id, :id
+          field :period, :period_id
+          field :contact, :contact
+          field :alias, :contact_ref
+          field :clinics, :clinic_ids
+          field :amount, :money
+        end
+      """
+
+      body =
+        String.replace(
+          @body,
+          """
+            read_model :payments, "Payments", projects: :payment_recorded do
+              field :clinic_id, :id
+              field :amount, :money
+            end
+          """,
+          read_model
+        )
+
+      assert body != @body
+
+      messages = "LinksTableKey" |> links(body) |> Enum.map(& &1.message)
+
+      for {name, type, shape} <- [
+            {:contact, :contact, "made of fields"},
+            {:alias, :contact_ref, "made of fields"},
+            {:clinics, :clinic_ids, "which is a list"}
+          ] do
+        assert Enum.any?(
+                 messages,
+                 &(&1 =~
+                     "P6: read model :payments has #{inspect(name)} in its key, a " <>
+                       "#{inspect(type)} #{shape}; a key field is one value")
+               ),
+               inspect(messages)
+      end
+
+      # :period, a :period_id resting on :id, is one value: the control.
+      refute Enum.any?(messages, &(&1 =~ "has :period in its key")), inspect(messages)
+    end
+  end
+
   defp dashed(body, name),
     do: String.replace(body, ~s|"clinic.payment.recorded.v1"|, inspect(name))
 end

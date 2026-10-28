@@ -24,6 +24,14 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   #   `:at_least_once`, since it runs from the log in order.
   # - **P5.** A read model projects events of this contract or events it consumes; a
   #   query reads a read model of this contract.
+  # - **P6.** A read model that names its `table:` names its `key:` too, and only one
+  #   that does (#472): the key is the primary key of the schema its `Row` becomes, and
+  #   what a projection's `on_conflict` targets, so a second delivery or a rebuild
+  #   writes no second row. The key's fields are row fields, each named once, never
+  #   optional, personal or a list: a key a row may lack, one an erasure blanks, or
+  #   one that is no single column cannot tell rows apart. A table is a plain SQL
+  #   name, and no two read models of a contract share one. That a key field's domain
+  #   value is one value, not one made of fields, needs the domain and is the links'.
   @moduledoc false
 
   alias EhOsContract.DslRules
@@ -46,6 +54,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
       Enum.flat_map(declarations.effects, &effect(&1, events)),
       Enum.flat_map(declarations.process_managers, &process_manager(&1, events, commands)),
       Enum.flat_map(declarations.read_models, &read_model(&1, events)),
+      Enum.flat_map(declarations.read_models, &table/1),
+      shared_tables(declarations.read_models),
       Enum.flat_map(declarations.queries, &query(&1, read_models))
     ])
   end
@@ -174,6 +184,81 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     for event <- read_model.projects, not MapSet.member?(events, event) do
       {"P5: read model #{inspect(read_model.name)} projects #{inspect(event)}, which is neither an " <>
          "event of this contract nor one it consumes", read_model}
+    end
+  end
+
+  defp table(%{table: nil, key: []}), do: []
+
+  defp table(%{table: nil} = read_model) do
+    [
+      {"P6: read model #{inspect(read_model.name)} declares key: #{inspect(read_model.key)} " <>
+         "and no table:; a key is the primary key of the table its rows are kept in", read_model}
+    ]
+  end
+
+  defp table(%{key: []} = read_model) do
+    [
+      {"P6: read model #{inspect(read_model.name)} keeps its rows in table " <>
+         "#{inspect(read_model.table)} and declares no key:; name the row fields that make a " <>
+         "row unique", read_model}
+      | table_name(read_model)
+    ]
+  end
+
+  defp table(read_model), do: table_name(read_model) ++ key(read_model)
+
+  defp table_name(%{table: table} = read_model) do
+    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*\z/, table),
+      do: [],
+      else: [
+        {"P6: read model #{inspect(read_model.name)} keeps its rows in table " <>
+           "#{inspect(table)}, which is not a table name: letters, digits and _, not starting " <>
+           "with a digit", read_model}
+      ]
+  end
+
+  defp key(%{key: key} = read_model) do
+    where = "read model #{inspect(read_model.name)}"
+    fields = Map.new(read_model.fields, &{&1.name, &1})
+
+    twice =
+      for {name, count} <- Enum.frequencies(key), count > 1 do
+        {"P6: #{where} names #{inspect(name)} twice in its key", read_model}
+      end
+
+    unfit =
+      for name <- Enum.uniq(key) do
+        case Map.fetch(fields, name) do
+          :error ->
+            {"P6: #{where} has #{inspect(name)} in its key, which is not a field of its row",
+             read_model}
+
+          {:ok, field} ->
+            case unfit_key(field) do
+              nil -> nil
+              why -> {"P6: #{where} has #{inspect(name)} in its key, #{why}", field}
+            end
+        end
+      end
+
+    twice ++ Enum.reject(unfit, &is_nil/1)
+  end
+
+  defp unfit_key(%{optional: true}), do: "which is optional; every row has its key"
+
+  defp unfit_key(%{personal: personal}) when personal not in [nil, false],
+    do: "which is personal; an erasure would leave rows no key tells apart"
+
+  defp unfit_key(%{type: {:list, _}}), do: "which is a list; a key field is one value"
+  defp unfit_key(_field), do: nil
+
+  defp shared_tables(read_models) do
+    for {table, [_, _ | _] = sharing} <-
+          read_models |> Enum.filter(& &1.table) |> Enum.group_by(& &1.table),
+        read_model <- tl(sharing) do
+      {"P6: read model #{inspect(read_model.name)} keeps its rows in table #{inspect(table)}, " <>
+         "as read model #{inspect(hd(sharing).name)} does; each read model has a table of its own",
+       read_model}
     end
   end
 
