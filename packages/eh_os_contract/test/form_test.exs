@@ -244,6 +244,13 @@ defmodule EhOsContract.FormTest do
       assert {:ok, %{items: [], billing_address: nil}} = Form.to_struct(cleared)
     end
 
+    test "an empty list of rows data: holds stays empty when the params leave it out" do
+      changeset = changeset(@sent, data: %{invoice_id: "i-1", items: []})
+
+      assert changeset.valid?
+      assert {:ok, %{items: []}} = Form.to_struct(changeset)
+    end
+
     test "a row data: holds may be a struct, an embedded schema's from a read model" do
       address = %EhOsContract.FormTest.Address{street: "Main 1"}
 

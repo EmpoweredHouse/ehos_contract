@@ -243,7 +243,11 @@ defmodule EhOsContract.Form do
         # The rows of what `data:` holds. `inputs_for` builds rows from the data when a field
         # has no change, and cannot from a plain map, so a field always gets rows of its own.
         kept =
-          if held in [nil, []], do: nil, else: rows_of(cardinality, value, held, values, domain)
+          cond do
+            held == nil -> nil
+            held == [] -> []
+            true -> rows_of(cardinality, value, held, values, domain)
+          end
 
         case {nested(cardinality, value, raw, sent?, values, domain), sent?} do
           {:absent, false} when held != nil ->
