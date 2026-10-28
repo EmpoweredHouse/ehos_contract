@@ -1,0 +1,1 @@
+Fix from CodeRabbit's review of #484: a held [] for a list of rows stayed nil in to_struct/1. Test fails on the old code; engine gate on OTP 27: 1973 tests, 0 failures, EXIT=0.
