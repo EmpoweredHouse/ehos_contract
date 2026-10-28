@@ -4548,10 +4548,18 @@ var EhOsContractGraph = {
     };
     document.addEventListener("keydown", this.escape);
     this.announce();
-    this.el.querySelector(".ehg-bar")?.addEventListener("click", (event) => {
+    this.zoomControl = this.el.querySelector(".ehg-zoom");
+    this.zoomControl?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-ehg-zoom]");
       if (button) this.zoomTo(button.dataset.ehgZoom);
     });
+    this.closeZoom = (event) => {
+      const control = this.zoomControl;
+      if (!control?.open) return;
+      if (event.type === "keydown" ? event.key === "Escape" : !control.contains(event.target)) control.open = false;
+    };
+    document.addEventListener("pointerdown", this.closeZoom);
+    document.addEventListener("keydown", this.closeZoom);
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
       const arrow = event.target.closest("[data-ehg-arrow]");
       if (arrow) this.pushEventTo(this.el, "select", { id: arrow.dataset.ehgArrow });
@@ -4580,6 +4588,8 @@ var EhOsContractGraph = {
     this.gone = true;
     window.removeEventListener("eh_os_contract_graph:opened", this.closeOthers);
     document.removeEventListener("keydown", this.escape);
+    document.removeEventListener("pointerdown", this.closeZoom);
+    document.removeEventListener("keydown", this.closeZoom);
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded);
     this.resized.disconnect();
     const own = [this.layoutSheet, this.sizeSheet];

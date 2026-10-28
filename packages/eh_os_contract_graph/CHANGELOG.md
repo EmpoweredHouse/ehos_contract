@@ -43,6 +43,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   answers for a `nil` domain, since the panel offers whatever path its `link` builds. The landscape's `nodes`
   gain an `"application"` list, empty without such entries.
 
+### Changed
+
+- **The zoom is one control in the picture's corner** (#489): the row of "−", "+", "Readable" and "Whole picture"
+  over the canvas is gone; a button over the picture's top right corner opens a menu of "Closer", "Farther",
+  "Readable" and "Whole picture", which stays open while it is used and closes on a press elsewhere or Escape.
+  The canvas sits in a new `.ehg-stage`, which a host styling the canvas's surroundings may meet.
+
 ### Fixed
 
 - **A box with no card no longer grows on each update** (#488): the hook measured such a box at the size its
