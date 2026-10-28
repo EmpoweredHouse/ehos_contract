@@ -25,6 +25,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-27
+
+### Changed
+
+- **Breaking:** **the engine is required at `~> 0.12.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
+
 ## [0.6.0] - 2026-10-26
 
 ### Changed
