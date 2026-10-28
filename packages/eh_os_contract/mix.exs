@@ -38,6 +38,10 @@ defmodule EhOsContract.MixProject do
       # would be (v2 §6, L3).
       compilers: [:boundary] ++ Mix.compilers() ++ [:eh_os_contract],
       start_permanent: Mix.env() == :prod,
+      # Tests compile contracts and domains while they run, whose structs derive Inspect
+      # to hide personal fields; consolidated protocols would ignore those derivations
+      # and warn about each one.
+      consolidate_protocols: Mix.env() != :test,
       aliases: aliases(),
       deps: deps()
     ]

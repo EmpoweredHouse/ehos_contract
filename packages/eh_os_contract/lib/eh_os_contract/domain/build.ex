@@ -174,7 +174,12 @@ defmodule EhOsContract.Domain.Build do
         {field.name, if(field.optional, do: quote(do: unquote(type) | nil), else: type)}
       end
 
+    # A person's data stays out of a value printed in a log, a crash report or a failed
+    # test's message: the struct is inspected without its personal fields.
+    personal = for f <- value.fields, f.personal, do: f.name
+
     quote do
+      unquote(if personal != [], do: quote(do: @derive({Inspect, except: unquote(personal)})))
       @enforce_keys unquote(enforce)
       defstruct unquote(Enum.map(value.fields, & &1.name))
       @type t :: %__MODULE__{unquote_splicing(types)}

@@ -332,8 +332,13 @@ defmodule EhOsContract.Contract.Generate do
            types ++ [__meta__: quote(do: EhOsContract.Meta.t() | nil)]},
         else: {defaults, types}
 
+    # A person's data stays out of a command, an event or a state printed in a log, a
+    # crash report or a failed scenario's message, as a value's struct keeps its own.
+    personal = for f <- fields, Map.get(f, :personal), do: f.name
+
     quote do
       @moduledoc unquote(doc)
+      unquote(if personal != [], do: quote(do: @derive({Inspect, except: unquote(personal)})))
       @enforce_keys unquote(enforce)
       defstruct unquote(Macro.escape(defaults))
       @type t :: %__MODULE__{unquote_splicing(types)}
