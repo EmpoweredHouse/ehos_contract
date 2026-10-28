@@ -25,6 +25,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The dashboard's graph is drawn by the renderer of `eh_os_contract_graph` 0.8.1** (#489): its zoom is one
+  control in the picture's corner, and a box that opens a contract, a unit or a process ends its title in a
+  mark; `priv/static/assets/` is rebuilt from it.
+
 ## [0.7.0] - 2026-10-27
 
 ### Changed

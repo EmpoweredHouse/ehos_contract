@@ -22,7 +22,7 @@
   --eh-os-contract-graph-panel-width: 420px;
 }
 
-/* The bar over the canvas: the search, the log's switch, focus, and the zoom's buttons. */
+/* The bar over the canvas: the search, the log's switch and focus. The zoom is in the picture's corner. */
 
 .ehg-bar {
   display: flex;
@@ -151,7 +151,11 @@
 .ehg-zoom-menu button:focus-visible {
   background: var(--surface-2);
   color: var(--text-primary);
-  outline: none;
+}
+
+.ehg-zoom-menu button:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
 }
 
 /* What the search does not find, faint; what it finds keeps its look. */

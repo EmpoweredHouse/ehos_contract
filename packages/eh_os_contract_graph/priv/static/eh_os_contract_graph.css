@@ -117,7 +117,10 @@
 .ehg-zoom-menu button:focus-visible {
   background: var(--surface-2);
   color: var(--text-primary);
-  outline: none;
+}
+.ehg-zoom-menu button:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
 }
 .ehg .is-unmatched {
   opacity: 0.25;
