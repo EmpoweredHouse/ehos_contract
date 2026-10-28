@@ -78,7 +78,7 @@ or process module rather than at the domain.
 | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with their contracts, those that end a run, its promises with their windows; with its overlay, its runs, how often each event happened and each promise's verdicts |
 | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
 | `:system` | a domain | its contracts in their contexts and what flows between them, and its process modules with the contracts whose events each includes and their runs |
-| `:landscape` | a landscape (below) | several domains, each a box of its contracts that publish or subscribe, empty where none does, and a card per name on the wire between them |
+| `:landscape` | a landscape (below) | several domains, each a box of its contracts that publish or subscribe, empty where none does, a dashed box for an application no document describes, and a card per name on the wire between them |
 | `:all`, the default | either | every node and relation: the drawing layer's test bed |
 
 `EhOsContract.GraphRenderer.View.views/1` lists the views a document has, with their titles. The panel is a
@@ -134,9 +134,15 @@ boxes, a card per name on the wire, with an arrow from each contract that publis
 subscribes. Two domains of one application are joined as two applications are. It is how the EHOS Console draws
 the applications it sees together, from the domain documents each submitted with its deployment.
 
+An application the host knows is there but has no domain document of is an entry with `:none`,
+`{"office", :none}`. Its box is drawn dashed and see-through, titled "no graph described", empty and with no arrow:
+the landscape was not told of its contracts, which is not to say it has none.
+
 A host with a page per domain gives the canvas a `link`, a function of the application's name, the domain's
 module and a contract's id (`nil` for the domain), and the panel of a box, or of a contract in it, offers a link
-to that page, where the host may render the explorer at that contract:
+to that page, where the host may render the explorer at that contract. The box of an application with no document
+asks `link` with `nil` for the domain too, and offers "Open this application"; a host that joins such
+applications answers for a `nil` domain, or the link it builds from one is broken:
 
 ```heex
 <.live_component
@@ -144,8 +150,10 @@ to that page, where the host may render the explorer at that contract:
   id="landscape"
   document={@landscape}
   view={:landscape}
-  link={fn application, domain, contract ->
-    ~p"/apps/#{application}/domains/#{domain}?#{[contract: contract || ""]}"
+  link={fn
+    application, nil, nil -> ~p"/apps/#{application}"
+    application, domain, contract ->
+      ~p"/apps/#{application}/domains/#{domain}?#{[contract: contract || ""]}"
   end}
 />
 ```

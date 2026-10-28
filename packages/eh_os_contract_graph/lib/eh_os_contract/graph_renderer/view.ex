@@ -22,7 +22,7 @@ defmodule EhOsContract.GraphRenderer.View do
   | `:process` | a process module | the process and who answers for it, its stages in order, the events each includes with the contract that declares them, those that end a run, its promises with their windows, and the systems its events rest on |
   | `:context_map` | a domain | its subdomains, contexts, external systems and their relations |
   | `:system` | a domain | its contracts in their contexts, what one consumes from another, whose units' numbers one keeps, its publications, and its process modules with the contracts whose events each includes |
-  | `:landscape` | a landscape | several domains, each a box of the contracts that publish or subscribe, empty where none does, and a card per name on the wire between them (`EhOsContract.GraphRenderer.Landscape`) |
+  | `:landscape` | a landscape | several domains, each a box of the contracts that publish or subscribe, empty where none does, a box of its own for an application no document describes, and a card per name on the wire between them (`EhOsContract.GraphRenderer.Landscape`) |
 
   Each says what the picture said, in its words: an arrow after the transaction is
   dotted and says `async`, a promise is a heavy arrow with its window, a relation
@@ -967,17 +967,33 @@ defmodule EhOsContract.GraphRenderer.View do
     # (#412).
     held = MapSet.new(contracts, & &1.group)
 
-    groups =
+    domains =
       for d <- nodes(document, "domain") do
         others = d["others"] || 0
         noun = if MapSet.member?(held, d["id"]), do: "more contract", else: "contract"
         group("domain", d, join([d["label"], others > 0 && count(others, noun)]))
       end
 
+    # An application the host has no domain document of has a box of its own kind, empty
+    # and with no arrow (#487).
+    undescribed =
+      for a <- nodes(document, "application"),
+          do: group("application", a, join([a["label"], "no graph described"]))
+
+    # The boxes in the order of the entries, whose place leads each id.
+    groups = Enum.sort_by(domains ++ undescribed, &entry_place(&1.id))
+
     finish("LR", contracts ++ publications, wire(document, index(document)), groups)
   end
 
   def landscape(_document), do: finish("LR", [], [], [])
+
+  defp entry_place(id) do
+    case Integer.parse(id) do
+      {place, "/" <> _rest} -> place
+      _other -> 0
+    end
+  end
 
   # A contract's card on a map of contracts, in `group`: named by its module's last segment,
   # or by the label the owner's document gives it.
@@ -1125,9 +1141,9 @@ defmodule EhOsContract.GraphRenderer.View do
   # The view: the groups some card sits in, a card naming no group of the view in none,
   # and the relations whose two ends are in it. A stage nothing sits in is drawn all the
   # same: it is still a stage of the process — a finding, which a picture hiding it would
-  # be the wrong tool to find. So is a landscape's domain: it is still an application
-  # that is there.
-  @drawn_empty ~w(stage domain)
+  # be the wrong tool to find. So is a landscape's domain, and its application with no
+  # document: each is still an application that is there.
+  @drawn_empty ~w(stage domain application)
 
   defp finish(direction, cards, arrows, groups) do
     filled = MapSet.new(cards, & &1.group)

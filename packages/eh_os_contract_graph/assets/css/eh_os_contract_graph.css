@@ -224,6 +224,21 @@
   pointer-events: auto;
 }
 
+/* A landscape's box of an application no domain document describes: dashed and see-through, so it reads as
+   there but not known, never as a domain with nothing in it. */
+
+.ehg-group[data-kind=application] {
+  border-style: dashed;
+  border-color: var(--text-tertiary);
+  background: transparent;
+}
+
+.ehg-group[data-kind=application] .ehg-group-title {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
 .ehg-group.is-selected {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;

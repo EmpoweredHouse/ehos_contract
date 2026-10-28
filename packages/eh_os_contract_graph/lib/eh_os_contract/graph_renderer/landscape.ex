@@ -36,6 +36,15 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   between them are joined just as two applications are. A name some document subscribes
   to and none of the set publishes is still drawn, as coming from outside the set.
 
+  **An application the host has no domain document of** is an entry too,
+  `{application, :none}`: a host that knows the application is there, but was given
+  nothing that describes it, says so, and the picture has a box for it all the same, drawn
+  apart from a domain's and titled "no graph described". The box holds nothing and has no
+  arrow, since nothing says what the application publishes or subscribes to; it is not
+  that the application has no contracts, only that the landscape was not told of them.
+
+      Landscape.join([{"billing", billing_domain}, {"office", :none}])
+
   The landscape is a document of this package, of `"kind" => "landscape"`, not a
   `graph.v1` document: the engine does not write it, and nothing but `Canvas` and
   `EhOsContract.GraphRenderer.View` reads it. It keeps the domain documents' facts on its
@@ -54,23 +63,29 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   # The words of a node the landscape draws or names: text, or nothing.
   @words ~w(name label source module)
 
-  @typedoc "An application's name, as the host knows it, and one of its domains' `graph.v1` document."
-  @type entry :: {application :: String.t(), domain_document :: map()}
+  @typedoc """
+  An application's name, as the host knows it, and one of its domains' `graph.v1` document,
+  or `:none` for an application the host has no domain document of.
+  """
+  @type entry :: {application :: String.t(), domain_document :: map() | :none}
 
   @doc """
   One landscape of the domain documents in `entries`, joined by the names on the wire.
 
   Each entry is an application's name and a `graph.v1` document of one of its domains, as
   `GET <mount>/graph/domain/<name>` answers it, decoded. An application with several
-  domains has an entry for each. The order of the entries is the order of their boxes.
+  domains has an entry for each, and one the host has no domain document of an entry with
+  `:none`. The order of the entries is the order of their boxes.
 
       Landscape.join([{"billing", billing_domain}, {"ledger", ledger_domain}])
       #=> %{"kind" => "landscape", "digest" => "…", "nodes" => %{"domain" => [...],
-      #     "contract" => [...], "publication" => [...], "event" => [...]},
+      #     "application" => [], "contract" => [...], "publication" => [...],
+      #     "event" => [...]},
       #     "relations" => %{"publishes" => [...], "subscribed_by" => [...]}}
 
   Raises `ArgumentError` for an entry that is not an application's name with a domain's
-  document (`"kind" => "domain"`), which a host checks before joining what it fetched.
+  document (`"kind" => "domain"`) or `:none`, which a host checks before joining what it
+  fetched.
   """
   @spec join([entry()]) :: map()
   def join(entries) when is_list(entries) do
@@ -103,7 +118,8 @@ defmodule EhOsContract.GraphRenderer.Landscape do
       "kind" => "landscape",
       "digest" => digest(entries),
       "nodes" => %{
-        "domain" => Enum.map(parts, & &1.domain),
+        "domain" => for(%{domain: %{} = domain} <- parts, do: domain),
+        "application" => for(%{application: %{} = application} <- parts, do: application),
         "contract" => Enum.flat_map(parts, & &1.contracts),
         "publication" => publications,
         "event" => Enum.flat_map(parts, & &1.events)
@@ -142,6 +158,7 @@ defmodule EhOsContract.GraphRenderer.Landscape do
     events = MapSet.new(publishes, & &1["event"])
 
     %{
+      application: nil,
       domain: %{
         "id" => box,
         "application" => application,
@@ -190,20 +207,44 @@ defmodule EhOsContract.GraphRenderer.Landscape do
     }
   end
 
-  defp part({{application, %{"kind" => "domain"}}, _index}) do
-    raise ArgumentError,
-          "a landscape names each application by a string, got #{inspect(application)}"
+  # An application the host has no domain document of: its box alone, with nothing in it
+  # and nothing on the wire.
+  defp part({{application, :none}, index}) when is_binary(application) do
+    %{
+      application: %{
+        "id" => "#{index}/application:#{application}",
+        "application" => application,
+        "label" => application
+      },
+      domain: nil,
+      contracts: [],
+      events: [],
+      publications: [],
+      sends: MapSet.new(),
+      publishes: [],
+      subscribed: []
+    }
   end
+
+  defp part({{application, %{"kind" => "domain"}}, _index}), do: unnamed(application)
+  defp part({{application, :none}, _index}), do: unnamed(application)
 
   defp part({entry, _index}) do
     kind =
       case entry do
         {_application, %{} = document} -> inspect(document["kind"])
+        {application, other} when is_binary(application) -> inspect(other, limit: 3)
         other -> inspect(other, limit: 3)
       end
 
     raise ArgumentError,
-          "a landscape joins {application, domain document} pairs, got #{kind}"
+          "a landscape joins {application, domain document} and {application, :none} pairs, " <>
+            "got #{kind}"
+  end
+
+  defp unnamed(application) do
+    raise ArgumentError,
+          "a landscape names each application by a string, got #{inspect(application)}"
   end
 
   # Which documents the landscape is of, for a canvas to know it has seen it: each one's
@@ -211,12 +252,15 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   defp digest(entries) do
     of =
       for {application, document} <- entries,
-          do: {application, document["digest"] || :erlang.phash2(document)}
+          do: {application, of_document(document)}
 
     :crypto.hash(:sha256, :erlang.term_to_binary(of))
     |> Base.encode16(case: :lower)
     |> binary_part(0, 12)
   end
+
+  defp of_document(:none), do: :none
+  defp of_document(document), do: document["digest"] || :erlang.phash2(document)
 
   # A group of a document as `graph.v1` gives it: a list of objects, each with a string id,
   # and a relation's ends strings too; anything else is left out. Its words are text or
