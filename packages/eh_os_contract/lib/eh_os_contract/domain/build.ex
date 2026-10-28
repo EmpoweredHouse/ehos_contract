@@ -38,6 +38,15 @@ defmodule EhOsContract.Domain.Build do
     model = model(dsl)
     types = Enum.map(model.values, &value_type/1)
     behaviours = for %{invariants: [_ | _]} = value <- model.values, do: behaviour(model, value)
+    members = enum_members(model.values)
+
+    # One clause per enum value, not a lookup in a map literal: in a domain with no enum,
+    # the type checker of a newer Elixir sees the empty map and warns that the lookup
+    # can never succeed.
+    member_clauses =
+      for {name, labelled} <- Enum.sort(members) do
+        quote do: def(members(unquote(name)), do: unquote(Macro.escape(labelled)))
+      end
 
     {:ok,
      Transformer.eval(
@@ -58,6 +67,28 @@ defmodule EhOsContract.Domain.Build do
          end
 
          unquote_splicing(behaviours)
+
+         @doc """
+         The members of an enum this domain declares as a value, in the order declared, each
+         with its label, or `nil` when it has none: what a select offers, or a check accepts,
+         read from the domain rather than copied. For
+         `value :service, {:enum, [parcel: "Parcel", freight: "Freight"]}`,
+         `members(:service)` is `[parcel: "Parcel", freight: "Freight"]`.
+
+         A value named after another enum value has that value's members. Raises
+         `ArgumentError` for a name that is no value of this domain, or a value that is not
+         an enum.
+         """
+         @spec members(atom()) :: [{atom(), String.t() | nil}]
+         def members(value)
+
+         unquote_splicing(member_clauses)
+
+         def members(value) do
+           raise ArgumentError,
+                 "#{inspect(value)} is no enum value of #{inspect(__MODULE__)}; its enum " <>
+                   "values are #{inspect(unquote(members |> Map.keys() |> Enum.sort()))}"
+         end
 
          @doc "Binds a value's invariants to their checks: `EhOsContract.Implementation`."
          defmacro __using__(opts),
@@ -96,6 +127,27 @@ defmodule EhOsContract.Domain.Build do
       end
     end
   end
+
+  # `%{service: [parcel: "Parcel", freight: nil]}`: every value that is an enum, or names
+  # one, with its members labelled, for the generated `members/1` (#472).
+  defp enum_members(values) do
+    by_name = Map.new(values, &{&1.name, &1.type})
+
+    for %{name: name} <- values,
+        {:enum, members} <- [enum_of(Map.get(by_name, name), by_name)],
+        into: %{},
+        do: {name, Enum.map(members, &labelled/1)}
+  end
+
+  defp enum_of({:enum, _members} = enum, _by_name), do: enum
+
+  defp enum_of(name, by_name) when is_atom(name) and is_map_key(by_name, name),
+    do: enum_of(Map.fetch!(by_name, name), by_name)
+
+  defp enum_of(_type, _by_name), do: nil
+
+  defp labelled({member, label}), do: {member, label}
+  defp labelled(member), do: {member, nil}
 
   # `value :money, :integer` becomes `@type money :: integer()`; a value with fields
   # becomes a map type with one key per field. A personal field may hold what it

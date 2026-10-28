@@ -76,7 +76,7 @@ defmodule EhOsContract.Contract.Build do
       effects: entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> reaction() |> operations())),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
-      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&(&1 |> plain() |> delivery())),
+      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&read_model/1),
       queries:
         entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
@@ -117,6 +117,17 @@ defmodule EhOsContract.Contract.Build do
     do: if(Map.get(map, key) == [], do: Map.delete(map, key), else: map)
 
   # --- declarations as data --------------------------------------------------------
+
+  # #472: a read model's `table:` and `key:` are kept only where declared, so no read
+  # model written without them moves its digest, and with it its version, which would
+  # mark its subscription stale and rebuild it.
+  defp read_model(declaration) do
+    declaration
+    |> plain()
+    |> delivery()
+    |> without_empty(:key)
+    |> then(&if &1.table, do: &1, else: Map.delete(&1, :table))
+  end
 
   defp reaction(declaration),
     do: declaration |> plain() |> without_empty(:constraints) |> idempotency()

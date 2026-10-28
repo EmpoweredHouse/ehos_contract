@@ -1,6 +1,6 @@
 defmodule EhOsContract.ContractConsumersTest do
   @moduledoc """
-  v2 plan, E4: **P1–P5 of v2 §6** — what reacts to events, and what is read. Each
+  v2 plan, E4: **P1–P5 of v2 §6**, and P6 (#472) — what reacts to events, and what is read. Each
   refusal names the declaration's file and line, and has a control beside it that
   compiles.
   """
@@ -286,6 +286,162 @@ defmodule EhOsContract.ContractConsumersTest do
       assert message =~
                "P5: query :closed_today reads :open_visits, which is not a read model of this " <>
                  "contract (read_wrong.ex:16)"
+    end
+  end
+
+  describe "P6: a read model with a table names its key, and only one with a table does" do
+    test "a table and its key compile, and are kept in the model" do
+      model =
+        compile_contract("TableKey", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "clinic_closed_visits", key: [:visit_id, :closed_on] do
+            field :visit_id, :id
+            field :closed_on, :date
+            field :note, :string, optional: true
+          end
+        """)
+
+      [read_model] = model.read_models
+      assert read_model.table == "clinic_closed_visits"
+      assert read_model.key == [:visit_id, :closed_on]
+    end
+
+    # Kept out of the model where undeclared, so a read model written without them keeps
+    # its digest, and its subscription is not marked stale by an upgrade.
+    test "a read model without a table hashes as it did before tables existed" do
+      body = """
+      #{@unit}
+        read_model :closed_visits, "Closed visits", projects: :visit_closed do
+          field :visit_id, :id
+        end
+      """
+
+      model = compile_contract("TableNone", body)
+      [read_model] = model.read_models
+      refute Map.has_key?(read_model, :table)
+      refute Map.has_key?(read_model, :key)
+    end
+
+    test "a table without a key, and a key without a table" do
+      message =
+        refuse_contract("TableWithoutKey", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "clinic_closed_visits" do
+            field :visit_id, :id
+          end
+
+          read_model :open_visits, "Open visits", projects: :visit_closed, key: :visit_id do
+            field :visit_id, :id
+          end
+        """)
+
+      assert message =~
+               "P6: read model :closed_visits keeps its rows in table \"clinic_closed_visits\" and " <>
+                 "declares no key:; name the row fields that make a row unique"
+
+      assert message =~
+               "P6: read model :open_visits declares key: [:visit_id] and no table:; a key is the " <>
+                 "primary key of the table its rows are kept in"
+    end
+
+    test "a key field unknown, named twice, optional, personal or a list" do
+      message =
+        refuse_contract("KeyUnfit", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "clinic_closed_visits",
+            key: [:visit_id, :visit_id, :missing, :note, :patient_name, :tags] do
+            field :visit_id, :id
+            field :patient_id, :id, subject: :patient
+            field :note, :string, optional: true
+            field :patient_name, :string, personal: :patient_id
+            field :tags, {:list, :string}
+          end
+        """)
+
+      where = "P6: read model :closed_visits"
+      assert message =~ "#{where} names :visit_id twice in its key"
+      assert message =~ "#{where} has :missing in its key, which is not a field of its row"
+      assert message =~ "#{where} has :note in its key, which is optional; every row has its key"
+
+      assert message =~
+               "#{where} has :patient_name in its key, which is personal; an erasure would leave " <>
+                 "rows no key tells apart"
+
+      assert message =~ "#{where} has :tags in its key, which is a list; a key field is one value"
+      refute message =~ "has :visit_id in its key"
+    end
+
+    test "a table that is no SQL name, and two read models in one table" do
+      message =
+        refuse_contract("TableShared", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "visits", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :open_visits, "Open visits", projects: :visit_closed,
+            table: "visits", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :all_visits, "All visits", projects: :visit_closed,
+            table: "public.visits", key: :visit_id do
+            field :visit_id, :id
+          end
+        """)
+
+      assert message =~
+               "P6: read model :open_visits keeps its rows in table \"visits\", as read model " <>
+                 ":closed_visits does; each read model has a table of its own"
+
+      assert message =~
+               "P6: read model :all_visits keeps its rows in table \"public.visits\", which is not " <>
+                 "a table name: letters, digits and _, not starting with a digit"
+
+      refute message =~ "read model :closed_visits keeps its rows"
+    end
+
+    test "a table longer than Postgres keeps, or the engine's own" do
+      long = String.duplicate("a", 64)
+
+      message =
+        refuse_contract("TableReserved", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "#{long}", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :open_visits, "Open visits", projects: :visit_closed,
+            table: "eh_os_contract_events", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :all_visits, "All visits", projects: :visit_closed,
+            table: "oban_jobs", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :sixty_three, "Sixty-three", projects: :visit_closed,
+            table: "#{String.duplicate("b", 63)}", key: :visit_id do
+            field :visit_id, :id
+          end
+        """)
+
+      assert message =~
+               "P6: read model :closed_visits keeps its rows in table \"#{long}\", " <>
+                 "longer than the 63 bytes Postgres keeps of a name"
+
+      assert message =~
+               "P6: read model :open_visits keeps its rows in table \"eh_os_contract_events\", " <>
+                 "which is the engine's or Oban's; a read model's reset/0 would delete its rows"
+
+      assert message =~ "P6: read model :all_visits keeps its rows in table \"oban_jobs\", which"
+      refute message =~ "read model :sixty_three"
     end
   end
 end

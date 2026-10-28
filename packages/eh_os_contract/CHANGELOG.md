@@ -74,6 +74,37 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   goes through `Form` (#132). A new concept page,
   `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
   changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
+- **A domain lists an enum value's members** (#472): `Lending.Domain.members(:bike_kind)` is
+  `[city: "City bike", road: "Road bike"]`, in the order declared, each with its label or `nil`, so a
+  select's options or a check read them from the domain instead of a copy. A value named after an
+  enum value has its members; any other name raises `ArgumentError`.
+- **A read model names the table its rows are kept in, and their key** (#472):
+  `read_model :member_directory, "…", table: "lending_member_directory", key: :membership_id`.
+  The key, one row field or a list of them, is the table's primary key, required with `table:` and
+  refused without it. A new refusal (`P6`) holds both: a table that is not a plain SQL name, is longer
+  than the 63 bytes Postgres keeps, is the engine's or Oban's, or is shared by two read models of any
+  contracts, and a key field that is not a row field, is named twice, or is optional, personal, a list,
+  or a domain value made of fields or that is a list.
+
+### Changed
+
+- **Breaking:** **a read model's `Row` is an Ecto schema** (#472), of its `table:` with its `key:`
+  as the primary key, or an `embedded_schema` when it names no table. A projection writes through it
+  (`insert_all(Row, rows, ...)`) and a query reads `from r in Row` and answers the structs Ecto loads,
+  with no `select:` map and no conversion: each field has the contract's type, an enum an `Ecto.Enum`
+  stored as its member's name, a `:timestamp` `:utc_datetime_usec` that writes a time of any
+  precision, so a scenario's `given`, which happens to the second, is projected as a dispatched event
+  is, a domain value the type the domain gives it, read from the domain once it is compiled, so the
+  contract still does not depend on its domain at compile time. A value made of fields is a `jsonb`
+  column, a list of them too, written in the log's form and read back as the map an event carries, so
+  a projection writes `event.address` as it is; a personal field of it that was erased is written and
+  read back `nil`. A personal field is redacted when a row is inspected. An enum's member the contract
+  no longer declares cannot be loaded, so a query over a row that holds one raises until the read
+  model is rebuilt. `EhOsContract.Form`'s changeset types a `:timestamp` field with the same type,
+  which casts as `:utc_datetime_usec` does.
+  A `Row` of a table carries Ecto's `__meta__`: code that lists a row's fields reads
+  `Row.__schema__(:fields)`, not the struct's keys. `docs/concepts/reading.md` writes and reads its
+  example through `Row`.
 
 ## [0.12.0] - 2026-10-27
 

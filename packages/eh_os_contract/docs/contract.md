@@ -475,6 +475,7 @@ version. `mix eh_os_contract.schema --check` does, against the fields the projec
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []` or a field named twice in it, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
+| `P6` | L2, L3 | a read model with `table:` and no `key:`, or `key:` without `table:`; a table that is not a plain SQL name, is longer than 63 bytes, is the engine's or Oban's, or is shared by two read models; a key field that is not a row field, is named twice, is optional, personal or a list, or is typed by a domain value made of fields or a list |
 
 <a id="refusals-r"></a>
 

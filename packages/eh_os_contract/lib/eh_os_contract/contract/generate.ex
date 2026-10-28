@@ -10,14 +10,16 @@ defmodule EhOsContract.Contract.Generate do
   # | `C.Events.LateFeePaid` | an event of a unit |
   # | `C.Received.InvoiceIssued` | `subscribe "<name>", as: :invoice_issued`, with the fields declared there |
   # | `C.Aggregates.Loan.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
-  # | `C.ReadModels.MemberDirectory.Row` | a read model's fields |
+  # | `C.ReadModels.MemberDirectory.Row` | a read model's fields, an Ecto schema |
   # | `C.Queries.MemberContact` | a query's parameters |
   #
   # A unit's identity comes first in its state, commands and events, as the model
   # injects it. A command, an event and a received event enforce their required
   # fields and carry `__meta__`, an `EhOsContract.Meta` that dispatch and the store
-  # set. A state starts from its defaults, and a row and a query's parameters are
-  # plain structs.
+  # set. A state starts from its defaults, and a query's parameters are a plain
+  # struct. A read model's row is an Ecto schema (#472): of its `table:`, with its
+  # `key:` as the primary key, or embedded when it names no table, so a query reads
+  # `from r in Row` and a projection writes through it, with the contract's types.
   #
   # Each module's `@type t` uses a domain value as a remote type of the domain's
   # generated `Values` module, which records no compile dependency (v2 §8). Each is
@@ -63,7 +65,11 @@ defmodule EhOsContract.Contract.Generate do
 
     structs =
       for {module, what, fields, shape, key} <- structs(model) do
-        body = struct_body(model, what, fields, shape, values, key)
+        body =
+          case key do
+            {:read_model, name} -> row_body(model, name, what, values)
+            _other -> struct_body(model, what, fields, shape, values, key)
+          end
 
         # A query's parameters and its callback are one module: `use C, query: :q`
         # binds to it, and the implementation matches on the struct.
@@ -333,6 +339,86 @@ defmodule EhOsContract.Contract.Generate do
       @type t :: %__MODULE__{unquote_splicing(types)}
     end
   end
+
+  # A read model's row (#472): an Ecto schema whose fields are the declaration's, in
+  # its order, each of the Ecto type `EhOsContract.EctoTypes` gives the declared one.
+  # A domain value's type is read from the domain when it is first used, since the
+  # contract does not depend on its domain at compile time.
+  defp row_body(model, name, what, values) do
+    read_model = Enum.find(model.read_models, &(&1.name == name))
+    table = Map.get(read_model, :table)
+    key = Map.get(read_model, :key, [])
+
+    doc =
+      "#{String.capitalize(what)} of `#{inspect(model.module)}`, generated from its " <>
+        "declaration: an Ecto schema" <>
+        if(table,
+          do: " of table `#{table}`, keyed by #{Enum.map_join(key, ", ", &"`#{&1}`")}.",
+          else: ", embedded, since the read model names no table."
+        )
+
+    fields =
+      for f <- read_model.fields do
+        {type, opts} = ecto_field(f.type, model.domain)
+        opts = if f.name in key, do: [primary_key: true] ++ opts, else: opts
+        # A person's data stays out of a row printed in a log or a failed test.
+        opts = if Map.get(f, :personal), do: [redact: true] ++ opts, else: opts
+        quote(do: field(unquote(f.name), unquote(Macro.escape(type)), unquote(opts)))
+      end
+
+    schema =
+      if table,
+        do: quote(do: schema(unquote(table), do: (unquote_splicing(fields)))),
+        else: quote(do: embedded_schema(do: (unquote_splicing(fields))))
+
+    types =
+      for f <- read_model.fields do
+        type = typespec(f.type, values)
+
+        # A row an implementation builds may carry what an erased field reads back as;
+        # one loaded from a table holds `nil` there, since a column cannot hold it.
+        type =
+          if Map.get(f, :personal) && table == nil,
+            do: quote(do: unquote(type) | EhOsContract.Erased.t()),
+            else: type
+
+        {f.name, quote(do: unquote(type) | nil)}
+      end
+
+    types = if table, do: [__meta__: quote(do: Ecto.Schema.Metadata.t())] ++ types, else: types
+
+    quote do
+      @moduledoc unquote(doc)
+      use Ecto.Schema
+      @primary_key false
+      unquote(schema)
+      @type t :: %__MODULE__{unquote_splicing(types)}
+    end
+  end
+
+  # `{type, options}` of a row's `field/3`: an enum is an `Ecto.Enum` of its members,
+  # a domain value, or a list of one, the type its domain gives it, anything else
+  # `EctoTypes.of/2`'s. Not `of/2` itself: `field/3` takes a type's module and options,
+  # never an initialised `{:parameterized, …}`, and a domain value is not known here.
+  defp ecto_field({:list, value}, domain)
+       when is_atom(value) and value not in @built_in,
+       do: {EhOsContract.EctoTypes.Value, domain: domain, value: value, list: true}
+
+  defp ecto_field({:enum, members}, _domain),
+    do: {Ecto.Enum, values: EhOsContract.EctoTypes.members(members)}
+
+  defp ecto_field({:list, inner}, domain) do
+    {type, opts} = ecto_field(inner, domain)
+    {{:array, type}, opts}
+  end
+
+  defp ecto_field({:id, _entity} = type, _domain), do: {EhOsContract.EctoTypes.of(type, %{}), []}
+
+  defp ecto_field(type, _domain) when type in @built_in,
+    do: {EhOsContract.EctoTypes.of(type, %{}), []}
+
+  defp ecto_field(value, domain) when is_atom(value),
+    do: {EhOsContract.EctoTypes.Value, domain: domain, value: value}
 
   @doc false
   @spec typespec(term(), module()) :: Macro.t()

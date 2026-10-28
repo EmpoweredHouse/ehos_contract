@@ -994,6 +994,95 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
   end
 
+  describe "P6: a read model's key field is one value" do
+    # #472: a key is its table's primary key, so a domain value made of fields, or one
+    # that is a list, through an alias as well, cannot be a key field.
+    test "a key field typed by a value made of fields, an alias of one, or a list value" do
+      read_model = """
+        read_model :payments, "Payments", projects: :payment_recorded,
+          table: "clinic_payments", key: [:period, :contact, :alias, :clinics] do
+          field :clinic_id, :id
+          field :period, :period_id
+          field :contact, :contact
+          field :alias, :contact_ref
+          field :clinics, :clinic_ids
+          field :amount, :money
+        end
+      """
+
+      body =
+        String.replace(
+          @body,
+          """
+            read_model :payments, "Payments", projects: :payment_recorded do
+              field :clinic_id, :id
+              field :amount, :money
+            end
+          """,
+          read_model
+        )
+
+      assert body != @body
+
+      messages = "LinksTableKey" |> links(body) |> Enum.map(& &1.message)
+
+      for {name, type, shape} <- [
+            {:contact, :contact, "made of fields"},
+            {:alias, :contact_ref, "made of fields"},
+            {:clinics, :clinic_ids, "which is a list"}
+          ] do
+        assert Enum.any?(
+                 messages,
+                 &(&1 =~
+                     "P6: read model :payments has #{inspect(name)} in its key, a " <>
+                       "#{inspect(type)} #{shape}; a key field is one value")
+               ),
+               inspect(messages)
+      end
+
+      # :period, a :period_id resting on :id, is one value: the control.
+      refute Enum.any?(messages, &(&1 =~ "has :period in its key")), inspect(messages)
+    end
+
+    # One read model's reset/0 would delete the other's rows.
+    test "two contracts keeping read models in one table" do
+      body = fn unit ->
+        """
+          aggregate :#{unit}, "#{unit}" do
+            identity :#{unit}_id
+            command :open_#{unit}, "Open", by: :reception, emits: :#{unit}_opened
+            event :#{unit}_opened, "Opened"
+          end
+
+          read_model :#{unit}s, "#{unit}s", projects: :#{unit}_opened,
+            table: "clinic_shared", key: :#{unit}_id do
+            field :#{unit}_id, :id
+          end
+        """
+      end
+
+      messages =
+        [
+          {"links_shared_a.ex", source("LinksSharedA", body.("desk"), [])},
+          {"links_shared_b.ex", source("LinksSharedB", body.("room"), [])}
+        ]
+        |> links()
+        |> Enum.map(& &1.message)
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "P6: read model :rooms of EhOsContract.Fixtures.LinksSharedB keeps its rows " <>
+                     "in table \"clinic_shared\", as read model :desks of " <>
+                     "EhOsContract.Fixtures.LinksSharedA does")
+             ),
+             inspect(messages)
+
+      # The first to name the table is not refused: one message, about the second.
+      assert length(messages) == 1, inspect(messages)
+    end
+  end
+
   defp dashed(body, name),
     do: String.replace(body, ~s|"clinic.payment.recorded.v1"|, inspect(name))
 end

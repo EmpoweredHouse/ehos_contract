@@ -55,7 +55,10 @@ defmodule Concepts.Reading.Contracts.Loans do
     event :copy_returned, "Copy returned"
   end
 
-  read_model :copies_out, "Copies out on loan", projects: [:copy_lent, :copy_returned] do
+  read_model :copies_out, "Copies out on loan",
+    projects: [:copy_lent, :copy_returned],
+    table: "reading_example_copies_out",
+    key: :loan_id do
     field :loan_id, :id
     field :copy_id, :id
     field :member_id, :id, subject: :member
@@ -90,16 +93,30 @@ end
 
 A read model declares the shape of its rows (`field`) and the events it `projects`: events of this
 contract, or ones it `consumes` from a sibling ([`P5`](../contract.md#refusals-p)). It is implemented by a module with one callback
-per projected event, which writes the application's own tables and returns `:ok`. The library knows
-nothing of those tables: the application creates them with its own migrations.
+per projected event, which writes the application's own tables and returns `:ok`. The application
+creates them with its own migrations.
+
+The read model's `Row` is an Ecto schema of its fields. A read model that names its table, `table:`,
+and the row fields that make a row unique, `key:`, gets a schema of that table with the key as its
+primary key, so a projection writes through it (`insert_all(Row, rows, on_conflict: …,
+conflict_target: key)`) and a query reads `from r in Row`, each field of the contract's type: an enum
+an `Ecto.Enum` stored as its member's name, a `:timestamp` with microseconds, written at whatever
+precision a time comes in, a domain value the type the domain gives it, and a value made of fields a
+`jsonb` column (a list of them too, one column holding the list), written in the log's form and read
+back as the map an event carries, never a struct, with a personal field that was erased as `nil`. A
+personal field is redacted when a row is inspected. A read model without `table:` has an embedded
+schema, with no table behind it.
+The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
+
+The schema holds the declared fields and nothing else. A column the projection keeps for itself, the
+position it has read up to, say, is a field of the read model too, or written by the table's name,
+outside the schema.
 
 ```elixir
 defmodule Concepts.Reading.CopiesOut do
   use Concepts.Reading.Contracts.Loans, read_model: :copies_out
 
   import Ecto.Query
-
-  @table "reading_example_copies_out"
 
   @impl true
   def copy_lent(%CopyLent{} = event) do
@@ -110,25 +127,26 @@ defmodule Concepts.Reading.CopiesOut do
       member_name: if(is_binary(event.member_name), do: event.member_name)
     }
 
-    repo().insert_all(@table, [row], on_conflict: :nothing)
+    # A second delivery of the same event, or a rebuild, writes no second row.
+    repo().insert_all(Row, [row], on_conflict: :nothing, conflict_target: [:loan_id])
     :ok
   end
 
   @impl true
   def copy_returned(%CopyReturned{loan_id: loan}) do
-    repo().delete_all(from(r in @table, where: r.loan_id == ^loan))
+    repo().delete_all(from(r in Row, where: r.loan_id == ^loan))
     :ok
   end
 
   @impl true
   def forget(:member, member) do
-    repo().update_all(from(r in @table, where: r.member_id == ^member), set: [member_name: nil])
+    repo().update_all(from(r in Row, where: r.member_id == ^member), set: [member_name: nil])
     :ok
   end
 
   @impl true
   def reset do
-    repo().delete_all(@table)
+    repo().delete_all(Row)
     :ok
   end
 
@@ -177,7 +195,8 @@ which is why `copy_lent` above keeps a name only when it is a string.
 A query names the read model it `reads`, who may ask it (`by:`, required, [`D10`](../contract.md#refusals-d)), its parameters
 (`param`), and whether it answers rows or one row (`returns: :many`, the default, or `:one`). Its
 implementation is one function named after it, taking the parameters' struct and a context with the
-actor, and answering the read model's `Row` structs (a list, or one row or `nil`):
+actor, and answering the read model's `Row` structs (a list, or one row or `nil`). With a table, it
+queries the schema and answers what Ecto loads, with no field listed again:
 
 ```elixir
 defmodule Concepts.Reading.LoansOfMember do
@@ -187,12 +206,8 @@ defmodule Concepts.Reading.LoansOfMember do
 
   @impl true
   def loans_of_member(%LoansOfMember{member_id: member}, _ctx) do
-    from(r in "reading_example_copies_out",
-      where: r.member_id == ^member,
-      select: %{loan_id: r.loan_id, copy_id: r.copy_id, member_id: r.member_id, member_name: r.member_name}
-    )
+    from(r in Row, where: r.member_id == ^member, order_by: r.loan_id)
     |> EhOsContract.Config.fetch!(:repo).all()
-    |> Enum.map(&struct(Row, &1))
   end
 end
 
@@ -203,12 +218,8 @@ defmodule Concepts.Reading.HolderOfCopy do
 
   @impl true
   def holder_of_copy(%HolderOfCopy{copy_id: copy}, _ctx) do
-    from(r in "reading_example_copies_out",
-      where: r.copy_id == ^copy,
-      select: %{loan_id: r.loan_id, copy_id: r.copy_id, member_id: r.member_id, member_name: r.member_name}
-    )
+    from(r in Row, where: r.copy_id == ^copy)
     |> EhOsContract.Config.fetch!(:repo).one()
-    |> then(&(&1 && struct(Row, &1)))
   end
 end
 ```
@@ -265,6 +276,10 @@ are made is in [authorization](../authorization.md).
 
 - a read model projecting an event neither of this contract nor consumed from a sibling, or a query
   reading what is not a read model of this contract ([`P5`](../contract.md#refusals-p));
+- a read model with `table:` and no `key:`, or a `key:` without `table:`; a table that is not a plain SQL
+  name, is longer than the 63 bytes Postgres keeps, is the engine's or Oban's, or that another read model
+  keeps its rows in, of this contract or another; a key field that is not a row field, or
+  is optional, personal, a list or a domain value made of fields ([`P6`](../contract.md#refusals-p));
 - a read model taking an event received from another application ([`D12`](../contract.md#refusals-d));
 - a read model of a sibling's event in another context without `delivery` ([`X10`](../contract.md#refusals-x));
 - a query without `by:`, or a scope that is not a same-typed parameter and row field ([`D10`](../contract.md#refusals-d));

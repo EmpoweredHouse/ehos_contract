@@ -189,7 +189,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule ReadModel do
     @moduledoc false
-    defstruct [:name, :label, :source, :delivery, projects: [], fields: []] ++
+    defstruct [:name, :label, :source, :delivery, :table, projects: [], fields: [], key: []] ++
                 [__spark_metadata__: nil]
   end
 
@@ -851,6 +851,19 @@ defmodule EhOsContract.Contract.Dsl do
       label: [type: :string, required: true, doc: "What the business calls it."],
       projects: [type: {:wrap_list, :atom}, required: true, doc: "The events it projects."],
       delivery: [type: @delivery, doc: "When it is updated" <> @undeclared_delivery],
+      table: [
+        type: :string,
+        doc:
+          "The table its rows are kept in, which the application's migration creates; its " <>
+            "`Row` is then an Ecto schema of that table."
+      ],
+      key: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "The row fields that make a row unique, its table's primary key: required with " <>
+            "`table:`, and only with it."
+      ],
       source: [type: :string, doc: "Where the read model comes from in the material."]
     ]
   }

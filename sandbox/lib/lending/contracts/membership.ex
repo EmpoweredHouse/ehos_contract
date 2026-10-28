@@ -61,7 +61,9 @@ defmodule Lending.Contracts.Membership do
   end
 
   read_model :member_directory, "Member directory",
-    projects: [:member_registered, :email_changed] do
+    projects: [:member_registered, :email_changed],
+    table: "lending_member_directory",
+    key: :membership_id do
     field :membership_id, :id
     field :member_id, :id, subject: :member
     field :name, :string, personal: :member_id

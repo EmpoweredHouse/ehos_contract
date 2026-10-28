@@ -25,6 +25,8 @@ Rows projected from events, for queries to read.
 |------|------|----------|---------|------|
 | `projects` | `atom \| list(atom)` | yes |  | The events it projects. |
 | `delivery` | `:in_transaction \| :at_least_once` |  |  | When it is updated; `:in_transaction` when left out, which a reaction to an event of another context has to state (X10). |
+| `table` | `String.t` |  |  | The table its rows are kept in, which the application's migration creates; its `Row` is then an Ecto schema of that table. |
+| `key` | `atom \| list(atom)` |  | `[]` | The row fields that make a row unique, its table's primary key: required with `table:`, and only with it. |
 | `source` | `String.t` |  |  | Where the read model comes from in the material. |
 
 Inside it: [`field`](#contract-read_model-field).

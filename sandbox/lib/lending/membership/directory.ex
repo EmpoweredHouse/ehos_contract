@@ -1,7 +1,8 @@
 defmodule Lending.Membership.Directory do
   @moduledoc """
   **Invented.** The member directory: one row per membership in
-  `lending_member_directory`, with the member's name and e-mail in the clear, since
+  `lending_member_directory`, written through its `Row`, the schema the contract
+  generates for that table, with the member's name and e-mail in the clear, since
   the desk reads them. `forget/2` deletes an erased member's rows, so nothing of them
   is left in this table. An event replayed after its member was erased carries
   `EhOsContract.Erased` in place of each personal field: a registration so replayed
@@ -12,8 +13,6 @@ defmodule Lending.Membership.Directory do
 
   import Ecto.Query
 
-  @table "lending_member_directory"
-
   # A registration replayed after its member was erased, by a rebuild, writes no row:
   # the erasure that follows it in the log has nothing left to delete.
   @impl true
@@ -21,7 +20,7 @@ defmodule Lending.Membership.Directory do
 
   def member_registered(%MemberRegistered{} = registered) do
     repo().insert_all(
-      @table,
+      Row,
       [
         %{
           membership_id: registered.membership_id,
@@ -30,7 +29,8 @@ defmodule Lending.Membership.Directory do
           email: text(registered.email)
         }
       ],
-      on_conflict: :nothing
+      on_conflict: :nothing,
+      conflict_target: [:membership_id]
     )
 
     :ok
@@ -38,7 +38,7 @@ defmodule Lending.Membership.Directory do
 
   @impl true
   def email_changed(%EmailChanged{membership_id: membership, email: email}) do
-    repo().update_all(from(m in @table, where: m.membership_id == ^membership),
+    repo().update_all(from(m in Row, where: m.membership_id == ^membership),
       set: [email: text(email)]
     )
 
@@ -47,13 +47,13 @@ defmodule Lending.Membership.Directory do
 
   @impl true
   def forget(:member, member) do
-    repo().delete_all(from(m in @table, where: m.member_id == ^member))
+    repo().delete_all(from(m in Row, where: m.member_id == ^member))
     :ok
   end
 
   @impl true
   def reset do
-    repo().delete_all(@table)
+    repo().delete_all(Row)
     :ok
   end
 
