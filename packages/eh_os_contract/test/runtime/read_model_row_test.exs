@@ -23,10 +23,20 @@ defmodule EhOsContract.ReadModelRowTest do
           subdomain :core, "Core", type: :core
           context :visits, "Visits", subdomain: :core
           actor :reception, :human, "Reception"
+          subject :member, "Member"
 
           value :money, :integer, unit: :cents
           value :method, {:enum, [card: "Card", cash: "Cash"]}
           value :room_id, :id
+
+          value :contact do
+            field :member_id, :id, subject: :member
+            field :email, :string, personal: :member_id
+          end
+
+          value :remark do
+            field :text, :string, optional: true
+          end
 
           value :address do
             field :street, :string
@@ -58,6 +68,8 @@ defmodule EhOsContract.ReadModelRowTest do
             field :tags, {:list, :string}, optional: true
             field :address, :address, optional: true
             field :stops, {:list, :address}, optional: true
+            field :contact, :contact, optional: true
+            field :remark, :remark, optional: true
           end
 
           read_model :visits_seen, "Visits seen", projects: :visit_closed do
@@ -84,7 +96,7 @@ defmodule EhOsContract.ReadModelRowTest do
     Repo.query!("""
     CREATE TABLE #{@table} (
       visit_id text, room_id text, status text, paid integer, method text,
-      closed_at timestamp(6), tags text[], address jsonb, stops jsonb[],
+      closed_at timestamp(6), tags text[], address jsonb, stops jsonb[], contact jsonb, remark jsonb,
       PRIMARY KEY (visit_id, room_id)
     )
     """)
@@ -98,7 +110,19 @@ defmodule EhOsContract.ReadModelRowTest do
       assert visits().__schema__(:primary_key) == [:visit_id, :room_id]
 
       assert visits().__schema__(:fields) ==
-               [:visit_id, :room_id, :status, :paid, :method, :closed_at, :tags, :address, :stops]
+               [
+                 :visit_id,
+                 :room_id,
+                 :status,
+                 :paid,
+                 :method,
+                 :closed_at,
+                 :tags,
+                 :address,
+                 :stops,
+                 :contact,
+                 :remark
+               ]
 
       assert visits().__schema__(:type, :closed_at) == EhOsContract.EctoTypes.Timestamp
       assert visits().__schema__(:type, :tags) == {:array, :string}
@@ -164,6 +188,33 @@ defmodule EhOsContract.ReadModelRowTest do
                Repo.query!("SELECT address FROM #{@table}")
 
       assert [%{address: ^address, stops: [^stop]}] = Repo.all(visits())
+    end
+
+    # A rebuild replays an event after its subject was erased: the personal field reads
+    # back as EhOsContract.Erased, is written as nil, and the row still loads.
+    test "writes an erased personal field of a value as nil, and reads the row back" do
+      erased = %EhOsContract.Erased{subject: :member, id: "m-1"}
+
+      Repo.insert_all(visits(), [
+        %{
+          visit_id: "v-1",
+          room_id: "r-1",
+          status: :open,
+          contact: %{member_id: "m-1", email: erased}
+        }
+      ])
+
+      assert [%{contact: %{member_id: "m-1", email: nil}}] = Repo.all(visits())
+    end
+
+    # A value whose fields are all optional is still decoded from the log's form: its
+    # keys are the field names, never the strings the column holds.
+    test "reads a value whose fields are all optional with its keys as atoms" do
+      Repo.insert_all(visits(), [
+        %{visit_id: "v-1", room_id: "r-1", status: :open, remark: %{text: "late"}}
+      ])
+
+      assert [%{remark: %{text: "late"}}] = Repo.all(visits())
     end
 
     test "refuses to write a value made of fields that does not fit it" do

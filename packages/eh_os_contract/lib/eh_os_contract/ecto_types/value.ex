@@ -85,8 +85,10 @@ defmodule EhOsContract.EctoTypes.Value do
   defp read({:one, fields, values}, value), do: one(fields, value, values)
   defp read({:many, fields, values}, value), do: each(value, &one(fields, &1, values))
 
+  # Only a map keyed by atoms is the engine's own: one keyed by strings, the log's or a
+  # caller's, is decoded even when every field is optional, so no key is left a string.
   defp one(fields, value, values) when is_map(value) and not is_struct(value) do
-    if Codec.problems(fields, value, values) == [] do
+    if Enum.all?(Map.keys(value), &is_atom/1) and Codec.problems(fields, value, values) == [] do
       {:ok, value}
     else
       case Codec.decode(fields, value, values) do
@@ -121,8 +123,14 @@ defmodule EhOsContract.EctoTypes.Value do
   defp each(_value, _fun), do: :error
 
   # The value read from the domain: the fields of one made of fields, or of a list of
-  # them, through any alias, or the Ecto type of one resting on a type. A domain that is not compiled, or
-  # that does not declare the value, is a defect the links check refuses at compile.
+  # them, through any alias, or the Ecto type of one resting on a type. A domain that is
+  # not compiled, or that does not declare the value, is a defect the links check
+  # refuses at compile.
+  #
+  # A personal field of a value made of fields is read as optional: an erasure leaves
+  # it `nil` in the row (`EhOsContract.Erased` is written as `nil`, as a query's answer
+  # gives it over HTTP), and a row that could not be read back would fail every query
+  # over its read model.
   defp resolved(%{domain: domain, value: value}) do
     values = Codec.values(domain)
 
@@ -131,8 +139,15 @@ defmodule EhOsContract.EctoTypes.Value do
     end
 
     case EctoTypes.shape(value, values) do
-      {cardinality, made_of} -> {cardinality, Map.fetch!(values, made_of).fields, values}
-      :flat -> {:type, EctoTypes.of(value, values)}
+      {cardinality, made_of} ->
+        values = Map.new(values, fn {name, v} -> {name, Map.update(v, :fields, [], &erasable/1)} end)
+        {cardinality, Map.fetch!(values, made_of).fields, values}
+
+      :flat ->
+        {:type, EctoTypes.of(value, values)}
     end
   end
+
+  defp erasable(fields),
+    do: Enum.map(fields, &if(Map.get(&1, :personal), do: Map.put(&1, :optional, true), else: &1))
 end
