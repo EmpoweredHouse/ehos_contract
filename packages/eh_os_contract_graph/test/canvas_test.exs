@@ -610,8 +610,27 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
     test "the zoom's buttons are the hook's, and send nothing to the server", %{view: view} do
       zoom = view |> shown() |> LazyHTML.query("[data-ehg-zoom]")
 
-      assert LazyHTML.attribute(zoom, "data-ehg-zoom") == ~w(out in read all)
+      assert LazyHTML.attribute(zoom, "data-ehg-zoom") == ~w(in out read all)
       assert view |> shown() |> LazyHTML.query("[data-ehg-zoom][phx-click]") |> Enum.count() == 0
+    end
+
+    # #489: one control in the picture's corner, not a row of buttons over it; the server never
+    # patches it, so it stays open while the reader uses it.
+    test "the zoom is one control in the picture's corner, which the server leaves alone", %{
+      view: view
+    } do
+      page = shown(view)
+
+      assert page |> LazyHTML.query(".ehg-bar [data-ehg-zoom]") |> Enum.count() == 0
+
+      control = LazyHTML.query(page, ".ehg-stage > details.ehg-zoom")
+      assert Enum.count(control) == 1
+      assert LazyHTML.attribute(control, "phx-update") == ["ignore"]
+      assert [_id] = LazyHTML.attribute(control, "id")
+      assert control |> LazyHTML.query("summary[aria-label=Zoom]") |> Enum.count() == 1
+
+      assert control |> LazyHTML.query("[data-ehg-zoom]") |> LazyHTML.text() =~ "Whole picture"
+      assert page |> LazyHTML.query(".ehg-stage > .ehg-canvas") |> Enum.count() == 1
     end
   end
 

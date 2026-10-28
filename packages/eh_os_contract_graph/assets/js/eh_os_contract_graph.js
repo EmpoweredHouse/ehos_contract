@@ -229,10 +229,35 @@ export const EhOsContractGraph = {
     document.addEventListener("keydown", this.escape)
     this.announce()
 
-    // The zoom's buttons are the reader's view alone, so the hook answers them, not the server.
-    this.el.querySelector(".ehg-bar")?.addEventListener("click", (event) => {
+    // The zoom's buttons are the reader's view alone, so the hook answers them, not the server. Their control in
+    // the picture's corner stays open while they are used, and closes on a press elsewhere or Escape.
+    this.zoomControl = this.el.querySelector(".ehg-zoom")
+    this.zoomControl?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-ehg-zoom]")
       if (button) this.zoomTo(button.dataset.ehgZoom)
+    })
+    // Escape closes it from within and gives the focus back to its button; so does leaving it by the keyboard,
+    // without taking the focus back.
+    this.closeZoom = (event) => {
+      const control = this.zoomControl
+      if (!control?.open) return
+      if (event.type === "pointerdown") {
+        if (!control.contains(event.target)) control.open = false
+      } else if (event.key === "Escape") {
+        // An open menu is what this Escape closes, and all it closes: the selection stays, and so does a dialog
+        // the picture is in.
+        event.stopPropagation()
+        event.preventDefault()
+        const within = control.contains(document.activeElement)
+        control.open = false
+        if (within) control.querySelector("summary")?.focus()
+      }
+    }
+    // The capture phase, so it is decided before the selection's own Escape.
+    document.addEventListener("pointerdown", this.closeZoom)
+    document.addEventListener("keydown", this.closeZoom, true)
+    this.zoomControl?.addEventListener("focusout", (event) => {
+      if (event.relatedTarget && !this.zoomControl.contains(event.relatedTarget)) this.zoomControl.open = false
     })
 
     this.el.querySelector(".ehg-arrows").addEventListener("click", (event) => {
@@ -273,6 +298,8 @@ export const EhOsContractGraph = {
     this.gone = true
     window.removeEventListener("eh_os_contract_graph:opened", this.closeOthers)
     document.removeEventListener("keydown", this.escape)
+    document.removeEventListener("pointerdown", this.closeZoom)
+    document.removeEventListener("keydown", this.closeZoom, true)
     document.fonts.removeEventListener("loadingdone", this.fontsLoaded)
     this.resized.disconnect()
     const own = [this.layoutSheet, this.sizeSheet]

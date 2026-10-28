@@ -25,6 +25,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** **the dashboard's graph is drawn by the renderer of `eh_os_contract_graph` 0.8.1** (#489), whose
+  hook its committed `priv/static/assets/` now carry, rebuilt: the zoom is one control in the picture's corner,
+  and a box that opens a contract, a unit or a process ends its title in a mark. The hook needs that version's
+  markup, so the renderer is required at `~> 0.8.1` once both are released, and a host moves the two together.
+
 ## [0.7.0] - 2026-10-27
 
 ### Changed

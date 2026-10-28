@@ -88,9 +88,12 @@ defmodule EhOsContract.GraphRenderer.Canvas do
     alone and the declaration with what the log says;
   - "Focus on the selection", which draws only the selected card or group and what its
     relations reach, laid out again (`EhOsContract.GraphRenderer.View.around/2`), until
-    "Show the whole picture" or the panel closes;
-  - the zoom's buttons, which the hook answers alone: closer, farther, "Readable" and
-    "Whole picture".
+    "Show the whole picture" or the panel closes.
+
+  **The zoom** is one control over the picture's top right corner, whose menu holds
+  "Closer", "Farther", "Readable" and "Whole picture", which the hook answers alone. The
+  server never patches it, so it stays open while the reader uses it; a press elsewhere or
+  Escape closes it.
 
   **A picture starts readable.** It is never drawn larger than its own size, nor smaller
   than a scale its words can be read at: one that does not fit at that scale starts at the
@@ -479,92 +482,104 @@ defmodule EhOsContract.GraphRenderer.Canvas do
         >
           Focus on the selection
         </button>
-        <span class="ehg-zoom" role="group" aria-label="Zoom">
-          <button type="button" class="ehg-tool" data-ehg-zoom="out" aria-label="Zoom out">−</button>
-          <button type="button" class="ehg-tool" data-ehg-zoom="in" aria-label="Zoom in">+</button>
-          <button type="button" class="ehg-tool" data-ehg-zoom="read">Readable</button>
-          <button type="button" class="ehg-tool" data-ehg-zoom="all">Whole picture</button>
-        </span>
       </div>
-      <div class="ehg-canvas">
-        <div class="ehg-viewport">
-          <div
-            :for={group <- @shown.groups}
-            class={[
-              "ehg-group",
-              MapSet.member?(@leads, group.id) && "leads" | classes(group.id, @lit, @near, nil)
-            ]}
-            data-ehg-group={group.id}
-            data-kind={group.kind}
-          >
+      <div class="ehg-stage">
+        <div class="ehg-canvas">
+          <div class="ehg-viewport">
+            <div
+              :for={group <- @shown.groups}
+              class={[
+                "ehg-group",
+                MapSet.member?(@leads, group.id) && "leads" | classes(group.id, @lit, @near, nil)
+              ]}
+              data-ehg-group={group.id}
+              data-kind={group.kind}
+            >
+              <button
+                type="button"
+                class="ehg-group-title"
+                title={group.title}
+                phx-click="select"
+                phx-value-id={group.id}
+                phx-target={@myself}
+              >
+                <span class="ehg-group-name">{group.title}</span><span
+                  :if={MapSet.member?(@leads, group.id)}
+                  class="ehg-group-mark"
+                  aria-hidden="true"
+                >›</span>
+              </button>
+              <p :if={group.note} class="ehg-group-note">{group.note}</p>
+            </div>
+            <svg id={"#{@id}-arrows"} class="ehg-arrows" phx-update="ignore" aria-hidden="true"></svg>
             <button
+              :for={node <- @shown.nodes}
               type="button"
-              class="ehg-group-title"
-              title={group.title}
+              class={[
+                "ehg-card",
+                @matches && node.kind != "start" && not MapSet.member?(@matches, node.id) &&
+                  "is-unmatched"
+                | classes(node.id, @lit, @near, @node_marks[node.id])
+              ]}
+              data-ehg-node={node.id}
+              data-kind={node.kind}
+              data-variant={node.variant}
+              data-group={node.group}
+              aria-label={if node.kind == "start", do: "start"}
               phx-click="select"
-              phx-value-id={group.id}
+              phx-value-id={node.id}
               phx-target={@myself}
             >
-              <span class="ehg-group-name">{group.title}</span><span
-                :if={MapSet.member?(@leads, group.id)}
-                class="ehg-group-mark"
-                aria-hidden="true"
-              >›</span>
+              <span
+                :if={node.tag || @node_marks[node.id].count || @node_marks[node.id][:drift]}
+                class="ehg-top"
+              >
+                <span :if={node.tag} class="ehg-kind"><Icons.icon kind={node.kind} />{node.tag}</span>
+                <.count marks={@node_marks[node.id]} />
+              </span>
+              <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
+              <span :if={node.label && node.name} class="ehg-name"><.breakable text={node.name} /></span>
+              <span :for={line <- node.lines} class="ehg-field">{line}</span>
+              <span :if={node.foot} class="ehg-foot"><.breakable text={node.foot} /></span>
             </button>
-            <p :if={group.note} class="ehg-group-note">{group.note}</p>
-          </div>
-          <svg id={"#{@id}-arrows"} class="ehg-arrows" phx-update="ignore" aria-hidden="true"></svg>
-          <button
-            :for={node <- @shown.nodes}
-            type="button"
-            class={[
-              "ehg-card",
-              @matches && node.kind != "start" && not MapSet.member?(@matches, node.id) &&
-                "is-unmatched"
-              | classes(node.id, @lit, @near, @node_marks[node.id])
-            ]}
-            data-ehg-node={node.id}
-            data-kind={node.kind}
-            data-variant={node.variant}
-            data-group={node.group}
-            aria-label={if node.kind == "start", do: "start"}
-            phx-click="select"
-            phx-value-id={node.id}
-            phx-target={@myself}
-          >
-            <span
-              :if={node.tag || @node_marks[node.id].count || @node_marks[node.id][:drift]}
-              class="ehg-top"
+            <button
+              :for={relation <- @shown.relations}
+              type="button"
+              class={[
+                "ehg-relation",
+                blank?(relation, @relation_marks[relation.id]) && "ehg-blank"
+                | classes(relation.id, @lit, @near, @relation_marks[relation.id])
+              ]}
+              data-ehg-relation={relation.id}
+              data-from={relation.from}
+              data-to={relation.to}
+              data-line={relation.line}
+              data-head={if relation.head, do: "arrow", else: "none"}
+              data-observed={View.observed?(relation) && "true"}
+              phx-click="select"
+              phx-value-id={relation.id}
+              phx-target={@myself}
             >
-              <span :if={node.tag} class="ehg-kind"><Icons.icon kind={node.kind} />{node.tag}</span>
-              <.count marks={@node_marks[node.id]} />
-            </span>
-            <span :if={node.label || node.name} class="ehg-label">{node.label || node.name}</span>
-            <span :if={node.label && node.name} class="ehg-name"><.breakable text={node.name} /></span>
-            <span :for={line <- node.lines} class="ehg-field">{line}</span>
-            <span :if={node.foot} class="ehg-foot"><.breakable text={node.foot} /></span>
-          </button>
-          <button
-            :for={relation <- @shown.relations}
-            type="button"
-            class={[
-              "ehg-relation",
-              blank?(relation, @relation_marks[relation.id]) && "ehg-blank"
-              | classes(relation.id, @lit, @near, @relation_marks[relation.id])
-            ]}
-            data-ehg-relation={relation.id}
-            data-from={relation.from}
-            data-to={relation.to}
-            data-line={relation.line}
-            data-head={if relation.head, do: "arrow", else: "none"}
-            data-observed={View.observed?(relation) && "true"}
-            phx-click="select"
-            phx-value-id={relation.id}
-            phx-target={@myself}
-          >
-            {relation.words}<.count marks={@relation_marks[relation.id]} />
-          </button>
+              {relation.words}<.count marks={@relation_marks[relation.id]} />
+            </button>
+          </div>
         </div>
+        <%!-- #489: the zoom is the reader's view alone, answered by the hook; one control in the
+        picture's corner, which the server never patches, so it stays open while it is used. --%>
+        <details id={"#{@id}-zoom"} class="ehg-zoom" phx-update="ignore">
+          <summary class="ehg-tool ehg-zoom-toggle" aria-label="Zoom" title="Zoom">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+              <path d="m20 20-4-4M8 11h6M11 8v6" fill="none" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </summary>
+          <div class="ehg-zoom-menu" role="group" aria-label="Zoom">
+            <button type="button" data-ehg-zoom="in">Closer</button>
+            <button type="button" data-ehg-zoom="out">Farther</button>
+            <button type="button" data-ehg-zoom="read">Readable</button>
+            <button type="button" data-ehg-zoom="all">Whole picture</button>
+          </div>
+        </details>
       </div>
       <.legend legend={View.legend(@shown)} />
       <p :if={@stale_overlay?} class="ehg-note">

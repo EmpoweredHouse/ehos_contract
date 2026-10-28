@@ -62,10 +62,66 @@
   color: var(--text-primary);
   border-color: var(--border-strong, var(--border-soft));
 }
+.ehg-stage {
+  position: relative;
+}
 .ehg-zoom {
-  display: inline-flex;
-  gap: 4px;
-  margin-left: auto;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 12px;
+}
+.ehg-zoom-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  list-style: none;
+}
+.ehg-zoom-toggle::-webkit-details-marker {
+  display: none;
+}
+.ehg-zoom[open] > .ehg-zoom-toggle,
+.ehg-zoom-toggle:focus-visible {
+  color: var(--text-primary);
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+.ehg-zoom-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 128px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.25);
+}
+.ehg-zoom-menu button {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ehg-zoom-menu button:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+.ehg-zoom-menu button:focus-visible {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
 }
 .ehg .is-unmatched {
   opacity: 0.25;
