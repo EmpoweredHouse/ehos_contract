@@ -1,0 +1,6 @@
+Pre-PR review of origin/main..HEAD (#493), two reviews in parallel.
+Fixed (4fb83680), each with a test that fails with the fix reverted: --all prefix/alter/drop/string-form detection (both reviews); duplicate migration versions; primary key via to_regclass folding case and following search_path (both reviews); identity/generated columns reported as blocking; nested array udt; migrations dir matched as glob; single form needing :applications; overwrite race (:exclusive); task printing in tests.
+Documented: narrower int4/varchar columns pass (helper doc); extra columns allowed unless blocking (comment on #493, decision changed with the rejected option).
+Skipped: citext/native enum columns refused (rare, stricter is safe); list of a list-made-of-fields value stored as jsonb[] (pre-existing EctoTypes.Value behaviour, consistent between generator and check).
+No security finding: every interpolation in the generated source is inspect-ed, names validated by P6, SQL takes .
+Gate OTP 27.2: EXIT=0, counts unchanged; sandbox compile on Elixir 1.20.4/OTP 29: EXIT=0.
