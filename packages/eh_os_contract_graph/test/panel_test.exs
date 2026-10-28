@@ -1090,6 +1090,8 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert folded(html) =~ "not_negative"
       assert plain(html) =~ "An amount is not negative"
       refute plain(html) =~ "not_negative"
+      # The value's own type and unit are the code's too.
+      assert folded(html) =~ "in cents"
     end
 
     test "the owner's panel has no technical details to unfold, and says it plainly" do
