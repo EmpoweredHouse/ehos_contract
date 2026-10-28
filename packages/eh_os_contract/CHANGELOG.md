@@ -50,6 +50,21 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **`EhOsContract.Testing.assert_read_model_tables/1`: a read model's table checked against its
+  contract** (#493). In a host's test, it reads every read model with `table:` from the test
+  database and fails, naming each problem, on a missing table or column, a column of another type
+  than its field is stored as, a required field's column that takes `NULL` (a personal field's may,
+  since an erasure blanks it), a primary key that is not the `key:`, and a column of the
+  projection's own that is `NOT NULL` with no default. A field added to a contract and not to its
+  migration then fails in the tests, not at the first write.
+- **`mix eh_os_contract.gen.migration`: a read model's migration written from its contract** (#493).
+  `mix eh_os_contract.gen.migration Lending.Contracts.Membership member_directory`, or `--all` for
+  every read model with a table no migration creates yet, writes `<timestamp>_create_<table>.exs`
+  into the repo's migrations: a column per field of the type it is stored as (text, `bigint`,
+  `numeric`, `boolean`, `date`, `timestamp` with microseconds, `jsonb` for a value made of fields
+  and a list of them, an array for another list), the `key:` as the primary key, `null: false` on
+  a required field that is not personal, and an index on each subject's identifier and query scope.
+  The migration is the application's to edit; it never overwrites one.
 - **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474), and from an
   event an actor records or a query's params, for `record/3` and `query/3`.
   `Form.changeset(contract, module, params, data: ...)` reads what an HTML form, or any input that

@@ -108,6 +108,19 @@ personal field is redacted when a row is inspected. A read model without `table:
 schema, with no table behind it.
 The key is required with a table and refused without one ([`P6`](../contract.md#refusals-p)).
 
+**Its migration.** `mix eh_os_contract.gen.migration <Contract> <read_model>` (or `--all`) writes
+the migration that creates the table from the declaration: a column per field of the type it is
+stored as, the key as the primary key, `null: false` on a required field that is not personal, and
+an index on each subject's identifier and query scope. The migration is the application's from then
+on. A test of the application holds the table to the contract, so a field added to one and not the
+other fails there rather than at the first write:
+
+```elixir
+test "the read models' tables fit their contracts" do
+  EhOsContract.Testing.assert_read_model_tables()
+end
+```
+
 The schema holds the declared fields and nothing else. A column the projection keeps for itself, the
 position it has read up to, say, is a field of the read model too, or written by the table's name,
 outside the schema.

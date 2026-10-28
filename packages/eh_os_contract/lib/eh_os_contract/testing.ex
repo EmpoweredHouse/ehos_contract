@@ -104,4 +104,43 @@ defmodule EhOsContract.Testing do
     result = Oban.drain_queue(queue: :events, with_scheduled: true)
     result |> Map.drop([:snoozed]) |> Map.values() |> Enum.sum()
   end
+
+  @doc """
+  Asserts that every read model with a `table:` has a table its `Row` fits, in the
+  database the configured repo reads: the table exists; each field has a column of
+  the type the field is stored as, which takes `NULL` only where the field is
+  optional or personal; and the primary key is the read model's `key:`. Call it in a
+  host's test, where the test database has run every migration:
+
+      test "the read models' tables fit their contracts" do
+        EhOsContract.Testing.assert_read_model_tables()
+      end
+
+  `contracts` are the contracts to check, every registered one by default. A column
+  the read model does not declare is the projection's own and is let be, unless it is
+  `NOT NULL` with no default, which no row written through `Row` fills.
+
+  Raises `ExUnit.AssertionError` naming every table and every problem, so a field
+  added to a contract and not to its migration fails here, not at the first write.
+  Returns `:ok` otherwise. The table is read from `information_schema` of the current
+  schema; a repo's `prefix:` is not followed.
+  """
+  @spec assert_read_model_tables([module()]) :: :ok
+  def assert_read_model_tables(contracts \\ EhOsContract.Registry.contracts()) do
+    repo = EhOsContract.Config.fetch!(:repo)
+
+    problems =
+      for table <- EhOsContract.ReadModelTable.of(contracts),
+          problem <- EhOsContract.ReadModelTable.problems(table, repo),
+          do: "read model #{inspect(table.read_model)} of #{inspect(table.contract)}: #{problem}"
+
+    if problems != [] do
+      raise ExUnit.AssertionError,
+        message:
+          "the read models' tables do not fit their contracts:\n\n" <>
+            Enum.map_join(problems, "\n", &("  - " <> &1))
+    end
+
+    :ok
+  end
 end
