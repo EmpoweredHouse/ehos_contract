@@ -24,8 +24,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-10-27
-
 ### Added
 
 - `EhOsContract.Auth.Mail.deliver/1` takes `idempotency_key:`, sent as EHOS's `Idempotency-Key`
@@ -33,6 +31,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   one twice: for 24 hours EHOS answers a repeat with what the first call sent. Three new errors
   say why a repeat sent nothing: `:idempotency_key_reused`, `:idempotency_key_in_progress` and
   `:idempotency_key_abandoned`. EHOS 0.22.0 or later reads the key (EmpoweredHouse/eh-os#1016).
+
+## [0.9.0] - 2026-10-27
+
+### Added
+
 - **Mail where EHOS does not answer** (#477), as #475 did for people and grants: the behaviour
   `EhOsContract.Auth.Mail.Sender`, which `Mail` implements; `Mail.sender/0`, which reads
   `config :eh_os_contract_auth, mail_sender:` at each call and otherwise chooses EHOS's when
