@@ -82,6 +82,42 @@ compiler rule, which the catalogue does not document).
 first prints what it prints: compile beforehand when a program reads the output.
 `--warnings-as-errors` changes the exit status, and nothing that is printed.
 
+## mix eh_os_contract.gen.migration
+
+Writes the migration that creates a read model's table
+
+Writes the Ecto migration that creates the table of a read model that names one
+(`table:` and `key:`), from its declaration, so the migration does not list the
+read model's fields a second time by hand.
+
+    mix eh_os_contract.gen.migration Lending.Contracts.Membership member_directory
+    mix eh_os_contract.gen.migration --all
+
+The first form writes the migration of one read model. `--all` writes one for every
+read model with a table that no migration of the repo creates yet, a migration whose
+source holds `table(:<table>`.
+
+Each migration creates the table with:
+
+  * one column per field, of the type its field is stored as: text for an identifier,
+    a string and an enum's member, `bigint` for an integer, `numeric`, `boolean`,
+    `date`, `timestamp` with microseconds, `jsonb` for a value made of fields and for
+    a list of them, an array for a list of anything else;
+  * the read model's `key:` as the primary key;
+  * `null: false` on every required field, except a personal one, which an erasure
+    blanks;
+  * an index on each field a row is looked up by besides its key: a subject's
+    identifier, which `forget/2` deletes by, and a query's scope.
+
+It is written into the repo's migrations, `priv/<repo>/migrations` unless the repo's
+`:priv` says otherwise, named `<timestamp>_create_<table>.exs`, and it is the
+application's from then on: add to it, alter the table in a later migration, and let
+`EhOsContract.Testing.assert_read_model_tables/1` hold the table to the contract. The
+task never overwrites a migration, and writes nothing for a read model without a
+table.
+
+`--migrations-path DIR` writes into another directory.
+
 ## mix eh_os_contract.glossary
 
 Prints a domain's ubiquitous language as Markdown
