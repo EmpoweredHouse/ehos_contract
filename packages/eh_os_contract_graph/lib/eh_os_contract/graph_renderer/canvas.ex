@@ -116,8 +116,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   panel alone, as a name in the panel does. It is read when the host gives one other than the
   last it gave, so a host rendering the canvas again with the same `select` leaves what the
   reader has selected since, and one that gives `nil` in between may ask for the same again.
-  An id the document does not have changes nothing, and is applied once a document that has
-  it comes. A panel is open on one canvas of a page at a time, so of two canvases each given a
+  An id the document does not have when given changes nothing, and is applied once a document
+  that has it comes, over what the reader selected meanwhile; one applied and then gone from
+  the document is not applied again when it comes back, until the host gives `nil` or another. A panel is open on one canvas of a page at a time, so of two canvases each given a
   `select` when the page is drawn, the panel of the last drawn stays open. A host that opens a
   landscape at an application gives the id of its box,
   `EhOsContract.GraphRenderer.Landscape.box/2`:

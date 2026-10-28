@@ -134,8 +134,8 @@ defmodule EhOsContract.GraphRenderer.Landscape do
   @doc """
   The id of the first box of the application named `application` in `landscape`, a domain's or
   the one of an application no document describes, in the order of the entries; `nil` where it
-  has none, or `application` is not a name. A host gives it to `EhOsContract.GraphRenderer.Canvas` as its `select`, to open the
-  landscape at that application.
+  has none, or `application` is not a name. A host gives it to `EhOsContract.GraphRenderer.Canvas`
+  as its `select`, to open the landscape at that application.
   """
   @spec box(map(), term()) :: String.t() | nil
   def box(landscape, application) when is_binary(application) do
