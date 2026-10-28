@@ -110,6 +110,21 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   from outside the component, `phx-target` naming its root — and the panel shows it
   while the graph stays as it is.
 
+  **`select`** is what the host selects, by the id of a card, a group or an arrow of the
+  view: the canvas selects it, opens its panel and brings it into view, as the search's
+  Enter does. It is read when the host gives one other than the last it gave, so a host
+  rendering the canvas again with the same `select` leaves what the reader has selected
+  since; an id the view does not have selects nothing. A host that opens a landscape at an
+  application gives the id of its box, `EhOsContract.GraphRenderer.Landscape.box/2`:
+
+      <.live_component
+        module={EhOsContract.GraphRenderer.Canvas}
+        id="landscape"
+        document={@landscape}
+        view={:landscape}
+        select={EhOsContract.GraphRenderer.Landscape.box(@landscape, "billing")}
+      />
+
   **Nothing here renders a `style` attribute**, and the hook sets none: the host's
   Content-Security-Policy of `default-src 'self'` refuses one, and LiveView takes
   away on its next patch one the server did not render. Positions and sizes live in
@@ -168,8 +183,19 @@ defmodule EhOsContract.GraphRenderer.Canvas do
      |> assign(source: source, document: document, audience: audience)
      |> assign(lookup: lookup, lookup_of: of, spec: spec, given: given)
      |> build()
+     |> asked(assigns)
      |> refresh()}
   end
+
+  # The host's `select`, when it is not the one it gave last: selected, and brought into view
+  # once the hook has drawn it. What `refresh/1` then finds the view does not have is forgotten.
+  defp asked(socket, %{select: select}) when select != nil do
+    if select == socket.assigns[:asked],
+      do: socket,
+      else: assign(socket, asked: select, selected: select, reveal: socket.assigns.reveal + 1)
+  end
+
+  defp asked(socket, _assigns), do: socket
 
   # The view and what the log says over it: the overlay the host gave, when it is of this
   # version of the document and the reader has the log on.

@@ -4566,7 +4566,7 @@ var EhOsContractGraph = {
       this.draw();
     });
     this.resized.observe(this.canvas);
-    this.revealed = this.el.dataset.reveal;
+    this.revealed = "0";
     this.drawn = Promise.resolve();
     this.draw();
   },
@@ -4729,13 +4729,14 @@ var EhOsContractGraph = {
       height = Math.max(height, apex.y + 8, y + h / 2 + 8);
     });
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`];
+    this.places = /* @__PURE__ */ new Map();
     groups.forEach(({ id: id2 }) => {
       const { x, y, width: width2, height: height2 } = graph.node(id2);
+      this.places.set(id2, { x, y });
       rules.push(
         `${this.scope} [data-ehg-group=${quoted(id2)}] { left: ${x - width2 / 2}px; top: ${y - height2 / 2}px; width: ${width2}px; height: ${height2}px }`
       );
     });
-    this.places = /* @__PURE__ */ new Map();
     cards.forEach(({ id: id2, width: width2, height: height2 }) => {
       const { x, y } = graph.node(id2);
       this.places.set(id2, { x, y });
@@ -4838,7 +4839,7 @@ var EhOsContractGraph = {
     } else return;
     this.touched = true;
   },
-  // Card `id` in the middle of the canvas, at the scale the reader has, or a readable one.
+  // Card or box `id` in the middle of the canvas, at the scale the reader has, or a readable one.
   reveal(id2) {
     const place = id2 !== void 0 && this.places?.get(id2);
     if (!place) return;

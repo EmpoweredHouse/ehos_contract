@@ -713,6 +713,41 @@ defmodule EhOsContract.GraphRenderer.CanvasTest do
       assert Enum.count(LazyHTML.query(page(view), ".ehg-panel, .is-selected")) == 0
     end
 
+    test "a host's select selects that element and asks the hook to bring it into view" do
+      html =
+        render_component(Canvas,
+          id: "graph",
+          document: Fixtures.document("edge_cases"),
+          select: "unit:edge_cases:1st"
+        )
+        |> LazyHTML.from_fragment()
+
+      assert "is-selected" in classes(at(html, "data-ehg-node", "unit:edge_cases:1st"))
+      assert html |> LazyHTML.query(".ehg-panel h4") |> LazyHTML.text() == "1st"
+      assert html |> LazyHTML.query("[data-reveal]") |> LazyHTML.attribute("data-reveal") == ["1"]
+    end
+
+    test "a host's select given again leaves what the reader chose since, and another selects it",
+         %{view: view} do
+      select = &Phoenix.LiveView.send_update(view.pid, Canvas, id: "graph", select: &1)
+
+      select.("unit:edge_cases:1st")
+      assert "is-selected" in classes(at(page(view), "data-ehg-node", "unit:edge_cases:1st"))
+
+      view |> element(".ehg-panel header button") |> render_click()
+      select.("unit:edge_cases:1st")
+      assert Enum.count(LazyHTML.query(page(view), ".ehg-panel, .is-selected")) == 0
+
+      select.("builds:a")
+      assert "is-selected" in classes(at(page(view), "data-ehg-relation", "builds:a"))
+
+      assert page(view) |> LazyHTML.query("[data-reveal]") |> LazyHTML.attribute("data-reveal") ==
+               ["2"]
+
+      select.("no such id")
+      assert Enum.count(LazyHTML.query(page(view), ".ehg-panel, .is-selected")) == 0
+    end
+
     test "an update that names only some attributes keeps the rest", %{
       view: view,
       document: document

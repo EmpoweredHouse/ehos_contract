@@ -255,7 +255,8 @@ export const EhOsContractGraph = {
     })
     this.resized.observe(this.canvas)
 
-    this.revealed = this.el.dataset.reveal
+    // A selection the host gave with the first render (Canvas's `select`) is brought into view once drawn.
+    this.revealed = "0"
     this.drawn = Promise.resolve()
     this.draw()
   },
@@ -380,7 +381,7 @@ export const EhOsContractGraph = {
     }
     if (!this.fitted) this.fit()
 
-    // A card the search selected is brought into view, at the scale the reader has.
+    // A card the search selected, or what the host selected, is brought into view, at the scale the reader has.
     if (this.el.dataset.reveal !== this.revealed) {
       this.revealed = this.el.dataset.reveal
       this.reveal(this.el.dataset.selected)
@@ -452,14 +453,15 @@ export const EhOsContractGraph = {
       height = Math.max(height, apex.y + 8, y + h / 2 + 8)
     })
     const rules = [`${this.scope} .ehg-viewport { width: ${width}px; height: ${height}px; visibility: visible }`]
+    this.places = new Map()
     groups.forEach(({ id }) => {
       const { x, y, width, height } = graph.node(id)
+      this.places.set(id, { x, y })
       rules.push(
         `${this.scope} [data-ehg-group=${quoted(id)}] ` +
           `{ left: ${x - width / 2}px; top: ${y - height / 2}px; width: ${width}px; height: ${height}px }`,
       )
     })
-    this.places = new Map()
     cards.forEach(({ id, width, height }) => {
       const { x, y } = graph.node(id)
       this.places.set(id, { x, y })
@@ -572,7 +574,7 @@ export const EhOsContractGraph = {
     this.touched = true
   },
 
-  // Card `id` in the middle of the canvas, at the scale the reader has, or a readable one.
+  // Card or box `id` in the middle of the canvas, at the scale the reader has, or a readable one.
   reveal(id) {
     const place = id !== undefined && this.places?.get(id)
     if (!place) return

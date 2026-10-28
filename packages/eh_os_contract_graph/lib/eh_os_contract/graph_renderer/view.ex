@@ -988,10 +988,12 @@ defmodule EhOsContract.GraphRenderer.View do
 
   def landscape(_document), do: finish("LR", [], [], [])
 
+  # A place is a short number: an id led by more digits than a landscape has entries is read as
+  # none, rather than parsed into a number too large for the VM.
   defp entry_place(id) do
-    case Integer.parse(id) do
-      {place, "/" <> _rest} -> place
-      _other -> 0
+    case Regex.run(~r/\A(\d{1,9})\//, id) do
+      [_whole, place] -> String.to_integer(place)
+      nil -> 0
     end
   end
 

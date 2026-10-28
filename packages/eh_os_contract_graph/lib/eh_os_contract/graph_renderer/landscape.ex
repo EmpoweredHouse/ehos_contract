@@ -131,6 +131,34 @@ defmodule EhOsContract.GraphRenderer.Landscape do
     }
   end
 
+  @doc """
+  The id of the first box of the application named `application` in `landscape`, a domain's or
+  the one of an application no document describes, in the order of the entries; `nil` where it
+  has none. A host gives it to `EhOsContract.GraphRenderer.Canvas` as its `select`, to open the
+  landscape at that application.
+  """
+  @spec box(map(), String.t()) :: String.t() | nil
+  def box(landscape, application) when is_binary(application) do
+    nodes = landscape["nodes"] || %{}
+
+    (List.wrap(nodes["domain"]) ++ List.wrap(nodes["application"]))
+    |> Enum.filter(&(is_map(&1) and &1["application"] == application and is_binary(&1["id"])))
+    |> Enum.min_by(&place(&1["id"]), fn -> nil end)
+    |> case do
+      nil -> nil
+      box -> box["id"]
+    end
+  end
+
+  # The place of an entry, which leads each id it gives; an id led by more digits than a place has
+  # is read as none, rather than parsed into a number too large for the VM.
+  defp place(id) do
+    case Regex.run(~r/\A(\d{1,9})\//, id) do
+      [_whole, place] -> String.to_integer(place)
+      nil -> 0
+    end
+  end
+
   # One domain document's share of the landscape: its box, the contracts on the wire, the
   # events they publish, its publications under the name they share with every other
   # document, and its relations to them. Its ids take the entry's place in the list in
