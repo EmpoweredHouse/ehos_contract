@@ -123,7 +123,7 @@ defmodule EhOsContract.MixProject do
           "docs/contract.md"
         ] ++
           Enum.map(
-            ~w(domain domain-data units reactions reading between-contracts process scenarios),
+            ~w(domain domain-data units reactions reading forms between-contracts process scenarios),
             &"docs/concepts/#{&1}.md"
           ) ++
           [

@@ -44,6 +44,7 @@ defmodule EhOsContract do
       Entities.UnfitRowError,
       Erased,
       Event,
+      Form,
       Generators,
       Graph.Document,
       Graph.Overlay,

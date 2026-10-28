@@ -48,6 +48,26 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474).
+  `Form.changeset(contract, command, params, data: ...)` reads what an HTML form sends:
+  - every value as text, a blank field as absent, a select's text as an enum's member;
+  - each field held to the rules dispatch applies: required, of its declared type, and within
+    its domain value's invariants, asked of the domain.
+
+  Each problem is an error at its field, with the engine's reason in its keyword list
+  (`validation: :required | :type | :invariant`, and `invariant:`), so the application writes
+  its own words. The identity of the unit an edit form changes comes from `data:`, never the
+  params; a supplied field and a generated identity are left to dispatch. `Form.to_command/1`
+  turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
+  and a command's constraints are not asked: they come back as dispatch's refusal, which
+  `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
+  at the field `at:` names for its rule, or on the whole form (`:base`), where a problem at a field
+  the form never sent goes too. A new concept page,
+  `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
+  changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
+
 ## [0.12.0] - 2026-10-27
 
 ### Changed
