@@ -1,0 +1,1 @@
+Fix-up review of the shared-table refusal (CodeRabbit on #499), read by hand: ReadModelTable.shared/1 groups by downcased table, the task raises before mkdir and any write; tested. Gate OTP 27.2: EXIT=0.
